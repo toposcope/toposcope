@@ -1,0 +1,50 @@
+# Canonical collector path (Pass 33). Vector 0.51+.
+# TOPOSCOPE_INGEST_TOKEN must match packaged .env (not the demo value).
+#
+#   set -a && source .env && set +a
+#   vector -c vector.yaml
+#
+# Search `service:smoke` (message `toposcope first event`). Then Save → Alerts Test.
+
+sources:
+  smoke:
+    type: demo_logs
+    interval: 1
+    count: 3
+    format: shuffle
+    lines:
+      - toposcope first event
+
+transforms:
+  to_toposcope:
+    type: remap
+    inputs: [smoke]
+    source: |-
+      .message = "toposcope first event"
+      .severity_text = "INFO"
+      .resourceLogs = [{
+        "resource": {
+          "attributes": [
+            { "key": "service.name", "value": { "stringValue": "smoke" } }
+          ]
+        },
+        "scopeLogs": [{
+          "logRecords": [{
+            "body": { "stringValue": "toposcope first event" },
+            "severityText": "INFO"
+          }]
+        }]
+      }]
+
+sinks:
+  toposcope:
+    type: opentelemetry
+    inputs: [to_toposcope]
+    protocol:
+      type: http
+      uri: http://127.0.0.1:8080/v1/logs
+      encoding:
+        codec: otlp
+      request:
+        headers:
+          Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"

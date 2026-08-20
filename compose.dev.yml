@@ -1,0 +1,37 @@
+# Local ClickHouse for `bun run dev` and load profiles.
+# docker compose -f compose.dev.yml up -d clickhouse
+# 6 CPU / 14G is the load lab. Packaged install is compose.yml.
+
+name: toposcope
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.3
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-toposcope}
+      CLICKHOUSE_DB: default
+    ports:
+      - "127.0.0.1:8123:8123"
+    volumes:
+      - ch_data:/var/lib/clickhouse
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'clickhouse-client --password "$$CLICKHOUSE_PASSWORD" --query "SELECT 1"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "6.0"
+          memory: 14G
+    restart: unless-stopped
+
+volumes:
+  ch_data:

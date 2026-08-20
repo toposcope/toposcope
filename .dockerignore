@@ -1,0 +1,13 @@
+node_modules
+src/ui/dist
+data
+*.sqlite
+.git
+.cursor
+.omx
+AGENTS.md
+ROADMAP.md
+.env
+README.md
+docs
+.github

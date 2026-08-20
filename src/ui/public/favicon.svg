@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <g fill="none" stroke="oklch(0.906 0.014 84)" stroke-linecap="round">
+    <path d="M2.8 19.4H21.2" stroke-width="1.6" opacity="0.6"/>
+    <g stroke-width="2.4" opacity="0.6" stroke-linecap="butt">
+      <path d="M6.2 19.4V13.2"/>
+      <path d="M15 19.4V10.4"/>
+      <path d="M19.4 19.4V13.8"/>
+    </g>
+    <path d="M10.6 19.4V6.6" stroke-width="2.4" stroke-linecap="butt"/>
+  </g>
+</svg>

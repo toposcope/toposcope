@@ -1,0 +1,12 @@
+.omx
+.cursor
+AGENTS.md
+ROADMAP.md
+node_modules
+designs
+src/ui/dist
+data
+*.sqlite
+.env
+.DS_Store
+.gstack/
