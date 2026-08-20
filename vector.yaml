@@ -1,4 +1,4 @@
-# Canonical collector path (Pass 33). Vector 0.51+.
+# Canonical collector path. Vector 0.51+.
 # TOPOSCOPE_INGEST_TOKEN must match packaged .env (not the demo value).
 #
 #   set -a && source .env && set +a
