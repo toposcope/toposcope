@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fakeClientNets, fakeLogEvent } from "./fake-event";
+import { fakeAppVersion, fakeClientNets, fakeLogEvent } from "./fake-event";
 
 function sample(n: number) {
   const now = Date.parse("2026-08-14T12:00:00.000Z");
@@ -38,6 +38,30 @@ describe("fakeLogEvent", () => {
     expect(statuses.size).toBeGreaterThan(3);
     expect(withUser).toBeGreaterThan(2000);
     expect(withUser).toBeLessThan(9000);
+  });
+
+  test("stamps v0.9 and mixes framed vs unframed errors", () => {
+    const events = sample(10_000);
+    let versioned = 0;
+    let framed = 0;
+    let unframedError = 0;
+    for (const event of events) {
+      if (event.attrs.version === fakeAppVersion) {
+        versioned += 1;
+      }
+      if (event.level === "error" || event.level === "fatal") {
+        if (event.attrs["exception.frames"]) {
+          framed += 1;
+          expect(event.attrs["exception.type"]).toBeDefined();
+        } else {
+          unframedError += 1;
+        }
+      }
+    }
+    expect(versioned).toBeGreaterThan(1000);
+    expect(versioned).toBeLessThan(4000);
+    expect(framed).toBeGreaterThan(10);
+    expect(unframedError).toBeGreaterThan(10);
   });
 
   test("stamps client_ip on every event from a region-weighted public mix", () => {

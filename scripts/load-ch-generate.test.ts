@@ -63,7 +63,9 @@ describe("mix32 ClickHouse", () => {
       attr_map['duration_ms'] AS duration_ms,
       attr_map['request_id'] AS request_id,
       attr_map['user_id'] AS user_id,
-      attr_map['client_ip'] AS client_ip
+      attr_map['client_ip'] AS client_ip,
+      attr_map['version'] AS version,
+      attr_map['exception.type'] AS exception_type
     FROM (${fakeLogsSelectSql(i, 1, { n, nowMs: now, windowMs, marker })})`;
     const rows = await clickhouseQuery<{
       service: string;
@@ -76,6 +78,8 @@ describe("mix32 ClickHouse", () => {
       request_id: string;
       user_id: string;
       client_ip: string;
+      version: string;
+      exception_type: string;
     }>(sql);
     const row = rows[0];
     expect(row?.service).toBe(expected.service);
@@ -92,5 +96,17 @@ describe("mix32 ClickHouse", () => {
         ? undefined
         : String(expected.attrs.user_id);
     expect(row?.user_id ? row.user_id : undefined).toBe(expectedUser);
+    const expectedVersion =
+      expected.attrs.version === undefined
+        ? undefined
+        : String(expected.attrs.version);
+    expect(row?.version ? row.version : undefined).toBe(expectedVersion);
+    const expectedType =
+      expected.attrs["exception.type"] === undefined
+        ? undefined
+        : String(expected.attrs["exception.type"]);
+    expect(row?.exception_type ? row.exception_type : undefined).toBe(
+      expectedType,
+    );
   });
 });

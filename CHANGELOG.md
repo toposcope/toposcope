@@ -12,6 +12,8 @@ Ingest writes `e1` so the same application error is one searchable attr (`e1:…
 
 Change marks (`deploy` / `flag` / `incident` / `note`) land in `change_marks` via `POST /v1/marks`. GitHub Actions and GitLab CI samples POST on release. The histogram does not draw them yet.
 
+`bun run load` / `load:live` include a v0.9 deploy mark, some `version:v0.9` rows, framed errors, and errors with no stack. Search waits until `e1:` and `version:v0.9` are present.
+
 Public [ROADMAP.md](ROADMAP.md) is the v0.x product contract (today, direction, will not); delivery lives in GitHub issues. Documentation is organized by audience: a concise operator README, focused [ingest](docs/ingest.md) and [operations](docs/operations.md) guides, and an expanded [contributor guide](CONTRIBUTING.md).
 
 ## 0.3.14

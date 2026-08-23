@@ -3,7 +3,7 @@ import {
   clickhouseQuery,
   pingClickHouse,
 } from "../src/shared/clickhouse";
-import { fakeClientNets } from "../src/shared/fake-event";
+import { fakeAppVersion, fakeClientNets, fakeFramedExceptions } from "../src/shared/fake-event";
 
 const GOLDEN = 2654435769;
 const MIX2 = 0x21f0aaad;
@@ -28,6 +28,28 @@ function mixCols(salt: number, alias: string, iExpr = "i"): string {
 
 function sqlString(value: string): string {
   return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "''")}'`;
+}
+
+function framedExceptionSql(): string {
+  const [a, b, c] = fakeFramedExceptions;
+  if (!a || !b || !c || fakeFramedExceptions.length !== 3) {
+    throw new Error("expected 3 framed exceptions");
+  }
+  return `if(
+      level IN ('error', 'fatal') AND (m14 % 2) = 0,
+      multiIf(
+        m15 % 3 = 0, ${sqlString(a.type)},
+        m15 % 3 = 1, ${sqlString(b.type)},
+        ${sqlString(c.type)}
+      ),
+      ''
+    ) AS exception_type,
+    multiIf(
+      exception_type = ${sqlString(a.type)}, ${sqlString(a.framesJson)},
+      exception_type = ${sqlString(b.type)}, ${sqlString(b.framesJson)},
+      exception_type = ${sqlString(c.type)}, ${sqlString(c.framesJson)},
+      ''
+    ) AS exception_frames`;
 }
 
 /** Same weighted /16s + 40% hot / 60% /16 tail as `clientIp` in `fake-event.ts`. */
@@ -92,6 +114,9 @@ export function fakeLogsSelectSql(
     ${mixCols(10, "m10")},
     ${mixCols(11, "m11")},
     ${mixCols(12, "m12")},
+    ${mixCols(13, "m13")},
+    ${mixCols(14, "m14")},
+    ${mixCols(15, "m15")},
     toUInt64(${opts.nowMs} - toFloat64(number) * ${opts.windowMs} / ${n}) AS ts_ms,
     ${mixCols(91, "m91", "toUInt32(intDiv(ts_ms, 60000))")},
     fromUnixTimestamp64Milli(toInt64(ts_ms), 'UTC') AS ts,
@@ -137,6 +162,8 @@ export function fakeLogsSelectSql(
     concat('req-', if(m7 = 0, '0', lower(trim(LEADING '0' FROM hex(m7))))) AS request_id,
     concat('u-', toString(least(toUInt32((m9 % 10000) / 125), 79))) AS user_id,
     ${clientIpSql("m10", "m12")} AS client_ip,
+    if((m13 % 5) = 0, ${sqlString(fakeAppVersion)}, '') AS version,
+    ${framedExceptionSql()},
     concat(
       if(
         level = 'debug',
@@ -158,22 +185,20 @@ export function fakeLogsSelectSql(
       ' ',
       ${sqlString(opts.marker)}
     ) AS message,
-    if(
-      m8 % 5 < 3,
-      map(
-        'path', path,
-        'status', toString(status),
-        'duration_ms', toString(duration_ms),
-        'request_id', request_id,
-        'client_ip', client_ip,
-        'user_id', user_id
-      ),
+    mapConcat(
       map(
         'path', path,
         'status', toString(status),
         'duration_ms', toString(duration_ms),
         'request_id', request_id,
         'client_ip', client_ip
+      ),
+      if(m8 % 5 < 3, map('user_id', user_id), CAST(map() AS Map(String, String))),
+      if(version != '', map('version', version), CAST(map() AS Map(String, String))),
+      if(
+        exception_type != '',
+        map('exception.type', exception_type, 'exception.frames', exception_frames),
+        CAST(map() AS Map(String, String))
       )
     ) AS attr_map
   FROM numbers(${offset}, ${count})`;

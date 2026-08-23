@@ -89,6 +89,19 @@ export async function postMetrics(
   return postJson(env, "/v1/metrics", "application/json", JSON.stringify(points));
 }
 
+export async function postMarks(
+  env: LoadHttpEnv,
+  marks: Array<{
+    kind: string;
+    title: string;
+    ts?: string;
+    service?: string;
+    attrs?: Record<string, string>;
+  }>,
+): Promise<number> {
+  return postJson(env, "/v1/marks", "application/json", JSON.stringify(marks));
+}
+
 export async function postTraces(
   env: LoadHttpEnv,
   body: string | Uint8Array,

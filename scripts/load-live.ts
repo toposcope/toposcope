@@ -5,12 +5,14 @@ import { loadChannels, type LoadChannel } from "./load-channel";
 import {
   LIVE_HTTP_IN_FLIGHT,
   encodeLoadBatch,
+  postMarks,
   postMetrics,
   postTraces,
   sendEncoded,
 } from "./load-http";
 import type { LiveArgs } from "./load-rates";
 import { envValue } from "../src/shared/env";
+import { fakeAppVersion, huntSeedEvents } from "../src/shared/fake-event";
 import {
   KEPT_RING,
   attachKeptLog,
@@ -118,6 +120,28 @@ export async function runLiveLoad(
   const marker = args.marker ?? `live${Date.now()}`;
   const udp = await Bun.udpSocket({});
   const started = Date.now();
+  const marked = await postMarks(env, [
+    {
+      kind: "deploy",
+      title: fakeAppVersion,
+      service: "billing",
+      ts: new Date(started).toISOString(),
+      attrs: { version: fakeAppVersion, sha: marker },
+    },
+  ]);
+  if (marked !== 1) {
+    throw new Error(`expected 1 change mark, got ${marked}`);
+  }
+  const seed = huntSeedEvents({ marker, now: started });
+  const seeded = await sendEncoded(
+    env,
+    encodeLoadBatch("json", seed),
+    udp,
+    syslog,
+  );
+  if (seeded !== seed.length) {
+    throw new Error(`expected hunt seed ingested=${seed.length}, got ${seeded}`);
+  }
   const deadline = args.forMs > 0 ? started + args.forMs : 0;
   let stop = false;
   const onStop = () => {

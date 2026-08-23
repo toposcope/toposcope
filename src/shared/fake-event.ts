@@ -1,4 +1,6 @@
 import type { LogLevel } from "./log-event";
+import { liftException } from "./exception";
+import { computeFingerprint } from "./fingerprint";
 
 export type FakeEventOpts = {
   i: number;
@@ -237,6 +239,131 @@ function clientHostOctets(hostU: number): { c: number; d: number } {
   return { c, d };
 }
 
+/** Load-mix app version. Hunt with `version:v0.9`. */
+export const fakeAppVersion = "v0.9";
+
+/** Distinct framed bugs. Same JSON string as the 100m ClickHouse mix. */
+export const fakeFramedExceptions: ReadonlyArray<{
+  type: string;
+  framesJson: string;
+}> = [
+  {
+    type: "RuntimeError",
+    framesJson: JSON.stringify([
+      { file: "billing/charge.ts", function: "charge", in_app: true },
+      { file: "vendor/http.ts", function: "request" },
+    ]),
+  },
+  {
+    type: "TimeoutError",
+    framesJson: JSON.stringify([
+      { file: "api/checkout.ts", function: "pay", in_app: true },
+    ]),
+  },
+  {
+    type: "TypeError",
+    framesJson: JSON.stringify([
+      { file: "worker/job.ts", function: "run", in_app: true },
+    ]),
+  },
+];
+
+function stampHuntAttrs(
+  i: number,
+  level: LogLevel,
+  attrs: Record<string, string | number>,
+): void {
+  if (mix32(i, 13) % 5 === 0) {
+    attrs.version = fakeAppVersion;
+  }
+  if ((level === "error" || level === "fatal") && mix32(i, 14) % 2 === 0) {
+    const bug =
+      fakeFramedExceptions[mix32(i, 15) % fakeFramedExceptions.length];
+    if (bug) {
+      attrs["exception.type"] = bug.type;
+      attrs["exception.frames"] = bug.framesJson;
+    }
+  }
+}
+
+/** Guaranteed v0.9 + framed / unframed errors so hunt can wait on `e1:` / `version:`. */
+export function huntSeedEvents(opts: { marker: string; now: number }): Array<{
+  ts: string;
+  service: string;
+  host: string;
+  level: LogLevel;
+  message: string;
+  attrs: Record<string, string | number>;
+}> {
+  const ts = new Date(opts.now).toISOString();
+  const bug = fakeFramedExceptions[0];
+  if (!bug) {
+    throw new Error("fakeFramedExceptions empty");
+  }
+  return [
+    {
+      ts,
+      service: "billing",
+      host: "billing-1",
+      level: "error",
+      message: `charge failed ${opts.marker}`,
+      attrs: {
+        path: "/v1/checkout",
+        status: 500,
+        duration_ms: 812,
+        version: fakeAppVersion,
+        "exception.type": bug.type,
+        "exception.frames": bug.framesJson,
+      },
+    },
+    {
+      ts,
+      service: "api",
+      host: "api-1",
+      level: "error",
+      message: `timeout ${opts.marker}`,
+      attrs: {
+        path: "/v1/items",
+        status: 502,
+        duration_ms: 640,
+        version: fakeAppVersion,
+      },
+    },
+    {
+      ts,
+      service: "api",
+      host: "api-1",
+      level: "info",
+      message: `request completed ${opts.marker}`,
+      attrs: {
+        path: "/v1/items",
+        status: 200,
+        duration_ms: 24,
+        version: fakeAppVersion,
+      },
+    },
+  ];
+}
+
+export function fakeFramedFingerprint(): string {
+  const bug = fakeFramedExceptions[0];
+  if (!bug) {
+    throw new Error("fakeFramedExceptions empty");
+  }
+  const hex = computeFingerprint(
+    "error",
+    "charge failed",
+    liftException({
+      "exception.type": bug.type,
+      "exception.frames": bug.framesJson,
+    }),
+  );
+  if (!hex) {
+    throw new Error("framed hunt seed must fingerprint");
+  }
+  return hex;
+}
+
 /** Must match `clientIpSql` in `scripts/load-ch-generate.ts`. */
 function clientIp(netU: number, hostU: number): string {
   const net = pickWeighted(netU, clientNets);
@@ -270,6 +397,7 @@ export function fakeLogEvent(opts: FakeEventOpts): {
   if (mix32(opts.i, 8) % 5 < 3) {
     attrs.user_id = userId(mix32(opts.i, 9));
   }
+  stampHuntAttrs(opts.i, level, attrs);
   const body = pickAt(mix32(opts.i, 3), messages[level]);
   const message = opts.marker ? `${body} ${opts.marker}` : body;
   return {

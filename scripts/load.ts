@@ -1,11 +1,11 @@
-import { fakeLogEvent } from "../src/shared/fake-event";
+import { fakeLogEvent, fakeAppVersion, fakeFramedFingerprint, huntSeedEvents } from "../src/shared/fake-event";
 import { generateLogsInClickHouse } from "./load-ch-generate";
 import {
   assignLoadChannels,
   countChannels,
   formatChannelCounts,
 } from "./load-channel";
-import { encodeLoadBatch, postMetrics, sendEncoded } from "./load-http";
+import { encodeLoadBatch, postMarks, postMetrics, sendEncoded } from "./load-http";
 import { runLiveLoad } from "./load-live";
 import { parseLoadProfile } from "./load-profile";
 import { envValue } from "../src/shared/env";
@@ -72,6 +72,34 @@ async function timed(name: string, fn: () => Promise<void>): Promise<number> {
 const loadEnv = { url: APP_URL, token: INGEST_TOKEN };
 const syslog = { host: SYSLOG_HOST, port: SYSLOG_PORT };
 
+async function waitForQueryTotal(
+  q: string,
+  min: number,
+  from: string,
+  to: string,
+): Promise<void> {
+  const url = `${APP_URL}/api/search?${new URLSearchParams({
+    from,
+    to,
+    q,
+  })}`;
+  let last = -1;
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    const res = await fetch(url, { headers: { authorization: basicAuth() } });
+    if (!res.ok) {
+      throw new Error(`search ${q} failed: ${res.status} ${await res.text()}`);
+    }
+    const json = (await res.json()) as { total: number };
+    last = json.total;
+    if (last >= min) {
+      return;
+    }
+    await Bun.sleep(500);
+  }
+  throw new Error(`expected >= ${min} events for ${q}, search total=${last}`);
+}
+
 async function waitForMarkerTotal(
   marker: string,
   n: number,
@@ -100,6 +128,36 @@ async function waitForMarkerTotal(
   throw new Error(
     `expected ${n} events with marker ${marker}, search total=${last}`,
   );
+}
+
+async function postHuntSlice(opts: {
+  marker: string;
+  now: number;
+  windowMs: number;
+}): Promise<void> {
+  const markTs = new Date(opts.now - Math.floor(opts.windowMs * 0.35)).toISOString();
+  const marked = await postMarks(loadEnv, [
+    {
+      kind: "deploy",
+      title: fakeAppVersion,
+      service: "billing",
+      ts: markTs,
+      attrs: { version: fakeAppVersion, sha: opts.marker },
+    },
+  ]);
+  if (marked !== 1) {
+    throw new Error(`expected 1 change mark, got ${marked}`);
+  }
+  const seed = huntSeedEvents({ marker: opts.marker, now: opts.now });
+  const seeded = await sendEncoded(
+    loadEnv,
+    encodeLoadBatch("json", seed),
+    { send: () => undefined },
+    syslog,
+  );
+  if (seeded !== seed.length) {
+    throw new Error(`expected hunt seed ingested=${seed.length}, got ${seeded}`);
+  }
 }
 
 async function main(): Promise<void> {
@@ -192,14 +250,22 @@ async function main(): Promise<void> {
     if (ingested !== profile.n) {
       throw new Error(`expected ingested=${profile.n}, got ${ingested}`);
     }
-    const slackMs = 60_000;
+  }
+  await postHuntSlice({ marker, now, windowMs: profile.windowMs });
+  const slackMs = 60_000;
+  const from = new Date(now - profile.windowMs - slackMs).toISOString();
+  const to = new Date(now + slackMs).toISOString();
+  if (profile.via !== "clickhouse") {
     await waitForMarkerTotal(
       marker,
-      profile.n,
-      new Date(now - profile.windowMs - slackMs).toISOString(),
-      new Date(now + slackMs).toISOString(),
+      profile.n + huntSeedEvents({ marker, now }).length,
+      from,
+      to,
     );
   }
+  const huntFrom = new Date(now - 15 * 60_000).toISOString();
+  await waitForQueryTotal(`version:${fakeAppVersion}`, 1, huntFrom, to);
+  await waitForQueryTotal(`e1:${fakeFramedFingerprint()}`, 1, huntFrom, to);
   const ingestMs = performance.now() - ingestT0;
   console.log(
     `ingest ${profile.n} in ${(ingestMs / 1000).toFixed(2)}s (${(profile.n / (ingestMs / 1000)).toFixed(0)}/s)`,

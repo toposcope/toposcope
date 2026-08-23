@@ -8,6 +8,7 @@ import { evaluateAlerts } from "../src/alerts/cron";
 import { runLiveLoad } from "./load-live";
 import { parseLiveArgs } from "./load-rates";
 import { envValue } from "../src/shared/env";
+import { fakeFramedFingerprint } from "../src/shared/fake-event";
 import type { Span } from "../src/shared/span";
 
 const APP_URL = envValue("TOPOSCOPE_URL") ?? "http://127.0.0.1:8080";
@@ -2204,6 +2205,33 @@ async function main(): Promise<void> {
   const liveFound = (await liveSearch.json()) as { total: number };
   if (liveFound.total < 1) {
     throw new Error(`load:live marker ${live.marker} not searchable`);
+  }
+  const versionSearch = await fetch(
+    `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: "version:v0.9" }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!versionSearch.ok) {
+    throw new Error(`version search failed: ${versionSearch.status} ${await versionSearch.text()}`);
+  }
+  const versionFound = (await versionSearch.json()) as { total: number };
+  if (versionFound.total < 1) {
+    throw new Error("load:live version:v0.9 not searchable");
+  }
+  const fingerprintSearch = await fetch(
+    `${APP_URL}/api/search?${new URLSearchParams({
+      range: "15m",
+      q: `e1:${fakeFramedFingerprint()}`,
+    }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!fingerprintSearch.ok) {
+    throw new Error(
+      `fingerprint search failed: ${fingerprintSearch.status} ${await fingerprintSearch.text()}`,
+    );
+  }
+  const fingerprintFound = (await fingerprintSearch.json()) as { total: number };
+  if (fingerprintFound.total < 1) {
+    throw new Error("load:live e1 fingerprint not searchable");
   }
   const keptId = live.kept[0];
   if (!keptId) {

@@ -52,7 +52,7 @@ bun run load:100m
 
 `bun run truncate` clears ClickHouse tables and rollups. Use it when you need a clean local data set.
 
-`bun run load` ingests the 10k/1h smoke profile. `bun run load:500k` runs the larger 500k/24h profile.
+`bun run load` ingests the 10k/1h smoke profile. `bun run load:500k` runs the larger 500k/24h profile. Both mix a v0.9 change mark, `version:v0.9` on some rows, framed errors, and errors with no stack; they wait until `e1:` and `version:v0.9` are searchable.
 
 `bun run load:live --logs=20 --metrics=2 --traces=1` runs continuously until you stop it; add `--for=12s` for a short smoke. Use it for sustained load testing, not routine development.
 
