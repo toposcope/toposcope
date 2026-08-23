@@ -1,7 +1,9 @@
 .omx
 .cursor
 AGENTS.md
-ROADMAP.md
+docs/notepad.md
+docs/VISION.md
+private/
 node_modules
 designs
 src/ui/dist

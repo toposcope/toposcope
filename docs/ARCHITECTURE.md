@@ -2,6 +2,8 @@
 
 Two containers. Logs, ingested metrics, spans, and profile samples live in ClickHouse. The control plane (saved searches, alert rules, tokens, settings) lives in SQLite in the app process. Logs never go in SQLite. Metrics, spans, and profiles are not written into `logs`.
 
+This file is the **shipped** system.
+
 ```
 [curl / OTLP / syslog / seed / browser]
          |

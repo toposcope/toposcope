@@ -98,6 +98,7 @@ Local development runs ClickHouse in Docker and the Bun API plus Vite UI on the 
 
 ## Documentation
 
+- [Roadmap](ROADMAP.md)
 - [Ingest guide](docs/ingest.md)
 - [Operations guide](docs/operations.md)
 - [Query language](docs/query.md)

@@ -1,6 +1,6 @@
 # Contributing
 
-Issues and pull requests live on **GitHub**. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the system. [CHANGELOG.md](CHANGELOG.md) records shipped versions.
+Issues and pull requests live on **GitHub**. [ROADMAP.md](ROADMAP.md) is the v0.x product contract (today, direction, will not). Delivery is GitHub issues and milestones. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the system. [CHANGELOG.md](CHANGELOG.md) records shipped versions.
 
 Open an issue before adding or changing visual chrome. Implementation requires a maintainer-approved public mock; do not invent chrome the mock does not show.
 
@@ -12,6 +12,7 @@ Open an issue before adding or changing visual chrome. Implementation requires a
 - `compose.dev.yml` — local ClickHouse for development
 - `vector.yaml` — canonical collector path
 - `docs/` — architecture and supporting docs
+- `ROADMAP.md` — v0.x product contract
 - `README.md` — public overview
 - `CONTRIBUTING.md` — this guide
 - `CHANGELOG.md` — shipped releases
@@ -71,10 +72,10 @@ Maintainers squash-merge when CI is green. **Ship** is a `vX.Y.Z` tag: it must m
 
 ## Scope
 
-Bugs, security fixes, docs, tests, and packaging fixes can land when CI is green. Enhancements require an agreed issue first. New visual chrome also requires a maintainer-approved public mock.
+Bugs, security fixes, docs, tests, and packaging fixes can land when CI is green. Enhancements need an agreed GitHub issue first and should fit [ROADMAP.md](ROADMAP.md) (v0.x direction, not the Will not list). New visual chrome also requires a maintainer-approved public mock.
 
 Do not add a hosted control plane, PromQL, Grafana, or a Toposcope ingest daemon.
 
 ## Versions
 
-`package.json` is the product version. `0.3.x` is the current series. A patch is one release. Changelog entries are the history; they are not a second spec.
+`package.json` is the product version. **0.3** is shipped (`0.3.14`). Series cuts (0.4, …) are GitHub milestones. A patch is one release. Changelog entries are the history; they are not a second spec.
