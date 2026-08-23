@@ -8,6 +8,8 @@ Lockup and favicon are the Fault mark (two offset filled bands) in plate, in pla
 
 Ingest stores `exception.type` and `exception.frames` when they already arrive as attrs. Direct ingest does not parse stacks from `message`.
 
+Ingest writes `e1` so the same application error is one searchable attr (`e1:…`). Frames hash type plus `file`/`function` (in-app only when any frame is in-app); otherwise type or an `error`/`fatal` line hashes with a stabilized message. Old rows are not rewritten. Not a log template.
+
 Public [ROADMAP.md](ROADMAP.md) is the v0.x product contract (today, direction, will not); delivery lives in GitHub issues. Documentation is organized by audience: a concise operator README, focused [ingest](docs/ingest.md) and [operations](docs/operations.md) guides, and an expanded [contributor guide](CONTRIBUTING.md).
 
 ## 0.3.14

@@ -162,7 +162,7 @@ Supported collector-side operations:
 
 Match on `service` and/or required-key existence so every event does not run every rule. Nested objects become one JSON blob and are not dotted `q` paths. Extra keys count toward the 50-key cap. A detail-panel lookup does not satisfy `q` or Top-N.
 
-Direct ingest without a collector does not grow derived keys. `exception.type` and `exception.frames` are ordinary attrs: store them when they arrive (app, OTEL, or collector enrich). Ingest does not parse them out of `message`.
+Direct ingest without a collector does not grow collector-style derived keys (alias/combine/bucket/lookup). `exception.type` and `exception.frames` are ordinary attrs: store them when they arrive (app, OTEL, or collector enrich). Ingest does not parse them out of `message`. Ingest does write `e1` (16-hex SHA-256) when frames are present, or when `exception.type` is set or the level is `error`/`fatal`, so `e1:…` hunts the same bug. Existing rows are not rewritten.
 
 ### Worked example
 
