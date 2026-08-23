@@ -66,7 +66,13 @@ export async function clickhouseQuery<T>(
   return json.data;
 }
 
-const insertTables = new Set(["logs", "metrics", "spans", "profile_samples"]);
+const insertTables = new Set([
+  "logs",
+  "metrics",
+  "spans",
+  "profile_samples",
+  "change_marks",
+]);
 
 export async function clickhouseInsertJsonEachRow(
   body: string,

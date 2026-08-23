@@ -1,8 +1,8 @@
 # Ingest
 
-Toposcope accepts logs, metrics, traces, and profiles over HTTP. The canonical path is Vector → `POST /v1/logs` with OTLP protobuf.
+Toposcope accepts logs, metrics, change marks, traces, and profiles over HTTP. The canonical path is Vector → `POST /v1/logs` with OTLP protobuf.
 
-Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token.
+Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token.
 
 ## Create an ingest token
 
@@ -16,7 +16,7 @@ curl -u "toposcope:${TOPOSCOPE_PASSWORD}" -X POST http://127.0.0.1:8080/api/api-
 
 ## Limits and responses
 
-HTTP ingest bodies are limited to 1 MB. A request may contain at most 500 log events, metric points, spans, or profiles, depending on the endpoint.
+HTTP ingest bodies are limited to 1 MB. A request may contain at most 500 log events, metric points, change marks, spans, or profiles, depending on the endpoint.
 
 Successful requests return the number of ingested records. Invalid batches return a `4xx` response. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream.
 
@@ -66,6 +66,52 @@ curl -X POST http://127.0.0.1:8080/v1/metrics \
   -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
   -H 'content-type: application/json' \
   -d '{"name":"cpu_seconds","value":0.42,"labels":{"service":"api"}}'
+```
+
+## Change marks
+
+A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. The histogram does not draw marks yet; `GET /api/marks` is enough to prove one exists.
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/marks \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"kind":"deploy","title":"v0.9","service":"billing","attrs":{"version":"v0.9","sha":"abc123"}}'
+```
+
+`kind` is `deploy`, `flag`, `incident`, or `note`. Missing `ts` is stamped server-side.
+
+### GitHub Actions
+
+On a published release (set `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN` as repository secrets):
+
+```yaml
+- name: Mark deploy in Toposcope
+  env:
+    TOPOSCOPE_URL: ${{ secrets.TOPOSCOPE_URL }}
+    TOPOSCOPE_INGEST_TOKEN: ${{ secrets.TOPOSCOPE_INGEST_TOKEN }}
+  run: |
+    curl -fsS -X POST "${TOPOSCOPE_URL}/v1/marks" \
+      -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+      -H "content-type: application/json" \
+      -d "{\"kind\":\"deploy\",\"title\":\"${GITHUB_REF_NAME}\",\"attrs\":{\"version\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\"}}"
+```
+
+### GitLab CI
+
+On a tag pipeline (CI variables `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN`):
+
+```yaml
+mark_deploy:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - |
+      curl -fsS -X POST "${TOPOSCOPE_URL}/v1/marks" \
+        -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+        -H "content-type: application/json" \
+        -d "{\"kind\":\"deploy\",\"title\":\"${CI_COMMIT_TAG}\",\"attrs\":{\"version\":\"${CI_COMMIT_TAG}\",\"sha\":\"${CI_COMMIT_SHA}\"}}"
 ```
 
 ## Traces

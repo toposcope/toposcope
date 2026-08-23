@@ -1,6 +1,6 @@
 # Architecture
 
-Two containers. Logs, ingested metrics, spans, and profile samples live in ClickHouse. The control plane (saved searches, alert rules, tokens, settings) lives in SQLite in the app process. Logs never go in SQLite. Metrics, spans, and profiles are not written into `logs`.
+Two containers. Logs, ingested metrics, spans, profile samples, and change marks live in ClickHouse. The control plane (saved searches, alert rules, tokens, settings) lives in SQLite in the app process. Logs never go in SQLite. Metrics, spans, profiles, and change marks are not written into `logs`.
 
 This file is the **shipped** system.
 
@@ -12,7 +12,7 @@ This file is the **shipped** system.
     |             |
     |             +-- SQLite  (control)
     |
-    +-- ClickHouse HTTP  (logs + logs.trace_id bloom + message text index + logs_by_minute + logs_attr_keys_by_minute + logs_attr_values_by_minute + logs_attr_numeric_by_minute + metrics + metrics_by_minute + spans + profile_samples)
+    +-- ClickHouse HTTP  (logs + logs.trace_id bloom + message text index + logs_by_minute + logs_attr_keys_by_minute + logs_attr_values_by_minute + logs_attr_numeric_by_minute + metrics + metrics_by_minute + spans + profile_samples + change_marks)
 ```
 
 Packaged `compose.yml` runs ClickHouse and one version-pinned Toposcope application. ClickHouse stays on the internal Docker network; the host exposes the application on `127.0.0.1:8080` and syslog UDP on `127.0.0.1:5514`. The packaged limits are 2 CPU / 4 GB for ClickHouse and 1 CPU / 512 MB for the application.
@@ -44,7 +44,7 @@ Query and facets read `attr_map`. `logs` has bloom skip indexes on `trace_id` an
 
 - `GET /api/health` and `GET /api/metrics` are open.
 - Browser UI and all other `/api/*` routes: HTTP basic auth, password `TOPOSCOPE_PASSWORD` (any username). Packaged boot refuses missing, empty, or demo (`toposcope` / `toposcope-ingest`) secrets and does not listen. `bun run dev` may fill localhost defaults.
-- `POST /api/ingest` and `POST /v1/logs` / `POST /v1/metrics` / `POST /v1/traces` / `POST /v1/profiles` also accept `Authorization: Bearer` — env `TOPOSCOPE_INGEST_TOKEN` or a hashed row from `api_tokens`.
+- `POST /api/ingest` and `POST /v1/logs` / `POST /v1/metrics` / `POST /v1/marks` / `POST /v1/traces` / `POST /v1/profiles` also accept `Authorization: Bearer` — env `TOPOSCOPE_INGEST_TOKEN` or a hashed row from `api_tokens`.
 
 ## HTTP
 
@@ -53,6 +53,8 @@ Query and facets read `attr_map`. `logs` has bloom skip indexes on `trace_id` an
 - `POST /api/ingest` — JSON, JSON array, or NDJSON → `{ ingested }`
 - `POST /v1/logs` — OTLP JSON or protobuf logs → `{ ingested }`
 - `POST /v1/metrics` — JSON metric point or array (max 500, 1MB) `{ name, value, ts?, labels? }` → `{ ingested }`. Same bearer/basic as log ingest. Not Prometheus scrape.
+- `POST /v1/marks` — JSON change mark or array (max 500, 1MB) `{ kind, title, ts?, service?, attrs? }` → `{ ingested }`. `kind` is `deploy` | `flag` | `incident` | `note`. Same bearer/basic. Writes `change_marks`, not `logs`. Histogram overlay waits on a mock.
+- `GET /api/marks?from=&to=&range=&kind=&service=` — `{ marks }` in the window (cap 500, oldest first). `range` or `from`+`to` required. Basic auth. The chart does not draw them yet.
 - `POST /v1/traces` — OTLP JSON or protobuf traces → `{ ingested }`. Same bearer/basic, 1MB body, and 500-span batch as log ingest. 429 when ClickHouse is busy. Maps `resourceSpans` onto `spans` (not `logs`). Store what arrives; sampling stays at the collector.
 - `GET /api/traces/:trace_id` — `{ spans, total }` for one request. The id must be 32 hex, not all zeros (400 otherwise; lowercased). 200 even when empty — not a 404. Cap 500 keeps the longest-duration branches plus their ancestors; `total` is the unclipped count. View trace joins when a log alias (`trace_id`, then `request_id`, then `traceid` / `req_id`) is that 32-hex shape; `req-…` is Follow only. Histogram / Follow / `q` stay on `logs`.
 - `POST /v1/profiles` — OTLP JSON or protobuf profiles → `{ ingested }`. Same bearer/basic, 1MB body, and 500-`Profile` batch as log ingest. 429 when ClickHouse is busy. One decoded `Profile` is one renderable unit; do not merge. Store unlinked samples with empty `trace_id` / `span_id`. Sampling and whether `Link`s are attached stay at the collector.
@@ -110,7 +112,7 @@ Layout is a session-only workspace strip (Search / Follow / Surroundings / board
 
 ## Retention
 
-TTL is `toDate(ts) + INTERVAL {n} DAY` on `logs`, `metrics`, `spans`, and `profile_samples`, and `toDate(minute) + INTERVAL {n} DAY` on `logs_by_minute`, `logs_attr_keys_by_minute`, `logs_attr_values_by_minute`, `logs_attr_numeric_by_minute`, and `metrics_by_minute`. `n` comes from SQLite settings (default 30, clamp 1–365). Boot and `PUT /api/settings` apply `ALTER TABLE ... MODIFY TTL` with `mutations_sync = 0, alter_sync = 0` (issue the change; do not wait for `MATERIALIZE TTL`). Tables already at `n` are left alone. `PUT` writes SQLite first so a later ClickHouse error cannot roll back the setting. Unfinished TTL mutations are killed before the new `ALTER` so a failed materialize does not block the next save.
+TTL is `toDate(ts) + INTERVAL {n} DAY` on `logs`, `metrics`, `spans`, `profile_samples`, and `change_marks`, and `toDate(minute) + INTERVAL {n} DAY` on `logs_by_minute`, `logs_attr_keys_by_minute`, `logs_attr_values_by_minute`, `logs_attr_numeric_by_minute`, and `metrics_by_minute`. `n` comes from SQLite settings (default 30, clamp 1–365). Boot and `PUT /api/settings` apply `ALTER TABLE ... MODIFY TTL` with `mutations_sync = 0, alter_sync = 0` (issue the change; do not wait for `MATERIALIZE TTL`). Tables already at `n` are left alone. `PUT` writes SQLite first so a later ClickHouse error cannot roll back the setting. Unfinished TTL mutations are killed before the new `ALTER` so a failed materialize does not block the next save.
 
 ## Alerts
 

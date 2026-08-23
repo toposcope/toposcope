@@ -1,6 +1,7 @@
 type CounterName =
   | "ingest_events"
   | "ingest_metrics"
+  | "ingest_marks"
   | "syslog_packets"
   | "otlp_events"
   | "otlp_spans"
@@ -11,6 +12,7 @@ type CounterName =
 const counters: Record<CounterName, number> = {
   ingest_events: 0,
   ingest_metrics: 0,
+  ingest_marks: 0,
   syslog_packets: 0,
   otlp_events: 0,
   otlp_spans: 0,
@@ -31,6 +33,9 @@ export function renderMetrics(): string {
     "# HELP toposcope_ingest_metrics_total Metric points written to ClickHouse",
     "# TYPE toposcope_ingest_metrics_total counter",
     `toposcope_ingest_metrics_total ${counters.ingest_metrics}`,
+    "# HELP toposcope_ingest_marks_total Change marks written to ClickHouse",
+    "# TYPE toposcope_ingest_marks_total counter",
+    `toposcope_ingest_marks_total ${counters.ingest_marks}`,
     "# HELP toposcope_syslog_packets_total Syslog UDP packets accepted",
     "# TYPE toposcope_syslog_packets_total counter",
     `toposcope_syslog_packets_total ${counters.syslog_packets}`,

@@ -10,6 +10,8 @@ Ingest stores `exception.type` and `exception.frames` when they already arrive a
 
 Ingest writes `e1` so the same application error is one searchable attr (`e1:…`). Frames hash type plus `file`/`function` (in-app only when any frame is in-app); otherwise type or an `error`/`fatal` line hashes with a stabilized message. Old rows are not rewritten. Not a log template.
 
+Change marks (`deploy` / `flag` / `incident` / `note`) land in `change_marks` via `POST /v1/marks`. GitHub Actions and GitLab CI samples POST on release. The histogram does not draw them yet.
+
 Public [ROADMAP.md](ROADMAP.md) is the v0.x product contract (today, direction, will not); delivery lives in GitHub issues. Documentation is organized by audience: a concise operator README, focused [ingest](docs/ingest.md) and [operations](docs/operations.md) guides, and an expanded [contributor guide](CONTRIBUTING.md).
 
 ## 0.3.14

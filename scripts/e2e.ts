@@ -608,6 +608,50 @@ async function main(): Promise<void> {
     throw new Error(`expected 401 for /v1/metrics without auth, got ${unauthorizedMetrics.status}`);
   }
 
+  const markTs = new Date().toISOString();
+  const markRes = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      kind: "deploy",
+      title: "v0.9",
+      service: "billing",
+      ts: markTs,
+      attrs: { version: "v0.9", sha: "e2e" },
+    }),
+  });
+  if (!markRes.ok) {
+    throw new Error(`marks ingest failed: ${markRes.status} ${await markRes.text()}`);
+  }
+  const markIngested = (await markRes.json()) as { ingested: number };
+  if (markIngested.ingested !== 1) {
+    throw new Error(`expected 1 change mark, got ${markIngested.ingested}`);
+  }
+  const marksGet = await fetch(
+    `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!marksGet.ok) {
+    throw new Error(`marks list failed: ${marksGet.status} ${await marksGet.text()}`);
+  }
+  const marksBody = (await marksGet.json()) as {
+    marks: Array<{ title: string; kind: string }>;
+  };
+  if (!marksBody.marks.some((mark) => mark.title === "v0.9" && mark.kind === "deploy")) {
+    throw new Error("posted change mark missing from GET /api/marks");
+  }
+  const unauthorizedMarks = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ kind: "deploy", title: "v0.9" }),
+  });
+  if (unauthorizedMarks.status !== 401) {
+    throw new Error(`expected 401 for /v1/marks without auth, got ${unauthorizedMarks.status}`);
+  }
+
   const badMetric = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({
       from,
@@ -1302,6 +1346,9 @@ async function main(): Promise<void> {
   }
   if (!metricsText.includes("toposcope_ingest_metrics_total")) {
     throw new Error("metrics missing metric ingest counter");
+  }
+  if (!metricsText.includes("toposcope_ingest_marks_total")) {
+    throw new Error("metrics missing marks ingest counter");
   }
 
   const runRes = await fetch(`${APP_URL}/api/saved-searches/${saved.id}/run`, {

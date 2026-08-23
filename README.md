@@ -52,7 +52,7 @@ The deployment pins `ghcr.io/toposcope/toposcope:0.3.14`; it never uses `:latest
 - Links logs to OTLP trace waterfalls and profile icicles when matching IDs are present.
 - Overlays ingested metrics or log-derived rate and numeric series on log volume.
 
-Logs, ingested metrics, spans, and profile samples are stored in ClickHouse. Saved searches, alerts, tokens, and settings are stored in SQLite inside the Toposcope application.
+Logs, ingested metrics, spans, profile samples, and change marks are stored in ClickHouse. Saved searches, alerts, tokens, and settings are stored in SQLite inside the Toposcope application.
 
 ## Send data
 
@@ -63,6 +63,7 @@ The canonical production path is Vector sending OTLP protobuf logs to `POST /v1/
 | OTLP logs | `POST /v1/logs` | JSON or protobuf |
 | JSON or NDJSON logs | `POST /api/ingest` | One event, an array, or NDJSON |
 | Metrics | `POST /v1/metrics` | JSON metric points |
+| Change marks | `POST /v1/marks` | Deploy / flag / incident / note |
 | OTLP traces | `POST /v1/traces` | JSON or protobuf |
 | OTLP profiles | `POST /v1/profiles` | JSON or protobuf |
 | Syslog | UDP `5514` | RFC 3164 |

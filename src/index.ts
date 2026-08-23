@@ -30,6 +30,7 @@ import {
 } from "./control/tokens";
 import { ingestRoute } from "./ingest";
 import { ingestMetricsRoute } from "./ingest/metrics";
+import { ingestMarksRoute } from "./ingest/marks";
 import { otlpLogsRoute } from "./ingest/otlp-route";
 import { otlpTracesRoute } from "./ingest/otlp-traces-route";
 import { otlpProfilesRoute } from "./ingest/otlp-profiles-route";
@@ -37,6 +38,7 @@ import { startSyslogUdp } from "./ingest/syslog";
 import { renderMetrics } from "./metrics";
 import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, facetsRoute, metricNamesRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
 import { tracesRoute } from "./query/traces";
+import { marksRoute } from "./query/marks";
 import { profilesRoute } from "./query/profiles";
 import { systemRoute } from "./query/system";
 import { throughputRoute } from "./query/throughput";
@@ -79,6 +81,7 @@ app.use("/*", async (c, next) => {
     (c.req.path === "/api/ingest" ||
       c.req.path === "/v1/logs" ||
       c.req.path === "/v1/metrics" ||
+      c.req.path === "/v1/marks" ||
       c.req.path === "/v1/traces" ||
       c.req.path === "/v1/profiles" ||
       c.req.path === "/v1development/profiles") &&
@@ -95,11 +98,13 @@ app.use("/*", async (c, next) => {
 app.post("/api/ingest", ingestRoute);
 app.post("/v1/logs", otlpLogsRoute);
 app.post("/v1/metrics", ingestMetricsRoute);
+app.post("/v1/marks", ingestMarksRoute);
 app.post("/v1/traces", otlpTracesRoute);
 app.post("/v1/profiles", otlpProfilesRoute);
 app.post("/v1development/profiles", otlpProfilesRoute);
 app.get("/api/search", searchRoute);
 app.get("/api/traces/:trace_id", tracesRoute);
+app.get("/api/marks", marksRoute);
 app.get("/api/profiles", profilesRoute);
 app.get("/api/search/context", surroundingRoute);
 app.get("/api/facets", facetsRoute);

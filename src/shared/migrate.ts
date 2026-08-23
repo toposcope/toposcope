@@ -85,6 +85,7 @@ export const retentionTtlTables = [
   { table: "metrics_by_minute", clock: "minute" },
   { table: "spans", clock: "ts" },
   { table: "profile_samples", clock: "ts" },
+  { table: "change_marks", clock: "ts" },
 ] as const;
 
 /** Do not wait for MATERIALIZE TTL. Default alter_sync=1 surfaces a corrupt-part mutation as PUT 500. */
@@ -193,6 +194,7 @@ export async function migrateStore(): Promise<void> {
   await ensureMetrics();
   await ensureSpans();
   await ensureProfileSamples();
+  await ensureChangeMarks();
   await backfillHistogramIfEmpty();
   await backfillAttrKeysIfEmpty();
   await backfillAttrValuesMissing();
@@ -532,6 +534,23 @@ async function ensureProfileSamples(): Promise<void> {
     ENGINE = MergeTree
     PARTITION BY toDate(ts)
     ORDER BY (tenant_id, trace_id, span_id, ts)
+    TTL toDate(ts) + INTERVAL 30 DAY
+  `);
+}
+
+async function ensureChangeMarks(): Promise<void> {
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS change_marks (
+      tenant_id LowCardinality(String),
+      ts DateTime64(3, 'UTC'),
+      kind LowCardinality(String),
+      service LowCardinality(String),
+      title String,
+      attrs Map(LowCardinality(String), String)
+    )
+    ENGINE = MergeTree
+    PARTITION BY toDate(ts)
+    ORDER BY (tenant_id, ts, kind)
     TTL toDate(ts) + INTERVAL 30 DAY
   `);
 }

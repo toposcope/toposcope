@@ -48,9 +48,10 @@ async function main(): Promise<void> {
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS metrics_by_minute");
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS spans");
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS profile_samples");
+  await clickhouseCommand("TRUNCATE TABLE IF EXISTS change_marks");
   const after = await countLogs();
   console.log(
-    `truncated logs, metrics, spans, profile_samples, and rollups (${before.toLocaleString()} → ${after.toLocaleString()} rows)`,
+    `truncated logs, metrics, spans, profile_samples, change_marks, and rollups (${before.toLocaleString()} → ${after.toLocaleString()} rows)`,
   );
   if (after !== 0) {
     throw new Error("truncate left rows in logs");

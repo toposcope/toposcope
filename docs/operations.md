@@ -29,6 +29,7 @@ toposcope.example.com {
 - Syslog UDP: `127.0.0.1:5514`
 - OTLP JSON and protobuf: the existing HTTP port on `/v1/logs`, `/v1/traces`, and `/v1/profiles`
 - Metric points: `POST /v1/metrics` on the same port and ingest token
+- Change marks: `POST /v1/marks` on the same port and ingest token; `GET /api/marks` lists them
 - `GET /api/metrics`: Prometheus text, unauthenticated
 
 ## Upgrade and retention
@@ -47,7 +48,7 @@ docker compose up -d
 - Retention follows `PUT /api/settings` with `{ "retention_days": 30 }` and accepts values from 1 to 365.
 - TTL is always `toDate(ts) + INTERVAL n DAY`, never `TTL ts + …`.
 - The `ALTER` does not wait for `MATERIALIZE TTL` (`alter_sync = 0`), and SQLite is written first.
-- `spans` and `profile_samples` are created on boot.
+- `spans`, `profile_samples`, and `change_marks` are created on boot.
 
 ClickHouse 26.3 is the supported LTS line. If an older ClickHouse data directory refuses to start after a 24.8 → 26.3 migration, restore the data instead of pinning a different tag.
 
