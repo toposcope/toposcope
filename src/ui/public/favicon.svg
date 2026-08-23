@@ -1,11 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <g fill="none" stroke="oklch(0.906 0.014 84)" stroke-linecap="round">
-    <path d="M2.8 19.4H21.2" stroke-width="1.6" opacity="0.6"/>
-    <g stroke-width="2.4" opacity="0.6" stroke-linecap="butt">
-      <path d="M6.2 19.4V13.2"/>
-      <path d="M15 19.4V10.4"/>
-      <path d="M19.4 19.4V13.8"/>
-    </g>
-    <path d="M10.6 19.4V6.6" stroke-width="2.4" stroke-linecap="butt"/>
-  </g>
+  <style>
+    .plate { fill: oklch(0.21 0.006 285.885); }
+    .mark { fill: oklch(0.906 0.014 84); }
+    @media (prefers-color-scheme: light) {
+      .plate { fill: oklch(0.906 0.014 84); }
+      .mark { fill: oklch(0.21 0.006 285.885); }
+    }
+  </style>
+  <rect class="plate" width="24" height="24" rx="4"/>
+  <path class="mark" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"/>
+  <path class="mark" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"/>
 </svg>

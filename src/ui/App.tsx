@@ -3078,7 +3078,7 @@ export function App() {
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
         <span className="flex items-center gap-1.5">
-          <BrandMark className="size-3.5 shrink-0 text-plate" />
+          <BrandMark className="size-4 shrink-0 text-plate" />
           <span className="text-[14px] font-semibold tracking-[-0.015em]">
             toposcope
           </span>

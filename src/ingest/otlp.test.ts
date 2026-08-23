@@ -61,6 +61,120 @@ describe("mapOtlpJson", () => {
     expect(() => mapOtlpJson({})).toThrow("resourceLogs is required");
   });
 
+  test("keeps exception.type and lifts nested exception frames", () => {
+    const dotted = mapOtlpJson({
+      resourceLogs: [
+        {
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  body: { stringValue: "boom" },
+                  attributes: [
+                    { key: "exception.type", value: { stringValue: "RuntimeError" } },
+                    {
+                      key: "exception.frames",
+                      value: {
+                        arrayValue: {
+                          values: [
+                            {
+                              kvlistValue: {
+                                values: [
+                                  { key: "file", value: { stringValue: "app.ts" } },
+                                  { key: "function", value: { stringValue: "run" } },
+                                  { key: "in_app", value: { boolValue: true } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(dotted[0]?.attrs?.["exception.type"]).toBe("RuntimeError");
+    expect(dotted[0]?.attrs?.["exception.frames"]).toEqual([
+      { file: "app.ts", function: "run", in_app: true },
+    ]);
+
+    const nested = mapOtlpJson({
+      resourceLogs: [
+        {
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  body: { stringValue: "PHP Fatal error: Uncaught Error: x in /a.php:1" },
+                  attributes: [
+                    {
+                      key: "exception",
+                      value: {
+                        kvlistValue: {
+                          values: [
+                            { key: "type", value: { stringValue: "Error" } },
+                            {
+                              key: "frames",
+                              value: {
+                                arrayValue: {
+                                  values: [
+                                    {
+                                      kvlistValue: {
+                                        values: [
+                                          { key: "file", value: { stringValue: "/a.php" } },
+                                          { key: "function", value: { stringValue: "main" } },
+                                        ],
+                                      },
+                                    },
+                                  ],
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(nested[0]?.attrs?.["exception.type"]).toBe("Error");
+    expect(nested[0]?.attrs?.exception).toBeUndefined();
+    expect(nested[0]?.message).toContain("PHP Fatal");
+  });
+
+  test("does not grok exception fields from a fatal message", () => {
+    const events = mapOtlpJson({
+      resourceLogs: [
+        {
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  severityText: "ERROR",
+                  body: {
+                    stringValue:
+                      "PHP Fatal error: Uncaught Error: Call to undefined function foo() in /app/index.php:12",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(events[0]?.attrs?.["exception.type"]).toBeUndefined();
+  });
+
   test("copies record traceId and spanId onto attrs", () => {
     const events = mapOtlpJson({
       resourceLogs: [

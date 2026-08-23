@@ -30,7 +30,7 @@ Every layer speaks `LogEvent` from `src/shared/log-event.ts`:
 - `host` — optional
 - `level` — `debug | info | warn | error | fatal`
 - `message` — string
-- `attrs` — optional JSON object. Ingest flattens it with `flattenAttrs` (`src/shared/attrs.ts`) into both a JSON string and `attr_map Map(LowCardinality(String), String)` so the JSON tab and filters cannot disagree. Values are strings (numbers become `"500"`). At most 50 keys per event. Flatten is **top-level only**: nested objects/arrays become JSON strings, not dotted paths. A dotted key (`http.status_code`) is one name if the sender already flattened it.
+- `attrs` — optional JSON object. Ingest lifts `exception.type` / `exception.frames` when the sender already set them (dotted OTEL keys or a nested `exception` object), then flattens with `flattenAttrs` (`src/shared/attrs.ts`) into both a JSON string and `attr_map Map(LowCardinality(String), String)` so the JSON tab and filters cannot disagree. Values are strings (numbers become `"500"`). At most 50 keys per event. Flatten is **top-level only**: nested objects/arrays become JSON strings, not dotted paths. A dotted key (`http.status_code`) is one name if the sender already flattened it. Ingest does not parse stacks from `message`.
 
 Ingest accepts one event, a JSON array (max 500), or NDJSON. Body cap is 1MB. Missing `ts` is stamped server-side.
 

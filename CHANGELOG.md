@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Lockup and favicon are the Fault mark (two offset filled bands) in plate, in place of Skyline.
+
+Ingest stores `exception.type` and `exception.frames` when they already arrive as attrs. Direct ingest does not parse stacks from `message`.
+
 Public [ROADMAP.md](ROADMAP.md) is the v0.x product contract (today, direction, will not); delivery lives in GitHub issues. Documentation is organized by audience: a concise operator README, focused [ingest](docs/ingest.md) and [operations](docs/operations.md) guides, and an expanded [contributor guide](CONTRIBUTING.md).
 
 ## 0.3.14

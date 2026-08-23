@@ -1,4 +1,5 @@
 import { otlpIdHex } from "../shared/ids";
+import { liftException } from "../shared/exception";
 import type { LogEvent, LogLevel } from "../shared/log-event";
 import { levels } from "../shared/log-event";
 
@@ -10,15 +11,50 @@ const otlpSeverityNumber: Record<LogLevel, number> = {
   fatal: 21,
 };
 
+type AnyVal = {
+  stringValue?: string;
+  intValue?: string | number;
+  doubleValue?: number;
+  boolValue?: boolean;
+  arrayValue?: { values?: AnyVal[] };
+  kvlistValue?: { values?: { key?: string; value?: AnyVal }[] };
+};
+
 type Attr = {
   key?: string;
-  value?: {
-    stringValue?: string;
-    intValue?: string | number;
-    doubleValue?: number;
-    boolValue?: boolean;
-  };
+  value?: AnyVal;
 };
+
+function decodeAny(value: AnyVal | undefined): unknown {
+  if (!value) {
+    return undefined;
+  }
+  if (value.stringValue !== undefined) {
+    return value.stringValue;
+  }
+  if (value.intValue !== undefined) {
+    return Number(value.intValue);
+  }
+  if (value.doubleValue !== undefined) {
+    return value.doubleValue;
+  }
+  if (value.boolValue !== undefined) {
+    return value.boolValue;
+  }
+  if (value.arrayValue?.values) {
+    return value.arrayValue.values.map((item) => decodeAny(item));
+  }
+  if (value.kvlistValue?.values) {
+    const out: Record<string, unknown> = {};
+    for (const kv of value.kvlistValue.values) {
+      if (kv.key) {
+        out[kv.key] = decodeAny(kv.value);
+      }
+    }
+    return out;
+  }
+  return undefined;
+}
 
 function attrString(attrs: Attr[] | undefined, key: string): string | undefined {
   if (!attrs) {
@@ -47,14 +83,9 @@ function attrRecord(attrs: Attr[] | undefined, skip: Set<string>): Record<string
     if (!attr.key || skip.has(attr.key) || !attr.value) {
       continue;
     }
-    if (attr.value.stringValue !== undefined) {
-      out[attr.key] = attr.value.stringValue;
-    } else if (attr.value.intValue !== undefined) {
-      out[attr.key] = Number(attr.value.intValue);
-    } else if (attr.value.doubleValue !== undefined) {
-      out[attr.key] = attr.value.doubleValue;
-    } else if (attr.value.boolValue !== undefined) {
-      out[attr.key] = attr.value.boolValue;
+    const decoded = decodeAny(attr.value);
+    if (decoded !== undefined) {
+      out[attr.key] = decoded;
     }
   }
   return out;
@@ -163,7 +194,7 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
         const severityNumber =
           typeof row.severityNumber === "number" ? row.severityNumber : undefined;
         const logAttrs = attrRecord(row.attributes as Attr[] | undefined, new Set());
-        const attrs = { ...resourceAttrs, ...logAttrs };
+        const attrs: Record<string, unknown> = { ...resourceAttrs, ...logAttrs };
         const traceId = otlpIdHex(row.traceId);
         const spanId = otlpIdHex(row.spanId);
         if (traceId && attrs.trace_id === undefined) {
@@ -172,6 +203,7 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
         if (spanId && attrs.span_id === undefined) {
           attrs.span_id = spanId;
         }
+        const lifted = liftException(Object.keys(attrs).length > 0 ? attrs : undefined);
         const ts =
           tsFromNano(row.timeUnixNano as string | number | undefined) ??
           new Date().toISOString();
@@ -181,7 +213,7 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
           host,
           level: mapSeverity(severityText, severityNumber),
           message,
-          attrs: Object.keys(attrs).length > 0 ? attrs : undefined,
+          attrs: lifted,
         });
       }
     }
