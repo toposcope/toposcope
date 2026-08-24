@@ -56,6 +56,7 @@ describe("release workflow", () => {
     const install = yml.indexOf("bun install --frozen-lockfile");
     const tests = yml.indexOf("bun test");
     const typecheck = yml.indexOf("bun run typecheck");
+    const notes = yml.indexOf("Changelog release notes");
     const login = yml.indexOf("docker/login-action");
     const push = yml.indexOf("docker/build-push-action");
     const release = yml.indexOf("softprops/action-gh-release");
@@ -63,9 +64,10 @@ describe("release workflow", () => {
     expect(pin).toBeLessThan(install);
     expect(install).toBeLessThan(tests);
     expect(tests).toBeLessThan(typecheck);
-    expect(typecheck).toBeLessThan(login);
+    expect(typecheck).toBeLessThan(notes);
+    expect(notes).toBeLessThan(login);
     expect(typecheck).toBeLessThan(push);
-    expect(typecheck).toBeLessThan(release);
+    expect(notes).toBeLessThan(release);
   });
 
   test("attaches env.example so GitHub does not rename a leading-dot file", async () => {
@@ -78,6 +80,12 @@ describe("release workflow", () => {
   test("attaches LICENSE with the stranger zip", async () => {
     const yml = await Bun.file(`${root}/.github/workflows/release-image.yml`).text();
     expect(yml).toContain("\n            LICENSE\n");
+  });
+
+  test("uses the CHANGELOG section as GitHub release notes", async () => {
+    const yml = await Bun.file(`${root}/.github/workflows/release-image.yml`).text();
+    expect(yml).toContain("scripts/changelog-release-notes.ts");
+    expect(yml).toContain("body_path: release-notes.md");
   });
 });
 

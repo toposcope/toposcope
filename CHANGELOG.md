@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.4.1
+
+A `v*` GitHub release copies that version’s [CHANGELOG.md](CHANGELOG.md) section into the release notes.
+
 ## 0.4.0
 
 Lockup and favicon are the Fault mark (two offset filled bands) in plate, in place of Skyline.
