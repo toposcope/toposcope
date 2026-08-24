@@ -113,6 +113,47 @@ describe("LICENSE", () => {
   });
 });
 
+describe("ee/", () => {
+  test("is a LICENSE stub and the MIT app does not import it", async () => {
+    const names = (
+      await Array.fromAsync(new Bun.Glob("*").scan({ cwd: `${root}/ee` }))
+    ).sort();
+    expect(names).toEqual(["LICENSE"]);
+    const license = await Bun.file(`${root}/ee/LICENSE`).text();
+    expect(license).toContain("Copyright (c) 2026 Vertixer Ltd.");
+    expect(license).toContain("All rights reserved.");
+    expect(license).not.toContain("Permission is hereby granted");
+
+    const dockerfile = await Bun.file(`${root}/Dockerfile`).text();
+    expect(dockerfile).toContain("COPY --from=build /app/src ./src");
+    expect(dockerfile).not.toMatch(/COPY[^\n]*ee/);
+
+    const imported: string[] = [];
+    for (const rel of [
+      ...(await Array.fromAsync(
+        new Bun.Glob("src/**/*.{ts,tsx}").scan({ cwd: root }),
+      )),
+      ...(await Array.fromAsync(
+        new Bun.Glob("scripts/**/*.ts").scan({ cwd: root }),
+      )),
+    ]) {
+      const text = await Bun.file(`${root}/${rel}`).text();
+      for (const line of text.split("\n")) {
+        const spec =
+          line.match(/\bfrom\s+['"]([^'"]+)['"]/)?.[1] ??
+          line.match(/\bimport\s*\(\s*['"]([^'"]+)['"]/)?.[1];
+        if (!spec) {
+          continue;
+        }
+        if (spec === "ee" || spec.startsWith("ee/") || spec.split("/").includes("ee")) {
+          imported.push(`${rel}: ${spec}`);
+        }
+      }
+    }
+    expect(imported).toEqual([]);
+  });
+});
+
 describe("vector example", () => {
   test("posts OTLP protobuf to /v1/logs with the env token", async () => {
     const yaml = await Bun.file(`${root}/vector.yaml`).text();

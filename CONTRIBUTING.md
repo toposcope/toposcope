@@ -16,6 +16,7 @@ Open an issue before adding or changing visual chrome. Implementation requires a
 - `README.md` — public overview
 - `CONTRIBUTING.md` — this guide
 - `CHANGELOG.md` — shipped releases
+- `ee/` — reserved tree; `LICENSE` only; the MIT app does not import it
 
 ## Local development
 
