@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.3.14` and should not be replaced with `:latest`.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.4.0` and should not be replaced with `:latest`.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -83,7 +83,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 To roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin, so there is no earlier public tag or image yet.
+`0.3.14` is the first public pin. Pin that tag to roll back application code from `0.4.0`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe.
 

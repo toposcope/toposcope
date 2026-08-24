@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.4.0
+
 Lockup and favicon are the Fault mark (two offset filled bands) in plate, in place of Skyline.
 
 Ingest stores `exception.type` and `exception.frames` when they already arrive as attrs. Direct ingest does not parse stacks from `message`.
