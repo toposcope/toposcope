@@ -153,6 +153,7 @@ export function HistogramMarkRules({
   overlay,
   fromMs,
   spanMs,
+  plotSpanMs,
   hoverKey,
   selectedKey,
   selectedId,
@@ -160,6 +161,7 @@ export function HistogramMarkRules({
   overlay: MarksOverlay;
   fromMs: number;
   spanMs: number;
+  plotSpanMs: number;
   hoverKey: string | null;
   selectedKey: string | null;
   selectedId: string | null;
@@ -177,8 +179,8 @@ export function HistogramMarkRules({
         .map((mark) => {
           const a = Date.parse(mark.ts);
           const b = Date.parse(mark.end_ts!);
-          const left = markFrac(a, fromMs, spanMs);
-          const right = markFrac(b, fromMs, spanMs);
+          const left = markFrac(a, fromMs, plotSpanMs);
+          const right = markFrac(b, fromMs, plotSpanMs);
           const l = Math.max(0, Math.min(1, left));
           const r = Math.max(0, Math.min(1, right));
           if (r <= l) {
@@ -208,8 +210,8 @@ export function HistogramMarkRules({
             : selectedKey === key || hoverKey === key
               ? "hover"
               : "rest";
-        const left = markFrac(cluster.fromMs, fromMs, spanMs);
-        const right = markFrac(cluster.toMs, fromMs, spanMs);
+        const left = markFrac(cluster.fromMs, fromMs, plotSpanMs);
+        const right = markFrac(cluster.toMs, fromMs, plotSpanMs);
         return (
           <div key={key}>
             {cluster.members.length > 1 ? (
@@ -234,6 +236,7 @@ export function HistogramMarkLane({
   overlay,
   fromMs,
   spanMs,
+  plotSpanMs,
   live,
   nowMs,
   slidePct,
@@ -246,6 +249,7 @@ export function HistogramMarkLane({
   overlay: MarksOverlay;
   fromMs: number;
   spanMs: number;
+  plotSpanMs: number;
   live: boolean;
   nowMs: number;
   slidePct: number | null;
@@ -356,7 +360,7 @@ export function HistogramMarkLane({
         }}
       >
         <div
-          className="absolute inset-0"
+          className="absolute inset-y-0 left-1 right-1"
           style={
             slidePct != null
               ? { transform: `translateX(${slidePct.toFixed(3)}%)` }
@@ -366,7 +370,7 @@ export function HistogramMarkLane({
           {clusters.map((cluster) => {
             const key = marksClusterKey(cluster);
             const mid = (cluster.fromMs + cluster.toMs) / 2;
-            const frac = markFrac(mid, fromMs, spanMs);
+            const frac = markFrac(mid, fromMs, plotSpanMs);
             if (frac < 0 || frac > 1) {
               return null;
             }
@@ -449,7 +453,7 @@ export function HistogramMarkLane({
                   const frac = markFrac(
                     (cluster.fromMs + cluster.toMs) / 2,
                     fromMs,
-                    spanMs,
+                    plotSpanMs,
                   );
                   const rows = newestFirst(cluster.members);
                   return (
@@ -517,9 +521,9 @@ export function HistogramMarkLane({
               className="absolute z-[9] w-[254px] rounded-md border bg-popover p-2.5 shadow-lg"
               style={{
                 bottom: 22,
-                left: `${(markFrac(Date.parse(inspectMark.ts), fromMs, spanMs) * 100).toFixed(3)}%`,
+                left: `${(markFrac(Date.parse(inspectMark.ts), fromMs, plotSpanMs) * 100).toFixed(3)}%`,
                 transform:
-                  markFrac(Date.parse(inspectMark.ts), fromMs, spanMs) > 0.6
+                  markFrac(Date.parse(inspectMark.ts), fromMs, plotSpanMs) > 0.6
                     ? "translateX(-100%)"
                     : "translateX(8px)",
               }}

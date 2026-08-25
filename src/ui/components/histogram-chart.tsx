@@ -46,6 +46,7 @@ import {
   seriesSelectValue,
 } from "../agg-picker";
 import { formatSpanShort } from "../time-range";
+import { markPlotSpanMs } from "../change-marks";
 import {
   clickHistogramWindow,
   displayedHistogramInterval,
@@ -422,6 +423,7 @@ export function HistogramChart({
   const slidePct =
     sliding && binCount > 0 ? (slideD / binCount) * 100 : null;
   const markFromMs = firstBucket ? Date.parse(firstBucket.t) : 0;
+  const plotSpanMs = markPlotSpanMs(binCount, stepMs, spanMs);
   const axisFromMs = previewWin?.fromMs ?? (firstBucket ? Date.parse(firstBucket.t) : NaN);
   const axis = Number.isFinite(axisFromMs)
     ? histogramAxisLabels(axisFromMs, spanMs, live && !sliding, Date.now(), 5, stepMs)
@@ -450,7 +452,7 @@ export function HistogramChart({
     if (!Number.isFinite(t) || !Number.isFinite(fromMs)) {
       return null;
     }
-    const frac = (t - fromMs) / spanMs;
+    const frac = (t - fromMs) / plotSpanMs;
     if (frac < 0 || frac > 1) {
       return null;
     }
@@ -1335,6 +1337,7 @@ export function HistogramChart({
                   overlay={marks}
                   fromMs={markFromMs}
                   spanMs={spanMs}
+                  plotSpanMs={plotSpanMs}
                   hoverKey={markHoverKey}
                   selectedKey={markSelected.key}
                   selectedId={markSelected.id}
@@ -1383,6 +1386,7 @@ export function HistogramChart({
                 overlay={marks}
                 fromMs={markFromMs}
                 spanMs={spanMs}
+                plotSpanMs={plotSpanMs}
                 live={live}
                 nowMs={Date.now()}
                 slidePct={slidePct}

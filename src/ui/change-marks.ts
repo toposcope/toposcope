@@ -133,6 +133,9 @@ export function markPlotSpanMs(
   stepMs: number,
   clockSpanMs: number,
 ): number {
+  if (binCount > 0 && stepMs > 0) {
+    return binCount * stepMs;
+  }
   return clockSpanMs;
 }
 
