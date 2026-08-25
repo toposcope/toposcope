@@ -3,11 +3,14 @@ import type { ChangeMark } from "../shared/change-mark";
 import {
   clusterChangeMarks,
   clusterHasLaneLabel,
+  markFrac,
+  markPlotSpanMs,
   marksInBucket,
   panWindowToMark,
   peekCrowded,
   visibleChangeMarks,
 } from "./change-marks";
+import { fillHistogram } from "./fill-histogram";
 
 function mark(
   id: string,
@@ -51,6 +54,36 @@ describe("clusterChangeMarks", () => {
     expect(clusters).toHaveLength(2);
     expect(clusters[0]?.members.map((row) => row.id)).toEqual(["a", "b"]);
     expect(clusters[1]?.members.map((row) => row.id)).toEqual(["c"]);
+  });
+});
+
+describe("markFrac vs volume bars", () => {
+  test("plot span is the painted columns, not the hunt clock", () => {
+    const hour = 3_600_000;
+    expect(markPlotSpanMs(7, hour, 6 * hour)).toBe(7 * hour);
+    expect(markPlotSpanMs(0, hour, 6 * hour)).toBe(6 * hour);
+  });
+
+  test("a 16:32 mark on a 6h / 1h plot sits in the 16:00 bar", () => {
+    const fromIso = "2026-08-25T13:02:05.127Z";
+    const toIso = "2026-08-25T19:02:05.127Z";
+    const stepMs = 3_600_000;
+    const filled = fillHistogram(fromIso, toIso, [], stepMs);
+    const fromMs = Date.parse(filled[0]!.t);
+    const clockSpanMs = Date.parse(toIso) - Date.parse(fromIso);
+    const ts = Date.parse("2026-08-25T16:32:14.000Z");
+    const bar = filled.findIndex((bucket) => {
+      const t = Date.parse(bucket.t);
+      return ts >= t && ts < t + stepMs;
+    });
+    const frac = markFrac(
+      ts,
+      fromMs,
+      markPlotSpanMs(filled.length, stepMs, clockSpanMs),
+    );
+    expect(filled.length).toBeGreaterThan(bar + 1);
+    expect(frac).toBeGreaterThanOrEqual(bar / filled.length);
+    expect(frac).toBeLessThan((bar + 1) / filled.length);
   });
 });
 

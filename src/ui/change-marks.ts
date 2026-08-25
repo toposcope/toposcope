@@ -128,6 +128,14 @@ export function panWindowToMark(
   return { fromMs: markMs - span, toMs: markMs };
 }
 
+export function markPlotSpanMs(
+  binCount: number,
+  stepMs: number,
+  clockSpanMs: number,
+): number {
+  return clockSpanMs;
+}
+
 export function markFrac(tsMs: number, fromMs: number, spanMs: number): number {
   if (spanMs <= 0) {
     return 0;
