@@ -8,15 +8,15 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 
 | | |
 | --- | --- |
-| **Today** | [0.4.1](https://github.com/toposcope/toposcope/releases/tag/v0.4.1) — hunt, fingerprints, stored change marks |
+| **Today** | [0.4.2](https://github.com/toposcope/toposcope/releases/tag/v0.4.2) — hunt, fingerprints, change marks on the histogram |
 | **v0.x** | What changed after a deploy, on one clock |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
-## Today — 0.4.1
+## Today — 0.4.2
 
-Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.4.1`.
+Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.4.2`.
 
-Hunt is a self-hosted log manager: `key:value`, saved searches, alerts, histogram, workspaces, boards, Fields, OTLP traces and profiles, Vector → `POST /v1/logs`. Ingest stores `exception.type` / `exception.frames` when they arrive, writes `e1` fingerprints, and stores change marks (`POST /v1/marks`). The histogram does not draw marks. Lockup is Fault. Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
+Hunt is a self-hosted log manager: `key:value`, saved searches, alerts, histogram, workspaces, boards, Fields, OTLP traces and profiles, Vector → `POST /v1/logs`. Ingest stores `exception.type` / `exception.frames` when they arrive, writes `e1` fingerprints, and stores change marks (`POST /v1/marks`). Search / Follow draw them on the pinned volume plot. Lockup is Fault. Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
 
 0.3 hunt stays. Later v0.x work adds evidence on that hunt; it does not replace the bar.
 
@@ -39,7 +39,7 @@ Capabilities, in this order — not patch numbers:
 
 **Log templates** (grouping similar ops lines — Apache, syslog) can appear when we need occurrence counts. They are not the error grouper.
 
-The bar stays copy-pasteable `key:value`. Fingerprints are queryable attrs, not a Sentry issue page. Histogram marks and compare chrome wait on a mock.
+The bar stays copy-pasteable `key:value`. Fingerprints are queryable attrs, not a Sentry issue page. Compare chrome waits on a mock.
 
 ## Ideas we have not locked
 
