@@ -225,6 +225,9 @@ describe("workspace hunt / paint", () => {
       metricNames: [],
       attrKeyOptions: [],
       lastTo: null,
+      marks: [],
+      markBefore: null,
+      markAfter: null,
     };
   }
 
@@ -279,8 +282,22 @@ describe("workspace hunt / paint", () => {
     expect(next.paint?.lastMs).toBe(12);
     expect(next.cols).toEqual(["path", "status"]);
     expect(blankSearchSnap().cols).toEqual([]);
+    expect(blankSearchSnap().marksOff).toEqual([]);
+    expect(blankSearchSnap().marksMuted).toEqual([]);
     const follow = { ...snap, kind: "follow" as const, q: "user_id:u-1", savedId: null };
     expect(follow.cols).toEqual(["path", "status"]);
+  });
+
+  test("duplicate keeps per-hunt mark mutes; they are not in the hunt key", () => {
+    const snap = blankSearchSnap();
+    snap.marksOff = ["flag"];
+    snap.marksMuted = ["mk_1"];
+    const next = duplicateSnap(snap);
+    expect(next.marksOff).toEqual(["flag"]);
+    expect(next.marksMuted).toEqual(["mk_1"]);
+    expect(workspaceHuntKeyFromSnap(snap)).toBe(
+      workspaceHuntKeyFromSnap({ ...snap, marksOff: [], marksMuted: [] }),
+    );
   });
 
   test("promoted columns are paint-only — not in the hunt key", () => {

@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import {
+  fallbackChangeMarkId,
   maxChangeMarks,
   parseChangeMarkKind,
   type ChangeMark,
@@ -10,10 +11,12 @@ import { clampSearchSpan, InvalidRangeError, resolveRange } from "./relative";
 
 type MarkRow = {
   ts: string;
+  end_ts: string | null;
   kind: string;
   service: string;
   title: string;
   attrs: Record<string, string> | string;
+  id: string;
 };
 
 function parseAttrs(raw: MarkRow["attrs"]): Record<string, string> {
@@ -37,13 +40,32 @@ function parseAttrs(raw: MarkRow["attrs"]): Record<string, string> {
   return {};
 }
 
+function parseEndTs(raw: MarkRow["end_ts"]): string | null {
+  if (raw == null || raw === "") {
+    return null;
+  }
+  try {
+    return toIsoTimestamp(raw);
+  } catch {
+    return null;
+  }
+}
+
 function mapRow(row: MarkRow): ChangeMark {
   const kind = parseChangeMarkKind(row.kind) ?? "note";
+  const ts = toIsoTimestamp(row.ts);
+  const title = row.title;
+  const service = row.service;
+  const id = row.id?.trim()
+    ? row.id.trim()
+    : fallbackChangeMarkId({ ts, kind, service, title });
   return {
-    ts: toIsoTimestamp(row.ts),
+    id,
+    ts,
+    end_ts: parseEndTs(row.end_ts),
     kind,
-    service: row.service,
-    title: row.title,
+    service,
+    title,
     attrs: parseAttrs(row.attrs),
   };
 }
@@ -68,42 +90,85 @@ function resolveWindow(
   return { from: clamped.from ?? from, to: clamped.to ?? to };
 }
 
+const markSelect = `ts, end_ts, kind, service, title, attrs, id`;
+
+function extraWhere(
+  filters: { kind?: ChangeMarkKind; service?: string },
+  params: Record<string, string>,
+): string {
+  const extra: string[] = [];
+  if (filters.kind) {
+    extra.push("AND kind = {kind:String}");
+    params.kind = filters.kind;
+  }
+  if (filters.service) {
+    extra.push("AND service = {service:String}");
+    params.service = filters.service;
+  }
+  return extra.join(" ");
+}
+
 export async function searchChangeMarks(filters: {
   from?: string;
   to?: string;
   range?: string;
   kind?: ChangeMarkKind;
   service?: string;
-}): Promise<{ marks: ChangeMark[] }> {
+}): Promise<{
+  marks: ChangeMark[];
+  before: ChangeMark | null;
+  after: ChangeMark | null;
+}> {
   const window = resolveWindow(filters.from, filters.to, filters.range);
   const params: Record<string, string> = {
     from: window.from,
     to: window.to,
   };
-  const where = [
-    "tenant_id = 'default'",
-    "ts >= parseDateTime64BestEffort({from:String})",
-    "ts <= parseDateTime64BestEffort({to:String})",
-  ];
-  if (filters.kind) {
-    where.push("kind = {kind:String}");
-    params.kind = filters.kind;
-  }
-  if (filters.service) {
-    where.push("service = {service:String}");
-    params.service = filters.service;
-  }
-  const rows = await clickhouseQuery<MarkRow>(
-    `
-    SELECT ts, kind, service, title, attrs
-    FROM change_marks
-    WHERE ${where.join(" AND ")}
-    ORDER BY ts
-    LIMIT ${maxChangeMarks}
-    `,
-    params,
-  );
-  return { marks: rows.map(mapRow) };
+  const extra = extraWhere(filters, params);
+  const [rows, beforeRows, afterRows] = await Promise.all([
+    clickhouseQuery<MarkRow>(
+      `
+      SELECT ${markSelect}
+      FROM change_marks
+      WHERE tenant_id = 'default'
+        AND ts >= parseDateTime64BestEffort({from:String})
+        AND ts <= parseDateTime64BestEffort({to:String})
+        ${extra}
+      ORDER BY ts
+      LIMIT ${maxChangeMarks}
+      `,
+      params,
+    ),
+    clickhouseQuery<MarkRow>(
+      `
+      SELECT ${markSelect}
+      FROM change_marks
+      WHERE tenant_id = 'default'
+        AND ts < parseDateTime64BestEffort({from:String})
+        ${extra}
+      ORDER BY ts DESC
+      LIMIT 1
+      `,
+      params,
+    ),
+    clickhouseQuery<MarkRow>(
+      `
+      SELECT ${markSelect}
+      FROM change_marks
+      WHERE tenant_id = 'default'
+        AND ts > parseDateTime64BestEffort({to:String})
+        ${extra}
+      ORDER BY ts
+      LIMIT 1
+      `,
+      params,
+    ),
+  ]);
+  return {
+    marks: rows.map(mapRow),
+    before: beforeRows[0] ? mapRow(beforeRows[0]) : null,
+    after: afterRows[0] ? mapRow(afterRows[0]) : null,
+  };
 }
 
 export async function marksRoute(c: Context): Promise<Response> {

@@ -546,13 +546,21 @@ async function ensureChangeMarks(): Promise<void> {
       kind LowCardinality(String),
       service LowCardinality(String),
       title String,
-      attrs Map(LowCardinality(String), String)
+      attrs Map(LowCardinality(String), String),
+      id String DEFAULT '',
+      end_ts Nullable(DateTime64(3, 'UTC'))
     )
     ENGINE = MergeTree
     PARTITION BY toDate(ts)
     ORDER BY (tenant_id, ts, kind)
     TTL toDate(ts) + INTERVAL 30 DAY
   `);
+  await clickhouseCommand(
+    "ALTER TABLE change_marks ADD COLUMN IF NOT EXISTS id String DEFAULT ''",
+  );
+  await clickhouseCommand(
+    "ALTER TABLE change_marks ADD COLUMN IF NOT EXISTS end_ts Nullable(DateTime64(3, 'UTC'))",
+  );
 }
 
 async function tableSortingKey(table: string): Promise<string | null> {

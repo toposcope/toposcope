@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "
 import { Plus } from "lucide-react";
 import { ExtraPanel } from "@/components/extra-panel";
 import { HistogramChart } from "@/components/histogram-chart";
+import type { MarksOverlay } from "@/components/histogram-marks";
 import { HbarHead, HbarWidget, hbarPaintedRows, type HbarCommand } from "@/components/hbar-widget";
 import { StatHead, StatWidget, statSeriesFile } from "@/components/stat-widget";
 import {
@@ -91,6 +92,7 @@ type Props = {
   locked?: boolean;
   retentionMs?: number;
   scanReason?: string | null;
+  marks?: MarksOverlay | null;
 };
 
 type Drag = {
@@ -183,6 +185,7 @@ export function WidgetCanvas({
   locked = false,
   retentionMs = histogramRetentionMs,
   scanReason = null,
+  marks = null,
 }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const widgetsRef = useRef(widgets);
@@ -772,6 +775,7 @@ export function WidgetCanvas({
                   lockChrome={locked}
                   retentionMs={retentionMs}
                   scanReason={scanReason}
+                  marks={locked ? undefined : marks}
                   className="h-full"
                 />
               ) : (

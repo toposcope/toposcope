@@ -57,6 +57,10 @@ async function insertChangeMarks(marks: ChangeMark[]): Promise<number> {
           service: mark.service,
           title: mark.title,
           attrs: mark.attrs,
+          id: mark.id,
+          ...(mark.end_ts
+            ? { end_ts: toClickHouseDateTime(mark.end_ts) }
+            : { end_ts: null }),
         }),
       )
       .join("\n");

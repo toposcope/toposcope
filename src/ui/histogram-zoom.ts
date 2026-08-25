@@ -81,45 +81,17 @@ export function nextHistogramZoomMs(spanMs: number, dir: 1 | -1): number | null 
   return histogramZoomSpansMs[j] ?? null;
 }
 
-export function zoomHistogramAbout(
-  spanMs: number,
-  centerMs: number,
-  dir: 1 | -1,
-): HistogramWindow | null {
-  const next = nextHistogramZoomMs(spanMs, dir);
-  if (next === null || !Number.isFinite(centerMs)) {
-    return null;
-  }
-  return { fromMs: Math.round(centerMs - next / 2), toMs: Math.round(centerMs + next / 2) };
-}
-
-/** Smallest ladder span that still draws, centred on the bar. Null when already that tight. */
-export function clickHistogramWindow(
-  bucketFromMs: number,
-  bucketToMs: number,
-  spanMs: number,
-): HistogramWindow | null {
-  const bucketMs = Math.max(0, bucketToMs - bucketFromMs);
-  const drillMs = snapHistogramSpanMs(Math.max(bucketMs, 1));
-  if (!Number.isFinite(spanMs) || drillMs >= spanMs) {
-    return null;
-  }
-  const mid = (bucketFromMs + bucketToMs) / 2;
-  return { fromMs: mid - drillMs / 2, toMs: mid + drillMs / 2 };
-}
-
 export const histogramRetentionMs = 30 * 24 * 60 * 60 * 1000;
 
-/** Slide a window by `deltaMs` (positive looks later). Span unchanged. Null when clamped in place. */
-export function panHistogramWindow(
+/** Keep span; `to` cannot pass now or the retention floor. */
+export function clampHistogramWindow(
   fromMs: number,
   toMs: number,
-  deltaMs: number,
   nowMs: number,
   retentionMs = histogramRetentionMs,
 ): HistogramWindow | null {
   const span = toMs - fromMs;
-  if (!(span > 0) || !Number.isFinite(span) || !Number.isFinite(deltaMs)) {
+  if (!(span > 0) || !Number.isFinite(span)) {
     return null;
   }
   if (!Number.isFinite(nowMs) || !Number.isFinite(retentionMs) || retentionMs <= 0) {
@@ -129,11 +101,72 @@ export function panHistogramWindow(
   const minTo = nowMs - retentionMs + span;
   const lo = Math.min(minTo, maxTo);
   const hi = Math.max(minTo, maxTo);
-  const nextTo = Math.max(lo, Math.min(hi, toMs + deltaMs));
-  if (nextTo === toMs) {
+  const nextTo = Math.max(lo, Math.min(hi, toMs));
+  return { fromMs: nextTo - span, toMs: nextTo };
+}
+
+export function zoomHistogramAbout(
+  spanMs: number,
+  centerMs: number,
+  dir: 1 | -1,
+  nowMs: number,
+  retentionMs = histogramRetentionMs,
+): HistogramWindow | null {
+  const next = nextHistogramZoomMs(spanMs, dir);
+  if (next === null || !Number.isFinite(centerMs)) {
     return null;
   }
-  return { fromMs: nextTo - span, toMs: nextTo };
+  return clampHistogramWindow(
+    Math.round(centerMs - next / 2),
+    Math.round(centerMs + next / 2),
+    nowMs,
+    retentionMs,
+  );
+}
+
+/** Smallest ladder span that still draws, centred on the bar. Null when already that tight. */
+export function clickHistogramWindow(
+  bucketFromMs: number,
+  bucketToMs: number,
+  spanMs: number,
+  nowMs: number,
+  retentionMs = histogramRetentionMs,
+): HistogramWindow | null {
+  const bucketMs = Math.max(0, bucketToMs - bucketFromMs);
+  const drillMs = snapHistogramSpanMs(Math.max(bucketMs, 1));
+  if (!Number.isFinite(spanMs) || drillMs >= spanMs) {
+    return null;
+  }
+  const mid = (bucketFromMs + bucketToMs) / 2;
+  return clampHistogramWindow(
+    mid - drillMs / 2,
+    mid + drillMs / 2,
+    nowMs,
+    retentionMs,
+  );
+}
+
+/** Slide a window by `deltaMs` (positive looks later). Span unchanged. Null when clamped in place. */
+export function panHistogramWindow(
+  fromMs: number,
+  toMs: number,
+  deltaMs: number,
+  nowMs: number,
+  retentionMs = histogramRetentionMs,
+): HistogramWindow | null {
+  if (!Number.isFinite(deltaMs)) {
+    return null;
+  }
+  const next = clampHistogramWindow(
+    fromMs + deltaMs,
+    toMs + deltaMs,
+    nowMs,
+    retentionMs,
+  );
+  if (!next || next.toMs === toMs) {
+    return null;
+  }
+  return next;
 }
 
 export function histogramHoverHint(opts: {
@@ -152,12 +185,17 @@ export function histogramHoverHint(opts: {
 }
 
 /** Drag keeps the drawn span, floored at 1ms. */
-export function dragHistogramWindow(fromMs: number, toMs: number): HistogramWindow {
+export function dragHistogramWindow(
+  fromMs: number,
+  toMs: number,
+  nowMs: number,
+  retentionMs = histogramRetentionMs,
+): HistogramWindow | null {
   const lo = Math.min(fromMs, toMs);
   const hi = Math.max(fromMs, toMs);
   const span = Math.max(minHistogramZoomMs, hi - lo);
   const mid = (lo + hi) / 2;
-  return { fromMs: mid - span / 2, toMs: mid + span / 2 };
+  return clampHistogramWindow(mid - span / 2, mid + span / 2, nowMs, retentionMs);
 }
 
 export function histogramExploreResetLabel(range: string): string {

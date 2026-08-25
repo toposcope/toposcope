@@ -49,6 +49,7 @@ import { eventKey, indexOfEventKey } from "./event-key";
 import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
 import { joinTraceRef } from "../shared/ids";
+import type { ChangeMark, ChangeMarkKind } from "../shared/change-mark";
 import type { ProfileResponse } from "../shared/profile";
 import type { Span, TraceResponse } from "../shared/span";
 import {
@@ -137,6 +138,7 @@ import {
   type HistogramSplit,
 } from "../query/histogram";
 import {
+  clampHistogramWindow,
   autoChipInterval,
   displayedHistogramInterval,
   histogramExploreResetLabel,
@@ -403,6 +405,11 @@ export function App() {
   const [events, setEvents] = useState<LogEvent[]>([]);
   const [ingested, setIngested] = useState(false);
   const [histogram, setHistogram] = useState<HistogramBucket[]>([]);
+  const [windowMarks, setWindowMarks] = useState<ChangeMark[]>([]);
+  const [markBefore, setMarkBefore] = useState<ChangeMark | null>(null);
+  const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
+  const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
+  const [marksMuted, setMarksMuted] = useState<string[]>([]);
   const [aggSeries, setAggSeries] = useState<SearchAggResult | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -1311,6 +1318,42 @@ export function App() {
         if (viewGenRef.current !== gen || ac.signal.aborted) {
           return;
         }
+        if (mode !== "append" && histFrom && histTo) {
+          try {
+            const marksParams = new URLSearchParams();
+            marksParams.set("from", histFrom);
+            marksParams.set("to", histTo);
+            const marksRes = await fetch(`/api/marks?${marksParams.toString()}`, {
+              signal: ac.signal,
+            });
+            if (viewGenRef.current !== gen || ac.signal.aborted) {
+              return;
+            }
+            if (marksRes.ok) {
+              const body = (await marksRes.json()) as {
+                marks?: ChangeMark[];
+                before?: ChangeMark | null;
+                after?: ChangeMark | null;
+              };
+              setWindowMarks(Array.isArray(body.marks) ? body.marks : []);
+              setMarkBefore(body.before ?? null);
+              setMarkAfter(body.after ?? null);
+            } else if (mode === "replace") {
+              setWindowMarks([]);
+              setMarkBefore(null);
+              setMarkAfter(null);
+            }
+          } catch (err) {
+            if (err instanceof Error && err.name === "AbortError") {
+              return;
+            }
+            if (mode === "replace") {
+              setWindowMarks([]);
+              setMarkBefore(null);
+              setMarkAfter(null);
+            }
+          }
+        }
         lastPaintHuntRef.current = hunt;
         setIngested((prev) =>
           nextIngested(prev, mode, {
@@ -2176,9 +2219,18 @@ export function App() {
     if (saved.find((row) => row.id === savedId)?.board) {
       return;
     }
-    const nextFrom = toLocalInput(new Date(fromIso));
-    const nextTo = toLocalInput(new Date(toIso));
-    const span = Date.parse(toIso) - Date.parse(fromIso);
+    const clamped = clampHistogramWindow(
+      Date.parse(fromIso),
+      Date.parse(toIso),
+      Date.now(),
+      retentionRangeMs(retentionDays),
+    );
+    if (!clamped) {
+      return;
+    }
+    const nextFrom = toLocalInput(new Date(clamped.fromMs));
+    const nextTo = toLocalInput(new Date(clamped.toMs));
+    const span = clamped.toMs - clamped.fromMs;
     const currentSpan = searchSpanMs(range, from, to, live, liveWindowMs.current);
     const spanChanged =
       Number.isFinite(span) &&
@@ -2314,6 +2366,9 @@ export function App() {
             metricNames,
             attrKeyOptions,
             lastTo: lastToRef.current,
+            marks: windowMarks,
+            markBefore,
+            markAfter,
           }
         : null;
     return {
@@ -2349,6 +2404,8 @@ export function App() {
       frozenFacets: wsKind === "surroundings" ? facets : null,
       frozenAttrFacetValues: wsKind === "surroundings" ? attrFacetValues : null,
       paint,
+      marksOff,
+      marksMuted,
     };
   }
 
@@ -2361,6 +2418,9 @@ export function App() {
     setSearching(false);
     setEvents([]);
     setHistogram([]);
+    setWindowMarks([]);
+    setMarkBefore(null);
+    setMarkAfter(null);
     setAggSeries(null);
     setTotal(0);
     setNextCursor(null);
@@ -2384,6 +2444,9 @@ export function App() {
     setEvents(paint.events);
     setHistogram(paint.histogram);
     histogramRef.current = paint.histogram;
+    setWindowMarks(paint.marks);
+    setMarkBefore(paint.markBefore);
+    setMarkAfter(paint.markAfter);
     setAggSeries(paint.agg);
     aggSeriesRef.current = paint.agg;
     setSeriesByKey(paint.seriesByKey);
@@ -2430,6 +2493,8 @@ export function App() {
     setCols(snap.cols);
     setExplore(snap.explore);
     setFollow(snap.follow);
+    setMarksOff(snap.marksOff);
+    setMarksMuted(snap.marksMuted);
     setInspectTabs(snap.inspectTabs);
     setActiveInspect(snap.activeInspect);
     setAroundN(snap.aroundN);
@@ -2471,6 +2536,9 @@ export function App() {
       setEvents([]);
       setHistogram([]);
       histogramRef.current = [];
+      setWindowMarks([]);
+      setMarkBefore(null);
+      setMarkAfter(null);
       setAggSeries(null);
       aggSeriesRef.current = null;
       setSeriesByKey({});
@@ -2603,6 +2671,8 @@ export function App() {
       frozenFacets: null,
       frozenAttrFacetValues: null,
       paint: null,
+      marksOff: [],
+      marksMuted: [],
     };
   }
 
@@ -3609,6 +3679,31 @@ export function App() {
                 retentionMs={retentionRangeMs(retentionDays)}
                 scanReason={
                   scanRefuse?.histogram ? scanRefuse.reason : null
+                }
+                marks={
+                  boardOn
+                    ? undefined
+                    : {
+                        marks: windowMarks,
+                        before: markBefore,
+                        after: markAfter,
+                        offKinds: marksOff,
+                        mutedIds: marksMuted,
+                        onToggleKind: (kind) =>
+                          setMarksOff((prev) =>
+                            prev.includes(kind)
+                              ? prev.filter((item) => item !== kind)
+                              : [...prev, kind],
+                          ),
+                        onMute: (id) =>
+                          setMarksMuted((prev) =>
+                            prev.includes(id) ? prev : [...prev, id],
+                          ),
+                        onUnmute: (id) =>
+                          setMarksMuted((prev) =>
+                            prev.filter((item) => item !== id),
+                          ),
+                      }
                 }
                 anchorTs={
                   activeInspect?.kind === "trace" ||

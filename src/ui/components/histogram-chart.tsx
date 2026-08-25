@@ -57,6 +57,15 @@ import {
   zoomHistogramAbout,
 } from "../histogram-zoom";
 import { HistogramIntervalChips } from "./histogram-interval";
+import {
+  HistogramMarkLane,
+  HistogramMarkRules,
+  HistogramMarksChip,
+  MARK_LANE_H,
+  markHoverLines,
+  MarkGlyph,
+  type MarksOverlay,
+} from "./histogram-marks";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
@@ -96,6 +105,7 @@ type Props = {
   lockChrome?: boolean;
   retentionMs?: number;
   scanReason?: string | null;
+  marks?: MarksOverlay | null;
 };
 
 function bucketEndMs(bucket: HistogramBucket, stepMs: number): number {
@@ -202,6 +212,7 @@ function HistogramHover({
   side,
   overlay,
   hint,
+  markLines = [],
 }: {
   bucket: HistogramBucket;
   rangeLabel: string;
@@ -211,6 +222,7 @@ function HistogramHover({
   side: "left" | "right";
   overlay?: { label: string; v: number | null } | null;
   hint: string;
+  markLines?: ReturnType<typeof markHoverLines>;
 }) {
   const lines = keys
     .map((key) => ({ key, n: seriesValue(bucket, key, split) }))
@@ -254,6 +266,23 @@ function HistogramHover({
           </span>
         </div>
       ) : null}
+      {markLines.slice(0, 2).map((row) => (
+        <div
+          key={`${row.kind}:${row.t}:${row.label}`}
+          className="mt-0.5 flex items-center gap-1.5 text-muted-foreground"
+        >
+          <MarkGlyph kind={row.kind} size={9} />
+          <span className="max-w-36 truncate">{row.label}</span>
+          <span className="ml-auto font-mono tabular-nums text-foreground">
+            {row.t}
+          </span>
+        </div>
+      ))}
+      {markLines.length > 2 ? (
+        <div className="mt-0.5 text-[10px] text-muted-foreground/80">
+          +{markLines.length - 2} more marks
+        </div>
+      ) : null}
       <div className="mt-1 text-[10px] text-muted-foreground/70">{hint}</div>
     </div>
   );
@@ -291,8 +320,15 @@ export function HistogramChart({
   lockChrome = false,
   retentionMs = histogramRetentionMs,
   scanReason = null,
+  marks = null,
 }: Props) {
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const laneHoverRef = useRef(false);
+  const [markHoverKey, setMarkHoverKey] = useState<string | null>(null);
+  const [markSelected, setMarkSelected] = useState<{
+    id: string | null;
+    key: string | null;
+  }>({ id: null, key: null });
   const plotRef = useRef<HTMLDivElement>(null);
   const brushRef = useRef<{
     start: number;
@@ -383,6 +419,9 @@ export function HistogramChart({
       : null);
   const sliding = panning || panLock !== null;
   const slideD = panning ? panD : (panLock?.d ?? 0);
+  const slidePct =
+    sliding && binCount > 0 ? (slideD / binCount) * 100 : null;
+  const markFromMs = firstBucket ? Date.parse(firstBucket.t) : 0;
   const axisFromMs = previewWin?.fromMs ?? (firstBucket ? Date.parse(firstBucket.t) : NaN);
   const axis = Number.isFinite(axisFromMs)
     ? histogramAxisLabels(axisFromMs, spanMs, live && !sliding, Date.now(), 5, stepMs)
@@ -437,7 +476,13 @@ export function HistogramChart({
     const fromMs = Date.parse(first.t);
     const center =
       index === null ? fromMs + span / 2 : fromMs + (index + 0.5) * step;
-    const next = zoomHistogramAbout(span, center, dir);
+    const next = zoomHistogramAbout(
+      span,
+      center,
+      dir,
+      Date.now(),
+      liveRef.current.retentionMs,
+    );
     if (!next) {
       return;
     }
@@ -460,8 +505,13 @@ export function HistogramChart({
   }
 
   function commitBrush(start: number, end: number, drill: boolean): void {
-    const { buckets: nextBuckets, spanMs: span, stepMs: step, onWindow: setWin } =
-      liveRef.current;
+    const {
+      buckets: nextBuckets,
+      spanMs: span,
+      stepMs: step,
+      onWindow: setWin,
+      retentionMs: keepMs,
+    } = liveRef.current;
     const i0 = Math.min(start, end);
     const i1 = Math.max(start, end);
     const first = nextBuckets[i0];
@@ -471,18 +521,22 @@ export function HistogramChart({
     }
     const fromMs = Date.parse(first.t);
     const toMs = bucketEndMs(last, step);
+    const nowMs = Date.now();
     if (i0 === i1) {
       if (!drill) {
         return;
       }
-      const clicked = clickHistogramWindow(fromMs, toMs, span);
+      const clicked = clickHistogramWindow(fromMs, toMs, span, nowMs, keepMs);
       if (!clicked) {
         return;
       }
       setWin(iso(clicked.fromMs), iso(clicked.toMs));
       return;
     }
-    const drawn = dragHistogramWindow(fromMs, toMs);
+    const drawn = dragHistogramWindow(fromMs, toMs, nowMs, keepMs);
+    if (!drawn) {
+      return;
+    }
     setWin(iso(drawn.fromMs), iso(drawn.toMs));
   }
 
@@ -501,7 +555,12 @@ export function HistogramChart({
   }
 
   function onSurfaceMove(e: { clientX: number; shiftKey: boolean }): void {
-    if (brushRef.current || panRef.current || headArmedRef.current) {
+    if (
+      brushRef.current ||
+      panRef.current ||
+      headArmedRef.current ||
+      laneHoverRef.current
+    ) {
       return;
     }
     const i = indexAt(e.clientX, surfaceRef.current);
@@ -1021,7 +1080,14 @@ export function HistogramChart({
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
           className="flex w-8 shrink-0 flex-col justify-between py-[3px] text-right font-mono text-[10px] text-muted-foreground/70"
-          style={{ marginTop: HEAD_H + HEAD_GAP }}
+          style={{
+            marginTop: HEAD_H + HEAD_GAP,
+            ...(marks
+              ? {
+                  height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H}px)`,
+                }
+              : {}),
+          }}
         >
           {yTicks.map((tick, i) => (
             <span key={`${tick}-${i}`}>
@@ -1113,9 +1179,9 @@ export function HistogramChart({
                   </div>
                 ) : null}
               </div>
+              <div data-plot="y" className="relative flex min-h-0 flex-1 flex-col">
               <div
                 ref={plotRef}
-                data-plot="y"
                 data-kbd="plot"
                 tabIndex={0}
                 data-g={gCursor}
@@ -1264,6 +1330,16 @@ export function HistogramChart({
                   )}
                 </svg>
               ) : null}
+              {marks && Number.isFinite(markFromMs) && spanMs > 0 ? (
+                <HistogramMarkRules
+                  overlay={marks}
+                  fromMs={markFromMs}
+                  spanMs={spanMs}
+                  hoverKey={markHoverKey}
+                  selectedKey={markSelected.key}
+                  selectedId={markSelected.id}
+                />
+              ) : null}
               </div>
               {armed && !headDrag && hover !== null ? (
                 <div
@@ -1302,6 +1378,29 @@ export function HistogramChart({
                 />
               ) : null}
             </div>
+            {marks && Number.isFinite(markFromMs) && spanMs > 0 ? (
+              <HistogramMarkLane
+                overlay={marks}
+                fromMs={markFromMs}
+                spanMs={spanMs}
+                live={live}
+                nowMs={Date.now()}
+                slidePct={slidePct}
+                onWindow={onWindow}
+                onLaneHover={(on) => {
+                  laneHoverRef.current = on;
+                  if (on) {
+                    setHover(null);
+                    armHead(false);
+                    setShiftHeld(false);
+                  }
+                }}
+                hoverKey={markHoverKey}
+                onHoverKey={setMarkHoverKey}
+                onSelect={setMarkSelected}
+              />
+            ) : null}
+            </div>
             </div>
           )}
           {hoverBucket !== undefined &&
@@ -1317,6 +1416,15 @@ export function HistogramChart({
               side={hoverSide}
               overlay={hoverOverlay}
               hint={hoverHint}
+              markLines={
+                hoverBucket && marks
+                  ? markHoverLines(
+                      marks,
+                      Date.parse(hoverBucket.t),
+                      stepMs,
+                    )
+                  : []
+              }
               left={
                 hoverSide === "left"
                   ? `calc(${hairlinePct.toFixed(3)}% - ${HOVER_GAP_PX}px)`
@@ -1391,6 +1499,7 @@ export function HistogramChart({
             </span>
           </span>
         ) : null}
+        {marks ? <HistogramMarksChip overlay={marks} /> : null}
       </div>
     </div>
   );

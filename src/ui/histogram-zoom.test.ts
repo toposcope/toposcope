@@ -19,6 +19,8 @@ import {
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
+/** After every historical fixture so zoom/click/drag tests are not shifted to now. */
+const NOW = Date.parse("2026-08-25T12:00:00.000Z");
 
 describe("snapHistogramSpanMs", () => {
   test("snaps a one-minute bar to 1m, not 5m", () => {
@@ -44,10 +46,26 @@ describe("nextHistogramZoomMs", () => {
 describe("zoomHistogramAbout", () => {
   test("keeps the cursor in the middle of the next span", () => {
     const center = Date.parse("2026-08-14T15:00:00.000Z");
-    const next = zoomHistogramAbout(HOUR, center, -1);
+    const next = zoomHistogramAbout(HOUR, center, -1, NOW);
     expect(next).toEqual({
       fromMs: center - 15 * MINUTE,
       toMs: center + 15 * MINUTE,
+    });
+  });
+
+  test("zoom out about now keeps to at now and the next span", () => {
+    const next = zoomHistogramAbout(HOUR, NOW, 1, NOW);
+    expect(next).toEqual({
+      fromMs: NOW - 4 * HOUR,
+      toMs: NOW,
+    });
+  });
+
+  test("zoom in about now keeps to at now and the next span", () => {
+    const next = zoomHistogramAbout(HOUR, NOW, -1, NOW);
+    expect(next).toEqual({
+      fromMs: NOW - 30 * MINUTE,
+      toMs: NOW,
     });
   });
 });
@@ -55,7 +73,7 @@ describe("zoomHistogramAbout", () => {
 describe("clickHistogramWindow", () => {
   test("tightens a 1m bar on a 1h window to 1m", () => {
     const from = Date.parse("2026-08-14T14:30:00.000Z");
-    const win = clickHistogramWindow(from, from + MINUTE, HOUR);
+    const win = clickHistogramWindow(from, from + MINUTE, HOUR, NOW);
     expect(win).toEqual({
       fromMs: from,
       toMs: from + MINUTE,
@@ -64,7 +82,7 @@ describe("clickHistogramWindow", () => {
 
   test("drills a coarse bar to that bar's ladder span", () => {
     const from = Date.parse("2026-08-14T12:00:00.000Z");
-    const win = clickHistogramWindow(from, from + 15 * MINUTE, 24 * HOUR);
+    const win = clickHistogramWindow(from, from + 15 * MINUTE, 24 * HOUR, NOW);
     expect(win).toEqual({
       fromMs: from,
       toMs: from + 15 * MINUTE,
@@ -73,7 +91,7 @@ describe("clickHistogramWindow", () => {
 
   test("can drill a 5m window to 1m", () => {
     const from = Date.parse("2026-08-14T14:30:00.000Z");
-    const win = clickHistogramWindow(from, from + MINUTE, 5 * MINUTE);
+    const win = clickHistogramWindow(from, from + MINUTE, 5 * MINUTE, NOW);
     expect(win).toEqual({
       fromMs: from,
       toMs: from + MINUTE,
@@ -82,7 +100,16 @@ describe("clickHistogramWindow", () => {
 
   test("is a no-op at the 1ms floor", () => {
     const from = Date.parse("2026-08-14T14:30:00.000Z");
-    expect(clickHistogramWindow(from, from + 1, 1)).toBeNull();
+    expect(clickHistogramWindow(from, from + 1, 1, NOW)).toBeNull();
+  });
+
+  test("does not drill into the future", () => {
+    const from = NOW - 30 * 1000;
+    const win = clickHistogramWindow(from, NOW + 30 * 1000, HOUR, NOW);
+    expect(win).toEqual({
+      fromMs: NOW - MINUTE,
+      toMs: NOW,
+    });
   });
 });
 
@@ -163,15 +190,23 @@ describe("histogramHoverHint", () => {
 describe("dragHistogramWindow", () => {
   test("keeps a drawn span and floors a short drag at 1ms", () => {
     const a = Date.parse("2026-08-14T14:00:00.000Z");
-    expect(dragHistogramWindow(a, a + 23 * MINUTE)).toEqual({
+    expect(dragHistogramWindow(a, a + 23 * MINUTE, NOW)).toEqual({
       fromMs: a,
       toMs: a + 23 * MINUTE,
     });
-    const short = dragHistogramWindow(a, a + 2 * MINUTE);
-    expect(short.toMs - short.fromMs).toBe(2 * MINUTE);
-    expect((short.fromMs + short.toMs) / 2).toBe(a + MINUTE);
-    const hair = dragHistogramWindow(a, a + 0.4);
-    expect(hair.toMs - hair.fromMs).toBe(minHistogramZoomMs);
+    const short = dragHistogramWindow(a, a + 2 * MINUTE, NOW);
+    expect(short).not.toBeNull();
+    expect(short && short.toMs - short.fromMs).toBe(2 * MINUTE);
+    expect(short && (short.fromMs + short.toMs) / 2).toBe(a + MINUTE);
+    const hair = dragHistogramWindow(a, a + 0.4, NOW);
+    expect(hair && hair.toMs - hair.fromMs).toBe(minHistogramZoomMs);
+  });
+
+  test("does not select into the future", () => {
+    expect(dragHistogramWindow(NOW - 10 * MINUTE, NOW + 10 * MINUTE, NOW)).toEqual({
+      fromMs: NOW - 20 * MINUTE,
+      toMs: NOW,
+    });
   });
 });
 

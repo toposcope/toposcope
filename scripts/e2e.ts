@@ -639,10 +639,57 @@ async function main(): Promise<void> {
     throw new Error(`marks list failed: ${marksGet.status} ${await marksGet.text()}`);
   }
   const marksBody = (await marksGet.json()) as {
-    marks: Array<{ title: string; kind: string }>;
+    marks: Array<{ title: string; kind: string; id?: string; end_ts?: string | null }>;
+    before?: unknown;
+    after?: unknown;
   };
-  if (!marksBody.marks.some((mark) => mark.title === "v0.9" && mark.kind === "deploy")) {
+  if (!("before" in marksBody) || !("after" in marksBody)) {
+    throw new Error("GET /api/marks missing before/after neighbors");
+  }
+  const postedMark = marksBody.marks.find(
+    (mark) => mark.title === "v0.9" && mark.kind === "deploy",
+  );
+  if (!postedMark) {
     throw new Error("posted change mark missing from GET /api/marks");
+  }
+  if (typeof postedMark.id !== "string" || postedMark.id.length === 0) {
+    throw new Error("posted change mark missing id");
+  }
+  const incidentEnd = new Date(Date.parse(markTs) + 60_000).toISOString();
+  const incidentRes = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      kind: "incident",
+      title: "e2e-inc",
+      id: "e2e-inc-1",
+      ts: markTs,
+      end_ts: incidentEnd,
+    }),
+  });
+  if (!incidentRes.ok) {
+    throw new Error(
+      `incident mark ingest failed: ${incidentRes.status} ${await incidentRes.text()}`,
+    );
+  }
+  const incidentGet = await fetch(
+    `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!incidentGet.ok) {
+    throw new Error(
+      `incident marks list failed: ${incidentGet.status} ${await incidentGet.text()}`,
+    );
+  }
+  const incidentBody = (await incidentGet.json()) as {
+    marks: Array<{ id: string; end_ts: string | null; title: string }>;
+  };
+  const incident = incidentBody.marks.find((mark) => mark.id === "e2e-inc-1");
+  if (!incident || incident.end_ts == null) {
+    throw new Error("incident mark missing id/end_ts round-trip");
   }
   const unauthorizedMarks = await fetch(`${APP_URL}/v1/marks`, {
     method: "POST",

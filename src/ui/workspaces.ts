@@ -1,5 +1,6 @@
 import { surroundingDefaultN } from "../query/surrounding";
 import type { HistogramChartKind, HistogramIntervalId, HistogramSplit } from "../query/histogram";
+import type { ChangeMark, ChangeMarkKind } from "../shared/change-mark";
 import { defaultLayout, type WidgetDef } from "../shared/widgets";
 import type { FacetValue, Facets, HistogramBucket, LogEvent, SearchAggResult } from "./types";
 import type { ContextMode } from "./context-mode";
@@ -60,6 +61,9 @@ export type WorkspacePaint = {
   metricNames: string[];
   attrKeyOptions: Array<{ k: string; n: number }>;
   lastTo: string | null;
+  marks: ChangeMark[];
+  markBefore: ChangeMark | null;
+  markAfter: ChangeMark | null;
 };
 
 export type WorkspaceHunt = {
@@ -152,6 +156,8 @@ export type WorkspaceSnap = {
   frozenFacets: Facets | null;
   frozenAttrFacetValues: Record<string, FacetValue[]> | null;
   paint: WorkspacePaint | null;
+  marksOff: ChangeMarkKind[];
+  marksMuted: string[];
 };
 
 export type Workspace = {
@@ -234,6 +240,8 @@ export function blankSearchSnap(): WorkspaceSnap {
     frozenFacets: null,
     frozenAttrFacetValues: null,
     paint: null,
+    marksOff: [],
+    marksMuted: [],
   };
 }
 

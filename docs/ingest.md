@@ -70,13 +70,13 @@ curl -X POST http://127.0.0.1:8080/v1/metrics \
 
 ## Change marks
 
-A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. The histogram does not draw marks yet; `GET /api/marks` is enough to prove one exists.
+A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Omit `id` and ingest mints `mk_…`; optional `end_ts` (must be after `ts`) is an incident duration, not a rewrite of `q`.
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/marks \
   -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
   -H 'content-type: application/json' \
-  -d '{"kind":"deploy","title":"v0.9","service":"billing","attrs":{"version":"v0.9","sha":"abc123"}}'
+  -d '{"kind":"deploy","title":"v0.9","service":"billing","attrs":{"version":"v0.9","sha":"abc123","source":"ci · deploy-bot"}}'
 ```
 
 `kind` is `deploy`, `flag`, `incident`, or `note`. Missing `ts` is stamped server-side.
