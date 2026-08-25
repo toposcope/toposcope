@@ -12,6 +12,7 @@ Open an issue before adding or changing visual chrome. Implementation requires a
 - `compose.dev.yml` — local ClickHouse for development
 - `vector.yaml` — canonical collector path
 - `docs/` — architecture and supporting docs
+- `designs/` — locked chrome mocks (not the shipped app)
 - `ROADMAP.md` — v0.x product contract
 - `README.md` — public overview
 - `CONTRIBUTING.md` — this guide

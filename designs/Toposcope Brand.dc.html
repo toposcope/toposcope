@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.141 0.005 285.823); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:oklch(0.985 0 0); text-decoration:none; }
+  a:hover { color:oklch(0.705 0.015 286.067); }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:oklch(1 0 0 / 12%); border-radius:99px; border:3px solid oklch(0.141 0.005 285.823); }
+  img { display:block; max-width:100%; }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<svg width="0" height="0" aria-hidden="true" style="position:absolute; opacity:0; pointer-events:none;">
+  <symbol id="tsm" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path>
+    <path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path>
+  </symbol>
+</svg>
+
+<div style="background:oklch(0.141 0.005 285.823); color:oklch(0.985 0 0); font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px; padding-bottom:96px;">
+
+  <header style="position:sticky; top:0; z-index:50; background:oklch(0.141 0.005 285.823 / 90%); backdrop-filter:blur(10px); border-bottom:1px solid oklch(1 0 0 / 10%);">
+    <div style="display:flex; align-items:center; gap:12px; max-width:1240px; margin:0 auto; height:56px; padding:0 32px;">
+      <a href="https://toposcope.io" style="display:flex; align-items:center; gap:8px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+        <span style="font-size:14.5px; font-weight:600; letter-spacing:-0.02em;">toposcope</span>
+      </a>
+      <span style="width:1px; height:16px; background:oklch(1 0 0 / 16%);"></span>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">Brand</span>
+      <div style="flex:1;"></div>
+      <nav style="display:flex; align-items:center; gap:22px; font-size:13px;">
+        <a href="#mark" style="color:oklch(0.705 0.015 286.067);">Mark</a>
+        <a href="#color" style="color:oklch(0.705 0.015 286.067);">Color</a>
+        <a href="#type" style="color:oklch(0.705 0.015 286.067);">Type</a>
+        <a href="#name" style="color:oklch(0.705 0.015 286.067);">Name</a>
+        <a href="https://toposcope.io" style="display:inline-flex; align-items:center; height:30px; padding:0 12px; border:1px solid oklch(1 0 0 / 16%); border-radius:99px; font-size:12.5px; white-space:nowrap;" style-hover="background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);">toposcope.io →</a>
+      </nav>
+    </div>
+  </header>
+
+  <section style="max-width:1240px; margin:0 auto; padding:0 32px;">
+    <div style="display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(0, 0.9fr); gap:56px; align-items:center; padding:84px 0 76px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:26px;">
+          <span style="display:flex; gap:2px;">
+            <span style="width:16px; height:2px; background:#52525b;"></span>
+            <span style="width:16px; height:2px; background:#0ea5e9;"></span>
+            <span style="width:16px; height:2px; background:#f59e0b;"></span>
+            <span style="width:16px; height:2px; background:#ef4444;"></span>
+            <span style="width:16px; height:2px; background:#fca5a5;"></span>
+          </span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">Brand guidelines · v0.4.1 · 2026-08-25</span>
+        </div>
+        <h1 style="margin:0; font-size:clamp(44px, 5.4vw, 72px); line-height:0.98; letter-spacing:-0.045em; font-weight:600; text-wrap:balance;">toposcope.</h1>
+        <p style="margin:28px 0 0; max-width:54ch; font-size:17px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">A <em style="font-style:normal; color:oklch(0.985 0 0);">toposcope</em> is the stone plate on a summit that names the peaks you can see from where you stand. It doesn't move, it doesn't fetch — it orients. That is the product: you pick a window of time and it names what's out there.</p>
+        <p style="margin:18px 0 0; max-width:54ch; font-size:14.5px; line-height:1.65; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 78%);">One name, one mark, two whites, one voice. Chrome and CLI are <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px;">toposcope</span>, prose is Toposcope, env is <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px;">TOPOSCOPE_*</span>. Home is toposcope.io and github.com/toposcope/toposcope · MIT Expat with <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px;">ee/</span> reserved · © 2026 Vertixer Ltd.</p>
+      </div>
+
+      <div style="border:1px solid oklch(1 0 0 / 12%); border-radius:10px; background:#0f0f11; overflow:hidden;">
+        <div style="display:flex; align-items:center; gap:8px; height:34px; padding:0 13px; border-bottom:1px solid oklch(1 0 0 / 10%); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">
+          <span>primary lockup</span>
+          <div style="flex:1;"></div>
+          <span style="color:oklch(0.705 0.015 286.067 / 70%);">fault · plate on basalt</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; padding:72px 32px;">
+          <div style="display:flex; align-items:center; gap:18px;">
+            <svg width="66" height="66" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+            <span style="font-size:52px; font-weight:600; letter-spacing:-0.042em; line-height:1;">toposcope</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; padding:0 20px 20px;">
+          <span style="flex:1; height:1px; background:oklch(1 0 0 / 10%);"></span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">toposcope.io · v0.4.1</span>
+          <span style="flex:1; height:1px; background:oklch(1 0 0 / 10%);"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="mark" style="max-width:1240px; margin:0 auto; padding:0 32px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; padding-bottom:18px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">§ 01 — the mark</span>
+      <span style="max-width:52ch; font-size:13px; line-height:1.55; text-align:right; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">One mark: Fault. Source of truth is <em style="font-style:normal; color:oklch(0.985 0 0);">src/ui/brand-mark.tsx</em> — two filled paths on a 24-unit grid, and nothing else is the logo.</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <div style="background:oklch(0.141 0.005 285.823); padding:30px 26px; box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; align-items:center; justify-content:center; height:168px; margin-bottom:22px; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11;">
+          <svg width="96" height="96" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);">
+            <path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path>
+            <path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path>
+          </svg>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:8px;">
+          <span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">Fault</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">the mark</span>
+        </div>
+        <p style="margin:9px 0 0; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Two strata, offset along a slip. The product's one job is showing where the line moved — a deploy, a flag, an incident on a time axis — and the mark is that picture with everything else removed. Filled, not drawn: solid bands survive every size with nothing to lose to caps or sub-pixel gaps.</p>
+      </div>
+
+      <div style="background:oklch(0.141 0.005 285.823); padding:30px 26px; box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:22px;">
+          <span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">Construction</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">24 × 24 · slip +4.6, +8.6</span>
+        </div>
+        <div style="position:relative; width:100%; max-width:280px; aspect-ratio:1; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11;">
+          <sc-if value="{{ showConstruction }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute; inset:0; background-image:linear-gradient(to right, oklch(1 0 0 / 6%) 1px, transparent 1px), linear-gradient(to bottom, oklch(1 0 0 / 6%) 1px, transparent 1px); background-size:calc(100% / 12) calc(100% / 12);"></div>
+            <div style="position:absolute; left:0; right:0; top:calc(100% / 24 * 5); height:1px; background:#a78bfa; opacity:0.34;"></div>
+            <div style="position:absolute; left:0; right:0; top:calc(100% / 24 * 19); height:1px; background:#a78bfa; opacity:0.34;"></div>
+            <div style="position:absolute; top:0; bottom:0; left:calc(100% / 24 * 2.6); width:1px; background:#a78bfa; opacity:0.34;"></div>
+            <div style="position:absolute; top:0; bottom:0; left:calc(100% / 24 * 7.2); width:1px; background:#a78bfa; opacity:0.34;"></div>
+          </sc-if>
+          <svg viewBox="0 0 24 24" style="position:absolute; inset:0; width:100%; height:100%; color:oklch(0.906 0.014 84);">
+            <path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path>
+            <path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path>
+          </svg>
+        </div>
+        <p style="margin:18px 0 0; max-width:44ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">One trapezoid, cut twice. Top edge 14.2 units, foot 9.2, depth 5.4 — then the same shape again, slipped <em style="font-style:normal; color:oklch(0.985 0 0);">+4.6 across, +8.6 down</em>, leaving a 3.2 gap. Every end leans with the slip; the offset between the bands is the whole message. No strokes anywhere in the mark.</p>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <div style="background:oklch(0.141 0.005 285.823); padding:30px 26px; box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:22px;">
+          <span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">Sizes &amp; clear space</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">header ships 16px</span>
+        </div>
+        <div style="display:flex; align-items:flex-end; gap:28px; padding:24px 22px; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11;">
+          <sc-for list="{{ sizes }}" as="s" hint-placeholder-count="5">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+              <svg width="{{ s.px }}" height="{{ s.px }}" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ s.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; margin-top:14px; padding:22px; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11;">
+          <div style="position:relative; padding:16px;">
+            <div style="position:absolute; inset:0; border:1px dashed #a78bfa; opacity:0.4;"></div>
+            <div style="display:flex; align-items:center; gap:11px;">
+              <svg width="40" height="40" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+              <span style="font-size:31px; font-weight:600; letter-spacing:-0.035em; line-height:1;">toposcope</span>
+            </div>
+          </div>
+        </div>
+        <p style="margin:16px 0 0; max-width:44ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Filled geometry has no stroke floor — the bands stay two bands at 12px. The app header ships 16px (<span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">size-4 text-plate</span>). Clear space is 40% of mark height on all sides; mark-to-wordmark gap 27%. In a browser tab the open mark loses contrast on light chrome — that is the favicon tile's job, not a smaller mark's.</p>
+      </div>
+
+      <div style="background:oklch(0.141 0.005 285.823); padding:30px 26px; box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:22px;">
+          <span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">The favicon tile</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">public/favicon.svg</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:36px; padding:32px 22px; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <svg width="48" height="48" viewBox="0 0 24 24" style="display:block;">
+              <rect width="24" height="24" rx="4" fill="oklch(0.21 0.006 285.885)"></rect>
+              <path fill="oklch(0.906 0.014 84)" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path>
+              <path fill="oklch(0.906 0.014 84)" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path>
+            </svg>
+            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">dark scheme</span>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+            <svg width="48" height="48" viewBox="0 0 24 24" style="display:block;">
+              <rect width="24" height="24" rx="4" fill="oklch(0.906 0.014 84)"></rect>
+              <path fill="oklch(0.21 0.006 285.885)" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path>
+              <path fill="oklch(0.21 0.006 285.885)" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path>
+            </svg>
+            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">light scheme</span>
+          </div>
+        </div>
+        <p style="margin:18px 0 0; max-width:44ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">One file, radius 4 of 24, flipped by <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">prefers-color-scheme</span>: Panel tile with a Plate mark in the dark, Plate tile with a Panel mark in the light. This is the <em style="font-style:normal; color:oklch(0.985 0 0);">one</em> sanctioned tile — it exists for tab contrast, not as an app-icon style to reuse.</p>
+      </div>
+    </div>
+
+  </section>
+
+  <section style="max-width:1240px; margin:0 auto; padding:0 32px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-top:72px; padding-bottom:18px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">§ 02 — lockups</span>
+      <span style="max-width:48ch; font-size:13px; line-height:1.55; text-align:right; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Four, plus the favicon tile above. Anything else — stacked-and-centred, wordmark in caps, a tile anywhere but a browser tab — is a new lockup and needs a reason.</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <div style="display:flex; flex-direction:column; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; flex:1; align-items:center; justify-content:center; min-height:150px; padding:32px;">
+          <div style="display:flex; align-items:center; gap:11px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+            <span style="font-size:31px; font-weight:600; letter-spacing:-0.035em; line-height:1;">toposcope</span>
+          </div>
+        </div>
+        <div style="padding:0 20px 20px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">horizontal · default</div>
+      </div>
+      <div style="display:flex; flex-direction:column; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; flex:1; align-items:center; justify-content:center; min-height:150px; padding:32px;">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+            <span style="font-size:22px; font-weight:600; letter-spacing:-0.03em; line-height:1;">toposcope</span>
+          </div>
+        </div>
+        <div style="padding:0 20px 20px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">stacked · left-aligned, never centred</div>
+      </div>
+      <div style="display:flex; flex-direction:column; background:oklch(0.906 0.014 84); color:oklch(0.21 0.006 285.885); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; flex:1; align-items:center; justify-content:center; min-height:150px; padding:32px;">
+          <div style="display:flex; align-items:center; gap:11px;">
+            <svg width="40" height="40" viewBox="0 0 24 24" style="display:block; color:oklch(0.21 0.006 285.885);"><use href="#tsm"></use></svg>
+            <span style="font-size:31px; font-weight:600; letter-spacing:-0.035em; line-height:1;">toposcope</span>
+          </div>
+        </div>
+        <div style="padding:0 20px 20px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.21 0.006 285.885 / 62%);">on plate · print, stickers, light docs</div>
+      </div>
+      <div style="display:flex; flex-direction:column; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; flex:1; align-items:center; justify-content:center; min-height:150px; padding:32px;">
+          <svg width="52" height="52" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+        </div>
+        <div style="padding:0 20px 20px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">mark alone · in-product chrome</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ misuse }}" as="m" hint-placeholder-count="5">
+        <div style="display:flex; flex-direction:column; gap:10px; padding:20px 22px 22px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="display:flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:99px; background:rgba(239,68,68,0.14); color:#ef4444; font-size:10px; line-height:1;">✕</span>
+            <span style="font-size:13px; font-weight:600; letter-spacing:-0.01em;">{{ m.title }}</span>
+          </div>
+          <span style="font-size:12.5px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ m.why }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section id="color" style="max-width:1240px; margin:0 auto; padding:0 32px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-top:72px; padding-bottom:18px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">§ 03 — colour</span>
+      <span style="max-width:52ch; font-size:13px; line-height:1.55; text-align:right; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Six named tokens. <em style="font-style:normal; color:oklch(0.906 0.014 84);">Plate</em> is the brand's colour — the mark, every primary button, the favicon's light tile — and a live token in the app (<em style="font-style:normal; color:oklch(0.985 0 0);">text-plate</em>). Click a swatch to copy it.</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(196px, 1fr)); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ swatches }}" as="s" hint-placeholder-count="6">
+        <button type="button" onClick="{{ s.copy }}" title="{{ s.title }}" style="{{ s.btn }} box-shadow:0 0 0 1px oklch(1 0 0 / 10%);" style-hover="background:oklch(0.184 0.005 285.823);">
+          <span style="{{ s.chip }}"></span>
+          <span style="display:flex; align-items:baseline; gap:8px; margin-top:16px;">
+            <span style="font-size:13.5px; font-weight:600; letter-spacing:-0.01em;">{{ s.name }}</span>
+            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:oklch(0.705 0.015 286.067 / 76%);">{{ s.role }}</span>
+          </span>
+          <span style="margin-top:6px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:{{ s.valColor }};">{{ s.valLabel }}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div style="display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <div style="padding:28px 26px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">The data spectrum is reserved</div>
+        <p style="margin:9px 0 20px; max-width:52ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Level colours mean a level, everywhere, forever. They are not brand colours: never in the mark, never behind a headline, never on a button. The one sanctioned brand use is the five-stripe rule in an eyebrow — a legend, not a decoration.</p>
+        <div style="display:flex; flex-direction:column; gap:1px; border:1px solid oklch(1 0 0 / 10%);">
+          <sc-for list="{{ levels }}" as="l" hint-placeholder-count="5">
+            <div style="display:flex; align-items:center; gap:12px; padding:9px 12px; background:#0f0f11; box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+              <span style="width:26px; height:8px; background:{{ l.hex }};"></span>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; width:52px;">{{ l.name }}</span>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">{{ l.hex }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px; font-size:13.5px; font-weight:600; letter-spacing:-0.01em;">Split series · a fixed eight</div>
+        <p style="margin:7px 0 12px; max-width:52ch; font-size:12.5px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Service, host and attr splits draw from this palette in source order — <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px;">other</span> always takes slate and sorts last, whatever slot it drew. Sight doubles as slot two: the accent was already data.</p>
+        <div style="display:flex; gap:6px;">
+          <sc-for list="{{ seriesPalette }}" as="p" hint-placeholder-count="8">
+            <span title="{{ p }}" style="width:26px; height:16px; background:{{ p }};"></span>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding:28px 26px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">Two whites, and they don't swap</div>
+        <p style="margin:9px 0 20px; max-width:52ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Signal is cool and belongs to type, hairlines and UI. Plate is warm and belongs to the brand: the mark, primary buttons, light surfaces. Body copy never sits in Plate, and no button is ever Signal.</p>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; align-items:center; gap:14px; padding:18px; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11;">
+            <span style="width:44px; height:44px; flex:0 0 auto; background:oklch(0.985 0 0);"></span>
+            <div>
+              <div style="font-size:13.5px; font-weight:600;">Signal white</div>
+              <div style="margin-top:3px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">type · hairlines · hover</div>
+            </div>
+            <div style="flex:1;"></div>
+            <a href="#name" style="display:inline-flex; align-items:center; height:34px; padding:0 14px; border:1px solid oklch(1 0 0 / 16%); border-radius:6.4px; font-size:12.5px;" style-hover="background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);">Secondary</a>
+          </div>
+          <div style="display:flex; align-items:center; gap:14px; padding:18px; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11;">
+            <span style="width:44px; height:44px; flex:0 0 auto; background:oklch(0.906 0.014 84);"></span>
+            <div>
+              <div style="font-size:13.5px; font-weight:600;">Plate</div>
+              <div style="margin-top:3px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">mark · primary · light surfaces</div>
+            </div>
+            <div style="flex:1;"></div>
+            <a href="#name" style="display:inline-flex; align-items:center; height:34px; padding:0 14px; border-radius:6.4px; background:oklch(0.906 0.014 84); color:oklch(0.21 0.006 285.885); font-size:12.5px; font-weight:600;" style-hover="background:oklch(0.955 0.012 84);">Primary</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="type" style="max-width:1240px; margin:0 auto; padding:0 32px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-top:72px; padding-bottom:18px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">§ 04 — type</span>
+      <span style="max-width:50ch; font-size:13px; line-height:1.55; text-align:right; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">No webfont, still. An operator tool pinned to one image should not block first paint on a font request — <em style="font-style:normal; color:oklch(0.985 0 0);">font-sans</em> and <em style="font-style:normal; color:oklch(0.985 0 0);">font-mono</em> in the app are the system stacks.</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <div style="padding:30px 26px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+          <span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">Display &amp; UI</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">ui-sans-serif</span>
+        </div>
+        <div style="margin-top:22px; font-size:46px; line-height:0.98; letter-spacing:-0.045em; font-weight:600;">Named horizons</div>
+        <div style="margin-top:16px; font-size:17px; line-height:1.6; color:oklch(0.705 0.015 286.067);">Counted facets, traces that open profiles, boards with holes in them.</div>
+        <div style="display:flex; flex-direction:column; gap:1px; margin-top:24px; border:1px solid oklch(1 0 0 / 10%);">
+          <sc-for list="{{ typeScale }}" as="t" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:14px; padding:9px 12px; background:#0f0f11; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+              <span style="width:82px; color:oklch(0.985 0 0);">{{ t.size }}</span>
+              <span style="width:52px; color:oklch(0.705 0.015 286.067);">{{ t.weight }}</span>
+              <span style="width:64px; color:oklch(0.705 0.015 286.067);">{{ t.track }}</span>
+              <span style="color:oklch(0.705 0.015 286.067);">{{ t.use }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding:30px 26px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+          <span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">Data &amp; instrument</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">ui-monospace</span>
+        </div>
+        <div style="margin-top:22px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:26px; letter-spacing:-0.02em;">2026-08-25 12:57:04.221</div>
+        <div style="margin-top:14px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13.5px; line-height:1.7; color:oklch(0.705 0.015 286.067);">(level:error OR level:fatal) status:5*<br>p99(duration_ms) · 412ms · 7d<br>toposcope · v0.4.1 · :8080</div>
+        <p style="margin:22px 0 0; max-width:46ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Mono carries anything measured or typed: timestamps, queries, counts, endpoints, versions, eyebrows. If a number came from the data, it is monospace — that rule is why the app's tables line up, and the brand inherits it rather than inventing a second voice.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="name" style="max-width:1240px; margin:0 auto; padding:0 32px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-top:72px; padding-bottom:18px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">§ 05 — the name in writing</span>
+      <span style="max-width:48ch; font-size:13px; line-height:1.55; text-align:right; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">One word, four syllables, no camel hump. Lowercase is the product; capitalised is the sentence.</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ nameRules }}" as="n" hint-placeholder-count="4">
+        <div style="display:flex; flex-direction:column; gap:12px; padding:26px 24px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">{{ n.label }}</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:16px; letter-spacing:-0.01em; color:{{ n.color }};">{{ n.text }}</span>
+          <span style="font-size:12.5px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ n.why }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1px; margin-top:1px; background:oklch(0.141 0.005 285.823);">
+      <div style="padding:30px 26px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="font-size:15px; font-weight:600; letter-spacing:-0.015em; margin-bottom:18px;">Descriptor &amp; claim</div>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <div style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; letter-spacing:0.14em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">Lightweight, self-hosted log manager</div>
+            <div style="margin-top:6px; font-size:12.5px; line-height:1.55; color:oklch(0.705 0.015 286.067 / 76%);">The README's opening line — literal, in mono, the search term.</div>
+          </div>
+          <div>
+            <div style="font-size:22px; font-weight:600; letter-spacing:-0.03em; line-height:1.25; text-wrap:balance;">Logs, metrics, traces and profiles on one screen.</div>
+            <div style="margin-top:6px; font-size:12.5px; line-height:1.55; color:oklch(0.705 0.015 286.067 / 76%);">The claim — the site hero, the og:title, the repo description. Set in the sans, never beside the descriptor.</div>
+          </div>
+
+        </div>
+      </div>
+      <div style="padding:30px 26px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="font-size:15px; font-weight:600; letter-spacing:-0.015em; margin-bottom:18px;">In the app header</div>
+        <div style="min-width:0; border:1px solid oklch(1 0 0 / 12%); background:#0f0f11; overflow:hidden;">
+          <div style="display:flex; align-items:center; gap:8px; height:40px; padding:0 10px; border-bottom:1px solid oklch(1 0 0 / 10%); min-width:0; overflow:hidden;">
+            <span style="display:flex; align-items:center; gap:6px; margin-right:2px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>
+              <span style="font-size:14px; font-weight:600; letter-spacing:-0.015em;">toposcope</span>
+            </span>
+            <span style="display:flex; align-items:center; height:24px; padding:0 8px; border-radius:4.4px; background:oklch(0.274 0.006 286.033); font-size:12px;">Search</span>
+            <span style="display:flex; align-items:center; height:24px; padding:0 8px; font-size:12px; color:oklch(0.705 0.015 286.067);">Alerts</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:14px 12px;">
+            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">tab</span>
+            <span style="display:flex; align-items:center; gap:8px; height:26px; padding:0 10px 0 6px; border-radius:4.4px; background:oklch(0.274 0.006 286.033);">
+              <svg width="14" height="14" viewBox="0 0 24 24" style="display:block;">
+                <rect width="24" height="24" rx="4" fill="oklch(0.21 0.006 285.885)"></rect>
+                <path fill="oklch(0.906 0.014 84)" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path>
+                <path fill="oklch(0.906 0.014 84)" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path>
+              </svg>
+              <span style="font-size:11.5px;">toposcope</span>
+            </span>
+          </div>
+        </div>
+        <p style="margin:18px 0 0; max-width:44ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);"><span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">size-4 text-plate</span> in App.tsx — the mark earns its 16px because it is the only brand element in the whole app. The tab wears the tile.</p>
+      </div>
+      <div style="padding:30px 26px; background:oklch(0.141 0.005 285.823); box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+        <div style="font-size:15px; font-weight:600; letter-spacing:-0.015em; margin-bottom:18px;">In the machine</div>
+        <div style="display:flex; flex-direction:column; gap:1px; border:1px solid oklch(1 0 0 / 10%);">
+          <sc-for list="{{ machine }}" as="mc" hint-placeholder-count="6">
+            <div style="display:flex; align-items:center; gap:12px; padding:9px 12px; background:#0f0f11; box-shadow:0 0 0 1px oklch(1 0 0 / 10%);">
+              <span style="width:86px; flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:oklch(0.705 0.015 286.067 / 76%);">{{ mc.k }}</span>
+              <span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px;">{{ mc.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin:16px 0 0; max-width:44ch; font-size:13px; line-height:1.6; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">The name is an API. Every one of these strings is load-bearing — changing any of them again is a migration with an upgrade note, not a find-and-replace.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1240px; margin:0 auto; padding:0 32px;">
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:20px; margin-top:76px; padding-top:26px; border-top:1px solid oklch(1 0 0 / 10%);">
+      <span style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; letter-spacing:-0.015em;">
+        <svg width="13" height="13" viewBox="0 0 24 24" style="display:block; color:oklch(0.906 0.014 84);"><use href="#tsm"></use></svg>toposcope
+      </span>
+      <span style="font-size:12.5px; color:oklch(0.705 0.015 286.067);">Brand guidelines · v0.4.1 · MIT Expat + ee/ · © 2026 Vertixer Ltd</span>
+      <div style="flex:1; min-width:20px;"></div>
+      <a href="https://toposcope.io/product" style="font-size:12.5px; color:oklch(0.705 0.015 286.067);">Product</a>
+      <a href="https://toposcope.io/platform" style="font-size:12.5px; color:oklch(0.705 0.015 286.067);">Platform</a>
+      <a href="https://toposcope.io/selfhost" style="font-size:12.5px; color:oklch(0.705 0.015 286.067);">Open source</a>
+      <a href="https://github.com/toposcope/toposcope" style="font-size:12.5px; color:oklch(0.705 0.015 286.067);">Source ↗</a>
+      <a href="Toposcope App.dc.html" style="font-size:12.5px; color:oklch(0.705 0.015 286.067);">App mock</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showConstruction&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mark&quot;}}">
+class Component extends DCLogic {
+  state = { copied: null };
+
+  copyVal(v, id) {
+    const done = () => {
+      this.setState({ copied: id });
+      clearTimeout(this._t);
+      this._t = setTimeout(() => this.setState({ copied: null }), 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(done, done);
+    else done();
+  }
+
+  componentWillUnmount() { clearTimeout(this._t); }
+
+  renderVals() {
+    const st = this.state;
+    const MUTED = 'oklch(0.705 0.015 286.067)';
+
+    const tokens = [
+      { name: 'Basalt', role: 'base', value: 'oklch(0.141 0.005 285.823)', swatch: 'oklch(0.141 0.005 285.823)', border: true, title: 'Page and app background' },
+      { name: 'Panel', role: 'surface', value: '#0f0f11', swatch: '#0f0f11', border: true, title: 'Cards, code blocks, table rows — and the favicon\u2019s dark tile' },
+      { name: 'Signal', role: 'type', value: 'oklch(0.985 0 0)', swatch: 'oklch(0.985 0 0)', title: 'Headings, body, active UI — the cool white' },
+      { name: 'Plate', role: 'brand · token', value: 'oklch(0.906 0.014 84)', swatch: 'oklch(0.906 0.014 84)', title: 'The mark, primary buttons, the favicon\u2019s light tile — text-plate in the app' },
+      { name: 'Scree', role: 'muted', value: 'oklch(0.705 0.015 286.067)', swatch: 'oklch(0.705 0.015 286.067)', title: 'Secondary copy, labels, inactive nav' },
+      { name: 'Sight', role: 'accent', value: '#a78bfa', swatch: '#a78bfa', title: 'The measured thing: metric overlays, reducers, construction marks — also series slot two' }
+    ];
+
+    const swatches = tokens.map(t => ({
+      name: t.name,
+      role: t.role,
+      title: t.title + ' · click to copy',
+      copy: () => this.copyVal(t.value, t.name),
+      btn: 'display:flex; flex-direction:column; align-items:flex-start; padding:20px 22px 22px; border:none; border-radius:0; background:oklch(0.141 0.005 285.823); color:oklch(0.985 0 0); font-family:inherit; text-align:left; cursor:pointer;',
+      chip: `width:100%; height:64px; background:${t.swatch};${t.border ? ' border:1px solid oklch(1 0 0 / 14%);' : ''}`,
+      valLabel: st.copied === t.name ? 'copied' : t.value,
+      valColor: st.copied === t.name ? '#34d399' : MUTED
+    }));
+
+    const levels = [
+      { name: 'debug', hex: '#52525b' }, { name: 'info', hex: '#0ea5e9' }, { name: 'warn', hex: '#f59e0b' },
+      { name: 'error', hex: '#ef4444' }, { name: 'fatal', hex: '#fca5a5' }
+    ];
+
+    const machine = [
+      { k: 'env', v: 'TOPOSCOPE_PASSWORD · TOPOSCOPE_INGEST_TOKEN · TOPOSCOPE_URL' },
+      { k: 'metrics', v: 'toposcope_ingest_events_total' },
+      { k: 'localStorage', v: 'toposcope.countFormat · toposcope.*' },
+      { k: 'sqlite', v: '/data/toposcope.sqlite' },
+      { k: 'image', v: 'ghcr.io/toposcope/toposcope:0.4.1' },
+      { k: 'volumes', v: 'toposcope_ch_data · toposcope_app_data' }
+    ];
+
+    return {
+      showConstruction: this.props.showConstruction ?? true,
+      sizes: [12, 16, 24, 40, 64].map(px => ({ px, label: px + 'px' })),
+      misuse: [
+        { title: 'No level colours in the mark', why: 'Blue, amber and red mean info, warn and error. A mark wearing them claims a severity.' },
+        { title: 'One tile: the favicon\u2019s', why: 'Everywhere else the mark sits open. The rounded tile exists for tab contrast in both schemes — it is not an app-icon style to reuse.' },
+        { title: 'Filled, never outlined', why: 'The bands are solid strata. Stroke them and they become chart chrome — an empty bar, a border, a button.' },
+        { title: 'Never TopoScope or Topo Scope', why: 'One word, no hump, no space. In prose it is Toposcope; in the product it is toposcope.' },
+        { title: 'Wordmark is not retyped', why: 'It is the sans at 600 and -0.035em. Do not track it out, cap it, or set it in mono.' }
+      ],
+      typeScale: [
+        { size: '72 / 46px', weight: '600', track: '-0.045em', use: 'hero' },
+        { size: '32px', weight: '600', track: '-0.035em', use: 'section head' },
+        { size: '17px', weight: '400', track: '0', use: 'lede' },
+        { size: '14 / 13px', weight: '400', track: '0', use: 'body, UI' },
+        { size: '11.5px mono', weight: '400', track: '0.14em', use: 'eyebrow, caps' }
+      ],
+      nameRules: [
+        { label: 'product & chrome', text: 'toposcope', color: 'oklch(0.985 0 0)', why: 'Header, CLI, package name, endpoints, container, config keys. Always lowercase.' },
+        { label: 'prose', text: 'Toposcope reads it back.', color: 'oklch(0.985 0 0)', why: 'Capitalised at the start of a sentence and in running text, like any proper noun.' },
+        { label: 'never', text: 'TopoScope · Topo Scope · TS', color: '#ef4444', why: 'No camel hump, no space, no initialism — “TS” is TypeScript to every reader we have.' },
+        { label: 'pronounced', text: 'TOP-o-scope', color: MUTED, why: 'Stress on the first syllable, as in topographic. Four syllables, no “toe”.' }
+      ],
+      levels,
+      seriesPalette: ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#fb7185', '#94a3b8', '#c084fc', '#2dd4bf'],
+      swatches,
+      machine
+    };
+  }
+}
+</script>
+</body>
+</html>

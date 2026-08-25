@@ -5,7 +5,6 @@ docs/notepad.md
 docs/VISION.md
 private/
 node_modules
-designs
 src/ui/dist
 data
 *.sqlite

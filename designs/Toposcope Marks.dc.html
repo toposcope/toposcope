@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:oklch(0.906 0.014 84); text-decoration:none; }
+  a:hover { color:oklch(0.985 0 0); }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:oklch(1 0 0 / 12%); border-radius:99px; border:3px solid oklch(0.115 0.004 285.8); }
+  @keyframes pulsedot { 0% { transform:scale(1); opacity:.9 } 70% { transform:scale(2.4); opacity:0 } 100% { opacity:0 } }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="max-width:1120px;">
+    <div style="display:flex; align-items:baseline; gap:12px;">
+      <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+      <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Change marks on the hunt</h1>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Search · pinned histogram · 0.4.2 drafts, cut not locked</span>
+    </div>
+    <p style="margin:10px 0 0; max-width:940px; font-size:13px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">A mark is a deploy, flag flip, incident or human note stored beside the logs. This sheet is only how a mark appears and behaves on the hunt's one clock — drawn states, not one happy path. Not drawn, on purpose: deltas or compare, creating marks in the UI, search-bar tokens (<span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">q</span> stays logs).</p>
+    <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding:12px 14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ system }}" as="s" hint-placeholder-count="5">
+        <div style="display:flex; gap:9px; font-size:12.5px; line-height:1.5; color:oklch(0.705 0.015 286.067);">
+          <span style="flex:0 0 auto; width:14px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84 / 75%);">{{ s.n }}</span>
+          <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ s.head }}</span> {{ s.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="1a" style="margin-top:38px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#1a" style="{{ badge }}">1a</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The language</div>
+        <p style="{{ capBody }}">Four kinds, told apart by glyph first and colour second. The label is a verbed fragment — kind, then subject — so the string alone carries what changed and where. The level spectrum stays on the bars; marks spend colour only where it means something.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <sc-for list="{{ specKinds }}" as="k" hint-placeholder-count="4">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="20" height="20" viewBox="0 0 12 12"><path d="{{ k.d }}" fill="{{ k.f }}" stroke="{{ k.s }}" stroke-width="{{ k.w }}" stroke-linejoin="round"></path></svg>
+            <span style="font-size:13px; font-weight:600; color:oklch(0.985 0 0);">{{ k.name }}</span>
+            <span style="margin-left:auto; font-size:10.5px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.705 0.015 286.067 / 70%);">{{ k.colorName }}</span>
+          </div>
+          <div style="margin-top:9px; padding:5px 7px; border-radius:3.4px; background:oklch(1 0 0 / 4%); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 82%); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ k.sample }}</div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ k.note }}</p>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <sc-for list="{{ specMinis }}" as="mi" hint-placeholder-count="4">
+        <div style="flex:1; padding:11px 12px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">{{ mi.title }}</div>
+          <div style="position:relative; height:74px; margin-top:8px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ mi.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:7px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ mi.caption }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-for list="{{ frames }}" as="f" hint-placeholder-count="2">
+    <div id="{{ f.id }}" style="margin-top:40px;">
+      <div style="display:flex; gap:12px; align-items:baseline; max-width:1120px;">
+        <a href="{{ f.href }}" style="{{ badge }}">{{ f.id }}</a>
+        <div style="min-width:0;">
+          <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">{{ f.title }}</div>
+          <p style="{{ capBody }}">{{ f.body }}</p>
+          <p style="{{ f.fineStyle }}">{{ f.fine }}</p>
+        </div>
+      </div>
+
+      <div style="width:1120px; margin-top:12px; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:oklch(0.141 0.005 285.823); box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+        <div style="display:flex; align-items:center; gap:6px; padding:8px 12px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+          <div style="display:flex; align-items:center; gap:7px; flex:1; min-width:200px; height:32px; padding:0 6px 0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:oklch(0.141 0.005 285.823);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+            <span style="{{ f.qStyle }}">{{ f.qText }}</span>
+            <span style="flex:1;"></span>
+            <kbd style="flex:0 0 auto; padding:1px 5px; border:1px solid oklch(1 0 0 / 15%); border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">/</kbd>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; height:32px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; cursor:pointer;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; white-space:nowrap;">{{ f.rangeLabel }}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+          <div style="{{ f.liveBtnStyle }}">
+            <span style="position:relative; display:flex; align-items:center; justify-content:center; width:6px; height:6px;">
+              <span style="{{ f.liveDotStyle }}"></span>
+              <span style="{{ f.livePingStyle }}"></span>
+            </span>
+            {{ f.liveLabel }}
+          </div>
+        </div>
+
+        <div style="padding:8px 12px 12px;">
+          <div style="border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.175 0.005 285.85);">
+
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:8px 12px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+              <div style="display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;">
+                <span style="{{ segOn }}">Level</span><span style="{{ segOff }}">Service</span><span style="{{ segOff }}">Host</span><span style="{{ segOff }}">None</span>
+              </div>
+              <div style="flex:0 0 auto; width:1px; height:16px; background:oklch(1 0 0 / 10%);"></div>
+              <div style="display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;">
+                <span style="{{ icoOn }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M8 17v-3"></path><path d="M8 14v-3"></path><path d="M14 17v-4"></path><path d="M14 13v-4"></path><path d="M20 17v-2"></path><path d="M20 15v-3"></path></svg></span>
+                <span style="{{ icoOff }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M8 17V9"></path><path d="M12 17v-5"></path><path d="M16 17v-9"></path><path d="M20 17v-4"></path></svg></span>
+                <span style="{{ icoOff }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="m7 15 3-4 3 2 4-6"></path></svg></span>
+                <span style="{{ icoOff }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="m7 16 4-6 3 3 5-7v10H7z" fill="currentColor" fill-opacity="0.35"></path></svg></span>
+              </div>
+              <div style="flex:0 0 auto; width:1px; height:16px; background:oklch(1 0 0 / 10%);"></div>
+              <span style="display:flex; align-items:center; height:26px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:12px; color:oklch(0.705 0.015 286.067);">Linear</span>
+              <div style="display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;">
+                <sc-for list="{{ f.chips }}" as="c" hint-placeholder-count="7"><span style="{{ c.style }}">{{ c.label }}</span></sc-for>
+              </div>
+              <div style="flex:0 0 auto; width:1px; height:16px; background:oklch(1 0 0 / 10%);"></div>
+              <span style="flex:0 0 auto; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Series</span>
+              <span style="{{ fakeSelect }}">Volume<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg></span>
+              <span style="{{ fakeSelect }}">count<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg></span>
+            </div>
+
+            <div style="display:flex; gap:6px; padding:8px 9px 0;">
+              <div style="position:relative; flex:0 0 32px; align-self:stretch; margin:18px 0 26px; display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">
+                <sc-for list="{{ f.yTicks }}" as="y" hint-placeholder-count="4"><span>{{ y }}</span></sc-for>
+              </div>
+              <div style="display:flex; flex-direction:column; flex:1 1 auto; min-width:0;">
+                <div style="position:relative; flex:0 0 12px; height:12px; margin-bottom:2px;">
+                  <div style="position:absolute; left:0; right:0; top:0; height:12px; border-radius:2.4px; background:oklch(1 0 0 / 2.5%); box-shadow:inset 0 -1px 0 oklch(1 0 0 / 6%);"></div>
+                </div>
+                <div style="position:relative; flex:0 0 150px; padding:4px 0;">
+                  <div style="position:absolute; inset:4px; display:flex; flex-direction:column; justify-content:space-between; pointer-events:none;">
+                    <div style="height:1px; background:oklch(1 0 0 / 7%);"></div>
+                    <div style="height:1px; background:oklch(1 0 0 / 7%);"></div>
+                    <div style="height:1px; background:oklch(1 0 0 / 7%);"></div>
+                    <div style="height:1px; background:oklch(1 0 0 / 12%);"></div>
+                  </div>
+                  <div style="position:relative; height:100%;">
+                    <div style="display:flex; align-items:flex-end; gap:1px; height:100%;">
+                      <sc-for list="{{ f.cols }}" as="b" hint-placeholder-count="24">
+                        <div style="{{ b.col }}">
+                          <sc-for list="{{ b.segments }}" as="seg" hint-placeholder-count="3"><div style="{{ seg }}"></div></sc-for>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <sc-for list="{{ f.rules }}" as="r" hint-placeholder-count="1"><div style="{{ r }}"></div></sc-for>
+                    <sc-for list="{{ f.tags }}" as="tg" hint-placeholder-count="1"><div style="{{ tg.s }}">{{ tg.t }}</div></sc-for>
+                    <div style="{{ f.hair }}"></div>
+
+                    <div style="{{ f.tip.wrap }}">
+                      <div style="font-size:12px; color:oklch(0.985 0 0);">{{ f.tip.head }}</div>
+                      <sc-for list="{{ f.tip.rows }}" as="tr" hint-placeholder-count="4">
+                        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                          <span style="{{ tr.sw }}"></span>
+                          <span style="flex:1; min-width:0; font-size:12px; color:oklch(0.705 0.015 286.067);">{{ tr.key }}</span>
+                          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0);">{{ tr.val }}</span>
+                        </div>
+                      </sc-for>
+                      <div style="{{ f.tip.mdiv }}"></div>
+                      <sc-for list="{{ f.tip.mrows }}" as="mr" hint-placeholder-count="1">
+                        <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                          <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ mr.d }}" fill="{{ mr.f }}" stroke="{{ mr.s }}" stroke-width="{{ mr.w }}" stroke-linejoin="round"></path></svg>
+                          <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 85%); white-space:nowrap;">{{ mr.label }}</span>
+                          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ mr.t }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="{{ f.hcard.wrap }}">
+                      <div style="display:flex; align-items:center; gap:7px;">
+                        <svg style="{{ f.hcard.gWrap }}" width="12" height="12" viewBox="0 0 12 12"><path d="{{ f.hcard.d }}" fill="{{ f.hcard.f }}" stroke="{{ f.hcard.s }}" stroke-width="{{ f.hcard.w }}" stroke-linejoin="round"></path></svg>
+                        <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0); white-space:nowrap;">{{ f.hcard.head }}</span>
+                      </div>
+                      <div style="{{ f.hcard.sub1Style }}">{{ f.hcard.sub1 }}</div>
+                      <div style="{{ f.hcard.sub2Style }}">{{ f.hcard.sub2 }}</div>
+                      <sc-for list="{{ f.hcard.rows }}" as="hr" hint-placeholder-count="2">
+                        <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+                          <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ hr.d }}" fill="{{ hr.f }}" stroke="{{ hr.s }}" stroke-width="{{ hr.w }}" stroke-linejoin="round"></path></svg>
+                          <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 85%); white-space:nowrap;">{{ hr.label }}</span>
+                          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ hr.t }}</span>
+                        </div>
+                      </sc-for>
+                      <div style="{{ f.hcard.moreStyle }}">{{ f.hcard.more }}</div>
+                    </div>
+
+                    <div style="{{ f.pin.wrap }}">
+                      <div style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+                        <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ f.pin.head }}</span>
+                        <span style="margin-left:auto; display:flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:3.4px; color:oklch(0.705 0.015 286.067); cursor:pointer;">×</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column; padding:4px;">
+                        <sc-for list="{{ f.pin.rows }}" as="pr" hint-placeholder-count="5">
+                          <div style="{{ pr.rowStyle }}">
+                            <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ pr.d }}" fill="{{ pr.f }}" stroke="{{ pr.s }}" stroke-width="{{ pr.w }}" stroke-linejoin="round"></path></svg>
+                            <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 85%); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ pr.label }}</span>
+                            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ pr.t }}</span>
+                            <span style="{{ pr.hideStyle }}">hide</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="padding:6px 10px 7px; border-top:1px solid oklch(1 0 0 / 10%); font-size:10.5px; line-height:1.45; color:oklch(0.705 0.015 286.067 / 80%);">{{ f.pin.foot }}</div>
+                    </div>
+
+                    <div style="{{ f.insp.wrap }}">
+                      <div style="display:flex; align-items:center; gap:7px;">
+                        <svg width="12" height="12" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ f.insp.d }}" fill="{{ f.insp.f }}" stroke="{{ f.insp.s }}" stroke-width="{{ f.insp.w }}" stroke-linejoin="round"></path></svg>
+                        <span style="font-size:12.5px; font-weight:600; color:oklch(0.985 0 0); white-space:nowrap;">{{ f.insp.title }}</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:3px; margin-top:8px;">
+                        <sc-for list="{{ f.insp.rows }}" as="ir" hint-placeholder-count="4">
+                          <div style="display:flex; gap:8px;">
+                            <span style="flex:0 0 52px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 75%);">{{ ir.k }}</span>
+                            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); white-space:nowrap;">{{ ir.v }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:8px; margin-top:9px; padding-top:8px; border-top:1px solid oklch(1 0 0 / 10%);">
+                        <span style="display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer;">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.2 0 2.3.2 3.3.5M22 12s-3.5 6-10 6c-1.2 0-2.3-.2-3.3-.5"></path><path d="M3 3l18 18"></path></svg>
+                          Hide for this hunt
+                        </span>
+                      </div>
+                      <p style="margin:7px 0 0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">{{ f.insp.foot }}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="position:relative; flex:0 0 22px; margin-top:4px;">
+                  <sc-for list="{{ f.lane }}" as="m" hint-placeholder-count="2">
+                    <span style="{{ m.wrap }}">
+                      <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto; display:block;"><path d="{{ m.d }}" fill="{{ m.f }}" stroke="{{ m.s }}" stroke-width="{{ m.w }}" stroke-linejoin="round"></path></svg>
+                      <span style="{{ m.labelStyle }}">{{ m.label }}</span>
+                      <span style="{{ m.countStyle }}">{{ m.count }}</span>
+                    </span>
+                  </sc-for>
+                  <sc-for list="{{ f.peeks }}" as="p" hint-placeholder-count="1">
+                    <span style="{{ p.style }}">
+                      <span style="{{ p.chevLStyle }}">◂</span>
+                      <svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ p.d }}" fill="{{ p.f }}" stroke="{{ p.s }}" stroke-width="{{ p.w }}" stroke-linejoin="round"></path></svg>
+                      <span>{{ p.text }}</span>
+                      <span style="{{ p.chevRStyle }}">▸</span>
+                    </span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; margin-top:2px; padding:0 9px 0 47px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">
+              <sc-for list="{{ f.axis }}" as="a" hint-placeholder-count="6"><span>{{ a }}</span></sc-for>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:10px 12px; flex-wrap:wrap; margin-top:8px; padding:7px 9px 7px 47px; border-top:1px solid oklch(1 0 0 / 10%);">
+              <sc-for list="{{ f.legend }}" as="l" hint-placeholder-count="5">
+                <span style="display:flex; align-items:center; gap:5px; flex:0 0 auto; font-size:11px; color:oklch(0.705 0.015 286.067);">
+                  <span style="{{ l.sw }}"></span>{{ l.label }}
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.705 0.015 286.067 / 65%);">{{ l.total }}</span>
+                </span>
+              </sc-for>
+              <span style="position:relative; margin-left:auto;">
+                <span style="{{ f.chip.style }}">
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" style="flex:0 0 auto;"><path d="M2.5 2.2 H8 L10.3 4.6 L8 7 H2.5 Z"></path><path d="M5.2 7 V10.4"></path></svg>
+                  {{ f.chip.label }}
+                  <span style="{{ f.chip.dot }}"></span>
+                </span>
+
+                <div style="{{ f.vis.wrap }}">
+                  <div style="display:flex; align-items:center; gap:8px; padding:5px 7px 7px;">
+                    <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">Marks</span>
+                    <span style="margin-left:auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 70%);">{{ f.vis.sub }}</span>
+                  </div>
+                  <sc-for list="{{ f.vis.kinds }}" as="vk" hint-placeholder-count="4">
+                    <div style="{{ vk.rowStyle }}">
+                      <span style="{{ vk.box }}">{{ vk.tick }}</span>
+                      <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ vk.d }}" fill="{{ vk.f }}" stroke="{{ vk.s }}" stroke-width="{{ vk.w }}" stroke-linejoin="round"></path></svg>
+                      <span style="flex:1; font-size:12px; color:oklch(0.985 0 0);">{{ vk.label }}</span>
+                      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ vk.count }}</span>
+                    </div>
+                  </sc-for>
+                  <div style="{{ f.vis.mutedHeadStyle }}">{{ f.vis.mutedHead }}</div>
+                  <sc-for list="{{ f.vis.muted }}" as="vm" hint-placeholder-count="1">
+                    <div style="display:flex; align-items:center; gap:7px; padding:4px 7px; border-radius:3.4px;">
+                      <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ vm.label }}</span>
+                      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 60%);">{{ vm.t }}</span>
+                      <span style="display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:2.4px; color:oklch(0.705 0.015 286.067); cursor:pointer;">×</span>
+                    </div>
+                  </sc-for>
+                  <p style="margin:4px 0 0; padding:7px; border-top:1px solid oklch(1 0 0 / 10%); font-size:10.5px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">{{ f.vis.foot }}</p>
+                </div>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+
+  <div id="1k" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#1k" style="{{ badge }}">1k</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Tried and put down</div>
+        <p style="{{ capBody }}">The knobs the brief left open, tried. Cluster hover names: two is the pick. And three places names could have lived, with why they don't.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <sc-for list="{{ tryCards }}" as="tc" hint-placeholder-count="3">
+        <div style="{{ tc.cardStyle }}">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="{{ tc.mark }}">{{ tc.markText }}</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ tc.title }}</span>
+          </div>
+          <div style="margin-top:9px; width:212px; padding:8px 10px; border:1px solid oklch(1 0 0 / 14%); border-radius:6.4px; background:oklch(0.21 0.006 285.885); box-shadow:0 10px 26px oklch(0 0 0 / 45%);">
+            <div style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">5 marks · 09:12 – 09:19</div>
+            <sc-for list="{{ tc.rows }}" as="tr" hint-placeholder-count="2">
+              <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+                <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ tr.d }}" fill="{{ tr.f }}" stroke="{{ tr.s }}" stroke-width="{{ tr.w }}" stroke-linejoin="round"></path></svg>
+                <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 85%); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ tr.label }}</span>
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ tr.t }}</span>
+              </div>
+            </sc-for>
+            <div style="margin-top:5px; font-size:11px; color:oklch(0.906 0.014 84 / 85%);">{{ tc.more }}</div>
+          </div>
+          <p style="margin:9px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ tc.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <sc-for list="{{ rejCards }}" as="rc" hint-placeholder-count="3">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;">✕</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ rc.title }}</span>
+          </div>
+          <div style="position:relative; height:74px; margin-top:9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ rc.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ rc.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <p style="margin:44px 0 0; max-width:1120px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067 / 60%);">If a control is not in this sheet, it does not exist. Store change locked by this drawing: optional end_ts on a mark — bands are durations, never decoration.</p>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1330,&quot;height&quot;:950},&quot;clusterNames&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[1,2,3],&quot;default&quot;:2,&quot;tsType&quot;:&quot;1|2|3&quot;,&quot;section&quot;:&quot;Marks system&quot;},&quot;restRuleAlpha&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:0.5,&quot;step&quot;:0.02,&quot;default&quot;:0.22,&quot;unit&quot;:&quot;&quot;,&quot;section&quot;:&quot;Marks system&quot;}}">
+class Component extends DCLogic {
+  MO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+  MUT = 'oklch(0.705 0.015 286.067)';
+  WHT = 'oklch(0.985 0 0)';
+  PLATE = 'oklch(0.906 0.014 84)';
+  HEX = { debug: '#52525b', info: '#0ea5e9', warn: '#f59e0b', error: '#ef4444', fatal: '#fca5a5' };
+  K = {
+    deploy: { d: 'M6 1.6 L11 10.4 L1 10.4 Z', f: 'oklch(0.906 0.014 84)', s: 'none', w: '0' },
+    flag: { d: 'M2.4 1.2 L2.4 11 M2.4 2 L9.7 2 L7.7 4.7 L9.7 7.4 L2.4 7.4 Z', f: '#2dd4bf', s: '#2dd4bf', w: '1.2' },
+    incident: { d: 'M6 0.9 L11.1 6 L6 11.1 L0.9 6 Z', f: '#ef4444', s: 'none', w: '0' },
+    note: { d: 'M6 2 A4 4 0 1 1 5.99 2', f: 'none', s: 'oklch(0.705 0.015 286.067)', w: '1.5' }
+  };
+  frac(x) { return x - Math.floor(x); }
+  kc(kind) { const k = this.K[kind]; return k.f === 'none' ? k.s : k.f; }
+
+  cols(bins, seed, o) {
+    o = o || {};
+    const series = [];
+    for (let i = 0; i < bins; i++) {
+      const ph = i / bins;
+      let r = 0.52 + 0.26 * Math.sin(ph * Math.PI * 2 * (o.waves || 1.15) + seed) + 0.22 * (this.frac(Math.sin((i + 3) * 12.9898 + seed * 7.7) * 43758.5453) - 0.5);
+      r = Math.max(0.14, Math.min(1.15, r));
+      let e = 0.05, w = 0.1, f = 0.012;
+      if (o.stepFrac != null && ph >= o.stepFrac) { e = 0.17; f = 0.03; }
+      if (o.bandL != null && ph >= o.bandL && ph <= o.bandR) { e = 0.3 + 0.08 * Math.sin(ph * 60); w = 0.16; f = 0.05; r *= 1.28; }
+      const rest = 1 - e - w - f;
+      series.push([f * r, e * r, w * r, rest * 0.58 * r, rest * 0.42 * r]);
+    }
+    const mx = Math.max.apply(null, series.map(s => s[0] + s[1] + s[2] + s[3] + s[4]));
+    const cs = [this.HEX.fatal, this.HEX.error, this.HEX.warn, this.HEX.info, this.HEX.debug];
+    return series.map((s, i) => {
+      const segs = [];
+      s.forEach((v, j) => { const h = v / mx * 100; if (h > 0.45) segs.push(`flex:0 0 auto; height:${h.toFixed(2)}%; background:${cs[j]};`); });
+      return { col: `display:flex; flex-direction:column; justify-content:flex-end; flex:1 1 0; min-width:0; height:100%; opacity:${o.partial && i === bins - 1 ? '.45' : '.92'};`, segments: segs };
+    });
+  }
+
+  rule(x, state, kind, alpha) {
+    if (state === 'sel') return `position:absolute; top:0; bottom:0; left:${x}%; width:1px; background:${this.kc(kind)}; opacity:.85; pointer-events:none; z-index:2;`;
+    const c = state === 'hover' ? `color-mix(in oklab, ${this.kc(kind)} 60%, transparent)` : `oklch(1 0 0 / ${alpha})`;
+    return `position:absolute; top:0; bottom:0; left:${x}%; width:1px; background:repeating-linear-gradient(180deg, ${c} 0 4px, transparent 4px 7px); pointer-events:none; z-index:2;`;
+  }
+  wash(x, w) { return `position:absolute; top:0; bottom:0; left:${x}%; width:max(3px, ${w}%); background:oklch(1 0 0 / 9%); pointer-events:none; z-index:1;`; }
+  band(x, w) {
+    return [
+      `position:absolute; top:0; bottom:0; left:${x}%; width:${w}%; background:rgba(239,68,68,0.07); pointer-events:none; z-index:1;`,
+      `position:absolute; top:0; bottom:0; left:${x}%; width:1px; background:repeating-linear-gradient(180deg, rgba(239,68,68,0.5) 0 4px, transparent 4px 7px); pointer-events:none; z-index:2;`,
+      `position:absolute; top:0; bottom:0; left:${x + w}%; width:1px; background:repeating-linear-gradient(180deg, rgba(239,68,68,0.5) 0 4px, transparent 4px 7px); pointer-events:none; z-index:2;`
+    ];
+  }
+  mark(x, kind, o) {
+    o = o || {};
+    const k = this.K[kind];
+    let bg = '';
+    if (o.count) bg = ' border:1px solid oklch(1 0 0 / 18%); background:oklch(0.274 0.006 286.033 / 72%);';
+    if (o.hov) bg += ' background:oklch(0.274 0.006 286.033);';
+    if (o.sel) bg += ` background:oklch(0.274 0.006 286.033); box-shadow:0 0 0 1px color-mix(in oklab, ${this.kc(kind)} 50%, transparent);`;
+    if (o.ring) bg += ' box-shadow:0 0 0 1px rgba(34,197,94,0.55);';
+    return {
+      wrap: `position:absolute; top:50%; left:${x}%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:5px; height:18px; padding:0 ${o.count ? '7px' : '4px'}; border-radius:3.4px; white-space:nowrap; cursor:pointer; z-index:${o.sel || o.hov ? 5 : 3};${bg}`,
+      d: k.d, f: k.f, s: k.s, w: k.w,
+      label: o.label || '', labelStyle: o.label ? 'font-size:11px; color:oklch(0.985 0 0 / 82%);' : 'display:none;',
+      count: o.count || '', countStyle: o.count ? `font-family:${this.MO}; font-size:10.5px; color:${this.WHT};` : 'display:none;'
+    };
+  }
+  peek(side, kind, text) {
+    const k = this.K[kind];
+    return {
+      style: `position:absolute; ${side}:2px; top:50%; transform:translateY(-50%); display:flex; align-items:center; gap:5px; height:18px; padding:0 7px; border:1px dashed oklch(1 0 0 / 25%); border-radius:3.4px; background:oklch(0.175 0.005 285.85); font-family:${this.MO}; font-size:10.5px; color:${this.MUT}; cursor:pointer; z-index:6; white-space:nowrap;`,
+      d: k.d, f: k.f, s: k.s, w: k.w, text,
+      chevLStyle: side === 'left' ? 'color:oklch(0.705 0.015 286.067 / 70%);' : 'display:none;',
+      chevRStyle: side === 'right' ? 'color:oklch(0.705 0.015 286.067 / 70%);' : 'display:none;'
+    };
+  }
+  pop(extra) { return `border:1px solid oklch(1 0 0 / 14%); border-radius:6.4px; background:oklch(0.21 0.006 285.885); box-shadow:0 16px 40px oklch(0 0 0 / 60%); ${extra}`; }
+  chipStyle(amber) {
+    return `display:flex; align-items:center; gap:5px; height:20px; padding:0 7px; border:1px solid oklch(1 0 0 / 15%); border-radius:3.4px; font-family:${this.MO}; font-size:10.5px; color:${amber ? '#fbbf24' : this.MUT}; cursor:pointer; white-space:nowrap;`;
+  }
+  chipRow(kind, label, count, on) {
+    const k = this.K[kind];
+    return {
+      rowStyle: `display:flex; align-items:center; gap:7px; padding:5px 7px; border-radius:3.4px; cursor:pointer;${on ? '' : ' opacity:.5;'}`,
+      box: `display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:13px; height:13px; border:1px solid ${on ? 'oklch(0.985 0 0)' : 'oklch(1 0 0 / 30%)'}; border-radius:3px; background:${on ? 'oklch(0.985 0 0)' : 'transparent'}; color:oklch(0.141 0.005 285.823); font-size:9px; line-height:1;`,
+      tick: on ? '✓' : '', d: k.d, f: k.f, s: k.s, w: k.w, label, count
+    };
+  }
+  mrow(kind, label, t, o) {
+    o = o || {};
+    const k = this.K[kind];
+    return {
+      d: k.d, f: k.f, s: k.s, w: k.w, label, t,
+      rowStyle: `display:flex; align-items:center; gap:6px; padding:4px 6px; border-radius:3.4px; cursor:pointer;${o.hov ? ' background:oklch(0.274 0.006 286.033);' : ''}`,
+      hideStyle: o.hov ? `flex:0 0 auto; padding:1px 6px; border:1px solid oklch(1 0 0 / 18%); border-radius:3px; font-size:10px; color:${this.WHT};` : 'display:none;'
+    };
+  }
+
+  blank() {
+    return {
+      href: '', fineStyle: 'display:none;', fine: '',
+      qStyle: `font-family:${this.MO}; font-size:13px; color:oklch(0.705 0.015 286.067 / 45%); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`,
+      qText: 'level:error OR level:fatal status:5*',
+      rangeLabel: 'Last 15m', liveLabel: 'Paused',
+      liveBtnStyle: `display:flex; align-items:center; gap:7px; height:32px; padding:0 11px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:13px; color:${this.WHT}; cursor:pointer;`,
+      liveDotStyle: 'position:absolute; width:6px; height:6px; border-radius:99px; background:oklch(0.705 0.015 286.067);',
+      livePingStyle: 'display:none;',
+      chips: [], axis: [], yTicks: [], cols: [], rules: [], tags: [], lane: [], peeks: [],
+      hair: 'display:none;',
+      tip: { wrap: 'display:none;', head: '', rows: [], mdiv: 'display:none;', mrows: [] },
+      hcard: { wrap: 'display:none;', gWrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0', head: '', sub1Style: 'display:none;', sub1: '', sub2Style: 'display:none;', sub2: '', rows: [], moreStyle: 'display:none;', more: '' },
+      pin: { wrap: 'display:none;', head: '', rows: [], foot: '' },
+      insp: { wrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0', title: '', rows: [], foot: '' },
+      vis: { wrap: 'display:none;', sub: '', kinds: [], mutedHeadStyle: 'display:none;', mutedHead: '', muted: [], foot: '' },
+      chip: { label: 'marks 0', style: this.chipStyle(false), dot: 'display:none;' },
+      legend: []
+    };
+  }
+  chipsFor(active) {
+    return ['Auto', '1m', '5m', '15m', '1h', '4h', '1d'].map(l => ({
+      label: l,
+      style: `display:flex; align-items:center; height:100%; padding:0 8px; border-radius:3px; font-family:${this.MO}; font-size:11.5px; cursor:pointer; ${l === active ? `background:oklch(0.274 0.006 286.033); color:${this.WHT};` : `color:${this.MUT};`}`
+    }));
+  }
+  legendFor(tot) {
+    const order = ['debug', 'info', 'warn', 'error', 'fatal'];
+    return order.map((k, i) => ({ sw: `width:8px; height:8px; border-radius:2.4px; background:${this.HEX[k]};`, label: k, total: tot[i] }));
+  }
+  liveOn(f) {
+    f.liveLabel = 'Live';
+    f.liveBtnStyle = `display:flex; align-items:center; gap:7px; height:32px; padding:0 11px; border:1px solid oklch(0.552 0.016 285.938); border-radius:4.4px; font-size:13px; color:${this.WHT}; cursor:pointer;`;
+    f.liveDotStyle = 'position:absolute; width:6px; height:6px; border-radius:99px; background:#22c55e;';
+    f.livePingStyle = 'position:absolute; width:6px; height:6px; border-radius:99px; background:#22c55e; animation:pulsedot 1.8s ease-out infinite;';
+  }
+
+  renderVals() {
+    const nNames = this.props.clusterNames ?? 2;
+    const A = String(this.props.restRuleAlpha ?? 0.22);
+    const MO = this.MO, MUT = this.MUT, WHT = this.WHT;
+    const badge = `flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:27px; height:22px; padding:0 6px; border:1px solid oklch(1 0 0 / 22%); border-radius:4.4px; background:oklch(0.906 0.014 84 / 8%); font-family:${MO}; font-size:11.5px; color:oklch(0.906 0.014 84);`;
+    const capBody = `margin:4px 0 0; max-width:960px; font-size:12.5px; line-height:1.55; text-wrap:pretty; color:${MUT};`;
+    const segOn = `display:flex; align-items:center; height:100%; padding:0 9px; border-radius:3px; background:oklch(0.274 0.006 286.033); color:${WHT}; font-size:12px; cursor:pointer;`;
+    const segOff = `display:flex; align-items:center; height:100%; padding:0 9px; border-radius:3px; color:${MUT}; font-size:12px; cursor:pointer;`;
+    const icoOn = `display:flex; align-items:center; justify-content:center; width:26px; height:100%; border-radius:3px; background:oklch(0.274 0.006 286.033); color:${WHT}; cursor:pointer;`;
+    const icoOff = `display:flex; align-items:center; justify-content:center; width:26px; height:100%; border-radius:3px; color:${MUT}; cursor:pointer;`;
+    const fakeSelect = `display:flex; align-items:center; gap:6px; height:26px; padding:0 8px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:12px; color:${WHT}; cursor:pointer;`;
+    const qOn = `font-family:${MO}; font-size:13px; color:${WHT}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`;
+
+    const system = [
+      { n: '1', head: 'A marks lane under the plot.', body: 'Same x-scale, its own hit surface — mark clicks never collide with the hairline, ⇧drag, pan or the head-strip drill; a plain click on the bars stays a no-op. Wheel over the lane zooms about the cursor, same as the plot.' },
+      { n: '2', head: 'A rule, not a flag.', body: `Each visible mark drops a 1px dashed rule through the bars — neutral white at rest, kind colour on hover, solid when selected. Colour is spent on attention, never on decoration.` },
+      { n: '3', head: 'Kind = glyph + colour, label = grammar.', body: 'deploy ▲ plate · flag ⚑ teal · incident ◆ alarm red · note ○ grey. The string is a verbed fragment: deployed: billing v0.9 — kind, where, what, in one line.' },
+      { n: '4', head: 'Density folds, never piles.', body: 'Marks closer than a glyph fuse into a counted chip whose wash spans their real extent. Hover names the newest two; click opens the full list. Nearest off-window marks peek from the lane corners.' },
+      { n: '5', head: 'Visibility is per-hunt, deletion is an API verb.', body: 'A marks chip on the legend row opens the popover: kind toggles + per-mark mutes. The chip goes amber and counts what is hidden, so a filtered lane can never read as "no deploys".' }
+    ];
+
+    const specKinds = [
+      { name: 'deploy', colorName: 'plate', sample: 'deployed: billing v0.9', note: 'The common case — brand-warm white, filled so it reads at 8px.', ...this.K.deploy },
+      { name: 'flag', colorName: 'teal #2dd4bf', sample: 'flag: new-pricing on · checkout', note: 'Config went sideways-on, not code. Teal is unused by levels and series.', ...this.K.flag },
+      { name: 'incident', colorName: 'alarm red', sample: 'incident: INC-238 checkout 5xx', note: 'Shares error red on purpose — the diamond, not the hue, says which is which.', ...this.K.incident },
+      { name: 'note', colorName: 'grey, hollow', sample: 'note: raised api rate limit', note: 'A human wrote this. Hollow = annotation, not machine fact.', ...this.K.note }
+    ];
+
+    const fakeBars = `position:absolute; left:10px; right:10px; bottom:12px; height:44px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 7%) 0 7px, transparent 7px 9px); pointer-events:none;`;
+    const tri = (x, c) => `position:absolute; left:${x}px; bottom:3px; width:9px; height:8px; clip-path:polygon(50% 0, 100% 100%, 0 100%); background:${c};`;
+    const vline = (x, css) => `position:absolute; top:6px; bottom:12px; left:${x}px; width:1px; ${css}`;
+    const specMinis = [
+      {
+        title: 'Rule states', caption: 'Rest is neutral at 22% — visible on a glance, under the bars\' weight. Hover tints, selection commits.',
+        shapes: [
+          { s: fakeBars, t: '' },
+          { s: vline(52, `background:repeating-linear-gradient(180deg, oklch(1 0 0 / ${A}) 0 4px, transparent 4px 7px);`), t: '' },
+          { s: tri(48, this.PLATE), t: '' },
+          { s: vline(126, 'background:repeating-linear-gradient(180deg, color-mix(in oklab, oklch(0.906 0.014 84) 60%, transparent) 0 4px, transparent 4px 7px);'), t: '' },
+          { s: tri(122, this.PLATE), t: '' },
+          { s: vline(200, `background:${this.PLATE}; opacity:.85;`), t: '' },
+          { s: tri(196, this.PLATE), t: '' },
+          { s: `position:absolute; left:34px; top:2px; font-family:${MO}; font-size:9px; color:${MUT};`, t: 'rest' },
+          { s: `position:absolute; left:104px; top:2px; font-family:${MO}; font-size:9px; color:${MUT};`, t: 'hover' },
+          { s: `position:absolute; left:178px; top:2px; font-family:${MO}; font-size:9px; color:${MUT};`, t: 'selected' }
+        ]
+      },
+      {
+        title: 'Cluster chip', caption: 'Homogeneous: kind glyph + count. Mixed: count + one dot per kind. The wash spans the members\' real extent — no rule at a made-up centre.',
+        shapes: [
+          { s: fakeBars, t: '' },
+          { s: `position:absolute; left:58px; top:6px; bottom:12px; width:5px; background:oklch(1 0 0 / 9%);`, t: '' },
+          { s: `position:absolute; left:44px; bottom:0; display:flex; align-items:center; gap:4px; height:16px; padding:0 6px; border:1px solid oklch(1 0 0 / 18%); border-radius:3.4px; background:oklch(0.274 0.006 286.033 / 72%);`, t: '' },
+          { s: `position:absolute; left:51px; bottom:4px; width:8px; height:7px; clip-path:polygon(50% 0, 100% 100%, 0 100%); background:${this.PLATE}; z-index:2;`, t: '' },
+          { s: `position:absolute; left:63px; bottom:2.5px; font-family:${MO}; font-size:10px; color:${WHT}; z-index:2;`, t: '5' },
+          { s: `position:absolute; left:150px; bottom:0; display:flex; align-items:center; gap:4px; height:16px; padding:0 7px; border:1px solid oklch(1 0 0 / 18%); border-radius:3.4px; background:oklch(0.274 0.006 286.033 / 72%);`, t: '' },
+          { s: `position:absolute; left:157px; bottom:2.5px; font-family:${MO}; font-size:10px; color:${WHT}; z-index:2;`, t: '3' },
+          { s: `position:absolute; left:166px; bottom:6px; width:5px; height:5px; border-radius:99px; background:${this.PLATE}; z-index:2;`, t: '' },
+          { s: `position:absolute; left:173px; bottom:6px; width:5px; height:5px; border-radius:99px; background:#ef4444; z-index:2;`, t: '' },
+          { s: `position:absolute; left:180px; bottom:6px; width:5px; height:5px; border-radius:99px; background:#2dd4bf; z-index:2;`, t: '' }
+        ]
+      },
+      {
+        title: 'Incident band', caption: 'Only an incident with a stored end draws a band — a 7% wash between dashed red edges. No end_ts, no band: a point never pretends to be a duration.',
+        shapes: [
+          { s: fakeBars, t: '' },
+          { s: `position:absolute; left:70px; top:6px; bottom:12px; width:74px; background:rgba(239,68,68,0.08);`, t: '' },
+          { s: vline(70, 'background:repeating-linear-gradient(180deg, rgba(239,68,68,0.5) 0 4px, transparent 4px 7px);'), t: '' },
+          { s: vline(144, 'background:repeating-linear-gradient(180deg, rgba(239,68,68,0.5) 0 4px, transparent 4px 7px);'), t: '' },
+          { s: `position:absolute; left:76px; top:8px; font-family:${MO}; font-size:9px; color:rgba(252,165,165,0.9);`, t: 'INC-238 · 1h 02m' },
+          { s: `position:absolute; left:66px; bottom:2px; width:9px; height:9px; clip-path:polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background:#ef4444;`, t: '' }
+        ]
+      },
+      {
+        title: 'Where the lane sits', caption: 'Head strip 12px (drill) · plot · lane 22px · axis. The lane borrows no height from the plot and never wraps — it clusters instead.',
+        shapes: [
+          { s: `position:absolute; left:10px; right:10px; top:8px; height:7px; border-radius:2px; background:oklch(1 0 0 / 5%);`, t: '' },
+          { s: `position:absolute; left:10px; right:10px; top:19px; height:26px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 7%) 0 7px, transparent 7px 9px);`, t: '' },
+          { s: `position:absolute; left:10px; right:10px; top:49px; height:12px; border:1px dashed oklch(0.906 0.014 84 / 40%); border-radius:2px;`, t: '' },
+          { s: `position:absolute; left:10px; right:10px; top:64px; height:5px; background:oklch(1 0 0 / 4%);`, t: '' },
+          { s: `position:absolute; right:14px; top:49px; font-family:${MO}; font-size:9px; color:oklch(0.906 0.014 84 / 80%); padding-top:1px;`, t: 'marks lane' }
+        ]
+      }
+    ];
+
+    // ── shared fixtures ──────────────────────────────────────────────
+    const mk = o => Object.assign(this.blank(), o);
+    const leg15 = this.legendFor(['18.4K', '26.1K', '6.6K', '3.1K', '512']);
+    const leg24 = this.legendFor(['1.9M', '2.6M', '640K', '402K', '38.2K']);
+    const cols15 = this.cols(15, 2.1, {});
+    const trainRows = [
+      this.mrow('deploy', 'deployed: web v5.0.1', '09:19:02'),
+      this.mrow('deploy', 'deployed: billing v0.9', '09:15:42'),
+      this.mrow('deploy', 'deployed: worker v1.4.2', '09:14:19'),
+      this.mrow('deploy', 'deployed: api v2.3.1', '09:13:05'),
+      this.mrow('deploy', 'deployed: api v2.3.0', '09:12:11')
+    ];
+    const lane24 = amberOff => {
+      const l = [
+        this.mark(30.6, 'deploy', { count: '2' }),
+        this.mark(51.6, 'incident', {}),
+        this.mark(76.9, 'deploy', { count: amberOff ? '4' : '5' }),
+        this.mark(96.6, 'deploy', {})
+      ];
+      if (!amberOff) { l.unshift(this.mark(26.9, 'note', {})); l.push(this.mark(86.9, 'flag', {})); }
+      return l;
+    };
+    const rules24 = noOff => {
+      const r = [this.wash(30.45, 0.28)].concat(this.band(51.6, 4.3)).concat([this.wash(76.65, 0.5), this.rule(96.6, 'rest', null, A)]);
+      if (!noOff) { r.unshift(this.rule(26.9, 'rest', null, A)); r.push(this.rule(86.9, 'rest', null, A)); }
+      return r;
+    };
+    const tag24 = [{ s: `position:absolute; left:calc(51.6% + 5px); top:3px; font-family:${MO}; font-size:9.5px; color:rgba(252,165,165,0.85); pointer-events:none; z-index:3;`, t: 'INC-238 · 1h 02m' }];
+    const cols24 = this.cols(96, 4.4, { bandL: 0.516, bandR: 0.559, stepFrac: 0.769, waves: 2.3 });
+    const axis24 = ['14:47', '18:47', '22:47', '02:47', '06:47', '10:47', '14:47'];
+
+    const frames = [];
+
+    // 1b — quiet 15m, rest
+    frames.push(mk({
+      id: '1b', href: '#1b', title: 'Quiet window · one deploy · rest',
+      body: 'The base state: a lane glyph on the shared clock, the grammar string while there is room, and a dashed rule up through the bars — neutral at rest, so eleven of these never out-shout the data. The nearest mark before the window peeks from the lane corner even when the window itself has marks.',
+      fineStyle: capBody, fine: 'Everything above the lane is untouched: hover hairline, wheel zoom, drag pan, ⇧drag brush, head-strip drill. A plain click on the bars stays a no-op.',
+      rangeLabel: 'Last 15m', chips: this.chipsFor('Auto'),
+      axis: ['14:32', '14:35', '14:38', '14:41', '14:44', '14:47'], yTicks: ['6K', '4K', '2K', '0'],
+      cols: cols15, legend: leg15,
+      rules: [this.rule(61.3, 'rest', null, A)],
+      lane: [this.mark(61.3, 'deploy', { label: 'deployed: billing v0.9' })],
+      peeks: [this.peek('left', 'deploy', 'deploy · 34m before')],
+      chip: { label: 'marks 1', style: this.chipStyle(false), dot: 'display:none;' }
+    }));
+
+    // 1c — mark hover
+    frames.push(mk({
+      id: '1c', href: '#1c', title: 'Hovering a mark',
+      body: 'The lane is its own hover surface: the card gives the full string, exact stamp and source; the rule takes the kind colour. The bucket hairline is absent because the pointer has left the plot — the two hovers can never stack.',
+      fineStyle: capBody, fine: 'Click pins the inspector (1g). Hovering never touches q, the window, or Live.',
+      rangeLabel: 'Last 15m', chips: this.chipsFor('Auto'),
+      axis: ['14:32', '14:35', '14:38', '14:41', '14:44', '14:47'], yTicks: ['6K', '4K', '2K', '0'],
+      cols: cols15, legend: leg15,
+      rules: [this.rule(61.3, 'hover', 'deploy', A)],
+      lane: [this.mark(61.3, 'deploy', { label: 'deployed: billing v0.9', hov: true })],
+      peeks: [this.peek('left', 'deploy', 'deploy · 34m before')],
+      hcard: {
+        wrap: this.pop(`position:absolute; bottom:8px; left:61.3%; margin-left:11px; z-index:8; width:208px; padding:8px 10px;`),
+        gWrap: 'flex:0 0 auto; display:block;', ...this.K.deploy,
+        head: 'deployed: billing v0.9',
+        sub1Style: `margin-top:5px; font-family:${MO}; font-size:11px; color:${MUT};`, sub1: '14:41:12.118 · 6m ago',
+        sub2Style: `margin-top:2px; font-family:${MO}; font-size:11px; color:${MUT};`, sub2: 'billing · via ci',
+        rows: [], moreStyle: 'display:none;', more: ''
+      },
+      chip: { label: 'marks 1', style: this.chipStyle(false), dot: 'display:none;' }
+    }));
+
+    // 1d — bucket hover picks up marks
+    frames.push(mk({
+      id: '1d', href: '#1d', title: 'Hovering a bucket that contains a mark',
+      body: 'The existing hover readout gains a marks section under the series rows — "what is this spike" and "what shipped in it" arrive in the same panel. Cap two rows; a third becomes +N more marks.',
+      rangeLabel: 'Last 15m', chips: this.chipsFor('Auto'),
+      axis: ['14:32', '14:35', '14:38', '14:41', '14:44', '14:47'], yTicks: ['6K', '4K', '2K', '0'],
+      cols: cols15, legend: leg15,
+      rules: [this.rule(61.3, 'rest', null, A)],
+      lane: [this.mark(61.3, 'deploy', { label: 'deployed: billing v0.9' })],
+      peeks: [this.peek('left', 'deploy', 'deploy · 34m before')],
+      hair: 'position:absolute; top:0; bottom:0; left:63.3%; width:1px; background:oklch(1 0 0 / 32%); pointer-events:none; z-index:5;',
+      tip: {
+        wrap: this.pop('position:absolute; top:4px; right:36.7%; margin-right:9px; z-index:8; min-width:158px; padding:7px 9px;'),
+        head: '14:41 – 14:42 · 5.5K',
+        rows: [
+          { sw: `width:8px; height:8px; border-radius:2px; background:${this.HEX.debug};`, key: 'debug', val: '1.9K' },
+          { sw: `width:8px; height:8px; border-radius:2px; background:${this.HEX.info};`, key: 'info', val: '2.4K' },
+          { sw: `width:8px; height:8px; border-radius:2px; background:${this.HEX.warn};`, key: 'warn', val: '706' },
+          { sw: `width:8px; height:8px; border-radius:2px; background:${this.HEX.error};`, key: 'error', val: '412' },
+          { sw: `width:8px; height:8px; border-radius:2px; background:${this.HEX.fatal};`, key: 'fatal', val: '61' }
+        ],
+        mdiv: 'height:1px; margin:6px 0 3px; background:oklch(1 0 0 / 10%);',
+        mrows: [{ ...this.K.deploy, label: 'deployed: billing v0.9', t: ':12' }]
+      },
+      chip: { label: 'marks 1', style: this.chipStyle(false), dot: 'display:none;' }
+    }));
+
+    // 1e — 24h dense, cluster hovered
+    const hcRows = trainRows.slice(0, nNames).map(r => ({ d: r.d, f: r.f, s: r.s, w: r.w, label: r.label, t: r.t.slice(0, 5) }));
+    frames.push(mk({
+      id: '1e', href: '#1e', title: '24h · a deploy train in one bar',
+      body: 'Marks closer than a glyph fuse into a counted chip; the chip\'s wash spans the members\' real extent instead of one dashed rule at a made-up centre. Hover names the newest two and counts the rest — everything in there is one click away, never a wall of labels.',
+      fineStyle: capBody, fine: 'The incident carries a locked end (new optional end_ts on the store) and draws as a band. Errors step up after the 09:15 train — the chart tells the story; the marks only timestamp it.',
+      rangeLabel: 'Last 24h', chips: this.chipsFor('15m'),
+      axis: axis24, yTicks: ['84K', '56K', '28K', '0'],
+      cols: cols24, legend: leg24,
+      rules: rules24(false), tags: tag24,
+      lane: (() => { const l = lane24(false); l[3] = this.mark(76.9, 'deploy', { count: '5', hov: true }); return l; })(),
+      peeks: [this.peek('left', 'deploy', 'deploy · 26h before')],
+      hcard: {
+        wrap: this.pop('position:absolute; bottom:8px; right:23.1%; margin-right:11px; z-index:8; width:224px; padding:8px 10px;'),
+        gWrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0',
+        head: '5 marks · 09:12 – 09:19',
+        sub1Style: 'display:none;', sub1: '', sub2Style: 'display:none;', sub2: '',
+        rows: hcRows,
+        moreStyle: 'margin-top:5px; font-size:11px; color:oklch(0.906 0.014 84 / 85%);',
+        more: `+${5 - Math.min(5, nNames)} more — click opens the list`
+      },
+      chip: { label: 'marks 11', style: this.chipStyle(false), dot: 'display:none;' }
+    }));
+
+    // 1f — cluster pinned
+    frames.push(mk({
+      id: '1f', href: '#1f', title: 'The cluster, opened',
+      body: 'Click pins the full list, newest first — every member named, timed, and inspectable. The row-level hide is the per-mark mute: visibility for this hunt, not deletion.',
+      rangeLabel: 'Last 24h', chips: this.chipsFor('15m'),
+      axis: axis24, yTicks: ['84K', '56K', '28K', '0'],
+      cols: cols24, legend: leg24,
+      rules: rules24(false), tags: tag24,
+      lane: (() => { const l = lane24(false); l[3] = this.mark(76.9, 'deploy', { count: '5', sel: true }); return l; })(),
+      peeks: [this.peek('left', 'deploy', 'deploy · 26h before')],
+      pin: {
+        wrap: this.pop('position:absolute; bottom:8px; right:23.1%; margin-right:11px; z-index:9; width:266px;'),
+        head: '5 marks · 09:12 – 09:19',
+        rows: [trainRows[0], this.mrow('deploy', 'deployed: billing v0.9', '09:15:42', { hov: true }), trainRows[2], trainRows[3], trainRows[4]],
+        foot: 'A row inspects its mark · hide mutes it for this hunt only.'
+      },
+      chip: { label: 'marks 11', style: this.chipStyle(false), dot: 'display:none;' }
+    }));
+
+    // 1g — selected + inspector
+    frames.push(mk({
+      id: '1g', href: '#1g', title: 'A mark selected',
+      body: 'Clicking a lane glyph pins the inspector: kind, title, exact time, service, source — anchored to the glyph, rule solid in kind colour. The search bar, window and Live are untouched: inspecting a mark is read-only, never a query rewrite or an inserted log row.',
+      fineStyle: capBody, fine: 'Esc or click-away releases. Hide for this hunt is the only verb here — erasing the mark from the store is DELETE /v1/marks/:id, an API action on purpose.',
+      qStyle: qOn, qText: 'service:worker',
+      rangeLabel: 'Aug 25 12:20 – 14:20', chips: this.chipsFor('5m'),
+      axis: ['12:20', '12:40', '13:00', '13:20', '13:40', '14:00', '14:20'], yTicks: ['12K', '8K', '4K', '0'],
+      cols: this.cols(24, 6.2, { stepFrac: 0.817 }), legend: this.legendFor(['96K', '138K', '31K', '19.4K', '2.1K']),
+      rules: [this.rule(81.7, 'sel', 'deploy', A)],
+      lane: [this.mark(81.7, 'deploy', { label: 'deployed: worker v1.4.3', sel: true })],
+      peeks: [this.peek('left', 'flag', 'flag · 42m before'), this.peek('right', 'deploy', 'deploy · 25m after')],
+      insp: {
+        wrap: this.pop('position:absolute; bottom:8px; right:18.3%; margin-right:12px; z-index:9; width:254px; padding:9px 11px;'),
+        ...this.K.deploy, title: 'deployed: worker v1.4.3',
+        rows: [
+          { k: 'time', v: '2026-08-25 13:58:04.221' },
+          { k: '', v: '49m ago · in window' },
+          { k: 'service', v: 'worker' },
+          { k: 'source', v: 'ci · deploy-bot' },
+          { k: 'id', v: 'mk_9f2c41' }
+        ],
+        foot: 'Hiding is per-hunt visibility. Deleting is DELETE /v1/marks/mk_9f2c41 — the store is not edited from this panel.'
+      },
+      chip: { label: 'marks 1', style: this.chipStyle(false), dot: 'display:none;' }
+    }));
+
+    // 1h — empty window, peeks
+    frames.push(mk({
+      id: '1h', href: '#1h', title: 'No marks in the window — but not "no deploys"',
+      body: 'The nearest mark either side of the window peeks from the lane corners: kind and distance, parked outside the ruler so no line is ever drawn at a wrong timestamp. Click pans the window — span kept — to bring that mark inside.',
+      fineStyle: capBody, fine: 'The right peek exists only when the window ends in the past; a relative window ending now has no "after".',
+      rangeLabel: 'Aug 25 09:30 – 11:30', chips: this.chipsFor('5m'),
+      axis: ['09:30', '09:50', '10:10', '10:30', '10:50', '11:10', '11:30'], yTicks: ['9K', '6K', '3K', '0'],
+      cols: this.cols(24, 8.8, {}), legend: this.legendFor(['74K', '104K', '24K', '11.8K', '1.4K']),
+      peeks: [this.peek('left', 'deploy', 'deploy · 11m before'), this.peek('right', 'flag', 'flag · 8m after')],
+      chip: { label: 'marks 0', style: this.chipStyle(false), dot: 'display:none;' }
+    }));
+
+    // 1i — live
+    const fLive = mk({
+      id: '1i', href: '#1i', title: 'Live',
+      body: 'The window slides and marks slide with it on the same clock. A mark that lands while Live is on gets a one-breath green ring — no toast, no inserted row. The right peek is gone: with Live on, after "to" is the future.',
+      rangeLabel: 'Last 15m', chips: this.chipsFor('Auto'),
+      axis: ['14:32', '14:35', '14:38', '14:41', '14:44', '14:47'], yTicks: ['6K', '4K', '2K', '0'],
+      cols: this.cols(15, 2.1, { partial: true }), legend: leg15,
+      rules: [this.rule(90, 'rest', null, A)],
+      lane: [this.mark(90, 'deploy', { label: 'deployed: api v2.3.2', ring: true })],
+      peeks: [this.peek('left', 'deploy', 'deploy · 34m before')],
+      chip: { label: 'marks 1', style: this.chipStyle(false), dot: 'display:none;' }
+    });
+    this.liveOn(fLive);
+    frames.push(fLive);
+
+    // 1j — visibility popover, kinds off
+    frames.push(mk({
+      id: '1j', href: '#1j', title: 'Choosing what is on',
+      body: 'The marks chip rides the legend row — marks get their own control, not a second series legend. Kind toggles and per-mark mutes are per-hunt visibility; while anything is hidden the chip goes amber and counts it, so a filtered lane can never quietly read as "no deploys".',
+      fineStyle: capBody, fine: 'Here flags and notes are off and one deploy is muted: the train chip reads 4, the chip reads 8 of 11. Selecting is never affected — hidden marks simply do not draw.',
+      rangeLabel: 'Last 24h', chips: this.chipsFor('15m'),
+      axis: axis24, yTicks: ['84K', '56K', '28K', '0'],
+      cols: cols24, legend: leg24,
+      rules: rules24(true), tags: tag24,
+      lane: lane24(true),
+      peeks: [this.peek('left', 'deploy', 'deploy · 26h before')],
+      chip: { label: 'marks 8 of 11', style: this.chipStyle(true), dot: 'width:5px; height:5px; border-radius:99px; background:#fbbf24;' },
+      vis: {
+        wrap: this.pop('position:absolute; bottom:26px; right:0; z-index:12; width:274px; padding:6px;'),
+        sub: '11 in window',
+        kinds: [
+          this.chipRow('deploy', 'deploys', '8', true),
+          this.chipRow('flag', 'flags', '1', false),
+          this.chipRow('incident', 'incidents', '1', true),
+          this.chipRow('note', 'notes', '1', false)
+        ],
+        mutedHeadStyle: `margin-top:4px; padding:6px 7px 2px; border-top:1px solid oklch(1 0 0 / 10%); font-size:10.5px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:${MUT};`,
+        mutedHead: 'Muted this hunt · 1',
+        muted: [{ label: 'deployed: web v5.0.1', t: '09:19' }],
+        foot: 'This hunt only — the store keeps every mark. Erasing one is DELETE /v1/marks/:id, deliberately not a click here.'
+      }
+    }));
+
+    // 1k fixtures
+    const tRows = n => trainRows.slice(0, n).map(r => ({ d: r.d, f: r.f, s: r.s, w: r.w, label: r.label, t: r.t.slice(0, 5) }));
+    const tryCards = [1, 2, 3].map(n => ({
+      cardStyle: `flex:1; padding:12px 13px; border:1px solid ${n === 2 ? 'oklch(0.906 0.014 84 / 35%)' : 'oklch(1 0 0 / 10%)'}; border-radius:6.4px; background:oklch(0.141 0.005 285.823);`,
+      mark: n === 2
+        ? 'display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.906 0.014 84 / 15%); color:oklch(0.906 0.014 84); font-size:10px;'
+        : `display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(1 0 0 / 7%); color:${MUT}; font-size:10px;`,
+      markText: n === 2 ? '✓' : '·',
+      title: `${n} name${n > 1 ? 's' : ''} on hover`,
+      rows: tRows(n),
+      more: `+${5 - n} more — click opens the list`,
+      verdict: n === 1 ? 'One name makes every train look like one ship — and a mixed cluster reads as all-deploys.'
+        : n === 2 ? 'Newest two name the train and prove there is a tail. Card stays shorter than the plot at every card height. Chosen — and it is a one-line constant if we change our minds.'
+        : 'Three fits here but not on a squat card: the readout starts covering the bars it explains.'
+    }));
+
+    const rejBars = `position:absolute; left:10px; right:10px; bottom:20px; height:38px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 7%) 0 7px, transparent 7px 9px); pointer-events:none;`;
+    const rejCards = [
+      {
+        title: 'Names pinned in the plot', verdict: 'Label flags hanging in the chart fight the hover readout, the overlay line and each other — annotation chrome where the data lives.',
+        shapes: [
+          { s: rejBars, t: '' },
+          { s: `position:absolute; left:56px; top:6px; bottom:20px; width:1px; background:repeating-linear-gradient(180deg, oklch(1 0 0 / 30%) 0 4px, transparent 4px 7px);`, t: '' },
+          { s: `position:absolute; left:58px; top:8px; padding:1px 5px; border:1px solid oklch(1 0 0 / 20%); border-radius:2.4px; background:oklch(0.274 0.006 286.033); font-family:${MO}; font-size:9px; color:${WHT}; z-index:2;`, t: 'deployed: billing v0.9' },
+          { s: `position:absolute; left:118px; top:16px; padding:1px 5px; border:1px solid oklch(1 0 0 / 20%); border-radius:2.4px; background:oklch(0.274 0.006 286.033); font-family:${MO}; font-size:9px; color:${WHT}; z-index:1; opacity:.8;`, t: 'deployed: api v2.3.1' },
+          { s: `position:absolute; right:14px; top:10px; width:64px; height:34px; border:1px solid oklch(1 0 0 / 18%); border-radius:4px; background:oklch(0.21 0.006 285.885); z-index:3;`, t: '' },
+          { s: `position:absolute; right:20px; top:14px; font-family:${MO}; font-size:8px; color:${MUT}; z-index:4;`, t: 'hover tip' }
+        ]
+      },
+      {
+        title: 'Names in the axis row', verdict: 'The axis is the ruler. A label there evicts the times that every other readout is aligned against.',
+        shapes: [
+          { s: rejBars, t: '' },
+          { s: `position:absolute; left:10px; right:10px; bottom:4px; display:flex; justify-content:space-between; font-family:${MO}; font-size:9px; color:oklch(0.705 0.015 286.067 / 70%);`, t: '' },
+          { s: `position:absolute; left:12px; bottom:4px; font-family:${MO}; font-size:9px; color:oklch(0.705 0.015 286.067 / 70%);`, t: '14:32' },
+          { s: `position:absolute; left:84px; bottom:4px; font-family:${MO}; font-size:9px; color:${WHT};`, t: '▲ deployed: billing v0.9' },
+          { s: `position:absolute; right:12px; bottom:4px; font-family:${MO}; font-size:9px; color:oklch(0.705 0.015 286.067 / 30%); text-decoration:line-through;`, t: '14:44  14:47' }
+        ]
+      },
+      {
+        title: 'Hover-only marks', verdict: 'Invisible at a glance is the exact failure the feature exists to prevent — an empty-looking plot says "no deploys" while three sit under the pointer.',
+        shapes: [
+          { s: rejBars, t: '' },
+          { s: `position:absolute; left:10px; right:10px; bottom:6px; height:10px; border:1px dashed oklch(1 0 0 / 12%); border-radius:2px;`, t: '' },
+          { s: `position:absolute; left:50%; top:16px; transform:translateX(-50%); font-family:${MO}; font-size:9px; color:${MUT};`, t: 'nothing until the pointer finds it' },
+          { s: `position:absolute; left:50%; bottom:7px; transform:translateX(-50%); font-family:${MO}; font-size:8px; color:oklch(0.705 0.015 286.067 / 50%);`, t: '?' }
+        ]
+      }
+    ];
+
+    return { system, specKinds, specMinis, frames, tryCards, rejCards, badge, capBody, segOn, segOff, icoOn, icoOff, fakeSelect };
+  }
+}
+</script>
+</body>
+</html>
