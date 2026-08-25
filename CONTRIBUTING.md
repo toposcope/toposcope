@@ -64,11 +64,19 @@ bun run load:100m
 
 ## Pull requests
 
-1. Open or find an **issue** (typos can skip this).
-2. Branch from `main`. Open a PR early (draft is fine).
-3. Bugs, security fixes, docs, tests, and packaging fixes are welcome. Start enhancements with an issue so scope and acceptance criteria can be agreed before coding. Prefer a thin slice that moves ingest, query, UI, and tests together — not a vertical rewrite of one subsystem.
-4. Add a [CHANGELOG.md](CHANGELOG.md) line under Unreleased (or the version in `package.json`).
-5. `bun test` and `bun run typecheck` must pass. `e2e` when the change touches ingest or search.
+**Bugs on shipped behavior**
+
+1. Branch from `main`.
+2. Add tests that name the failure (the window that should not exist, the value that should not appear). Run them. **Every new test must fail** on current code. If one is already green, it is not catching the bug — rewrite it. Do not add the production fix yet.
+3. Open a **draft** PR with those tests only. CI red on that draft is expected.
+4. Open a GitHub issue that describes the bug and **links the draft PR**.
+5. Fix on that PR in a later commit. Push. Merge when CI is green.
+
+**Bugs found while implementing a locked issue** stay on that PR: same red-then-green (tests first, confirm all red, then the fix). Do not open a new GitHub issue unless the hole is out of that issue’s scope.
+
+**Enhancements** start with an agreed GitHub issue so scope and acceptance criteria are locked before coding (new chrome also needs a maintainer-approved public mock). Then branch from `main`, open a draft PR early, and implement a thin slice that moves ingest, query, UI, and tests together. Do not open a red-only PR before that issue exists. Typos, security fixes, docs, tests, and packaging can skip the issue when the change is obvious.
+
+Add a [CHANGELOG.md](CHANGELOG.md) line under Unreleased (or the version in `package.json`). `bun test` and `bun run typecheck` must pass **at merge**. `e2e` when the change touches ingest or search. A draft bug PR is allowed to be red until the fix is on the branch.
 
 Maintainers squash-merge when CI is green. **Ship** is a `vX.Y.Z` tag: it must match `package.json` and the Compose image pin. That tag builds GHCR and attaches `compose.yml`, `env.example`, `vector.yaml`, and `LICENSE`. Pin the full version in Compose, not `:latest`.
 
