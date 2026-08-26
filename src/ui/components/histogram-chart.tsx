@@ -61,7 +61,6 @@ import { HistogramIntervalChips } from "./histogram-interval";
 import {
   HistogramMarkLane,
   HistogramMarkRules,
-  HistogramMarksChip,
   MARK_LANE_H,
   markHoverLines,
   MarkGlyph,
@@ -107,6 +106,8 @@ type Props = {
   retentionMs?: number;
   scanReason?: string | null;
   marks?: MarksOverlay | null;
+  focusMarkId?: string | null;
+  onFocusMark?: (id: string | null) => void;
 };
 
 function bucketEndMs(bucket: HistogramBucket, stepMs: number): number {
@@ -322,6 +323,8 @@ export function HistogramChart({
   retentionMs = histogramRetentionMs,
   scanReason = null,
   marks = null,
+  focusMarkId = null,
+  onFocusMark,
 }: Props) {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const laneHoverRef = useRef(false);
@@ -1340,7 +1343,7 @@ export function HistogramChart({
                   plotSpanMs={plotSpanMs}
                   hoverKey={markHoverKey}
                   selectedKey={markSelected.key}
-                  selectedId={markSelected.id}
+                  selectedId={focusMarkId ?? markSelected.id}
                 />
               ) : null}
               </div>
@@ -1401,7 +1404,11 @@ export function HistogramChart({
                 }}
                 hoverKey={markHoverKey}
                 onHoverKey={setMarkHoverKey}
-                onSelect={setMarkSelected}
+                focusId={focusMarkId}
+                onSelect={(next) => {
+                  setMarkSelected(next);
+                  onFocusMark?.(next.id);
+                }}
               />
             ) : null}
             </div>
@@ -1503,7 +1510,6 @@ export function HistogramChart({
             </span>
           </span>
         ) : null}
-        {marks ? <HistogramMarksChip overlay={marks} /> : null}
       </div>
     </div>
   );

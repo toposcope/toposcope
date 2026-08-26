@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CountText } from "@/components/count-text";
@@ -24,6 +24,20 @@ import {
   type PromoPickItem,
 } from "../promoted-cols";
 import type { LogEvent } from "@/types";
+import {
+  eventTableMarkLayout,
+  visibleChangeMarks,
+  type EventTableMarkRow,
+} from "../change-marks";
+import type { MarksOverlay } from "./histogram-marks";
+import {
+  EventFold,
+  EventIncidentEnd,
+  EventMarkInspect,
+  EventMarksPeek,
+  EventSeam,
+  useMarkDismiss,
+} from "./event-table-marks";
 
 const gridClass = "grid gap-2";
 
@@ -44,6 +58,11 @@ type Props = {
   onOpenDetail: () => void;
   onCloseDetail: () => void;
   onLoadMore: () => void;
+  marks?: MarksOverlay | null;
+  live?: boolean;
+  focusMarkId?: string | null;
+  onFocusMark?: (id: string | null) => void;
+  onLoadToward?: (ts: string) => void;
 };
 
 function useEventTableGrid(
@@ -367,6 +386,11 @@ export function EventTable({
   onOpenDetail,
   onCloseDetail,
   onLoadMore,
+  marks = null,
+  live = false,
+  focusMarkId = null,
+  onFocusMark,
+  onLoadToward,
 }: Props) {
   const promoted = parsePromotedCols(cols);
   const pick = promoPicker(events, promoted);
@@ -378,6 +402,27 @@ export function EventTable({
   );
   const selectedRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [inspectId, setInspectId] = useState<string | null>(null);
+  const [foldKey, setFoldKey] = useState<string | null>(null);
+  const [foldHover, setFoldHover] = useState<string | null>(null);
+  const [rings, setRings] = useState<Set<string>>(() => new Set());
+  const seenRef = useRef<Set<string>>(new Set());
+  const visibleMarks = marks
+    ? visibleChangeMarks(marks.marks, marks.offKinds, marks.mutedIds)
+    : [];
+  const layout = eventTableMarkLayout(events, visibleMarks);
+  const inspectMark =
+    inspectId != null
+      ? (visibleMarks.find((mark) => mark.id === inspectId) ?? null)
+      : null;
+  const { rootRef: markRootRef } = useMarkDismiss(
+    inspectId != null || foldKey != null,
+    () => {
+      setInspectId(null);
+      setFoldKey(null);
+      onFocusMark?.(null);
+    },
+  );
 
   useEffect(() => {
     selectedRef.current?.scrollIntoView({ block: "nearest" });
@@ -386,6 +431,24 @@ export function EventTable({
       selectedRef.current?.focus();
     }
   }, [selectedIndex]);
+
+  const markIds = visibleMarks.map((mark) => mark.id).join("\0");
+  useEffect(() => {
+    const ids = markIds.length === 0 ? [] : markIds.split("\0");
+    const next = new Set<string>();
+    for (const id of ids) {
+      if (live && !seenRef.current.has(id) && seenRef.current.size > 0) {
+        next.add(id);
+      }
+    }
+    seenRef.current = new Set(ids);
+    if (next.size === 0) {
+      return;
+    }
+    setRings(next);
+    const timer = window.setTimeout(() => setRings(new Set()), 1800);
+    return () => window.clearTimeout(timer);
+  }, [markIds, live]);
 
   function onRowKey(e: KeyboardEvent<HTMLButtonElement>, i: number) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -402,6 +465,25 @@ export function EventTable({
       e.preventDefault();
       onCloseDetail();
     }
+  }
+
+  function eventToward(from: number, dir: 1 | -1): void {
+    for (let i = from + dir; i >= 0 && i < layout.rows.length; i += dir) {
+      const row = layout.rows[i];
+      if (row?.type === "event") {
+        onMove(row.index);
+        return;
+      }
+    }
+  }
+
+  function selectMark(id: string) {
+    setFoldKey(null);
+    setInspectId((prev) => {
+      const next = prev === id ? null : id;
+      onFocusMark?.(next);
+      return next;
+    });
   }
 
   if (loading && events.length === 0) {
@@ -421,59 +503,174 @@ export function EventTable({
     />
   );
 
+  function renderMarkRow(row: EventTableMarkRow, at: number) {
+    const onArrow = (dir: 1 | -1) => eventToward(at, dir);
+    if (row.type === "seam") {
+      return (
+        <div key={`seam:${row.mark.id}`} className="relative">
+          <EventSeam
+            mark={row.mark}
+            selected={focusMarkId === row.mark.id || inspectId === row.mark.id}
+            ring={rings.has(row.mark.id)}
+            stampText={formatEventClock(row.mark.ts, { format, fromMs, spanMs })}
+            onSelect={() => selectMark(row.mark.id)}
+            onArrow={onArrow}
+          />
+          {inspectMark && inspectId === row.mark.id ? (
+            <EventMarkInspect
+              mark={inspectMark}
+              nowMs={Date.now()}
+              onHide={() => {
+                marks?.onMute(row.mark.id);
+                setInspectId(null);
+                onFocusMark?.(null);
+              }}
+            />
+          ) : null}
+        </div>
+      );
+    }
+    if (row.type === "end") {
+      return (
+        <div key={`end:${row.mark.id}`} className="relative">
+          <EventIncidentEnd
+            mark={row.mark}
+            selected={focusMarkId === row.mark.id || inspectId === row.mark.id}
+            stampText={formatEventClock(row.mark.end_ts ?? row.mark.ts, {
+              format,
+              fromMs,
+              spanMs,
+            })}
+            onSelect={() => selectMark(row.mark.id)}
+            onArrow={onArrow}
+          />
+          {inspectMark && inspectId === row.mark.id ? (
+            <EventMarkInspect
+              mark={inspectMark}
+              nowMs={Date.now()}
+              onHide={() => {
+                marks?.onMute(row.mark.id);
+                setInspectId(null);
+                onFocusMark?.(null);
+              }}
+            />
+          ) : null}
+        </div>
+      );
+    }
+    if (row.type === "fold") {
+      const key = row.members.map((item) => item.id).join(",");
+      const selected =
+        foldKey === key ||
+        row.members.some((item) => item.id === focusMarkId);
+      return (
+        <div key={`fold:${key}`} className="relative">
+          <EventFold
+            members={row.members}
+            selected={selected}
+            open={foldKey === key}
+            rowHover={foldHover}
+            onToggle={() =>
+              setFoldKey((prev) => (prev === key ? null : key))
+            }
+            onInspect={(mark) => selectMark(mark.id)}
+            onMute={(id) => marks?.onMute(id)}
+            onHoverRow={setFoldHover}
+            onArrow={onArrow}
+          />
+          {inspectMark && row.members.some((item) => item.id === inspectId) ? (
+            <EventMarkInspect
+              mark={inspectMark}
+              nowMs={Date.now()}
+              onHide={() => {
+                marks?.onMute(inspectMark.id);
+                setInspectId(null);
+                onFocusMark?.(null);
+              }}
+            />
+          ) : null}
+        </div>
+      );
+    }
+    const event = events[row.index]!;
+    const i = row.index;
+    const selected = selectedIndex === i;
+    return (
+      <button
+        key={rowKeys[i] ?? `${event.ts}:${i}`}
+        ref={selected ? selectedRef : undefined}
+        type="button"
+        tabIndex={selected ? 0 : -1}
+        className={`relative ${gridClass} h-[26px] w-full items-center border-b border-white/[0.06] px-2 text-left font-mono text-[12px] ${
+          selected ? "bg-accent" : "hover:bg-accent/50"
+        }`}
+        style={{
+          ...gridStyle,
+          ...(row.wash
+            ? {
+                backgroundImage:
+                  "linear-gradient(90deg, rgba(239,68,68,0.055), rgba(239,68,68,0.015))",
+              }
+            : {}),
+        }}
+        onClick={() => {
+          setInspectId(null);
+          setFoldKey(null);
+          onFocusMark?.(null);
+          onSelect(i);
+        }}
+        onKeyDown={(e) => onRowKey(e, i)}
+      >
+        <span
+          className={`absolute inset-y-0 left-0 w-0.5 ${levelRail[event.level]}`}
+        />
+        <span className="truncate text-muted-foreground" title={event.ts}>
+          {formatEventClock(event.ts, { format, fromMs, spanMs })}
+        </span>
+        <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
+        <span className="truncate">{event.service}</span>
+        <span className="truncate text-muted-foreground">
+          {event.host ?? "—"}
+        </span>
+        {promoted.map((key) => {
+          const value = promoCellValue(event, key);
+          const numeric = pick.metrics[key]?.num;
+          return (
+            <span
+              key={key}
+              className={`min-w-0 truncate ${numeric ? "text-right tabular-nums" : ""} ${
+                value === null ? "text-muted-foreground/40" : "text-muted-foreground"
+              }`}
+              title={value === null ? `${key} — not on this event` : `${key}=${value}`}
+            >
+              {value ?? "—"}
+            </span>
+          );
+        })}
+        <span
+          className={`truncate ${isLoud(event.level) ? "text-red-300" : ""}`}
+        >
+          {event.message}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {header}
-      <div ref={listRef} data-kbd="table" className="min-h-0 flex-1 overflow-auto border bg-card">
-        {events.map((event, i) => {
-          const selected = selectedIndex === i;
-          return (
-            <button
-              key={rowKeys[i] ?? `${event.ts}:${i}`}
-              ref={selected ? selectedRef : undefined}
-              type="button"
-              tabIndex={selected ? 0 : -1}
-              className={`relative ${gridClass} h-[26px] w-full items-center border-b border-white/[0.06] px-2 text-left font-mono text-[12px] ${
-                selected ? "bg-accent" : "hover:bg-accent/50"
-              }`}
-              style={gridStyle}
-              onClick={() => onSelect(i)}
-              onKeyDown={(e) => onRowKey(e, i)}
-            >
-              <span
-                className={`absolute inset-y-0 left-0 w-0.5 ${levelRail[event.level]}`}
-              />
-              <span className="truncate text-muted-foreground" title={event.ts}>
-                {formatEventClock(event.ts, { format, fromMs, spanMs })}
-              </span>
-              <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
-              <span className="truncate">{event.service}</span>
-              <span className="truncate text-muted-foreground">
-                {event.host ?? "—"}
-              </span>
-              {promoted.map((key) => {
-                const value = promoCellValue(event, key);
-                const numeric = pick.metrics[key]?.num;
-                return (
-                  <span
-                    key={key}
-                    className={`min-w-0 truncate ${numeric ? "text-right tabular-nums" : ""} ${
-                      value === null ? "text-muted-foreground/40" : "text-muted-foreground"
-                    }`}
-                    title={value === null ? `${key} — not on this event` : `${key}=${value}`}
-                  >
-                    {value ?? "—"}
-                  </span>
-                );
-              })}
-              <span
-                className={`truncate ${isLoud(event.level) ? "text-red-300" : ""}`}
-              >
-                {event.message}
-              </span>
-            </button>
-          );
-        })}
+      <div
+        ref={(node) => {
+          listRef.current = node;
+          markRootRef.current = node;
+        }}
+        data-kbd="table"
+        className="relative min-h-0 flex-1 overflow-auto border bg-card"
+      >
+        {layout.rows.map((row, at) => renderMarkRow(row, at))}
+        {layout.below.length > 0 && onLoadToward ? (
+          <EventMarksPeek below={layout.below} onLoadToward={onLoadToward} />
+        ) : null}
       </div>
       <Footer
         events={events}

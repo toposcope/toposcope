@@ -410,6 +410,7 @@ export function App() {
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
   const [marksMuted, setMarksMuted] = useState<string[]>([]);
+  const [focusMarkId, setFocusMarkId] = useState<string | null>(null);
   const [aggSeries, setAggSeries] = useState<SearchAggResult | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -898,6 +899,7 @@ export function App() {
     detailOpen,
     events,
   };
+  const loadTowardTsRef = useRef<number | null>(null);
 
   const runSearch = useCallback(
     async (
@@ -939,6 +941,9 @@ export function App() {
         setSearching(true);
         livePollsRef.current = 0;
         blockingSearchRef.current = true;
+      }
+      if (mode === "replace") {
+        loadTowardTsRef.current = null;
       }
       if (mode !== "poll" || !wouldIncremental) {
         extraAbortRef.current?.abort();
@@ -1444,6 +1449,23 @@ export function App() {
   );
 
   useEffect(() => {
+    const target = loadTowardTsRef.current;
+    if (target == null || searching) {
+      return;
+    }
+    const oldest = events.at(-1);
+    if (!oldest || !nextCursor) {
+      loadTowardTsRef.current = null;
+      return;
+    }
+    if (Date.parse(oldest.ts) > target) {
+      void runSearch("append");
+      return;
+    }
+    loadTowardTsRef.current = null;
+  }, [events, nextCursor, searching, runSearch]);
+
+  useEffect(() => {
     void fetch("/api/settings").then(async (res) => {
       if (!res.ok) {
         return;
@@ -1890,6 +1912,7 @@ export function App() {
   function cancelSearch() {
     abortRef.current?.abort();
     blockingSearchRef.current = false;
+    loadTowardTsRef.current = null;
     setSearching(false);
   }
 
@@ -2414,6 +2437,7 @@ export function App() {
     extraAbortRef.current?.abort();
     hbarAbortRef.current?.abort();
     blockingSearchRef.current = false;
+    loadTowardTsRef.current = null;
     lastPaintHuntRef.current = null;
     setSearching(false);
     setEvents([]);
@@ -2435,6 +2459,7 @@ export function App() {
     fullPollAcRef.current = null;
     extraInflightRef.current = false;
     blockingSearchRef.current = false;
+    loadTowardTsRef.current = null;
     setSearching(false);
   }
 
@@ -2495,6 +2520,7 @@ export function App() {
     setFollow(snap.follow);
     setMarksOff(snap.marksOff);
     setMarksMuted(snap.marksMuted);
+    setFocusMarkId(null);
     setInspectTabs(snap.inspectTabs);
     setActiveInspect(snap.activeInspect);
     setAroundN(snap.aroundN);
@@ -3086,6 +3112,28 @@ export function App() {
       point !== undefined && !point.refused && point.value >= rule.threshold
     );
   });
+
+  const marksOverlay = boardOn
+    ? null
+    : {
+        marks: windowMarks,
+        before: markBefore,
+        after: markAfter,
+        offKinds: marksOff,
+        mutedIds: marksMuted,
+        onToggleKind: (kind: ChangeMarkKind) =>
+          setMarksOff((prev) =>
+            prev.includes(kind)
+              ? prev.filter((item) => item !== kind)
+              : [...prev, kind],
+          ),
+        onMute: (id: string) => {
+          setMarksMuted((prev) => (prev.includes(id) ? prev : [...prev, id]));
+          setFocusMarkId((prev) => (prev === id ? null : prev));
+        },
+        onUnmute: (id: string) =>
+          setMarksMuted((prev) => prev.filter((item) => item !== id)),
+      };
 
   const sidebar = (
     <OperatorSidebar
@@ -3680,31 +3728,9 @@ export function App() {
                 scanReason={
                   scanRefuse?.histogram ? scanRefuse.reason : null
                 }
-                marks={
-                  boardOn
-                    ? undefined
-                    : {
-                        marks: windowMarks,
-                        before: markBefore,
-                        after: markAfter,
-                        offKinds: marksOff,
-                        mutedIds: marksMuted,
-                        onToggleKind: (kind) =>
-                          setMarksOff((prev) =>
-                            prev.includes(kind)
-                              ? prev.filter((item) => item !== kind)
-                              : [...prev, kind],
-                          ),
-                        onMute: (id) =>
-                          setMarksMuted((prev) =>
-                            prev.includes(id) ? prev : [...prev, id],
-                          ),
-                        onUnmute: (id) =>
-                          setMarksMuted((prev) =>
-                            prev.filter((item) => item !== id),
-                          ),
-                      }
-                }
+                marks={marksOverlay}
+                focusMarkId={focusMarkId}
+                onFocusMark={setFocusMarkId}
                 anchorTs={
                   activeInspect?.kind === "trace" ||
                   activeInspect?.kind === "profile"
@@ -3836,6 +3862,14 @@ export function App() {
                       setPinnedEvent(null);
                     }}
                     onLoadMore={() => void runSearch("append")}
+                    marks={marksOverlay}
+                    live={live}
+                    focusMarkId={focusMarkId}
+                    onFocusMark={setFocusMarkId}
+                    onLoadToward={(ts) => {
+                      loadTowardTsRef.current = Date.parse(ts);
+                      void runSearch("append");
+                    }}
                   />
                 )}
               </div>

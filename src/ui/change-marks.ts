@@ -151,4 +151,144 @@ export function markSource(mark: ChangeMark): string | null {
   return raw && raw.length > 0 ? raw : null;
 }
 
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+
+export function formatMarkDuration(ms: number): string {
+  const n = Math.max(0, Math.round(ms));
+  if (n < 1000) {
+    return `${Math.max(1, n)}ms`;
+  }
+  if (n < MINUTE_MS) {
+    return `${Math.round(n / 1000)}s`;
+  }
+  if (n < HOUR_MS) {
+    return `${Math.round(n / MINUTE_MS)}m`;
+  }
+  const hours = Math.floor(n / HOUR_MS);
+  const minutes = Math.round((n - hours * HOUR_MS) / MINUTE_MS);
+  if (minutes === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
+export function incidentEndLabel(mark: ChangeMark): string {
+  const end = mark.end_ts ? Date.parse(mark.end_ts) : NaN;
+  const start = Date.parse(mark.ts);
+  const span =
+    Number.isFinite(end) && Number.isFinite(start) ? end - start : 0;
+  return `${mark.title} ends · ${formatMarkDuration(span)}`;
+}
+
+export function foldMarkLabel(members: ChangeMark[]): string {
+  const ordered = newestFirst(members);
+  const newest = ordered[0]?.ts.slice(11, 16) ?? "";
+  const oldest = ordered[ordered.length - 1]?.ts.slice(11, 16) ?? "";
+  return `${members.length} marks · ${oldest} – ${newest}`;
+}
+
+export type EventTableMarkRow =
+  | { type: "event"; index: number; wash: boolean }
+  | { type: "seam"; mark: ChangeMark }
+  | { type: "end"; mark: ChangeMark }
+  | { type: "fold"; members: ChangeMark[] };
+
+export type EventTableMarkLayout = {
+  rows: EventTableMarkRow[];
+  below: ChangeMark[];
+};
+
+function gapBeforeEvent(
+  events: readonly { ts: string }[],
+  tsMs: number,
+): number {
+  for (let i = 0; i < events.length; i++) {
+    if (Date.parse(events[i]!.ts) <= tsMs) {
+      return i;
+    }
+  }
+  return events.length;
+}
+
+export function eventInIncidentWash(
+  ts: string,
+  marks: readonly ChangeMark[],
+): boolean {
+  const t = Date.parse(ts);
+  if (Number.isNaN(t)) {
+    return false;
+  }
+  return marks.some((mark) => {
+    if (mark.kind !== "incident" || !mark.end_ts) {
+      return false;
+    }
+    const start = Date.parse(mark.ts);
+    const end = Date.parse(mark.end_ts);
+    return t >= start && t <= end;
+  });
+}
+
+export function eventTableMarkLayout(
+  events: readonly { ts: string }[],
+  marks: readonly ChangeMark[],
+): EventTableMarkLayout {
+  if (events.length === 0) {
+    return { rows: [], below: [] };
+  }
+  const gaps = new Map<number, ChangeMark[]>();
+  const ends = new Map<number, ChangeMark[]>();
+  const below: ChangeMark[] = [];
+  const last = events.length;
+  for (const mark of marks) {
+    const startMs = Date.parse(mark.ts);
+    if (Number.isNaN(startMs)) {
+      continue;
+    }
+    const startGap = gapBeforeEvent(events, startMs);
+    if (startGap === last) {
+      below.push(mark);
+    } else {
+      const bucket = gaps.get(startGap) ?? [];
+      bucket.push(mark);
+      gaps.set(startGap, bucket);
+    }
+    if (mark.kind !== "incident" || !mark.end_ts) {
+      continue;
+    }
+    const endMs = Date.parse(mark.end_ts);
+    if (Number.isNaN(endMs)) {
+      continue;
+    }
+    const endGap = gapBeforeEvent(events, endMs);
+    if (endGap === last) {
+      continue;
+    }
+    const bucket = ends.get(endGap) ?? [];
+    bucket.push(mark);
+    ends.set(endGap, bucket);
+  }
+  const rows: EventTableMarkRow[] = [];
+  for (let i = 0; i < events.length; i++) {
+    const gapMarks = newestFirst(gaps.get(i) ?? []);
+    const gapEnds = newestFirst(ends.get(i) ?? []);
+    for (const mark of gapEnds) {
+      rows.push({ type: "end", mark });
+    }
+    if (gapMarks.length >= 3) {
+      rows.push({ type: "fold", members: gapMarks });
+    } else {
+      for (const mark of gapMarks) {
+        rows.push({ type: "seam", mark });
+      }
+    }
+    rows.push({
+      type: "event",
+      index: i,
+      wash: eventInIncidentWash(events[i]!.ts, marks),
+    });
+  }
+  return { rows, below: newestFirst(below) };
+}
+
 export { formatChangeMarkLabel };
