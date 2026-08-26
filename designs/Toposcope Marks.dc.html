@@ -29,7 +29,7 @@
     <div style="display:flex; align-items:baseline; gap:12px;">
       <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
       <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Change marks on the hunt</h1>
-      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Search · pinned histogram · 0.4.2 drafts, cut not locked</span>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Search · pinned histogram · results list · after 0.4.2</span>
     </div>
     <p style="margin:10px 0 0; max-width:940px; font-size:13px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">A mark is a deploy, flag flip, incident or human note stored beside the logs. This sheet is only how a mark appears and behaves on the hunt's one clock — drawn states, not one happy path. Not drawn, on purpose: deltas or compare, creating marks in the UI, search-bar tokens (<span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">q</span> stays logs).</p>
     <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding:12px 14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
@@ -354,7 +354,216 @@
     </div>
   </div>
 
-  <p style="margin:44px 0 0; max-width:1120px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067 / 60%);">If a control is not in this sheet, it does not exist. Store change locked by this drawing: optional end_ts on a mark — bands are durations, never decoration.</p>
+  <div style="margin-top:58px; max-width:1120px; padding-top:28px; border-top:1px solid oklch(1 0 0 / 12%);">
+    <div style="display:flex; align-items:baseline; gap:12px;">
+      <h2 style="margin:0; font-size:17px; font-weight:650; letter-spacing:-0.015em;">Marks in the list</h2>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">results table · frames 2a–2h</span>
+    </div>
+    <p style="margin:10px 0 0; max-width:940px; font-size:13px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">The lane answers "when, against the volume"; the list answers "which rows came right after". So a mark also lands between the rows it separates — at its true timestamp, in the table's own grammar. The store rule said it first: marks are stored beside the logs, never as fake log rows.</p>
+    <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding:12px 14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ system2 }}" as="s2" hint-placeholder-count="3">
+        <div style="display:flex; gap:9px; font-size:12.5px; line-height:1.5; color:oklch(0.705 0.015 286.067);">
+          <span style="flex:0 0 auto; width:14px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84 / 75%);">{{ s2.n }}</span>
+          <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ s2.head }}</span> {{ s2.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-for list="{{ frames2 }}" as="f2" hint-placeholder-count="2">
+    <div id="{{ f2.id }}" style="margin-top:40px;">
+      <div style="display:flex; gap:12px; align-items:baseline; max-width:1120px;">
+        <a href="{{ f2.href }}" style="{{ badge }}">{{ f2.id }}</a>
+        <div style="min-width:0;">
+          <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">{{ f2.title }}</div>
+          <p style="{{ capBody }}">{{ f2.body }}</p>
+          <p style="{{ f2.fineStyle }}">{{ f2.fine }}</p>
+        </div>
+      </div>
+      <div style="position:relative; width:1120px; margin-top:12px; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:oklch(0.141 0.005 285.823); box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+        <div style="position:relative; display:flex; align-items:center; justify-content:center; gap:9px; padding:9px 12px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:15px; font-weight:500; letter-spacing:-0.01em; color:oklch(0.985 0 0);">{{ f2.stripCount }}</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:14px; font-weight:500; color:oklch(0.705 0.015 286.067); font-variant-numeric:tabular-nums;">{{ f2.stripHead }}</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067 / 80%);">{{ f2.stripMeta }}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid oklch(1 0 0 / 8%);">
+          <span style="display:flex; align-items:center; gap:5px; height:26px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:12px; color:oklch(0.985 0 0); white-space:nowrap;">+ Add</span>
+          <span style="display:flex; align-items:center; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; white-space:nowrap;"><span style="display:flex; align-items:center; height:100%; padding:0 8px; border-radius:3px; background:oklch(0.274 0.006 286.033); font-size:12px; color:oklch(0.985 0 0); white-space:nowrap;">Logs on</span><span style="display:flex; align-items:center; height:100%; padding:0 8px; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">Logs off</span></span>
+          <span style="{{ f2.chip }}">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" style="flex:0 0 auto;"><path d="M2.5 2.2 H8 L10.3 4.6 L8 7 H2.5 Z"></path><path d="M5.2 7 V10.4"></path></svg>
+            {{ f2.chipLabel }}
+            <span style="{{ f2.chipDot }}"></span>
+          </span>
+        </div>
+        <div style="padding:10px 12px 12px;">
+          <div style="border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <div style="display:grid; grid-template-columns:170px 54px 72px 66px 1fr; gap:8px; align-items:center; height:26px; padding:0 8px; border-bottom:1px solid oklch(1 0 0 / 10%); background:oklch(0.21 0.006 285.885); font-size:11px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">
+              <span>Time</span><span>Level</span><span>Service</span><span>Host</span><span>Message</span>
+            </div>
+            <sc-for list="{{ f2.items }}" as="r" hint-placeholder-count="8">
+              <sc-if value="{{ r.sep }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ r.wrap }}">
+                  <span style="{{ r.rule }}"></span>
+                  <span style="{{ r.plate }}">
+                    <svg width="11" height="11" viewBox="0 0 12 12" style="{{ r.svgStyle }}"><path d="{{ r.d }}" fill="{{ r.f }}" stroke="{{ r.s }}" stroke-width="{{ r.w }}" stroke-linejoin="round"></path></svg>
+                    <span style="{{ r.dot1 }}"></span><span style="{{ r.dot2 }}"></span><span style="{{ r.dot3 }}"></span>
+                    <span style="{{ r.labelStyle }}">{{ r.label }}</span>
+                    <span style="{{ r.tStyle }}">{{ r.t }}</span>
+                  </span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ r.isLog }}" hint-placeholder-val="{{ true }}">
+                <div style="{{ r.style }}">
+                  <span style="{{ r.rail }}"></span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">{{ r.ts }}</span>
+                  <span style="{{ r.badge }}">{{ r.level }}</span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.985 0 0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.service }}</span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.host }}</span>
+                  <span style="{{ r.msgStyle }}">{{ r.message }}</span>
+                </div>
+              </sc-if>
+            </sc-for>
+            <sc-if value="{{ f2.peek }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; justify-content:center; gap:6px; width:100%; height:24px; border-bottom:1px solid oklch(1 0 0 / 6%); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067); cursor:pointer;">
+                <svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ f2.peek.d }}" fill="{{ f2.peek.f }}" stroke="{{ f2.peek.s }}" stroke-width="{{ f2.peek.w }}" stroke-linejoin="round"></path></svg>
+                {{ f2.peek.text }}
+                <span style="color:oklch(0.705 0.015 286.067 / 70%);">▾</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ f2.foot }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:8px; height:34px; padding:0 8px; background:oklch(0.21 0.006 285.885);">
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">{{ f2.foot }}</span>
+                <span style="{{ f2.footBtn }}">Load more</span>
+              </div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ f2.insp }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ f2.insp.wrap }}">
+              <div style="display:flex; align-items:center; gap:7px;">
+                <svg width="12" height="12" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ f2.insp.d }}" fill="{{ f2.insp.f }}" stroke="{{ f2.insp.s }}" stroke-width="{{ f2.insp.w }}" stroke-linejoin="round"></path></svg>
+                <span style="font-size:12.5px; font-weight:600; color:oklch(0.985 0 0); white-space:nowrap;">{{ f2.insp.title }}</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px; margin-top:8px;">
+                <sc-for list="{{ f2.insp.rows }}" as="ir" hint-placeholder-count="4">
+                  <div style="display:flex; gap:8px;">
+                    <span style="flex:0 0 52px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 75%);">{{ ir.k }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); white-space:nowrap;">{{ ir.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:9px; padding-top:8px; border-top:1px solid oklch(1 0 0 / 10%);">
+                <span style="display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer; white-space:nowrap;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.2 0 2.3.2 3.3.5M22 12s-3.5 6-10 6c-1.2 0-2.3-.2-3.3-.5"></path><path d="M3 3l18 18"></path></svg>
+                  Hide for this hunt
+                </span>
+              </div>
+              <p style="margin:7px 0 0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%); max-width:240px;">{{ f2.insp.foot }}</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ f2.pin }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ f2.pin.wrap }}">
+              <div style="display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+                <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0); white-space:nowrap;">{{ f2.pin.head }}</span>
+                <span style="margin-left:auto; display:flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:3.4px; color:oklch(0.705 0.015 286.067); font-size:12px; cursor:pointer;">×</span>
+              </div>
+              <div style="display:flex; flex-direction:column; padding:4px;">
+                <sc-for list="{{ f2.pin.rows }}" as="pr" hint-placeholder-count="3">
+                  <div style="{{ pr.rowStyle }}">
+                    <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ pr.d }}" fill="{{ pr.f }}" stroke="{{ pr.s }}" stroke-width="{{ pr.w }}" stroke-linejoin="round"></path></svg>
+                    <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 85%); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ pr.label }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ pr.t }}</span>
+                    <span style="{{ pr.hideStyle }}">hide</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:6px 10px 7px; border-top:1px solid oklch(1 0 0 / 10%); font-size:10.5px; line-height:1.45; color:oklch(0.705 0.015 286.067 / 80%);">{{ f2.pin.foot }}</div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-for>
+
+  <div id="2g" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#2g" style="{{ badge }}">2g</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The chip sits with Logs on/off</div>
+        <p style="{{ capBody }}">One control now governs two surfaces, so it leaves the histogram's legend row and sits on the canvas bar beside Logs on/off. The window strip stays matching volume and clock. The legend row goes back to being about series.</p>
+      </div>
+    </div>
+    <div style="width:1120px; margin-top:12px; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:oklch(0.141 0.005 285.823); box-shadow:0 20px 50px oklch(0 0 0 / 35%); overflow:hidden;">
+      <div style="position:relative; display:flex; align-items:center; justify-content:center; gap:9px; padding:9px 12px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:15px; font-weight:500; letter-spacing:-0.01em; color:oklch(0.985 0 0);">311K</span>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:14px; font-weight:500; color:oklch(0.705 0.015 286.067); font-variant-numeric:tabular-nums;">matching 14:00:00 → 15:00:00</span>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067 / 80%);">UTC · 1h · 1m bars</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:8px 12px;">
+        <span style="display:flex; align-items:center; gap:5px; height:26px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:12px; color:oklch(0.985 0 0); white-space:nowrap;">+ Add</span>
+        <span style="display:flex; align-items:center; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; white-space:nowrap;"><span style="display:flex; align-items:center; height:100%; padding:0 8px; border-radius:3px; background:oklch(0.274 0.006 286.033); font-size:12px; color:oklch(0.985 0 0); white-space:nowrap;">Logs on</span><span style="display:flex; align-items:center; height:100%; padding:0 8px; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">Logs off</span></span>
+        <span style="{{ chipHome }}">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" style="flex:0 0 auto;"><path d="M2.5 2.2 H8 L10.3 4.6 L8 7 H2.5 Z"></path><path d="M5.2 7 V10.4"></path></svg>
+          marks 8 of 11
+          <span style="width:5px; height:5px; border-radius:99px; background:#fbbf24;"></span>
+        </span>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">4/6 panels</span>
+      </div>
+      <div style="padding:0 12px 12px; opacity:.5;">
+        <div style="border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.175 0.005 285.85); padding:8px 9px 7px;">
+          <div style="height:44px; border-radius:3px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 8%) 0 9px, transparent 9px 11px);"></div>
+          <div style="position:relative; height:20px; margin-top:4px;">
+            <span style="position:absolute; left:34%; top:50%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:5px;"><svg width="11" height="11" viewBox="0 0 12 12"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg><span style="font-size:11px; color:oklch(0.985 0 0 / 82%);">deployed: worker v1.4.3</span></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; margin-top:6px; padding-top:6px; border-top:1px solid oklch(1 0 0 / 8%);">
+            <span style="display:flex; align-items:center; gap:5px; font-size:11px; color:oklch(0.705 0.015 286.067);"><span style="width:8px; height:8px; border-radius:2.4px; background:#ef4444;"></span>error <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.705 0.015 286.067 / 65%);">2.08K</span></span>
+            <span style="display:flex; align-items:center; gap:5px; font-size:11px; color:oklch(0.705 0.015 286.067);"><span style="width:8px; height:8px; border-radius:2.4px; background:#f59e0b;"></span>warn <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.705 0.015 286.067 / 65%);">9.43K</span></span>
+            <span style="display:flex; align-items:center; gap:5px; font-size:11px; color:oklch(0.705 0.015 286.067);"><span style="width:8px; height:8px; border-radius:2.4px; background:#0ea5e9;"></span>info <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.705 0.015 286.067 / 65%);">241K</span></span>
+            <span style="margin-left:auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9px; color:oklch(0.705 0.015 286.067 / 55%);">series only now — the chip is gone from here</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <sc-for list="{{ homeCards }}" as="hc" hint-placeholder-count="3">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="{{ hc.mark }}">{{ hc.markText }}</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ hc.title }}</span>
+          </div>
+          <div style="position:relative; height:74px; margin-top:9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ hc.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ hc.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="2h" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#2h" style="{{ badge }}">2h</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Tried and put down</div>
+        <p style="{{ capBody }}">Three ways a mark could have entered the list, drawn and rejected.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <sc-for list="{{ rej2Cards }}" as="r2" hint-placeholder-count="3">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;">✕</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ r2.title }}</span>
+          </div>
+          <div style="position:relative; height:74px; margin-top:9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ r2.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ r2.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <p style="margin:44px 0 0; max-width:1120px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067 / 60%);">If a control is not in this sheet, it does not exist. Store change locked by this drawing: optional end_ts on a mark — bands are durations, never decoration. The list adds no store change: seams are a read of the same marks.</p>
 
 </section>
 </x-dc>
@@ -510,7 +719,7 @@ class Component extends DCLogic {
       { n: '2', head: 'A rule, not a flag.', body: `Each visible mark drops a 1px dashed rule through the bars — neutral white at rest, kind colour on hover, solid when selected. Colour is spent on attention, never on decoration.` },
       { n: '3', head: 'Kind = glyph + colour, label = grammar.', body: 'deploy ▲ plate · flag ⚑ teal · incident ◆ alarm red · note ○ grey. The string is a verbed fragment: deployed: billing v0.9 — kind, where, what, in one line.' },
       { n: '4', head: 'Density folds, never piles.', body: 'Marks closer than a glyph fuse into a counted chip whose wash spans their real extent. Hover names the newest two; click opens the full list. Nearest off-window marks peek from the lane corners.' },
-      { n: '5', head: 'Visibility is per-hunt, deletion is an API verb.', body: 'A marks chip on the legend row opens the popover: kind toggles + per-mark mutes. The chip goes amber and counts what is hidden, so a filtered lane can never read as "no deploys".' }
+      { n: '5', head: 'Visibility is per-hunt, deletion is an API verb.', body: 'A marks chip opens the popover: kind toggles + per-mark mutes. The chip goes amber and counts what is hidden, so a filtered lane can never read as "no deploys". 0.4.2 drew it on the legend (1j); once the list draws seams it sits with Logs on/off (2g).' }
     ];
 
     const specKinds = [
@@ -773,7 +982,7 @@ class Component extends DCLogic {
     // 1j — visibility popover, kinds off
     frames.push(mk({
       id: '1j', href: '#1j', title: 'Choosing what is on',
-      body: 'The marks chip rides the legend row — marks get their own control, not a second series legend. Kind toggles and per-mark mutes are per-hunt visibility; while anything is hidden the chip goes amber and counts it, so a filtered lane can never quietly read as "no deploys".',
+      body: '0.4.2 put the marks chip on the legend row — marks get their own control, not a second series legend. Kind toggles and per-mark mutes are per-hunt visibility; while anything is hidden the chip goes amber and counts it, so a filtered lane can never quietly read as "no deploys". 2g moves the same chip onto the canvas bar beside Logs on/off.',
       fineStyle: capBody, fine: 'Here flags and notes are off and one deploy is muted: the train chip reads 4, the chip reads 8 of 11. Selecting is never affected — hidden marks simply do not draw.',
       rangeLabel: 'Last 24h', chips: this.chipsFor('15m'),
       axis: axis24, yTicks: ['84K', '56K', '28K', '0'],
@@ -848,7 +1057,246 @@ class Component extends DCLogic {
       }
     ];
 
-    return { system, specKinds, specMinis, frames, tryCards, rejCards, badge, capBody, segOn, segOff, icoOn, icoOff, fakeSelect };
+    // ── chapter 2: marks in the list ─────────────────────────────────────────
+    const system2 = [
+      { n: '6', head: 'A seam, not a row.', body: 'A mark lands between the rows it separates — dashed rule, glyph, verbed string, stamp on a plate — at its true timestamp. It is chrome: never counted, matched, exported, and arrow keys skip it. Two between the same rows stack; three or more fold into the lane\'s counted chip.' },
+      { n: '7', head: 'Same store, same eye.', body: 'Kind toggles and per-hunt mutes govern lane and list together — hide a deploy once, it is gone from both. Clicking a seam pins the one inspector the lane uses, and the selection lights the same mark\'s rule in the plot.' },
+      { n: '8', head: 'One chip, one home.', body: 'The marks control leaves the histogram\'s legend row for the canvas bar, beside Logs on/off: it counts marks against the window, not against one panel. Amber still means "some are hidden". The window strip stays matching volume and clock.' }
+    ];
+    const gridT = '170px 54px 72px 66px 1fr';
+    const logRow = (ts, level, svc, host, msg, o) => {
+      o = o || {};
+      const lc = { error: ['oklch(0.704 0.191 22.216)', 'oklch(0.704 0.191 22.216 / 20%)'], warn: ['#fbbf24', 'rgba(245,158,11,0.2)'], info: ['#38bdf8', 'rgba(14,165,233,0.2)'], debug: [MUT, 'oklch(0.274 0.006 286.033)'] }[level];
+      return {
+        isLog: true, ts: '2026-08-14 ' + ts, level, service: svc, host, message: msg,
+        style: `position:relative; display:grid; grid-template-columns:${gridT}; gap:8px; align-items:center; height:26px; padding:0 8px; border-bottom:1px solid oklch(1 0 0 / 6%);${o.tint ? ' background-image:linear-gradient(90deg, rgba(239,68,68,0.055), rgba(239,68,68,0.015));' : ''}`,
+        rail: `position:absolute; left:0; top:0; bottom:0; width:2px; background:${level === 'error' ? 'oklch(0.704 0.191 22.216)' : level === 'warn' ? '#fbbf24' : 'transparent'};`,
+        badge: `display:inline-flex; align-items:center; justify-content:center; width:fit-content; padding:0 6px; border:1px solid transparent; border-radius:4.4px; background:${lc[1]}; color:${lc[0]}; font-size:10px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase;`,
+        msgStyle: `font-family:${MO}; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:${level === 'error' ? '#fca5a5' : level === 'debug' ? MUT : WHT};`
+      };
+    };
+    const sepBase2 = 'position:relative; display:flex; align-items:center; height:22px; padding:0 8px; border-bottom:1px solid oklch(1 0 0 / 6%); cursor:pointer;';
+    const plate2 = (hot, ring) => `position:relative; display:inline-flex; align-items:center; gap:6px; height:18px; margin-left:14px; padding:0 6px; border-radius:3.4px; background:${hot ? 'oklch(0.274 0.006 286.033)' : 'oklch(0.175 0.005 285.85)'};${ring || ''}`;
+    const kcol = k => this.K[k].f === 'none' ? this.K[k].s : this.K[k].f;
+    const seam2 = (kind, label, t, o) => {
+      o = o || {};
+      const k = this.K[kind], col = kcol(kind);
+      return {
+        sep: true, wrap: sepBase2,
+        rule: `position:absolute; left:8px; right:8px; top:50%; height:1px; pointer-events:none; ${o.sel ? `background:${col}; opacity:.85;` : `background:repeating-linear-gradient(90deg, ${o.hov ? `color-mix(in oklab, ${col} 60%, transparent)` : `oklch(1 0 0 / ${A})`} 0 4px, transparent 4px 7px);`}`,
+        plate: plate2(o.hov || o.sel, o.sel ? ` box-shadow:0 0 0 1px color-mix(in oklab, ${col} 50%, transparent);` : o.ring ? ' box-shadow:0 0 0 1px rgba(34,197,94,0.55);' : ''),
+        svgStyle: 'flex:0 0 auto; display:block;', d: k.d, f: k.f, s: k.s, w: k.w,
+        dot1: 'display:none;', dot2: 'display:none;', dot3: 'display:none;',
+        label, labelStyle: 'font-size:11px; color:oklch(0.985 0 0 / 82%); white-space:nowrap;',
+        t, tStyle: `font-family:${MO}; font-size:10.5px; color:${MUT}; white-space:nowrap;`
+      };
+    };
+    const fold2 = (label, kinds, o) => {
+      o = o || {};
+      const mixed = kinds.length > 1, k = this.K[kinds[0]];
+      const dots = mixed ? kinds.slice(0, 3) : [];
+      return {
+        sep: true, wrap: sepBase2,
+        rule: `position:absolute; left:8px; right:8px; top:50%; height:1px; pointer-events:none; background:repeating-linear-gradient(90deg, oklch(1 0 0 / ${o.sel ? '30%' : A}) 0 4px, transparent 4px 7px);`,
+        plate: plate2(o.sel, o.sel ? ` box-shadow:0 0 0 1px color-mix(in oklab, ${kcol(kinds[0])} 50%, transparent);` : '') + ' border:1px solid oklch(1 0 0 / 18%);',
+        svgStyle: mixed ? 'display:none;' : 'flex:0 0 auto; display:block;', d: k.d, f: k.f, s: k.s, w: k.w,
+        dot1: dots[0] ? `width:5px; height:5px; border-radius:99px; background:${kcol(dots[0])};` : 'display:none;',
+        dot2: dots[1] ? `width:5px; height:5px; border-radius:99px; background:${kcol(dots[1])};` : 'display:none;',
+        dot3: dots[2] ? `width:5px; height:5px; border-radius:99px; background:${kcol(dots[2])};` : 'display:none;',
+        label, labelStyle: 'font-size:11px; color:oklch(0.985 0 0 / 82%); white-space:nowrap;',
+        t: '', tStyle: 'display:none;'
+      };
+    };
+    const end2 = (label, t) => ({
+      sep: true, wrap: sepBase2,
+      rule: 'position:absolute; left:8px; right:8px; top:50%; height:1px; pointer-events:none; background:repeating-linear-gradient(90deg, rgba(239,68,68,0.5) 0 4px, transparent 4px 7px);',
+      plate: plate2(false, ''),
+      svgStyle: 'flex:0 0 auto; display:block; opacity:.8;', d: this.K.incident.d, f: this.K.incident.f, s: this.K.incident.s, w: this.K.incident.w,
+      dot1: 'display:none;', dot2: 'display:none;', dot3: 'display:none;',
+      label, labelStyle: 'font-size:11px; color:rgba(252,165,165,0.85); white-space:nowrap;',
+      t, tStyle: `font-family:${MO}; font-size:10.5px; color:${MUT}; white-space:nowrap;`
+    });
+    const chipBar = amber => `display:flex; align-items:center; gap:5px; height:26px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-family:${this.MO}; font-size:10.5px; color:${amber ? '#fbbf24' : this.MUT}; cursor:pointer; white-space:nowrap;`;
+    const chipHome = chipBar(true);
+    const chipAt = (_label, amber) => chipBar(amber);
+    const strip1h = { stripCount: '311K', stripHead: 'matching 14:00:00 → 15:00:00', stripMeta: 'UTC · 1h · 1m bars' };
+    const mk2 = o => Object.assign({ fineStyle: 'display:none;', fine: '', chip: chipAt(), chipLabel: 'marks 2', chipDot: 'display:none;', peek: null, foot: '', footBtn: 'display:none;', insp: null, pin: null }, strip1h, o);
+    const rows1h = [
+      logRow('14:59:51.688', 'info', 'worker', 'worker-1', 'flushed 412 events'),
+      logRow('14:59:43.765', 'info', 'api', 'api-1', 'POST /v1/checkout 200 in 41ms'),
+      logRow('14:58:59.120', 'warn', 'api', 'api-2', 'retrying webhook delivery · attempt 2')
+    ];
+    const rows1hTail = [
+      logRow('14:58:12.402', 'info', 'billing', 'worker-1', 'invoice run: 88 drafted'),
+      logRow('14:57:48.331', 'error', 'api', 'api-1', 'connection reset by peer · upstream=payments'),
+      logRow('14:57:20.019', 'debug', 'web', 'web-1', 'hydrated 12 islands')
+    ];
+    const frames2 = [];
+    frames2.push(mk2({
+      id: '2a', href: '#2a', title: 'A seam between rows',
+      body: 'The rest state: dashed rule across the table at the mark\'s place in time, glyph and verbed string on a plate, stamp at the end. Neutral at rest like the lane\'s rules — kind colour arrives on hover, solid when selected.',
+      fineStyle: capBody, fine: 'A seam is chrome: the count label, exports, the query and arrow-key selection never see it. The lane still answers "when against the volume"; the seam answers "which rows came right after".',
+      items: rows1h.concat([seam2('deploy', 'deployed: api v2.3.2', '14:58:30')], rows1hTail),
+      foot: '140 of 311K events'
+    }));
+    frames2.push(mk2({
+      id: '2b', href: '#2b', title: 'Hover, then click',
+      body: 'Hover raises the plate and tints the rule in kind colour. Click pins the same inspector the lane opens — kind, exact stamp, service, source, id, and the one verb: hide for this hunt. Selecting here also lights this mark\'s rule in the plot: one mark, two drawings.',
+      items: [rows1h[0], seam2('deploy', 'deployed: api v2.3.2', '14:58:30', { sel: true })].concat([rows1h[1], rows1h[2]], rows1hTail, [
+        logRow('14:56:41.203', 'info', 'auth', 'api-2', 'token refresh ok · sub=svc-batch'),
+        logRow('14:56:02.114', 'info', 'api', 'api-1', 'GET /v1/orders 200 in 18ms')
+      ]),
+      insp: {
+        wrap: this.pop('position:absolute; left:44px; top:127px; z-index:9; width:254px; padding:9px 11px;'),
+        ...this.K.deploy, title: 'deployed: api v2.3.2',
+        rows: [
+          { k: 'time', v: '2026-08-14 14:58:30.414' },
+          { k: '', v: '1m ago · in window' },
+          { k: 'service', v: 'api' },
+          { k: 'source', v: 'ci · deploy-bot' },
+          { k: 'id', v: 'mk_a01' }
+        ],
+        foot: 'Hiding is per-hunt visibility. Deleting is DELETE /v1/marks/mk_a01 — the store is not edited from this panel.'
+      },
+      foot: '140 of 311K events'
+    }));
+    frames2.push(mk2({
+      id: '2c', href: '#2c', title: 'Two stack, three fold',
+      body: 'One or two marks between the same rows stack — each stays its own seam. Three or more fold into the lane\'s counted chip: dominant glyph or kind dots, count and span. Click opens the same pinned list; a row inspects, hide mutes for this hunt.',
+      stripCount: '4.1K', stripHead: 'matching 09:10:00 → 09:25:00', stripMeta: 'UTC · 15m · 15s bars',
+      chipLabel: 'marks 6',
+      items: [
+        logRow('09:19:31.204', 'info', 'checkout', 'worker-1', 'GET /v1/cart 200 in 12ms'),
+        seam2('deploy', 'deployed: web v5.0.1', '09:19:02'),
+        seam2('note', 'note: watch checkout p99', '09:18:55'),
+        logRow('09:18:47.551', 'warn', 'checkout', 'api-2', 'slow query · 1.4s · orders_by_user'),
+        logRow('09:16:58.902', 'error', 'checkout', 'api-1', 'POST /v1/checkout 502 in 84ms'),
+        fold2('3 marks · 09:13 – 09:15', ['deploy'], { sel: true }),
+        logRow('09:12:44.717', 'info', 'billing', 'worker-1', 'invoice run: 92 drafted'),
+        seam2('deploy', 'deployed: api v2.3.0', '09:12:11'),
+        logRow('09:11:59.030', 'info', 'checkout', 'api-2', 'GET /health 200'),
+        logRow('09:11:12.850', 'debug', 'web', 'web-1', 'hydrated 9 islands'),
+        logRow('09:10:44.203', 'info', 'checkout', 'api-1', 'GET /v1/cart 200 in 11ms')
+      ],
+      pin: {
+        wrap: this.pop('position:absolute; left:340px; top:216px; z-index:9; width:278px;'),
+        head: '3 marks · 09:13 – 09:15',
+        rows: [
+          this.mrow('deploy', 'deployed: billing v0.9', '09:15:42'),
+          this.mrow('deploy', 'deployed: worker v1.4.2', '09:14:19', { hov: true }),
+          this.mrow('deploy', 'deployed: api v2.3.1', '09:13:05')
+        ],
+        foot: 'A row inspects its mark · hide mutes it for this hunt only.'
+      }
+    }));
+    frames2.push(mk2({
+      id: '2d', href: '#2d', title: 'An incident, row-shaped',
+      body: 'The band the plot draws becomes the same thing at row scale: a start seam, a 5% wash on every row inside the span, and a red-dashed end rule that names the duration. No end stored, no wash — a point never pretends to be a duration here either.',
+      stripCount: '9.8K', stripHead: 'matching 03:00:00 → 05:00:00', stripMeta: 'UTC · 2h · 2m bars',
+      chipLabel: 'marks 1',
+      items: [
+        logRow('04:14:21.882', 'info', 'checkout', 'api-1', 'POST /v1/checkout 200 in 38ms'),
+        end2('INC-238 checkout 5xx ends · 1h 2m', '04:12:00'),
+        logRow('04:08:12.400', 'error', 'checkout', 'api-1', 'POST /v1/checkout 502 in 91ms', { tint: true }),
+        logRow('03:57:03.118', 'error', 'checkout', 'api-2', 'POST /v1/checkout 503 in 102ms', { tint: true }),
+        logRow('03:22:41.006', 'warn', 'checkout', 'api-1', 'retrying payment capture · attempt 3', { tint: true }),
+        seam2('incident', 'incident: INC-238 checkout 5xx', '03:10:00'),
+        logRow('03:04:55.610', 'info', 'checkout', 'api-2', 'GET /v1/cart 200 in 9ms')
+      ],
+      foot: '96 of 9.8K events'
+    }));
+    frames2.push(mk2({
+      id: '2e', href: '#2e', title: 'Older than the loaded page',
+      body: 'A seam is only drawn where its rows are. Marks in the window but below the loaded page peek from the table\'s bottom edge — count, nearest label, stamp — and the click loads toward them. Nothing is ever drawn at a wrong scroll position.',
+      fineStyle: capBody, fine: 'Marks before the window itself stay the lane\'s corner peeks (1h). The table edge only speaks for the loaded page.',
+      items: rows1h.concat([seam2('deploy', 'deployed: api v2.3.2', '14:58:30')], rows1hTail),
+      peek: { ...this.K.deploy, text: '1 mark below the loaded rows — nearest deployed: worker v1.4.3 · 14:11:04' },
+      foot: '140 of 311K events',
+      footBtn: `display:flex; align-items:center; height:24px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:12px; color:${WHT}; cursor:pointer; white-space:nowrap;`
+    }));
+    frames2.push(mk2({
+      id: '2f', href: '#2f', title: 'Live',
+      body: 'A mark that lands while Live is on takes its place between the rows as they arrive, with the same one-breath green ring the lane gives it. No toast, no inserted row — the seam is the announcement, and it is already in the right place when the breath fades.',
+      items: [
+        logRow('14:59:58.104', 'info', 'api', 'api-1', 'POST /v1/logs 202 in 6ms'),
+        rows1h[0], rows1h[1], rows1h[2],
+        seam2('deploy', 'deployed: api v2.3.2', '14:58:30', { ring: true }),
+        rows1hTail[0], rows1hTail[1]
+      ]
+    }));
+    const homeCards = [
+      {
+        mark: `display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;`, markText: '✕',
+        title: 'Was — the legend row',
+        shapes: [
+          { s: `position:absolute; left:10px; right:10px; top:10px; height:30px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 7%) 0 7px, transparent 7px 9px);`, t: '' },
+          { s: `position:absolute; left:12px; bottom:8px; display:flex; gap:8px; font-family:${MO}; font-size:8px; color:${MUT};`, t: '● error ● warn ● info' },
+          { s: `position:absolute; right:10px; bottom:5px; padding:2px 6px; border:1px solid oklch(1 0 0 / 18%); border-radius:3px; font-family:${MO}; font-size:8px; color:${MUT};`, t: '⚑ marks 11' }
+        ],
+        verdict: 'Right while the histogram was the only surface. Once the list draws marks too, the control for both hides inside one panel\'s legend.'
+      },
+      {
+        mark: `display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;`, markText: '✕',
+        title: 'Was — the window strip',
+        shapes: [
+          { s: `position:absolute; left:0; right:0; top:14px; height:1px; background:oklch(1 0 0 / 10%);`, t: '' },
+          { s: `position:absolute; left:0; right:0; top:47px; height:1px; background:oklch(1 0 0 / 10%);`, t: '' },
+          { s: `position:absolute; left:12px; top:30px; transform:translateY(-50%); font-family:${MO}; font-size:9px; color:${WHT}; white-space:nowrap;`, t: '311K matching 14:00 → 15:00' },
+          { s: `position:absolute; right:8px; top:30px; transform:translateY(-50%); padding:2px 6px; border:1px solid oklch(1 0 0 / 18%); border-radius:3px; font-family:${MO}; font-size:8px; color:#fbbf24;`, t: '⚑ marks 8 of 11 ·' },
+          { s: `position:absolute; left:10px; right:10px; bottom:6px; height:14px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 6%) 0 7px, transparent 7px 9px);`, t: '' }
+        ],
+        verdict: 'Count, window, Custom Reset, saved chip, query errors already live here. A marks chip on that line hides when the strip is busy.'
+      },
+      {
+        mark: `display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.629 0.15 154 / 18%); color:#4ade80; font-size:10px;`, markText: '✓',
+        title: 'Now — Logs on / off',
+        shapes: [
+          { s: `position:absolute; left:10px; top:8px; padding:2px 6px; border:1px solid oklch(1 0 0 / 18%); border-radius:3px; font-family:${MO}; font-size:8px; color:${MUT};`, t: '+ Add' },
+          { s: `position:absolute; left:52px; top:8px; padding:2px 6px; border:1px solid oklch(1 0 0 / 18%); border-radius:3px; font-family:${MO}; font-size:8px; color:${MUT};`, t: 'Logs on · off' },
+          { s: `position:absolute; left:148px; top:8px; padding:2px 6px; border:1px solid oklch(1 0 0 / 18%); border-radius:3px; font-family:${MO}; font-size:8px; color:#fbbf24;`, t: '⚑ marks 8 of 11' },
+          { s: `position:absolute; left:10px; right:10px; bottom:10px; height:26px; border:1px solid oklch(1 0 0 / 10%); border-radius:3px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 6%) 0 7px, transparent 7px 9px);`, t: '' }
+        ],
+        verdict: 'Same row as the table toggle: the chip still counts the window, and it stays when Logs is off. The strip stays clock and volume.'
+      }
+    ];
+    const rowGhost = `position:absolute; left:10px; right:10px; height:1px; background:oklch(1 0 0 / 12%);`;
+    const rej2Cards = [
+      {
+        title: 'Marks as rows',
+        shapes: [
+          { s: `position:absolute; left:10px; right:10px; top:12px; font-family:${MO}; font-size:8px; color:${MUT};`, t: '14:59:51  INFO  worker  flushed 412 events' },
+          { s: `position:absolute; left:10px; right:10px; top:32px; padding:2px 4px; border:1px solid oklch(0.906 0.014 84 / 40%); border-radius:2px; font-family:${MO}; font-size:8px; color:${WHT}; background:oklch(0.906 0.014 84 / 8%);`, t: '14:58:30  DEPLOY  api  deployed: api v2.3.2' },
+          { s: `position:absolute; left:10px; right:10px; top:54px; font-family:${MO}; font-size:8px; color:${MUT};`, t: '14:57:48  ERROR  api  connection reset by peer' }
+        ],
+        verdict: 'A row is counted, matched, exported, selected. A mark is none of these — "141 of 311K events" would be a lie, and level:error would filter a deploy.'
+      },
+      {
+        title: 'Gutter-only glyphs',
+        shapes: [
+          { s: `position:absolute; left:24px; top:0; bottom:0; width:1px; background:oklch(1 0 0 / 10%);`, t: '' },
+          { s: rowGhost + 'top:16px; left:30px;', t: '' },
+          { s: rowGhost + 'top:32px; left:30px;', t: '' },
+          { s: rowGhost + 'top:48px; left:30px;', t: '' },
+          { s: `position:absolute; left:7px; top:36px;`, t: '' },
+          { s: `position:absolute; left:8px; top:34px; font-size:9px; color:oklch(0.906 0.014 84);`, t: '▲' },
+          { s: `position:absolute; left:40px; top:56px; font-family:${MO}; font-size:8px; color:${MUT};`, t: 'what changed? hover to find out' }
+        ],
+        verdict: 'A 14px margin glyph with no rule is invisible at scan speed — the lane already rejected hover-only marks, and the list is scanned faster than the plot.'
+      },
+      {
+        title: 'Chips on the row edge',
+        shapes: [
+          { s: rowGhost + 'top:14px;', t: '' },
+          { s: rowGhost + 'top:34px;', t: '' },
+          { s: rowGhost + 'top:54px;', t: '' },
+          { s: `position:absolute; left:10px; top:38px; right:88px; font-family:${MO}; font-size:8px; color:${MUT}; white-space:nowrap; overflow:hidden;`, t: 'connection reset by peer · upstream=payments · retry in 2s…' },
+          { s: `position:absolute; right:8px; top:34px; padding:2px 5px; border:1px solid oklch(1 0 0 / 20%); border-radius:2px; background:oklch(0.21 0.006 285.885); font-family:${MO}; font-size:8px; color:${WHT}; z-index:2;`, t: '▲ api v2.3.2' }
+        ],
+        verdict: 'The right edge belongs to Message — the one column that flexes. Long labels and long messages fight for the same pixels, and the chip floats at a row\'s height, not the mark\'s time.'
+      }
+    ];
+
+    return { system, specKinds, specMinis, frames, tryCards, rejCards, badge, capBody, segOn, segOff, icoOn, icoOff, fakeSelect, system2, frames2, chipHome, homeCards, rej2Cards };
   }
 }
 </script>

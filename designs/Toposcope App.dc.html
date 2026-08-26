@@ -398,7 +398,7 @@
         </button>
       </form>
 
-      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px 12px; padding:9px 12px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+      <div style="position:relative; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px 12px; padding:9px 12px; border-bottom:1px solid oklch(1 0 0 / 10%);">
         <div style="display:flex; align-items:baseline; flex:0 0 auto; gap:9px;">
           <span style="{{ windowCountStyle }}">{{ windowCount }}</span>
           <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:16px; font-weight:500; letter-spacing:-0.01em; color:oklch(0.705 0.015 286.067); white-space:nowrap; font-variant-numeric:tabular-nums;">{{ windowHead }}</span>
@@ -479,6 +479,11 @@
               <button type="button" onClick="{{ l.go }}" title="{{ l.title }}" style="{{ l.style }}" style-hover="color:oklch(0.985 0 0);">{{ l.label }}</button>
             </sc-for>
           </div>
+          <button type="button" onClick="{{ marks.chipGo }}" title="{{ marks.chipTitle }}" style="{{ marks.chip }}" style-hover="border-color:oklch(0.552 0.016 285.938); color:oklch(0.985 0 0);">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" style="flex:0 0 auto;"><path d="M2.5 2.2 H8 L10.3 4.6 L8 7 H2.5 Z"></path><path d="M5.2 7 V10.4"></path></svg>
+            {{ marks.chipLabel }}
+            <span style="{{ marks.chipDot }}"></span>
+          </button>
           <span style="{{ canvasNoteStyle }}">{{ canvasNote }}</span>
         </div>
 
@@ -659,11 +664,6 @@
               <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.705 0.015 286.067 / 65%);">{{ l.total }}</span>
             </span>
           </sc-for>
-          <button type="button" onClick="{{ marks.chipGo }}" title="{{ marks.chipTitle }}" style="{{ marks.chip }}" style-hover="border-color:oklch(0.552 0.016 285.938); color:oklch(0.985 0 0);">
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" style="flex:0 0 auto;"><path d="M2.5 2.2 H8 L10.3 4.6 L8 7 H2.5 Z"></path><path d="M5.2 7 V10.4"></path></svg>
-            {{ marks.chipLabel }}
-            <span style="{{ marks.chipDot }}"></span>
-          </button>
           <div onClick="{{ marks.closeAll }}" style="{{ marks.shade }}"></div>
           <div style="{{ marks.hcard.wrap }}">
             <div style="display:flex; align-items:center; gap:7px;">
@@ -1153,18 +1153,38 @@
 
             <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ true }}">
               <sc-for list="{{ rows }}" as="r" hint-placeholder-count="18">
-                <div onClick="{{ r.select }}" style="{{ r.style }}" style-hover="background:oklch(0.274 0.006 286.033 / 50%);">
-                  <span style="{{ r.rail }}"></span>
-                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">{{ r.ts }}</span>
-                  <span style="{{ r.badge }}">{{ r.level }}</span>
-                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.service }}</span>
-                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.host }}</span>
-                  <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="0">
-                    <span style="{{ c.style }}" title="{{ c.title }}">{{ c.v }}</span>
-                  </sc-for>
-                  <span style="{{ r.msgStyle }}">{{ r.message }}</span>
-                </div>
+                <sc-if value="{{ r.sep }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ r.go }}" onMouseEnter="{{ r.over }}" onMouseLeave="{{ r.out }}" title="{{ r.title }}" style="{{ r.wrap }}">
+                    <span style="{{ r.rule }}"></span>
+                    <span style="{{ r.plate }}">
+                      <svg width="11" height="11" viewBox="0 0 12 12" style="{{ r.svgStyle }}"><path d="{{ r.d }}" fill="{{ r.f }}" stroke="{{ r.s }}" stroke-width="{{ r.w }}" stroke-linejoin="round"></path></svg>
+                      <span style="{{ r.dot1 }}"></span><span style="{{ r.dot2 }}"></span><span style="{{ r.dot3 }}"></span>
+                      <span style="{{ r.labelStyle }}">{{ r.label }}</span>
+                      <span style="{{ r.tStyle }}">{{ r.t }}</span>
+                    </span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ r.isLog }}" hint-placeholder-val="{{ true }}">
+                  <div onClick="{{ r.select }}" style="{{ r.style }}" style-hover="background:oklch(0.274 0.006 286.033 / 50%);">
+                    <span style="{{ r.rail }}"></span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">{{ r.ts }}</span>
+                    <span style="{{ r.badge }}">{{ r.level }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.service }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ r.host }}</span>
+                    <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="0">
+                      <span style="{{ c.style }}" title="{{ c.title }}">{{ c.v }}</span>
+                    </sc-for>
+                    <span style="{{ r.msgStyle }}">{{ r.message }}</span>
+                  </div>
+                </sc-if>
               </sc-for>
+              <sc-if value="{{ logMarksBelow }}" hint-placeholder-val="{{ false }}">
+                <button type="button" onClick="{{ logMarksBelow.go }}" title="{{ logMarksBelow.title }}" style="{{ logMarksBelow.style }}" style-hover="background:oklch(0.274 0.006 286.033 / 50%); color:oklch(0.985 0 0);">
+                  <svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ logMarksBelow.d }}" fill="{{ logMarksBelow.f }}" stroke="{{ logMarksBelow.s }}" stroke-width="{{ logMarksBelow.w }}" stroke-linejoin="round"></path></svg>
+                  {{ logMarksBelow.text }}
+                  <span style="{{ logMarksBelow.chev }}">▾</span>
+                </button>
+              </sc-if>
             </sc-if>
           </div>
 
@@ -3657,9 +3677,10 @@ class Component extends DCLogic {
     const rows = shown.slice(0, pageSize).map(e => {
       const on = st.selected === e.i;
       return {
+        isLog: true, atMs: e.atMs, on,
         ts: tsAt(e.atMs), level: e.level, service: e.service, host: e.host, message: e.message,
         select: () => this.setState({ selected: e.i }),
-        // an extra cell is not a filter shortcut: the row stays one target, so j/k and ↵ keep
+        // an extra cell is not a filter shortcut: the row stays one target, so arrows and ↵ keep
         // meaning the same thing wherever the pointer is. Adding path:/v1/checkout to q is
         // still the detail panel's and the facets' job. A missing key prints an em dash —
         // blank reads as a broken render, and hiding the column punishes every other row.
@@ -4482,7 +4503,10 @@ class Component extends DCLogic {
         more: `+${mem.length - 2} more — click opens the list`
       };
     }
-    const mkPinG = st.mkPin ? mkGroups.find(g => g.key === st.mkPin.key) : null;
+    // a pin can come from a lane cluster (key) or a folded seam in the list (ids)
+    const mkPinG = st.mkPin ? (st.mkPin.ids
+      ? { members: st.mkPin.ids.map(id => this.MARKS.find(m => m.id === id)).filter(Boolean) }
+      : mkGroups.find(g => g.key === st.mkPin.key)) : null;
     const mkPin = mkPinG ? {
       wrap: menuAt(st.mkPin.at, 278, 46 + mkPinG.members.length * 25 + 30) + ` ${mkPop2}`,
       head: `${mkPinG.members.length} marks · ${mkHms(mkPinG.members[0].at).slice(0, 5)} – ${mkHms(mkPinG.members[mkPinG.members.length - 1].at).slice(0, 5)}`,
@@ -4535,15 +4559,133 @@ class Component extends DCLogic {
     const marks = {
       rules: mkRules, tags: mkTags, lane: mkLane, peeks: mkPeeks,
       laneMove: e => e.stopPropagation(),
-      chip: `display:flex; align-items:center; gap:5px; flex:0 0 auto; margin-left:auto; margin-right:16px; height:20px; padding:0 7px; border:1px solid oklch(1 0 0 / 15%); border-radius:3.4px; background:transparent; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; white-space:nowrap; color:${mkHiddenN ? '#fbbf24' : 'oklch(0.705 0.015 286.067)'}; cursor:pointer;`,
+      // the chip sits with Logs on/off: it governs the lane AND the list, so it
+      // belongs to the hunt chrome, not to one panel's legend or the window strip
+      chip: `display:flex; align-items:center; gap:5px; height:26px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:transparent; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; white-space:nowrap; color:${mkHiddenN ? '#fbbf24' : 'oklch(0.705 0.015 286.067)'}; cursor:pointer;`,
       chipLabel: mkHiddenN ? `marks ${mkShown.length} of ${mkInWin.length}` : `marks ${mkInWin.length}`,
       chipDot: mkHiddenN ? 'width:5px; height:5px; border-radius:99px; background:#fbbf24;' : 'display:none;',
-      chipTitle: 'Marks in this window — kind toggles and per-hunt mutes. Nothing here deletes.',
+      chipTitle: 'Marks in this window — drawn on the plot and between log rows. Kind toggles and per-hunt mutes; nothing here deletes.',
       chipGo: e => { const at = rectOf(e); this.setState(p => p.mkVis ? { mkVis: null } : { mkVis: { at }, mkSel: null, mkPin: null, mkHover: null }); },
       shade: mkAnyPop ? 'position:fixed; inset:0; z-index:59;' : 'display:none;',
       closeAll: () => this.setState({ mkHover: null, mkPin: null, mkSel: null, mkVis: null }),
       hcard: mkHcard, pin: mkPin, insp: mkInsp, vis: mkVis
     };
+
+    // ── marks between log rows: a seam, never a row ─────────────────────────
+    // Same store, same visibility state as the lane. A seam is chrome at a true
+    // timestamp — never counted, matched, or exported; clicking one pins the same
+    // inspector the lane uses. 3+ marks between the same two rows fold, like the lane.
+    const sepBase = 'position:relative; display:flex; align-items:center; height:22px; padding:0 8px; cursor:pointer; border-bottom:1px solid oklch(1 0 0 / 6%);';
+    const sepPlate = (hot, ringCss) => `position:relative; display:inline-flex; align-items:center; gap:6px; height:18px; margin-left:14px; padding:0 6px; border-radius:3.4px; background:${hot ? 'oklch(0.274 0.006 286.033)' : 'oklch(0.141 0.005 285.823)'};${ringCss || ''} max-width:calc(100% - 28px);`;
+    const sepRule = (sel, hov, col) => `position:absolute; left:8px; right:8px; top:50%; height:1px; pointer-events:none; ${sel ? `background:${col}; opacity:.85;` : `background:repeating-linear-gradient(90deg, ${hov ? `color-mix(in oklab, ${col} 60%, transparent)` : 'oklch(1 0 0 / 22%)'} 0 4px, transparent 4px 7px);`}`;
+    const sepLabelCss = 'font-size:11px; color:oklch(0.985 0 0 / 82%); pointer-events:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+    const sepTimeCss = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067); pointer-events:none; white-space:nowrap;';
+    const sepHide = 'display:none;';
+    const mkSeam = m => {
+      const sel = st.mkSel && st.mkSel.id === m.id;
+      const hov = st.mkHoverT === m.id;
+      const ring = live && CLOCK - m.at < 150000;
+      const col = mkColor(m.kind), gl = MKG[m.kind];
+      return {
+        sep: true, wrap: sepBase,
+        rule: sepRule(sel, hov, col),
+        plate: sepPlate(hov || sel, sel ? ` box-shadow:0 0 0 1px color-mix(in oklab, ${col} 50%, transparent);` : ring ? ' box-shadow:0 0 0 1px rgba(34,197,94,0.55);' : ''),
+        svgStyle: 'flex:0 0 auto; display:block; pointer-events:none;', d: gl.d, f: gl.f, s: gl.s, w: gl.w,
+        dot1: sepHide, dot2: sepHide, dot3: sepHide,
+        label: mkLabel(m), labelStyle: sepLabelCss,
+        t: mkHms(m.at), tStyle: sepTimeCss,
+        title: `${mkLabel(m)} · ${mkTs(m.at)} · ${m.svc} · via ${m.src} — click inspects. A seam, not a row: never counted or exported.`,
+        go: e => { const at = rectOf(e); this.setState(p => p.mkSel && p.mkSel.id === m.id ? { mkSel: null } : { mkSel: { id: m.id, at }, mkPin: null, mkVis: null, mkHover: null }); },
+        over: () => this.setState({ mkHoverT: m.id }),
+        out: () => this.setState({ mkHoverT: null })
+      };
+    };
+    const mkSeamFold = mem => {
+      const asc = mem.slice().sort((a, b) => a.at - b.at);
+      const key = 'tbl:' + asc[0].id, ids = asc.map(m => m.id);
+      const kinds = [...new Set(asc.map(m => m.kind))];
+      const domKind = kinds.map(k => [k, asc.filter(m => m.kind === k).length]).sort((a, b) => b[1] - a[1])[0][0];
+      const mixed = kinds.length > 1, gl = MKG[domKind];
+      const sel = st.mkPin && st.mkPin.key === key;
+      const hov = st.mkHoverT === key;
+      const dots = mixed ? kinds.slice(0, 3) : [];
+      return {
+        sep: true, wrap: sepBase,
+        rule: `position:absolute; left:8px; right:8px; top:50%; height:1px; pointer-events:none; background:repeating-linear-gradient(90deg, oklch(1 0 0 / ${hov || sel ? 30 : 22}%) 0 4px, transparent 4px 7px);`,
+        plate: sepPlate(hov || sel, sel ? ` box-shadow:0 0 0 1px color-mix(in oklab, ${mkColor(domKind)} 50%, transparent);` : '') + ' border:1px solid oklch(1 0 0 / 18%);',
+        svgStyle: mixed ? sepHide : 'flex:0 0 auto; display:block; pointer-events:none;', d: gl.d, f: gl.f, s: gl.s, w: gl.w,
+        dot1: dots[0] ? `width:5px; height:5px; border-radius:99px; background:${mkColor(dots[0])}; pointer-events:none;` : sepHide,
+        dot2: dots[1] ? `width:5px; height:5px; border-radius:99px; background:${mkColor(dots[1])}; pointer-events:none;` : sepHide,
+        dot3: dots[2] ? `width:5px; height:5px; border-radius:99px; background:${mkColor(dots[2])}; pointer-events:none;` : sepHide,
+        label: `${asc.length} marks · ${mkHms(asc[0].at).slice(0, 5)} – ${mkHms(asc[asc.length - 1].at).slice(0, 5)}`, labelStyle: sepLabelCss,
+        t: '', tStyle: sepHide,
+        title: `${asc.length} marks between these rows — click opens the list.`,
+        go: e => { const at = rectOf(e); this.setState(p => p.mkPin && p.mkPin.key === key ? { mkPin: null } : { mkPin: { key, ids, at }, mkSel: null, mkVis: null, mkHover: null }); },
+        over: () => this.setState({ mkHoverT: key }),
+        out: () => this.setState({ mkHoverT: null })
+      };
+    };
+    const mkSeamEnd = m => {
+      const sel = st.mkSel && st.mkSel.id === m.id;
+      const hov = st.mkHoverT === 'end:' + m.id;
+      return {
+        sep: true, wrap: sepBase,
+        rule: `position:absolute; left:8px; right:8px; top:50%; height:1px; pointer-events:none; background:repeating-linear-gradient(90deg, rgba(239,68,68,${sel || hov ? 0.7 : 0.5}) 0 4px, transparent 4px 7px);`,
+        plate: sepPlate(hov || sel, sel ? ' box-shadow:0 0 0 1px rgba(239,68,68,0.5);' : ''),
+        svgStyle: 'flex:0 0 auto; display:block; pointer-events:none; opacity:.8;', d: MKG.incident.d, f: MKG.incident.f, s: MKG.incident.s, w: MKG.incident.w,
+        dot1: sepHide, dot2: sepHide, dot3: sepHide,
+        label: `${m.title} ends · ${durLabel(m.end - m.at)}`, labelStyle: 'font-size:11px; color:rgba(252,165,165,0.85); pointer-events:none; white-space:nowrap;',
+        t: mkHms(m.end), tStyle: sepTimeCss,
+        title: `${mkLabel(m)} — ended ${mkTs(m.end)} after ${durLabel(m.end - m.at)}. Click inspects.`,
+        go: e => { const at = rectOf(e); this.setState(p => p.mkSel && p.mkSel.id === m.id ? { mkSel: null } : { mkSel: { id: m.id, at }, mkPin: null, mkVis: null, mkHover: null }); },
+        over: () => this.setState({ mkHoverT: 'end:' + m.id }),
+        out: () => this.setState({ mkHoverT: null })
+      };
+    };
+    // interleave: a seam sits where its timestamp falls among the loaded (newest-first) rows;
+    // marks older than the loaded page peek from the table's bottom edge instead
+    const incSpans = this.MARKS.filter(m => m.kind === 'incident' && m.end && !mkOff.includes(m.kind) && !mkMuted.includes(m.id));
+    let tableRows = rows, logMarksBelow = null;
+    if (rows.length) {
+      const oldestLoaded = rows[rows.length - 1].atMs;
+      const fullyLoaded = pageSize >= available;
+      const floorMs = fullyLoaded ? windowFrom : oldestLoaded;
+      const seams = mkShown.filter(m => m.at <= NOW && m.at >= floorMs).map(m => ({ at: m.at, sk: 'mark', m }))
+        .concat(incSpans.filter(m => m.end >= floorMs && m.end <= NOW).map(m => ({ at: m.end, sk: 'end', m })))
+        .sort((a, b) => b.at - a.at);
+      const below = mkShown.filter(m => m.at >= windowFrom && m.at < floorMs);
+      if (seams.length) {
+        const gaps = new Map();
+        seams.forEach(sm => {
+          let idx = rows.findIndex(r => r.atMs < sm.at);
+          if (idx === -1) idx = rows.length;
+          (gaps.get(idx) || gaps.set(idx, []).get(idx)).push(sm);
+        });
+        const gapItems = list => {
+          const mksOnly = list.filter(x => x.sk === 'mark');
+          if (mksOnly.length >= 3) return [mkSeamFold(mksOnly.map(x => x.m))].concat(list.filter(x => x.sk === 'end').map(x => mkSeamEnd(x.m)));
+          return list.map(x => x.sk === 'end' ? mkSeamEnd(x.m) : mkSeam(x.m));
+        };
+        tableRows = [];
+        rows.forEach((r, i) => { if (gaps.has(i)) tableRows.push(...gapItems(gaps.get(i))); tableRows.push(r); });
+        if (gaps.has(rows.length)) tableRows.push(...gapItems(gaps.get(rows.length)));
+      }
+      // rows inside a visible incident band carry its wash — the band, row-shaped
+      rows.forEach(r => {
+        if (!r.on && incSpans.some(m => r.atMs >= m.at && r.atMs <= m.end)) r.style += ' background-image:linear-gradient(90deg, rgba(239,68,68,0.055), rgba(239,68,68,0.015));';
+      });
+      if (below.length) {
+        const near = below[below.length - 1];
+        logMarksBelow = {
+          d: MKG[near.kind].d, f: MKG[near.kind].f, s: MKG[near.kind].s, w: MKG[near.kind].w,
+          text: `${below.length} mark${below.length === 1 ? '' : 's'} below the loaded rows — nearest ${mkLabel(near)} · ${mkHms(near.at)}`,
+          title: 'In the window but older than the loaded page. Load more to reach them — a seam is only drawn where its rows are.',
+          chev: 'color:oklch(0.705 0.015 286.067 / 70%);',
+          style: 'display:flex; align-items:center; justify-content:center; gap:6px; width:100%; height:24px; border:none; border-bottom:1px solid oklch(1 0 0 / 6%); background:transparent; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067); cursor:pointer;',
+          go: () => this.setState(p => ({ page: (p.page || 1) + 1 }))
+        };
+      }
+    }
 
     const filterable = ['level', 'service', 'host'];   // the fields the counts model and sidebar can honour
     // a linked field can plot a metric constrained by the link — the log query is untouched
@@ -5800,7 +5942,7 @@ class Component extends DCLogic {
       board,
       boardEmpty: boardUnbound,
       windowCountStyle: 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:16px; font-weight:500; letter-spacing:-0.01em; color:oklch(0.985 0 0); white-space:nowrap; font-variant-numeric:tabular-nums;',
-      navItems, savedSearches, breakdowns, ranges, relUnits, gridCols, buckets: bucketVals, rows,
+      navItems, savedSearches, breakdowns, ranges, relUnits, gridCols, buckets: bucketVals, rows: tableRows, logMarksBelow,
       promoHead, promoAdd, promoPick,
       runSearch: e => { e.preventDefault(); this.setState({ rangeOpen: false }); },
       progressTrack: busy ? 'position:absolute; left:0; right:0; bottom:-1px; height:2px; overflow:hidden; background:oklch(1 0 0 / 6%);' : 'display:none;',
