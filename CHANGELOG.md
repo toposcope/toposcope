@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+The process listens before migrate. `/api/health` returns **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe; **200** only then. Hunt and ingest are refused during schema. [#15](https://github.com/toposcope/toposcope/issues/15)
+
 GitHub Actions and GitLab CI samples POST a deploy mark with a stable `id` (`deploy-<service>-<tag>`). Posting that `id` again is skipped, so a job re-run is one glyph. [#14](https://github.com/toposcope/toposcope/issues/14)
 
 A complete Top-N paints `-` for hunt events that never had the field. When N cuts the list, `other` is still hunt minus named. [#21](https://github.com/toposcope/toposcope/issues/21)

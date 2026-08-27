@@ -40,8 +40,11 @@ async function waitForHealth(): Promise<void> {
   for (let i = 0; i < 60; i++) {
     try {
       const res = await fetch(`${APP_URL}/api/health`);
-      const json = (await res.json()) as { ok?: boolean };
+      const json = (await res.json()) as { ok?: boolean; phase?: string };
       if (res.ok && json.ok) {
+        if (json.phase && json.phase !== "ready") {
+          throw new Error(`health 200 with phase ${json.phase}`);
+        }
         return;
       }
     } catch {
