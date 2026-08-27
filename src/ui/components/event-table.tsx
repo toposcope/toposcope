@@ -410,7 +410,7 @@ export function EventTable({
   const visibleMarks = marks
     ? visibleChangeMarks(marks.marks, marks.offKinds, marks.mutedIds)
     : [];
-  const layout = eventTableMarkLayout(events, visibleMarks);
+  const layout = eventTableMarkLayout(events, visibleMarks, focusMarkId);
   const inspectMark =
     inspectId != null
       ? (visibleMarks.find((mark) => mark.id === inspectId) ?? null)
@@ -431,6 +431,16 @@ export function EventTable({
       selectedRef.current?.focus();
     }
   }, [selectedIndex]);
+
+  useEffect(() => {
+    if (!focusMarkId || !listRef.current) {
+      return;
+    }
+    const node = listRef.current.querySelector(
+      `[data-mark-id~="${CSS.escape(focusMarkId)}"]`,
+    );
+    node?.scrollIntoView({ block: "center" });
+  }, [focusMarkId, events]);
 
   const markIds = visibleMarks.map((mark) => mark.id).join("\0");
   useEffect(() => {

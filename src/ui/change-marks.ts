@@ -196,6 +196,7 @@ export type EventTableMarkRow =
 
 export type EventTableMarkLayout = {
   rows: EventTableMarkRow[];
+  above: ChangeMark[];
   below: ChangeMark[];
 };
 
@@ -232,14 +233,17 @@ export function eventInIncidentWash(
 export function eventTableMarkLayout(
   events: readonly { ts: string }[],
   marks: readonly ChangeMark[],
+  pinId?: string | null,
 ): EventTableMarkLayout {
   if (events.length === 0) {
-    return { rows: [], below: [] };
+    return { rows: [], above: [], below: [] };
   }
   const gaps = new Map<number, ChangeMark[]>();
   const ends = new Map<number, ChangeMark[]>();
+  const above: ChangeMark[] = [];
   const below: ChangeMark[] = [];
   const last = events.length;
+  const newestMs = Date.parse(events[0]!.ts);
   for (const mark of marks) {
     const startMs = Date.parse(mark.ts);
     if (Number.isNaN(startMs)) {
@@ -248,6 +252,10 @@ export function eventTableMarkLayout(
     const startGap = gapBeforeEvent(events, startMs);
     if (startGap === last) {
       below.push(mark);
+    } else if (startGap === 0 && startMs > newestMs && mark.id !== pinId) {
+      // Newest-from-`to` never hits this. Focus in logs does: the page is a
+      // middle slice, and a later in-window mark is not adjacent to row 0.
+      above.push(mark);
     } else {
       const bucket = gaps.get(startGap) ?? [];
       bucket.push(mark);
@@ -261,7 +269,7 @@ export function eventTableMarkLayout(
       continue;
     }
     const endGap = gapBeforeEvent(events, endMs);
-    if (endGap === last) {
+    if (endGap === last || (endGap === 0 && endMs > newestMs)) {
       continue;
     }
     const bucket = ends.get(endGap) ?? [];
@@ -288,7 +296,7 @@ export function eventTableMarkLayout(
       wash: eventInIncidentWash(events[i]!.ts, marks),
     });
   }
-  return { rows, below: newestFirst(below) };
+  return { rows, above: newestFirst(above), below: newestFirst(below) };
 }
 
 export { formatChangeMarkLabel };

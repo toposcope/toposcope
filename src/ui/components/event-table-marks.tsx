@@ -109,6 +109,7 @@ function SeamShell({
   ring,
   end,
   kind,
+  markId,
   onClick,
   onKeyDown,
   onHover,
@@ -119,6 +120,7 @@ function SeamShell({
   ring: boolean;
   end: boolean;
   kind: ChangeMark["kind"];
+  markId: string;
   onClick: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
   onHover: (on: boolean) => void;
@@ -128,6 +130,7 @@ function SeamShell({
     <button
       type="button"
       tabIndex={-1}
+      data-mark-id={markId}
       className="relative flex h-[22px] w-full items-center border-b border-white/[0.06] px-2 text-left"
       onClick={onClick}
       onKeyDown={onKeyDown}
@@ -177,6 +180,7 @@ export function EventSeam({
       ring={ring}
       end={false}
       kind={mark.kind}
+      markId={mark.id}
       onClick={onSelect}
       onHover={setHovered}
       onKeyDown={(e) => {
@@ -218,6 +222,7 @@ export function EventIncidentEnd({
       ring={false}
       end
       kind="incident"
+      markId={mark.id}
       onClick={onSelect}
       onHover={setHovered}
       onKeyDown={(e) => {
@@ -276,6 +281,7 @@ export function EventFold({
         ring={false}
         end={false}
         kind={head.kind}
+        markId={members.map((item) => item.id).join(" ")}
         onClick={onToggle}
         onHover={() => {}}
         onKeyDown={(e) => {

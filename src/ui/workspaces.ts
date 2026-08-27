@@ -1,6 +1,6 @@
 import { surroundingDefaultN } from "../query/surrounding";
 import type { HistogramChartKind, HistogramIntervalId, HistogramSplit } from "../query/histogram";
-import type { ChangeMark, ChangeMarkKind } from "../shared/change-mark";
+import { formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../shared/change-mark";
 import { defaultLayout, type WidgetDef } from "../shared/widgets";
 import type { FacetValue, Facets, HistogramBucket, LogEvent, SearchAggResult } from "./types";
 import type { ContextMode } from "./context-mode";
@@ -113,8 +113,12 @@ export function workspaceHuntKeyFromSnap(snap: WorkspaceSnap): string {
   });
 }
 
+export function isReaderKind(kind: WorkspaceKind): boolean {
+  return kind === "surroundings";
+}
+
 export function shouldRestorePaint(snap: WorkspaceSnap): boolean {
-  if (snap.kind === "surroundings" || !snap.paint) {
+  if (isReaderKind(snap.kind) || !snap.paint) {
     return false;
   }
   if (snap.paint.lastMs == null && snap.paint.error == null) {
@@ -153,6 +157,7 @@ export type WorkspaceSnap = {
   pinnedEvent: LogEvent | null;
   surrAnchor: LogEvent | null;
   surrSel: LogEvent | null;
+  focusMark: ChangeMark | null;
   frozenFacets: Facets | null;
   frozenAttrFacetValues: Record<string, FacetValue[]> | null;
   paint: WorkspacePaint | null;
@@ -237,6 +242,7 @@ export function blankSearchSnap(): WorkspaceSnap {
     pinnedEvent: null,
     surrAnchor: null,
     surrSel: null,
+    focusMark: null,
     frozenFacets: null,
     frozenAttrFacetValues: null,
     paint: null,
@@ -256,11 +262,17 @@ export function workspaceLiveLabel(input: {
   savedDirty: boolean;
   follow: WorkspaceFollow | null;
   surrAnchor: LogEvent | null;
+  focusMark?: ChangeMark | null;
   board?: boolean;
   boardBinds?: string[];
 }): string {
-  if (input.kind === "surroundings" && input.surrAnchor) {
-    return surroundingsLabel(input.surrAnchor);
+  if (input.kind === "surroundings") {
+    if (input.focusMark) {
+      return formatChangeMarkLabel(input.focusMark);
+    }
+    if (input.surrAnchor) {
+      return surroundingsLabel(input.surrAnchor);
+    }
   }
   if (input.kind === "follow" && input.follow) {
     return `${input.follow.key}:${input.follow.value}`;
@@ -333,11 +345,124 @@ export function findSurroundingsWorkspace(
   );
 }
 
+export function findMarkFocusWorkspace(
+  list: Workspace[],
+  markId: string,
+): Workspace | undefined {
+  return list.find(
+    (item) =>
+      item.kind === "surroundings" && item.snap.focusMark?.id === markId,
+  );
+}
+
+export type FocusMarkDecision =
+  | { action: "stay" }
+  | { action: "recenter" }
+  | { action: "switch"; id: number }
+  | { action: "open-beside" };
+
+export type OpenSurroundingsDecision =
+  | { action: "stay" }
+  | { action: "recenter" }
+  | { action: "open-beside" };
+
+/** Focus in logs: reuse this Surroundings tab, switch to it, or open beside. */
+export function decideFocusMarkInLogs(
+  current: { kind: WorkspaceKind; focusMarkId: string | null },
+  list: Workspace[],
+  markId: string,
+): FocusMarkDecision {
+  if (current.kind === "surroundings" && current.focusMarkId === markId) {
+    return { action: "stay" };
+  }
+  if (current.kind === "surroundings") {
+    return { action: "recenter" };
+  }
+  const existing = findMarkFocusWorkspace(list, markId);
+  if (existing) {
+    return { action: "switch", id: existing.id };
+  }
+  return { action: "open-beside" };
+}
+
+/** Footer Surroundings: re-center this reader, or open beside. */
+export function decideOpenSurroundings(
+  current: { kind: WorkspaceKind; surrAnchor: LogEvent | null },
+  event: LogEvent,
+): OpenSurroundingsDecision {
+  if (
+    current.kind === "surroundings" &&
+    current.surrAnchor &&
+    eventKey(event) === eventKey(current.surrAnchor)
+  ) {
+    return { action: "stay" };
+  }
+  if (current.kind === "surroundings") {
+    return { action: "recenter" };
+  }
+  return { action: "open-beside" };
+}
+
+function surroundingsReaderSnap(
+  hunt: WorkspaceSnap,
+  frozen: {
+    frozenFacets: Facets | null;
+    frozenAttrFacetValues: Record<string, FacetValue[]> | null;
+  },
+): WorkspaceSnap {
+  return {
+    ...hunt,
+    kind: "surroundings",
+    follow: null,
+    explore: null,
+    inspectTabs: [],
+    activeInspect: null,
+    aroundN: surroundingDefaultN,
+    aroundMode: "all",
+    surrSel: null,
+    paint: null,
+    frozenFacets: frozen.frozenFacets,
+    frozenAttrFacetValues: frozen.frozenAttrFacetValues,
+  };
+}
+
+export function surroundingsEventSnap(
+  hunt: WorkspaceSnap,
+  event: LogEvent,
+  frozen: {
+    frozenFacets: Facets | null;
+    frozenAttrFacetValues: Record<string, FacetValue[]> | null;
+  },
+): WorkspaceSnap {
+  return {
+    ...surroundingsReaderSnap(hunt, frozen),
+    surrAnchor: event,
+    focusMark: null,
+  };
+}
+
+export function surroundingsMarkSnap(
+  hunt: WorkspaceSnap,
+  mark: ChangeMark,
+  frozen: {
+    frozenFacets: Facets | null;
+    frozenAttrFacetValues: Record<string, FacetValue[]> | null;
+  },
+): WorkspaceSnap {
+  return {
+    ...surroundingsReaderSnap(hunt, frozen),
+    live: false,
+    logsOn: true,
+    surrAnchor: null,
+    focusMark: mark,
+  };
+}
+
 export function duplicateSnap(snap: WorkspaceSnap): WorkspaceSnap {
   return {
     ...snap,
     inspectTabs: [],
     activeInspect: null,
-    surrSel: snap.kind === "surroundings" ? null : snap.surrSel,
+    surrSel: isReaderKind(snap.kind) ? null : snap.surrSel,
   };
 }

@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
-Search / Follow draws stored change marks as seams between event rows (same mute and inspector as the histogram lane). The marks chip sits on the right of the canvas bar. [#9](https://github.com/toposcope/toposcope/issues/9)
+Search / Follow draws stored change marks as seams between event rows (same mute and inspector as the histogram lane). The marks chip sits on the right of the canvas bar. Focus in logs opens Surroundings titled with the mark (50 older above, 50 newer below). [#9](https://github.com/toposcope/toposcope/issues/9)
 
 ## 0.4.2
 

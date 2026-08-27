@@ -133,6 +133,7 @@ export type MarksOverlay = {
   onToggleKind: (kind: ChangeMarkKind) => void;
   onMute: (id: string) => void;
   onUnmute: (id: string) => void;
+  onFocusLogs?: (mark: ChangeMark) => void;
 };
 
 type Open =
@@ -555,7 +556,7 @@ export function HistogramMarkLane({
                 ) : null}
                 <InspectRow k="id" v={inspectMark.id} />
               </div>
-              <div className="mt-2.5 flex items-center border-t pt-2">
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2">
                 <button
                   type="button"
                   className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
@@ -566,6 +567,18 @@ export function HistogramMarkLane({
                 >
                   Hide for this hunt
                 </button>
+                {overlay.onFocusLogs ? (
+                  <button
+                    type="button"
+                    className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+                    onClick={() => {
+                      overlay.onFocusLogs?.(inspectMark);
+                      setOpen(null);
+                    }}
+                  >
+                    Focus in logs
+                  </button>
+                ) : null}
               </div>
               <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
                 Hiding is per-hunt visibility. The store is not edited from this panel.

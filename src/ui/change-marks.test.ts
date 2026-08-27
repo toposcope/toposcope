@@ -224,6 +224,44 @@ describe("eventTableMarkLayout", () => {
     ).toBe(false);
   });
 
+  test("does not seam a mark newer than the loaded page onto the first row", () => {
+    const slice = [
+      { ts: "2026-08-25T16:29:37.400Z" },
+      { ts: "2026-08-25T16:29:37.200Z" },
+      { ts: "2026-08-25T16:29:37.050Z" },
+      { ts: "2026-08-25T16:29:36.800Z" },
+    ];
+    const layout = eventTableMarkLayout(slice, [
+      mark("later", "2026-08-25T16:32:14.000Z"),
+      mark("also", "2026-08-25T16:31:58.000Z"),
+      mark("here", "2026-08-25T16:29:37.100Z"),
+    ]);
+    expect(
+      layout.rows
+        .filter((row) => row.type === "seam")
+        .map((row) => (row.type === "seam" ? row.mark.id : "")),
+    ).toEqual(["here"]);
+    expect(layout.above.map((item) => item.id)).toEqual(["later", "also"]);
+    expect(layout.below).toEqual([]);
+  });
+
+  test("pins a focused mark above the page when Focus in logs has no newer rows", () => {
+    const olderOnly = [
+      { ts: "2026-08-25T16:32:13.900Z" },
+      { ts: "2026-08-25T16:32:13.800Z" },
+    ];
+    const marks = [
+      mark("focus", "2026-08-25T16:32:14.000Z"),
+      mark("later", "2026-08-25T16:32:20.000Z"),
+    ];
+    const skipped = eventTableMarkLayout(olderOnly, marks);
+    expect(skipped.above.map((item) => item.id)).toEqual(["later", "focus"]);
+    expect(skipped.rows.filter((row) => row.type === "seam")).toEqual([]);
+    const pinned = eventTableMarkLayout(olderOnly, marks, "focus");
+    expect(pinned.above.map((item) => item.id)).toEqual(["later"]);
+    expect(pinned.rows[0]).toMatchObject({ type: "seam", mark: { id: "focus" } });
+  });
+
   test("washes rows inside an incident and draws the end rule", () => {
     const incident = mark(
       "inc",

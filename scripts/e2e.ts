@@ -989,6 +989,111 @@ async function main(): Promise<void> {
     throw new Error("surrounding missing before/after");
   }
 
+  const aroundToken = `around${Date.now()}`;
+  const aroundPivotMs = Date.parse(from) + 90_000;
+  const aroundBatch: Array<{
+    ts: string;
+    service: string;
+    level: string;
+    message: string;
+  }> = [];
+  const aroundServices = ["billing", "api", "worker"];
+  for (let i = 5; i >= 1; i--) {
+    aroundBatch.push({
+      ts: new Date(aroundPivotMs - i).toISOString(),
+      service: aroundServices[i % 3]!,
+      level: "info",
+      message: `${aroundToken} before${i}`,
+    });
+  }
+  aroundBatch.push({
+    ts: new Date(aroundPivotMs).toISOString(),
+    service: "worker",
+    level: "info",
+    message: `${aroundToken} same`,
+  });
+  for (let i = 1; i <= 5; i++) {
+    aroundBatch.push({
+      ts: new Date(aroundPivotMs + i).toISOString(),
+      service: aroundServices[i % 3]!,
+      level: "info",
+      message: `${aroundToken} after${i}`,
+    });
+  }
+  const aroundIngest = await fetch(`${APP_URL}/api/ingest`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify(aroundBatch),
+  });
+  if (!aroundIngest.ok) {
+    throw new Error(
+      `around ingest failed: ${aroundIngest.status} ${await aroundIngest.text()}`,
+    );
+  }
+  const aroundFrom = new Date(aroundPivotMs - 10).toISOString();
+  const aroundTo = new Date(aroundPivotMs + 10).toISOString();
+  const aroundTs = new Date(aroundPivotMs).toISOString();
+  let aroundHits: { before: Array<{ message: string; service: string }>; after: Array<{ message: string }> } | null =
+    null;
+  for (let i = 0; i < 40; i++) {
+    const aroundTsRes = await fetch(
+      `${APP_URL}/api/search/around?${new URLSearchParams({
+        ts: aroundTs,
+        from: aroundFrom,
+        to: aroundTo,
+        n: "3",
+        q: aroundToken,
+      }).toString()}`,
+      { headers: { authorization: basicAuth() } },
+    );
+    if (!aroundTsRes.ok) {
+      throw new Error(
+        `around failed: ${aroundTsRes.status} ${await aroundTsRes.text()}`,
+      );
+    }
+    const body = (await aroundTsRes.json()) as {
+      before: Array<{ message: string; service: string }>;
+      after: Array<{ message: string }>;
+    };
+    if (body.before.length === 3 && body.after.length === 3) {
+      aroundHits = body;
+      break;
+    }
+    await Bun.sleep(100);
+  }
+  if (!aroundHits) {
+    throw new Error("GET /api/search/around did not return 3 before and 3 after");
+  }
+  if (
+    aroundHits.before.map((row) => row.message).join(" ") !==
+    `${aroundToken} before3 ${aroundToken} before2 ${aroundToken} before1`
+  ) {
+    throw new Error(
+      `around before should be oldest-first closest 3, got ${aroundHits.before.map((row) => row.message).join(" ")}`,
+    );
+  }
+  if (
+    aroundHits.after.map((row) => row.message).join(" ") !==
+    `${aroundToken} after1 ${aroundToken} after2 ${aroundToken} after3`
+  ) {
+    throw new Error(
+      `around after should be closest-newer first, got ${aroundHits.after.map((row) => row.message).join(" ")}`,
+    );
+  }
+  if (
+    [...aroundHits.before, ...aroundHits.after].some((row) =>
+      row.message.endsWith(" same"),
+    )
+  ) {
+    throw new Error("around must not include the same-ms pivot row");
+  }
+  if (new Set(aroundHits.before.map((row) => row.service)).size < 2) {
+    throw new Error("around must not pivot on service");
+  }
+
   const rangeRes = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({
       range: "15m",
