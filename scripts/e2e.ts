@@ -19,6 +19,23 @@ function basicAuth(): string {
   return `Basic ${btoa(`toposcope:${PASSWORD}`)}`;
 }
 
+async function expectOtlpGzipCap(path: string): Promise<void> {
+  const res = await fetch(`${APP_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "content-encoding": "gzip",
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: Bun.gzipSync(Buffer.alloc(8 * 1024 * 1024)),
+  });
+  if (res.status !== 413) {
+    throw new Error(
+      `${path} gzip cap expected 413, got ${res.status} ${await res.text()}`,
+    );
+  }
+}
+
 async function waitForHealth(): Promise<void> {
   for (let i = 0; i < 60; i++) {
     try {
@@ -1346,6 +1363,53 @@ async function main(): Promise<void> {
   if (!otlpFound.events.some((event) => event.message === otlpMarker)) {
     throw new Error("otlp event not searchable");
   }
+
+  const otlpGzipMarker = `otlpgz${Date.now()}`;
+  const otlpGzipJson = JSON.stringify({
+    resourceLogs: [
+      {
+        resource: {
+          attributes: [{ key: "service.name", value: { stringValue: "otlp-e2e" } }],
+        },
+        scopeLogs: [
+          {
+            logRecords: [
+              {
+                severityText: "ERROR",
+                body: { stringValue: otlpGzipMarker },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  const otlpGzipRes = await fetch(`${APP_URL}/v1/logs`, {
+    method: "POST",
+    headers: {
+      "content-encoding": "gzip",
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: Bun.gzipSync(Buffer.from(otlpGzipJson)),
+  });
+  if (!otlpGzipRes.ok) {
+    throw new Error(`otlp gzip ingest failed: ${otlpGzipRes.status} ${await otlpGzipRes.text()}`);
+  }
+  const otlpGzipSearch = await fetch(
+    `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: otlpGzipMarker }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!otlpGzipSearch.ok) {
+    throw new Error(`otlp gzip search failed: ${otlpGzipSearch.status} ${await otlpGzipSearch.text()}`);
+  }
+  const otlpGzipFound = (await otlpGzipSearch.json()) as { events: Array<{ message: string }> };
+  if (!otlpGzipFound.events.some((event) => event.message === otlpGzipMarker)) {
+    throw new Error("otlp gzip event not searchable");
+  }
+  await expectOtlpGzipCap("/v1/logs");
+  await expectOtlpGzipCap("/v1/traces");
+  await expectOtlpGzipCap("/v1/profiles");
 
   const otlpProtoMarker = `otlpproto${Date.now()}`;
   const otlpProtoRes = await fetch(`${APP_URL}/v1/logs`, {

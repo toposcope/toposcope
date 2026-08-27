@@ -9,8 +9,8 @@ import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import {
   insertErrorMessage,
   MAX_BATCH,
-  MAX_BODY_BYTES,
 } from "./index";
+import { readOtlpBody } from "./otlp-body";
 import { isOtlpProtobufContentType } from "./otlp-protobuf";
 import { mapOtlpProfiles } from "./otlp-profiles";
 import { decodeOtlpProfilesProtobuf } from "./otlp-profiles-protobuf";
@@ -54,12 +54,9 @@ async function insertProfileSamples(samples: ProfileSample[]): Promise<number> {
 }
 
 export async function otlpProfilesRoute(c: Context): Promise<Response> {
-  let buf = new Uint8Array(await c.req.arrayBuffer());
-  if (c.req.header("content-encoding") === "gzip") {
-    buf = new Uint8Array(Bun.gunzipSync(buf));
-  }
-  if (buf.byteLength > MAX_BODY_BYTES) {
-    return c.json({ error: `Body too large (max ${MAX_BODY_BYTES} bytes)` }, 413);
+  const buf = await readOtlpBody(c);
+  if (buf instanceof Response) {
+    return buf;
   }
   if (buf.byteLength === 0) {
     return c.json({ error: "Empty body" }, 400);
