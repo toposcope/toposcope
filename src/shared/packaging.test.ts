@@ -175,3 +175,17 @@ describe("vector example", () => {
     expect(yaml).not.toContain("toposcope-ingest");
   });
 });
+
+describe("ingest guide CI samples", () => {
+  test("GitHub and GitLab jobs POST a stable deploy id", async () => {
+    const md = await Bun.file(`${root}/docs/ingest.md`).text();
+    expect(md).toContain(
+      'deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${GITHUB_REF_NAME}',
+    );
+    expect(md).toContain(
+      'deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${CI_COMMIT_TAG}',
+    );
+    expect(md).toContain('\\"source\\":\\"github\\"');
+    expect(md).toContain('\\"source\\":\\"gitlab\\"');
+  });
+});

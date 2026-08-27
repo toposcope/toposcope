@@ -29,7 +29,7 @@ toposcope.example.com {
 - Syslog UDP: `127.0.0.1:5514`
 - OTLP JSON and protobuf: the existing HTTP port on `/v1/logs`, `/v1/traces`, and `/v1/profiles`
 - Metric points: `POST /v1/metrics` on the same port and ingest token
-- Change marks: `POST /v1/marks` on the same port and ingest token; `GET /api/marks` lists them. Search / Follow draw them on the hunt histogram.
+- Change marks: `POST /v1/marks` on the same port and ingest token; `GET /api/marks` lists them. Search / Follow draw them on the hunt histogram. GitHub Actions and GitLab CI samples in the [ingest guide](ingest.md) POST a deploy mark on release with a stable `id`.
 - `GET /api/metrics`: Prometheus text, unauthenticated
 
 ## Upgrade and retention

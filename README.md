@@ -63,7 +63,7 @@ The canonical production path is Vector sending OTLP protobuf logs to `POST /v1/
 | OTLP logs | `POST /v1/logs` | JSON or protobuf |
 | JSON or NDJSON logs | `POST /api/ingest` | One event, an array, or NDJSON |
 | Metrics | `POST /v1/metrics` | JSON metric points |
-| Change marks | `POST /v1/marks` | Deploy / flag / incident / note |
+| Change marks | `POST /v1/marks` | Deploy / flag / incident / note; CI samples in the [ingest guide](docs/ingest.md) |
 | OTLP traces | `POST /v1/traces` | JSON or protobuf |
 | OTLP profiles | `POST /v1/profiles` | JSON or protobuf |
 | Syslog | UDP `5514` | RFC 3164 |
