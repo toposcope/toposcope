@@ -2,7 +2,10 @@ import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "
 import { Plus } from "lucide-react";
 import { ExtraPanel } from "@/components/extra-panel";
 import { HistogramChart } from "@/components/histogram-chart";
-import type { MarksOverlay } from "@/components/histogram-marks";
+import {
+  HistogramMarksChip,
+  type MarksOverlay,
+} from "@/components/histogram-marks";
 import { HbarHead, HbarWidget, hbarPaintedRows, type HbarCommand } from "@/components/hbar-widget";
 import { StatHead, StatWidget, statSeriesFile } from "@/components/stat-widget";
 import {
@@ -93,6 +96,8 @@ type Props = {
   retentionMs?: number;
   scanReason?: string | null;
   marks?: MarksOverlay | null;
+  focusMarkId?: string | null;
+  onFocusMark?: (id: string | null) => void;
 };
 
 type Drag = {
@@ -186,6 +191,8 @@ export function WidgetCanvas({
   retentionMs = histogramRetentionMs,
   scanReason = null,
   marks = null,
+  focusMarkId = null,
+  onFocusMark,
 }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const widgetsRef = useRef(widgets);
@@ -657,6 +664,9 @@ export function WidgetCanvas({
             {widgets.length}/{maxWidgets} panels
           </span>
         ) : null}
+        {marks ? (
+          <HistogramMarksChip overlay={marks} placement="bar" />
+        ) : null}
       </div>
       <div
         ref={gridRef}
@@ -776,6 +786,8 @@ export function WidgetCanvas({
                   retentionMs={retentionMs}
                   scanReason={scanReason}
                   marks={locked ? undefined : marks}
+                  focusMarkId={focusMarkId}
+                  onFocusMark={onFocusMark}
                   className="h-full"
                 />
               ) : (

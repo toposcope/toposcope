@@ -3,6 +3,11 @@ import type { ChangeMark } from "../shared/change-mark";
 import {
   clusterChangeMarks,
   clusterHasLaneLabel,
+  eventInIncidentWash,
+  eventTableMarkLayout,
+  foldMarkLabel,
+  formatMarkDuration,
+  incidentEndLabel,
   markFrac,
   markPlotSpanMs,
   marksInBucket,
@@ -16,11 +21,12 @@ function mark(
   id: string,
   ts: string,
   kind: ChangeMark["kind"] = "deploy",
+  endTs: string | null = null,
 ): ChangeMark {
   return {
     id,
     ts,
-    end_ts: null,
+    end_ts: endTs,
     kind,
     service: "billing",
     title: id,
@@ -145,5 +151,144 @@ describe("panWindowToMark", () => {
       fromMs: after - 3_600_000,
       toMs: after,
     });
+  });
+});
+
+describe("formatMarkDuration", () => {
+  test("keeps hours and leftover minutes for an incident span", () => {
+    expect(formatMarkDuration(62 * 60_000)).toBe("1h 2m");
+    expect(formatMarkDuration(60 * 60_000)).toBe("1h");
+    expect(formatMarkDuration(15 * 60_000)).toBe("15m");
+  });
+});
+
+describe("eventTableMarkLayout", () => {
+  const rows = [
+    { ts: "2026-08-14T14:59:51.688Z" },
+    { ts: "2026-08-14T14:59:43.765Z" },
+    { ts: "2026-08-14T14:58:59.120Z" },
+    { ts: "2026-08-14T14:58:12.402Z" },
+    { ts: "2026-08-14T14:57:48.331Z" },
+  ];
+
+  test("draws a seam between the rows it separates, not as an event", () => {
+    const layout = eventTableMarkLayout(rows, [
+      mark("v9", "2026-08-14T14:58:30.000Z"),
+    ]);
+    expect(layout.rows.map((row) => row.type)).toEqual([
+      "event",
+      "event",
+      "event",
+      "seam",
+      "event",
+      "event",
+    ]);
+    expect(layout.rows[3]).toMatchObject({ type: "seam", mark: { id: "v9" } });
+    expect(layout.rows.filter((row) => row.type === "event")).toHaveLength(
+      rows.length,
+    );
+    expect(layout.below).toEqual([]);
+  });
+
+  test("stacks two marks in the same gap and folds three", () => {
+    const two = eventTableMarkLayout(rows, [
+      mark("a", "2026-08-14T14:58:40.000Z"),
+      mark("b", "2026-08-14T14:58:32.000Z"),
+    ]);
+    expect(
+      two.rows
+        .filter((row) => row.type === "seam")
+        .map((row) => (row.type === "seam" ? row.mark.id : "")),
+    ).toEqual(["a", "b"]);
+    const three = eventTableMarkLayout(rows, [
+      mark("a", "2026-08-14T14:58:40.000Z"),
+      mark("b", "2026-08-14T14:58:32.000Z"),
+      mark("c", "2026-08-14T14:58:25.000Z"),
+    ]);
+    const fold = three.rows.find((row) => row.type === "fold");
+    expect(fold?.type).toBe("fold");
+    if (fold?.type === "fold") {
+      expect(fold.members.map((item) => item.id)).toEqual(["a", "b", "c"]);
+      expect(foldMarkLabel(fold.members)).toBe("3 marks · 14:58 – 14:58");
+    }
+  });
+
+  test("peeks marks older than the loaded page instead of drawing them", () => {
+    const layout = eventTableMarkLayout(rows, [
+      mark("in", "2026-08-14T14:58:30.000Z"),
+      mark("old", "2026-08-14T14:11:04.000Z"),
+    ]);
+    expect(layout.below.map((item) => item.id)).toEqual(["old"]);
+    expect(
+      layout.rows.some((row) => row.type === "seam" && row.mark.id === "old"),
+    ).toBe(false);
+  });
+
+  test("does not seam a mark newer than the loaded page onto the first row", () => {
+    const slice = [
+      { ts: "2026-08-25T16:29:37.400Z" },
+      { ts: "2026-08-25T16:29:37.200Z" },
+      { ts: "2026-08-25T16:29:37.050Z" },
+      { ts: "2026-08-25T16:29:36.800Z" },
+    ];
+    const layout = eventTableMarkLayout(slice, [
+      mark("later", "2026-08-25T16:32:14.000Z"),
+      mark("also", "2026-08-25T16:31:58.000Z"),
+      mark("here", "2026-08-25T16:29:37.100Z"),
+    ]);
+    expect(
+      layout.rows
+        .filter((row) => row.type === "seam")
+        .map((row) => (row.type === "seam" ? row.mark.id : "")),
+    ).toEqual(["here"]);
+    expect(layout.above.map((item) => item.id)).toEqual(["later", "also"]);
+    expect(layout.below).toEqual([]);
+  });
+
+  test("pins a focused mark above the page when Focus in logs has no newer rows", () => {
+    const olderOnly = [
+      { ts: "2026-08-25T16:32:13.900Z" },
+      { ts: "2026-08-25T16:32:13.800Z" },
+    ];
+    const marks = [
+      mark("focus", "2026-08-25T16:32:14.000Z"),
+      mark("later", "2026-08-25T16:32:20.000Z"),
+    ];
+    const skipped = eventTableMarkLayout(olderOnly, marks);
+    expect(skipped.above.map((item) => item.id)).toEqual(["later", "focus"]);
+    expect(skipped.rows.filter((row) => row.type === "seam")).toEqual([]);
+    const pinned = eventTableMarkLayout(olderOnly, marks, "focus");
+    expect(pinned.above.map((item) => item.id)).toEqual(["later"]);
+    expect(pinned.rows[0]).toMatchObject({ type: "seam", mark: { id: "focus" } });
+  });
+
+  test("washes rows inside an incident and draws the end rule", () => {
+    const incident = mark(
+      "inc",
+      "2026-08-14T03:10:00.000Z",
+      "incident",
+      "2026-08-14T04:12:00.000Z",
+    );
+    incident.title = "INC-238 checkout 5xx";
+    const page = [
+      { ts: "2026-08-14T04:14:21.882Z" },
+      { ts: "2026-08-14T04:08:12.400Z" },
+      { ts: "2026-08-14T03:22:41.006Z" },
+      { ts: "2026-08-14T03:04:55.610Z" },
+    ];
+    const layout = eventTableMarkLayout(page, [incident]);
+    expect(layout.rows.map((row) => row.type)).toEqual([
+      "event",
+      "end",
+      "event",
+      "event",
+      "seam",
+      "event",
+    ]);
+    expect(incidentEndLabel(incident)).toBe("INC-238 checkout 5xx ends · 1h 2m");
+    expect(eventInIncidentWash(page[0]!.ts, [incident])).toBe(false);
+    expect(eventInIncidentWash(page[1]!.ts, [incident])).toBe(true);
+    expect(eventInIncidentWash(page[2]!.ts, [incident])).toBe(true);
+    expect(eventInIncidentWash(page[3]!.ts, [incident])).toBe(false);
   });
 });

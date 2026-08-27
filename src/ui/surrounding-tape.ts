@@ -11,7 +11,7 @@ export type TapeTick = {
 
 export function surroundingTape(
   rows: LogEvent[],
-  anchor: LogEvent,
+  anchor: { ts: string; service?: string },
 ): { ticks: TapeTick[]; from: string; to: string; label: string } {
   if (rows.length === 0) {
     return { ticks: [], from: "", to: "", label: "0 rows" };
@@ -21,7 +21,9 @@ export function surroundingTape(
   const span = Math.max(1, t1 - t0);
   const secs = Math.round(span / 1000);
   const ticks = rows.map((event) => {
-    const on = event.ts === anchor.ts && event.service === anchor.service;
+    const on =
+      event.ts === anchor.ts &&
+      (anchor.service == null || event.service === anchor.service);
     const err = event.level === "error" || event.level === "fatal";
     return {
       key: `${event.ts}|${event.service}|${event.host ?? ""}`,
@@ -55,4 +57,11 @@ export function frozenQueryNote(mode: "all" | "match", q: string): string {
   return query
     ? `Frozen query · showing only rows matching ${query}`
     : "No query on the tab this was opened from — nothing to narrow to";
+}
+
+export function markFocusNote(q: string, n: number): string {
+  const query = q.trim();
+  return query
+    ? `Frozen query · ${query} — ${n} before and ${n} after this mark, nothing is filtered out`
+    : `${n} logs before this mark and ${n} after, in the hunt window`;
 }

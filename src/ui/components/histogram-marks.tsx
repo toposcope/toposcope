@@ -133,6 +133,7 @@ export type MarksOverlay = {
   onToggleKind: (kind: ChangeMarkKind) => void;
   onMute: (id: string) => void;
   onUnmute: (id: string) => void;
+  onFocusLogs?: (mark: ChangeMark) => void;
 };
 
 type Open =
@@ -147,6 +148,10 @@ function stamp(iso: string): string {
 function ago(iso: string, nowMs: number): string {
   const ms = Math.max(0, nowMs - Date.parse(iso));
   return `${formatSpanShort(ms)} ago`;
+}
+
+export function markKindColor(kind: ChangeMarkKind): string {
+  return visual(kind).color;
 }
 
 export function HistogramMarkRules({
@@ -245,6 +250,7 @@ export function HistogramMarkLane({
   hoverKey,
   onHoverKey,
   onSelect,
+  focusId = null,
 }: {
   overlay: MarksOverlay;
   fromMs: number;
@@ -258,6 +264,7 @@ export function HistogramMarkLane({
   hoverKey: string | null;
   onHoverKey: (key: string | null) => void;
   onSelect: (next: { id: string | null; key: string | null }) => void;
+  focusId?: string | null;
 }): ReactNode {
   const [open, setOpen] = useState<Open>(null);
   const [rowHover, setRowHover] = useState<string | null>(null);
@@ -316,7 +323,7 @@ export function HistogramMarkLane({
     };
   }, [open]);
 
-  const selectedId = open?.kind === "inspect" ? open.id : null;
+  const selectedId = open?.kind === "inspect" ? open.id : focusId;
   const selectedCluster = open?.kind === "cluster" ? open.key : null;
   useEffect(() => {
     onSelectRef.current({ id: selectedId, key: selectedCluster });
@@ -341,9 +348,10 @@ export function HistogramMarkLane({
     );
   }
 
-  const inspectMark = selectedId
-    ? (visible.find((mark) => mark.id === selectedId) ?? null)
-    : null;
+  const inspectMark =
+    open?.kind === "inspect"
+      ? (visible.find((mark) => mark.id === open.id) ?? null)
+      : null;
 
   return (
     <div
@@ -548,7 +556,7 @@ export function HistogramMarkLane({
                 ) : null}
                 <InspectRow k="id" v={inspectMark.id} />
               </div>
-              <div className="mt-2.5 flex items-center border-t pt-2">
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2">
                 <button
                   type="button"
                   className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
@@ -559,6 +567,18 @@ export function HistogramMarkLane({
                 >
                   Hide for this hunt
                 </button>
+                {overlay.onFocusLogs ? (
+                  <button
+                    type="button"
+                    className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+                    onClick={() => {
+                      overlay.onFocusLogs?.(inspectMark);
+                      setOpen(null);
+                    }}
+                  >
+                    Focus in logs
+                  </button>
+                ) : null}
               </div>
               <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
                 Hiding is per-hunt visibility. The store is not edited from this panel.
@@ -617,7 +637,13 @@ function InspectRow({ k, v }: { k: string; v: string }) {
   );
 }
 
-export function HistogramMarksChip({ overlay }: { overlay: MarksOverlay }) {
+export function HistogramMarksChip({
+  overlay,
+  placement = "legend",
+}: {
+  overlay: MarksOverlay;
+  placement?: "legend" | "bar";
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
   const visible = visibleChangeMarks(
@@ -665,11 +691,15 @@ export function HistogramMarksChip({ overlay }: { overlay: MarksOverlay }) {
   }, [open]);
 
   return (
-    <span ref={rootRef} className="relative ml-auto">
+    <span
+      ref={rootRef}
+      className="relative ml-auto"
+    >
       <button
         type="button"
         className={cn(
-          "flex h-5 items-center gap-1 rounded-sm border px-1.5 font-mono text-[10.5px]",
+          "flex items-center gap-1 rounded-sm border px-1.5 font-mono text-[10.5px]",
+          placement === "bar" ? "h-[26px] px-2.5" : "h-5",
           hidden ? "border-amber-400/40 text-amber-400" : "text-muted-foreground",
         )}
         onClick={() => setOpen((prev) => !prev)}
@@ -687,9 +717,19 @@ export function HistogramMarksChip({ overlay }: { overlay: MarksOverlay }) {
           <path d="M5.2 7 V10.4" />
         </svg>
         marks {chipCount}
+        {hidden ? (
+          <span className="size-[5px] rounded-full bg-amber-400" />
+        ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 bottom-full z-20 mb-1 w-[240px] rounded-md border bg-popover p-1 shadow-lg">
+        <div
+          className={cn(
+            "absolute z-20 w-[240px] rounded-md border bg-popover p-1 shadow-lg",
+            placement === "bar"
+              ? "right-0 top-full mt-1"
+              : "right-0 bottom-full mb-1",
+          )}
+        >
           <div className="flex items-center gap-2 px-1.5 py-1">
             <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
               Marks

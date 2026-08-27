@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Search / Follow draws stored change marks as seams between event rows (same mute and inspector as the histogram lane). The marks chip sits on the right of the canvas bar. Focus in logs opens Surroundings titled with the mark (50 older above, 50 newer below). [#9](https://github.com/toposcope/toposcope/issues/9)
+
 ## 0.4.2
 
 The Search / Follow volume plot draws stored change marks on a 22px lane under the bars (inspect, hide for this hunt, neighbor peeks). Glyphs line up with the volume bar for that time. Mute is per workspace tab, not the URL, and does not rewrite `q`. `POST /v1/marks` accepts optional `id` (omit to mint `mk_…`) and `end_ts`; `GET /api/marks` returns `{ marks, before, after }`. No `DELETE /v1/marks`. Wheel, `+`/`−`, head-drill, Shift+drag, and mark peeks keep `to` at now the same way pan already did. Absolute From/To is unchanged.

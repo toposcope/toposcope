@@ -60,10 +60,15 @@ import {
 import {
   blankSearchSnap,
   closeWorkspace,
+  decideFocusMarkInLogs,
+  decideOpenSurroundings,
   duplicateSnap,
   insertWorkspace,
+  isReaderKind,
   shouldRestorePaint,
   stampWorkspace,
+  surroundingsEventSnap,
+  surroundingsMarkSnap,
   urlSearchSnap,
   workspaceHuntKey,
   workspaceLiveLabel,
@@ -374,6 +379,7 @@ export function App() {
         savedDirty: false,
         follow: null,
         surrAnchor: null,
+        focusMark: null,
       }),
       snap: urlSearchSnap(boot),
     },
@@ -381,6 +387,7 @@ export function App() {
   const [follow, setFollow] = useState<{ key: string; value: string } | null>(null);
   const [surrAnchor, setSurrAnchor] = useState<LogEvent | null>(null);
   const [surrSel, setSurrSel] = useState<LogEvent | null>(null);
+  const [focusMark, setFocusMark] = useState<ChangeMark | null>(null);
   const [inspectTabs, setInspectTabs] = useState<InspectTab[]>([]);
   const [activeInspect, setActiveInspect] = useState<InspectTab | null>(null);
   const [traceLoad, setTraceLoad] = useState<{
@@ -395,7 +402,8 @@ export function App() {
     loading: boolean;
     failed: boolean;
   }>({ key: "", result: null, loading: false, failed: false });
-  const isSurr = wsKind === "surroundings" && surrAnchor !== null;
+  const isSurr = wsKind === "surroundings";
+  const isMarkFocus = isSurr && focusMark !== null;
   const traceView = activeInspect?.kind === "trace" ? activeInspect : null;
   const profileView = activeInspect?.kind === "profile" ? activeInspect : null;
   const [aroundN, setAroundN] = useState(surroundingDefaultN);
@@ -410,6 +418,7 @@ export function App() {
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
   const [marksMuted, setMarksMuted] = useState<string[]>([]);
+  const [focusMarkId, setFocusMarkId] = useState<string | null>(null);
   const [aggSeries, setAggSeries] = useState<SearchAggResult | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -898,6 +907,7 @@ export function App() {
     detailOpen,
     events,
   };
+  const loadTowardTsRef = useRef<number | null>(null);
 
   const runSearch = useCallback(
     async (
@@ -939,6 +949,9 @@ export function App() {
         setSearching(true);
         livePollsRef.current = 0;
         blockingSearchRef.current = true;
+      }
+      if (mode === "replace") {
+        loadTowardTsRef.current = null;
       }
       if (mode !== "poll" || !wouldIncremental) {
         extraAbortRef.current?.abort();
@@ -1444,6 +1457,23 @@ export function App() {
   );
 
   useEffect(() => {
+    const target = loadTowardTsRef.current;
+    if (target == null || searching) {
+      return;
+    }
+    const oldest = events.at(-1);
+    if (!oldest || !nextCursor) {
+      loadTowardTsRef.current = null;
+      return;
+    }
+    if (Date.parse(oldest.ts) > target) {
+      void runSearch("append");
+      return;
+    }
+    loadTowardTsRef.current = null;
+  }, [events, nextCursor, searching, runSearch]);
+
+  useEffect(() => {
     void fetch("/api/settings").then(async (res) => {
       if (!res.ok) {
         return;
@@ -1576,7 +1606,7 @@ export function App() {
   }, [profileView]);
 
   useEffect(() => {
-    if (!live || view !== "search" || wsKind === "surroundings") {
+    if (!live || view !== "search" || isReaderKind(wsKind)) {
       return;
     }
     const id = setInterval(() => {
@@ -1700,6 +1730,8 @@ export function App() {
       setFollow(null);
       setSurrAnchor(null);
       setSurrSel(null);
+      setFocusMark(null);
+      setFocusMarkId(null);
       setInspectTabs([]);
       setActiveInspect(null);
       setWsKind("search");
@@ -1716,6 +1748,7 @@ export function App() {
             savedDirty: false,
             follow: null,
             surrAnchor: null,
+            focusMark: null,
           }),
           snap: urlSearchSnap(state),
         },
@@ -1740,7 +1773,7 @@ export function App() {
   }, [runSearch]);
 
   useEffect(() => {
-    if (wsKind === "surroundings") {
+    if (isReaderKind(wsKind)) {
       return;
     }
     if (skipAttrFacetGen.current === viewGenRef.current) {
@@ -1751,7 +1784,7 @@ export function App() {
 
   useEffect(() => {
     const item = saved.find((row) => row.id === savedId);
-    if (!item?.board || wsKind === "surroundings") {
+    if (!item?.board || isReaderKind(wsKind)) {
       return;
     }
     const keys = item.board.keys;
@@ -1811,8 +1844,8 @@ export function App() {
     const entries = Object.entries(attrPrefixes).filter(
       ([, prefix]) => prefix.trim().length > 0,
     );
-    if (wsKind === "surroundings" || entries.length === 0) {
-      if (wsKind !== "surroundings") {
+    if (isReaderKind(wsKind) || entries.length === 0) {
+      if (!isReaderKind(wsKind)) {
         setAttrPrefixValues({});
       }
       return;
@@ -1890,6 +1923,7 @@ export function App() {
   function cancelSearch() {
     abortRef.current?.abort();
     blockingSearchRef.current = false;
+    loadTowardTsRef.current = null;
     setSearching(false);
   }
 
@@ -2302,6 +2336,7 @@ export function App() {
       savedDirty: board ? false : !item || item.query !== q,
       follow,
       surrAnchor,
+      focusMark,
       board,
       boardBinds: item?.board
         ? item.board.keys.map((key) => bind[key] ?? "").filter((value) => value.length > 0)
@@ -2323,6 +2358,7 @@ export function App() {
         savedDirty: board ? false : Boolean(item && item.query !== snap.q),
         follow: snap.follow,
         surrAnchor: snap.surrAnchor,
+        focusMark: snap.focusMark,
         board,
         boardBinds: item?.board
           ? item.board.keys
@@ -2401,8 +2437,9 @@ export function App() {
       pinnedEvent,
       surrAnchor,
       surrSel,
-      frozenFacets: wsKind === "surroundings" ? facets : null,
-      frozenAttrFacetValues: wsKind === "surroundings" ? attrFacetValues : null,
+      focusMark,
+      frozenFacets: isReaderKind(wsKind) ? facets : null,
+      frozenAttrFacetValues: isReaderKind(wsKind) ? attrFacetValues : null,
       paint,
       marksOff,
       marksMuted,
@@ -2414,6 +2451,7 @@ export function App() {
     extraAbortRef.current?.abort();
     hbarAbortRef.current?.abort();
     blockingSearchRef.current = false;
+    loadTowardTsRef.current = null;
     lastPaintHuntRef.current = null;
     setSearching(false);
     setEvents([]);
@@ -2435,7 +2473,50 @@ export function App() {
     fullPollAcRef.current = null;
     extraInflightRef.current = false;
     blockingSearchRef.current = false;
+    loadTowardTsRef.current = null;
     setSearching(false);
+  }
+
+  function focusMarkInLogs(mark: ChangeMark) {
+    if (compileQuery(q).faults.length > 0) {
+      setShowFaults(true);
+      return;
+    }
+    const decision = decideFocusMarkInLogs(
+      { kind: wsKind, focusMarkId: focusMark?.id ?? null },
+      wsList,
+      mark.id,
+    );
+    switch (decision.action) {
+      case "stay":
+        return;
+      case "recenter":
+        setSurrAnchor(null);
+        setSurrSel(null);
+        setFocusMark(mark);
+        setFocusMarkId(mark.id);
+        setAroundN(surroundingDefaultN);
+        setAroundMode("all");
+        setActiveInspect(null);
+        setLive(false);
+        return;
+      case "switch":
+        goWs(decision.id);
+        return;
+      case "open-beside":
+        addWorkspace(
+          surroundingsMarkSnap(currentSnap(), mark, {
+            frozenFacets: facets,
+            frozenAttrFacetValues: attrFacetValues,
+          }),
+          false,
+        );
+        return;
+      default: {
+        const _never: never = decision;
+        return _never;
+      }
+    }
   }
 
   function restorePaint(paint: WorkspacePaint) {
@@ -2495,6 +2576,8 @@ export function App() {
     setFollow(snap.follow);
     setMarksOff(snap.marksOff);
     setMarksMuted(snap.marksMuted);
+    setFocusMark(snap.focusMark);
+    setFocusMarkId(snap.focusMark?.id ?? null);
     setInspectTabs(snap.inspectTabs);
     setActiveInspect(snap.activeInspect);
     setAroundN(snap.aroundN);
@@ -2510,7 +2593,7 @@ export function App() {
           ? rangeDurationMs(snap.from, snap.to)
           : parseRangeMs(snap.range) ?? 60 * 60 * 1000;
     }
-    if (snap.kind === "surroundings") {
+    if (isReaderKind(snap.kind)) {
       lastPaintHuntRef.current = null;
       if (snap.frozenFacets) {
         setFacets(snap.frozenFacets);
@@ -2628,24 +2711,6 @@ export function App() {
     }
   }
 
-  function surroundingsSnap(event: LogEvent): WorkspaceSnap {
-    return {
-      ...currentSnap(),
-      kind: "surroundings",
-      follow: null,
-      explore: null,
-      inspectTabs: [],
-      activeInspect: null,
-      aroundN: surroundingDefaultN,
-      aroundMode: "all",
-      surrAnchor: event,
-      surrSel: null,
-      frozenFacets: facets,
-      frozenAttrFacetValues: attrFacetValues,
-      paint: null,
-    };
-  }
-
   function followSnap(
     key: string,
     value: string,
@@ -2668,6 +2733,7 @@ export function App() {
       activeInspect: null,
       surrAnchor: null,
       surrSel: null,
+      focusMark: null,
       frozenFacets: null,
       frozenAttrFacetValues: null,
       paint: null,
@@ -2699,22 +2765,36 @@ export function App() {
   }
 
   function openSurroundings(event: LogEvent) {
-    if (
-      wsKind === "surroundings" &&
-      surrAnchor &&
-      eventKey(event) === eventKey(surrAnchor)
-    ) {
-      return;
+    const decision = decideOpenSurroundings(
+      { kind: wsKind, surrAnchor },
+      event,
+    );
+    switch (decision.action) {
+      case "stay":
+        return;
+      case "recenter":
+        setSurrAnchor(event);
+        setFocusMark(null);
+        setFocusMarkId(null);
+        setSurrSel(null);
+        setAroundN(surroundingDefaultN);
+        setAroundMode("all");
+        setActiveInspect(null);
+        return;
+      case "open-beside":
+        addWorkspace(
+          surroundingsEventSnap(currentSnap(), event, {
+            frozenFacets: facets,
+            frozenAttrFacetValues: attrFacetValues,
+          }),
+          false,
+        );
+        return;
+      default: {
+        const _never: never = decision;
+        return _never;
+      }
     }
-    if (wsKind === "surroundings") {
-      setSurrAnchor(event);
-      setSurrSel(null);
-      setAroundN(surroundingDefaultN);
-      setAroundMode("all");
-      setActiveInspect(null);
-      return;
-    }
-    addWorkspace(surroundingsSnap(event), false);
   }
 
   function closeInspect(index: number) {
@@ -2744,7 +2824,7 @@ export function App() {
     };
     setInspectTabs((tabs) => upsertInspectTab(tabs, tab));
     setActiveInspect(tab);
-    if (wsKind !== "surroundings") {
+    if (!isReaderKind(wsKind)) {
       focusEvent(event);
     }
   }
@@ -2805,7 +2885,7 @@ export function App() {
   }
 
   function applyQuery(next: string) {
-    if (wsKind === "surroundings") {
+    if (isReaderKind(wsKind)) {
       return;
     }
     setQ(next);
@@ -3037,7 +3117,7 @@ export function App() {
     isChartSummaryKey(item.k, fieldRoles),
   );
   const selectedEvent = isSurr
-    ? (surrSel ?? surrAnchor ?? undefined)
+    ? (surrSel ?? (isMarkFocus ? undefined : surrAnchor) ?? undefined)
     : detailOpen
       ? (events[selectedIndex] ?? pinnedEvent ?? undefined)
       : undefined;
@@ -3086,6 +3166,29 @@ export function App() {
       point !== undefined && !point.refused && point.value >= rule.threshold
     );
   });
+
+  const marksOverlay = boardOn
+    ? null
+    : {
+        marks: windowMarks,
+        before: markBefore,
+        after: markAfter,
+        offKinds: marksOff,
+        mutedIds: marksMuted,
+        onToggleKind: (kind: ChangeMarkKind) =>
+          setMarksOff((prev) =>
+            prev.includes(kind)
+              ? prev.filter((item) => item !== kind)
+              : [...prev, kind],
+          ),
+        onMute: (id: string) => {
+          setMarksMuted((prev) => (prev.includes(id) ? prev : [...prev, id]));
+          setFocusMarkId((prev) => (prev === id ? null : prev));
+        },
+        onUnmute: (id: string) =>
+          setMarksMuted((prev) => prev.filter((item) => item !== id)),
+        onFocusLogs: focusMarkInLogs,
+      };
 
   const sidebar = (
     <OperatorSidebar
@@ -3231,7 +3334,7 @@ export function App() {
             {sidebar}
           </aside>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {isSurr && surrAnchor ? (
+            {isSurr ? (
               activeInspect ? (
                 <>
                   <ContextTabs
@@ -3305,7 +3408,10 @@ export function App() {
               ) : (
                 <div className="flex min-h-0 flex-1">
                   <ContextView
-                    event={surrAnchor}
+                    event={isMarkFocus ? null : surrAnchor}
+                    mark={isMarkFocus ? focusMark : null}
+                    fromIso={isMarkFocus ? isoFromLocal(from) : undefined}
+                    toIso={isMarkFocus ? isoFromLocal(to) : undefined}
                     selected={surrSel}
                     q={q}
                     mode={aroundMode}
@@ -3343,9 +3449,13 @@ export function App() {
                       filterTitle="Frozen query — open a Search tab to add a filter"
                       onAround={openSurroundings}
                       aroundDisabled={
-                        eventKey(selectedEvent) === eventKey(surrAnchor)
+                        Boolean(
+                          surrAnchor &&
+                            eventKey(selectedEvent) === eventKey(surrAnchor),
+                        )
                       }
                       aroundTitle={
+                        surrAnchor &&
                         eventKey(selectedEvent) === eventKey(surrAnchor)
                           ? "This tab is already centred on this event"
                           : undefined
@@ -3680,31 +3790,9 @@ export function App() {
                 scanReason={
                   scanRefuse?.histogram ? scanRefuse.reason : null
                 }
-                marks={
-                  boardOn
-                    ? undefined
-                    : {
-                        marks: windowMarks,
-                        before: markBefore,
-                        after: markAfter,
-                        offKinds: marksOff,
-                        mutedIds: marksMuted,
-                        onToggleKind: (kind) =>
-                          setMarksOff((prev) =>
-                            prev.includes(kind)
-                              ? prev.filter((item) => item !== kind)
-                              : [...prev, kind],
-                          ),
-                        onMute: (id) =>
-                          setMarksMuted((prev) =>
-                            prev.includes(id) ? prev : [...prev, id],
-                          ),
-                        onUnmute: (id) =>
-                          setMarksMuted((prev) =>
-                            prev.filter((item) => item !== id),
-                          ),
-                      }
-                }
+                marks={marksOverlay}
+                focusMarkId={focusMarkId}
+                onFocusMark={setFocusMarkId}
                 anchorTs={
                   activeInspect?.kind === "trace" ||
                   activeInspect?.kind === "profile"
@@ -3836,6 +3924,14 @@ export function App() {
                       setPinnedEvent(null);
                     }}
                     onLoadMore={() => void runSearch("append")}
+                    marks={marksOverlay}
+                    live={live}
+                    focusMarkId={focusMarkId}
+                    onFocusMark={setFocusMarkId}
+                    onLoadToward={(ts) => {
+                      loadTowardTsRef.current = Date.parse(ts);
+                      void runSearch("append");
+                    }}
                   />
                 )}
               </div>

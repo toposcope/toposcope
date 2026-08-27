@@ -31,7 +31,7 @@ import {
   type HistogramSplit,
 } from "./histogram";
 import { parseFacetOmitSelf } from "./facet-omit";
-import { searchSurrounding } from "./surrounding";
+import { searchAroundTs, searchSurrounding } from "./surrounding";
 import {
   eventLookbacksMs,
   eventSliceAtFloor,
@@ -1297,6 +1297,28 @@ export async function searchRoute(c: Context): Promise<Response> {
       metric,
       ml,
       events,
+    });
+    return c.json(result);
+  } catch (err) {
+    return queryHttpError(c, err) ?? Promise.reject(err);
+  }
+}
+
+export async function aroundTsRoute(c: Context): Promise<Response> {
+  const ts = c.req.query("ts") ?? "";
+  if (ts.length === 0 || Number.isNaN(Date.parse(ts))) {
+    return c.json({ error: "ts is required" }, 400);
+  }
+  const nRaw = c.req.query("n");
+  const n = nRaw ? Number(nRaw) : undefined;
+  const q = c.req.query("q") ?? undefined;
+  try {
+    const result = await searchAroundTs({
+      ts,
+      from: c.req.query("from") ?? undefined,
+      to: c.req.query("to") ?? undefined,
+      n,
+      q: q && q.trim().length > 0 ? q : undefined,
     });
     return c.json(result);
   } catch (err) {

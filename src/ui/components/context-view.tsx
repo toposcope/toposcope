@@ -11,17 +11,33 @@ import { stepIndex } from "@/keyboard";
 import { isLoud, levelRail, levelVariant } from "@/level";
 import { cn } from "@/lib/utils";
 import { eventMatchesQuery } from "../../query/match-event";
-import { surroundingMaxN } from "../../query/surrounding";
+import { surroundingMaxN, aroundSearchParams } from "../../query/surrounding";
 import type { ContextMode } from "../context-mode";
-import { frozenQueryNote, surroundingTape } from "../surrounding-tape";
+import {
+  surroundingAnchorIndex,
+  surroundingAnchorScrollTop,
+  surroundingEventRows,
+  surroundingFetchQ,
+  surroundingHasMore,
+  surroundingMarkLogRows,
+} from "../surrounding-layout";
+import { frozenQueryNote, markFocusNote, surroundingTape } from "../surrounding-tape";
 import type { LogEvent } from "../types";
+import {
+  formatChangeMarkLabel,
+  type ChangeMark,
+} from "../../shared/change-mark";
+import { MarkGlyph } from "./histogram-marks";
 
 export type { ContextMode };
 
 type Surrounding = { before: LogEvent[]; after: LogEvent[] };
 
 type Props = {
-  event: LogEvent;
+  event?: LogEvent | null;
+  mark?: ChangeMark | null;
+  fromIso?: string;
+  toIso?: string;
   selected: LogEvent | null;
   q: string;
   mode: ContextMode;
@@ -45,6 +61,9 @@ function pill(on: boolean): string {
 
 export function ContextView({
   event,
+  mark,
+  fromIso,
+  toIso,
   selected,
   q,
   mode,
@@ -66,10 +85,12 @@ export function ContextView({
   const userScroll = useRef(false);
   const [data, setData] = useState<Surrounding | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const query = q.trim();
-  const sendQ = mode === "match" && query.length > 0 ? query : undefined;
+  const markFocus = mark != null;
+  const sendQ = surroundingFetchQ(markFocus, mode, q);
 
-  const identity = `${event.ts}|${event.service}|${event.host ?? ""}|${sendQ ?? ""}`;
+  const identity = markFocus
+    ? `${mark.id}|${mark.ts}|${fromIso ?? ""}|${toIso ?? ""}|${sendQ ?? ""}`
+    : `${event?.ts ?? ""}|${event?.service ?? ""}|${event?.host ?? ""}|${sendQ ?? ""}`;
   const identityRef = useRef(identity);
 
   useEffect(() => {
@@ -81,24 +102,40 @@ export function ContextView({
       identityRef.current = identity;
       setData(null);
     }
-    const params = new URLSearchParams({
-      ts: event.ts,
-      service: event.service,
-      n: String(n),
-    });
-    if (event.host) {
+    if (!markFocus && !event) {
+      return;
+    }
+    const params = markFocus
+      ? aroundSearchParams({
+          ts: mark.ts,
+          n,
+          from: fromIso,
+          to: toIso,
+          q: sendQ,
+        })
+      : new URLSearchParams({
+          ts: event!.ts,
+          service: event!.service,
+          n: String(n),
+        });
+    if (!markFocus && event?.host) {
       params.set("host", event.host);
     }
-    if (sendQ) {
+    if (!markFocus && sendQ) {
       params.set("q", sendQ);
     }
+    const path = markFocus ? "/api/search/around" : "/api/search/context";
     let cancelled = false;
     setError(null);
     void (async () => {
       try {
-        const res = await fetch(`/api/search/context?${params.toString()}`);
+        const res = await fetch(`${path}?${params.toString()}`);
         if (!res.ok) {
-          throw new Error(`Surrounding failed (${res.status})`);
+          throw new Error(
+            markFocus
+              ? `Focus in logs failed (${res.status})`
+              : `Surrounding failed (${res.status})`,
+          );
         }
         const json = (await res.json()) as Surrounding;
         if (!cancelled) {
@@ -107,14 +144,20 @@ export function ContextView({
       } catch (err) {
         if (!cancelled) {
           setData(null);
-          setError(err instanceof Error ? err.message : "Surrounding failed");
+          setError(
+            err instanceof Error
+              ? err.message
+              : markFocus
+                ? "Focus in logs failed"
+                : "Surrounding failed",
+          );
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [identity, event.ts, event.service, event.host, n, sendQ]);
+  }, [identity, markFocus, mark, event, fromIso, toIso, n, sendQ]);
 
   useLayoutEffect(() => {
     if (!data || userScroll.current) {
@@ -122,19 +165,46 @@ export function ContextView({
     }
     const root = scroller.current;
     const row = root?.querySelector("[data-anchor-row='y']");
-    row?.scrollIntoView({ block: "center" });
-  }, [data, event.ts, event.service, mode, n]);
+    if (row instanceof HTMLElement && root) {
+      const er = row.getBoundingClientRect();
+      const rr = root.getBoundingClientRect();
+      root.scrollTop = surroundingAnchorScrollTop(
+        { top: rr.top, height: rr.height, scrollTop: root.scrollTop },
+        { top: er.top, height: er.height },
+      );
+    }
+  }, [data, identity, mode, n]);
 
   const before = data?.before ?? [];
   const after = data?.after ?? [];
-  const rows = data ? [...before, event, ...after] : [];
+  const rows = data
+    ? markFocus
+      ? surroundingMarkLogRows(before, after)
+      : event
+        ? surroundingEventRows(before, event, after)
+        : []
+    : [];
   const rowKeys = eventRowKeys(rows);
-  const selectedKey = selected ? eventKey(selected) : eventKey(event);
-  const moreBefore = n < surroundingMaxN && before.length >= n;
-  const moreAfter = n < surroundingMaxN && after.length >= n;
-  const title = `${event.service}${event.host ? ` · ${event.host}` : ""}`;
-  const stamp = event.ts.slice(0, 19).replace("T", " ");
-  const tape = surroundingTape([...before, event, ...after], event);
+  const selectedKey = selected
+    ? eventKey(selected)
+    : event && !markFocus
+      ? eventKey(event)
+      : "";
+  const moreBefore = surroundingHasMore(before, n);
+  const moreAfter = surroundingHasMore(after, n);
+  const afterKeyOffset = markFocus
+    ? surroundingAnchorIndex(before.length)
+    : surroundingAnchorIndex(before.length) + 1;
+  const title = markFocus
+    ? formatChangeMarkLabel(mark)
+    : event
+      ? `${event.service}${event.host ? ` · ${event.host}` : ""}`
+      : "";
+  const stamp = (markFocus ? mark.ts : event?.ts ?? "").slice(0, 19).replace("T", " ");
+  const tape = surroundingTape(
+    rows,
+    markFocus ? { ts: mark.ts } : event ? event : { ts: "" },
+  );
 
   useLayoutEffect(() => {
     const list = scroller.current;
@@ -146,31 +216,50 @@ export function ContextView({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-[49px] shrink-0 items-center gap-2.5 border-b px-3">
-        <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
-        <span className="font-mono text-xs whitespace-nowrap">{stamp}</span>
-        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
-          {title}
-        </span>
+        {markFocus ? (
+          <>
+            <MarkGlyph kind={mark.kind} size={12} />
+            <span
+              className="min-w-0 truncate text-[12.5px] font-semibold"
+              data-focus-mark=""
+            >
+              {title}
+            </span>
+            <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
+              {stamp}
+            </span>
+          </>
+        ) : event ? (
+          <>
+            <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
+            <span className="font-mono text-xs whitespace-nowrap">{stamp}</span>
+            <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+              {title}
+            </span>
+          </>
+        ) : null}
         <div className="min-w-2 flex-1" />
-        <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
-          <button
-            type="button"
-            className={pill(mode === "all")}
-            onClick={() => onMode("all")}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            className={pill(mode === "match")}
-            onClick={() => onMode("match")}
-          >
-            Matching
-          </button>
-        </div>
+        {markFocus ? null : (
+          <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
+            <button
+              type="button"
+              className={pill(mode === "all")}
+              onClick={() => onMode("all")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={pill(mode === "match")}
+              onClick={() => onMode("match")}
+            >
+              Matching
+            </button>
+          </div>
+        )}
       </div>
       <div className="shrink-0 border-b px-3 py-2 text-[11.5px] text-muted-foreground/90">
-        {frozenQueryNote(mode, q)}
+        {markFocus ? markFocusNote(q, n) : frozenQueryNote(mode, q)}
       </div>
       <div className="flex h-10 shrink-0 items-center gap-2.5 border-b bg-background/45 px-3">
         <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
@@ -202,6 +291,8 @@ export function ContextView({
         ref={scroller}
         data-kbd="table"
         className="min-h-0 flex-1 overflow-y-auto"
+        data-around-before={data ? String(before.length) : undefined}
+        data-around-after={data ? String(after.length) : undefined}
         onWheel={() => {
           userScroll.current = true;
         }}
@@ -243,23 +334,27 @@ export function ContextView({
                 onSelect={onSelect}
               />
             ))}
-            <ContextRow
-              event={event}
-              q={q}
-              mode={mode}
-              current
-              selected={eventKey(event) === selectedKey}
-              selectedRef={eventKey(event) === selectedKey ? selectedRef : undefined}
-              rows={rows}
-              fromMs={fromMs}
-              spanMs={spanMs}
-              format={format}
-              gridStyle={gridStyle}
-              onSelect={onSelect}
-            />
+            {markFocus ? (
+              <MarkFocusRow mark={mark} stamp={stamp} />
+            ) : event ? (
+              <ContextRow
+                event={event}
+                q={q}
+                mode={mode}
+                current
+                selected={eventKey(event) === selectedKey}
+                selectedRef={eventKey(event) === selectedKey ? selectedRef : undefined}
+                rows={rows}
+                fromMs={fromMs}
+                spanMs={spanMs}
+                format={format}
+                gridStyle={gridStyle}
+                onSelect={onSelect}
+              />
+            ) : null}
             {after.map((row, i) => (
               <ContextRow
-                key={rowKeys[before.length + 1 + i] ?? eventKey(row)}
+                key={rowKeys[afterKeyOffset + i] ?? eventKey(row)}
                 event={row}
                 q={q}
                 mode={mode}
@@ -393,5 +488,23 @@ function ContextRow({
     >
       {body}
     </button>
+  );
+}
+
+function MarkFocusRow({ mark, stamp }: { mark: ChangeMark; stamp: string }) {
+  return (
+    <div
+      data-anchor-row="y"
+      className="relative flex h-[30px] w-full items-center gap-2 border-y border-white/[0.12] bg-accent px-2.5 pl-3 font-mono text-xs"
+    >
+      <span className="absolute inset-y-0 left-0 w-[3px] bg-foreground" />
+      <MarkGlyph kind={mark.kind} size={12} />
+      <span className="min-w-0 truncate text-[12px] font-semibold">
+        {formatChangeMarkLabel(mark)}
+      </span>
+      <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+        {stamp}
+      </span>
+    </div>
   );
 }

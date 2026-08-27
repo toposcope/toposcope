@@ -14,6 +14,14 @@ export type SurroundingQuery = {
   q?: string;
 };
 
+export type AroundTsQuery = {
+  ts: string;
+  from?: string;
+  to?: string;
+  q?: string;
+  n?: number;
+};
+
 export type SurroundingResult = {
   before: LogEvent[];
   after: LogEvent[];
@@ -81,18 +89,36 @@ export function surroundingWhere(query: SurroundingQuery): {
   return { sql: where.join(" AND "), params };
 }
 
-export async function searchSurrounding(
-  query: SurroundingQuery,
+/** Exclusive of the pivot timestamp — same-ms rows are not on either side. */
+export const surroundingBeforeTsSql =
+  "ts < parseDateTime64BestEffort({ts:String})";
+export const surroundingAfterTsSql =
+  "ts > parseDateTime64BestEffort({ts:String})";
+
+/**
+ * ClickHouse `before` is newest-first (`ORDER BY ts DESC`); paint wants oldest first.
+ * `after` is already closest-newer first (`ORDER BY ts ASC`).
+ */
+export function assembleSurroundingSides<T>(
+  beforeNewestFirst: readonly T[],
+  afterOldestFirst: readonly T[],
+): { before: T[]; after: T[] } {
+  return {
+    before: [...beforeNewestFirst].reverse(),
+    after: [...afterOldestFirst],
+  };
+}
+
+async function fetchSurroundingSides(
+  whereSql: string,
+  params: Record<string, string>,
 ): Promise<SurroundingResult> {
-  const n = clampSurroundingN(query.n);
-  const { sql, params } = surroundingWhere(query);
-  params.limit = String(n);
   const select = "SELECT ts, service, host, level, message, attrs FROM logs";
   const [beforeRows, afterRows] = await Promise.all([
     clickhouseQuery<LogRow>(
       `
       ${select}
-      WHERE ${sql} AND ts < parseDateTime64BestEffort({ts:String})
+      WHERE ${whereSql} AND ${surroundingBeforeTsSql}
       ORDER BY ts DESC
       LIMIT {limit:UInt32}
       SETTINGS max_execution_time = 30
@@ -102,7 +128,7 @@ export async function searchSurrounding(
     clickhouseQuery<LogRow>(
       `
       ${select}
-      WHERE ${sql} AND ts > parseDateTime64BestEffort({ts:String})
+      WHERE ${whereSql} AND ${surroundingAfterTsSql}
       ORDER BY ts ASC
       LIMIT {limit:UInt32}
       SETTINGS max_execution_time = 30
@@ -110,8 +136,68 @@ export async function searchSurrounding(
       params,
     ),
   ]);
-  return {
-    before: beforeRows.map(rowToLogEvent).reverse(),
-    after: afterRows.map(rowToLogEvent),
+  return assembleSurroundingSides(
+    beforeRows.map(rowToLogEvent),
+    afterRows.map(rowToLogEvent),
+  );
+}
+
+/** Hunt window + `q` only — not a Surroundings service/host pivot. */
+export function aroundSearchParams(query: AroundTsQuery): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("ts", query.ts);
+  params.set("n", String(clampSurroundingN(query.n)));
+  if (query.from) {
+    params.set("from", query.from);
+  }
+  if (query.to) {
+    params.set("to", query.to);
+  }
+  const q = query.q?.trim();
+  if (q) {
+    params.set("q", q);
+  }
+  return params;
+}
+
+export function aroundWhere(query: AroundTsQuery): {
+  sql: string;
+  params: Record<string, string>;
+} {
+  const params: Record<string, string> = {
+    tenant_id: "default",
+    ts: query.ts,
   };
+  const where = ["tenant_id = {tenant_id:String}"];
+  if (query.from) {
+    where.push("ts >= parseDateTime64BestEffort({from:String})");
+    params.from = query.from;
+  }
+  if (query.to) {
+    where.push("ts <= parseDateTime64BestEffort({to:String})");
+    params.to = query.to;
+  }
+  const qsql = emitQuerySql(requireCompiled(query.q ?? ""), params, "logs");
+  if (qsql) {
+    where.push(qsql);
+  }
+  return { sql: where.join(" AND "), params };
+}
+
+export async function searchAroundTs(
+  query: AroundTsQuery,
+): Promise<SurroundingResult> {
+  const n = clampSurroundingN(query.n);
+  const { sql, params } = aroundWhere(query);
+  params.limit = String(n);
+  return fetchSurroundingSides(sql, params);
+}
+
+export async function searchSurrounding(
+  query: SurroundingQuery,
+): Promise<SurroundingResult> {
+  const n = clampSurroundingN(query.n);
+  const { sql, params } = surroundingWhere(query);
+  params.limit = String(n);
+  return fetchSurroundingSides(sql, params);
 }
