@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Inspector Fingerprints opens a results-rail reader: which `e1` are first seen, still here, or stopped on equal windows around a selected mark. Filter writes `e1:<hex>`. [#18](https://github.com/toposcope/toposcope/issues/18)
+
 The process listens before migrate. `/api/health` returns **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe; **200** only then. Hunt and ingest are refused during schema. [#15](https://github.com/toposcope/toposcope/issues/15)
 
 GitHub Actions and GitLab CI samples POST a deploy mark with a stable `id` (`deploy-<service>-<tag>`). Posting that `id` again is skipped, so a job re-run is one glyph. [#14](https://github.com/toposcope/toposcope/issues/14)

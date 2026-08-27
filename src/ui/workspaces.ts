@@ -7,6 +7,7 @@ import type { ContextMode } from "./context-mode";
 import { eventKey } from "./event-key";
 import type { InspectTab } from "./inspect-tabs";
 import { defaultSearchUrlState, type RangeMode, type SearchUrlState } from "./search-url";
+import type { FingerprintCutSnap } from "./fingerprint-cut";
 
 export function ordinalLabels(labels: string[]): string[] {
   const counts = new Map<string, number>();
@@ -163,6 +164,7 @@ export type WorkspaceSnap = {
   paint: WorkspacePaint | null;
   marksOff: ChangeMarkKind[];
   marksMuted: string[];
+  cut: FingerprintCutSnap | null;
 };
 
 export type Workspace = {
@@ -248,6 +250,7 @@ export function blankSearchSnap(): WorkspaceSnap {
     paint: null,
     marksOff: [],
     marksMuted: [],
+    cut: null,
   };
 }
 
@@ -423,6 +426,7 @@ function surroundingsReaderSnap(
     paint: null,
     frozenFacets: frozen.frozenFacets,
     frozenAttrFacetValues: frozen.frozenAttrFacetValues,
+    cut: null,
   };
 }
 

@@ -7,6 +7,7 @@ import { FieldsView } from "@/components/fields-view";
 import { ContextTabs } from "@/components/context-tabs";
 import { ContextView, type ContextMode } from "@/components/context-view";
 import { EventDetail } from "@/components/event-detail";
+import { FingerprintCutPanel } from "@/components/fingerprint-cut-panel";
 import { TraceWaterfall } from "@/components/trace-waterfall";
 import { SpanFlamegraph } from "@/components/span-flamegraph";
 import { EventTable } from "@/components/event-table";
@@ -51,6 +52,7 @@ import { isEmptyIngest, nextIngested } from "./empty-ingest";
 import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
 import { joinTraceRef } from "../shared/ids";
 import type { ChangeMark, ChangeMarkKind } from "../shared/change-mark";
+import type { FingerprintCutResult } from "../shared/fingerprint-cut";
 import type { ProfileResponse } from "../shared/profile";
 import type { Span, TraceResponse } from "../shared/span";
 import {
@@ -80,6 +82,8 @@ import {
   type WorkspacePaint,
   type WorkspaceSnap,
 } from "./workspaces";
+import type { FingerprintCutSnap } from "./fingerprint-cut";
+import { fingerprintCutHuntWindows } from "./fingerprint-cut";
 import { fillHistogram, rangeDurationMs } from "./fill-histogram";
 import {
   bindForBoard,
@@ -157,7 +161,7 @@ import {
   surroundingMaxN,
   surroundingStepN,
 } from "../query/surrounding";
-import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, removeFieldToken, activeFacetValues, queryFieldKeys } from "./query-tokens";
+import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, removeFieldToken, activeFacetValues, queryFieldKeys, toggleFingerprintCutFilter } from "./query-tokens";
 import {
   histogramTotal,
   livePageSize,
@@ -419,6 +423,7 @@ export function App() {
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
   const [marksMuted, setMarksMuted] = useState<string[]>([]);
+  const [cut, setCut] = useState<FingerprintCutSnap | null>(null);
   const [focusMarkId, setFocusMarkId] = useState<string | null>(null);
   const [aggSeries, setAggSeries] = useState<SearchAggResult | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -1742,6 +1747,7 @@ export function App() {
       setSurrSel(null);
       setFocusMark(null);
       setFocusMarkId(null);
+      setCut(null);
       setInspectTabs([]);
       setActiveInspect(null);
       setWsKind("search");
@@ -2453,6 +2459,7 @@ export function App() {
       paint,
       marksOff,
       marksMuted,
+      cut,
     };
   }
 
@@ -2529,6 +2536,14 @@ export function App() {
     }
   }
 
+  function openFingerprints(mark: ChangeMark) {
+    const openedAt = live
+      ? new Date().toISOString()
+      : isoFromLocal(to) ?? new Date().toISOString();
+    setCut({ mark, openedAt, result: null });
+    setFocusMarkId(mark.id);
+  }
+
   function restorePaint(paint: WorkspacePaint) {
     skipAttrFacetGen.current = viewGenRef.current;
     lastPaintHuntRef.current = paint.hunt;
@@ -2586,8 +2601,9 @@ export function App() {
     setFollow(snap.follow);
     setMarksOff(snap.marksOff);
     setMarksMuted(snap.marksMuted);
+    setCut(snap.cut);
     setFocusMark(snap.focusMark);
-    setFocusMarkId(snap.focusMark?.id ?? null);
+    setFocusMarkId(snap.cut?.mark.id ?? snap.focusMark?.id ?? null);
     setInspectTabs(snap.inspectTabs);
     setActiveInspect(snap.activeInspect);
     setAroundN(snap.aroundN);
@@ -2749,6 +2765,7 @@ export function App() {
       paint: null,
       marksOff: [],
       marksMuted: [],
+      cut: null,
     };
   }
 
@@ -2893,6 +2910,10 @@ export function App() {
     await navigator.clipboard.writeText(`${window.location.origin}${path}`);
     toast.success("Link copied");
   }
+
+  const onCutResult = useCallback((result: FingerprintCutResult) => {
+    setCut((prev) => (prev ? { ...prev, result } : prev));
+  }, []);
 
   function applyQuery(next: string) {
     if (isReaderKind(wsKind)) {
@@ -3177,6 +3198,16 @@ export function App() {
     );
   });
 
+  const cutWindows =
+    cut && Number.isFinite(windowFromMs) && spanMs > 0
+      ? fingerprintCutHuntWindows(
+          cut.mark,
+          cut.openedAt,
+          windowFromMs,
+          windowFromMs + spanMs,
+        )
+      : null;
+
   const marksOverlay = boardOn
     ? null
     : {
@@ -3198,6 +3229,17 @@ export function App() {
         onUnmute: (id: string) =>
           setMarksMuted((prev) => prev.filter((item) => item !== id)),
         onFocusLogs: focusMarkInLogs,
+        onFingerprints: openFingerprints,
+        cut:
+          cut && cutWindows && !cutWindows.dead
+            ? {
+                markId: cut.mark.id,
+                beforeFrom: cutWindows.beforeFrom,
+                beforeTo: cutWindows.beforeTo,
+                afterFrom: cutWindows.afterFrom,
+                afterTo: cutWindows.afterTo,
+              }
+            : null,
       };
 
   const sidebar = (
@@ -3945,7 +3987,24 @@ export function App() {
                   />
                 )}
               </div>
-              {selectedEvent ? (
+              {cut && !isSurr && !boardOn ? (
+                <FingerprintCutPanel
+                  mark={cut.mark}
+                  openedAt={cut.openedAt}
+                  q={q}
+                  range={range}
+                  from={from}
+                  to={to}
+                  live={live}
+                  spanMs={spanMs}
+                  fromMs={windowFromMs}
+                  toMs={windowToMs}
+                  result={cut.result}
+                  onResult={onCutResult}
+                  onClose={() => setCut(null)}
+                  onFilter={(hex) => applyQuery(toggleFingerprintCutFilter(q, hex))}
+                />
+              ) : selectedEvent ? (
                 <EventDetail
                   event={selectedEvent}
                   onClose={() => {

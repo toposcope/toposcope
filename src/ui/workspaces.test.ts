@@ -314,6 +314,7 @@ describe("find + duplicate", () => {
     expect(snap.q).toBe("level:error");
     expect(snap.surrAnchor).toBeNull();
     expect(snap.focusMark).toEqual(mark);
+    expect(snap.cut).toBeNull();
     expect(snap.aroundN).toBe(50);
     expect(snap.aroundMode).toBe("all");
     expect(snap.inspectTabs).toEqual([]);
@@ -463,8 +464,31 @@ describe("workspace hunt / paint", () => {
     expect(blankSearchSnap().cols).toEqual([]);
     expect(blankSearchSnap().marksOff).toEqual([]);
     expect(blankSearchSnap().marksMuted).toEqual([]);
+    expect(blankSearchSnap().cut).toBeNull();
     const follow = { ...snap, kind: "follow" as const, q: "user_id:u-1", savedId: null };
     expect(follow.cols).toEqual(["path", "status"]);
+  });
+
+  test("duplicate keeps an open fingerprint cut; it is not in the hunt key", () => {
+    const snap = blankSearchSnap();
+    snap.cut = {
+      mark: {
+        id: "mk_1",
+        ts: "2026-08-14T14:11:04.000Z",
+        end_ts: null,
+        kind: "deploy",
+        service: "worker",
+        title: "v1.4.3",
+        attrs: {},
+      },
+      openedAt: "2026-08-14T15:00:00.000Z",
+      result: null,
+    };
+    const next = duplicateSnap(snap);
+    expect(next.cut?.mark.id).toBe("mk_1");
+    expect(workspaceHuntKeyFromSnap(snap)).toBe(
+      workspaceHuntKeyFromSnap({ ...snap, cut: null }),
+    );
   });
 
   test("duplicate keeps per-hunt mark mutes; they are not in the hunt key", () => {

@@ -12,7 +12,7 @@ import {
 import { formatSpanShort } from "../time-range";
 import { isTypingTarget } from "@/keyboard";
 import { cn } from "@/lib/utils";
-import { MarkGlyph, markKindColor } from "./histogram-marks";
+import { MarkGlyph, MarkInspectActions, markKindColor } from "./histogram-marks";
 
 function stamp(iso: string): string {
   return iso.slice(0, 23).replace("T", " ");
@@ -40,10 +40,14 @@ function MarkInspectCard({
   mark,
   nowMs,
   onHide,
+  onFingerprints,
+  onFocusLogs,
 }: {
   mark: ChangeMark;
   nowMs: number;
   onHide: () => void;
+  onFingerprints?: () => void;
+  onFocusLogs?: () => void;
 }) {
   return (
     <div className="absolute top-[22px] left-11 z-20 w-[254px] rounded-md border bg-popover p-2.5 shadow-lg">
@@ -60,15 +64,11 @@ function MarkInspectCard({
         {markSource(mark) ? <InspectRow k="source" v={markSource(mark)!} /> : null}
         <InspectRow k="id" v={mark.id} />
       </div>
-      <div className="mt-2.5 flex items-center border-t pt-2">
-        <button
-          type="button"
-          className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
-          onClick={onHide}
-        >
-          Hide for this hunt
-        </button>
-      </div>
+      <MarkInspectActions
+        onHide={onHide}
+        onFingerprints={onFingerprints}
+        onFocusLogs={onFocusLogs}
+      />
       <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
         Hiding is per-hunt visibility. The store is not edited from this panel.
       </p>
@@ -391,12 +391,24 @@ export function EventMarkInspect({
   mark,
   nowMs,
   onHide,
+  onFingerprints,
+  onFocusLogs,
 }: {
   mark: ChangeMark;
   nowMs: number;
   onHide: () => void;
+  onFingerprints?: () => void;
+  onFocusLogs?: () => void;
 }) {
-  return <MarkInspectCard mark={mark} nowMs={nowMs} onHide={onHide} />;
+  return (
+    <MarkInspectCard
+      mark={mark}
+      nowMs={nowMs}
+      onHide={onHide}
+      onFingerprints={onFingerprints}
+      onFocusLogs={onFocusLogs}
+    />
+  );
 }
 
 export function useMarkDismiss(open: boolean, onClose: () => void): {

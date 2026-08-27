@@ -124,6 +124,14 @@ function Rule({
   );
 }
 
+export type MarksCutWash = {
+  markId: string;
+  beforeFrom: number;
+  beforeTo: number;
+  afterFrom: number;
+  afterTo: number;
+};
+
 export type MarksOverlay = {
   marks: ChangeMark[];
   before: ChangeMark | null;
@@ -134,12 +142,143 @@ export type MarksOverlay = {
   onMute: (id: string) => void;
   onUnmute: (id: string) => void;
   onFocusLogs?: (mark: ChangeMark) => void;
+  onFingerprints?: (mark: ChangeMark) => void;
+  cut?: MarksCutWash | null;
 };
 
 type Open =
   | { kind: "inspect"; id: string }
   | { kind: "cluster"; key: string }
   | null;
+
+function clipWash(
+  left: number,
+  right: number,
+): { left: number; width: number } | null {
+  const l = Math.max(0, Math.min(1, left));
+  const r = Math.max(0, Math.min(1, right));
+  if (r <= l) {
+    return null;
+  }
+  return { left: l, width: r - l };
+}
+
+function CutWashes({
+  cut,
+  fromMs,
+  plotSpanMs,
+}: {
+  cut: MarksCutWash;
+  fromMs: number;
+  plotSpanMs: number;
+}) {
+  const before = clipWash(
+    markFrac(cut.beforeFrom, fromMs, plotSpanMs),
+    markFrac(cut.beforeTo, fromMs, plotSpanMs),
+  );
+  const after = clipWash(
+    markFrac(cut.afterFrom, fromMs, plotSpanMs),
+    markFrac(cut.afterTo, fromMs, plotSpanMs),
+  );
+  const dash = markFrac(cut.beforeFrom, fromMs, plotSpanMs);
+  return (
+    <>
+      {before ? (
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 z-[1]"
+          style={{
+            left: `${(before.left * 100).toFixed(3)}%`,
+            width: `${(before.width * 100).toFixed(3)}%`,
+            background: "oklch(1 0 0 / 2.5%)",
+          }}
+        />
+      ) : null}
+      {after ? (
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 z-[1]"
+          style={{
+            left: `${(after.left * 100).toFixed(3)}%`,
+            width: `${(after.width * 100).toFixed(3)}%`,
+            background: "oklch(1 0 0 / 5%)",
+          }}
+        />
+      ) : null}
+      {dash > 0 && dash < 1 ? (
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 z-[2] w-px"
+          style={{
+            left: `${(dash * 100).toFixed(3)}%`,
+            background:
+              "repeating-linear-gradient(180deg, oklch(1 0 0 / 30%) 0 4px, transparent 4px 7px)",
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function FingerprintsGlyph() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M12 3v18" strokeDasharray="2.5 2.5" />
+      <path d="M4 8h4" />
+      <path d="M4 16h4" />
+      <path d="M16 8h4" />
+      <path d="M16 12h4" />
+      <path d="M16 16h4" />
+    </svg>
+  );
+}
+
+export function MarkInspectActions({
+  onHide,
+  onFingerprints,
+  onFocusLogs,
+}: {
+  onHide: () => void;
+  onFingerprints?: () => void;
+  onFocusLogs?: () => void;
+}) {
+  return (
+    <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2">
+      <button
+        type="button"
+        className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+        onClick={onHide}
+      >
+        Hide for this hunt
+      </button>
+      {onFingerprints ? (
+        <button
+          type="button"
+          title="Which fingerprints are first seen, still here, or stopped on either side of this cut — same hunt, equal windows"
+          className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+          onClick={onFingerprints}
+        >
+          <FingerprintsGlyph />
+          Fingerprints
+        </button>
+      ) : null}
+      {onFocusLogs ? (
+        <button
+          type="button"
+          className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+          onClick={onFocusLogs}
+        >
+          Focus in logs
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 function stamp(iso: string): string {
   return iso.slice(0, 23).replace("T", " ");
@@ -179,6 +318,7 @@ export function HistogramMarkRules({
   const clusters = clusterChangeMarks(visible, spanMs);
   return (
     <>
+      {overlay.cut ? <CutWashes cut={overlay.cut} fromMs={fromMs} plotSpanMs={plotSpanMs} /> : null}
       {visible
         .filter((mark) => mark.kind === "incident" && mark.end_ts)
         .map((mark) => {
@@ -556,30 +696,28 @@ export function HistogramMarkLane({
                 ) : null}
                 <InspectRow k="id" v={inspectMark.id} />
               </div>
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2">
-                <button
-                  type="button"
-                  className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
-                  onClick={() => {
-                    overlay.onMute(inspectMark.id);
-                    setOpen(null);
-                  }}
-                >
-                  Hide for this hunt
-                </button>
-                {overlay.onFocusLogs ? (
-                  <button
-                    type="button"
-                    className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
-                    onClick={() => {
-                      overlay.onFocusLogs?.(inspectMark);
-                      setOpen(null);
-                    }}
-                  >
-                    Focus in logs
-                  </button>
-                ) : null}
-              </div>
+              <MarkInspectActions
+                onHide={() => {
+                  overlay.onMute(inspectMark.id);
+                  setOpen(null);
+                }}
+                onFingerprints={
+                  overlay.onFingerprints
+                    ? () => {
+                        overlay.onFingerprints?.(inspectMark);
+                        setOpen(null);
+                      }
+                    : undefined
+                }
+                onFocusLogs={
+                  overlay.onFocusLogs
+                    ? () => {
+                        overlay.onFocusLogs?.(inspectMark);
+                        setOpen(null);
+                      }
+                    : undefined
+                }
+              />
               <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
                 Hiding is per-hunt visibility. The store is not edited from this panel.
               </p>

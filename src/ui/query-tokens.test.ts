@@ -12,9 +12,28 @@ import {
   setFieldToken,
   stripSlotKeys,
   toggleFieldToken,
+  toggleFingerprintCutFilter,
 } from "./query-tokens";
 
 describe("query tokens", () => {
+  test("toggleFingerprintCutFilter replaces e1, and a second click removes it", () => {
+    expect(toggleFingerprintCutFilter("timeout", "b41f0c88a2e6d3f7")).toBe(
+      "timeout e1:b41f0c88a2e6d3f7",
+    );
+    expect(
+      toggleFingerprintCutFilter("timeout e1:aaaaaaaaaaaaaaaa", "b41f0c88a2e6d3f7"),
+    ).toBe("timeout e1:b41f0c88a2e6d3f7");
+    expect(
+      toggleFingerprintCutFilter("timeout e1:b41f0c88a2e6d3f7", "b41f0c88a2e6d3f7"),
+    ).toBe("timeout");
+    expect(
+      toggleFingerprintCutFilter(
+        "timeout (e1:aaaaaaaaaaaaaaaa OR e1:b41f0c88a2e6d3f7)",
+        "b41f0c88a2e6d3f7",
+      ),
+    ).toBe("timeout e1:b41f0c88a2e6d3f7");
+  });
+
   test("setFieldToken appends when the field is absent", () => {
     expect(setFieldToken("timeout", "level", "error")).toBe("timeout level:error");
     expect(setFieldToken("", "service", "api")).toBe("service:api");

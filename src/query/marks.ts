@@ -128,6 +128,23 @@ export async function lookupChangeMarkIds(
   return new Set(rows.map((row) => row.id));
 }
 
+export async function getChangeMarkById(id: string): Promise<ChangeMark | null> {
+  const trimmed = id.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const rows = await clickhouseQuery<MarkRow>(
+    `
+    SELECT ${markSelect}
+    FROM change_marks
+    WHERE tenant_id = 'default' AND id = {id:String}
+    LIMIT 1
+    `,
+    { id: trimmed },
+  );
+  return rows[0] ? mapRow(rows[0]) : null;
+}
+
 export async function searchChangeMarks(filters: {
   from?: string;
   to?: string;

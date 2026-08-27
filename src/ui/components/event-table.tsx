@@ -535,6 +535,22 @@ export function EventTable({
                 setInspectId(null);
                 onFocusMark?.(null);
               }}
+              onFingerprints={
+                marks?.onFingerprints
+                  ? () => {
+                      marks.onFingerprints?.(row.mark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
+              onFocusLogs={
+                marks?.onFocusLogs
+                  ? () => {
+                      marks.onFocusLogs?.(row.mark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
             />
           ) : null}
         </div>
@@ -563,6 +579,22 @@ export function EventTable({
                 setInspectId(null);
                 onFocusMark?.(null);
               }}
+              onFingerprints={
+                marks?.onFingerprints
+                  ? () => {
+                      marks.onFingerprints?.(row.mark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
+              onFocusLogs={
+                marks?.onFocusLogs
+                  ? () => {
+                      marks.onFocusLogs?.(row.mark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
             />
           ) : null}
         </div>
@@ -597,6 +629,22 @@ export function EventTable({
                 setInspectId(null);
                 onFocusMark?.(null);
               }}
+              onFingerprints={
+                marks?.onFingerprints
+                  ? () => {
+                      marks.onFingerprints?.(inspectMark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
+              onFocusLogs={
+                marks?.onFocusLogs
+                  ? () => {
+                      marks.onFocusLogs?.(inspectMark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
             />
           ) : null}
         </div>

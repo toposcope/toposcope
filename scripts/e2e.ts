@@ -675,6 +675,28 @@ async function main(): Promise<void> {
   if (typeof postedMark.id !== "string" || postedMark.id.length === 0) {
     throw new Error("posted change mark missing id");
   }
+  const cutMissing = await fetch(`${APP_URL}/api/search/cut`, {
+    headers: { authorization: basicAuth() },
+  });
+  if (cutMissing.status !== 400) {
+    throw new Error(
+      `GET /api/search/cut without mark expected 400, got ${cutMissing.status}`,
+    );
+  }
+  const cutGet = await fetch(
+    `${APP_URL}/api/search/cut?${new URLSearchParams({
+      mark: postedMark.id,
+      range: "15m",
+    }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!cutGet.ok) {
+    throw new Error(`cut search failed: ${cutGet.status} ${await cutGet.text()}`);
+  }
+  const cutBody = (await cutGet.json()) as { sets?: unknown; title?: string };
+  if (!Array.isArray(cutBody.sets) || typeof cutBody.title !== "string") {
+    throw new Error("GET /api/search/cut missing sets or title");
+  }
   const incidentEnd = new Date(Date.parse(markTs) + 60_000).toISOString();
   const incidentRes = await fetch(`${APP_URL}/v1/marks`, {
     method: "POST",
