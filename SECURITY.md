@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes target the current `main` branch and the current release, presently `0.4.4`. Older releases do not receive fixes.
+Security fixes target the current `main` branch and the current release, presently `0.4.5`. Older releases do not receive fixes.
 
 ## Reporting a vulnerability
 

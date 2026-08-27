@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.4.5
+
 Saved-search sidebar counts no longer re-run every saved search after a foreground search. They refresh on list load, Alerts, and a 30s clock. [#13](https://github.com/toposcope/toposcope/issues/13)
 
 ## 0.4.4
