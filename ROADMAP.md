@@ -8,13 +8,13 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 
 | | |
 | --- | --- |
-| **Today** | [0.4.3](https://github.com/toposcope/toposcope/releases/tag/v0.4.3) — hunt, fingerprints, change marks on the histogram and event table |
+| **Today** | [0.4.4](https://github.com/toposcope/toposcope/releases/tag/v0.4.4) — hunt, fingerprints, change marks on the histogram and event table |
 | **v0.x** | What changed after a deploy, on one clock |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
-## Today — 0.4.3
+## Today — 0.4.4
 
-Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.4.3`.
+Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.4.4`.
 
 Hunt is a self-hosted log manager: `key:value`, saved searches, alerts, histogram, workspaces, boards, Fields, OTLP traces and profiles, Vector → `POST /v1/logs`. Ingest stores `exception.type` / `exception.frames` when they arrive, writes `e1` fingerprints, and stores change marks (`POST /v1/marks`). Search / Follow draw them on the pinned volume plot and as seams between event rows. Lockup is Fault. Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
 
