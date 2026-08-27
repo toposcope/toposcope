@@ -16,7 +16,7 @@ curl -u "toposcope:${TOPOSCOPE_PASSWORD}" -X POST http://127.0.0.1:8080/api/api-
 
 ## Limits and responses
 
-HTTP ingest bodies are limited to 1 MB. A request may contain at most 500 log events, metric points, change marks, spans, or profiles, depending on the endpoint.
+HTTP ingest bodies are limited to 1 MB decoded. A request may contain at most 500 log events, metric points, change marks, spans, or profiles, depending on the endpoint. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
 
 Successful requests return the number of ingested records. Invalid batches return a `4xx` response. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream.
 

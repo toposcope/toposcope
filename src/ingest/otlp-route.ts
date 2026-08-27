@@ -5,9 +5,9 @@ import {
   insertErrorMessage,
   insertEvents,
   MAX_BATCH,
-  MAX_BODY_BYTES,
 } from "./index";
 import { mapOtlpJson } from "./otlp";
+import { readOtlpBody } from "./otlp-body";
 import { decodeOtlpProtobuf, isOtlpProtobufContentType } from "./otlp-protobuf";
 
 function ingestFail(c: Context, err: unknown): Response {
@@ -20,12 +20,9 @@ function ingestFail(c: Context, err: unknown): Response {
 }
 
 export async function otlpLogsRoute(c: Context): Promise<Response> {
-  let buf = new Uint8Array(await c.req.arrayBuffer());
-  if (c.req.header("content-encoding") === "gzip") {
-    buf = new Uint8Array(Bun.gunzipSync(buf));
-  }
-  if (buf.byteLength > MAX_BODY_BYTES) {
-    return c.json({ error: `Body too large (max ${MAX_BODY_BYTES} bytes)` }, 413);
+  const buf = await readOtlpBody(c);
+  if (buf instanceof Response) {
+    return buf;
   }
   if (buf.byteLength === 0) {
     return c.json({ error: "Empty body" }, 400);
