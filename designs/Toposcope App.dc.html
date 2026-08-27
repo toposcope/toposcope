@@ -716,6 +716,10 @@
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.2 0 2.3.2 3.3.5M22 12s-3.5 6-10 6c-1.2 0-2.3-.2-3.3-.5"></path><path d="M3 3l18 18"></path></svg>
                 Hide for this hunt
               </button>
+              <button type="button" onClick="{{ marks.insp.cutGo }}" title="Which fingerprints are first seen, still here, or stopped on either side of this cut — same hunt, equal windows" style="display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:transparent; font-family:inherit; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer;" style-hover="background:oklch(0.274 0.006 286.033);">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v18" stroke-dasharray="2.5 2.5"></path><path d="M4 8h4"></path><path d="M4 16h4"></path><path d="M16 8h4"></path><path d="M16 12h4"></path><path d="M16 16h4"></path></svg>
+                Fingerprints
+              </button>
             </div>
             <p style="margin:7px 0 0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%); max-width:240px;">{{ marks.insp.foot }}</p>
           </div>
@@ -1343,6 +1347,73 @@
             </div>
           </aside>
         </sc-if>
+
+        <sc-if value="{{ cut }}" hint-placeholder-val="{{ false }}">
+          <aside data-screen-label="Cut — fingerprints" style="display:flex; flex-direction:column; flex:0 1 398px; max-width:36%; min-width:0; border-left:1px solid oklch(1 0 0 / 10%); background:#0f0f11;">
+            <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:9px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+              <svg width="12" height="12" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ cut.d }}" fill="{{ cut.f }}" stroke="{{ cut.s }}" stroke-width="{{ cut.w }}" stroke-linejoin="round"></path></svg>
+              <span style="flex:1; min-width:0; font-size:12.5px; font-weight:600; color:oklch(0.985 0 0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ cut.title }}</span>
+              <button onClick="{{ cut.close }}" title="Close — the rail returns to the event detail" style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:26px; height:26px; border:none; border-radius:4.4px; background:transparent; color:oklch(0.705 0.015 286.067); cursor:pointer;" style-hover="background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:3px; flex:0 0 auto; padding:8px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+              <sc-for list="{{ cut.sub }}" as="cw" hint-placeholder-count="3">
+                <div style="display:flex; gap:8px;">
+                  <span style="flex:0 0 52px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 75%);">{{ cw.k }}</span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); white-space:nowrap;">{{ cw.v }}</span>
+                </div>
+              </sc-for>
+              <sc-for list="{{ cut.notes }}" as="cn" hint-placeholder-count="1">
+                <div style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; line-height:1.45;">
+                  <span style="flex:0 0 auto; color:#fbbf24;">▲</span><span style="text-wrap:pretty; color:oklch(0.906 0.014 84 / 90%);">{{ cn }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1; min-height:0; overflow-y:auto;">
+              <sc-for list="{{ cut.sets }}" as="cs" hint-placeholder-count="3">
+                <div>
+                  <div style="display:flex; align-items:baseline; gap:7px; padding:9px 10px 5px;">
+                    <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.985 0 0);">{{ cs.name }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cs.count }}</span>
+                    <span style="margin-left:auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:10px; color:oklch(0.705 0.015 286.067 / 65%); white-space:nowrap;">{{ cs.def }}</span>
+                  </div>
+                  <sc-for list="{{ cs.rows }}" as="cr" hint-placeholder-count="3">
+                    <div style="{{ cr.wrap }}" style-hover="background:oklch(0.274 0.006 286.033 / 30%);">
+                      <div style="display:flex; align-items:center; gap:7px;">
+                        <span style="{{ cr.fatal }}">fatal</span>
+                        <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0 / 90%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ cr.msg }}</span>
+                        <span title="events before → after, equal windows" style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067); font-variant-numeric:tabular-nums;">{{ cr.counts }}</span>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:7px;">
+                        <button type="button" onClick="{{ cr.copyGo }}" title="{{ cr.copyTitle }}" style="display:flex; align-items:center; gap:4px; flex:0 0 auto; height:18px; padding:0 5px; margin-left:-5px; border:none; border-radius:3.4px; background:transparent; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.906 0.014 84 / 85%); cursor:pointer;" style-hover="background:oklch(0.274 0.006 286.033); color:oklch(0.906 0.014 84);">
+                          {{ cr.hex }}
+                          <sc-if value="{{ cr.copied }}" hint-placeholder-val="{{ false }}"><span style="color:#4ade80;">✓</span></sc-if>
+                        </button>
+                        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cr.svc }}</span>
+                        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 70%);">{{ cr.extra }}</span>
+                        <span style="flex:1;"></span>
+                        <button type="button" onClick="{{ cr.fGo }}" title="{{ cr.fTitle }}" style="{{ cr.fStyle }}" style-hover="background:oklch(0.274 0.006 286.033);">{{ cr.fLabel }}</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ cs.empty }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:2px 10px 8px; font-size:11px; color:oklch(0.705 0.015 286.067 / 60%);">{{ cs.empty }}</div>
+                  </sc-if>
+                  <sc-if value="{{ cs.more }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:6px 10px 8px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cs.more }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <sc-if value="{{ cut.emptyAll }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:14px 12px; font-size:12px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ cut.emptyAll }}</div>
+              </sc-if>
+            </div>
+            <div style="flex:0 0 auto; padding:8px 10px; border-top:1px solid oklch(1 0 0 / 10%); background:oklch(0.141 0.005 285.823 / 45%);">
+              <p style="margin:0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">{{ cut.foot }}</p>
+            </div>
+          </aside>
+        </sc-if>
       </div>
       </sc-if>
     </main>
@@ -1714,7 +1785,7 @@
 class Component extends DCLogic {
   state = { view: 'search', selected: 0, tab: 'Fields', range: '1h', anchorMs: null, customSpanMs: null, rangeOpen: false, relCount: 90, relUnit: 'm', live: null, dialog: null, alertRow: null, savedId: null, filters: {}, terms: '', copied: null, newSecret: null, page: 1, presetSearch: null,
     tokens: [['otel-collector', '2026-08-02'], ['vector', '2026-07-21'], ['ci-e2e', '2026-06-30']], split: null, chart: null, logScale: false, hoverBin: null,
-    marksOff: [], marksMuted: [], countFmt: 'human', interval: null, brush: null, around: null, aroundN: 50, aroundMode: 'all', tabs: [], fromWin: null,
+    marksOff: [], marksMuted: [], cut: null, countFmt: 'human', interval: null, brush: null, around: null, aroundN: 50, aroundMode: 'all', tabs: [], fromWin: null,
     tsFmt: 'full', absOpen: null, absFrom: null, absTo: null, absMonth: null, absTimeTxt: null, absTouched: false, absPhase: 'date', absMsTxt: null, wHp: null, wHpAt: null, wMore: null, wMoreAt: null,
     ws: [{ id: 1, kind: 'search', label: null }], wsId: 1, wsSeq: 1, wsKind: 'search', wsEv: null,
     // promoted columns are owned by the workspace tab, keyed by its id — switch tabs, switch columns
@@ -1761,7 +1832,7 @@ class Component extends DCLogic {
   WS_KEYS = ['wsKind', 'wsEv', 'surrSel', 'board', 'bind', 'marksOff', 'marksMuted', 'filters', 'terms', 'q', 'qErr', 'caret', 'range', 'anchorMs', 'customSpanMs',
     'relCount', 'relUnit', 'live', 'page', 'savedId', 'selected', 'tab', 'tabs', 'around', 'aroundN',
     'aroundMode', 'spanSel', 'spanHover', 'profSel', 'profHover', 'follow', 'fromWin', 'split', 'chart',
-    'logScale', 'interval', 'brush', 'widgets', 'logs', 'mainW', 'mainH'];
+    'logScale', 'interval', 'brush', 'widgets', 'logs', 'mainW', 'mainH', 'cut'];
   // a New tab is the default search — bar, histogram, table — not the seeded canvas of tab one
   wsBlank() {
     return { wsKind: 'search', wsEv: null, surrSel: null, board: null, bind: {}, marksOff: [], marksMuted: [], filters: {}, terms: '', q: null, qErr: false, caret: null,
@@ -1769,7 +1840,7 @@ class Component extends DCLogic {
       savedId: null, selected: 0, tab: 'Fields', tabs: [], around: null, aroundN: 50, aroundMode: 'all',
       spanSel: null, spanHover: null, profSel: null, profHover: null, follow: null, fromWin: null,
       split: null, chart: null, logScale: false, interval: null, brush: null,
-      widgets: [], logs: true, mainW: 12, mainH: 3 };
+      widgets: [], logs: true, mainW: 12, mainH: 3, cut: null };
   }
 
   // src/ui/histogram-series.ts — arbitrary-field palette, `other` pinned to #94a3b8
@@ -1796,6 +1867,27 @@ class Component extends DCLogic {
     { id: 'mk_a12', kind: 'note', title: 'raised api rate limit', svc: 'api', src: 'note · m.okafor', at: Date.UTC(2026, 7, 13, 21, 15, 0) },
     { id: 'mk_a13', kind: 'deploy', title: 'web v5.0.0', svc: 'web', src: 'ci · deploy-bot', at: Date.UTC(2026, 7, 13, 12, 40, 18, 903) },
     { id: 'mk_a14', kind: 'incident', title: 'INC-231 db failover', svc: 'billing', src: 'pagerduty', at: Date.UTC(2026, 7, 12, 6, 4, 0), end: Date.UTC(2026, 7, 12, 6, 41, 0) }
+  ];
+
+  // src/query/cut.ts (proposed) — the fingerprint catalog the cut counts against. e1 is minted
+  // at ingest (src/shared/fingerprint.ts): 16 hex from exception type + in-app frames, else the
+  // stabilized message. No title is stored — a row is composed from a sample, service and counts.
+  // `from`/`to` bound when a fingerprint exists at all (the demo story around worker v1.4.3).
+  CUT_T0 = Date.UTC(2026, 7, 14, 14, 11, 4, 221);
+  FPS = [
+    { hex: 'c41a9be2f307d615', svc: 'api', level: 'error', sample: 'upstream timeout after #ms calling checkout.svc:8080', perHr: 512 },
+    { hex: '7d20e8a1c95b3f44', svc: 'api', level: 'error', sample: '502 from checkout.svc after # retries (trace #)', perHr: 388 },
+    { hex: '39f5c07b8ade2261', svc: 'api', level: 'error', sample: 'context deadline exceeded querying pg://orders (#s)', perHr: 296 },
+    { hex: 'ab6e14d9502c7f83', svc: 'billing', level: 'error', sample: 'panic: nil map write in ledger.Apply (goroutine #)', perHr: 240 },
+    { hex: '5c88a3e604b1d9f2', svc: 'billing', level: 'error', sample: 'stripe webhook signature mismatch, dropping evt_#', perHr: 175 },
+    { hex: 'e2074bd8f6a3915c', svc: 'worker', level: 'error', sample: 'failed to flush # rows to ClickHouse: too many parts', perHr: 430 },
+    { hex: 'f60a92c4d17be835', svc: 'worker', level: 'fatal', sample: 'exiting: cannot open sqlite control db (pid #, code #)', perHr: 2 },
+    { hex: '90d3f7a24eb8c165', svc: 'auth', level: 'error', sample: 'token refresh failed for org=acme_#: upstream 503', perHr: 120 },
+    { hex: '48b1cd5f7e92a30d', svc: 'web', level: 'error', sample: 'SSR bailout on /dashboard after #ms', perHr: 88 },
+    { hex: 'b41f0c88a2e6d3f7', svc: 'worker', level: 'error', sample: 'panic: send on closed channel in flush.Drain (batch #)', perHr: 210, from: Date.UTC(2026, 7, 14, 14, 11, 4, 221) },
+    { hex: '2c9e51a7d40b86e3', svc: 'worker', level: 'error', sample: 'unexpected EOF streaming merge parts to clickhouse-1:9000', perHr: 95, from: Date.UTC(2026, 7, 14, 14, 11, 4, 221) },
+    { hex: '6ea3d05c91f47b28', svc: 'api', level: 'error', sample: 'grpc: connection refused to worker-2:7233 during drain', perHr: 44, from: Date.UTC(2026, 7, 14, 14, 12, 24, 221) },
+    { hex: 'd7502e9ab84c61f0', svc: 'worker', level: 'error', sample: 'flush retry budget exhausted; parking batch (attempt #)', perHr: 160, to: Date.UTC(2026, 7, 14, 14, 11, 4, 221) }
   ];
 
   // events per hour for each series, at the reference rate
@@ -2083,31 +2175,38 @@ class Component extends DCLogic {
     const services = Object.keys(hostOf);
     const hex = n => Math.floor(r() * 16 ** n).toString(16).padStart(n, '0');
     const ms = (lo, hi) => Math.floor(lo + r() * (hi - lo));
-    // each template owns its service, level AND the attrs its text asserts
+    // each template owns its service, level AND the attrs its text asserts.
+    // t[3] is the template's e1 (same bug → same 16 hex, stamped at ingest);
+    // t[4] bounds when the bug exists at all — how a fingerprint can be new or gone.
+    const T0 = this.CUT_T0;
     const templates = [
-      ['api', 'error', () => { const t = ms(1500, 3200); return { message: `upstream timeout after ${t}ms calling checkout.svc:8080`, status: 504, durMs: t, path: '/v1/checkout' }; }],
-      ['api', 'error', () => { const n = ms(2, 5), d = ms(400, 1800); return { message: `502 from checkout.svc after ${n} retries (trace ${hex(6)})`, status: 502, durMs: d, path: '/v1/checkout' }; }],
-      ['api', 'error', () => { const sec = 1.8 + r() * 1.4; return { message: `context deadline exceeded querying pg://orders (${sec.toFixed(2)}s)`, status: 503, durMs: Math.round(sec * 1000), path: '/v1/checkout' }; }],
+      ['api', 'error', () => { const t = ms(1500, 3200); return { message: `upstream timeout after ${t}ms calling checkout.svc:8080`, status: 504, durMs: t, path: '/v1/checkout' }; }, 'c41a9be2f307d615'],
+      ['api', 'error', () => { const n = ms(2, 5), d = ms(400, 1800); return { message: `502 from checkout.svc after ${n} retries (trace ${hex(6)})`, status: 502, durMs: d, path: '/v1/checkout' }; }, '7d20e8a1c95b3f44'],
+      ['api', 'error', () => { const sec = 1.8 + r() * 1.4; return { message: `context deadline exceeded querying pg://orders (${sec.toFixed(2)}s)`, status: 503, durMs: Math.round(sec * 1000), path: '/v1/checkout' }; }, '39f5c07b8ade2261'],
+      ['api', 'error', () => { const d = ms(40, 900); return { message: `grpc: connection refused to worker-2:7233 during drain`, status: 502, durMs: d, path: '/v1/checkout' }; }, '6ea3d05c91f47b28', { from: T0 + 80000 }],
       ['api', 'warn', () => ({ message: `retry budget ${ms(61, 94)}% consumed for pool=checkout` })],
       ['api', 'warn', () => { const d = ms(3, 20); return { message: `429 rate limit for org=acme_${hex(3)} at ${ms(180, 420)} req/s`, status: 429, durMs: d, path: '/v1/checkout' }; }],
       ['api', 'info', () => { const d = ms(48, 210); return { message: `POST /v1/checkout 201 in ${d}ms`, status: 201, durMs: d, path: '/v1/checkout' }; }],
       ['api', 'info', () => { const d = ms(28, 96); return { message: `GET /api/search 200 in ${d}ms hits=${ms(120, 2400)}`, status: 200, durMs: d, path: '/api/search' }; }],
       ['api', 'debug', () => ({ message: `compiled query to ${ms(2, 7)} predicates` })],
-      ['billing', 'error', () => ({ message: `panic: nil map write in ledger.Apply (goroutine ${ms(800, 2400)})` })],
-      ['billing', 'error', () => { const d = ms(8, 40); return { message: `stripe webhook signature mismatch, dropping evt_${hex(8)}`, status: 400, durMs: d, path: '/v1/webhooks/stripe' }; }],
+      ['billing', 'error', () => ({ message: `panic: nil map write in ledger.Apply (goroutine ${ms(800, 2400)})` }), 'ab6e14d9502c7f83'],
+      ['billing', 'error', () => { const d = ms(8, 40); return { message: `stripe webhook signature mismatch, dropping evt_${hex(8)}`, status: 400, durMs: d, path: '/v1/webhooks/stripe' }; }, '5c88a3e604b1d9f2'],
       ['billing', 'warn', () => { const sec = 1.1 + r() * 1.9; return { message: `slow query ${sec.toFixed(2)}s on invoices WHERE org_id = $1`, durMs: Math.round(sec * 1000) }; }],
       ['billing', 'info', () => { const d = ms(210, 900); return { message: `settled ${ms(12, 340)} invoices in ${d}ms`, durMs: d }; }],
-      ['worker', 'error', () => { const d = ms(900, 4000); return { message: `failed to flush ${ms(180, 900)} rows to ClickHouse: too many parts`, durMs: d }; }],
+      ['worker', 'error', () => { const d = ms(900, 4000); return { message: `failed to flush ${ms(180, 900)} rows to ClickHouse: too many parts`, durMs: d }; }, 'e2074bd8f6a3915c'],
+      ['worker', 'error', () => ({ message: `panic: send on closed channel in flush.Drain (batch ${ms(200, 900)})` }), 'b41f0c88a2e6d3f7', { from: T0 }],
+      ['worker', 'error', () => ({ message: `unexpected EOF streaming merge parts to clickhouse-1:9000` }), '2c9e51a7d40b86e3', { from: T0 }],
+      ['worker', 'error', () => ({ message: `flush retry budget exhausted; parking batch (attempt ${ms(2, 6)})` }), 'd7502e9ab84c61f0', { to: T0 }],
       ['worker', 'warn', () => ({ message: `queue depth ${(8.1 + r() * 3).toFixed(1)}k above soft limit 8k` })],
       ['worker', 'info', () => { const d = ms(31, 180); return { message: `cron evaluated ${ms(4, 9)} alert rules in ${d}ms`, durMs: d }; }],
       ['worker', 'info', () => { const d = ms(40, 300); return { message: `flushed logs_by_minute (${ms(900, 4800)} rows)`, durMs: d }; }],
       ['worker', 'debug', () => ({ message: `lease renewed shard=${ms(1, 16)} ttl=30s` })],
-      ['worker', 'fatal', () => ({ message: `exiting: cannot open sqlite control db (pid ${ms(2000, 32000)}, code ${ms(1, 4)})` })],
-      ['auth', 'error', () => { const d = ms(200, 1200); return { message: `token refresh failed for org=acme_${hex(3)}: upstream 503`, status: 503, durMs: d, path: '/v1/token' }; }],
+      ['worker', 'fatal', () => ({ message: `exiting: cannot open sqlite control db (pid ${ms(2000, 32000)}, code ${ms(1, 4)})` }), 'f60a92c4d17be835'],
+      ['auth', 'error', () => { const d = ms(200, 1200); return { message: `token refresh failed for org=acme_${hex(3)}: upstream 503`, status: 503, durMs: d, path: '/v1/token' }; }, '90d3f7a24eb8c165'],
       ['auth', 'warn', () => ({ message: `stale claims served from cache (age ${ms(31, 240)}s)`, path: '/v1/token' })],
       ['auth', 'info', () => { const d = ms(18, 74); return { message: `POST /v1/token 200 in ${d}ms`, status: 200, durMs: d, path: '/v1/token' }; }],
       ['auth', 'debug', () => ({ message: `resolved ${ms(3, 12)} scopes for usr_${hex(4)}` })],
-      ['web', 'error', () => { const t = ms(3000, 5200); return { message: `SSR bailout on /dashboard after ${t}ms`, status: 500, durMs: t, path: '/dashboard' }; }],
+      ['web', 'error', () => { const t = ms(3000, 5200); return { message: `SSR bailout on /dashboard after ${t}ms`, status: 500, durMs: t, path: '/dashboard' }; }, '48b1cd5f7e92a30d'],
       ['web', 'warn', () => ({ message: `asset cache miss ratio ${ms(12, 38)}% window=60s` })],
       ['web', 'info', () => { const d = ms(60, 260); return { message: `GET /dashboard 200 in ${d}ms`, status: 200, durMs: d, path: '/dashboard' }; }],
       ['web', 'debug', () => ({ message: `hydrated ${ms(4, 22)} islands` })]
@@ -2139,13 +2238,13 @@ class Component extends DCLogic {
       fold(ast);
     }
     // static feasibility: can ANY template satisfy this query? sample emptiness is not evidence
-    const feasibleT = templates.filter(([svc, lvl, gen]) => {
+    const feasibleT = templates.filter(([svc, lvl, gen, fpx]) => {
       if (want.level && want.level.length && !want.level.includes(lvl)) return false;
       if (want.service && want.service.length && !want.service.includes(svc)) return false;
       if (want.host && want.host.length && !want.host.some(h => hostOf[svc].includes(h))) return false;
       const hosts = hostOf[svc].filter(h => !want.host || !want.host.length || want.host.includes(h));
       const g = gen();
-      return hosts.some(h => this.qMatch(ast, { level: lvl, service: svc, host: h, ts: '', message: g.message, status: g.status, path: g.path, durMs: g.durMs }));
+      return hosts.some(h => this.qMatch(ast, { level: lvl, service: svc, host: h, ts: '', message: g.message, status: g.status, path: g.path, durMs: g.durMs, e1: fpx }));
     });
     rngFn = this.rng(4711);                       // feasibility consumed draws; restart deterministically
     // how much of the space the FREE TEXT removes, measured on the templates rather than guessed:
@@ -2179,10 +2278,13 @@ class Component extends DCLogic {
       const tMin = atMs / 60000;
       const level = pick(levelRows.map(([k]) => k),
         levelRows.map(([k, hourly]) => hourly * (this.bursty(k) ? (this.burstFraction(tMin, tMin) ? 5 : 0.6) : 1)));
-      const pool = feasibleT.filter(t => t[1] === level);
-      const [service, , gen] = pick(pool, pool.map(([svc]) => svcHourly[svc] || 1));
+      // a template only fires while its bug exists — the clock decides, not the query
+      let pool = feasibleT.filter(t => t[1] === level && (!t[4] || ((t[4].from == null || atMs >= t[4].from) && (t[4].to == null || atMs < t[4].to))));
+      if (!pool.length) pool = feasibleT.filter(t => t[1] === level);
+      const [service, , gen, fpx] = pick(pool, pool.map(([svc]) => svcHourly[svc] || 1));
       events.push({
         i, level, service,
+        ...(fpx ? { e1: fpx } : {}),
         host: pick(hostsFor(service), hostsFor(service).map(h => hostHourly[h] || 1)),
         ts: new Date(Math.round(atMs)).toISOString().slice(0, 19),
         atMs: Math.round(atMs),
@@ -4408,7 +4510,7 @@ class Component extends DCLogic {
     const mkRules = [], mkTags = [];
     mkGroups.forEach(g => {
       const hov = st.mkHover && st.mkHover.key === g.key;
-      const sel = st.mkSel && g.one && st.mkSel.id === g.one.id;
+      const sel = (st.mkSel && g.one && st.mkSel.id === g.one.id) || (st.cut && g.one && st.cut.markId === g.one.id);
       if (g.one) {
         if (g.one.kind === 'incident' && g.one.end) return; // the band draws this one
         const c = sel ? `background:${mkColor(g.one.kind)}; opacity:.85;`
@@ -4429,7 +4531,7 @@ class Component extends DCLogic {
     });
     const mkLane = mkGroups.map(g => {
       const hov = st.mkHover && st.mkHover.key === g.key;
-      const sel = (st.mkSel && g.one && st.mkSel.id === g.one.id) || (st.mkPin && st.mkPin.key === g.key);
+      const sel = (st.mkSel && g.one && st.mkSel.id === g.one.id) || (st.mkPin && st.mkPin.key === g.key) || (st.cut && g.one && st.cut.markId === g.one.id);
       const ring = g.one && live && CLOCK - g.one.at < 150000;
       const kinds = [...new Set(g.members.map(m => m.kind))];
       const domKind = g.one ? g.one.kind : kinds.map(k => [k, g.members.filter(m => m.kind === k).length]).sort((a, b) => b[1] - a[1])[0][0];
@@ -4531,8 +4633,9 @@ class Component extends DCLogic {
         { k: 'id', v: mkSelM.id }
       ],
       hideGo: () => this.setState(p => ({ marksMuted: [...(p.marksMuted || []), mkSelM.id], mkSel: null })),
-      foot: `Hiding is per-hunt visibility. Deleting is DELETE /v1/marks/${mkSelM.id} — the store is not edited from this panel.`
-    } : { wrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0', title: '', rows: [], hideGo: () => {}, foot: '' };
+      cutGo: () => this.setState({ cut: { markId: mkSelM.id, atMs: NOW }, mkSel: null }),
+      foot: 'Hiding is per-hunt visibility — the store keeps every mark; nothing here deletes.'
+    } : { wrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0', title: '', rows: [], hideGo: () => {}, cutGo: () => {}, foot: '' };
     const mkKindN = { deploy: 0, flag: 0, incident: 0, note: 0 };
     mkInWin.forEach(m => { mkKindN[m.kind]++; });
     const mkMutedRows = mkMuted.map(id => this.MARKS.find(m => m.id === id)).filter(Boolean);
@@ -4554,7 +4657,7 @@ class Component extends DCLogic {
         label: mkLabel(m), t: mkHms(m.at).slice(0, 5),
         unGo: () => this.setState(p => ({ marksMuted: (p.marksMuted || []).filter(x => x !== m.id) }))
       })),
-      foot: 'This hunt only — the store keeps every mark. Erasing one is DELETE /v1/marks/:id, deliberately not a click here.'
+      foot: 'This hunt only — the store keeps every mark; hiding is visibility, never deletion.'
     } : { wrap: 'display:none;', sub: '', kinds: [], mutedHeadStyle: 'display:none;', mutedHead: '', muted: [], foot: '' };
     const marks = {
       rules: mkRules, tags: mkTags, lane: mkLane, peeks: mkPeeks,
@@ -4571,6 +4674,104 @@ class Component extends DCLogic {
       hcard: mkHcard, pin: mkPin, insp: mkInsp, vis: mkVis
     };
 
+    // ── the cut: three sets of fingerprints around a selected mark ───────────
+    // Clock cut, not causation. The slice is the hunt as-is — q, facets, visibility;
+    // the mark only lends its time. After = mark → window end (the band itself for a
+    // closed incident); before = the same duration immediately before the mark, even
+    // where that reads past the plot's left edge. Rows are fingerprints, never marks.
+    const cutM = st.cut ? this.MARKS.find(m => m.id === st.cut.markId) : null;
+    let cut = null;
+    if (cutM) {
+      const banded = cutM.kind === 'incident' && !!cutM.end && cutM.end <= NOW;
+      // sides freeze at open — Live moves the plot, not the cut; reopening re-cuts at now
+      const aFrom = cutM.at, aTo = banded ? cutM.end : Math.min(st.cut.atMs || NOW, NOW);
+      const side = aTo - aFrom, bFrom = aFrom - side, bTo = aFrom;
+      const dead = side <= 0;
+      const hm = n => n >= 10000 ? Math.round(n / 1000) + 'K' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+      const cAst = this.qAst(st.terms || '');
+      const inSlice = f => (this.HOSTS[f.svc] || ['']).some(h =>
+        this.eventMatches(filters, { level: f.level, service: f.svc, host: h })
+        && this.qMatch(cAst, { level: f.level, service: f.svc, host: h, message: f.sample, e1: f.hex }));
+      const nOf = (f, x0, x1) => {
+        const lo = Math.max(x0, f.from || 0), hi = Math.min(x1, f.to || Infinity);
+        return hi <= lo ? 0 : Math.max(1, Math.round(f.perHr * (hi - lo) / 3600000));
+      };
+      const scored = dead ? [] : this.FPS.filter(inSlice)
+        .map(f => ({ f, nb: nOf(f, bFrom, bTo), na: nOf(f, aFrom, aTo) }))
+        .filter(x => x.nb + x.na > 0);
+      const tok = h => 'e1:' + h;
+      const hasTok = h => (st.terms || '').split(/\s+/).includes(tok(h));
+      const CAP = 10;
+      const mkRow = x => {
+        const on = hasTok(x.f.hex);
+        const firstIn = x.nb === 0 && x.f.from && x.f.from >= bFrom;
+        return {
+          wrap: `display:flex; flex-direction:column; gap:3px; padding:7px 10px; border-bottom:1px solid oklch(1 0 0 / 6%);${on ? ' background:oklch(0.274 0.006 286.033 / 45%); box-shadow:inset 2px 0 0 oklch(0.906 0.014 84);' : ''}`,
+          msg: x.f.sample,
+          fatal: x.f.level === 'fatal' ? 'flex:0 0 auto; padding:0 4px; border-radius:2.4px; background:oklch(0.396 0.141 25.723 / 45%); color:#fca5a5; font-size:9.5px; line-height:15px; text-transform:uppercase;' : 'display:none;',
+          counts: `${hm(x.nb)} → ${hm(x.na)}`,
+          hex: tok(x.f.hex),
+          copied: st.copied === 'cut:' + x.f.hex,
+          copyGo: () => { this.copy(tok(x.f.hex)).then(ok => { if (ok) this.flash('cut:' + x.f.hex); }); },
+          copyTitle: `Copy ${tok(x.f.hex)} — the id is the identity; there is no issue page behind it`,
+          svc: x.f.svc,
+          extra: firstIn ? 'first ' + mkHms(Math.max(x.f.from, aFrom)) : '',
+          fLabel: on ? 'Filtered' : 'Filter',
+          fStyle: `display:flex; align-items:center; gap:4px; flex:0 0 auto; height:20px; padding:0 7px; border:1px solid ${on ? 'oklch(0.906 0.014 84 / 55%)' : 'oklch(1 0 0 / 15%)'}; border-radius:3.4px; background:${on ? 'oklch(0.906 0.014 84 / 12%)' : 'transparent'}; font-family:inherit; font-size:10.5px; color:${on ? 'oklch(0.906 0.014 84)' : 'oklch(0.985 0 0)'}; cursor:pointer;`,
+          fTitle: on ? `Remove ${tok(x.f.hex)} from the bar` : `${tok(x.f.hex)} into the bar — table and histogram follow; the mark and this panel stay put`,
+          fGo: () => this.setState(p => {
+            const t = this.writeFacet(p.terms, tok(x.f.hex), !((p.terms || '').split(/\s+/).includes(tok(x.f.hex))));
+            return { terms: t, q: p.q == null ? null : this.writeQuery(p.filters, t), page: 1, qErr: false };
+          })
+        };
+      };
+      const secOf = (name, def, list, key) => ({
+        name, def, count: String(list.length),
+        rows: list.slice().sort((a, b) => b[key] - a[key]).slice(0, CAP).map(mkRow),
+        empty: list.length ? '' : 'none',
+        more: list.length > CAP ? `+${list.length - CAP} more — capped at ${CAP} a set; narrow the hunt to reach them` : ''
+      });
+      const sNew = scored.filter(x => x.nb === 0 && x.na > 0);
+      const sCont = scored.filter(x => x.nb > 0 && x.na > 0);
+      const sGone = scored.filter(x => x.nb > 0 && x.na === 0);
+      const notes = [];
+      if (dead) notes.push('The window ends before this mark — there is no after side to cut.');
+      else {
+        if (!banded && side < 5 * 60000) notes.push(`Only ${durLabel(side)} since the cut — both sides are that short. Early to call anything stopped.`);
+        if (cutM.kind === 'incident' && cutM.end && cutM.end > NOW) notes.push('The incident is still open — the cut sits at its start, not a band.');
+        if (bFrom < windowFrom) notes.push("The before side reads past the plot's left edge — same q, older data. The plot is not the query.");
+        if (live && !banded && NOW - aTo > 1000) notes.push(`Fixed when opened — ${durLabel(NOW - aTo)} ago. Live moves the plot, not the cut; reopen to re-cut at now.`);
+      }
+      cut = {
+        d: MKG[cutM.kind].d, f: MKG[cutM.kind].f, s: MKG[cutM.kind].s, w: MKG[cutM.kind].w,
+        title: mkLabel(cutM),
+        close: () => this.setState({ cut: null }),
+        sub: [
+          { k: banded ? 'during' : 'cut at', v: banded ? `${mkHms(aFrom)} → ${mkHms(aTo)} · ${durLabel(side)}` : mkTs(cutM.at) },
+          { k: 'after', v: dead ? '—' : `${mkHms(aFrom)} → ${mkHms(aTo)} · ${durLabel(side)}` },
+          { k: 'before', v: dead ? '—' : `${mkHms(bFrom)} → ${mkHms(bTo)} · equal ${durLabel(side)}` }
+        ],
+        notes,
+        sets: dead ? [] : [
+          secOf('First seen', 'after the cut, not in the equal window before', sNew, 'na'),
+          secOf('Still here', 'both sides of the cut', sCont, 'na'),
+          secOf('Stopped', 'before the cut, quiet after', sGone, 'nb')
+        ],
+        emptyAll: !dead && !scored.length ? 'No fingerprints in this slice. Only events carrying e1 are counted here — errors that never fingerprinted are not this list.' : '',
+        foot: 'A clock cut, not causation — first seen after is not caused by. The hunt is untouched: q and facets stay; only Filter writes the bar.'
+      };
+      // the two windows, drawn where the plot can see them
+      if (!dead) {
+        const seg = (x0, x1, wash) => {
+          const l = Math.max(0, mkX(x0)), rr = Math.min(100, mkX(x1));
+          if (rr > l) mkRules.push(`position:absolute; top:0; bottom:0; left:${l.toFixed(3)}%; width:${(rr - l).toFixed(3)}%; background:oklch(1 0 0 / ${wash}%); pointer-events:none; z-index:1;`);
+        };
+        seg(bFrom, bTo, 2.5); seg(aFrom, aTo, 5);
+        if (mkX(bFrom) >= 0) mkRules.push(`position:absolute; top:0; bottom:0; left:${mkX(bFrom).toFixed(3)}%; width:1px; background:repeating-linear-gradient(180deg, oklch(1 0 0 / 30%) 0 4px, transparent 4px 7px); pointer-events:none; z-index:2;`);
+        // washes only, no duration tags — hover, stacked bars and overlays keep their space
+      }
+    }
+
     // ── marks between log rows: a seam, never a row ─────────────────────────
     // Same store, same visibility state as the lane. A seam is chrome at a true
     // timestamp — never counted, matched, or exported; clicking one pins the same
@@ -4582,7 +4783,7 @@ class Component extends DCLogic {
     const sepTimeCss = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067); pointer-events:none; white-space:nowrap;';
     const sepHide = 'display:none;';
     const mkSeam = m => {
-      const sel = st.mkSel && st.mkSel.id === m.id;
+      const sel = (st.mkSel && st.mkSel.id === m.id) || (st.cut && st.cut.markId === m.id);
       const hov = st.mkHoverT === m.id;
       const ring = live && CLOCK - m.at < 150000;
       const col = mkColor(m.kind), gl = MKG[m.kind];
@@ -4626,7 +4827,7 @@ class Component extends DCLogic {
       };
     };
     const mkSeamEnd = m => {
-      const sel = st.mkSel && st.mkSel.id === m.id;
+      const sel = (st.mkSel && st.mkSel.id === m.id) || (st.cut && st.cut.markId === m.id);
       const hov = st.mkHoverT === 'end:' + m.id;
       return {
         sep: true, wrap: sepBase,
@@ -6155,7 +6356,7 @@ class Component extends DCLogic {
         : '',
       traceBtnStyle: traceVal ? 'display:flex; align-items:center; gap:6px; flex:0 0 auto; height:28px; padding:0 11px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:transparent; color:oklch(0.985 0 0); font-family:inherit; font-size:12.5px; cursor:pointer; white-space:nowrap;' : 'display:none;',
       traceBtnTitle: traceVal ? `Where time went in this request — joined on ${traceKey}:${traceVal}` : '',
-      hairline, hoverTip, hoverRows, hoverMove, hoverLeave, marks,
+      hairline, hoverTip, hoverRows, hoverMove, hoverLeave, marks, cut,
       plotDown, plotMove, plotUp, plotCancel, brushStyle, brushLabel, brushLabelStyle, gCursor,
       headTrack, headKnob, headStem, headLabel, headTitle, headEnter, headLeave, headCursor,
       headDown, headMove, headUp, headCancel,
@@ -6174,7 +6375,7 @@ class Component extends DCLogic {
       toggleCopy: () => this.setState(p => ({ copyOpen: !p.copyOpen, exportOpen: false })),
       copyItems,
       hints: [['/', 'search'], ['j k', 'move'], ['↵', 'expand'], ['wheel / + −', 'zoom'], ['esc', 'close']].map(([key, label]) => ({ key, label })),
-      detail: !traceTab && !profTab && st.selected !== null && (isSurr || (dataState === 'data' && shown.length)) ? {
+      detail: !traceTab && !profTab && !st.cut && st.selected !== null && (isSurr || (dataState === 'data' && shown.length)) ? {
         level: sel.level, ts: tsAt(sel.atMs, 'full') + 'Z', message: sel.message,
         badge: this.badge(sel.level),
         msgBox: `padding:9px 10px; border:1px solid oklch(1 0 0 / 10%); border-left:2px solid ${this.L[sel.level].c}; border-radius:6.4px; background:oklch(0.141 0.005 285.823 / 60%); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.55; word-break:break-word;`,

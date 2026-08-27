@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:oklch(0.906 0.014 84); text-decoration:none; }
+  a:hover { color:oklch(0.985 0 0); }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:oklch(1 0 0 / 12%); border-radius:99px; border:3px solid oklch(0.115 0.004 285.8); }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="max-width:1120px;">
+    <div style="display:flex; align-items:baseline; gap:12px;">
+      <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+      <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Fingerprints after a mark</h1>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Search · reader on the results rail · after 0.4.5</span>
+    </div>
+    <p style="margin:10px 0 0; max-width:940px; font-size:13px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Marks tell you when; fingerprints (<span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">e1</span>) tell you which error. The cut is the missing set question — after this ship or this incident, which fingerprints are <span style="color:oklch(0.985 0 0);">first seen</span>, which are <span style="color:oklch(0.985 0 0);">still here</span>, which <span style="color:oklch(0.985 0 0);">stopped</span>. It is a reader on the hunt the operator already has — the q, facets and clock they chose. Drawn states, not one happy path. Not drawn, on purpose: compare and its percents, creating or deleting marks, auto-marks on first-seen e1, issue pages, per-widget q. Wired and clickable in <a href="Toposcope%20App.dc.html">Toposcope App.dc.html</a>.</p>
+    <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding:12px 14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ system }}" as="s" hint-placeholder-count="5">
+        <div style="display:flex; gap:9px; font-size:12.5px; line-height:1.5; color:oklch(0.705 0.015 286.067);">
+          <span style="flex:0 0 auto; width:14px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84 / 75%);">{{ s.n }}</span>
+          <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ s.head }}</span> {{ s.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="1a" style="margin-top:38px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#1a" style="{{ badge }}">1a</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Entry — the inspector grows one verb</div>
+        <p style="{{ capBody }}">No new door. Every place a mark is already selectable — lane glyph, list seam, a row in a pinned cluster — ends in the same inspector. The inspector gains one button beside Hide. Nothing else is invented.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px; align-items:stretch; width:1120px;">
+      <div style="flex:0 0 auto; padding:14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+        <div style="width:288px; padding:9px 11px; border:1px solid oklch(1 0 0 / 14%); border-radius:6.4px; background:oklch(0.21 0.006 285.885); box-shadow:0 16px 40px oklch(0 0 0 / 60%);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <svg width="12" height="12" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg>
+            <span style="font-size:12.5px; font-weight:600; color:oklch(0.985 0 0); white-space:nowrap;">deployed: worker v1.4.3</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:3px; margin-top:8px;">
+            <sc-for list="{{ inspRows }}" as="ir" hint-placeholder-count="5">
+              <div style="display:flex; gap:8px;">
+                <span style="flex:0 0 52px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 75%);">{{ ir.k }}</span>
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); white-space:nowrap;">{{ ir.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:9px; padding-top:8px; border-top:1px solid oklch(1 0 0 / 10%);">
+            <span style="display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer; white-space:nowrap;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.2 0 2.3.2 3.3.5M22 12s-3.5 6-10 6c-1.2 0-2.3-.2-3.3-.5"></path><path d="M3 3l18 18"></path></svg>
+              Hide for this hunt
+            </span>
+            <span style="position:relative; display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(0.906 0.014 84 / 45%); border-radius:4.4px; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer; white-space:nowrap; background:oklch(0.906 0.014 84 / 7%);">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v18" stroke-dasharray="2.5 2.5"></path><path d="M4 8h4"></path><path d="M4 16h4"></path><path d="M16 8h4"></path><path d="M16 12h4"></path><path d="M16 16h4"></path></svg>
+              Fingerprints
+            </span>
+          </div>
+          <p style="margin:7px 0 0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%); max-width:250px;">Hiding is per-hunt visibility — the store keeps every mark; nothing here deletes.</p>
+        </div>
+        <p style="margin:10px 0 0; max-width:300px; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">The verb reads as a question about the cut, not a navigation: <span style="color:oklch(0.985 0 0);">which fingerprints, either side of this time.</span></p>
+      </div>
+      <sc-for list="{{ doors }}" as="dr" hint-placeholder-count="3">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">{{ dr.title }}</div>
+          <div style="position:relative; height:74px; margin-top:8px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ dr.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:7px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ dr.caption }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-for list="{{ frames }}" as="f" hint-placeholder-count="2">
+    <div id="{{ f.id }}" style="margin-top:40px;">
+      <div style="display:flex; gap:12px; align-items:baseline; max-width:1120px;">
+        <a href="{{ f.href }}" style="{{ badge }}">{{ f.id }}</a>
+        <div style="min-width:0;">
+          <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">{{ f.title }}</div>
+          <p style="{{ capBody }}">{{ f.body }}</p>
+        </div>
+      </div>
+      <div style="width:1120px; margin-top:12px; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:oklch(0.141 0.005 285.823); box-shadow:0 20px 50px oklch(0 0 0 / 35%); overflow:hidden;">
+        <div style="display:flex; align-items:stretch;">
+          <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; padding:12px;">
+            <sc-if value="{{ f.bar }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:7px; flex:0 0 auto; height:32px; margin-bottom:10px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:oklch(0.141 0.005 285.823);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:oklch(0.985 0 0);">{{ f.bar }}</span>
+              </div>
+            </sc-if>
+            <div style="position:relative; flex:0 0 128px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+              <div style="position:absolute; inset:4px 0; display:flex; align-items:flex-end; gap:1px; padding:0 2px;">
+                <sc-for list="{{ f.cols }}" as="c" hint-placeholder-count="24"><div style="{{ c }}"></div></sc-for>
+              </div>
+              <sc-for list="{{ f.washes }}" as="w" hint-placeholder-count="2"><div style="{{ w }}"></div></sc-for>
+              <sc-for list="{{ f.tags }}" as="tg" hint-placeholder-count="2"><div style="{{ tg.s }}">{{ tg.t }}</div></sc-for>
+            </div>
+            <div style="position:relative; flex:0 0 22px; margin-top:4px;">
+              <sc-for list="{{ f.lane }}" as="m" hint-placeholder-count="1">
+                <span style="{{ m.wrap }}">
+                  <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto; display:block;"><path d="{{ m.d }}" fill="{{ m.f }}" stroke="{{ m.s }}" stroke-width="{{ m.w }}" stroke-linejoin="round"></path></svg>
+                  <span style="{{ m.labelStyle }}">{{ m.label }}</span>
+                </span>
+              </sc-for>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:2px; padding:0 2px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">
+              <sc-for list="{{ f.axis }}" as="a" hint-placeholder-count="5"><span>{{ a }}</span></sc-for>
+            </div>
+            <sc-if value="{{ f.void }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1 1 auto; display:flex; align-items:center; justify-content:center; min-height:64px; margin-top:10px; border:1px dashed oklch(1 0 0 / 10%); border-radius:4.4px;">
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 55%);">{{ f.void }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ f.tblOn }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:10px; border:1px solid oklch(1 0 0 / 10%); border-radius:4.4px; overflow:hidden;">
+                <sc-for list="{{ f.tbl }}" as="tr" hint-placeholder-count="3">
+                  <div style="position:relative; display:flex; align-items:center; gap:10px; height:26px; padding:0 8px 0 11px; border-bottom:1px solid oklch(1 0 0 / 6%);">
+                    <span style="position:absolute; left:0; top:0; bottom:0; width:2px; background:#ef4444;"></span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">{{ tr.ts }}</span>
+                    <span style="flex:0 0 auto; padding:0 5px; border-radius:2.4px; background:oklch(0.396 0.141 25.723 / 45%); color:#fca5a5; font-size:10px; line-height:16px; letter-spacing:0.04em;">ERROR</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.985 0 0); white-space:nowrap;">{{ tr.svc }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">{{ tr.host }}</span>
+                    <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.985 0 0 / 88%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ tr.msg }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+
+          <aside style="display:flex; flex-direction:column; flex:0 0 398px; min-width:0; border-left:1px solid oklch(1 0 0 / 10%); background:#0f0f11;">
+            <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:9px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+              <svg width="12" height="12" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ f.p.d }}" fill="{{ f.p.f }}" stroke="{{ f.p.s }}" stroke-width="{{ f.p.w }}" stroke-linejoin="round"></path></svg>
+              <span style="flex:1; min-width:0; font-size:12.5px; font-weight:600; color:oklch(0.985 0 0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.p.title }}</span>
+              <span style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:26px; height:26px; border-radius:4.4px; color:oklch(0.705 0.015 286.067); cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+              </span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:3px; flex:0 0 auto; padding:8px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+              <sc-for list="{{ f.p.sub }}" as="cw" hint-placeholder-count="3">
+                <div style="display:flex; gap:8px;">
+                  <span style="flex:0 0 52px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 75%);">{{ cw.k }}</span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); white-space:nowrap;">{{ cw.v }}</span>
+                </div>
+              </sc-for>
+              <sc-for list="{{ f.p.notes }}" as="cn" hint-placeholder-count="1">
+                <div style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; line-height:1.45;">
+                  <span style="flex:0 0 auto; color:#fbbf24;">▲</span><span style="text-wrap:pretty; color:oklch(0.906 0.014 84 / 90%);">{{ cn }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1 1 auto; min-height:0;">
+              <sc-for list="{{ f.p.sets }}" as="cs" hint-placeholder-count="3">
+                <div>
+                  <div style="display:flex; align-items:baseline; gap:7px; padding:9px 10px 5px;">
+                    <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.985 0 0);">{{ cs.name }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cs.count }}</span>
+                    <span style="margin-left:auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:10px; color:oklch(0.705 0.015 286.067 / 65%); white-space:nowrap;">{{ cs.def }}</span>
+                  </div>
+                  <sc-for list="{{ cs.rows }}" as="cr" hint-placeholder-count="3">
+                    <div style="{{ cr.wrap }}">
+                      <div style="display:flex; align-items:center; gap:7px;">
+                        <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0 / 90%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ cr.msg }}</span>
+                        <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067); font-variant-numeric:tabular-nums;">{{ cr.counts }}</span>
+                      </div>
+                      <div style="display:flex; align-items:center; gap:7px;">
+                        <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.906 0.014 84 / 85%); cursor:pointer;">{{ cr.hex }}</span>
+                        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cr.svc }}</span>
+                        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 70%);">{{ cr.extra }}</span>
+                        <span style="flex:1;"></span>
+                        <span style="{{ cr.fStyle }}">{{ cr.fLabel }}</span>
+                      </div>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ cs.empty }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:2px 10px 8px; font-size:11px; color:oklch(0.705 0.015 286.067 / 60%);">{{ cs.empty }}</div>
+                  </sc-if>
+                  <sc-if value="{{ cs.more }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:6px 10px 8px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cs.more }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <sc-if value="{{ f.p.emptyAll }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:14px 12px; font-size:12px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ f.p.emptyAll }}</div>
+              </sc-if>
+            </div>
+            <div style="flex:0 0 auto; padding:8px 10px; border-top:1px solid oklch(1 0 0 / 10%); background:oklch(0.141 0.005 285.823 / 45%);">
+              <p style="margin:0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">A clock cut, not causation — first seen after is not caused by. The hunt is untouched: q and facets stay; only Filter writes the bar.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <p style="margin:9px 0 0; max-width:1120px; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 85%);">{{ f.fine }}</p>
+    </div>
+  </sc-for>
+
+  <div id="1h" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#1h" style="{{ badge }}">1h</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Row anatomy — composed, never titled</div>
+        <p style="{{ capBody }}">There is no stored title and no issue behind the row. Everything on it is composed from what ingest already keeps: a sample message with values folded to #, the service, counts on both sides, and the 16-hex id itself — visible, copyable, searchable.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:14px; margin-top:12px; align-items:flex-start; width:1120px;">
+      <div style="flex:0 0 560px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:#0f0f11; overflow:hidden;">
+        <div style="display:flex; flex-direction:column; gap:3px; padding:10px 12px;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0 / 90%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">panic: send on closed channel in flush.Drain (batch #)<span style="{{ numChip }}">1</span></span>
+            <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067); font-variant-numeric:tabular-nums;">0 → 171<span style="{{ numChip }}">2</span></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.906 0.014 84 / 85%); cursor:pointer;">e1:b41f0c88a2e6d3f7<span style="{{ numChip }}">3</span></span>
+            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">worker<span style="{{ numChip }}">4</span></span>
+            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 70%);">first 14:11:12<span style="{{ numChip }}">5</span></span>
+            <span style="flex:1;"></span>
+            <span style="display:flex; align-items:center; gap:4px; flex:0 0 auto; height:20px; padding:0 7px; border:1px solid oklch(1 0 0 / 15%); border-radius:3.4px; font-size:10.5px; color:oklch(0.985 0 0); cursor:pointer;">Filter<span style="{{ numChip }}">6</span></span>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:7px 16px;">
+        <sc-for list="{{ anatomy }}" as="an" hint-placeholder-count="6">
+          <div style="display:flex; gap:8px; font-size:11.5px; line-height:1.45; color:oklch(0.705 0.015 286.067);">
+            <span style="{{ numChipL }}">{{ an.n }}</span>
+            <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ an.head }}</span> {{ an.body }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div id="1i" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#1i" style="{{ badge }}">1i</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Tried and put down</div>
+        <p style="{{ capBody }}">Three places this could have lived or grown, and why it must not. If new cannot be told from hottest-in-window, the drawing failed; if it could be mistaken for an issue tracker or a compare chart, it also failed.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px; width:1120px;">
+      <sc-for list="{{ rejCards }}" as="rc" hint-placeholder-count="3">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;">✕</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ rc.title }}</span>
+          </div>
+          <div style="position:relative; height:74px; margin-top:9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ rc.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ rc.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <p style="margin:52px 0 0; max-width:1120px; padding-top:20px; border-top:1px solid oklch(1 0 0 / 12%); font-size:11.5px; line-height:1.5; color:oklch(0.705 0.015 286.067 / 70%);">Not the shipped app. Do not invent chrome these frames do not draw. The interactive version of every state here is wired in <a href="Toposcope%20App.dc.html">Toposcope App.dc.html</a>; the marks sheet this builds on is <a href="Toposcope%20Marks.dc.html">Toposcope Marks.dc.html</a>.</p>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    const MONO = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace;';
+    const DIM = 'oklch(0.705 0.015 286.067)';
+    const G = {
+      deploy: { d: 'M6 1.6 L11 10.4 L1 10.4 Z', f: 'oklch(0.906 0.014 84)', s: 'none', w: '0' },
+      incident: { d: 'M6 0.9 L11.1 6 L6 11.1 L0.9 6 Z', f: '#ef4444', s: 'none', w: '0' }
+    };
+    const badge = `flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:26px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; ${MONO} font-size:11px; color:oklch(0.906 0.014 84);`;
+    const capBody = `margin:4px 0 0; max-width:880px; font-size:12.5px; line-height:1.5; text-wrap:pretty; color:${DIM};`;
+    const numChip = `display:inline-flex; align-items:center; justify-content:center; width:13px; height:13px; margin-left:5px; border-radius:99px; background:oklch(0.906 0.014 84 / 15%); color:oklch(0.906 0.014 84); font-size:9px; vertical-align:1px;`;
+    const numChipL = `flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; margin-top:2px; border-radius:99px; background:oklch(0.906 0.014 84 / 15%); color:oklch(0.906 0.014 84); font-size:9px;`;
+
+    // seeded bars — three-stop stack: error sliver / warn / info, like the app's level split
+    const rng = s => () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const N = 56;
+    const bars = (seed, kind, o) => {
+      const r = rng(seed), out = [];
+      for (let i = 0; i < N; i++) {
+        const x = i / N;
+        if (kind === 'sparse') {
+          if (o && x >= o.cut && r() < 0.75) {
+            const h = 6 + r() * 16;
+            out.push(`flex:1 1 0; height:${h.toFixed(1)}%; border-radius:1px 1px 0 0; background:#ef4444;`);
+          } else out.push('flex:1 1 0; height:0;');
+          continue;
+        }
+        const dip = 0.78 + 0.22 * Math.sin((x + 0.15) * 3.1);
+        const h = (46 + r() * 44) * dip;
+        if (kind === 'info') {
+          out.push(`flex:1 1 0; height:${h.toFixed(1)}%; border-radius:1px 1px 0 0; background:#0ea5e9;`);
+          continue;
+        }
+        let e = 1.6 + r() * 1.4, w = 10 + r() * 6;
+        if (o && o.band && x >= o.band[0] && x <= o.band[1]) { e = 10 + r() * 9; w = 24 + r() * 8; }
+        out.push(`flex:1 1 0; height:${h.toFixed(1)}%; border-radius:1px 1px 0 0; background:linear-gradient(180deg, #ef4444 0 ${e.toFixed(1)}%, #f59e0b ${e.toFixed(1)}% ${(e + w).toFixed(1)}%, #0ea5e9 ${(e + w).toFixed(1)}% 100%);`);
+      }
+      return out;
+    };
+    const wash = (l, r, a) => `position:absolute; top:0; bottom:0; left:${l}%; width:${(r - l).toFixed(2)}%; background:oklch(1 0 0 / ${a}%); pointer-events:none;`;
+    const redWash = (l, r) => `position:absolute; top:0; bottom:0; left:${l}%; width:${(r - l).toFixed(2)}%; background:rgba(239,68,68,0.07); pointer-events:none;`;
+    const rule = (x, c) => `position:absolute; top:0; bottom:0; left:${x}%; width:1px; background:${c}; opacity:.85; pointer-events:none;`;
+    const dashRule = (x, c) => `position:absolute; top:0; bottom:0; left:${x}%; width:1px; background:repeating-linear-gradient(180deg, ${c} 0 4px, transparent 4px 7px); pointer-events:none;`;
+    const tag = (x, t, red) => ({ s: `position:absolute; left:calc(${x}% + 5px); top:3px; ${MONO} font-size:9.5px; color:${red ? 'rgba(252,165,165,0.85)' : 'oklch(0.985 0 0 / 45%)'}; pointer-events:none; white-space:nowrap;`, t });
+    const laneMark = (x, kind, label) => ({
+      wrap: `position:absolute; top:50%; left:${x}%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:5px; height:18px; padding:0 4px; border-radius:3.4px; background:oklch(0.274 0.006 286.033); box-shadow:0 0 0 1px color-mix(in oklab, ${kind === 'incident' ? '#ef4444' : 'oklch(0.906 0.014 84)'} 50%, transparent); white-space:nowrap; cursor:default;`,
+      d: G[kind].d, f: G[kind].f, s: G[kind].s, w: G[kind].w,
+      labelStyle: label ? 'font-size:11px; color:oklch(0.985 0 0 / 82%);' : 'display:none;', label: label || ''
+    });
+
+    const fmt = n => n >= 10000 ? Math.round(n / 1000) + 'K' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+    const row = (msg, hex, svc, nb, na, extra, on) => ({
+      wrap: `display:flex; flex-direction:column; gap:3px; padding:7px 10px; border-bottom:1px solid oklch(1 0 0 / 6%);${on ? ' background:oklch(0.274 0.006 286.033 / 45%); box-shadow:inset 2px 0 0 oklch(0.906 0.014 84);' : ''}`,
+      msg, counts: `${fmt(nb)} → ${fmt(na)}`, hex: 'e1:' + hex, svc, extra: extra || '',
+      fLabel: on ? 'Filtered' : 'Filter',
+      fStyle: `display:flex; align-items:center; gap:4px; flex:0 0 auto; height:20px; padding:0 7px; border:1px solid ${on ? 'oklch(0.906 0.014 84 / 55%)' : 'oklch(1 0 0 / 15%)'}; border-radius:3.4px; background:${on ? 'oklch(0.906 0.014 84 / 12%)' : 'transparent'}; font-size:10.5px; color:${on ? 'oklch(0.906 0.014 84)' : 'oklch(0.985 0 0)'}; cursor:pointer;`
+    });
+    const sec = (name, def, count, rows, more) => ({
+      name, def, count: String(count), rows,
+      empty: rows.length ? '' : 'none',
+      more: more ? `+${more} more — capped at 10 a set; narrow the hunt to reach them` : ''
+    });
+    const DEFS = { nw: 'after the cut, not in the equal window before', st: 'both sides of the cut', gn: 'before the cut, quiet after' };
+
+    // shared story rows — worker v1.4.3 at 14:11:04, 49m sides
+    const newRows = on => [
+      row('panic: send on closed channel in flush.Drain (batch #)', 'b41f0c88a2e6d3f7', 'worker', 0, 171, 'first 14:11:12', on),
+      row('unexpected EOF streaming merge parts to clickhouse-1:9000', '2c9e51a7d40b86e3', 'worker', 0, 78, 'first 14:11:31'),
+      row('grpc: connection refused to worker-2:7233 during drain', '6ea3d05c91f47b28', 'api', 0, 36, 'first 14:12:24')
+    ];
+    const contRows = [
+      row('upstream timeout after #ms calling checkout.svc:8080', 'c41a9be2f307d615', 'api', 418, 422),
+      row('failed to flush # rows to ClickHouse: too many parts', 'e2074bd8f6a3915c', 'worker', 352, 347),
+      row('502 from checkout.svc after # retries (trace #)', '7d20e8a1c95b3f44', 'api', 316, 320),
+      row('context deadline exceeded querying pg://orders (#s)', '39f5c07b8ade2261', 'api', 242, 239),
+      row('panic: nil map write in ledger.Apply (goroutine #)', 'ab6e14d9502c7f83', 'billing', 196, 201),
+      row('stripe webhook signature mismatch, dropping evt_#', '5c88a3e604b1d9f2', 'billing', 143, 140),
+      row('token refresh failed for org=acme_#: upstream 503', '90d3f7a24eb8c165', 'auth', 98, 101),
+      row('SSR bailout on /dashboard after #ms', '48b1cd5f7e92a30d', 'web', 72, 70)
+    ];
+    const goneRow = row('flush retry budget exhausted; parking batch (attempt #)', 'd7502e9ab84c61f0', 'worker', 131, 0);
+
+    const cutX = 18.4, axis1h = ['14:00', '14:15', '14:30', '14:45', 'now'];
+    const sub49 = [
+      { k: 'cut at', v: '2026-08-14 14:11:04.221' },
+      { k: 'after', v: '14:11:04 → 15:00:04 · 49m' },
+      { k: 'before', v: '13:22:08 → 14:11:04 · equal 49m' }
+    ];
+    const noteEdge = "The before side reads past the plot's left edge — same q, older data. The plot is not the query.";
+    const noteLive = 'Fixed when opened — Live moves the plot, not the cut; reopen to re-cut at now.';
+
+    const frames = [
+      {
+        id: '1b', href: '#1b',
+        title: 'The reader — three honest sets',
+        body: 'Opened from the inspector, the rail swaps the event detail for the cut. Three sets over the hunt\u2019s own slice — each row a fingerprint with its counts on both sides. The plot shades the two windows so the words and the picture agree.',
+        fine: 'Entry was the inspector; the mark stays selected on the lane. q was never touched — the cut borrowed only the mark\u2019s time.',
+        bar: null,
+        cols: bars(41, 'level'), washes: [wash(0, cutX, 2.5), wash(cutX, 100, 5)],
+        tags: [],
+        lane: [laneMark(cutX, 'deploy', 'deployed: worker v1.4.3')], axis: axis1h,
+        tblOn: false, tbl: [], void: 'results table · unchanged by the cut',
+        p: {
+          d: G.deploy.d, f: G.deploy.f, s: G.deploy.s, w: G.deploy.w, title: 'deployed: worker v1.4.3',
+          sub: sub49, notes: [noteEdge, noteLive],
+          sets: [sec('First seen', DEFS.nw, 3, newRows(false)), sec('Still here', DEFS.st, 8, contRows), sec('Stopped', DEFS.gn, 1, [goneRow])],
+          emptyAll: ''
+        }
+      },
+      {
+        id: '1c', href: '#1c',
+        title: 'Opening one fingerprint',
+        body: 'Filter writes e1:<hex> into the bar — the same copyable token an operator could type, the same move as Top-N\u2019s Filter. Table and histogram follow. The mark stays selected, the panel stays open, and the panel itself now obeys the bar.',
+        fine: 'No new surface: the hunt they know is the fingerprint\u2019s page. Removing the token is the way back — the cut is still there.',
+        bar: 'e1:b41f0c88a2e6d3f7',
+        cols: bars(7, 'sparse', { cut: cutX / 100 }), washes: [wash(0, cutX, 2.5), wash(cutX, 100, 5)],
+        tags: [],
+        lane: [laneMark(cutX, 'deploy', 'deployed: worker v1.4.3')], axis: axis1h,
+        tblOn: true, tbl: [
+          { ts: '2026-08-14 14:59:51.688', svc: 'worker', host: 'worker-1', msg: 'panic: send on closed channel in flush.Drain (batch 512)' },
+          { ts: '2026-08-14 14:59:45.741', svc: 'worker', host: 'worker-2', msg: 'panic: send on closed channel in flush.Drain (batch 388)' },
+          { ts: '2026-08-14 14:59:38.902', svc: 'worker', host: 'worker-1', msg: 'panic: send on closed channel in flush.Drain (batch 640)' }
+        ],
+        p: {
+          d: G.deploy.d, f: G.deploy.f, s: G.deploy.s, w: G.deploy.w, title: 'deployed: worker v1.4.3',
+          sub: sub49, notes: ['The list obeys the bar like everything else — clear the token to see the full cut.'],
+          sets: [sec('First seen', DEFS.nw, 1, [newRows(true)[0]]), sec('Still here', DEFS.st, 0, []), sec('Stopped', DEFS.gn, 0, [])],
+          emptyAll: ''
+        }
+      },
+      {
+        id: '1d', href: '#1d',
+        title: 'A mark near now',
+        body: 'Equal means equal even when both sides are small. The cut refuses to invent future time or borrow a fuller before; it says how little it has and lets the sets be quiet. Live keeps ticking — no Searching shimmer, no skeleton rows.',
+        fine: 'The after side is 1m 29s, so the before side is 1m 29s. Nothing is padded to look fuller than it is.',
+        bar: null,
+        cols: bars(97, 'level'), washes: [wash(95.1, 97.55, 2.5), wash(97.55, 100, 5)],
+        tags: [],
+        lane: [laneMark(97.55, 'deploy', '')], axis: axis1h,
+        tblOn: false, tbl: [], void: 'results table · Live keeps appending; nothing shimmers',
+        p: {
+          d: G.deploy.d, f: G.deploy.f, s: G.deploy.s, w: G.deploy.w, title: 'deployed: api v2.3.2',
+          sub: [
+            { k: 'cut at', v: '2026-08-14 14:58:30.414' },
+            { k: 'after', v: '14:58:30 → 14:59:59 · 1m 29s' },
+            { k: 'before', v: '14:57:01 → 14:58:30 · equal 1m 29s' }
+          ],
+          notes: ['Only 1m 29s since the cut — both sides are that short. Early to call anything stopped.', noteLive],
+          sets: [
+            sec('First seen', DEFS.nw, 0, []),
+            sec('Still here', DEFS.st, 6, [
+              row('upstream timeout after #ms calling checkout.svc:8080', 'c41a9be2f307d615', 'api', 14, 11),
+              row('failed to flush # rows to ClickHouse: too many parts', 'e2074bd8f6a3915c', 'worker', 12, 13),
+              row('panic: send on closed channel in flush.Drain (batch #)', 'b41f0c88a2e6d3f7', 'worker', 6, 5),
+              row('502 from checkout.svc after # retries (trace #)', '7d20e8a1c95b3f44', 'api', 9, 8),
+              row('context deadline exceeded querying pg://orders (#s)', '39f5c07b8ade2261', 'api', 7, 9),
+              row('panic: nil map write in ledger.Apply (goroutine #)', 'ab6e14d9502c7f83', 'billing', 6, 5)
+            ]),
+            sec('Stopped', DEFS.gn, 0, [])
+          ],
+          emptyAll: ''
+        }
+      },
+      {
+        id: '1e', href: '#1e',
+        title: 'During an incident',
+        body: 'A closed incident cuts as its stored band: during is the after side, and before mirrors the band\u2019s length back from its start. Point marks cut at a point; bands cut as bands — the band was already a duration on the plot, never decoration.',
+        fine: 'A closed band never reads mark → now; the operator asked about the incident, not about everything since it.',
+        bar: null,
+        cols: bars(23, 'level', { band: [0.264, 0.343] }),
+        washes: [redWash(26.4, 34.3), wash(17.8, 26.4, 2.5), wash(26.4, 34.3, 5), dashRule(26.4, 'rgba(239,68,68,0.5)'), dashRule(34.3, 'rgba(239,68,68,0.5)'), dashRule(17.8, 'oklch(1 0 0 / 30%)')],
+        tags: [tag(34.8, 'INC-238 checkout 5xx · 1h 2m', true)],
+        lane: [], axis: ['00:00', '03:00', '06:00', '09:00', '12:00'],
+        tblOn: false, tbl: [], void: 'results table · unchanged by the cut',
+        p: {
+          d: G.incident.d, f: G.incident.f, s: G.incident.s, w: G.incident.w, title: 'incident: INC-238 checkout 5xx',
+          sub: [
+            { k: 'during', v: '03:10:00 → 04:12:00 · 1h 2m' },
+            { k: 'after', v: '03:10:00 → 04:12:00 · the band' },
+            { k: 'before', v: '02:08:00 → 03:10:00 · equal 1h 2m' }
+          ],
+          notes: ['During = the stored band, not mark → now. An open incident would cut at its start instead.'],
+          sets: [
+            sec('First seen', DEFS.nw, 2, [
+              row('502 from checkout.svc after # retries (trace #)', '7d20e8a1c95b3f44', 'api', 0, 412, 'first 03:11:40'),
+              row('SSR bailout on /dashboard after #ms', '48b1cd5f7e92a30d', 'web', 0, 66, 'first 03:14:02')
+            ]),
+            sec('Still here', DEFS.st, 4, [
+              row('upstream timeout after #ms calling checkout.svc:8080', 'c41a9be2f307d615', 'api', 501, 543),
+              row('context deadline exceeded querying pg://orders (#s)', '39f5c07b8ade2261', 'api', 287, 301),
+              row('panic: nil map write in ledger.Apply (goroutine #)', 'ab6e14d9502c7f83', 'billing', 244, 251),
+              row('failed to flush # rows to ClickHouse: too many parts', 'e2074bd8f6a3915c', 'worker', 431, 428)
+            ]),
+            sec('Stopped', DEFS.gn, 1, [
+              row('token refresh failed for org=acme_#: upstream 503', '90d3f7a24eb8c165', 'auth', 118, 0)
+            ])
+          ],
+          emptyAll: ''
+        }
+      },
+      {
+        id: '1f', href: '#1f',
+        title: 'Overflow, counted',
+        body: 'A broad hunt after a big ship. Sets cap at ten drawn rows — the Top-N default; tens, not hundreds — and the leftover is a counted line, not a scrollbar. Narrowing the hunt is the pagination; the cap never silently hides a set\u2019s existence.',
+        fine: 'Sorting inside a set is by after-side count (before-side for Stopped) — but the sets themselves are membership, never ranking.',
+        bar: null,
+        cols: bars(63, 'level'), washes: [wash(5.6, 52.8, 2.5), wash(52.8, 100, 5), dashRule(5.6, 'oklch(1 0 0 / 30%)')],
+        tags: [],
+        lane: [laneMark(52.8, 'deploy', 'deployed: api v2.4.0')], axis: ['Aug 13 15:00', '21:00', '03:00', '09:00', 'now'],
+        tblOn: false, tbl: [], void: 'results table · unchanged by the cut',
+        p: {
+          d: G.deploy.d, f: G.deploy.f, s: G.deploy.s, w: G.deploy.w, title: 'deployed: api v2.4.0',
+          sub: [
+            { k: 'cut at', v: '2026-08-14 03:40:00.118' },
+            { k: 'after', v: '03:40:00 → 15:00:00 · 11h 20m' },
+            { k: 'before', v: 'Aug 13 16:20 → 03:40 · equal 11h 20m' }
+          ],
+          notes: [],
+          sets: [
+            sec('First seen', DEFS.nw, 14, [
+              row('TypeError: cannot read plan of undefined in quote.Build', '8a44f0d2c19e6b57', 'api', 0, 96, 'first 03:40:19'),
+              row('ERR_STREAM_PREMATURE_CLOSE piping export to s3://invoices', '31c7e9a08d5f42b6', 'billing', 0, 41, 'first 03:52:07'),
+              row('redis: MOVED # replying to session lookup', 'ee12a86c4b09df73', 'auth', 0, 38, 'first 03:41:55'),
+              row('panic: slice bounds out of range in rate.Window', '5d90b3f8a67c21e4', 'api', 0, 24, 'first 04:06:12'),
+              row('unhandled rejection: AbortError in prefetch /dashboard', 'a7c2d84e19f05b63', 'web', 0, 19, 'first 05:11:48'),
+              row('dial tcp 10.0.4.#:9000: i/o timeout during merge', 'c3f6a1b8524e97d0', 'worker', 0, 12, 'first 06:03:31'),
+              row('ValidationError: missing field currency in invoice.Create', 'b90c35f7a1d8e246', 'billing', 0, 17, 'first 07:22:10'),
+              row('segfault in pdf render worker (signal #)', '682fd4a0c7e3b195', 'worker', 0, 9, 'first 08:15:44'),
+              row('TypeError: fetch failed reading feature flags', 'f14b7c92e065ad38', 'web', 0, 8, 'first 09:02:26'),
+              row('context canceled: client disconnected mid-upload', 'dc07a5e83f9b2461', 'api', 0, 6, 'first 10:40:57')
+            ], 4),
+            sec('Still here', DEFS.st, 9, [
+              row('upstream timeout after #ms calling checkout.svc:8080', 'c41a9be2f307d615', 'api', 5800, 5900),
+              row('failed to flush # rows to ClickHouse: too many parts', 'e2074bd8f6a3915c', 'worker', 4900, 4800),
+              row('502 from checkout.svc after # retries (trace #)', '7d20e8a1c95b3f44', 'api', 4400, 4500),
+              row('context deadline exceeded querying pg://orders (#s)', '39f5c07b8ade2261', 'api', 3400, 3300),
+              row('panic: nil map write in ledger.Apply (goroutine #)', 'ab6e14d9502c7f83', 'billing', 2700, 2800),
+              row('stripe webhook signature mismatch, dropping evt_#', '5c88a3e604b1d9f2', 'billing', 2000, 1900),
+              row('token refresh failed for org=acme_#: upstream 503', '90d3f7a24eb8c165', 'auth', 2900, 2800),
+              row('SSR bailout on /dashboard after #ms', '48b1cd5f7e92a30d', 'web', 2100, 2100),
+              row('exiting: cannot open sqlite control db (pid #, code #)', 'f60a92c4d17be835', 'worker', 48, 50)
+            ]),
+            sec('Stopped', DEFS.gn, 3, [
+              row('flush retry budget exhausted; parking batch (attempt #)', 'd7502e9ab84c61f0', 'worker', 1800, 0),
+              row('CSRF token mismatch on /v1/token', '0b58e2c7d4a9f316', 'auth', 214, 0),
+              row('watchdog: replica lag above 30s on pg-2', '96d1f4b03c8ae725', 'billing', 96, 0)
+            ])
+          ],
+          emptyAll: ''
+        }
+      },
+      {
+        id: '1g', href: '#1g',
+        title: 'Empty, said plainly',
+        body: 'Fingerprints exist only where ingest minted e1 — application errors, by type and stack or stabilized message. A hunt filtered to info has none on either side, and the reader says that instead of drawing zero-charts or borrowing rows from outside the slice.',
+        fine: 'Events with no e1 are not this list — there is no “other” bucket to pad it with.',
+        bar: 'level:info',
+        cols: bars(11, 'info'), washes: [wash(0, cutX, 2.5), wash(cutX, 100, 5)],
+        tags: [],
+        lane: [laneMark(cutX, 'deploy', 'deployed: worker v1.4.3')], axis: axis1h,
+        tblOn: false, tbl: [], void: 'results table · info rows, no e1',
+        p: {
+          d: G.deploy.d, f: G.deploy.f, s: G.deploy.s, w: G.deploy.w, title: 'deployed: worker v1.4.3',
+          sub: sub49, notes: [],
+          sets: [],
+          emptyAll: 'No fingerprints in this slice. Only events carrying e1 are counted here — errors that never fingerprinted are not this list.'
+        }
+      }
+    ];
+
+    const shape = (s, t) => ({ s, t: t || '' });
+    const doors = [
+      { title: 'Lane glyph', caption: 'Click the glyph on the marks lane — the inspector pins where you clicked. One more click: the cut.', shapes: [
+        shape(`position:absolute; left:8%; right:8%; top:50%; height:1px; background:oklch(1 0 0 / 14%);`),
+        shape(`position:absolute; left:38%; top:14%; bottom:14%; width:1px; background:repeating-linear-gradient(180deg, oklch(1 0 0 / 30%) 0 4px, transparent 4px 7px);`),
+        shape(`position:absolute; left:38%; top:50%; transform:translate(-50%,-50%); width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-bottom:10px solid oklch(0.906 0.014 84);`),
+        shape(`position:absolute; left:46%; top:50%; transform:translateY(-50%); ${MONO} font-size:9.5px; color:oklch(0.985 0 0 / 70%);`, 'deployed: worker v1.4.3')
+      ] },
+      { title: 'List seam', caption: 'The seam between rows is the same mark at its true timestamp — clicking it pins the same inspector.', shapes: [
+        shape(`position:absolute; left:0; right:0; top:12%; height:14px; border-bottom:1px solid oklch(1 0 0 / 8%);`),
+        shape(`position:absolute; left:0; right:0; top:34%; height:14px; border-bottom:1px solid oklch(1 0 0 / 8%);`),
+        shape(`position:absolute; left:6%; right:6%; top:58%; height:1px; background:repeating-linear-gradient(90deg, oklch(1 0 0 / 30%) 0 4px, transparent 4px 7px);`),
+        shape(`position:absolute; left:14%; top:58%; transform:translateY(-50%); padding:1px 5px; border-radius:3px; background:oklch(0.141 0.005 285.823); ${MONO} font-size:9px; color:oklch(0.985 0 0 / 75%);`, '▲ deployed: worker v1.4.3 · 14:11:04'),
+        shape(`position:absolute; left:0; right:0; top:74%; height:14px; border-bottom:1px solid oklch(1 0 0 / 8%);`)
+      ] },
+      { title: 'Cluster row', caption: 'A folded cluster opens its list; a row inspects its mark. The cut is one hop away from all three doors.', shapes: [
+        shape(`position:absolute; left:10%; top:8%; width:80%; padding:3px 7px; border:1px solid oklch(1 0 0 / 14%); border-radius:4.4px; background:oklch(0.21 0.006 285.885); ${MONO} font-size:9px; color:oklch(0.985 0 0 / 85%); white-space:nowrap; overflow:hidden;`, '5 marks · 09:12 – 09:19'),
+        shape(`position:absolute; left:10%; top:42%; width:80%; padding:3px 7px; border-radius:3.4px; background:oklch(0.274 0.006 286.033); ${MONO} font-size:9px; color:oklch(0.985 0 0 / 85%); white-space:nowrap; overflow:hidden;`, '▲ billing v0.9 · 09:15'),
+        shape(`position:absolute; left:10%; top:72%; width:80%; padding:3px 7px; ${MONO} font-size:9px; color:${DIM}; white-space:nowrap; overflow:hidden;`, '▲ web v5.0.1 · 09:19')
+      ] }
+    ];
+
+    const rejCards = [
+      { title: 'A Top-N e1 plot mode', verdict: 'Top-N answers hottest in the window — usually the junk bucket. New-after-this-mark is a set cut, not a ranking; the three new bugs never crack the top and stay invisible.', shapes: [
+        shape(`position:absolute; left:8%; bottom:12%; width:14%; height:70%; background:oklch(0.552 0.016 285.938 / 60%); border-radius:1px 1px 0 0;`),
+        shape(`position:absolute; left:26%; bottom:12%; width:14%; height:52%; background:oklch(0.552 0.016 285.938 / 45%); border-radius:1px 1px 0 0;`),
+        shape(`position:absolute; left:44%; bottom:12%; width:14%; height:38%; background:oklch(0.552 0.016 285.938 / 35%); border-radius:1px 1px 0 0;`),
+        shape(`position:absolute; left:62%; bottom:12%; width:14%; height:9%; background:#ef4444; border-radius:1px 1px 0 0;`),
+        shape(`position:absolute; left:60%; top:18%; ${MONO} font-size:9px; color:#fca5a5;`, 'the new bug'),
+        shape(`position:absolute; left:8%; top:8%; ${MONO} font-size:9px; color:${DIM};`, 'hottest ≠ new')
+      ] },
+      { title: 'An issue page per row', verdict: 'The hex is the identity and the hunt is the page. A second home grows states, assignees and dedupe rules — a tracker, which this is not. Opening one e1 is a query, not a navigation.', shapes: [
+        shape(`position:absolute; left:10%; top:14%; width:60%; height:60%; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; background:oklch(0.141 0.005 285.823);`),
+        shape(`position:absolute; left:16%; top:22%; ${MONO} font-size:9px; color:oklch(0.985 0 0 / 75%);`, 'ISSUE-4821  open  assigned'),
+        shape(`position:absolute; left:16%; top:44%; width:44%; height:5px; border-radius:99px; background:oklch(1 0 0 / 10%);`),
+        shape(`position:absolute; left:16%; top:58%; width:32%; height:5px; border-radius:99px; background:oklch(1 0 0 / 10%);`),
+        shape(`position:absolute; left:52%; top:30%; width:36%; height:1px; background:#ef4444; transform:rotate(24deg); transform-origin:left;`),
+        shape(`position:absolute; left:52%; top:64%; width:36%; height:1px; background:#ef4444; transform:rotate(-24deg); transform-origin:left;`)
+      ] },
+      { title: 'A percent column', verdict: 'The 0.5% / 4% / 9% sentence is compare — a later series with its own drawing. Here a percent would fake precision the cut does not have, and pull the reader toward being a chart.', shapes: [
+        shape(`position:absolute; left:8%; top:22%; ${MONO} font-size:10px; color:oklch(0.985 0 0 / 85%);`, 'panic: send on closed channel…'),
+        shape(`position:absolute; right:8%; top:20%; padding:1px 5px; border-radius:3px; background:oklch(0.577 0.245 27.325 / 15%); ${MONO} font-size:10px; color:#fca5a5; text-decoration:line-through;`, '+9%'),
+        shape(`position:absolute; left:8%; top:52%; ${MONO} font-size:10px; color:oklch(0.985 0 0 / 85%);`, 'unexpected EOF streaming…'),
+        shape(`position:absolute; right:8%; top:50%; padding:1px 5px; border-radius:3px; background:oklch(0.577 0.245 27.325 / 15%); ${MONO} font-size:10px; color:#fca5a5; text-decoration:line-through;`, '+4%'),
+        shape(`position:absolute; left:8%; bottom:10%; ${MONO} font-size:9px; color:${DIM};`, 'counts stay: 0 → 171')
+      ] }
+    ];
+
+    return {
+      badge, capBody, numChip, numChipL,
+      system: [
+        { n: '1', head: 'A clock cut, not causation.', body: 'First seen means first seen in the equal window after this mark, versus the equal window before — never “this deploy caused it”. No mark is ever auto-drawn when an e1 first appears.' },
+        { n: '2', head: 'The mark lends its time, nothing else.', body: 'Selecting a mark still never rewrites q. The slice is the hunt already on screen — q, facets, clock. The mark\u2019s service is never silently ANDed in.' },
+        { n: '3', head: 'Equal windows, honest leftovers.', body: 'After = mark → window end (a closed incident cuts as its band). Before mirrors that duration, even past the plot\u2019s left edge. When the after side is short, the panel says so instead of padding.' },
+        { n: '4', head: 'A row is a fingerprint.', body: 'Composed from a sample message, service and counts — the 16-hex id stays visible and copyable. No stored titles, no issue page, no percents, no per-row sparklines. Events without e1 are not this list.' },
+        { n: '5', head: 'The rail, not a new home.', body: 'A reader where the event detail lives; closing it gives the rail back. It is not Surroundings (±50 events stays untouched), not compare, not a board. A cut opened under Live is fixed at open — reopen to re-cut at now; existing rows never shimmer.' }
+      ],
+      inspRows: [
+        { k: 'time', v: '2026-08-14 14:11:04.221' },
+        { k: '', v: '49m ago · in window' },
+        { k: 'service', v: 'worker' },
+        { k: 'source', v: 'ci · deploy-bot' },
+        { k: 'id', v: 'mk_a02' }
+      ],
+      doors, frames, rejCards,
+      anatomy: [
+        { n: '1', head: 'Sample, stabilized.', body: 'One real message with ids, times and digit runs folded to # — the same fold ingest hashes. Not a title; nothing here is stored per-fingerprint.' },
+        { n: '2', head: 'Counts, both sides.', body: 'Events before → after over the equal windows. Counts, never percents — the delta sentence belongs to compare.' },
+        { n: '3', head: 'The id, visible.', body: 'e1: plus 16 hex. Click copies the whole token, ready to paste into any bar. The hex is never hidden behind a friendly name.' },
+        { n: '4', head: 'Service, composed.', body: 'The service of the sampled events. A fingerprint can span hosts; it never inherits the mark\u2019s service.' },
+        { n: '5', head: 'First, when new.', body: 'The first event inside the after side. Only drawn for First seen — elsewhere it would be noise.' },
+        { n: '6', head: 'Filter, the only writer.', body: 'Writes e1:<hex> into the bar; table and histogram follow. Click again removes it. Nothing else in this panel touches the hunt.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
