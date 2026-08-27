@@ -48,6 +48,7 @@ import { BrandMark } from "./brand-mark";
 import { eventKey, indexOfEventKey } from "./event-key";
 import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
+import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
 import { joinTraceRef } from "../shared/ids";
 import type { ChangeMark, ChangeMarkKind } from "../shared/change-mark";
 import type { ProfileResponse } from "../shared/profile";
@@ -1423,7 +1424,6 @@ export function App() {
                 [qVal, ...prev.filter((item) => item !== qVal)].slice(0, 10),
               );
             }
-            void loadCounts(saved);
           }
           void loadFacets(facetQuery);
           void loadNumericKeys(facetQuery);
@@ -1453,7 +1453,7 @@ export function App() {
         }
       }
     },
-    [from, to, range, q, live, split, step, chart, agg, logsOn, nextCursor, loadCounts, loadFacets, loadNumericKeys, loadMetricNames, loadAttrKeys, loadAttrFacets, saved],
+    [from, to, range, q, live, split, step, chart, agg, logsOn, nextCursor, loadFacets, loadNumericKeys, loadMetricNames, loadAttrKeys, loadAttrFacets],
   );
 
   useEffect(() => {
@@ -1614,6 +1614,16 @@ export function App() {
     }, 2000);
     return () => clearInterval(id);
   }, [live, view, wsKind, runSearch]);
+
+  useEffect(() => {
+    if (view !== "search" || saved.length === 0) {
+      return;
+    }
+    const id = setInterval(() => {
+      void loadCounts(saved);
+    }, SAVED_COUNT_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [view, saved, loadCounts]);
 
   useEffect(() => {
     if (!searching) {

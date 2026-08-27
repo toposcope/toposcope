@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
 
 const appSource = await Bun.file(new URL("./App.tsx", import.meta.url)).text();
 
@@ -29,5 +30,13 @@ describe("saved-search count fan-out", () => {
   test("adding saved searches does not add /run requests to a replace search", () => {
     expect(replaceSearchRunRequests(appSource, 1)).toBe(0);
     expect(replaceSearchRunRequests(appSource, 10)).toBe(0);
+  });
+
+  test("sidebar counts refresh on their own clock", () => {
+    expect(SAVED_COUNT_REFRESH_MS).toBe(30_000);
+    expect(appSource).toContain("SAVED_COUNT_REFRESH_MS");
+    expect(appSource).toMatch(
+      /setInterval\(\(\) => \{\s*void loadCounts\(saved\);\s*\}, SAVED_COUNT_REFRESH_MS\)/,
+    );
   });
 });
