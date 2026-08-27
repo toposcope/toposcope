@@ -680,7 +680,7 @@ export function HistogramMarksChip({
   return (
     <span
       ref={rootRef}
-      className={cn("relative", placement === "legend" ? "ml-auto" : "")}
+      className="relative ml-auto"
     >
       <button
         type="button"
@@ -713,7 +713,7 @@ export function HistogramMarksChip({
           className={cn(
             "absolute z-20 w-[240px] rounded-md border bg-popover p-1 shadow-lg",
             placement === "bar"
-              ? "left-0 top-full mt-1"
+              ? "right-0 top-full mt-1"
               : "right-0 bottom-full mb-1",
           )}
         >

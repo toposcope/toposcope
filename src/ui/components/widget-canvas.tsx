@@ -654,9 +654,6 @@ export function WidgetCanvas({
             Logs off
           </button>
         </div>
-        {marks ? (
-          <HistogramMarksChip overlay={marks} placement="bar" />
-        ) : null}
         {extras ? (
           <span
             className={cn(
@@ -666,6 +663,9 @@ export function WidgetCanvas({
           >
             {widgets.length}/{maxWidgets} panels
           </span>
+        ) : null}
+        {marks ? (
+          <HistogramMarksChip overlay={marks} placement="bar" />
         ) : null}
       </div>
       <div
