@@ -2,12 +2,13 @@ import { mkdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { pingClickHouse } from "../shared/clickhouse";
 import { defaultSqlitePath } from "../shared/sqlite-path";
+import {
+  healthFromPings,
+  type BootPhase,
+  type Health,
+} from "../shared/boot";
 
-export type Health = {
-  ok: boolean;
-  clickhouse: boolean;
-  sqlite: boolean;
-};
+export type { Health };
 
 let db: Database | null = null;
 
@@ -171,7 +172,7 @@ function pingSqlite(): boolean {
   return row?.ok === 1;
 }
 
-export async function getHealth(): Promise<Health> {
+export async function getHealth(phase: BootPhase): Promise<Health> {
   let clickhouse = false;
   let sqlite = false;
   try {
@@ -184,9 +185,5 @@ export async function getHealth(): Promise<Health> {
   } catch {
     sqlite = false;
   }
-  return {
-    ok: clickhouse && sqlite,
-    clickhouse,
-    sqlite,
-  };
+  return healthFromPings(phase, { clickhouse, sqlite }).body;
 }

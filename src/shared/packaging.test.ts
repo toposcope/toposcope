@@ -19,6 +19,12 @@ describe("packaged compose", () => {
     expect(yaml).toContain("TOPOSCOPE_PASSWORD: ${TOPOSCOPE_PASSWORD:?");
     expect(yaml).toContain("memory: 4G");
   });
+
+  test("healthchecks /api/health so a long migrate can answer 503", async () => {
+    const yaml = await Bun.file(`${root}/compose.yml`).text();
+    expect(yaml).toContain("http://127.0.0.1:8080/api/health");
+    expect(yaml).toContain("if (!r.ok) process.exit(1)");
+  });
 });
 
 describe("dev compose", () => {

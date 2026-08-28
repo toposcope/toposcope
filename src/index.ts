@@ -44,14 +44,11 @@ import { systemRoute } from "./query/system";
 import { throughputRoute } from "./query/throughput";
 import { applyRetentionDays, migrateStore, syncFieldRoleSkip } from "./shared/migrate";
 import { requirePackagedSecrets } from "./shared/secrets";
+import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 
 requirePackagedSecrets();
-await migrateStore();
-getDb();
-await syncFieldRoleSkip(storedSkipKeys());
-await applyRetentionDays(getRetentionDays());
-startAlertCron();
-await startSyslogUdp();
+
+let bootPhase: BootPhase = "starting";
 
 const app = new Hono();
 
@@ -62,7 +59,7 @@ app.onError((err, c) => {
 });
 
 app.get("/api/health", async (c) => {
-  const health = await getHealth();
+  const health = await getHealth(bootPhase);
   return c.json(health, health.ok ? 200 : 503);
 });
 
@@ -75,6 +72,9 @@ app.get("/api/metrics", (c) => {
 app.use("/*", async (c, next) => {
   if (c.req.path === "/api/health" || c.req.path === "/api/metrics") {
     return next();
+  }
+  if (!bootAllowsRequest(bootPhase, c.req.path)) {
+    return c.json({ error: "not ready", phase: bootPhase }, 503);
   }
   const header = c.req.header("authorization");
   const ingest =
@@ -150,3 +150,22 @@ export default {
   idleTimeout: 120,
   fetch: app.fetch,
 };
+
+void startBoot();
+
+async function startBoot(): Promise<void> {
+  try {
+    bootPhase = "schema";
+    await migrateStore();
+    bootPhase = "repair";
+    getDb();
+    await syncFieldRoleSkip(storedSkipKeys());
+    await applyRetentionDays(getRetentionDays());
+    startAlertCron();
+    await startSyslogUdp();
+    bootPhase = "ready";
+  } catch (err) {
+    console.error("boot failed", err);
+    process.exit(1);
+  }
+}

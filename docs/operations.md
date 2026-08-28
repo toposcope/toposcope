@@ -34,7 +34,7 @@ toposcope.example.com {
 
 ## Upgrade and retention
 
-Boot is idempotent. No volume wipe is required for a normal upgrade.
+Boot is idempotent. No volume wipe is required for a normal upgrade. The process listens on `:8080` before migrate; `/api/health` is **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe, then **200**. Packaged Compose healthchecks that URL.
 
 Update the application image pin in `compose.yml`, then pull and restart:
 
@@ -93,7 +93,7 @@ If a ClickHouse data directory from an older release refuses to start after the 
 
 `GET /api/health` and `GET /api/metrics` are open endpoints.
 
-`GET /api/health` reports whether ClickHouse and SQLite are healthy.
+`GET /api/health` is **200** only when `phase` is `ready` and both stores ping; otherwise **503** with `phase`.
 
 `GET /api/metrics` returns Prometheus text.
 
