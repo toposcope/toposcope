@@ -20,6 +20,7 @@ import {
   formatSharePct,
   hbarNPresets,
   hbarRows,
+  hbarRowIsValue,
   maxHbarN,
   minHbarN,
   pickerAttrKeys,
@@ -186,8 +187,7 @@ export function HbarWidget({
             const clickable =
               Boolean(onCommand) &&
               field !== null &&
-              bar.key !== "events" &&
-              bar.key !== "other";
+              hbarRowIsValue(bar.key);
             const token = field ? formatFieldToken(field, bar.key) : bar.key;
             const row = (
               <>

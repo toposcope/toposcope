@@ -770,7 +770,7 @@ export function hbarFetchNeedsNetwork(prev: HbarFetch, next: HbarFetch): boolean
 /**
  * Named Top-N rows plus `other` when N actually cuts the list (or fills
  * the requested N, so more values may exist). A short list is complete —
- * do not invent `other` from events that never had this field.
+ * events that never had this field paint as `-`, not `other`.
  */
 export function hbarRows(
   values: Array<{ v: string; n: number }>,
@@ -781,14 +781,21 @@ export function hbarRows(
   const top = values.slice(0, cap);
   const named = top.reduce((sum, row) => sum + row.n, 0);
   const rows = top.map((row) => ({ key: row.v, n: row.n }));
-  if (values.length < cap) {
+  const rest = Math.max(0, total - named);
+  if (rest <= 0) {
     return rows;
   }
-  const other = Math.max(0, total - named);
-  if (other > 0) {
-    rows.push({ key: "other", n: other });
+  if (values.length < cap) {
+    rows.push({ key: "-", n: rest });
+    return rows;
   }
+  rows.push({ key: "other", n: rest });
   return rows;
+}
+
+/** Filter / Exclude only apply to a real field value — not `other`, `-`, or `events`. */
+export function hbarRowIsValue(key: string): boolean {
+  return key !== "other" && key !== "-" && key !== "events";
 }
 
 /** Attr keys used by Top-N widgets (values rollup / attr-facets). */

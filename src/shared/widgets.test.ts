@@ -11,6 +11,7 @@ import {
   formatSharePct,
   formatWidgetsParam,
   hbarRows,
+  hbarRowIsValue,
   isDefaultLayout,
   isSingleHistogram,
   maxWidgets,
@@ -469,6 +470,7 @@ describe("top-N share labels", () => {
     ]);
     expect(hbarRows([{ v: "a", n: 90 }], 10, 100)).toEqual([
       { key: "a", n: 90 },
+      { key: "-", n: 10 },
     ]);
     expect(
       hbarRows(
@@ -499,6 +501,14 @@ describe("top-N share labels", () => {
       { key: "503", n: 249 },
       { key: "-", n: 53 },
     ]);
+    expect(hbarRows(status, 2, hunt)).toEqual([
+      { key: "500", n: 430 },
+      { key: "502", n: 313 },
+      { key: "other", n: 302 },
+    ]);
+    expect(hbarRowIsValue("-")).toBe(false);
+    expect(hbarRowIsValue("other")).toBe(false);
+    expect(hbarRowIsValue("500")).toBe(true);
   });
 });
 

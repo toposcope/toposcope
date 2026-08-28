@@ -89,7 +89,7 @@ export function seriesColor(
   if (key === "events") {
     return "#0ea5e9";
   }
-  if (key === "other") {
+  if (key === "other" || key === "-") {
     return "#94a3b8";
   }
   return palette[index % palette.length] ?? "#94a3b8";
