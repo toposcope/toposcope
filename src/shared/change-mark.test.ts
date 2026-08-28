@@ -63,6 +63,17 @@ describe("parseChangeMark", () => {
     ).toThrow(InvalidChangeMarkError);
   });
 
+  test("accepts end_ts with a caller id when ts is omitted", () => {
+    expect(() =>
+      parseChangeMark({
+        kind: "incident",
+        title: "INC-238",
+        id: "pd-238",
+        end_ts: "2026-08-25T13:02:00.000Z",
+      }),
+    ).not.toThrow();
+  });
+
   test("rejects a missing title, unknown kind, or end_ts not after ts", () => {
     expect(() => parseChangeMark({ kind: "deploy" })).toThrow(
       InvalidChangeMarkError,
@@ -153,6 +164,36 @@ describe("marksToInsert", () => {
     expect(minted.idProvided).toBe(false);
     expect(marksToInsert([minted], [minted.mark.id])).toHaveLength(1);
   });
+
+  test("does not skip end_ts on a caller id that is still open", () => {
+    const resolved = parseChangeMarkRequest({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: "2026-08-25T12:00:00.000Z",
+      end_ts: "2026-08-25T13:02:00.000Z",
+    });
+    const inserted = marksToInsert([resolved], ["pd-238"]);
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0]?.end_ts).toBe("2026-08-25T13:02:00.000Z");
+  });
+
+  test("allows open then close of the same id in one batch", () => {
+    const opened = parseChangeMarkRequest({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: "2026-08-25T12:00:00.000Z",
+    });
+    const resolved = parseChangeMarkRequest({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: "2026-08-25T12:00:00.000Z",
+      end_ts: "2026-08-25T13:02:00.000Z",
+    });
+    expect(marksToInsert([opened, resolved], [])).toHaveLength(2);
+  });
 });
 
 describe("keepLatestChangeMarkPerId", () => {
@@ -180,6 +221,25 @@ describe("keepLatestChangeMarkPerId", () => {
     );
     expect(keepLatestChangeMarkPerId([older, newer])[0]?.ts).toBe(
       "2026-08-23T16:00:00.000Z",
+    );
+  });
+
+  test("closed row wins over an open row with the same ts", () => {
+    const opened = parseChangeMark({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: "2026-08-25T12:00:00.000Z",
+    });
+    const closed = parseChangeMark({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: "2026-08-25T12:00:00.000Z",
+      end_ts: "2026-08-25T13:02:00.000Z",
+    });
+    expect(keepLatestChangeMarkPerId([closed, opened])[0]?.end_ts).toBe(
+      "2026-08-25T13:02:00.000Z",
     );
   });
 });
