@@ -1252,6 +1252,13 @@
 
         <sc-if value="{{ detail }}" hint-placeholder-val="{{ true }}">
           <aside data-screen-label="Event detail" style="display:flex; flex-direction:column; flex:0 1 376px; max-width:34%; min-width:0; border-left:1px solid oklch(1 0 0 / 10%); background:#0f0f11;">
+            <sc-if value="{{ detail.crumb }}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ detail.crumb.back }}" title="{{ detail.crumb.title }}" style="display:flex; align-items:center; gap:6px; flex:0 0 auto; width:100%; padding:5px 10px; border:none; border-bottom:1px solid oklch(1 0 0 / 10%); background:oklch(0.141 0.005 285.823 / 60%); font-family:inherit; cursor:pointer; text-align:left;" style-hover="background:oklch(0.274 0.006 286.033 / 60%);">
+                <span style="font-size:12px; color:oklch(0.906 0.014 84);">‹</span>
+                <svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ detail.crumb.d }}" fill="{{ detail.crumb.f }}" stroke="{{ detail.crumb.s }}" stroke-width="{{ detail.crumb.w }}" stroke-linejoin="round"></path></svg>
+                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ detail.crumb.label }}</span>
+              </button>
+            </sc-if>
             <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
               <span style="{{ detail.badge }}">{{ detail.level }}</span>
               <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067);">{{ detail.ts }}</span>
@@ -4633,7 +4640,7 @@ class Component extends DCLogic {
         { k: 'id', v: mkSelM.id }
       ],
       hideGo: () => this.setState(p => ({ marksMuted: [...(p.marksMuted || []), mkSelM.id], mkSel: null })),
-      cutGo: () => this.setState({ cut: { markId: mkSelM.id, atMs: NOW }, mkSel: null }),
+      cutGo: () => this.setState({ cut: { markId: mkSelM.id, atMs: NOW }, mkSel: null, selected: null }),
       foot: 'Hiding is per-hunt visibility — the store keeps every mark; nothing here deletes.'
     } : { wrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0', title: '', rows: [], hideGo: () => {}, cutGo: () => {}, foot: '' };
     const mkKindN = { deploy: 0, flag: 0, incident: 0, note: 0 };
@@ -6356,7 +6363,9 @@ class Component extends DCLogic {
         : '',
       traceBtnStyle: traceVal ? 'display:flex; align-items:center; gap:6px; flex:0 0 auto; height:28px; padding:0 11px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:transparent; color:oklch(0.985 0 0); font-family:inherit; font-size:12.5px; cursor:pointer; white-space:nowrap;' : 'display:none;',
       traceBtnTitle: traceVal ? `Where time went in this request — joined on ${traceKey}:${traceVal}` : '',
-      hairline, hoverTip, hoverRows, hoverMove, hoverLeave, marks, cut,
+      hairline, hoverTip, hoverRows, hoverMove, hoverLeave, marks,
+      // the cut parks (state kept, washes kept) while a line or a strip tab owns the rail
+      cut: (!traceTab && !profTab && st.selected !== null && (isSurr || (dataState === 'data' && shown.length))) ? null : cut,
       plotDown, plotMove, plotUp, plotCancel, brushStyle, brushLabel, brushLabelStyle, gCursor,
       headTrack, headKnob, headStem, headLabel, headTitle, headEnter, headLeave, headCursor,
       headDown, headMove, headUp, headCancel,
@@ -6374,8 +6383,16 @@ class Component extends DCLogic {
       copyOpen: exportable && !!st.copyOpen,
       toggleCopy: () => this.setState(p => ({ copyOpen: !p.copyOpen, exportOpen: false })),
       copyItems,
-      hints: [['/', 'search'], ['j k', 'move'], ['↵', 'expand'], ['wheel / + −', 'zoom'], ['esc', 'close']].map(([key, label]) => ({ key, label })),
-      detail: !traceTab && !profTab && !st.cut && st.selected !== null && (isSurr || (dataState === 'data' && shown.length)) ? {
+      hints: [['/', 'search'], ['↑ ↓', 'move'], ['↵', 'expand'], ['wheel / + −', 'zoom'], ['esc', 'close']].map(([key, label]) => ({ key, label })),
+      detail: !traceTab && !profTab && st.selected !== null && (isSurr || (dataState === 'data' && shown.length)) ? {
+        // while a cut is parked underneath, the detail carries a crumb back to it —
+        // back is a state (set, scroll, frozen sides survive), never a re-open
+        crumb: cut ? {
+          d: cut.d, f: cut.f, s: cut.s, w: cut.w,
+          label: cut.sets.length ? 'Cut — ' + cut.sets.map(s => `${s.name.toLowerCase()} ${s.count}`).join(' · ') : 'Cut — ' + cut.title,
+          title: 'Back to the cut, exactly as left — nothing recomputes',
+          back: () => this.setState({ selected: null })
+        } : null,
         level: sel.level, ts: tsAt(sel.atMs, 'full') + 'Z', message: sel.message,
         badge: this.badge(sel.level),
         msgBox: `padding:9px 10px; border:1px solid oklch(1 0 0 / 10%); border-left:2px solid ${this.L[sel.level].c}; border-radius:6.4px; background:oklch(0.141 0.005 285.823 / 60%); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.55; word-break:break-word;`,
@@ -6403,7 +6420,7 @@ class Component extends DCLogic {
         : `Open a Surroundings tab — ±50 rows from ${sel.service}${sel.host ? ' · ' + sel.host : ''} around this event`,
       // the context view's own header names service · host, so the hint only carries the span —
       // short enough to survive the narrowest panel without truncating
-      aroundHint: '± 30 min',
+      aroundHint: '± 50 events',
       alerts,
       // a board link is the board plus the knobs — never the frozen query spelled out again
       copyLink: () => { this.copy(boardOn
