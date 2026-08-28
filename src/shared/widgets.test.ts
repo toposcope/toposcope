@@ -485,6 +485,21 @@ describe("top-N share labels", () => {
       { key: "other", n: 10 },
     ]);
   });
+
+  test("a complete Top-N still paints events that never had the field", () => {
+    const status = [
+      { v: "500", n: 430 },
+      { v: "502", n: 313 },
+      { v: "503", n: 249 },
+    ];
+    const hunt = 1045;
+    expect(hbarRows(status, 5, hunt)).toEqual([
+      { key: "500", n: 430 },
+      { key: "502", n: 313 },
+      { key: "503", n: 249 },
+      { key: "-", n: 53 },
+    ]);
+  });
 });
 
 describe("pickerAttrKeys", () => {
