@@ -70,36 +70,39 @@ curl -X POST http://127.0.0.1:8080/v1/metrics \
 
 ## Change marks
 
-A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Omit `id` and ingest mints `mk_…`; optional `end_ts` (must be after `ts`) is an incident duration, not a rewrite of `q`.
+A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Optional `end_ts` (must be after `ts`) is an incident duration, not a rewrite of `q`.
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/marks \
   -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
   -H 'content-type: application/json' \
-  -d '{"kind":"deploy","title":"v0.9","service":"billing","attrs":{"version":"v0.9","sha":"abc123","source":"ci · deploy-bot"}}'
+  -d '{"kind":"deploy","title":"v0.9","service":"billing","id":"deploy-billing-v0.9","attrs":{"version":"v0.9","sha":"abc123","source":"ci · deploy-bot"}}'
 ```
 
-`kind` is `deploy`, `flag`, `incident`, or `note`. Missing `ts` is stamped server-side.
+`kind` is `deploy`, `flag`, `incident`, or `note`. Missing `ts` is stamped server-side. Supply `id` (letters, digits, `.` `_` `:` `-`) so a CI retry is one mark; omit it and ingest mints `mk_…`.
 
 ### GitHub Actions
 
-On a published release (set `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN` as repository secrets):
+On a published release (set `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN` as repository secrets; optional `TOPOSCOPE_SERVICE` is the service name on the mark):
 
 ```yaml
 - name: Mark deploy in Toposcope
   env:
     TOPOSCOPE_URL: ${{ secrets.TOPOSCOPE_URL }}
     TOPOSCOPE_INGEST_TOKEN: ${{ secrets.TOPOSCOPE_INGEST_TOKEN }}
+    TOPOSCOPE_SERVICE: billing
   run: |
     curl -fsS -X POST "${TOPOSCOPE_URL}/v1/marks" \
       -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
       -H "content-type: application/json" \
-      -d "{\"kind\":\"deploy\",\"title\":\"${GITHUB_REF_NAME}\",\"attrs\":{\"version\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\"}}"
+      -d "{\"kind\":\"deploy\",\"title\":\"${GITHUB_REF_NAME}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${GITHUB_REF_NAME}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\",\"source\":\"github\"}}"
 ```
+
+The `id` is stable for that service and tag, so a re-run is still one glyph. Omit `TOPOSCOPE_SERVICE` and the id is `deploy-<tag>`.
 
 ### GitLab CI
 
-On a tag pipeline (CI variables `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN`):
+On a tag pipeline (CI variables `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN`; optional `TOPOSCOPE_SERVICE`):
 
 ```yaml
 mark_deploy:
@@ -111,7 +114,7 @@ mark_deploy:
       curl -fsS -X POST "${TOPOSCOPE_URL}/v1/marks" \
         -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
         -H "content-type: application/json" \
-        -d "{\"kind\":\"deploy\",\"title\":\"${CI_COMMIT_TAG}\",\"attrs\":{\"version\":\"${CI_COMMIT_TAG}\",\"sha\":\"${CI_COMMIT_SHA}\"}}"
+        -d "{\"kind\":\"deploy\",\"title\":\"${CI_COMMIT_TAG}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${CI_COMMIT_TAG}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${CI_COMMIT_TAG}\",\"sha\":\"${CI_COMMIT_SHA}\",\"source\":\"gitlab\"}}"
 ```
 
 ## Traces

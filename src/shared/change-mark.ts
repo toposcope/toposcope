@@ -108,7 +108,88 @@ function parseOptionalId(raw: unknown): string | null {
   return id;
 }
 
-export function parseChangeMark(input: unknown): ChangeMark {
+export type ParsedChangeMark = {
+  mark: ChangeMark;
+  idProvided: boolean;
+};
+
+export function ciDeployMarkId(service: string, title: string): string {
+  const svc = service.trim();
+  const tag = title.trim();
+  const raw = svc ? `deploy-${svc}-${tag}` : `deploy-${tag}`;
+  const id = raw
+    .replace(/[^A-Za-z0-9._:-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, maxChangeMarkId);
+  if (!id || !markIdRe.test(id)) {
+    throw new InvalidChangeMarkError(
+      "id must be 1–64 letters, digits, or . _ : -",
+    );
+  }
+  return id;
+}
+
+export function ciDeployMark(input: {
+  title: string;
+  sha: string;
+  service?: string;
+  source: "github" | "gitlab";
+}): {
+  kind: "deploy";
+  title: string;
+  service: string;
+  id: string;
+  attrs: { version: string; sha: string; source: string };
+} {
+  const title = input.title.trim();
+  if (title.length === 0) {
+    throw new InvalidChangeMarkError("title is required");
+  }
+  const service = input.service?.trim() ?? "";
+  return {
+    kind: "deploy",
+    title: title.slice(0, maxChangeMarkTitle),
+    service,
+    id: ciDeployMarkId(service, title),
+    attrs: {
+      version: title.slice(0, maxChangeMarkTitle),
+      sha: input.sha,
+      source: input.source,
+    },
+  };
+}
+
+export function marksToInsert(
+  parsed: ParsedChangeMark[],
+  existingIds: Iterable<string>,
+): ChangeMark[] {
+  const seen = new Set(existingIds);
+  const out: ChangeMark[] = [];
+  for (const { mark, idProvided } of parsed) {
+    if (idProvided && seen.has(mark.id)) {
+      continue;
+    }
+    seen.add(mark.id);
+    out.push(mark);
+  }
+  return out;
+}
+
+export function keepLatestChangeMarkPerId(marks: ChangeMark[]): ChangeMark[] {
+  const byId = new Map<string, ChangeMark>();
+  for (const mark of marks) {
+    const prev = byId.get(mark.id);
+    if (!prev || Date.parse(mark.ts) >= Date.parse(prev.ts)) {
+      byId.set(mark.id, mark);
+    }
+  }
+  return [...byId.values()].sort(
+    (a, b) => Date.parse(a.ts) - Date.parse(b.ts),
+  );
+}
+
+export function parseChangeMarkRequest(input: unknown): ParsedChangeMark {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new InvalidChangeMarkError("Invalid change mark");
   }
@@ -139,13 +220,21 @@ export function parseChangeMark(input: unknown): ChangeMark {
       ? (rec.attrs as Record<string, unknown>)
       : undefined,
   );
+  const callerId = parseOptionalId(rec.id);
   return {
-    id: parseOptionalId(rec.id) ?? mintChangeMarkId(),
-    ts,
-    end_ts: endTs,
-    kind,
-    service,
-    title: titleRaw.slice(0, maxChangeMarkTitle),
-    attrs,
+    mark: {
+      id: callerId ?? mintChangeMarkId(),
+      ts,
+      end_ts: endTs,
+      kind,
+      service,
+      title: titleRaw.slice(0, maxChangeMarkTitle),
+      attrs,
+    },
+    idProvided: callerId !== null,
   };
+}
+
+export function parseChangeMark(input: unknown): ChangeMark {
+  return parseChangeMarkRequest(input).mark;
 }

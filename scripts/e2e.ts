@@ -708,6 +708,49 @@ async function main(): Promise<void> {
   if (!incident || incident.end_ts == null) {
     throw new Error("incident mark missing id/end_ts round-trip");
   }
+  const incidentRetry = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      kind: "incident",
+      title: "e2e-inc",
+      id: "e2e-inc-1",
+      ts: markTs,
+      end_ts: incidentEnd,
+    }),
+  });
+  if (!incidentRetry.ok) {
+    throw new Error(
+      `incident mark retry failed: ${incidentRetry.status} ${await incidentRetry.text()}`,
+    );
+  }
+  const incidentRetryBody = (await incidentRetry.json()) as { ingested: number };
+  if (incidentRetryBody.ingested !== 0) {
+    throw new Error(
+      `expected 0 ingested on duplicate mark id, got ${incidentRetryBody.ingested}`,
+    );
+  }
+  const incidentDupGet = await fetch(
+    `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!incidentDupGet.ok) {
+    throw new Error(
+      `duplicate marks list failed: ${incidentDupGet.status} ${await incidentDupGet.text()}`,
+    );
+  }
+  const incidentDupBody = (await incidentDupGet.json()) as {
+    marks: Array<{ id: string }>;
+  };
+  const incidentDupCount = incidentDupBody.marks.filter(
+    (mark) => mark.id === "e2e-inc-1",
+  ).length;
+  if (incidentDupCount !== 1) {
+    throw new Error(`expected 1 mark for e2e-inc-1, got ${incidentDupCount}`);
+  }
   const unauthorizedMarks = await fetch(`${APP_URL}/v1/marks`, {
     method: "POST",
     headers: { "content-type": "application/json" },

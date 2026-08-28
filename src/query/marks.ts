@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import {
   fallbackChangeMarkId,
+  keepLatestChangeMarkPerId,
   maxChangeMarks,
   parseChangeMarkKind,
   type ChangeMark,
@@ -108,6 +109,25 @@ function extraWhere(
   return extra.join(" ");
 }
 
+export async function lookupChangeMarkIds(
+  ids: string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(ids.filter((id) => id.length > 0))];
+  if (unique.length === 0) {
+    return new Set();
+  }
+  const params: Record<string, string> = {};
+  const ors = unique.map((id, i) => {
+    params[`mid${i}`] = id;
+    return `id = {mid${i}:String}`;
+  });
+  const rows = await clickhouseQuery<{ id: string }>(
+    `SELECT DISTINCT id FROM change_marks WHERE tenant_id = 'default' AND (${ors.join(" OR ")})`,
+    params,
+  );
+  return new Set(rows.map((row) => row.id));
+}
+
 export async function searchChangeMarks(filters: {
   from?: string;
   to?: string;
@@ -165,7 +185,7 @@ export async function searchChangeMarks(filters: {
     ),
   ]);
   return {
-    marks: rows.map(mapRow),
+    marks: keepLatestChangeMarkPerId(rows.map(mapRow)),
     before: beforeRows[0] ? mapRow(beforeRows[0]) : null,
     after: afterRows[0] ? mapRow(afterRows[0]) : null,
   };

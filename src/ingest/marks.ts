@@ -5,9 +5,11 @@ import {
 } from "../shared/clickhouse";
 import {
   InvalidChangeMarkError,
-  parseChangeMark,
+  marksToInsert,
+  parseChangeMarkRequest,
   type ChangeMark,
 } from "../shared/change-mark";
+import { lookupChangeMarkIds } from "../query/marks";
 import { incMetric } from "../metrics";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import {
@@ -93,10 +95,10 @@ export async function ingestMarksRoute(c: Context): Promise<Response> {
     return c.json({ error: `Batch too large (max ${MAX_BATCH})` }, 400);
   }
 
-  const marks = [];
+  const parsed = [];
   for (const row of raw) {
     try {
-      marks.push(parseChangeMark(row));
+      parsed.push(parseChangeMarkRequest(row));
     } catch (err) {
       const message =
         err instanceof InvalidChangeMarkError
@@ -109,7 +111,10 @@ export async function ingestMarksRoute(c: Context): Promise<Response> {
   }
 
   try {
-    const ingested = await insertChangeMarks(marks);
+    const existing = await lookupChangeMarkIds(
+      parsed.filter((row) => row.idProvided).map((row) => row.mark.id),
+    );
+    const ingested = await insertChangeMarks(marksToInsert(parsed, existing));
     incMetric("ingest_marks", ingested);
     return c.json({ ingested });
   } catch (err) {
