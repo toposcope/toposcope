@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
-Inspector Fingerprints opens a results-rail reader: which `e1` are first seen, still here, or stopped on equal windows around a selected mark. Filter writes `e1:<hex>`. A table row then opens the shipped event detail with a crumb back to the same cut. [#18](https://github.com/toposcope/toposcope/issues/18)
+Inspector Fingerprints opens a results-rail reader: which `e1` are first seen, still here, or stopped on equal windows around a selected mark. Filter writes `e1:<hex>`. A table row then opens the shipped event detail with a crumb back to the same cut. Coming back from Follow keeps that line. [#18](https://github.com/toposcope/toposcope/issues/18)
 
 The process listens before migrate. `/api/health` returns **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe; **200** only then. Hunt and ingest are refused during schema. [#15](https://github.com/toposcope/toposcope/issues/15)
 

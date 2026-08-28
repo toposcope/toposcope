@@ -70,9 +70,14 @@ import {
   decideFocusMarkInLogs,
   decideOpenSurroundings,
   duplicateSnap,
+  followChildSnap,
   insertWorkspace,
   isReaderKind,
+  parkedCutLine,
+  selectionAfterReplace,
   shouldRestorePaint,
+  shouldRestoreParkedCut,
+  snapPinnedEvent,
   stampWorkspace,
   surroundingsEventSnap,
   surroundingsMarkSnap,
@@ -940,6 +945,7 @@ export function App() {
         metricLabels?: Record<string, string>;
         logs?: boolean;
         widgets?: WidgetDef[];
+        park?: ReturnType<typeof parkedCutLine>;
       },
     ) => {
       setError(null);
@@ -1394,10 +1400,11 @@ export function App() {
         }
         if (!activeLogs) {
           if (mode === "replace") {
+            const next = selectionAfterReplace(overrides?.park ?? null, []);
             setEvents([]);
-            setSelectedIndex(0);
-            setDetailOpen(false);
-            setPinnedEvent(null);
+            setSelectedIndex(next.index);
+            setDetailOpen(next.detailOpen);
+            setPinnedEvent(next.pinned);
           }
         } else if (mode === "append") {
           setEvents((prev) => {
@@ -1424,10 +1431,14 @@ export function App() {
             setSelectedIndex(-1);
           }
         } else {
+          const next = selectionAfterReplace(
+            overrides?.park ?? null,
+            json.events,
+          );
           setEvents(json.events);
-          setSelectedIndex(0);
-          setDetailOpen(false);
-          setPinnedEvent(null);
+          setSelectedIndex(next.index);
+          setDetailOpen(next.detailOpen);
+          setPinnedEvent(next.pinned);
         }
         if (mode === "replace" || (mode === "poll" && !incremental)) {
           if (mode === "replace") {
@@ -2407,8 +2418,10 @@ export function App() {
       attrFacets,
       widgets,
     });
+    const parkStack = Boolean(cut && detailOpen);
     const paint: WorkspacePaint | null =
-      lastPaintHuntRef.current === hunt && (lastMs != null || error != null)
+      (lastMs != null || error != null) &&
+      (lastPaintHuntRef.current === hunt || parkStack)
         ? {
             hunt,
             events,
@@ -2458,7 +2471,12 @@ export function App() {
       aroundMode,
       selectedIndex,
       detailOpen,
-      pinnedEvent,
+      pinnedEvent: snapPinnedEvent({
+        cut,
+        detailOpen,
+        pinned: pinnedEvent,
+        selected: events[selectedIndex],
+      }),
       surrAnchor,
       surrSel,
       focusMark,
@@ -2641,7 +2659,7 @@ export function App() {
       setAttrFacetsLoading(false);
       return;
     }
-    if (shouldRestorePaint(snap) && snap.paint) {
+    if ((shouldRestorePaint(snap) || shouldRestoreParkedCut(snap)) && snap.paint) {
       restorePaint(snap.paint);
       return;
     }
@@ -2677,6 +2695,7 @@ export function App() {
         agg: snap.agg,
         logs: snap.logsOn,
         widgets: snap.widgets,
+        park: parkedCutLine(snap),
       });
     }
   }
@@ -2753,30 +2772,13 @@ export function App() {
     nextFrom: string,
     nextTo: string,
   ): WorkspaceSnap {
-    return {
-      ...currentSnap(),
-      kind: "follow",
+    return followChildSnap(currentSnap(), {
       q: followQuery(key, value),
-      range: "custom",
       from: nextFrom,
       to: nextTo,
-      live: false,
-      savedId: null,
-      bind: {},
-      follow: { key, value },
-      explore: null,
-      inspectTabs: [],
-      activeInspect: null,
-      surrAnchor: null,
-      surrSel: null,
-      focusMark: null,
-      frozenFacets: null,
-      frozenAttrFacetValues: null,
-      paint: null,
-      marksOff: [],
-      marksMuted: [],
-      cut: null,
-    };
+      key,
+      value,
+    });
   }
 
   function ensureSearchWorkspace() {
@@ -4028,7 +4030,7 @@ export function App() {
                 </div>
               )}
               {cut && !isSurr && !boardOn ? (
-                <div className="relative flex h-full min-h-0 shrink-0 flex-col">
+                <div className="relative flex h-full w-[398px] max-w-[36%] min-h-0 shrink-0 flex-col">
                   <div
                     className="flex min-h-0 min-w-0 flex-1 flex-col"
                     inert={railSurface === "detail"}

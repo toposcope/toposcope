@@ -123,7 +123,7 @@ export function FingerprintCutPanel({
   const emptyAll = error ?? result?.empty ?? "";
 
   return (
-    <aside className="flex h-full w-[398px] max-w-[36%] shrink-0 flex-col border-l bg-[#0f0f11]">
+    <aside className="flex h-full w-full min-w-0 flex-col border-l bg-[#0f0f11]">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5">
         <MarkGlyph kind={mark.kind} size={12} />
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">

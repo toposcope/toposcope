@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import {
   fingerprintCutFetchKey,
@@ -187,5 +188,32 @@ describe("cutCrumbLabel", () => {
     expect(cutCrumbLabel(null, "deployed: worker v1.4.3")).toBe(
       "Cut — deployed: worker v1.4.3",
     );
+  });
+});
+
+describe("cut rail width", () => {
+  test("398px / 36% is on the hunt-row item — nested max-w-[36%] collapses the rail to deploy…", () => {
+    const app = readFileSync("src/ui/App.tsx", "utf8");
+    const panel = readFileSync(
+      "src/ui/components/fingerprint-cut-panel.tsx",
+      "utf8",
+    );
+    const shell = app.slice(
+      app.indexOf("{cut && !isSurr && !boardOn"),
+      app.indexOf("<FingerprintCutPanel"),
+    );
+    expect(shell).toMatch(/w-\[398px\]/);
+    expect(shell).toMatch(/max-w-\[36%\]/);
+    expect(panel).not.toMatch(/max-w-\[36%\]/);
+  });
+});
+
+describe("coming back from Follow", () => {
+  test("the origin tab must pin the line and keep it through replace search", () => {
+    const app = readFileSync("src/ui/App.tsx", "utf8");
+    expect(app).toMatch(/snapPinnedEvent\(/);
+    expect(app).toMatch(/selectionAfterReplace\(/);
+    expect(app).toMatch(/shouldRestoreParkedCut\(/);
+    expect(app).toMatch(/followChildSnap\(/);
   });
 });
