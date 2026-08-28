@@ -11,13 +11,18 @@ import {
   findFollowWorkspace,
   findMarkFocusWorkspace,
   findSurroundingsWorkspace,
+  followChildSnap,
   insertWorkspace,
   ordinalLabels,
+  parkedCutLine,
+  selectionAfterReplace,
+  shouldRestorePaint,
+  shouldRestoreParkedCut,
+  snapPinnedEvent,
   stampWorkspace,
   surroundingsEventSnap,
   surroundingsLabel,
   surroundingsMarkSnap,
-  shouldRestorePaint,
   urlSearchSnap,
   workspaceHuntKeyFromSnap,
   workspaceLiveLabel,
@@ -314,6 +319,7 @@ describe("find + duplicate", () => {
     expect(snap.q).toBe("level:error");
     expect(snap.surrAnchor).toBeNull();
     expect(snap.focusMark).toEqual(mark);
+    expect(snap.cut).toBeNull();
     expect(snap.aroundN).toBe(50);
     expect(snap.aroundMode).toBe("all");
     expect(snap.inspectTabs).toEqual([]);
@@ -463,8 +469,31 @@ describe("workspace hunt / paint", () => {
     expect(blankSearchSnap().cols).toEqual([]);
     expect(blankSearchSnap().marksOff).toEqual([]);
     expect(blankSearchSnap().marksMuted).toEqual([]);
+    expect(blankSearchSnap().cut).toBeNull();
     const follow = { ...snap, kind: "follow" as const, q: "user_id:u-1", savedId: null };
     expect(follow.cols).toEqual(["path", "status"]);
+  });
+
+  test("duplicate keeps an open fingerprint cut; it is not in the hunt key", () => {
+    const snap = blankSearchSnap();
+    snap.cut = {
+      mark: {
+        id: "mk_1",
+        ts: "2026-08-14T14:11:04.000Z",
+        end_ts: null,
+        kind: "deploy",
+        service: "worker",
+        title: "v1.4.3",
+        attrs: {},
+      },
+      openedAt: "2026-08-14T15:00:00.000Z",
+      result: null,
+    };
+    const next = duplicateSnap(snap);
+    expect(next.cut?.mark.id).toBe("mk_1");
+    expect(workspaceHuntKeyFromSnap(snap)).toBe(
+      workspaceHuntKeyFromSnap({ ...snap, cut: null }),
+    );
   });
 
   test("duplicate keeps per-hunt mark mutes; they are not in the hunt key", () => {
@@ -484,5 +513,115 @@ describe("workspace hunt / paint", () => {
     const hunt = workspaceHuntKeyFromSnap(snap);
     snap.cols = ["path", "status", "user_id"];
     expect(workspaceHuntKeyFromSnap(snap)).toBe(hunt);
+  });
+});
+
+describe("coming back from Follow keeps a parked cut line", () => {
+  const line = ev("2026-08-14T14:11:04.123Z", "api");
+  const cut = {
+    mark: {
+      id: "mk_1",
+      ts: "2026-08-14T14:11:04.000Z",
+      end_ts: null,
+      kind: "deploy" as const,
+      service: "worker",
+      title: "v1.4.3",
+      attrs: {},
+    },
+    openedAt: "2026-08-14T15:00:00.000Z",
+    result: null,
+  };
+
+  test("stamping the origin tab pins the line so an empty table cannot drop the overlay", () => {
+    expect(
+      snapPinnedEvent({
+        cut,
+        detailOpen: true,
+        pinned: null,
+        selected: line,
+      }),
+    ).toEqual(line);
+    expect(
+      snapPinnedEvent({
+        cut: null,
+        detailOpen: true,
+        pinned: null,
+        selected: line,
+      }),
+    ).toBeNull();
+  });
+
+  test("a parked cut restores last paint even when the hunt key drifted", () => {
+    const snap = blankSearchSnap();
+    snap.cut = cut;
+    snap.detailOpen = true;
+    snap.pinnedEvent = line;
+    snap.paint = {
+      hunt: "other-hunt",
+      events: [line],
+      histogram: [],
+      agg: null,
+      seriesByKey: {},
+      total: 1,
+      nextCursor: null,
+      ingested: true,
+      lastMs: 12,
+      error: null,
+      facets: { level: [], service: [], host: [] },
+      attrFacetValues: {},
+      numericKeys: [],
+      metricNames: [],
+      attrKeyOptions: [],
+      lastTo: null,
+      marks: [],
+      markBefore: null,
+      markAfter: null,
+    };
+    expect(shouldRestorePaint(snap)).toBe(false);
+    expect(shouldRestoreParkedCut(snap)).toBe(true);
+  });
+
+  test("replace search after Follow must not close the stacked detail", () => {
+    const park = parkedCutLine({
+      ...blankSearchSnap(),
+      cut,
+      detailOpen: true,
+      pinnedEvent: line,
+      selectedIndex: 2,
+    });
+    const next = selectionAfterReplace(park, [
+      ev("2026-08-14T14:12:00.000Z", "api"),
+      line,
+    ]);
+    expect(next.detailOpen).toBe(true);
+    expect(next.index).toBe(1);
+    expect(next.pinned).toBeNull();
+    expect(selectionAfterReplace(null, [line])).toEqual({
+      index: 0,
+      detailOpen: false,
+      pinned: null,
+    });
+  });
+
+  test("the Follow child does not inherit the parked overlay", () => {
+    const origin = blankSearchSnap();
+    origin.cut = cut;
+    origin.detailOpen = true;
+    origin.pinnedEvent = line;
+    origin.selectedIndex = 2;
+    const child = followChildSnap(origin, {
+      q: "user_id:u-1",
+      from: "a",
+      to: "b",
+      key: "user_id",
+      value: "u-1",
+    });
+    expect(child.kind).toBe("follow");
+    expect(child.cut).toBeNull();
+    expect(child.detailOpen).toBe(false);
+    expect(child.pinnedEvent).toBeNull();
+    expect(child.selectedIndex).toBe(0);
+    expect(origin.detailOpen).toBe(true);
+    expect(origin.cut?.mark.id).toBe("mk_1");
   });
 });

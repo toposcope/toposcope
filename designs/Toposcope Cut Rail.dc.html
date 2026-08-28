@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:oklch(0.906 0.014 84); text-decoration:none; }
+  a:hover { color:oklch(0.985 0 0); }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:oklch(1 0 0 / 12%); border-radius:99px; border:3px solid oklch(0.115 0.004 285.8); }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="max-width:1120px;">
+    <div style="display:flex; align-items:baseline; gap:12px;">
+      <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+      <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Cut rail vs event detail</h1>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 2a–2g · follows the locked Cut sheet 1a–1i</span>
+    </div>
+    <p style="margin:10px 0 0; max-width:940px; font-size:13px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">The Cut sheet locked the reader onto the results rail — and left one loop undrawn: filter a hex, <span style="color:oklch(0.985 0 0);">read a real line</span>, come back to the sets. The answer here is one rule, not a new surface: <span style="color:oklch(0.985 0 0);">the rail is a stack</span>. The cut is the base; a selected line pushes its detail on top with a crumb back; the parked cut keeps its state. No second column, no strip tab, no new workspace. The swap from 1b holds — it just gains a floor. Wired in <a href="Toposcope%20Cut%20App.dc.html">Toposcope Cut App.dc.html</a>.</p>
+    <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding:12px 14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ system }}" as="s" hint-placeholder-count="5">
+        <div style="display:flex; gap:9px; font-size:12.5px; line-height:1.5; color:oklch(0.705 0.015 286.067);">
+          <span style="flex:0 0 auto; width:14px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84 / 75%);">{{ s.n }}</span>
+          <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ s.head }}</span> {{ s.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="2a" style="margin-top:38px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#2a" style="{{ badge }}">2a</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The stack — one rail, two cards, three moves</div>
+        <p style="{{ capBody }}">Selecting a table row while the cut is open pushes the event detail over it. The crumb (or the detail’s ×) pops back to the cut exactly as left. × on the cut itself ends Fingerprints. Nothing recomputes on the way back — set, scroll, filter, frozen sides all survive.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:0; margin-top:12px; width:1120px; align-items:stretch;">
+      <sc-for list="{{ model }}" as="mc" hint-placeholder-count="3">
+        <div style="display:flex; align-items:center; flex:1; min-width:0;">
+          <div style="flex:1; min-width:0; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+            <div style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">{{ mc.title }}</div>
+            <div style="position:relative; height:118px; margin-top:8px; border-radius:4.4px; background:#0f0f11; border:1px solid oklch(1 0 0 / 8%); overflow:hidden;">
+              <sc-for list="{{ mc.shapes }}" as="sh" hint-placeholder-count="4"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+            </div>
+            <p style="margin:7px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ mc.caption }}</p>
+          </div>
+          <sc-if value="{{ mc.arrow }}" hint-placeholder-val="{{ true }}">
+            <div style="flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:2px; padding:0 7px;">
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.906 0.014 84);">{{ mc.arrow }}</span>
+              <span style="font-size:13px; color:oklch(0.906 0.014 84);">→</span>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067);">{{ mc.arrow2 }}</span>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-for list="{{ frames }}" as="f" hint-placeholder-count="2">
+    <div id="{{ f.id }}" style="margin-top:40px;">
+      <div style="display:flex; gap:12px; align-items:baseline; max-width:1120px;">
+        <a href="{{ f.href }}" style="{{ badge }}">{{ f.id }}</a>
+        <div style="min-width:0;">
+          <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">{{ f.title }}</div>
+          <p style="{{ capBody }}">{{ f.body }}</p>
+        </div>
+      </div>
+      <div style="width:1120px; margin-top:12px; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:oklch(0.141 0.005 285.823); box-shadow:0 20px 50px oklch(0 0 0 / 35%); overflow:hidden;">
+        <div style="display:flex; align-items:stretch;">
+          <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; padding:12px;">
+            <div style="display:flex; align-items:center; gap:7px; flex:0 0 auto; height:32px; margin-bottom:10px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:oklch(0.141 0.005 285.823);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:oklch(0.985 0 0);">{{ f.bar }}</span>
+              <span style="flex:1;"></span>
+              <sc-if value="{{ f.live }}" hint-placeholder-val="{{ false }}">
+                <span style="display:flex; align-items:center; gap:5px; font-size:11px; color:oklch(0.985 0 0 / 80%);"><span style="width:6px; height:6px; border-radius:99px; background:#4ade80;"></span>Live</span>
+              </sc-if>
+            </div>
+            <sc-if value="{{ f.plot }}" hint-placeholder-val="{{ true }}">
+              <div style="{{ f.plotBox }}">
+                <div style="position:absolute; inset:4px 0; display:flex; align-items:flex-end; gap:1px; padding:0 2px;">
+                  <sc-for list="{{ f.cols }}" as="c" hint-placeholder-count="24"><div style="{{ c }}"></div></sc-for>
+                </div>
+                <sc-for list="{{ f.washes }}" as="w" hint-placeholder-count="2"><div style="{{ w }}"></div></sc-for>
+                <sc-if value="{{ f.shrunk }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute; right:6px; top:4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9px; color:oklch(0.705 0.015 286.067 / 60%);">chart+canvas at 32% — a strip tab is open</span>
+                </sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{ f.strip }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:6px; flex:0 0 auto; margin-bottom:8px;">
+                <sc-for list="{{ f.strip }}" as="sp" hint-placeholder-count="2">
+                  <span style="{{ sp.s }}">{{ sp.t }}</span>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="flex:1; border:1px solid oklch(1 0 0 / 10%); border-radius:4.4px; overflow:hidden;">
+              <sc-for list="{{ f.tbl }}" as="tr" hint-placeholder-count="5">
+                <div style="{{ tr.wrap }}">
+                  <span style="{{ tr.rule }}"></span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">{{ tr.ts }}</span>
+                  <span style="flex:0 0 auto; padding:0 5px; border-radius:2.4px; background:oklch(0.396 0.141 25.723 / 45%); color:#fca5a5; font-size:10px; line-height:16px; letter-spacing:0.04em;">ERROR</span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.985 0 0); white-space:nowrap;">{{ tr.svc }}</span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067); white-space:nowrap;">{{ tr.host }}</span>
+                  <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.985 0 0 / 88%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ tr.msg }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ f.tblNote }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:center; justify-content:center; padding:12px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 55%);">{{ f.tblNote }}</div>
+              </sc-if>
+            </div>
+          </div>
+
+          <aside style="display:flex; flex-direction:column; flex:0 0 398px; min-width:0; border-left:1px solid oklch(1 0 0 / 10%); background:#0f0f11;">
+            <sc-if value="{{ f.crumb }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:6px; flex:0 0 auto; padding:5px 10px; border-bottom:1px solid oklch(1 0 0 / 10%); background:oklch(0.141 0.005 285.823 / 60%); cursor:pointer;">
+                <span style="font-size:12px; color:oklch(0.906 0.014 84);">‹</span>
+                <svg width="10" height="10" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg>
+                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ f.crumb }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ f.det }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:8px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+                <span style="flex:0 0 auto; padding:0 5px; border-radius:2.4px; background:oklch(0.396 0.141 25.723 / 45%); color:#fca5a5; font-size:10px; line-height:16px; letter-spacing:0.04em;">ERROR</span>
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:oklch(0.705 0.015 286.067);">{{ f.det.ts }}</span>
+                <span style="flex:1;"></span>
+                <span style="{{ xBtn }}" title="Close this line — back to the cut">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </span>
+              </div>
+              <div style="display:flex; gap:2px; flex:0 0 auto; padding:7px 10px 0;">
+                <span style="height:26px; padding:0 9px; border-bottom:1.5px solid oklch(0.985 0 0); font-size:13px; color:oklch(0.985 0 0); line-height:26px;">Fields</span>
+                <span style="height:26px; padding:0 9px; border-bottom:1.5px solid transparent; font-size:13px; color:oklch(0.705 0.015 286.067); line-height:26px;">JSON</span>
+              </div>
+              <div style="flex:1 1 auto; min-height:0; padding:10px;">
+                <div style="padding:9px 10px; border:1px solid oklch(1 0 0 / 10%); border-left:2px solid #ef4444; border-radius:6.4px; background:oklch(0.141 0.005 285.823 / 60%); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; line-height:1.55; word-break:break-word;">{{ f.det.msg }}</div>
+                <div style="display:flex; flex-direction:column; margin-top:10px;">
+                  <sc-for list="{{ f.det.fields }}" as="fd" hint-placeholder-count="6">
+                    <div style="display:flex; align-items:center; gap:8px; height:24px; border-bottom:1px solid oklch(1 0 0 / 5%);">
+                      <span style="flex:0 0 128px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ fd.k }}</span>
+                      <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ fd.v }}</span>
+                      <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 55%);">{{ fd.a }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ f.det.note }}" hint-placeholder-val="{{ false }}">
+                  <p style="margin:9px 0 0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">{{ f.det.note }}</p>
+                </sc-if>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; flex:0 0 auto; padding:8px 10px; border-top:1px solid oklch(1 0 0 / 10%);">
+                <span style="{{ footBtn }}">Surroundings <span style="color:oklch(0.705 0.015 286.067 / 70%); font-size:10.5px;">± 50 events</span></span>
+                <sc-if value="{{ f.det.trace }}" hint-placeholder-val="{{ false }}"><span style="{{ footBtn }}">View trace</span></sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{ f.cut }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:9px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+                <svg width="12" height="12" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg>
+                <span style="flex:1; min-width:0; font-size:12.5px; font-weight:600; color:oklch(0.985 0 0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.cut.title }}</span>
+                <span style="{{ xBtn }}" title="End Fingerprints — the rail returns to event detail">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px; flex:0 0 auto; padding:8px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+                <sc-for list="{{ f.cut.sub }}" as="cw" hint-placeholder-count="3">
+                  <div style="display:flex; gap:8px;">
+                    <span style="flex:0 0 52px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 75%);">{{ cw.k }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); white-space:nowrap;">{{ cw.v }}</span>
+                  </div>
+                </sc-for>
+                <sc-for list="{{ f.cut.notes }}" as="cn" hint-placeholder-count="1">
+                  <div style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; line-height:1.45;">
+                    <span style="flex:0 0 auto; color:#fbbf24;">▲</span><span style="text-wrap:pretty; color:oklch(0.906 0.014 84 / 90%);">{{ cn }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:1 1 auto; min-height:0;">
+                <sc-for list="{{ f.cut.sets }}" as="cs" hint-placeholder-count="3">
+                  <div>
+                    <div style="display:flex; align-items:baseline; gap:7px; padding:9px 10px 5px;">
+                      <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.985 0 0);">{{ cs.name }}</span>
+                      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cs.count }}</span>
+                    </div>
+                    <sc-for list="{{ cs.rows }}" as="cr" hint-placeholder-count="2">
+                      <div style="{{ cr.wrap }}">
+                        <div style="display:flex; align-items:center; gap:7px;">
+                          <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0 / 90%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ cr.msg }}</span>
+                          <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067); font-variant-numeric:tabular-nums;">{{ cr.counts }}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:7px;">
+                          <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.906 0.014 84 / 85%);">{{ cr.hex }}</span>
+                          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cr.svc }}</span>
+                          <span style="flex:1;"></span>
+                          <span style="{{ cr.fStyle }}">{{ cr.fLabel }}</span>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ cs.empty }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:2px 10px 8px; font-size:11px; color:oklch(0.705 0.015 286.067 / 60%);">{{ cs.empty }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ f.cut.foot }}" hint-placeholder-val="{{ false }}">
+                <div style="flex:0 0 auto; padding:8px 10px; border-top:1px solid oklch(1 0 0 / 10%); background:oklch(0.141 0.005 285.823 / 45%);">
+                  <p style="margin:0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">{{ f.cut.foot }}</p>
+                </div>
+              </sc-if>
+            </sc-if>
+          </aside>
+        </div>
+      </div>
+      <p style="margin:9px 0 0; max-width:1120px; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 85%);">{{ f.fine }}</p>
+    </div>
+  </sc-for>
+
+  <div id="2f" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#2f" style="{{ badge }}">2f</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Two ×, two jobs — and leaving the tab entirely</div>
+        <p style="{{ capBody }}">Back and done are different verbs, like hide and delete. The detail’s × (and the crumb) close the line — the cut resurfaces. The cut’s × ends Fingerprints. Surroundings and traces leave the rail alone: they are other tabs; the parked cut waits on this one.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px; width:1120px;">
+      <sc-for list="{{ verbs }}" as="vb" hint-placeholder-count="3">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">{{ vb.title }}</div>
+          <div style="position:relative; height:86px; margin-top:8px; border-radius:4.4px; background:#0f0f11; border:1px solid oklch(1 0 0 / 8%); overflow:hidden;">
+            <sc-for list="{{ vb.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ vb.caption }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="2g" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#2g" style="{{ badge }}">2g</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Tried and put down</div>
+        <p style="{{ capBody }}">Three ways to un-stick the loop that break something the hunt already promised.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px; width:1120px;">
+      <sc-for list="{{ rejCards }}" as="rc" hint-placeholder-count="3">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;">✕</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ rc.title }}</span>
+          </div>
+          <div style="position:relative; height:74px; margin-top:9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ rc.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ rc.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <p style="margin:52px 0 0; max-width:1120px; padding-top:20px; border-top:1px solid oklch(1 0 0 / 12%); font-size:11.5px; line-height:1.5; color:oklch(0.705 0.015 286.067 / 70%);">Not the shipped app. Do not invent chrome these frames do not draw. The loop is wired end-to-end in <a href="Toposcope%20Cut%20App.dc.html">Toposcope Cut App.dc.html</a>; the locked Cut frames are <a href="Toposcope%20Cut.dc.html">Toposcope Cut.dc.html</a>.</p>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    const MONO = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace;';
+    const DIM = 'oklch(0.705 0.015 286.067)';
+    const badge = `flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:26px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; ${MONO} font-size:11px; color:oklch(0.906 0.014 84);`;
+    const capBody = `margin:4px 0 0; max-width:880px; font-size:12.5px; line-height:1.5; text-wrap:pretty; color:${DIM};`;
+    const xBtn = `display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:26px; height:26px; border-radius:4.4px; color:${DIM}; cursor:pointer;`;
+    const footBtn = `display:flex; align-items:center; gap:6px; flex:0 0 auto; height:28px; padding:0 11px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; color:oklch(0.985 0 0); font-size:12.5px; white-space:nowrap; cursor:pointer;`;
+
+    const rng = s => () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const bars = (seed, sparse) => {
+      const r = rng(seed), out = [];
+      for (let i = 0; i < 56; i++) {
+        const x = i / 56;
+        if (sparse) {
+          if (x >= 0.184 && r() < 0.75) out.push(`flex:1 1 0; height:${(6 + r() * 16).toFixed(1)}%; border-radius:1px 1px 0 0; background:#ef4444;`);
+          else out.push('flex:1 1 0; height:0;');
+          continue;
+        }
+        const dip = 0.78 + 0.22 * Math.sin((x + 0.15) * 3.1);
+        const h = (46 + r() * 44) * dip;
+        const e = 1.6 + r() * 1.4, w = 10 + r() * 6;
+        out.push(`flex:1 1 0; height:${h.toFixed(1)}%; border-radius:1px 1px 0 0; background:linear-gradient(180deg, #ef4444 0 ${e.toFixed(1)}%, #f59e0b ${e.toFixed(1)}% ${(e + w).toFixed(1)}%, #0ea5e9 ${(e + w).toFixed(1)}% 100%);`);
+      }
+      return out;
+    };
+    const plotBoxAt = h => `position:relative; flex:0 0 ${h}px; margin-bottom:4px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;`;
+    const wash = (l, r, a) => `position:absolute; top:0; bottom:0; left:${l}%; width:${(r - l).toFixed(2)}%; background:oklch(1 0 0 / ${a}%); pointer-events:none;`;
+    const washes = [wash(0, 18.4, 2.5), wash(18.4, 100, 5)];
+
+    const trow = (ts, svc, host, msg, sel) => ({
+      ts, svc, host, msg,
+      wrap: `position:relative; display:flex; align-items:center; gap:10px; height:26px; padding:0 8px 0 11px; border-bottom:1px solid oklch(1 0 0 / 6%); cursor:pointer;${sel ? ' background:oklch(0.274 0.006 286.033 / 55%);' : ''}`,
+      rule: `position:absolute; left:0; top:0; bottom:0; width:2px; background:${sel ? 'oklch(0.906 0.014 84)' : '#ef4444'};`
+    });
+    const drainRows = sel => [
+      trow('14:59:51.688', 'worker', 'worker-1', 'panic: send on closed channel in flush.Drain (batch 512)', sel === 0),
+      trow('14:59:45.741', 'worker', 'worker-2', 'panic: send on closed channel in flush.Drain (batch 388)', sel === 1),
+      trow('14:59:38.902', 'worker', 'worker-1', 'panic: send on closed channel in flush.Drain (batch 640)', sel === 2),
+      trow('14:59:31.147', 'worker', 'worker-2', 'panic: send on closed channel in flush.Drain (batch 205)', sel === 3),
+      trow('14:59:24.518', 'worker', 'worker-1', 'panic: send on closed channel in flush.Drain (batch 471)', sel === 4)
+    ];
+
+    const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+    const crow = (msg, hex, svc, nb, na, on) => ({
+      msg, counts: `${fmt(nb)} → ${fmt(na)}`, hex: 'e1:' + hex, svc,
+      wrap: `display:flex; flex-direction:column; gap:3px; padding:7px 10px; border-bottom:1px solid oklch(1 0 0 / 6%);${on ? ' background:oklch(0.274 0.006 286.033 / 45%); box-shadow:inset 2px 0 0 oklch(0.906 0.014 84);' : ''}`,
+      fLabel: on ? 'Filtered' : 'Filter',
+      fStyle: `display:flex; align-items:center; gap:4px; flex:0 0 auto; height:20px; padding:0 7px; border:1px solid ${on ? 'oklch(0.906 0.014 84 / 55%)' : 'oklch(1 0 0 / 15%)'}; border-radius:3.4px; background:${on ? 'oklch(0.906 0.014 84 / 12%)' : 'transparent'}; font-size:10.5px; color:${on ? 'oklch(0.906 0.014 84)' : 'oklch(0.985 0 0)'}; cursor:pointer;`
+    });
+    const sub49 = [
+      { k: 'cut at', v: '2026-08-14 14:11:04.221' },
+      { k: 'after', v: '14:11:04 → 15:00:04 · 49m' },
+      { k: 'before', v: '13:22:08 → 14:11:04 · equal 49m' }
+    ];
+    const cutFull = {
+      title: 'deployed: worker v1.4.3', sub: sub49,
+      notes: ['Fixed when opened — Live moves the plot, not the cut; reopen to re-cut at now.'],
+      sets: [
+        { name: 'First seen', count: '3', rows: [
+          crow('panic: send on closed channel in flush.Drain (batch #)', 'b41f0c88a2e6d3f7', 'worker', 0, 171),
+          crow('unexpected EOF streaming merge parts to clickhouse-1:9000', '2c9e51a7d40b86e3', 'worker', 0, 78),
+          crow('grpc: connection refused to worker-2:7233 during drain', '6ea3d05c91f47b28', 'api', 0, 36)
+        ], empty: '' },
+        { name: 'Still here', count: '8', rows: [
+          crow('upstream timeout after #ms calling checkout.svc:8080', 'c41a9be2f307d615', 'api', 418, 422),
+          crow('failed to flush # rows to ClickHouse: too many parts', 'e2074bd8f6a3915c', 'worker', 352, 347)
+        ], empty: '' },
+        { name: 'Stopped', count: '1', rows: [
+          crow('flush retry budget exhausted; parking batch (attempt #)', 'd7502e9ab84c61f0', 'worker', 131, 0)
+        ], empty: '' }
+      ]
+    };
+    const cutFiltered = on => ({
+      title: 'deployed: worker v1.4.3', sub: sub49,
+      notes: ['The list obeys the bar — clear the token to see the full cut.'],
+      sets: [
+        { name: 'First seen', count: '1', rows: [crow('panic: send on closed channel in flush.Drain (batch #)', 'b41f0c88a2e6d3f7', 'worker', 0, 171, on)], empty: '' },
+        { name: 'Still here', count: '0', rows: [], empty: 'none' },
+        { name: 'Stopped', count: '0', rows: [], empty: 'none' }
+      ]
+    });
+    const crumbTxt = 'Cut — first seen 1 · still here 0 · stopped 0';
+    const detFields = [
+      { k: 'service', v: 'worker', a: '+ ⧉' },
+      { k: 'host', v: 'worker-2', a: '+ ⧉' },
+      { k: 'level', v: 'error', a: '+ ⧉' },
+      { k: 'e1', v: 'b41f0c88a2e6d3f7', a: '+ ⧉' },
+      { k: 'exception.type', v: 'FlushClosedChannel', a: '+ ⧉' },
+      { k: 'exception.frames', v: 'flush.Drain › flush.(*Batcher).run › runtime.gopanic', a: '+ ⧉' },
+      { k: 'batch', v: '388', a: '+ ⧉' },
+      { k: 'trace', v: '4bf92f3577b34da6a3ce929d0e0e4736', a: '+ ⧉' }
+    ];
+
+    const frames = [
+      {
+        id: '2b', href: '#2b',
+        title: 'In the cut, a line is one click away',
+        body: 'The cut is open, nothing selected — the rail is the cut alone, exactly frame 1b. Opening Fingerprints always lands here: it clears any selected line. New rule with the stack: table rows are not highlight-only anymore. Click or ↵ on any row — filtered or not — pushes its detail over the cut. Arrow keys / ↵ stay what they are.',
+        fine: 'The state “cut open, no line inspector” still exists — it is this one, and it is where the verb drops you. Nothing about the table changed except that selection now has somewhere to put the detail.',
+        bar: 'service:worker level:error', live: false, plot: true, shrunk: false,
+        cols: bars(41), washes, strip: null, plotBox: plotBoxAt(84),
+        tbl: [
+          trow('14:59:51.688', 'worker', 'worker-1', 'panic: send on closed channel in flush.Drain (batch 512)'),
+          trow('14:59:49.130', 'worker', 'worker-2', 'failed to flush 512 rows to ClickHouse: too many parts'),
+          trow('14:59:45.741', 'worker', 'worker-2', 'panic: send on closed channel in flush.Drain (batch 388)'),
+          trow('14:59:40.087', 'worker', 'worker-1', 'unexpected EOF streaming merge parts to clickhouse-1:9000'),
+          trow('14:59:38.902', 'worker', 'worker-1', 'failed to flush 288 rows to ClickHouse: too many parts')
+        ], tblNote: '',
+        crumb: '', det: null, cut: { ...cutFull, foot: 'A clock cut, not causation. Click a table row to read it — the cut parks underneath and waits.' }
+      },
+      {
+        id: '2c', href: '#2c',
+        title: 'Filtered, reading a line',
+        body: 'e1: in the bar, table shrunk to the bug, one row selected. The detail pushes over the cut with a crumb naming what is parked. Everything the detail always had is here — Fields with exception.type and exception.frames as ordinary attrs, + / ⧉, JSON, Surroundings, View trace. Nothing was rebuilt for the cut.',
+        fine: 'The crumb states the parked cut’s counts for the current slice — the list obeys the bar, so filtered counts are 1 · 0 · 0. ‹ or × goes back; the mark stays selected on the lane throughout.',
+        bar: 'e1:b41f0c88a2e6d3f7', live: false, plot: true, shrunk: false,
+        cols: bars(7, true), washes, strip: null, plotBox: plotBoxAt(84),
+        tbl: drainRows(1), tblNote: '',
+        crumb: crumbTxt,
+        det: { ts: '2026-08-14 14:59:45.741Z', msg: 'panic: send on closed channel in flush.Drain (batch 388)', fields: detFields, trace: true, note: 'exception.* are collector-owned attrs — there is no stack player. trace is a 32-hex OTLP TraceId, so View trace is offered.' },
+        cut: null
+      },
+      {
+        id: '2d', href: '#2d',
+        title: 'Crowded — trace strip open, Live on',
+        body: 'View trace opened a Results-strip tab; chart+canvas shrinks as it always does. One drawn walk-back from shipped: today a waterfall replaces table and rail; with a cut parked, the rail stays and shows the cut — not the line, which waits on the Results tab it came from. Live ticks the plot; the cut stays frozen at open and says so.',
+        fine: 'This is the one place the stack changes strip behavior: a parked cut keeps its 398px beside the waterfall. Without a cut, strip tabs take the rail exactly as shipped.',
+        bar: 'e1:b41f0c88a2e6d3f7', live: true, plot: true, shrunk: true,
+        cols: bars(7, true), washes, plotBox: plotBoxAt(48),
+        strip: [
+          { t: 'Results', s: `height:22px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:3.4px; ${MONO} font-size:10.5px; color:${DIM}; line-height:20px; cursor:pointer;` },
+          { t: 'trace 4bf92f35 · 14:59:45 ×', s: `height:22px; padding:0 9px; border:1px solid oklch(0.906 0.014 84 / 45%); border-radius:3.4px; background:oklch(0.906 0.014 84 / 8%); ${MONO} font-size:10.5px; color:oklch(0.985 0 0); line-height:20px; cursor:pointer;` }
+        ],
+        tbl: [], tblNote: 'waterfall — spans of trace 4bf92f35 (pinned span offers View profiles, as shipped)',
+        crumb: '', det: null,
+        cut: { ...cutFiltered(true), foot: 'Frozen at open. Back on the Results tab, the selected line still has its detail — and its crumb.' }
+      },
+      {
+        id: '2e', href: '#2e',
+        title: 'Back — the cut, exactly as left',
+        body: 'Crumb or × on the detail pops the stack. The cut resurfaces with the same scroll, the same set order, the filtered row still marked, the frozen sides untouched. No spinner, no recount, no re-cut — back is a state read, not a query.',
+        fine: 'From here the loop repeats at will: Filter another hex, click another line, clear the token — the cut only ends when its own × says so.',
+        bar: 'e1:b41f0c88a2e6d3f7', live: false, plot: true, shrunk: false,
+        cols: bars(7, true), washes, strip: null, plotBox: plotBoxAt(84),
+        tbl: drainRows(-1), tblNote: '',
+        crumb: '', det: null,
+        cut: { ...cutFiltered(true), foot: 'Same object, same freeze, same scroll. Ending it is a different verb — the × in this header.' }
+      }
+    ];
+
+    const shape = (s, t) => ({ s, t: t || '' });
+    const miniRail = (top, mid, foot) => [
+      shape(`position:absolute; inset:8px 10px auto; height:${top.h}px; border:1px solid ${top.b || 'oklch(1 0 0 / 14%)'}; border-radius:4.4px; background:${top.bg || 'oklch(0.21 0.006 285.885)'}; padding:0 8px; line-height:${top.h - 2}px; ${MONO} font-size:9px; color:${top.c || 'oklch(0.985 0 0 / 85%)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`, top.t),
+      ...(mid ? [shape(`position:absolute; left:10px; right:10px; top:${top.h + 14}px; height:${mid.h}px; border:1px solid oklch(1 0 0 / 10%); border-radius:4.4px; background:oklch(0.141 0.005 285.823); display:flex; align-items:center; padding:0 8px; ${MONO} font-size:9px; color:${DIM}; white-space:nowrap; overflow:hidden;`, mid.t)] : []),
+      ...(foot ? [shape(`position:absolute; left:10px; right:10px; bottom:8px; ${MONO} font-size:9px; color:${DIM}; white-space:nowrap; overflow:hidden;`, foot)] : [])
+    ];
+    const model = [
+      { title: 'Base — the cut', arrow: 'click / ↵ a row', arrow2: 'pushes',
+        caption: 'Fingerprints opened from the inspector. The three sets own the rail (frame 1b, unchanged).',
+        shapes: miniRail({ h: 22, t: '▲ deployed: worker v1.4.3        ×' }, { h: 52, t: 'first seen 3 · still here 8 · stopped 1' }, 'clock cut · frozen at open') },
+      { title: 'Pushed — a line over it', arrow: '‹ crumb or ×', arrow2: 'pops',
+        caption: 'The detail is whole — Fields, JSON, footer verbs. The crumb names the parked cut and its counts.',
+        shapes: miniRail({ h: 16, t: '‹ ▲ Cut — first seen 1 · still here 0 · stopped 0', bg: 'oklch(0.141 0.005 285.823)', b: 'oklch(0.906 0.014 84 / 35%)', c: DIM }, { h: 58, t: 'ERROR 14:59:45 · fields · frames · JSON' }, 'Surroundings · View trace') },
+      { title: 'Popped — the cut, as left', arrow: '', arrow2: '',
+        caption: 'Same scroll, same sets, same freeze. × here — and only here — ends Fingerprints.',
+        shapes: miniRail({ h: 22, t: '▲ deployed: worker v1.4.3        ×' }, { h: 52, t: 'first seen 3 · still here 8 · stopped 1' }, 'nothing recomputed on the way back') }
+    ];
+
+    const verbs = [
+      { title: '× on the line — back', caption: 'Closes the detail; the parked cut resurfaces. Same verb as the crumb, drawn where operators already close details.', shapes: [
+        shape(`position:absolute; left:10%; top:16%; right:10%; height:20px; border:1px solid oklch(1 0 0 / 14%); border-radius:4.4px; background:oklch(0.21 0.006 285.885); display:flex; align-items:center; padding:0 8px; ${MONO} font-size:9px; color:oklch(0.985 0 0 / 85%);`, 'ERROR 14:59:45.741        ×'),
+        shape(`position:absolute; left:10%; bottom:16%; right:10%; ${MONO} font-size:9px; color:${DIM};`, '→ the cut, exactly as left')
+      ] },
+      { title: '× on the cut — done', caption: 'Ends Fingerprints. The rail returns to plain event-detail behavior. Reopening later re-cuts at now — drawn on purpose, not silently.', shapes: [
+        shape(`position:absolute; left:10%; top:16%; right:10%; height:20px; border:1px solid oklch(1 0 0 / 14%); border-radius:4.4px; background:oklch(0.21 0.006 285.885); display:flex; align-items:center; padding:0 8px; ${MONO} font-size:9px; color:oklch(0.985 0 0 / 85%);`, '▲ deployed: worker v1.4.3        ×'),
+        shape(`position:absolute; left:10%; bottom:16%; right:10%; ${MONO} font-size:9px; color:${DIM};`, '→ Fingerprints over; e1: tokens stay in the bar')
+      ] },
+      { title: 'Other tabs — the cut waits', caption: 'Surroundings and Follow are their own workspace tabs; traces are strip tabs. None of them touch the parked cut on this Search tab.', shapes: [
+        shape(`position:absolute; left:10%; top:18%; ${MONO} font-size:9px; color:oklch(0.985 0 0 / 85%);`, 'Search ●   Surroundings 14:59:45   Follow'),
+        shape(`position:absolute; left:10%; top:44%; right:10%; height:1px; background:oklch(1 0 0 / 10%);`),
+        shape(`position:absolute; left:10%; bottom:16%; right:10%; ${MONO} font-size:9px; color:${DIM};`, 'come back → cut (or line + crumb) as left')
+      ] }
+    ];
+
+    const rejCards = [
+      { title: 'A second rail — cut beside detail', verdict: 'Two ~400px columns leave the table a sliver at shipped density. The stack shows one thing well and names what is underneath; two rails show two things badly.', shapes: [
+        shape(`position:absolute; left:6%; top:12%; width:26%; bottom:12%; border:1px solid oklch(1 0 0 / 14%); border-radius:4px; background:oklch(0.141 0.005 285.823);`),
+        shape(`position:absolute; left:36%; top:12%; width:26%; bottom:12%; border:1px solid oklch(1 0 0 / 14%); border-radius:4px; background:oklch(0.141 0.005 285.823);`),
+        shape(`position:absolute; left:66%; top:12%; width:28%; bottom:12%; border:1px dashed #ef4444; border-radius:4px; display:flex; align-items:center; justify-content:center; ${MONO} font-size:9px; color:#fca5a5;`, 'table?')
+      ] },
+      { title: 'Park the cut on the Results strip', verdict: 'The strip is inspections of one row — traces, profiles, capped at 5. The cut is about the whole hunt around a mark; parking it there miscasts it as a per-row artifact and buys a tab for no depth.', shapes: [
+        shape(`position:absolute; left:8%; top:20%; ${MONO} font-size:9px; color:${DIM};`, 'Results   trace 4bf92f35 ×   cut ▲ v1.4.3 ×'),
+        shape(`position:absolute; left:56%; top:17%; width:26%; height:14px; border:1px dashed #ef4444; border-radius:3px;`),
+        shape(`position:absolute; left:8%; bottom:18%; ${MONO} font-size:9px; color:#fca5a5;`, 'a hunt-wide reader is not a row inspection')
+      ] },
+      { title: 'Cut row opens a “sample event”', verdict: 'A fingerprint is not a log line, and its sample is not necessarily in this slice’s table. Filter is the honest door: real rows, real detail, real Surroundings — the stack makes that loop cheap enough to keep.', shapes: [
+        shape(`position:absolute; left:8%; top:16%; ${MONO} font-size:10px; color:oklch(0.985 0 0 / 85%);`, 'e1:b41f0c88…  0 → 171'),
+        shape(`position:absolute; left:8%; top:44%; padding:1px 5px; border:1px dashed #ef4444; border-radius:3px; ${MONO} font-size:9px; color:#fca5a5;`, 'open sample event?'),
+        shape(`position:absolute; left:8%; bottom:14%; ${MONO} font-size:9px; color:${DIM};`, 'Filter → the table has the real ones')
+      ] }
+    ];
+
+    return {
+      badge, capBody, xBtn, footBtn, model, frames, verbs, rejCards,
+      system: [
+        { n: '1', head: 'The rail is a stack, not a swap.', body: 'The cut is the base card; a selected line pushes its whole detail on top; ‹ or × pops it. One rail wide as ever — no second column, no strip tab, no new workspace kind.' },
+        { n: '2', head: 'Back is a state.', body: 'The parked cut keeps its object: set order, scroll, which hex is filtered, frozen-at-open sides. Popping the stack reads that state — it never re-runs the cut, and never silently re-cuts at now.' },
+        { n: '3', head: 'The detail is the shipped detail.', body: 'Fields, JSON, + and ⧉, exception.* as ordinary attrs, Surroundings and View trace in the footer. The crumb above it is the only new pixel this loop adds.' },
+        { n: '4', head: 'Two ×, two jobs.', body: 'The line’s × goes back; the cut’s × ends Fingerprints. Same distinction as hide vs delete — two verbs because the jobs differ. Ending was and stays possible from the cut header only.' },
+        { n: '5', head: 'Everything else already worked.', body: 'Filter still writes e1:<hex>; q is never rewritten by the mark; traces live on the strip; Surroundings stays ±50 events on its own tab. This sheet adds one rule, one crumb, and one drawn walk-back: a parked cut keeps the rail while a strip tab is open (2d).' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

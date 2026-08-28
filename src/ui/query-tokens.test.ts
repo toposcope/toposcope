@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import {
   activeFacetValues,
@@ -12,9 +13,38 @@ import {
   setFieldToken,
   stripSlotKeys,
   toggleFieldToken,
+  toggleFingerprintCutFilter,
 } from "./query-tokens";
 
 describe("query tokens", () => {
+  test("Filter e1 helpers do not import node:crypto hashing (Vite black screen)", () => {
+    for (const file of [
+      "src/ui/query-tokens.ts",
+      "src/ui/components/fingerprint-cut-panel.tsx",
+    ]) {
+      const src = readFileSync(file, "utf8");
+      expect(src).not.toMatch(/from ["'][^"']*\/fingerprint["']/);
+    }
+  });
+
+  test("toggleFingerprintCutFilter replaces e1, and a second click removes it", () => {
+    expect(toggleFingerprintCutFilter("timeout", "b41f0c88a2e6d3f7")).toBe(
+      "timeout e1:b41f0c88a2e6d3f7",
+    );
+    expect(
+      toggleFingerprintCutFilter("timeout e1:aaaaaaaaaaaaaaaa", "b41f0c88a2e6d3f7"),
+    ).toBe("timeout e1:b41f0c88a2e6d3f7");
+    expect(
+      toggleFingerprintCutFilter("timeout e1:b41f0c88a2e6d3f7", "b41f0c88a2e6d3f7"),
+    ).toBe("timeout");
+    expect(
+      toggleFingerprintCutFilter(
+        "timeout (e1:aaaaaaaaaaaaaaaa OR e1:b41f0c88a2e6d3f7)",
+        "b41f0c88a2e6d3f7",
+      ),
+    ).toBe("timeout e1:b41f0c88a2e6d3f7");
+  });
+
   test("setFieldToken appends when the field is absent", () => {
     expect(setFieldToken("timeout", "level", "error")).toBe("timeout level:error");
     expect(setFieldToken("", "service", "api")).toBe("service:api");

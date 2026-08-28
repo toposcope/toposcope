@@ -1343,7 +1343,7 @@ export function HistogramChart({
                   plotSpanMs={plotSpanMs}
                   hoverKey={markHoverKey}
                   selectedKey={markSelected.key}
-                  selectedId={focusMarkId ?? markSelected.id}
+                  selectedId={marks?.cut?.markId ?? focusMarkId ?? markSelected.id}
                 />
               ) : null}
               </div>

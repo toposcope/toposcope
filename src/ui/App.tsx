@@ -7,6 +7,7 @@ import { FieldsView } from "@/components/fields-view";
 import { ContextTabs } from "@/components/context-tabs";
 import { ContextView, type ContextMode } from "@/components/context-view";
 import { EventDetail } from "@/components/event-detail";
+import { FingerprintCutPanel } from "@/components/fingerprint-cut-panel";
 import { TraceWaterfall } from "@/components/trace-waterfall";
 import { SpanFlamegraph } from "@/components/span-flamegraph";
 import { EventTable } from "@/components/event-table";
@@ -50,7 +51,12 @@ import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
 import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
 import { joinTraceRef } from "../shared/ids";
-import type { ChangeMark, ChangeMarkKind } from "../shared/change-mark";
+import {
+  formatChangeMarkLabel,
+  type ChangeMark,
+  type ChangeMarkKind,
+} from "../shared/change-mark";
+import type { FingerprintCutResult } from "../shared/fingerprint-cut";
 import type { ProfileResponse } from "../shared/profile";
 import type { Span, TraceResponse } from "../shared/span";
 import {
@@ -64,9 +70,14 @@ import {
   decideFocusMarkInLogs,
   decideOpenSurroundings,
   duplicateSnap,
+  followChildSnap,
   insertWorkspace,
   isReaderKind,
+  parkedCutLine,
+  selectionAfterReplace,
   shouldRestorePaint,
+  shouldRestoreParkedCut,
+  snapPinnedEvent,
   stampWorkspace,
   surroundingsEventSnap,
   surroundingsMarkSnap,
@@ -80,6 +91,12 @@ import {
   type WorkspacePaint,
   type WorkspaceSnap,
 } from "./workspaces";
+import {
+  cutCrumbLabel,
+  cutRailSurface,
+  fingerprintCutHuntWindows,
+  type FingerprintCutSnap,
+} from "./fingerprint-cut";
 import { fillHistogram, rangeDurationMs } from "./fill-histogram";
 import {
   bindForBoard,
@@ -157,7 +174,7 @@ import {
   surroundingMaxN,
   surroundingStepN,
 } from "../query/surrounding";
-import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, removeFieldToken, activeFacetValues, queryFieldKeys } from "./query-tokens";
+import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, removeFieldToken, activeFacetValues, queryFieldKeys, toggleFingerprintCutFilter } from "./query-tokens";
 import {
   histogramTotal,
   livePageSize,
@@ -419,6 +436,7 @@ export function App() {
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
   const [marksMuted, setMarksMuted] = useState<string[]>([]);
+  const [cut, setCut] = useState<FingerprintCutSnap | null>(null);
   const [focusMarkId, setFocusMarkId] = useState<string | null>(null);
   const [aggSeries, setAggSeries] = useState<SearchAggResult | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -927,6 +945,7 @@ export function App() {
         metricLabels?: Record<string, string>;
         logs?: boolean;
         widgets?: WidgetDef[];
+        park?: ReturnType<typeof parkedCutLine>;
       },
     ) => {
       setError(null);
@@ -1381,10 +1400,11 @@ export function App() {
         }
         if (!activeLogs) {
           if (mode === "replace") {
+            const next = selectionAfterReplace(overrides?.park ?? null, []);
             setEvents([]);
-            setSelectedIndex(0);
-            setDetailOpen(false);
-            setPinnedEvent(null);
+            setSelectedIndex(next.index);
+            setDetailOpen(next.detailOpen);
+            setPinnedEvent(next.pinned);
           }
         } else if (mode === "append") {
           setEvents((prev) => {
@@ -1411,10 +1431,14 @@ export function App() {
             setSelectedIndex(-1);
           }
         } else {
+          const next = selectionAfterReplace(
+            overrides?.park ?? null,
+            json.events,
+          );
           setEvents(json.events);
-          setSelectedIndex(0);
-          setDetailOpen(false);
-          setPinnedEvent(null);
+          setSelectedIndex(next.index);
+          setDetailOpen(next.detailOpen);
+          setPinnedEvent(next.pinned);
         }
         if (mode === "replace" || (mode === "poll" && !incremental)) {
           if (mode === "replace") {
@@ -1742,6 +1766,7 @@ export function App() {
       setSurrSel(null);
       setFocusMark(null);
       setFocusMarkId(null);
+      setCut(null);
       setInspectTabs([]);
       setActiveInspect(null);
       setWsKind("search");
@@ -2393,8 +2418,10 @@ export function App() {
       attrFacets,
       widgets,
     });
+    const parkStack = Boolean(cut && detailOpen);
     const paint: WorkspacePaint | null =
-      lastPaintHuntRef.current === hunt && (lastMs != null || error != null)
+      (lastMs != null || error != null) &&
+      (lastPaintHuntRef.current === hunt || parkStack)
         ? {
             hunt,
             events,
@@ -2444,7 +2471,12 @@ export function App() {
       aroundMode,
       selectedIndex,
       detailOpen,
-      pinnedEvent,
+      pinnedEvent: snapPinnedEvent({
+        cut,
+        detailOpen,
+        pinned: pinnedEvent,
+        selected: events[selectedIndex],
+      }),
       surrAnchor,
       surrSel,
       focusMark,
@@ -2453,6 +2485,7 @@ export function App() {
       paint,
       marksOff,
       marksMuted,
+      cut,
     };
   }
 
@@ -2529,6 +2562,16 @@ export function App() {
     }
   }
 
+  function openFingerprints(mark: ChangeMark) {
+    const openedAt = live
+      ? new Date().toISOString()
+      : isoFromLocal(to) ?? new Date().toISOString();
+    setCut({ mark, openedAt, result: null });
+    setFocusMarkId(mark.id);
+    setDetailOpen(false);
+    setPinnedEvent(null);
+  }
+
   function restorePaint(paint: WorkspacePaint) {
     skipAttrFacetGen.current = viewGenRef.current;
     lastPaintHuntRef.current = paint.hunt;
@@ -2586,8 +2629,9 @@ export function App() {
     setFollow(snap.follow);
     setMarksOff(snap.marksOff);
     setMarksMuted(snap.marksMuted);
+    setCut(snap.cut);
     setFocusMark(snap.focusMark);
-    setFocusMarkId(snap.focusMark?.id ?? null);
+    setFocusMarkId(snap.cut?.mark.id ?? snap.focusMark?.id ?? null);
     setInspectTabs(snap.inspectTabs);
     setActiveInspect(snap.activeInspect);
     setAroundN(snap.aroundN);
@@ -2615,7 +2659,7 @@ export function App() {
       setAttrFacetsLoading(false);
       return;
     }
-    if (shouldRestorePaint(snap) && snap.paint) {
+    if ((shouldRestorePaint(snap) || shouldRestoreParkedCut(snap)) && snap.paint) {
       restorePaint(snap.paint);
       return;
     }
@@ -2651,6 +2695,7 @@ export function App() {
         agg: snap.agg,
         logs: snap.logsOn,
         widgets: snap.widgets,
+        park: parkedCutLine(snap),
       });
     }
   }
@@ -2727,29 +2772,13 @@ export function App() {
     nextFrom: string,
     nextTo: string,
   ): WorkspaceSnap {
-    return {
-      ...currentSnap(),
-      kind: "follow",
+    return followChildSnap(currentSnap(), {
       q: followQuery(key, value),
-      range: "custom",
       from: nextFrom,
       to: nextTo,
-      live: false,
-      savedId: null,
-      bind: {},
-      follow: { key, value },
-      explore: null,
-      inspectTabs: [],
-      activeInspect: null,
-      surrAnchor: null,
-      surrSel: null,
-      focusMark: null,
-      frozenFacets: null,
-      frozenAttrFacetValues: null,
-      paint: null,
-      marksOff: [],
-      marksMuted: [],
-    };
+      key,
+      value,
+    });
   }
 
   function ensureSearchWorkspace() {
@@ -2893,6 +2922,10 @@ export function App() {
     await navigator.clipboard.writeText(`${window.location.origin}${path}`);
     toast.success("Link copied");
   }
+
+  const onCutResult = useCallback((result: FingerprintCutResult) => {
+    setCut((prev) => (prev ? { ...prev, result } : prev));
+  }, []);
 
   function applyQuery(next: string) {
     if (isReaderKind(wsKind)) {
@@ -3136,6 +3169,28 @@ export function App() {
   const boardUnbound = Boolean(
     activeSaved?.board && isBoardUnbound(activeSaved.board, bind),
   );
+  const railSurface = cutRailSurface({
+    hasCut: Boolean(cut),
+    detailOpen,
+    hasSelected: Boolean(events[selectedIndex] ?? pinnedEvent),
+    inspectOpen: Boolean(activeInspect),
+    isSurr,
+    boardOn,
+  });
+  const cutCrumb = cut
+    ? {
+        kind: cut.mark.kind,
+        label: cutCrumbLabel(
+          cut.result,
+          formatChangeMarkLabel(cut.mark),
+        ),
+        title: "Back to the cut, exactly as left — nothing recomputes",
+        onBack: () => {
+          setDetailOpen(false);
+          setPinnedEvent(null);
+        },
+      }
+    : undefined;
   const savedLayout =
     activeSaved?.widgets ??
     defaultLayout({ agg: activeSaved?.agg ?? null });
@@ -3177,6 +3232,16 @@ export function App() {
     );
   });
 
+  const cutWindows =
+    cut && Number.isFinite(windowFromMs) && spanMs > 0
+      ? fingerprintCutHuntWindows(
+          cut.mark,
+          cut.openedAt,
+          windowFromMs,
+          windowFromMs + spanMs,
+        )
+      : null;
+
   const marksOverlay = boardOn
     ? null
     : {
@@ -3198,6 +3263,17 @@ export function App() {
         onUnmute: (id: string) =>
           setMarksMuted((prev) => prev.filter((item) => item !== id)),
         onFocusLogs: focusMarkInLogs,
+        onFingerprints: openFingerprints,
+        cut:
+          cut && cutWindows && !cutWindows.dead
+            ? {
+                markId: cut.mark.id,
+                beforeFrom: cutWindows.beforeFrom,
+                beforeTo: cutWindows.beforeTo,
+                afterFrom: cutWindows.afterFrom,
+                afterTo: cutWindows.afterTo,
+              }
+            : null,
       };
 
   const sidebar = (
@@ -3820,132 +3896,192 @@ export function App() {
               onSelect={setActiveInspect}
               onClose={closeInspect}
             />
-            {profileView ? (
-              <SpanFlamegraph
-                service={profileView.service}
-                name={profileView.name}
-                spanId={profileView.span_id}
-                ts={profileView.ts}
-                result={
-                  profileLoad.key === `${profileView.trace_id}:${profileView.span_id}`
-                    ? profileLoad.result
-                    : null
-                }
-                loading={
-                  profileLoad.key === `${profileView.trace_id}:${profileView.span_id}`
-                    ? profileLoad.loading
-                    : true
-                }
-                failed={
-                  profileLoad.key === `${profileView.trace_id}:${profileView.span_id}`
-                    ? profileLoad.failed
-                    : false
-                }
-                canBackToTrace={inspectTabs.some(
-                  (tab) => tab.kind === "trace" && tab.value === profileView.trace_id,
-                )}
-                onBack={backFromProfile}
-              />
-            ) : traceView ? (
-              <TraceWaterfall
-                joinKey={traceView.key}
-                joinValue={traceView.value}
-                ts={traceView.ts}
-                result={
-                  traceLoad.value === traceView.value ? traceLoad.result : null
-                }
-                loading={
-                  traceLoad.value === traceView.value
-                    ? traceLoad.loading
-                    : true
-                }
-                failed={
-                  traceLoad.value === traceView.value ? traceLoad.failed : false
-                }
-                onFollow={(key, value, ts) => {
-                  setActiveInspect(null);
-                  onFollowField(key, value, ts);
-                }}
-                onViewProfiles={openProfile}
-              />
-            ) : (
             <div className="flex min-h-0 flex-1">
-              <div
-                className={`flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-2.5 transition-opacity ${
-                  inFlightDim ? "pointer-events-none opacity-50" : ""
-                }`}
-              >
-                {!searching && !error && events.length === 0 ? (
-                  <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 rounded-lg border bg-card px-6 py-14 text-center">
-                    <p className="text-sm font-medium">
-                      {scanRefuse?.events
-                        ? scanRefuse.reason
-                        : emptyIngest
-                          ? "No events ingested yet."
-                          : "No events in this range."}
-                    </p>
-                    <p className="max-w-[360px] text-[13px] leading-relaxed text-muted-foreground">
-                      {scanRefuse?.events
-                        ? "Narrow the range or simplify q."
-                        : emptyIngest
-                          ? "POST to /api/ingest, /v1/logs, or syslog UDP 5514."
-                          : "Widen the range or clear filters."}
-                    </p>
-                    {!emptyIngest && q.trim() !== "" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="mt-0.5"
-                        onClick={() => applyQuery("")}
-                      >
-                        Clear query
-                      </Button>
-                    ) : null}
+              {profileView ? (
+                <SpanFlamegraph
+                  service={profileView.service}
+                  name={profileView.name}
+                  spanId={profileView.span_id}
+                  ts={profileView.ts}
+                  result={
+                    profileLoad.key === `${profileView.trace_id}:${profileView.span_id}`
+                      ? profileLoad.result
+                      : null
+                  }
+                  loading={
+                    profileLoad.key === `${profileView.trace_id}:${profileView.span_id}`
+                      ? profileLoad.loading
+                      : true
+                  }
+                  failed={
+                    profileLoad.key === `${profileView.trace_id}:${profileView.span_id}`
+                      ? profileLoad.failed
+                      : false
+                  }
+                  canBackToTrace={inspectTabs.some(
+                    (tab) =>
+                      tab.kind === "trace" && tab.value === profileView.trace_id,
+                  )}
+                  onBack={backFromProfile}
+                />
+              ) : traceView ? (
+                <TraceWaterfall
+                  joinKey={traceView.key}
+                  joinValue={traceView.value}
+                  ts={traceView.ts}
+                  result={
+                    traceLoad.value === traceView.value ? traceLoad.result : null
+                  }
+                  loading={
+                    traceLoad.value === traceView.value
+                      ? traceLoad.loading
+                      : true
+                  }
+                  failed={
+                    traceLoad.value === traceView.value ? traceLoad.failed : false
+                  }
+                  onFollow={(key, value, ts) => {
+                    setActiveInspect(null);
+                    onFollowField(key, value, ts);
+                  }}
+                  onViewProfiles={openProfile}
+                />
+              ) : (
+                <div
+                  className={`flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-2.5 transition-opacity ${
+                    inFlightDim ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  {!searching && !error && events.length === 0 ? (
+                    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 rounded-lg border bg-card px-6 py-14 text-center">
+                      <p className="text-sm font-medium">
+                        {scanRefuse?.events
+                          ? scanRefuse.reason
+                          : emptyIngest
+                            ? "No events ingested yet."
+                            : "No events in this range."}
+                      </p>
+                      <p className="max-w-[360px] text-[13px] leading-relaxed text-muted-foreground">
+                        {scanRefuse?.events
+                          ? "Narrow the range or simplify q."
+                          : emptyIngest
+                            ? "POST to /api/ingest, /v1/logs, or syslog UDP 5514."
+                            : "Widen the range or clear filters."}
+                      </p>
+                      {!emptyIngest && q.trim() !== "" ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-0.5"
+                          onClick={() => applyQuery("")}
+                        >
+                          Clear query
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <EventTable
+                      events={events}
+                      selectedIndex={selectedIndex}
+                      loading={searching}
+                      total={total}
+                      q={q}
+                      range={range}
+                      fromMs={windowFromMs}
+                      spanMs={spanMs}
+                      showLoadMore={Boolean(nextCursor)}
+                      cols={cols}
+                      onColsChange={(next) => setCols(parsePromotedCols(next))}
+                      onSelect={(i) => {
+                        setPinnedEvent(null);
+                        setSelectedIndex(i);
+                        if (cut) {
+                          setDetailOpen(true);
+                        } else {
+                          setDetailOpen(
+                            i !== selectedIndex ? true : !detailOpen,
+                          );
+                        }
+                      }}
+                      onMove={(i) => {
+                        setPinnedEvent(null);
+                        setSelectedIndex(i);
+                      }}
+                      onOpenDetail={() => {
+                        setPinnedEvent(null);
+                        setDetailOpen(true);
+                      }}
+                      onCloseDetail={() => {
+                        setDetailOpen(false);
+                        setPinnedEvent(null);
+                      }}
+                      onLoadMore={() => void runSearch("append")}
+                      marks={marksOverlay}
+                      live={live}
+                      focusMarkId={focusMarkId}
+                      onFocusMark={setFocusMarkId}
+                      onLoadToward={(ts) => {
+                        loadTowardTsRef.current = Date.parse(ts);
+                        void runSearch("append");
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+              {cut && !isSurr && !boardOn ? (
+                <div className="relative flex h-full w-[398px] max-w-[36%] min-h-0 shrink-0 flex-col">
+                  <div
+                    className="flex min-h-0 min-w-0 flex-1 flex-col"
+                    inert={railSurface === "detail"}
+                    aria-hidden={railSurface === "detail"}
+                  >
+                    <FingerprintCutPanel
+                      mark={cut.mark}
+                      openedAt={cut.openedAt}
+                      q={q}
+                      range={range}
+                      from={from}
+                      to={to}
+                      live={live}
+                      spanMs={spanMs}
+                      fromMs={windowFromMs}
+                      toMs={windowToMs}
+                      result={cut.result}
+                      onResult={onCutResult}
+                      onClose={() => setCut(null)}
+                      onFilter={(hex) =>
+                        applyQuery(toggleFingerprintCutFilter(q, hex))
+                      }
+                    />
                   </div>
-                ) : (
-                  <EventTable
-                    events={events}
-                    selectedIndex={selectedIndex}
-                    loading={searching}
-                    total={total}
-                    q={q}
-                    range={range}
-                    fromMs={windowFromMs}
-                    spanMs={spanMs}
-                    showLoadMore={Boolean(nextCursor)}
-                    cols={cols}
-                    onColsChange={(next) => setCols(parsePromotedCols(next))}
-                    onSelect={(i) => {
-                      setPinnedEvent(null);
-                      setSelectedIndex(i);
-                      setDetailOpen(i !== selectedIndex ? true : !detailOpen);
-                    }}
-                    onMove={(i) => {
-                      setPinnedEvent(null);
-                      setSelectedIndex(i);
-                    }}
-                    onOpenDetail={() => {
-                      setPinnedEvent(null);
-                      setDetailOpen(true);
-                    }}
-                    onCloseDetail={() => {
-                      setDetailOpen(false);
-                      setPinnedEvent(null);
-                    }}
-                    onLoadMore={() => void runSearch("append")}
-                    marks={marksOverlay}
-                    live={live}
-                    focusMarkId={focusMarkId}
-                    onFocusMark={setFocusMarkId}
-                    onLoadToward={(ts) => {
-                      loadTowardTsRef.current = Date.parse(ts);
-                      void runSearch("append");
-                    }}
-                  />
-                )}
-              </div>
-              {selectedEvent ? (
+                  {railSurface === "detail" && selectedEvent ? (
+                    <div className="absolute inset-0 z-10">
+                      <EventDetail
+                        event={selectedEvent}
+                        className="h-full w-full max-w-none"
+                        crumb={cutCrumb}
+                        closeTitle="Close this line — back to the cut"
+                        onClose={() => {
+                          setDetailOpen(false);
+                          setPinnedEvent(null);
+                        }}
+                        fromMs={windowFromMs}
+                        spanMs={spanMs}
+                        onFilter={onFilterField}
+                        onAround={openSurroundings}
+                        onTrace={openTrace}
+                        links={fieldLinks}
+                        roles={fieldRoles}
+                        metricNames={metricNames}
+                        onGraph={onGraphField}
+                        onFollow={onFollowField}
+                        onOpenFields={() => setView("fields")}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : selectedEvent ? (
                 <EventDetail
                   event={selectedEvent}
                   onClose={() => {
@@ -3966,7 +4102,6 @@ export function App() {
                 />
               ) : null}
             </div>
-            )}
               </>
             ) : null}
             </>

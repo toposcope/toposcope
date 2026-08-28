@@ -3,6 +3,9 @@ import { Copy, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { ChangeMarkKind } from "../../shared/change-mark";
+import { MarkGlyph } from "./histogram-marks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +48,14 @@ type Props = {
   filterDisabled?: boolean;
   filterTitle?: string;
   hideClose?: boolean;
+  closeTitle?: string;
+  crumb?: {
+    kind: ChangeMarkKind;
+    label: string;
+    title?: string;
+    onBack: () => void;
+  } | null;
+  className?: string;
   fromMs: number;
   spanMs: number;
 };
@@ -92,6 +103,9 @@ export function EventDetail({
   filterDisabled = false,
   filterTitle,
   hideClose = false,
+  closeTitle,
+  crumb,
+  className,
   fromMs,
   spanMs,
 }: Props) {
@@ -101,7 +115,29 @@ export function EventDetail({
   const format = useTimestampFormat();
 
   return (
-    <aside className="flex w-[376px] max-w-[34%] shrink-0 flex-col border-l bg-[#0f0f11]">
+    <aside
+      className={cn(
+        "flex w-[376px] max-w-[34%] shrink-0 flex-col border-l bg-[#0f0f11]",
+        className,
+      )}
+    >
+      {crumb ? (
+        <button
+          type="button"
+          title={
+            crumb.title ??
+            "Back to the cut, exactly as left — nothing recomputes"
+          }
+          className="flex w-full shrink-0 items-center gap-1.5 border-b bg-[oklch(0.141_0.005_285.823/60%)] px-2.5 py-[5px] text-left hover:bg-[oklch(0.274_0.006_286.033/60%)]"
+          onClick={crumb.onBack}
+        >
+          <span className="text-[12px] text-[oklch(0.906_0.014_84)]">‹</span>
+          <MarkGlyph kind={crumb.kind} size={10} />
+          <span className="min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground">
+            {crumb.label}
+          </span>
+        </button>
+      ) : null}
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5">
         <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
         <span className="truncate font-mono text-xs text-muted-foreground" title={event.ts}>
@@ -125,7 +161,13 @@ export function EventDetail({
             <Copy />
           </Button>
           {hideClose ? null : (
-            <Button type="button" size="icon" variant="ghost" onClick={onClose}>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              title={closeTitle}
+              onClick={onClose}
+            >
               <X />
             </Button>
           )}

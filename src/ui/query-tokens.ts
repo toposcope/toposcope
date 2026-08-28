@@ -1,4 +1,5 @@
 import { isAttrIdent } from "../shared/attrs";
+import { fingerprintAttr } from "../shared/fingerprint-attr";
 import { isCoreField } from "../query/compile";
 
 const quotable = /[\s()"]/;
@@ -339,6 +340,18 @@ export function hasExcludedFieldToken(
 ): boolean {
   const wanted = `-${encode(field, value)}`.toLowerCase();
   return tokenize(q).some((token) => token.toLowerCase() === wanted);
+}
+
+/** Cut Filter: one e1 value, or drop it if that is already the whole e1 set. */
+export function toggleFingerprintCutFilter(q: string, hex: string): string {
+  const current = facetValues(q, fingerprintAttr);
+  if (
+    current.length === 1 &&
+    current[0]!.toLowerCase() === hex.toLowerCase()
+  ) {
+    return removeFieldToken(q, fingerprintAttr);
+  }
+  return setFieldToken(q, fingerprintAttr, hex);
 }
 
 /** Replace any existing `field:` set with one value, or append one. */

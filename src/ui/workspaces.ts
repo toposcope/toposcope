@@ -4,9 +4,10 @@ import { formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../
 import { defaultLayout, type WidgetDef } from "../shared/widgets";
 import type { FacetValue, Facets, HistogramBucket, LogEvent, SearchAggResult } from "./types";
 import type { ContextMode } from "./context-mode";
-import { eventKey } from "./event-key";
+import { eventKey, indexOfEventKey } from "./event-key";
 import type { InspectTab } from "./inspect-tabs";
 import { defaultSearchUrlState, type RangeMode, type SearchUrlState } from "./search-url";
+import type { FingerprintCutSnap } from "./fingerprint-cut";
 
 export function ordinalLabels(labels: string[]): string[] {
   const counts = new Map<string, number>();
@@ -127,6 +128,111 @@ export function shouldRestorePaint(snap: WorkspaceSnap): boolean {
   return snap.paint.hunt === workspaceHuntKeyFromSnap(snap);
 }
 
+/** Pin the stacked line so an empty table (Follow round-trip) cannot drop the overlay. */
+export function snapPinnedEvent(input: {
+  cut: FingerprintCutSnap | null;
+  detailOpen: boolean;
+  pinned: LogEvent | null;
+  selected: LogEvent | undefined;
+}): LogEvent | null {
+  if (input.pinned) {
+    return input.pinned;
+  }
+  if (input.cut && input.detailOpen) {
+    return input.selected ?? null;
+  }
+  return null;
+}
+
+/** Last paint for a parked cut line — restore even when the hunt key drifted. */
+export function shouldRestoreParkedCut(snap: WorkspaceSnap): boolean {
+  return Boolean(
+    snap.cut &&
+      snap.detailOpen &&
+      snap.paint &&
+      (snap.paint.lastMs != null || snap.paint.error != null),
+  );
+}
+
+export type ParkedCutLine = {
+  event: LogEvent | null;
+  index: number;
+};
+
+export function parkedCutLine(snap: WorkspaceSnap): ParkedCutLine | null {
+  if (!snap.cut || !snap.detailOpen) {
+    return null;
+  }
+  return {
+    event: snap.pinnedEvent,
+    index: snap.selectedIndex,
+  };
+}
+
+export function selectionAfterReplace(
+  park: ParkedCutLine | null,
+  events: LogEvent[],
+): {
+  index: number;
+  detailOpen: boolean;
+  pinned: LogEvent | null;
+} {
+  if (!park) {
+    return { index: 0, detailOpen: false, pinned: null };
+  }
+  if (park.event) {
+    const idx = indexOfEventKey(events, eventKey(park.event));
+    if (idx >= 0) {
+      return { index: idx, detailOpen: true, pinned: null };
+    }
+    return { index: -1, detailOpen: true, pinned: park.event };
+  }
+  if (park.index >= 0 && park.index < events.length) {
+    return { index: park.index, detailOpen: true, pinned: null };
+  }
+  return { index: 0, detailOpen: true, pinned: null };
+}
+
+/** Follow tab: new hunt, no parked cut overlay. Origin was already stamped. */
+export function followChildSnap(
+  origin: WorkspaceSnap,
+  follow: {
+    q: string;
+    from: string;
+    to: string;
+    key: string;
+    value: string;
+  },
+): WorkspaceSnap {
+  return {
+    ...origin,
+    kind: "follow",
+    q: follow.q,
+    range: "custom",
+    from: follow.from,
+    to: follow.to,
+    live: false,
+    savedId: null,
+    bind: {},
+    follow: { key: follow.key, value: follow.value },
+    explore: null,
+    inspectTabs: [],
+    activeInspect: null,
+    surrAnchor: null,
+    surrSel: null,
+    focusMark: null,
+    frozenFacets: null,
+    frozenAttrFacetValues: null,
+    paint: null,
+    marksOff: [],
+    marksMuted: [],
+    cut: null,
+    detailOpen: false,
+    pinnedEvent: null,
+    selectedIndex: 0,
+  };
+}
+
 export type WorkspaceSnap = {
   kind: WorkspaceKind;
   q: string;
@@ -163,6 +269,7 @@ export type WorkspaceSnap = {
   paint: WorkspacePaint | null;
   marksOff: ChangeMarkKind[];
   marksMuted: string[];
+  cut: FingerprintCutSnap | null;
 };
 
 export type Workspace = {
@@ -248,6 +355,7 @@ export function blankSearchSnap(): WorkspaceSnap {
     paint: null,
     marksOff: [],
     marksMuted: [],
+    cut: null,
   };
 }
 
@@ -423,6 +531,7 @@ function surroundingsReaderSnap(
     paint: null,
     frozenFacets: frozen.frozenFacets,
     frozenAttrFacetValues: frozen.frozenAttrFacetValues,
+    cut: null,
   };
 }
 
