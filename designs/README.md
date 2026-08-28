@@ -2,10 +2,15 @@
 
 Locked chrome. Open the `.dc.html` files locally (they need `support.js` beside them). GitHub will not run the mock.
 
-- [Toposcope App.dc.html](Toposcope%20App.dc.html) — hunt, with change marks and the fingerprint cut stack: inspect a mark → Fingerprints → cut on the results rail; a table row pushes event detail with a crumb; Filter writes `e1:<hex>`
+- [Toposcope App.dc.html](Toposcope%20App.dc.html) — hunt, with change marks, the fingerprint cut stack, and compare vs a mark: inspect → Fingerprints and/or Compare; Filter writes `e1:<hex>`; Compare unfolds a 30px fold under the lane
 - [Toposcope Marks.dc.html](Toposcope%20Marks.dc.html) — marks frames 1a–1k · in-list frames 2a–2h
 - [Toposcope Brand.dc.html](Toposcope%20Brand.dc.html) — Fault lockup
 - [marks/](marks/) — crops of the Marks sheet for issues (1a–1k · 2a–2h)
+
+Locked — compare vs a mark:
+
+- [Toposcope Compare.dc.html](Toposcope%20Compare.dc.html) — frames 3a–3j: inspector verb, fold under the lane, fingerprint as series, near now, zeros, Live freeze, crowded with the cut, anatomy, placement rejects, product rejects
+- [compare/](compare/) — crops of the Compare sheet for issues (3a–3j)
 
 Locked — fingerprints after a mark:
 

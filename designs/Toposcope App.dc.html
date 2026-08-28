@@ -657,6 +657,16 @@
           </div>
         </div>
 
+        <sc-if value="{{ cmp }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Compare fold" title="{{ cmp.title }}" style="{{ cmp.wrap }}">
+            <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="{{ cmp.d }}" fill="{{ cmp.f }}" stroke="{{ cmp.s }}" stroke-width="{{ cmp.w }}" stroke-linejoin="round"></path></svg>
+            <sc-for list="{{ cmp.segs }}" as="fs" hint-placeholder-count="8"><span style="{{ fs.s }}">{{ fs.t }}</span></sc-for>
+            <button type="button" onClick="{{ cmp.close }}" title="Dismiss compare — the mark stays selected; the cut, if open, stays" style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:24px; height:24px; margin-left:2px; border:none; border-radius:4.4px; background:transparent; color:oklch(0.705 0.015 286.067); font-family:inherit; cursor:pointer;" style-hover="background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+            </button>
+          </div>
+        </sc-if>
+
         <div style="{{ legendWrap }}">
           <sc-for list="{{ legend }}" as="l" hint-placeholder-count="3">
             <span style="display:flex; align-items:center; gap:5px; flex:0 0 auto; font-size:11px; color:oklch(0.705 0.015 286.067);">
@@ -714,11 +724,15 @@
             <div style="display:flex; align-items:center; gap:8px; margin-top:9px; padding-top:8px; border-top:1px solid oklch(1 0 0 / 10%);">
               <button type="button" onClick="{{ marks.insp.hideGo }}" style="display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:transparent; font-family:inherit; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer;" style-hover="background:oklch(0.274 0.006 286.033);">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.2 0 2.3.2 3.3.5M22 12s-3.5 6-10 6c-1.2 0-2.3-.2-3.3-.5"></path><path d="M3 3l18 18"></path></svg>
-                Hide for this hunt
+                Hide
               </button>
               <button type="button" onClick="{{ marks.insp.cutGo }}" title="Which fingerprints are first seen, still here, or stopped on either side of this cut — same hunt, equal windows" style="display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:transparent; font-family:inherit; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer;" style-hover="background:oklch(0.274 0.006 286.033);">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v18" stroke-dasharray="2.5 2.5"></path><path d="M4 8h4"></path><path d="M4 16h4"></path><path d="M16 8h4"></path><path d="M16 12h4"></path><path d="M16 16h4"></path></svg>
                 Fingerprints
+              </button>
+              <button type="button" onClick="{{ marks.insp.cmpGo }}" title="This series in the window after this mark, vs the equal window before — same hunt, equal windows" style="display:flex; align-items:center; gap:6px; height:24px; padding:0 9px; border:1px solid oklch(0.906 0.014 84 / 45%); border-radius:4.4px; background:oklch(0.906 0.014 84 / 7%); font-family:inherit; font-size:11.5px; color:oklch(0.985 0 0); cursor:pointer;" style-hover="background:oklch(0.906 0.014 84 / 14%);">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v18" stroke-dasharray="2.5 2.5"></path><path d="M6 19v-5"></path><path d="M18 19v-10"></path></svg>
+                Compare
               </button>
             </div>
             <p style="margin:7px 0 0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%); max-width:240px;">{{ marks.insp.foot }}</p>
@@ -1792,7 +1806,7 @@
 class Component extends DCLogic {
   state = { view: 'search', selected: 0, tab: 'Fields', range: '1h', anchorMs: null, customSpanMs: null, rangeOpen: false, relCount: 90, relUnit: 'm', live: null, dialog: null, alertRow: null, savedId: null, filters: {}, terms: '', copied: null, newSecret: null, page: 1, presetSearch: null,
     tokens: [['otel-collector', '2026-08-02'], ['vector', '2026-07-21'], ['ci-e2e', '2026-06-30']], split: null, chart: null, logScale: false, hoverBin: null,
-    marksOff: [], marksMuted: [], cut: null, countFmt: 'human', interval: null, brush: null, around: null, aroundN: 50, aroundMode: 'all', tabs: [], fromWin: null,
+    marksOff: [], marksMuted: [], cut: null, cmp: null, countFmt: 'human', interval: null, brush: null, around: null, aroundN: 50, aroundMode: 'all', tabs: [], fromWin: null,
     tsFmt: 'full', absOpen: null, absFrom: null, absTo: null, absMonth: null, absTimeTxt: null, absTouched: false, absPhase: 'date', absMsTxt: null, wHp: null, wHpAt: null, wMore: null, wMoreAt: null,
     ws: [{ id: 1, kind: 'search', label: null }], wsId: 1, wsSeq: 1, wsKind: 'search', wsEv: null,
     // promoted columns are owned by the workspace tab, keyed by its id — switch tabs, switch columns
@@ -1839,7 +1853,7 @@ class Component extends DCLogic {
   WS_KEYS = ['wsKind', 'wsEv', 'surrSel', 'board', 'bind', 'marksOff', 'marksMuted', 'filters', 'terms', 'q', 'qErr', 'caret', 'range', 'anchorMs', 'customSpanMs',
     'relCount', 'relUnit', 'live', 'page', 'savedId', 'selected', 'tab', 'tabs', 'around', 'aroundN',
     'aroundMode', 'spanSel', 'spanHover', 'profSel', 'profHover', 'follow', 'fromWin', 'split', 'chart',
-    'logScale', 'interval', 'brush', 'widgets', 'logs', 'mainW', 'mainH', 'cut'];
+    'logScale', 'interval', 'brush', 'widgets', 'logs', 'mainW', 'mainH', 'cut', 'cmp'];
   // a New tab is the default search — bar, histogram, table — not the seeded canvas of tab one
   wsBlank() {
     return { wsKind: 'search', wsEv: null, surrSel: null, board: null, bind: {}, marksOff: [], marksMuted: [], filters: {}, terms: '', q: null, qErr: false, caret: null,
@@ -1847,7 +1861,7 @@ class Component extends DCLogic {
       savedId: null, selected: 0, tab: 'Fields', tabs: [], around: null, aroundN: 50, aroundMode: 'all',
       spanSel: null, spanHover: null, profSel: null, profHover: null, follow: null, fromWin: null,
       split: null, chart: null, logScale: false, interval: null, brush: null,
-      widgets: [], logs: true, mainW: 12, mainH: 3, cut: null };
+      widgets: [], logs: true, mainW: 12, mainH: 3, cut: null, cmp: null };
   }
 
   // src/ui/histogram-series.ts — arbitrary-field palette, `other` pinned to #94a3b8
@@ -4517,7 +4531,7 @@ class Component extends DCLogic {
     const mkRules = [], mkTags = [];
     mkGroups.forEach(g => {
       const hov = st.mkHover && st.mkHover.key === g.key;
-      const sel = (st.mkSel && g.one && st.mkSel.id === g.one.id) || (st.cut && g.one && st.cut.markId === g.one.id);
+      const sel = (st.mkSel && g.one && st.mkSel.id === g.one.id) || (st.cut && g.one && st.cut.markId === g.one.id) || (st.cmp && g.one && st.cmp.markId === g.one.id);
       if (g.one) {
         if (g.one.kind === 'incident' && g.one.end) return; // the band draws this one
         const c = sel ? `background:${mkColor(g.one.kind)}; opacity:.85;`
@@ -4538,7 +4552,7 @@ class Component extends DCLogic {
     });
     const mkLane = mkGroups.map(g => {
       const hov = st.mkHover && st.mkHover.key === g.key;
-      const sel = (st.mkSel && g.one && st.mkSel.id === g.one.id) || (st.mkPin && st.mkPin.key === g.key) || (st.cut && g.one && st.cut.markId === g.one.id);
+      const sel = (st.mkSel && g.one && st.mkSel.id === g.one.id) || (st.mkPin && st.mkPin.key === g.key) || (st.cut && g.one && st.cut.markId === g.one.id) || (st.cmp && g.one && st.cmp.markId === g.one.id);
       const ring = g.one && live && CLOCK - g.one.at < 150000;
       const kinds = [...new Set(g.members.map(m => m.kind))];
       const domKind = g.one ? g.one.kind : kinds.map(k => [k, g.members.filter(m => m.kind === k).length]).sort((a, b) => b[1] - a[1])[0][0];
@@ -4629,7 +4643,7 @@ class Component extends DCLogic {
     } : { wrap: 'display:none;', head: '', close: () => {}, rows: [], foot: '' };
     const mkSelM = st.mkSel ? this.MARKS.find(m => m.id === st.mkSel.id) : null;
     const mkInsp = mkSelM ? {
-      wrap: menuAt(st.mkSel.at, 264, 196) + ` ${mkPop2} padding:9px 11px;`,
+      wrap: menuAt(st.mkSel.at, 306, 196) + ` ${mkPop2} padding:9px 11px;`,
       d: MKG[mkSelM.kind].d, f: MKG[mkSelM.kind].f, s: MKG[mkSelM.kind].s, w: MKG[mkSelM.kind].w,
       title: mkLabel(mkSelM),
       rows: [
@@ -4641,8 +4655,9 @@ class Component extends DCLogic {
       ],
       hideGo: () => this.setState(p => ({ marksMuted: [...(p.marksMuted || []), mkSelM.id], mkSel: null })),
       cutGo: () => this.setState({ cut: { markId: mkSelM.id, atMs: NOW }, mkSel: null, selected: null }),
+      cmpGo: () => this.setState({ cmp: { markId: mkSelM.id, atMs: NOW }, mkSel: null }),
       foot: 'Hiding is per-hunt visibility — the store keeps every mark; nothing here deletes.'
-    } : { wrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0', title: '', rows: [], hideGo: () => {}, cutGo: () => {}, foot: '' };
+    } : { wrap: 'display:none;', d: '', f: 'none', s: 'none', w: '0', title: '', rows: [], hideGo: () => {}, cutGo: () => {}, cmpGo: () => {}, foot: '' };
     const mkKindN = { deploy: 0, flag: 0, incident: 0, note: 0 };
     mkInWin.forEach(m => { mkKindN[m.kind]++; });
     const mkMutedRows = mkMuted.map(id => this.MARKS.find(m => m.id === id)).filter(Boolean);
@@ -4790,7 +4805,7 @@ class Component extends DCLogic {
     const sepTimeCss = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067); pointer-events:none; white-space:nowrap;';
     const sepHide = 'display:none;';
     const mkSeam = m => {
-      const sel = (st.mkSel && st.mkSel.id === m.id) || (st.cut && st.cut.markId === m.id);
+      const sel = (st.mkSel && st.mkSel.id === m.id) || (st.cut && st.cut.markId === m.id) || (st.cmp && st.cmp.markId === m.id);
       const hov = st.mkHoverT === m.id;
       const ring = live && CLOCK - m.at < 150000;
       const col = mkColor(m.kind), gl = MKG[m.kind];
@@ -4834,7 +4849,7 @@ class Component extends DCLogic {
       };
     };
     const mkSeamEnd = m => {
-      const sel = (st.mkSel && st.mkSel.id === m.id) || (st.cut && st.cut.markId === m.id);
+      const sel = (st.mkSel && st.mkSel.id === m.id) || (st.cut && st.cut.markId === m.id) || (st.cmp && st.cmp.markId === m.id);
       const hov = st.mkHoverT === 'end:' + m.id;
       return {
         sep: true, wrap: sepBase,
@@ -5449,6 +5464,100 @@ class Component extends DCLogic {
       label: replaceY ? (i === 3 ? '0' : this.fmtAgg(v)) : (peak === 0 ? (i === 3 ? '0' : '') : agg(this.abbrev(v))),
       style: `position:absolute; right:0; top:${GRID[i]}%; transform:translateY(-50%); white-space:nowrap;${replaceY ? ' color:#a78bfa;' : ''}` }));
 
+    // ── compare vs a mark: the fold under the lane (talked as 0.4.7) ─────────
+    // One mechanism: the hunt as-is (q, facets, the picked Series) + one selected mark.
+    // The mark lends its time only. Windows are the cut's math (after = mark → open time,
+    // a closed incident cuts as its band, before mirrors); time freezes at open while the
+    // series and the bar stay live. A clock cut, not causation — before/after, never caused.
+    const cmpM = st.cmp ? this.MARKS.find(m => m.id === st.cmp.markId) : null;
+    let cmp = null;
+    if (cmpM) {
+      const banded = cmpM.kind === 'incident' && !!cmpM.end && cmpM.end <= NOW;
+      const aFrom = cmpM.at, aTo = banded ? cmpM.end : Math.min(st.cmp.atMs || NOW, NOW);
+      const side = aTo - aFrom, bFrom = aFrom - side, bTo = aFrom;
+      const dead = side <= 0;
+      const e1s = (st.terms || '').split(/\s+/).filter(x => x.slice(0, 3) === 'e1:').map(x => x.slice(3));
+      const cAst2 = this.qAst(st.terms || '');
+      const inSlice2 = f => (this.HOSTS[f.svc] || ['']).some(h =>
+        this.eventMatches(filters, { level: f.level, service: f.svc, host: h })
+        && this.qMatch(cAst2, { level: f.level, service: f.svc, host: h, message: f.sample, e1: f.hex }));
+      const nOf2 = (f, x0, x1) => {
+        const lo = Math.max(x0, f.from || 0), hi = Math.min(x1, f.to || Infinity);
+        return hi <= lo ? 0 : Math.max(1, Math.round(f.perHr * (hi - lo) / 3600000));
+      };
+      // events in the slice over [x0,x1): e1 tokens count from the catalog; otherwise the
+      // facet-share estimate plus the births/stops the steady estimate cannot see
+      const estN = (x0, x1) => {
+        if (x1 <= x0) return 0;
+        if (e1s.length) return this.FPS.filter(f => e1s.includes(f.hex) && inSlice2(f)).reduce((a2, f) => a2 + nOf2(f, x0, x1), 0);
+        const tot = this.seriesOver('none', x0, x1, 1)[0].total;
+        let n = tot;
+        for (const field of Object.keys(filters)) {
+          const hit = this.seriesOver(field, x0, x1, 1).find(sr => sr.key === filters[field]);
+          n *= tot ? (hit ? hit.total : 0) / tot : 0;
+        }
+        return Math.max(0, Math.round(n)) + this.FPS.filter(f => (f.from || f.to) && inSlice2(f)).reduce((a2, f) => a2 + nOf2(f, x0, x1), 0);
+      };
+      const cmpExprOn = !!aggExpr && !aggNote;
+      const isMetric = cmpExprOn && aggExpr.slice(0, 2) === 'm:';
+      const sideOf = (x0, x1) => {
+        const n = estN(x0, x1);
+        if (!cmpExprOn) return { v: n, n, txt: this.fmtCount(n) };
+        if (aggExpr === 'rate') { const v = n / Math.max(1, (x1 - x0) / 1000); return { v, n, txt: this.fmtAgg(v) + '/s' }; }
+        const res = this.aggSeries(aggExpr, x0, x1, Array.from({ length: 6 }, () => Math.round(n / 6)));
+        return { v: res.stat, n, txt: n > 0 || isMetric ? this.fmtAgg(res.stat) : '—' };
+      };
+      const cB = dead ? { v: 0, n: 0, txt: '—' } : sideOf(bFrom, bTo);
+      const cA = dead ? { v: 0, n: 0, txt: '—' } : sideOf(aFrom, aTo);
+      const b0 = !dead && !isMetric && cB.n === 0, a0 = !dead && !isMetric && cA.n === 0;
+      const dv = (cA.v || 0) - (cB.v || 0);
+      const fmtAbs = v => !cmpExprOn ? this.fmtCount(Math.abs(Math.round(v))) : aggExpr === 'rate' ? this.fmtAgg(Math.abs(v)) + '/s' : this.fmtAgg(Math.abs(v));
+      const p = !dead && !b0 && !(b0 && a0) && (cB.v || 0) > 0 ? ((cA.v - cB.v) / cB.v) * 100 : null;
+      const pTxt = p == null ? '' : (p >= 0 ? '+' : '−') + (Math.abs(p) >= 9.5 ? String(Math.round(Math.abs(p))) : Math.abs(p) >= 0.95 ? Math.abs(p).toFixed(1) : '<1') + '%';
+      const cNote = dead ? 'the window ends before this mark — nothing after to read'
+        : b0 && a0 ? 'no events on either side — nothing to number'
+        : b0 ? 'new since this mark — a percent needs a before'
+        : a0 ? 'quiet after this mark'
+        : !banded && side < 5 * 60000 ? `only ${durLabel(side)} since the mark — sides are as long as exist` : '';
+      const cFrozen = live && !banded && !dead && NOW - aTo > 1000;
+      const sidesTxt = dead ? '' : (banded ? `the band · ${durLabel(side)}, mirrored` : `equal ${durLabel(side)}`) + (cFrozen ? ` · fixed ${mkHms(aTo)}` : '');
+      const csDot = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067 / 45%);';
+      const csLbl = 'font-size:10.5px; color:oklch(0.705 0.015 286.067); white-space:nowrap;';
+      const csVal = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0); white-space:nowrap; font-variant-numeric:tabular-nums;';
+      const csPct = 'display:inline-flex; align-items:center; flex:0 0 auto; height:18px; padding:0 6px; border:1px solid oklch(0.906 0.014 84 / 35%); border-radius:3.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84); white-space:nowrap;';
+      const segs = [
+        { s: 'font-size:12px; font-weight:600; color:oklch(0.985 0 0); white-space:nowrap; min-width:56px; overflow:hidden; text-overflow:ellipsis;', t: 'vs ' + mkLabel(cmpM) },
+        { s: csDot, t: '·' },
+        { s: `font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:${cmpExprOn ? '#a78bfa' : 'oklch(0.985 0 0 / 85%)'}; white-space:nowrap; min-width:34px; overflow:hidden; text-overflow:ellipsis;`, t: cmpExprOn ? (aggExpr === 'rate' ? 'Rate' : this.aggName(aggExpr)) : (e1s.length === 1 ? 'e1:' + e1s[0] + ' · count' : 'Count') },
+        { s: csDot, t: '·' },
+        { s: csLbl, t: 'before' }, { s: csVal, t: dead || (b0 && a0) ? '—' : cB.txt },
+        { s: csLbl, t: '→' },
+        { s: csLbl, t: banded ? 'during' : 'after' }, { s: csVal, t: dead || (b0 && a0) ? '—' : cA.txt }
+      ];
+      if (!dead && !(b0 && a0)) segs.push({ s: csDot, t: '·' }, { s: csVal, t: (dv >= 0 ? '+' : '−') + fmtAbs(dv) });
+      if (pTxt) segs.push({ s: csPct, t: pTxt });
+      if (cNote) segs.push({ s: 'flex:0 0 auto; font-size:10.5px; color:#fbbf24;', t: '▲' },
+        { s: 'font-size:10.5px; color:oklch(0.906 0.014 84 / 90%); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis;', t: cNote });
+      segs.push({ s: 'flex:1 1 auto; min-width:8px;', t: '' });
+      if (sidesTxt) segs.push({ s: 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis;', t: sidesTxt });
+      cmp = {
+        d: MKG[cmpM.kind].d, f: MKG[cmpM.kind].f, s: MKG[cmpM.kind].s, w: MKG[cmpM.kind].w,
+        wrap: 'display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden; flex:0 0 auto; height:30px; margin:6px 9px 0 47px; padding:0 4px 0 10px; border:1px solid oklch(0.906 0.014 84 / 28%); border-radius:4.4px; background:#0f0f11;',
+        title: dead ? 'No after side in this window' : `after ${mkHms(aFrom)} → ${mkHms(aTo)} · before ${mkHms(bFrom)} → ${mkHms(bTo)} — equal windows on the hunt's own slice`,
+        segs,
+        close: () => this.setState({ cmp: null })
+      };
+      // the two windows on the plot — the cut's washes win when both readers are open
+      if (!dead && !cut) {
+        const seg2 = (x0, x1, washA) => {
+          const l = Math.max(0, mkX(x0)), rr = Math.min(100, mkX(x1));
+          if (rr > l) mkRules.push(`position:absolute; top:0; bottom:0; left:${l.toFixed(3)}%; width:${(rr - l).toFixed(3)}%; background:oklch(1 0 0 / ${washA}%); pointer-events:none; z-index:1;`);
+        };
+        seg2(bFrom, bTo, 2.5); seg2(aFrom, aTo, 5);
+        if (mkX(bFrom) >= 0) mkRules.push(`position:absolute; top:0; bottom:0; left:${mkX(bFrom).toFixed(3)}%; width:1px; background:repeating-linear-gradient(180deg, oklch(1 0 0 / 30%) 0 4px, transparent 4px 7px); pointer-events:none; z-index:2;`);
+      }
+    }
+
     const pill = (on, first) => `height:22px; padding:0 8px; border:none; border-radius:2.4px; cursor:pointer; font-family:inherit; font-size:11.5px; white-space:nowrap; background:${on ? 'oklch(0.274 0.006 286.033)' : 'transparent'}; color:${on ? 'oklch(0.985 0 0)' : 'oklch(0.705 0.015 286.067)'};${first ? '' : ' margin-left:2px;'}`;
 
     // a token the query field would accept; core fields go through the facet path instead
@@ -6047,6 +6156,7 @@ class Component extends DCLogic {
       aggNoteStyle: aggNote
         ? 'flex:1 1 100%; min-width:0; padding:1px 2px 0; font-size:11.5px; color:#fbbf24;'
         : 'display:none;',
+      cmp,
       overlayStyle: overlayOn
         ? 'position:absolute; inset:0; display:block; width:100%; height:100%; pointer-events:none;'
         : 'display:none;',
