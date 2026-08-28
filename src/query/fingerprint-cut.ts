@@ -246,6 +246,12 @@ async function e1Samples(
   return out;
 }
 
+/** Counts vs samples as replaceable scans so a refused sample cannot wipe the sets. */
+export const fingerprintCutScans = {
+  counts: e1Counts,
+  samples: e1Samples,
+};
+
 function hms(isoStr: string): string {
   const t = isoStr.slice(11, 19);
   return t.length === 8 ? t : isoStr;
@@ -350,8 +356,8 @@ export async function searchFingerprintCut(input: {
   const compiled = compiledOf(input.q);
   try {
     const [before, after] = await Promise.all([
-      e1Counts(iso(w.beforeFrom), iso(w.beforeTo), compiled),
-      e1Counts(iso(w.afterFrom), iso(w.afterTo), compiled),
+      fingerprintCutScans.counts(iso(w.beforeFrom), iso(w.beforeTo), compiled),
+      fingerprintCutScans.counts(iso(w.afterFrom), iso(w.afterTo), compiled),
     ]);
     const merged = mergeFingerprintCutSides(before, after);
     if (merged.length === 0) {
@@ -366,13 +372,23 @@ export async function searchFingerprintCut(input: {
       ...capFingerprintCutSet(classified.stillHere, (r) => r.after).rows,
       ...capFingerprintCutSet(classified.stopped, (r) => r.before).rows,
     ];
-    const samples = await e1Samples(
-      iso(w.beforeFrom),
-      iso(w.afterTo),
-      iso(w.afterFrom),
-      compiled,
-      shown.map((row) => row.hex),
-    );
+    let samples = new Map<string, Sample>();
+    try {
+      samples = await fingerprintCutScans.samples(
+        iso(w.beforeFrom),
+        iso(w.afterTo),
+        iso(w.afterFrom),
+        compiled,
+        shown.map((row) => row.hex),
+      );
+    } catch (err) {
+      if (!isNumericAggBudgetError(err)) {
+        throw err;
+      }
+      notes.push(
+        "Counts only — sampling this slice exceeded the scan budget. Zoom in for row text.",
+      );
+    }
     return {
       title: formatChangeMarkLabel(input.mark),
       windows: windowPayload(w),

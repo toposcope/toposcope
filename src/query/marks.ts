@@ -142,7 +142,19 @@ export async function getChangeMarkById(id: string): Promise<ChangeMark | null> 
     `,
     { id: trimmed },
   );
-  return rows[0] ? mapRow(rows[0]) : null;
+  if (rows[0]) {
+    return mapRow(rows[0]);
+  }
+  const unlabeled = await clickhouseQuery<MarkRow>(
+    `
+    SELECT ${markSelect}
+    FROM change_marks
+    WHERE tenant_id = 'default' AND id = ''
+    ORDER BY ts DESC
+    LIMIT ${maxChangeMarks}
+    `,
+  );
+  return unlabeled.map(mapRow).find((mark) => mark.id === trimmed) ?? null;
 }
 
 export async function searchChangeMarks(filters: {

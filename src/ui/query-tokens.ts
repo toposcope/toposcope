@@ -1,5 +1,5 @@
 import { isAttrIdent } from "../shared/attrs";
-import { fingerprintAttr } from "../shared/fingerprint";
+import { fingerprintAttr } from "../shared/fingerprint-attr";
 import { isCoreField } from "../query/compile";
 
 const quotable = /[\s()"]/;

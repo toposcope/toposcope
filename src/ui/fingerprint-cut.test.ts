@@ -3,6 +3,8 @@ import {
   fingerprintCutFetchKey,
   fingerprintCutHuntWindows,
   formatCutWindowLines,
+  cutRailSurface,
+  cutCrumbLabel,
 } from "./fingerprint-cut";
 import type { ChangeMark } from "../shared/change-mark";
 
@@ -74,5 +76,116 @@ describe("formatCutWindowLines", () => {
       huntTo,
     );
     expect(formatCutWindowLines(band, huntTo)[0]?.k).toBe("band");
+  });
+});
+
+describe("cutRailSurface", () => {
+  const base = {
+    hasCut: true,
+    detailOpen: false,
+    hasSelected: false,
+    inspectOpen: false,
+    isSurr: false,
+    boardOn: false,
+  };
+
+  test("Fingerprints lands on the cut even if a row was highlighted", () => {
+    expect(
+      cutRailSurface({ ...base, hasSelected: true, detailOpen: false }),
+    ).toBe("cut");
+  });
+
+  test("a selected line pushes detail over the parked cut", () => {
+    expect(
+      cutRailSurface({
+        ...base,
+        detailOpen: true,
+        hasSelected: true,
+      }),
+    ).toBe("detail");
+  });
+
+  test("a parked cut keeps the rail while a strip tab is open", () => {
+    expect(
+      cutRailSurface({
+        ...base,
+        detailOpen: true,
+        hasSelected: true,
+        inspectOpen: true,
+      }),
+    ).toBe("cut");
+  });
+
+  test("without a cut, a strip tab takes the rail as shipped", () => {
+    expect(
+      cutRailSurface({
+        ...base,
+        hasCut: false,
+        detailOpen: true,
+        hasSelected: true,
+        inspectOpen: true,
+      }),
+    ).toBe("none");
+  });
+
+  test("Surroundings and boards do not take the cut rail", () => {
+    expect(cutRailSurface({ ...base, isSurr: true })).toBe("none");
+    expect(cutRailSurface({ ...base, boardOn: true })).toBe("none");
+  });
+});
+
+describe("cutCrumbLabel", () => {
+  test("names parked-set counts the way frame 2c draws", () => {
+    expect(
+      cutCrumbLabel(
+        {
+          title: "deployed: worker v1.4.3",
+          windows: {
+            afterFrom: "",
+            afterTo: "",
+            beforeFrom: "",
+            beforeTo: "",
+            sideMs: 0,
+            banded: false,
+            dead: false,
+          },
+          notes: [],
+          empty: "",
+          sets: [
+            {
+              id: "first_seen",
+              name: "First seen",
+              def: "",
+              count: 1,
+              more: 0,
+              rows: [],
+            },
+            {
+              id: "still_here",
+              name: "Still here",
+              def: "",
+              count: 0,
+              more: 0,
+              rows: [],
+            },
+            {
+              id: "stopped",
+              name: "Stopped",
+              def: "",
+              count: 0,
+              more: 0,
+              rows: [],
+            },
+          ],
+        },
+        "deployed: worker v1.4.3",
+      ),
+    ).toBe("Cut — first seen 1 · still here 0 · stopped 0");
+  });
+
+  test("falls back to the mark title before sets load", () => {
+    expect(cutCrumbLabel(null, "deployed: worker v1.4.3")).toBe(
+      "Cut — deployed: worker v1.4.3",
+    );
   });
 });

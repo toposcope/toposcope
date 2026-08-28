@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
 import { parseExceptionFrames, type ExceptionFrame } from "./exception";
 import type { LogLevel } from "./log-event";
+import { fingerprintAttr, fingerprintHexLength } from "./fingerprint-attr";
 
-/** Search key: `e1:<hex>`. 16 hex is id-shaped, so equality scans `logs` + bloom. */
-export const fingerprintAttr = "e1";
-export const fingerprintHexLength = 16;
+export { fingerprintAttr, fingerprintHexLength };
 
 function hashParts(parts: string[]): string {
   return createHash("sha256")

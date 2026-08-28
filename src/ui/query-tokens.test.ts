@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import {
   activeFacetValues,
@@ -16,6 +17,16 @@ import {
 } from "./query-tokens";
 
 describe("query tokens", () => {
+  test("Filter e1 helpers do not import node:crypto hashing (Vite black screen)", () => {
+    for (const file of [
+      "src/ui/query-tokens.ts",
+      "src/ui/components/fingerprint-cut-panel.tsx",
+    ]) {
+      const src = readFileSync(file, "utf8");
+      expect(src).not.toMatch(/from ["'][^"']*\/fingerprint["']/);
+    }
+  });
+
   test("toggleFingerprintCutFilter replaces e1, and a second click removes it", () => {
     expect(toggleFingerprintCutFilter("timeout", "b41f0c88a2e6d3f7")).toBe(
       "timeout e1:b41f0c88a2e6d3f7",

@@ -13,6 +13,49 @@ export type FingerprintCutSnap = {
   result: FingerprintCutResult | null;
 };
 
+export type CutRailSurface = "cut" | "detail" | "none";
+
+/** Which card owns the results rail. Cut is the floor; a selected line pushes detail. */
+export function cutRailSurface(input: {
+  hasCut: boolean;
+  detailOpen: boolean;
+  hasSelected: boolean;
+  inspectOpen: boolean;
+  isSurr: boolean;
+  boardOn: boolean;
+}): CutRailSurface {
+  if (input.isSurr || input.boardOn) {
+    return "none";
+  }
+  if (input.hasCut && input.inspectOpen) {
+    return "cut";
+  }
+  if (input.hasCut && input.detailOpen && input.hasSelected) {
+    return "detail";
+  }
+  if (input.hasCut) {
+    return "cut";
+  }
+  if (input.inspectOpen) {
+    return "none";
+  }
+  if (input.detailOpen && input.hasSelected) {
+    return "detail";
+  }
+  return "none";
+}
+
+export function cutCrumbLabel(
+  result: FingerprintCutResult | null,
+  fallbackTitle: string,
+): string {
+  const sets = result?.sets;
+  if (!sets?.length) {
+    return `Cut — ${fallbackTitle}`;
+  }
+  return `Cut — ${sets.map((s) => `${s.name.toLowerCase()} ${s.count}`).join(" · ")}`;
+}
+
 /** Live polls slide from/to; the cut stays frozen until q or span changes. */
 export function fingerprintCutFetchKey(input: {
   q: string;

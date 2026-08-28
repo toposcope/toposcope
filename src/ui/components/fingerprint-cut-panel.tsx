@@ -4,7 +4,7 @@ import { CountText } from "@/components/count-text";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
-import { fingerprintAttr } from "../../shared/fingerprint";
+import { fingerprintAttr } from "../../shared/fingerprint-attr";
 import {
   fingerprintCutNotes,
   type FingerprintCutResult,
@@ -123,7 +123,7 @@ export function FingerprintCutPanel({
   const emptyAll = error ?? result?.empty ?? "";
 
   return (
-    <aside className="flex w-[398px] max-w-[36%] shrink-0 flex-col border-l bg-[#0f0f11]">
+    <aside className="flex h-full w-[398px] max-w-[36%] shrink-0 flex-col border-l bg-[#0f0f11]">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5">
         <MarkGlyph kind={mark.kind} size={12} />
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
@@ -133,7 +133,7 @@ export function FingerprintCutPanel({
           type="button"
           size="icon"
           variant="ghost"
-          title="Close — the rail returns to the event detail"
+          title="End Fingerprints — the rail returns to event detail"
           onClick={onClose}
         >
           <X className="size-[13px]" />
