@@ -1,6 +1,6 @@
 # Packaged install. Pin matches package.json.
 # Fill .env (see .env.example), then: docker compose up -d
-# Before the GitHub release exists: docker build -t ghcr.io/toposcope/toposcope:0.4.5 .
+# Before the GitHub release exists: docker build -t ghcr.io/toposcope/toposcope:0.4.6 .
 # Do not put passwords in this file. ClickHouse is not published.
 # bun run load:10m / 100m needs compose.dev.yml resource limits, not these.
 
@@ -33,7 +33,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: ghcr.io/toposcope/toposcope:0.4.5
+    image: ghcr.io/toposcope/toposcope:0.4.6
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:5514:5514/udp"
