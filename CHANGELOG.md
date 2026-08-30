@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Inspector Compare opens a 30px fold under the pinned volume lane: the hunt series (Count, Rate, a numeric agg, an ingested metric, or `e1:` in the bar) on equal windows after vs before a selected mark. Percent needs a before; first-seen drops it; stopped is −100%. Live freezes both windows at open. [#25](https://github.com/toposcope/toposcope/issues/25)
+
 ## 0.4.6
 
 Inspector Fingerprints opens a results-rail reader: which `e1` are first seen, still here, or stopped on equal windows around a selected mark. Filter writes `e1:<hex>`. A table row then opens the shipped event detail with a crumb back to the same cut. Coming back from Follow keeps that line. [#18](https://github.com/toposcope/toposcope/issues/18)

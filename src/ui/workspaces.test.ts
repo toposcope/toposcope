@@ -470,11 +470,12 @@ describe("workspace hunt / paint", () => {
     expect(blankSearchSnap().marksOff).toEqual([]);
     expect(blankSearchSnap().marksMuted).toEqual([]);
     expect(blankSearchSnap().cut).toBeNull();
+    expect(blankSearchSnap().compare).toBeNull();
     const follow = { ...snap, kind: "follow" as const, q: "user_id:u-1", savedId: null };
     expect(follow.cols).toEqual(["path", "status"]);
   });
 
-  test("duplicate keeps an open fingerprint cut; it is not in the hunt key", () => {
+  test("duplicate keeps an open fingerprint cut and compare fold; neither is in the hunt key", () => {
     const snap = blankSearchSnap();
     snap.cut = {
       mark: {
@@ -489,10 +490,12 @@ describe("workspace hunt / paint", () => {
       openedAt: "2026-08-14T15:00:00.000Z",
       result: null,
     };
+    snap.compare = { mark: snap.cut.mark, openedAt: snap.cut.openedAt };
     const next = duplicateSnap(snap);
     expect(next.cut?.mark.id).toBe("mk_1");
+    expect(next.compare?.mark.id).toBe("mk_1");
     expect(workspaceHuntKeyFromSnap(snap)).toBe(
-      workspaceHuntKeyFromSnap({ ...snap, cut: null }),
+      workspaceHuntKeyFromSnap({ ...snap, cut: null, compare: null }),
     );
   });
 
@@ -606,6 +609,7 @@ describe("coming back from Follow keeps a parked cut line", () => {
   test("the Follow child does not inherit the parked overlay", () => {
     const origin = blankSearchSnap();
     origin.cut = cut;
+    origin.compare = { mark: cut.mark, openedAt: cut.openedAt };
     origin.detailOpen = true;
     origin.pinnedEvent = line;
     origin.selectedIndex = 2;
@@ -618,6 +622,7 @@ describe("coming back from Follow keeps a parked cut line", () => {
     });
     expect(child.kind).toBe("follow");
     expect(child.cut).toBeNull();
+    expect(child.compare).toBeNull();
     expect(child.detailOpen).toBe(false);
     expect(child.pinnedEvent).toBeNull();
     expect(child.selectedIndex).toBe(0);
