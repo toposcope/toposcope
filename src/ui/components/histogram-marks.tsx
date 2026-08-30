@@ -143,6 +143,8 @@ export type MarksOverlay = {
   onUnmute: (id: string) => void;
   onFocusLogs?: (mark: ChangeMark) => void;
   onFingerprints?: (mark: ChangeMark) => void;
+  onCompare?: (mark: ChangeMark) => void;
+  compareMarkId?: string | null;
   cut?: MarksCutWash | null;
 };
 
@@ -238,13 +240,35 @@ function FingerprintsGlyph() {
   );
 }
 
+function CompareGlyph() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M12 3v18" strokeDasharray="2.5 2.5" />
+      <path d="M6 19v-5" />
+      <path d="M18 19v-10" />
+    </svg>
+  );
+}
+
 export function MarkInspectActions({
   onHide,
   onFingerprints,
+  onCompare,
+  compareActive,
   onFocusLogs,
 }: {
   onHide: () => void;
   onFingerprints?: () => void;
+  onCompare?: () => void;
+  compareActive?: boolean;
   onFocusLogs?: () => void;
 }) {
   return (
@@ -265,6 +289,21 @@ export function MarkInspectActions({
         >
           <FingerprintsGlyph />
           Fingerprints
+        </button>
+      ) : null}
+      {onCompare ? (
+        <button
+          type="button"
+          title="This series in the window after this mark, vs the equal window before — same hunt, equal windows"
+          className={cn(
+            "flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]",
+            compareActive &&
+              "border-[oklch(0.906_0.014_84_/_45%)] bg-[oklch(0.906_0.014_84_/_7%)]",
+          )}
+          onClick={onCompare}
+        >
+          <CompareGlyph />
+          Compare
         </button>
       ) : null}
       {onFocusLogs ? (
@@ -709,6 +748,15 @@ export function HistogramMarkLane({
                       }
                     : undefined
                 }
+                onCompare={
+                  overlay.onCompare
+                    ? () => {
+                        overlay.onCompare?.(inspectMark);
+                        setOpen(null);
+                      }
+                    : undefined
+                }
+                compareActive={overlay.compareMarkId === inspectMark.id}
                 onFocusLogs={
                   overlay.onFocusLogs
                     ? () => {

@@ -41,12 +41,16 @@ function MarkInspectCard({
   nowMs,
   onHide,
   onFingerprints,
+  onCompare,
+  compareActive,
   onFocusLogs,
 }: {
   mark: ChangeMark;
   nowMs: number;
   onHide: () => void;
   onFingerprints?: () => void;
+  onCompare?: () => void;
+  compareActive?: boolean;
   onFocusLogs?: () => void;
 }) {
   return (
@@ -67,6 +71,8 @@ function MarkInspectCard({
       <MarkInspectActions
         onHide={onHide}
         onFingerprints={onFingerprints}
+        onCompare={onCompare}
+        compareActive={compareActive}
         onFocusLogs={onFocusLogs}
       />
       <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
@@ -392,12 +398,16 @@ export function EventMarkInspect({
   nowMs,
   onHide,
   onFingerprints,
+  onCompare,
+  compareActive,
   onFocusLogs,
 }: {
   mark: ChangeMark;
   nowMs: number;
   onHide: () => void;
   onFingerprints?: () => void;
+  onCompare?: () => void;
+  compareActive?: boolean;
   onFocusLogs?: () => void;
 }) {
   return (
@@ -406,6 +416,8 @@ export function EventMarkInspect({
       nowMs={nowMs}
       onHide={onHide}
       onFingerprints={onFingerprints}
+      onCompare={onCompare}
+      compareActive={compareActive}
       onFocusLogs={onFocusLogs}
     />
   );

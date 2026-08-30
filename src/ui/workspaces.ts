@@ -8,6 +8,7 @@ import { eventKey, indexOfEventKey } from "./event-key";
 import type { InspectTab } from "./inspect-tabs";
 import { defaultSearchUrlState, type RangeMode, type SearchUrlState } from "./search-url";
 import type { FingerprintCutSnap } from "./fingerprint-cut";
+import type { CompareFoldSnap } from "./compare-fold";
 
 export function ordinalLabels(labels: string[]): string[] {
   const counts = new Map<string, number>();
@@ -227,6 +228,7 @@ export function followChildSnap(
     marksOff: [],
     marksMuted: [],
     cut: null,
+    compare: null,
     detailOpen: false,
     pinnedEvent: null,
     selectedIndex: 0,
@@ -270,6 +272,7 @@ export type WorkspaceSnap = {
   marksOff: ChangeMarkKind[];
   marksMuted: string[];
   cut: FingerprintCutSnap | null;
+  compare: CompareFoldSnap | null;
 };
 
 export type Workspace = {
@@ -356,6 +359,7 @@ export function blankSearchSnap(): WorkspaceSnap {
     marksOff: [],
     marksMuted: [],
     cut: null,
+    compare: null,
   };
 }
 
@@ -532,6 +536,7 @@ function surroundingsReaderSnap(
     frozenFacets: frozen.frozenFacets,
     frozenAttrFacetValues: frozen.frozenAttrFacetValues,
     cut: null,
+    compare: null,
   };
 }
 

@@ -6,6 +6,7 @@ import {
   HistogramMarksChip,
   type MarksOverlay,
 } from "@/components/histogram-marks";
+import { type CompareFoldProps } from "@/components/compare-fold";
 import { HbarHead, HbarWidget, hbarPaintedRows, type HbarCommand } from "@/components/hbar-widget";
 import { StatHead, StatWidget, statSeriesFile } from "@/components/stat-widget";
 import {
@@ -98,6 +99,7 @@ type Props = {
   marks?: MarksOverlay | null;
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
+  compareFold?: CompareFoldProps | null;
 };
 
 type Drag = {
@@ -193,6 +195,7 @@ export function WidgetCanvas({
   marks = null,
   focusMarkId = null,
   onFocusMark,
+  compareFold = null,
 }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const widgetsRef = useRef(widgets);
@@ -788,6 +791,7 @@ export function WidgetCanvas({
                   marks={locked ? undefined : marks}
                   focusMarkId={focusMarkId}
                   onFocusMark={onFocusMark}
+                  compareFold={locked ? undefined : compareFold}
                   className="h-full"
                 />
               ) : (

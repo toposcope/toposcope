@@ -97,6 +97,7 @@ import {
   fingerprintCutHuntWindows,
   type FingerprintCutSnap,
 } from "./fingerprint-cut";
+import type { CompareFoldSnap } from "./compare-fold";
 import { fillHistogram, rangeDurationMs } from "./fill-histogram";
 import {
   bindForBoard,
@@ -437,6 +438,7 @@ export function App() {
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
   const [marksMuted, setMarksMuted] = useState<string[]>([]);
   const [cut, setCut] = useState<FingerprintCutSnap | null>(null);
+  const [compare, setCompare] = useState<CompareFoldSnap | null>(null);
   const [focusMarkId, setFocusMarkId] = useState<string | null>(null);
   const [aggSeries, setAggSeries] = useState<SearchAggResult | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -1767,6 +1769,7 @@ export function App() {
       setFocusMark(null);
       setFocusMarkId(null);
       setCut(null);
+      setCompare(null);
       setInspectTabs([]);
       setActiveInspect(null);
       setWsKind("search");
@@ -2486,6 +2489,7 @@ export function App() {
       marksOff,
       marksMuted,
       cut,
+      compare,
     };
   }
 
@@ -2572,6 +2576,14 @@ export function App() {
     setPinnedEvent(null);
   }
 
+  function openCompare(mark: ChangeMark) {
+    const openedAt = live
+      ? new Date().toISOString()
+      : isoFromLocal(to) ?? new Date().toISOString();
+    setCompare({ mark, openedAt });
+    setFocusMarkId(mark.id);
+  }
+
   function restorePaint(paint: WorkspacePaint) {
     skipAttrFacetGen.current = viewGenRef.current;
     lastPaintHuntRef.current = paint.hunt;
@@ -2630,6 +2642,7 @@ export function App() {
     setMarksOff(snap.marksOff);
     setMarksMuted(snap.marksMuted);
     setCut(snap.cut);
+    setCompare(snap.compare);
     setFocusMark(snap.focusMark);
     setFocusMarkId(snap.cut?.mark.id ?? snap.focusMark?.id ?? null);
     setInspectTabs(snap.inspectTabs);
@@ -3241,6 +3254,22 @@ export function App() {
           windowFromMs + spanMs,
         )
       : null;
+  const compareWindows =
+    compare && Number.isFinite(windowFromMs) && spanMs > 0
+      ? fingerprintCutHuntWindows(
+          compare.mark,
+          compare.openedAt,
+          windowFromMs,
+          windowFromMs + spanMs,
+        )
+      : null;
+  const washWindows =
+    cut && cutWindows && !cutWindows.dead
+      ? { markId: cut.mark.id, windows: cutWindows }
+      : compare && compareWindows && !compareWindows.dead
+        ? { markId: compare.mark.id, windows: compareWindows }
+        : null;
+  const pinnedSeries = primaryTimeseries(widgets);
 
   const marksOverlay = boardOn
     ? null
@@ -3264,16 +3293,17 @@ export function App() {
           setMarksMuted((prev) => prev.filter((item) => item !== id)),
         onFocusLogs: focusMarkInLogs,
         onFingerprints: openFingerprints,
-        cut:
-          cut && cutWindows && !cutWindows.dead
-            ? {
-                markId: cut.mark.id,
-                beforeFrom: cutWindows.beforeFrom,
-                beforeTo: cutWindows.beforeTo,
-                afterFrom: cutWindows.afterFrom,
-                afterTo: cutWindows.afterTo,
-              }
-            : null,
+        onCompare: isSurr ? undefined : openCompare,
+        compareMarkId: compare?.mark.id ?? null,
+        cut: washWindows
+          ? {
+              markId: washWindows.markId,
+              beforeFrom: washWindows.windows.beforeFrom,
+              beforeTo: washWindows.windows.beforeTo,
+              afterFrom: washWindows.windows.afterFrom,
+              afterTo: washWindows.windows.afterTo,
+            }
+          : null,
       };
 
   const sidebar = (
@@ -3879,6 +3909,27 @@ export function App() {
                 marks={marksOverlay}
                 focusMarkId={focusMarkId}
                 onFocusMark={setFocusMarkId}
+                compareFold={
+                  compare && !isSurr && !boardOn
+                    ? {
+                        mark: compare.mark,
+                        openedAt: compare.openedAt,
+                        q,
+                        agg: pinnedSeries?.metric
+                          ? null
+                          : (pinnedSeries?.agg ?? agg),
+                        metric: pinnedSeries?.metric ?? null,
+                        ml: formatMetricLabels(pinnedSeries?.metricLabels ?? {}),
+                        live,
+                        from,
+                        to,
+                        spanMs,
+                        huntFromMs: windowFromMs,
+                        huntToMs: windowToMs,
+                        onClose: () => setCompare(null),
+                      }
+                    : null
+                }
                 anchorTs={
                   activeInspect?.kind === "trace" ||
                   activeInspect?.kind === "profile"

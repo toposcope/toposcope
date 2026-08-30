@@ -543,6 +543,15 @@ export function EventTable({
                     }
                   : undefined
               }
+              onCompare={
+                marks?.onCompare
+                  ? () => {
+                      marks.onCompare?.(row.mark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
+              compareActive={marks?.compareMarkId === row.mark.id}
               onFocusLogs={
                 marks?.onFocusLogs
                   ? () => {
@@ -587,6 +596,15 @@ export function EventTable({
                     }
                   : undefined
               }
+              onCompare={
+                marks?.onCompare
+                  ? () => {
+                      marks.onCompare?.(row.mark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
+              compareActive={marks?.compareMarkId === row.mark.id}
               onFocusLogs={
                 marks?.onFocusLogs
                   ? () => {
@@ -637,6 +655,15 @@ export function EventTable({
                     }
                   : undefined
               }
+              onCompare={
+                marks?.onCompare
+                  ? () => {
+                      marks.onCompare?.(inspectMark);
+                      setInspectId(null);
+                    }
+                  : undefined
+              }
+              compareActive={marks?.compareMarkId === inspectMark.id}
               onFocusLogs={
                 marks?.onFocusLogs
                   ? () => {
