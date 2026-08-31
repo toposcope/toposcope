@@ -647,9 +647,12 @@ async function main(): Promise<void> {
   if (!markRes.ok) {
     throw new Error(`marks ingest failed: ${markRes.status} ${await markRes.text()}`);
   }
-  const markIngested = (await markRes.json()) as { ingested: number };
+  const markIngested = (await markRes.json()) as { ingested: number; id?: string };
   if (markIngested.ingested !== 1) {
     throw new Error(`expected 1 change mark, got ${markIngested.ingested}`);
+  }
+  if (typeof markIngested.id !== "string" || !markIngested.id.startsWith("mk_")) {
+    throw new Error(`expected minted mark id, got ${JSON.stringify(markIngested.id)}`);
   }
   const marksGet = await fetch(
     `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
@@ -698,6 +701,7 @@ async function main(): Promise<void> {
     throw new Error("GET /api/search/cut missing sets or title");
   }
   const incidentEnd = new Date(Date.parse(markTs) + 60_000).toISOString();
+  const incidentId = `e2e-inc-${Date.now()}`;
   const incidentRes = await fetch(`${APP_URL}/v1/marks`, {
     method: "POST",
     headers: {
@@ -707,7 +711,7 @@ async function main(): Promise<void> {
     body: JSON.stringify({
       kind: "incident",
       title: "e2e-inc",
-      id: "e2e-inc-1",
+      id: incidentId,
       ts: markTs,
       end_ts: incidentEnd,
     }),
@@ -715,6 +719,15 @@ async function main(): Promise<void> {
   if (!incidentRes.ok) {
     throw new Error(
       `incident mark ingest failed: ${incidentRes.status} ${await incidentRes.text()}`,
+    );
+  }
+  const incidentPosted = (await incidentRes.json()) as {
+    ingested: number;
+    id?: string;
+  };
+  if (incidentPosted.ingested !== 1 || incidentPosted.id !== incidentId) {
+    throw new Error(
+      `expected incident ingested=1 id=${incidentId}, got ${JSON.stringify(incidentPosted)}`,
     );
   }
   const incidentGet = await fetch(
@@ -729,7 +742,7 @@ async function main(): Promise<void> {
   const incidentBody = (await incidentGet.json()) as {
     marks: Array<{ id: string; end_ts: string | null; title: string }>;
   };
-  const incident = incidentBody.marks.find((mark) => mark.id === "e2e-inc-1");
+  const incident = incidentBody.marks.find((mark) => mark.id === incidentId);
   if (!incident || incident.end_ts == null) {
     throw new Error("incident mark missing id/end_ts round-trip");
   }
@@ -742,7 +755,7 @@ async function main(): Promise<void> {
     body: JSON.stringify({
       kind: "incident",
       title: "e2e-inc",
-      id: "e2e-inc-1",
+      id: incidentId,
       ts: markTs,
       end_ts: incidentEnd,
     }),
@@ -752,10 +765,18 @@ async function main(): Promise<void> {
       `incident mark retry failed: ${incidentRetry.status} ${await incidentRetry.text()}`,
     );
   }
-  const incidentRetryBody = (await incidentRetry.json()) as { ingested: number };
+  const incidentRetryBody = (await incidentRetry.json()) as {
+    ingested: number;
+    id?: string;
+  };
   if (incidentRetryBody.ingested !== 0) {
     throw new Error(
       `expected 0 ingested on duplicate mark id, got ${incidentRetryBody.ingested}`,
+    );
+  }
+  if (incidentRetryBody.id !== incidentId) {
+    throw new Error(
+      `expected closed-id retry to return id ${incidentId}, got ${JSON.stringify(incidentRetryBody.id)}`,
     );
   }
   const incidentDupGet = await fetch(
@@ -771,10 +792,134 @@ async function main(): Promise<void> {
     marks: Array<{ id: string }>;
   };
   const incidentDupCount = incidentDupBody.marks.filter(
-    (mark) => mark.id === "e2e-inc-1",
+    (mark) => mark.id === incidentId,
   ).length;
   if (incidentDupCount !== 1) {
-    throw new Error(`expected 1 mark for e2e-inc-1, got ${incidentDupCount}`);
+    throw new Error(`expected 1 mark for ${incidentId}, got ${incidentDupCount}`);
+  }
+  const closeId = `e2e-inc-close-${Date.now()}`;
+  const openRes = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      kind: "incident",
+      title: "e2e-close",
+      id: closeId,
+      ts: markTs,
+    }),
+  });
+  if (!openRes.ok) {
+    throw new Error(`open mark ingest failed: ${openRes.status} ${await openRes.text()}`);
+  }
+  const openBody = (await openRes.json()) as { ingested: number; id?: string };
+  if (openBody.ingested !== 1 || openBody.id !== closeId) {
+    throw new Error(`expected open ingested=1 id=${closeId}, got ${JSON.stringify(openBody)}`);
+  }
+  const openRetry = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      kind: "incident",
+      title: "e2e-close",
+      id: closeId,
+    }),
+  });
+  if (!openRetry.ok) {
+    throw new Error(`open mark retry failed: ${openRetry.status} ${await openRetry.text()}`);
+  }
+  const openRetryBody = (await openRetry.json()) as { ingested: number; id?: string };
+  if (openRetryBody.ingested !== 0 || openRetryBody.id !== closeId) {
+    throw new Error(
+      `expected O1 skip ingested=0 id=${closeId}, got ${JSON.stringify(openRetryBody)}`,
+    );
+  }
+  const closeRes = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      kind: "incident",
+      title: "e2e-close",
+      id: closeId,
+      end_ts: incidentEnd,
+    }),
+  });
+  if (!closeRes.ok) {
+    throw new Error(`close mark ingest failed: ${closeRes.status} ${await closeRes.text()}`);
+  }
+  const closeBody = (await closeRes.json()) as { ingested: number; id?: string };
+  if (closeBody.ingested !== 1 || closeBody.id !== closeId) {
+    throw new Error(`expected close ingested=1 id=${closeId}, got ${JSON.stringify(closeBody)}`);
+  }
+  const closedGet = await fetch(
+    `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!closedGet.ok) {
+    throw new Error(`closed marks list failed: ${closedGet.status} ${await closedGet.text()}`);
+  }
+  const closedList = (await closedGet.json()) as {
+    marks: Array<{ id: string; ts?: string; end_ts: string | null }>;
+  };
+  const closedMark = closedList.marks.find((mark) => mark.id === closeId);
+  if (!closedMark || closedMark.end_ts == null) {
+    throw new Error("closed mark missing end_ts on GET /api/marks");
+  }
+  if (closedMark.ts && Date.parse(closedMark.ts) !== Date.parse(markTs)) {
+    throw new Error(
+      `close moved start ts: open ${markTs}, glyph ${closedMark.ts}`,
+    );
+  }
+  const closeRetry = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      kind: "incident",
+      title: "e2e-close",
+      id: closeId,
+      end_ts: incidentEnd,
+    }),
+  });
+  const closeRetryBody = (await closeRetry.json()) as { ingested: number };
+  if (!closeRetry.ok || closeRetryBody.ingested !== 0) {
+    throw new Error(
+      `expected X3 skip after close, got ${closeRetry.status} ${JSON.stringify(closeRetryBody)}`,
+    );
+  }
+  const batchId = `e2e-inc-batch-${Date.now()}`;
+  const batchRes = await fetch(`${APP_URL}/v1/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify([
+      { kind: "incident", title: "e2e-batch", id: batchId, ts: markTs },
+      {
+        kind: "incident",
+        title: "e2e-batch",
+        id: batchId,
+        end_ts: incidentEnd,
+      },
+    ]),
+  });
+  if (!batchRes.ok) {
+    throw new Error(`batch open+close failed: ${batchRes.status} ${await batchRes.text()}`);
+  }
+  const batchBody = (await batchRes.json()) as { ingested: number; ids?: string[] };
+  if (batchBody.ingested !== 2 || JSON.stringify(batchBody.ids) !== JSON.stringify([batchId, batchId])) {
+    throw new Error(`expected batch ingested=2 ids twice, got ${JSON.stringify(batchBody)}`);
   }
   const unauthorizedMarks = await fetch(`${APP_URL}/v1/marks`, {
     method: "POST",

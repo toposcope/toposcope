@@ -5,11 +5,12 @@ import {
 } from "../shared/clickhouse";
 import {
   InvalidChangeMarkError,
+  marksIngestBody,
   marksToInsert,
   parseChangeMarkRequest,
   type ChangeMark,
 } from "../shared/change-mark";
-import { lookupChangeMarkIds } from "../query/marks";
+import { lookupChangeMarkStates } from "../query/marks";
 import { incMetric } from "../metrics";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import {
@@ -27,21 +28,24 @@ function parseNdjson(text: string): unknown[] {
   return rows;
 }
 
-function parseBody(text: string, contentType: string): unknown[] {
+function parseBody(
+  text: string,
+  contentType: string,
+): { rows: unknown[]; single: boolean } {
   const ndjson =
     contentType.includes("application/x-ndjson") ||
     contentType.includes("application/ndjson");
   if (ndjson) {
-    return parseNdjson(text);
+    return { rows: parseNdjson(text), single: false };
   }
   try {
     const json: unknown = JSON.parse(text);
     if (Array.isArray(json)) {
-      return json;
+      return { rows: json, single: false };
     }
-    return [json];
+    return { rows: [json], single: true };
   } catch {
-    return parseNdjson(text);
+    return { rows: parseNdjson(text), single: false };
   }
 }
 
@@ -81,12 +85,13 @@ export async function ingestMarksRoute(c: Context): Promise<Response> {
     return c.json({ error: "Empty body" }, 400);
   }
 
-  let raw: unknown[];
+  let parsedBody: { rows: unknown[]; single: boolean };
   try {
-    raw = parseBody(text, c.req.header("content-type") ?? "");
+    parsedBody = parseBody(text, c.req.header("content-type") ?? "");
   } catch {
     return c.json({ error: "Invalid JSON body" }, 400);
   }
+  const { rows: raw, single } = parsedBody;
 
   if (raw.length === 0) {
     return c.json({ error: "Expected a change mark or a non-empty array" }, 400);
@@ -111,13 +116,23 @@ export async function ingestMarksRoute(c: Context): Promise<Response> {
   }
 
   try {
-    const existing = await lookupChangeMarkIds(
+    const existing = await lookupChangeMarkStates(
       parsed.filter((row) => row.idProvided).map((row) => row.mark.id),
     );
-    const ingested = await insertChangeMarks(marksToInsert(parsed, existing));
+    const ingestedMarks = marksToInsert(parsed, existing);
+    const ingested = await insertChangeMarks(ingestedMarks);
     incMetric("ingest_marks", ingested);
-    return c.json({ ingested });
+    return c.json(
+      marksIngestBody(
+        single,
+        parsed.map((row) => row.mark.id),
+        ingested,
+      ),
+    );
   } catch (err) {
+    if (err instanceof InvalidChangeMarkError) {
+      return c.json({ error: err.message }, 400);
+    }
     if (err instanceof InsertBackpressureError) {
       return c.json({ error: "ClickHouse is busy" }, 429, {
         "retry-after": "1",

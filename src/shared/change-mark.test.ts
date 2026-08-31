@@ -6,10 +6,12 @@ import {
   fallbackChangeMarkId,
   formatChangeMarkLabel,
   keepLatestChangeMarkPerId,
+  marksIngestBody,
   marksToInsert,
   parseChangeMark,
   parseChangeMarkKind,
   parseChangeMarkRequest,
+  type ChangeMarkClockState,
 } from "./change-mark";
 
 describe("parseChangeMarkKind", () => {
@@ -79,6 +81,17 @@ describe("parseChangeMark", () => {
       }),
     ).toThrow(InvalidChangeMarkError);
   });
+
+  test("O3 close may omit ts even when end_ts is in the past", () => {
+    const parsed = parseChangeMarkRequest({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      end_ts: "2026-08-25T13:02:00.000Z",
+    });
+    expect(parsed.tsProvided).toBe(false);
+    expect(parsed.mark.end_ts).toBe("2026-08-25T13:02:00.000Z");
+  });
 });
 
 describe("formatChangeMarkLabel", () => {
@@ -130,12 +143,102 @@ describe("ciDeployMark", () => {
 });
 
 describe("marksToInsert", () => {
-  test("skips a caller id that already landed", () => {
+  const now = "2026-08-31T12:00:00.000Z";
+  const start = "2026-08-25T12:00:00.000Z";
+  const end = "2026-08-25T13:02:00.000Z";
+  const later = "2026-08-31T18:00:00.000Z";
+  const futureEnd = "2026-08-31T14:00:00.000Z";
+
+  function clock(
+    id: string,
+    ts: string,
+    endTs: string | null = null,
+  ): ChangeMarkClockState {
+    return { id, ts, end_ts: endTs };
+  }
+
+  function insert(
+    body: Record<string, unknown>,
+    existing: ChangeMarkClockState[] = [],
+  ) {
+    return marksToInsert([parseChangeMarkRequest(body)], existing, now);
+  }
+
+  test("M1 mints an open mark at now", () => {
+    const rows = insert({ kind: "note", title: "hello" });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id.startsWith("mk_")).toBe(true);
+    expect(rows[0]?.ts).toBe(now);
+    expect(rows[0]?.end_ts).toBeNull();
+  });
+
+  test("M2 keeps a supplied start when minting", () => {
+    const rows = insert({ kind: "note", title: "hello", ts: start });
+    expect(rows[0]?.ts).toBe(start);
+  });
+
+  test("M3 mints a band that starts now", () => {
+    const rows = insert({
+      kind: "incident",
+      title: "window",
+      end_ts: futureEnd,
+    });
+    expect(rows[0]?.ts).toBe(now);
+    expect(rows[0]?.end_ts).toBe(futureEnd);
+  });
+
+  test("M3 refuses a band that would end before now", () => {
+    expect(() =>
+      insert({ kind: "incident", title: "window", end_ts: end }),
+    ).toThrow(InvalidChangeMarkError);
+  });
+
+  test("M4 mints a band with both clocks", () => {
+    const rows = insert({
+      kind: "incident",
+      title: "window",
+      ts: start,
+      end_ts: end,
+    });
+    expect(rows[0]?.ts).toBe(start);
+    expect(rows[0]?.end_ts).toBe(end);
+  });
+
+  test("N1–N4 insert a new caller id", () => {
+    expect(
+      insert({ kind: "incident", title: "INC-1", id: "n1" })[0]?.ts,
+    ).toBe(now);
+    expect(
+      insert({ kind: "incident", title: "INC-1", id: "n2", ts: start })[0]?.ts,
+    ).toBe(start);
+    expect(
+      insert({
+        kind: "incident",
+        title: "INC-1",
+        id: "n3",
+        end_ts: futureEnd,
+      })[0],
+    ).toEqual(
+      expect.objectContaining({ ts: now, end_ts: futureEnd, id: "n3" }),
+    );
+    expect(
+      insert({
+        kind: "incident",
+        title: "INC-1",
+        id: "n4",
+        ts: start,
+        end_ts: end,
+      })[0],
+    ).toEqual(expect.objectContaining({ ts: start, end_ts: end, id: "n4" }));
+  });
+
+  test("O1 skips a CI retry of an open deploy (same id, no end_ts)", () => {
     const first = parseChangeMarkRequest({
       kind: "deploy",
       title: "v0.9",
       id: "deploy-billing-v0.9",
       service: "billing",
+      ts: start,
     });
     const retry = parseChangeMarkRequest({
       kind: "deploy",
@@ -143,15 +246,168 @@ describe("marksToInsert", () => {
       id: "deploy-billing-v0.9",
       service: "billing",
     });
-    expect(marksToInsert([first], [])).toHaveLength(1);
-    expect(marksToInsert([retry], ["deploy-billing-v0.9"])).toHaveLength(0);
-    expect(marksToInsert([first, retry], [])).toHaveLength(1);
+    expect(marksToInsert([first], [], now)).toHaveLength(1);
+    expect(
+      marksToInsert([retry], [clock("deploy-billing-v0.9", start)], now),
+    ).toHaveLength(0);
+    expect(marksToInsert([first, retry], [], now)).toHaveLength(1);
   });
 
-  test("still inserts a minted id", () => {
+  test("O2 skips an open id even when the body supplies a new ts", () => {
+    const rows = insert(
+      {
+        kind: "incident",
+        title: "INC-238",
+        id: "pd-238",
+        ts: later,
+      },
+      [clock("pd-238", start)],
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  test("O3 closes an open mark and keeps the stored start", () => {
+    const rows = insert(
+      {
+        kind: "incident",
+        title: "INC-238",
+        id: "pd-238",
+        end_ts: end,
+      },
+      [clock("pd-238", start)],
+    );
+    expect(rows).toEqual([
+      expect.objectContaining({
+        id: "pd-238",
+        ts: start,
+        end_ts: end,
+      }),
+    ]);
+  });
+
+  test("O4 closes and ignores an incoming ts that is after end_ts", () => {
+    const rows = insert(
+      {
+        kind: "incident",
+        title: "INC-238",
+        id: "pd-238",
+        ts: later,
+        end_ts: end,
+      },
+      [clock("pd-238", start)],
+    );
+    expect(rows[0]?.ts).toBe(start);
+    expect(rows[0]?.end_ts).toBe(end);
+  });
+
+  test("N4 refuses end_ts not after the supplied start", () => {
+    expect(() =>
+      insert({
+        kind: "incident",
+        title: "INC-1",
+        id: "n4-bad",
+        ts: later,
+        end_ts: end,
+      }),
+    ).toThrow(InvalidChangeMarkError);
+  });
+
+  test("O3 refuses end_ts not after the stored start", () => {
+    expect(() =>
+      insert(
+        {
+          kind: "incident",
+          title: "INC-238",
+          id: "pd-238",
+          end_ts: "2026-08-25T11:00:00.000Z",
+        },
+        [clock("pd-238", start)],
+      ),
+    ).toThrow(InvalidChangeMarkError);
+  });
+
+  test("open then close of the same id in one batch is two inserts", () => {
+    const opened = parseChangeMarkRequest({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: start,
+    });
+    const resolved = parseChangeMarkRequest({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      end_ts: end,
+    });
+    const rows = marksToInsert([opened, resolved], [], now);
+    expect(rows).toHaveLength(2);
+    expect(rows[1]?.ts).toBe(start);
+    expect(rows[1]?.end_ts).toBe(end);
+  });
+
+  test("X1–X4 skip a closed id (not a reopen)", () => {
+    const closed = [clock("pd-238", start, end)];
+    expect(
+      insert({ kind: "incident", title: "INC-238", id: "pd-238" }, closed),
+    ).toHaveLength(0);
+    expect(
+      insert(
+        { kind: "incident", title: "INC-238", id: "pd-238", ts: later },
+        closed,
+      ),
+    ).toHaveLength(0);
+    expect(
+      insert(
+        {
+          kind: "incident",
+          title: "INC-238",
+          id: "pd-238",
+          end_ts: futureEnd,
+        },
+        closed,
+      ),
+    ).toHaveLength(0);
+    expect(
+      insert(
+        {
+          kind: "incident",
+          title: "INC-238",
+          id: "pd-238",
+          ts: start,
+          end_ts: end,
+        },
+        closed,
+      ),
+    ).toHaveLength(0);
+  });
+
+  test("still inserts a minted id even if that mk_ string is already stored", () => {
     const minted = parseChangeMarkRequest({ kind: "note", title: "hello" });
     expect(minted.idProvided).toBe(false);
-    expect(marksToInsert([minted], [minted.mark.id])).toHaveLength(1);
+    expect(
+      marksToInsert(
+        [minted],
+        [clock(minted.mark.id, start)],
+        now,
+      ),
+    ).toHaveLength(1);
+  });
+});
+
+describe("marksIngestBody", () => {
+  test("one object returns id; an array returns ids in request order", () => {
+    expect(marksIngestBody(true, ["pd-238"], 1)).toEqual({
+      ingested: 1,
+      id: "pd-238",
+    });
+    expect(marksIngestBody(true, ["pd-238"], 0)).toEqual({
+      ingested: 0,
+      id: "pd-238",
+    });
+    expect(marksIngestBody(false, ["a", "b"], 1)).toEqual({
+      ingested: 1,
+      ids: ["a", "b"],
+    });
   });
 });
 
@@ -180,6 +436,28 @@ describe("keepLatestChangeMarkPerId", () => {
     );
     expect(keepLatestChangeMarkPerId([older, newer])[0]?.ts).toBe(
       "2026-08-23T16:00:00.000Z",
+    );
+  });
+
+  test("closed row wins over an open row with the same ts", () => {
+    const opened = parseChangeMark({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: "2026-08-25T12:00:00.000Z",
+    });
+    const closed = parseChangeMark({
+      kind: "incident",
+      title: "INC-238",
+      id: "pd-238",
+      ts: "2026-08-25T12:00:00.000Z",
+      end_ts: "2026-08-25T13:02:00.000Z",
+    });
+    expect(keepLatestChangeMarkPerId([closed, opened])[0]?.end_ts).toBe(
+      "2026-08-25T13:02:00.000Z",
+    );
+    expect(keepLatestChangeMarkPerId([opened, closed])[0]?.end_ts).toBe(
+      "2026-08-25T13:02:00.000Z",
     );
   });
 });

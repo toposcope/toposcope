@@ -111,7 +111,27 @@ function parseOptionalId(raw: unknown): string | null {
 export type ParsedChangeMark = {
   mark: ChangeMark;
   idProvided: boolean;
+  tsProvided: boolean;
 };
+
+export type ChangeMarkClockState = Pick<ChangeMark, "id" | "ts" | "end_ts">;
+
+function preferChangeMark(next: ChangeMarkClockState, prev: ChangeMarkClockState): boolean {
+  const cmp = Date.parse(next.ts) - Date.parse(prev.ts);
+  if (cmp !== 0) {
+    return cmp > 0;
+  }
+  if (next.end_ts && !prev.end_ts) {
+    return true;
+  }
+  if (!next.end_ts && prev.end_ts) {
+    return false;
+  }
+  if (next.end_ts && prev.end_ts) {
+    return Date.parse(next.end_ts) >= Date.parse(prev.end_ts);
+  }
+  return true;
+}
 
 export function ciDeployMarkId(service: string, title: string): string {
   const svc = service.trim();
@@ -160,27 +180,78 @@ export function ciDeployMark(input: {
   };
 }
 
+function assertEndAfterStart(endTs: string, startTs: string): void {
+  if (Date.parse(endTs) <= Date.parse(startTs)) {
+    throw new InvalidChangeMarkError("end_ts must be after ts");
+  }
+}
+
 export function marksToInsert(
   parsed: ParsedChangeMark[],
-  existingIds: Iterable<string>,
+  existing: Iterable<ChangeMarkClockState>,
+  now: string = new Date().toISOString(),
 ): ChangeMark[] {
-  const seen = new Set(existingIds);
+  const state = new Map<string, ChangeMarkClockState>();
+  for (const row of existing) {
+    const prev = state.get(row.id);
+    if (!prev || preferChangeMark(row, prev)) {
+      state.set(row.id, { id: row.id, ts: row.ts, end_ts: row.end_ts });
+    }
+  }
   const out: ChangeMark[] = [];
-  for (const { mark, idProvided } of parsed) {
-    if (idProvided && seen.has(mark.id)) {
+  for (const { mark, idProvided, tsProvided } of parsed) {
+    const latest = idProvided ? state.get(mark.id) : undefined;
+    if (latest) {
+      if (latest.end_ts) {
+        continue;
+      }
+      if (mark.end_ts) {
+        assertEndAfterStart(mark.end_ts, latest.ts);
+        const closed: ChangeMark = {
+          ...mark,
+          ts: latest.ts,
+          end_ts: mark.end_ts,
+        };
+        out.push(closed);
+        state.set(closed.id, {
+          id: closed.id,
+          ts: closed.ts,
+          end_ts: closed.end_ts,
+        });
+      }
       continue;
     }
-    seen.add(mark.id);
-    out.push(mark);
+    const ts = tsProvided ? mark.ts : now;
+    if (mark.end_ts) {
+      assertEndAfterStart(mark.end_ts, ts);
+    }
+    const inserted: ChangeMark = { ...mark, ts };
+    out.push(inserted);
+    state.set(inserted.id, {
+      id: inserted.id,
+      ts: inserted.ts,
+      end_ts: inserted.end_ts,
+    });
   }
   return out;
+}
+
+export function marksIngestBody(
+  single: boolean,
+  ids: string[],
+  ingested: number,
+): { ingested: number; id: string } | { ingested: number; ids: string[] } {
+  if (single) {
+    return { ingested, id: ids[0] ?? "" };
+  }
+  return { ingested, ids };
 }
 
 export function keepLatestChangeMarkPerId(marks: ChangeMark[]): ChangeMark[] {
   const byId = new Map<string, ChangeMark>();
   for (const mark of marks) {
     const prev = byId.get(mark.id);
-    if (!prev || Date.parse(mark.ts) >= Date.parse(prev.ts)) {
+    if (!prev || preferChangeMark(mark, prev)) {
       byId.set(mark.id, mark);
     }
   }
@@ -205,13 +276,15 @@ export function parseChangeMarkRequest(input: unknown): ParsedChangeMark {
     throw new InvalidChangeMarkError("title is required");
   }
   const tsRaw = rec.ts;
-  const ts =
-    typeof tsRaw === "string" && !Number.isNaN(Date.parse(tsRaw))
-      ? new Date(tsRaw).toISOString()
-      : new Date().toISOString();
+  const tsProvided =
+    typeof tsRaw === "string" && !Number.isNaN(Date.parse(tsRaw));
+  const ts = tsProvided
+    ? new Date(tsRaw as string).toISOString()
+    : new Date().toISOString();
   const endTs = parseOptionalTs(rec.end_ts, "end_ts");
-  if (endTs !== null && Date.parse(endTs) <= Date.parse(ts)) {
-    throw new InvalidChangeMarkError("end_ts must be after ts");
+  const callerId = parseOptionalId(rec.id);
+  if (endTs !== null && tsProvided && callerId === null) {
+    assertEndAfterStart(endTs, ts);
   }
   const service =
     typeof rec.service === "string" ? rec.service.trim() : "";
@@ -220,7 +293,6 @@ export function parseChangeMarkRequest(input: unknown): ParsedChangeMark {
       ? (rec.attrs as Record<string, unknown>)
       : undefined,
   );
-  const callerId = parseOptionalId(rec.id);
   return {
     mark: {
       id: callerId ?? mintChangeMarkId(),
@@ -232,6 +304,7 @@ export function parseChangeMarkRequest(input: unknown): ParsedChangeMark {
       attrs,
     },
     idProvided: callerId !== null,
+    tsProvided,
   };
 }
 

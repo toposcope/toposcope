@@ -109,23 +109,23 @@ function extraWhere(
   return extra.join(" ");
 }
 
-export async function lookupChangeMarkIds(
+export async function lookupChangeMarkStates(
   ids: string[],
-): Promise<Set<string>> {
+): Promise<ChangeMark[]> {
   const unique = [...new Set(ids.filter((id) => id.length > 0))];
   if (unique.length === 0) {
-    return new Set();
+    return [];
   }
   const params: Record<string, string> = {};
   const ors = unique.map((id, i) => {
     params[`mid${i}`] = id;
     return `id = {mid${i}:String}`;
   });
-  const rows = await clickhouseQuery<{ id: string }>(
-    `SELECT DISTINCT id FROM change_marks WHERE tenant_id = 'default' AND (${ors.join(" OR ")})`,
+  const rows = await clickhouseQuery<MarkRow>(
+    `SELECT ${markSelect} FROM change_marks WHERE tenant_id = 'default' AND (${ors.join(" OR ")})`,
     params,
   );
-  return new Set(rows.map((row) => row.id));
+  return keepLatestChangeMarkPerId(rows.map(mapRow));
 }
 
 export async function getChangeMarkById(id: string): Promise<ChangeMark | null> {
@@ -138,12 +138,12 @@ export async function getChangeMarkById(id: string): Promise<ChangeMark | null> 
     SELECT ${markSelect}
     FROM change_marks
     WHERE tenant_id = 'default' AND id = {id:String}
-    LIMIT 1
     `,
     { id: trimmed },
   );
-  if (rows[0]) {
-    return mapRow(rows[0]);
+  const latest = keepLatestChangeMarkPerId(rows.map(mapRow))[0];
+  if (latest) {
+    return latest;
   }
   const unlabeled = await clickhouseQuery<MarkRow>(
     `
