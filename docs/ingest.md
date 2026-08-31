@@ -70,7 +70,17 @@ curl -X POST http://127.0.0.1:8080/v1/metrics \
 
 ## Change marks
 
-A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Optional `end_ts` (must be after `ts`) is an incident duration, not a rewrite of `q`.
+A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Optional `end_ts` (must be after the start) is an incident duration, not a rewrite of `q`.
+
+There is no PATCH, PUT, or DELETE. A valid POST is always **200**. Never 4xx because the `id` already exists.
+
+**Open** — omit `end_ts`. Missing `ts` is stamped server-side (`now`). Supply `id` (letters, digits, `.` `_` `:` `-`) so a later close or CI retry can find it; omit `id` and ingest mints `mk_…`.
+
+**Close** — POST the same `id` with `end_ts` while the mark is still open. The stored start stays; incoming `ts` is ignored (omit `ts` when resolving). Hunt already draws a band when `end_ts` is set.
+
+**Already there** — same `id` without `end_ts` while still open is skipped (`ingested: 0`). That is a CI re-run of `deploy-<service>-<tag>`: the glyph stays at first ship. It does not move the start and it does not close. Same `id` after it is already closed is also skipped (not a reopen). A new incident needs a new `id`.
+
+One JSON object returns `{ ingested, id }`. A JSON array returns `{ ingested, ids }` in request order (`id` is minted or the caller’s). Same `id` twice in one array applies in order (open then close is two inserts).
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/marks \
@@ -79,7 +89,21 @@ curl -X POST http://127.0.0.1:8080/v1/marks \
   -d '{"kind":"deploy","title":"v0.9","service":"billing","id":"deploy-billing-v0.9","attrs":{"version":"v0.9","sha":"abc123","source":"ci · deploy-bot"}}'
 ```
 
-`kind` is `deploy`, `flag`, `incident`, or `note`. Missing `ts` is stamped server-side. Supply `id` (letters, digits, `.` `_` `:` `-`) so a CI retry is one mark; omit it and ingest mints `mk_…`.
+```bash
+# open
+curl -X POST http://127.0.0.1:8080/v1/marks \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"kind":"incident","title":"INC-238","id":"pd-238","ts":"2026-08-25T12:00:00.000Z"}'
+
+# close — same id, end_ts, omit ts
+curl -X POST http://127.0.0.1:8080/v1/marks \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"kind":"incident","title":"INC-238","id":"pd-238","end_ts":"2026-08-25T13:02:00.000Z"}'
+```
+
+`kind` is `deploy`, `flag`, `incident`, or `note`. A band that has not started yet sends both `ts` and `end_ts`. A window that starts now and ends later omits `ts` and sends `end_ts`.
 
 ### GitHub Actions
 

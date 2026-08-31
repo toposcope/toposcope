@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+`POST /v1/marks` closes an open mark by posting the same caller `id` with `end_ts` (stored start stays). The same `id` without `end_ts` is still a skip, so a CI re-run does not move or close the glyph. Already closed is a skip, not a reopen. One object returns `{ ingested, id }`; an array returns `{ ingested, ids }`. [#28](https://github.com/toposcope/toposcope/issues/28)
+
 Inspector Compare opens a 30px fold under the pinned volume lane: the hunt series (Count, Rate, a numeric agg, an ingested metric, or `e1:` in the bar) on equal windows after vs before a selected mark. Percent needs a before; first-seen drops it; stopped is −100%. Live freezes both windows at open. [#25](https://github.com/toposcope/toposcope/issues/25)
 
 ## 0.4.6
