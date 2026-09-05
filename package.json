@@ -16,6 +16,7 @@
     "load:500k": "bun run scripts/load.ts 500k",
     "load:10m": "bun run scripts/load.ts 10m",
     "load:100m": "bun run scripts/load.ts 100m",
+    "load:hunt": "bun run scripts/hunt-billing-v09.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
