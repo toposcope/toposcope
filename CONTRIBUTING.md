@@ -42,6 +42,7 @@ bun run e2e
 bun run seed
 bun run truncate
 bun run load
+bun run load:hunt
 bun run load:live
 bun run load:500k
 bun run load:10m
@@ -55,6 +56,8 @@ bun run load:100m
 `bun run truncate` clears ClickHouse tables and rollups. Use it when you need a clean local data set.
 
 `bun run load` ingests the 10k/1h smoke profile. `bun run load:500k` runs the larger 500k/24h profile. Both mix a v0.9 change mark, `version:v0.9` on some rows, framed errors, and errors with no stack; they wait until `e1:` and `version:v0.9` are searchable.
+
+`bun run load:hunt` plants a named billing v0.9 hunt for marketing capture: mark in the middle of a 1h window, `level:error service:billing` rises after, three first-seen framed bugs. Truncate first. Writes `/tmp/toposcope-hunt.json` (`from` / `to` / `q`) so a later `range=1h` does not slide off the data.
 
 `bun run load:live --logs=20 --metrics=2 --traces=1` runs continuously until you stop it; add `--for=12s` for a short smoke. Use it for sustained load testing, not routine development.
 

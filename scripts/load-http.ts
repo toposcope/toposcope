@@ -94,6 +94,7 @@ export async function postMarks(
   marks: Array<{
     kind: string;
     title: string;
+    id?: string;
     ts?: string;
     service?: string;
     attrs?: Record<string, string>;

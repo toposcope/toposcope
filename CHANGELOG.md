@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+`bun run load:hunt` plants a billing v0.9 compare hunt (mark at the midpoint of a 1h window) and writes `/tmp/toposcope-hunt.json` for screenshot capture.
+
 ## 0.4.7
 
 `POST /v1/marks` closes an open mark by posting the same caller `id` with `end_ts` (stored start stays). The same `id` without `end_ts` is still a skip, so a CI re-run does not move or close the glyph. Already closed is a skip, not a reopen. One object returns `{ ingested, id }`; an array returns `{ ingested, ids }`. [#28](https://github.com/toposcope/toposcope/issues/28)

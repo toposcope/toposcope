@@ -34,12 +34,12 @@ Capabilities, in this order — not patch numbers:
 2. **Error fingerprints** — a stable id computed from application errors (exception type + stack, not an operator-written template). New ids after a change mark are the “three new bugs.”
 3. **Change marks** — deploy / flag / incident as a point or band on the histogram clock. Consume CI/git/PagerDuty; a human note is the one write we own.
 4. **Probe / liveness** — attach-and-pull status APIs; explicit `up=0`; consumed checks (not a second Nagios).
-5. **Compare** — a series vs a locked baseline (including the window before a change mark), split **one** facet. This is what makes the 0.5% / 4% / 9% honest.
+5. **Compare** — a series vs a locked baseline (including the window before a change mark). The fold vs a selected mark is shipped. Split **one** facet is what makes the 0.5% / 4% / 9% honest.
 6. **The sentence** — a model or human writes it from evidence last. Not a source of counts. Not chat-as-search.
 
 **Log templates** (grouping similar ops lines — Apache, syslog) can appear when we need occurrence counts. They are not the error grouper.
 
-The bar stays copy-pasteable `key:value`. Fingerprints are queryable attrs, not a Sentry issue page. Compare chrome waits on a mock.
+The bar stays copy-pasteable `key:value`. Fingerprints are queryable attrs, not a Sentry issue page. Split-one-facet chrome waits on a mock.
 
 ## Ideas we have not locked
 
@@ -48,7 +48,7 @@ These need a drawing or an explicit choice before they are work:
 - Follow-window expand (today Follow is a fixed ±5m)
 - Histogram-chip catch-up
 - CSV / table export matching promoted columns
-- Bind health before migration (`starting` / `schema` / `repair` / `ready`) with 503 gating
+- Compare split one facet (needs a mock)
 - Bound the syslog UDP queue and expose dropped-event accounting
 - `ee/` (the root `LICENSE` already reserves it)
 
