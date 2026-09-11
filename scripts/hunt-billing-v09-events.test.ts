@@ -100,4 +100,25 @@ describe("buildHuntSlice", () => {
       expect(event.message).not.toMatch(/load\d/);
     }
   });
+
+  test("stamps version, customer, and flag on billing errors", () => {
+    const billing = slice.events.filter(
+      (event) => event.service === "billing" && event.level === "error",
+    );
+    expect(billing.length).toBeGreaterThan(0);
+    for (const event of billing) {
+      expect(event.attrs.customer).toBe("acme");
+    }
+    const after = billing.filter((event) => Date.parse(event.ts) > slice.markMs);
+    for (const event of after) {
+      expect(event.attrs.version).toBe("v0.9");
+    }
+    const firstSeenMessages = new Set(huntFirstSeen.map((bug) => bug.message));
+    for (const event of after) {
+      if (firstSeenMessages.has(event.message)) {
+        expect(event.attrs.flag).toBe("new-checkout");
+      }
+    }
+    expect(new Set(huntFirstSeen.map((bug) => bug.host)).size).toBe(3);
+  });
 });

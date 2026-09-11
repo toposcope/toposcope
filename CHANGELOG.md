@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
-`bun run load:hunt` plants a billing v0.9 compare hunt (mark at the midpoint of a 1h window) and writes `/tmp/toposcope-hunt.json` for screenshot capture.
+Ingest aliases OTEL `service.version` onto attr `version` when `version` is unset (sender `version` wins; the dotted key is dropped). `customer` and `flag` stay collector remaps. `bun run load:hunt` plants all three on the billing v0.9 slice, pins them as promoted columns, and writes `/tmp/toposcope-hunt.json` for screenshot capture. [#31](https://github.com/toposcope/toposcope/issues/31)
 
 ## 0.4.7
 

@@ -3,6 +3,10 @@ import {
   buildHuntSlice,
   huntBugFingerprint,
   huntFirstSeen,
+  HUNT_CUSTOMER,
+  HUNT_FLAG,
+  HUNT_MARK_TITLE,
+  HUNT_ROW_COLS,
   type HuntManifest,
 } from "./hunt-billing-v09-events";
 import { postIngest, postMarks } from "./load-http";
@@ -103,6 +107,24 @@ async function main(): Promise<void> {
       slice.to,
     );
   }
+  await waitForQueryTotal(
+    `version:${HUNT_MARK_TITLE} ${slice.q}`,
+    1,
+    slice.from,
+    slice.to,
+  );
+  await waitForQueryTotal(
+    `customer:${HUNT_CUSTOMER} ${slice.q}`,
+    1,
+    slice.from,
+    slice.to,
+  );
+  await waitForQueryTotal(
+    `flag:${HUNT_FLAG} ${slice.q}`,
+    1,
+    slice.from,
+    slice.to,
+  );
 
   const manifest: HuntManifest = {
     q: slice.q,
@@ -118,6 +140,7 @@ async function main(): Promise<void> {
     range: "custom",
     from: slice.from,
     to: slice.to,
+    cols: HUNT_ROW_COLS,
   }).toString()}`;
   console.log(
     `billing errors ${slice.billingErrorBefore} → ${slice.billingErrorAfter} (search total ${billing})`,

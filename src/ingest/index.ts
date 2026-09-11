@@ -8,6 +8,7 @@ import { incMetric } from "../metrics";
 import { recordReceived } from "./received-ring";
 import { flattenAttrs } from "../shared/attrs";
 import { liftException } from "../shared/exception";
+import { liftIdentities } from "../shared/identity";
 import { withFingerprint } from "../shared/fingerprint";
 import { pickTraceId } from "../shared/ids";
 import {
@@ -30,7 +31,11 @@ export async function insertEvents(events: LogEvent[]): Promise<number> {
     const body = events
       .map((event) => {
         const attr_map = flattenAttrs(
-          withFingerprint(event.level, event.message, liftException(event.attrs)),
+          withFingerprint(
+            event.level,
+            event.message,
+            liftIdentities(liftException(event.attrs)),
+          ),
         );
         return JSON.stringify({
           tenant_id: "default",
