@@ -1,5 +1,6 @@
 import { otlpIdHex } from "../shared/ids";
 import { liftException } from "../shared/exception";
+import { liftIdentities } from "../shared/identity";
 import type { LogEvent, LogLevel } from "../shared/log-event";
 import { levels } from "../shared/log-event";
 
@@ -203,7 +204,9 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
         if (spanId && attrs.span_id === undefined) {
           attrs.span_id = spanId;
         }
-        const lifted = liftException(Object.keys(attrs).length > 0 ? attrs : undefined);
+        const lifted = liftIdentities(
+          liftException(Object.keys(attrs).length > 0 ? attrs : undefined),
+        );
         const ts =
           tsFromNano(row.timeUnixNano as string | number | undefined) ??
           new Date().toISOString();

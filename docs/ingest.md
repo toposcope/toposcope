@@ -70,7 +70,7 @@ curl -X POST http://127.0.0.1:8080/v1/metrics \
 
 ## Change marks
 
-A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is still an ordinary attr if the app already sends it. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Optional `end_ts` (must be after the start) is an incident duration, not a rewrite of `q`.
+A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is an ordinary attr (`version:v0.9`); OTLP resource `service.version` is aliased onto that key at ingest when `version` is unset. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Optional `end_ts` (must be after the start) is an incident duration, not a rewrite of `q`.
 
 There is no PATCH, PUT, or DELETE. A valid POST is always **200**. Never 4xx because the `id` already exists.
 
@@ -235,7 +235,18 @@ Supported collector-side operations:
 
 Match on `service` and/or required-key existence so every event does not run every rule. Nested objects become one JSON blob and are not dotted `q` paths. Extra keys count toward the 50-key cap. A detail-panel lookup does not satisfy `q` or Top-N.
 
-Direct ingest without a collector does not grow collector-style derived keys (alias/combine/bucket/lookup). `exception.type` and `exception.frames` are ordinary attrs: store them when they arrive (app, OTEL, or collector enrich). Ingest does not parse them out of `message`. Ingest does write `e1` (16-hex SHA-256) when frames are present, or when `exception.type` is set or the level is `error`/`fatal`, so `e1:…` hunts the same bug. Existing rows are not rewritten.
+Direct ingest without a collector does not grow collector-style derived keys (alias/combine/bucket/lookup). `exception.type` and `exception.frames` are ordinary attrs: store them when they arrive (app, OTEL, or collector enrich). Ingest does not parse them out of `message`. Ingest does write `e1` (16-hex SHA-256) when frames are present, or when `exception.type` is set or the level is `error`/`fatal`, so `e1:…` hunts the same bug. OTEL `service.version` is aliased onto attr `version` when `version` is unset (the dotted key is dropped; sender `version` wins). `customer` and `flag` are not inferred — copy them at the collector (`customer_id` → `customer`, `feature_flag` → `flag`) so hunt can pin them as promoted columns. Existing rows are not rewritten.
+
+Vector remap for those two identities (run before the sink):
+
+```yaml
+if exists(.customer_id) && !exists(.customer) {
+  .customer = .customer_id
+}
+if exists(.feature_flag) && !exists(.flag) {
+  .flag = .feature_flag
+}
+```
 
 ### Worked example
 

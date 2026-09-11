@@ -8,6 +8,9 @@ export const HUNT_BACKGROUND_N = 5_000;
 export const HUNT_MARK_TITLE = "v0.9";
 export const HUNT_MARK_SERVICE = "billing";
 export const HUNT_MARK_ID = "deploy-billing-v0.9";
+export const HUNT_CUSTOMER = "acme";
+export const HUNT_FLAG = "new-checkout";
+export const HUNT_ROW_COLS = "version,customer,flag";
 
 export type HuntEvent = {
   ts: string;
@@ -22,6 +25,7 @@ export type HuntBug = {
   message: string;
   type: string;
   framesJson: string;
+  host: string;
   after: number;
 };
 
@@ -34,6 +38,7 @@ export const huntFirstSeen: readonly HuntBug[] = [
       { file: "billing/totals.ts", function: "sumCart", in_app: true },
       { file: "vendor/http.ts", function: "request" },
     ]),
+    host: "billing-1",
     after: 18,
   },
   {
@@ -42,6 +47,7 @@ export const huntFirstSeen: readonly HuntBug[] = [
     framesJson: JSON.stringify([
       { file: "billing/invoice.ts", function: "renderPdf", in_app: true },
     ]),
+    host: "billing-2",
     after: 12,
   },
   {
@@ -50,6 +56,7 @@ export const huntFirstSeen: readonly HuntBug[] = [
     framesJson: JSON.stringify([
       { file: "billing/webhook.ts", function: "handleStripe", in_app: true },
     ]),
+    host: "billing-3",
     after: 9,
   },
 ];
@@ -105,32 +112,36 @@ function billingError(
   tsMs: number,
   message: string,
   extra: Record<string, string | number> = {},
+  host = "billing-1",
 ): HuntEvent {
   return {
     ts: iso(tsMs),
     service: "billing",
-    host: "billing-1",
+    host,
     level: "error",
     message,
     attrs: {
       path: "/v1/checkout",
       status: 500,
       duration_ms: 640,
+      customer: HUNT_CUSTOMER,
       ...extra,
     },
   };
 }
 
-function framed(
-  tsMs: number,
-  bug: HuntBug,
-  versioned: boolean,
-): HuntEvent {
-  return billingError(tsMs, bug.message, {
-    "exception.type": bug.type,
-    "exception.frames": bug.framesJson,
-    ...(versioned ? { version: HUNT_MARK_TITLE } : {}),
-  });
+function framed(tsMs: number, bug: HuntBug): HuntEvent {
+  return billingError(
+    tsMs,
+    bug.message,
+    {
+      "exception.type": bug.type,
+      "exception.frames": bug.framesJson,
+      version: HUNT_MARK_TITLE,
+      flag: HUNT_FLAG,
+    },
+    bug.host,
+  );
 }
 
 export function huntBugFingerprint(bug: HuntBug): string {
@@ -187,7 +198,7 @@ export function buildHuntSlice(nowMs: number): HuntSlice {
       billingError(tsMs, huntStillHere.message, { version: HUNT_MARK_TITLE }),
   );
   const firstSeen = huntFirstSeen.flatMap((bug) =>
-    spread(bug.after, afterFrom, toMs, (i, tsMs) => framed(tsMs, bug, i % 2 === 0)),
+    spread(bug.after, afterFrom, toMs, (_i, tsMs) => framed(tsMs, bug)),
   );
 
   const events = [

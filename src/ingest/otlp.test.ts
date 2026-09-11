@@ -152,6 +152,34 @@ describe("mapOtlpJson", () => {
     expect(nested[0]?.message).toContain("PHP Fatal");
   });
 
+  test("aliases resource service.version onto version", () => {
+    const events = mapOtlpJson({
+      resourceLogs: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "billing" } },
+              { key: "service.version", value: { stringValue: "v0.9" } },
+            ],
+          },
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  severityText: "ERROR",
+                  body: { stringValue: "timeout" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(events[0]?.service).toBe("billing");
+    expect(events[0]?.attrs?.version).toBe("v0.9");
+    expect(events[0]?.attrs?.["service.version"]).toBeUndefined();
+  });
+
   test("does not grok exception fields from a fatal message", () => {
     const events = mapOtlpJson({
       resourceLogs: [
