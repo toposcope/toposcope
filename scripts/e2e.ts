@@ -930,6 +930,83 @@ async function main(): Promise<void> {
     throw new Error(`expected 401 for /v1/marks without auth, got ${unauthorizedMarks.status}`);
   }
 
+  const probeService = `probe-${marker}`;
+  const probeTs = new Date().toISOString();
+  const probeAttach = await fetch(`${APP_URL}/v1/probes`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      service: probeService,
+      up: 0,
+      ts: probeTs,
+      check: "github",
+    }),
+  });
+  if (!probeAttach.ok) {
+    throw new Error(`probe attach failed: ${probeAttach.status} ${await probeAttach.text()}`);
+  }
+  const probeAttached = (await probeAttach.json()) as { ingested: number; up?: number };
+  if (probeAttached.ingested !== 1 || probeAttached.up !== 0) {
+    throw new Error(`expected attach up=0, got ${JSON.stringify(probeAttached)}`);
+  }
+
+  const downServer = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch() {
+      return new Response("down", { status: 503 });
+    },
+  });
+  const probePull = await fetch(`${APP_URL}/v1/probes`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify({
+      service: probeService,
+      url: `http://127.0.0.1:${downServer.port}/health`,
+      check: "k8s",
+    }),
+  });
+  downServer.stop();
+  if (!probePull.ok) {
+    throw new Error(`probe pull failed: ${probePull.status} ${await probePull.text()}`);
+  }
+  const probePulled = (await probePull.json()) as { ingested: number; up?: number };
+  if (probePulled.ingested !== 1 || probePulled.up !== 0) {
+    throw new Error(`expected failed pull up=0, got ${JSON.stringify(probePulled)}`);
+  }
+
+  const probesGet = await fetch(
+    `${APP_URL}/api/probes?${new URLSearchParams({
+      range: "15m",
+      service: probeService,
+    }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!probesGet.ok) {
+    throw new Error(`probes list failed: ${probesGet.status} ${await probesGet.text()}`);
+  }
+  const probesBody = (await probesGet.json()) as {
+    probes: Array<{ up: number; service: string }>;
+  };
+  if (!probesBody.probes.some((sample) => sample.up === 0 && sample.service === probeService)) {
+    throw new Error(`GET /api/probes missing up=0 for ${probeService}`);
+  }
+
+  const unauthorizedProbes = await fetch(`${APP_URL}/v1/probes`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ service: "billing", up: 1 }),
+  });
+  if (unauthorizedProbes.status !== 401) {
+    throw new Error(`expected 401 for /v1/probes without auth, got ${unauthorizedProbes.status}`);
+  }
+
   const badMetric = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({
       from,

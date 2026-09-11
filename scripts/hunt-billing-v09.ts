@@ -6,10 +6,12 @@ import {
   HUNT_CUSTOMER,
   HUNT_FLAG,
   HUNT_MARK_TITLE,
+  HUNT_PROBE_METRIC,
+  HUNT_PROBE_ML,
   HUNT_ROW_COLS,
   type HuntManifest,
 } from "./hunt-billing-v09-events";
-import { postIngest, postMarks } from "./load-http";
+import { postIngest, postMarks, postProbes } from "./load-http";
 import { envValue } from "../src/shared/env";
 import { formatChangeMarkLabel } from "../src/shared/change-mark";
 
@@ -67,6 +69,39 @@ async function waitForQueryTotal(
   throw new Error(`expected >= ${min} events for ${q}, search total=${last}`);
 }
 
+async function waitForProbeOverlay(
+  from: string,
+  to: string,
+): Promise<void> {
+  const url = `${APP_URL}/api/search?${new URLSearchParams({
+    from,
+    to,
+    events: "0",
+    metric: HUNT_PROBE_METRIC,
+    ml: HUNT_PROBE_ML,
+  })}`;
+  let last = "";
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    const res = await fetch(url, { headers: { authorization: basicAuth() } });
+    if (!res.ok) {
+      throw new Error(`probe overlay failed: ${res.status} ${await res.text()}`);
+    }
+    const json = (await res.json()) as {
+      agg?: { source?: string; buckets?: Array<{ v: number }> };
+    };
+    const buckets = json.agg?.buckets ?? [];
+    const hasDown = buckets.some((bucket) => bucket.v === 0);
+    const hasUp = buckets.some((bucket) => bucket.v === 1);
+    if (json.agg?.source === "metric" && hasDown && hasUp) {
+      return;
+    }
+    last = JSON.stringify(json.agg);
+    await Bun.sleep(500);
+  }
+  throw new Error(`expected metric=up overlay with 0 and 1, last=${last}`);
+}
+
 async function main(): Promise<void> {
   await waitForHealth();
   const slice = buildHuntSlice(Date.now());
@@ -77,6 +112,11 @@ async function main(): Promise<void> {
   const marked = await postMarks(loadEnv, [slice.mark]);
   if (marked !== 1) {
     throw new Error(`expected 1 change mark, got ${marked}`);
+  }
+
+  const probed = await postProbes(loadEnv, slice.probes);
+  if (probed !== slice.probes.length) {
+    throw new Error(`expected ${slice.probes.length} probes, got ${probed}`);
   }
 
   let ingested = 0;
@@ -125,6 +165,7 @@ async function main(): Promise<void> {
     slice.from,
     slice.to,
   );
+  await waitForProbeOverlay(slice.from, slice.to);
 
   const manifest: HuntManifest = {
     q: slice.q,
@@ -141,6 +182,8 @@ async function main(): Promise<void> {
     from: slice.from,
     to: slice.to,
     cols: HUNT_ROW_COLS,
+    metric: HUNT_PROBE_METRIC,
+    ml: HUNT_PROBE_ML,
   }).toString()}`;
   console.log(
     `billing errors ${slice.billingErrorBefore} → ${slice.billingErrorAfter} (search total ${billing})`,

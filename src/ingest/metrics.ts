@@ -39,7 +39,7 @@ function parseBody(text: string, contentType: string): unknown[] {
   }
 }
 
-async function insertMetrics(
+export async function insertMetricPoints(
   points: Array<{
     ts: string;
     name: string;
@@ -107,7 +107,7 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
   }
 
   try {
-    const ingested = await insertMetrics(points);
+    const ingested = await insertMetricPoints(points);
     incMetric("ingest_metrics", ingested);
     return c.json({ ingested });
   } catch (err) {

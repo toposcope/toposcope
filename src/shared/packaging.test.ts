@@ -195,5 +195,8 @@ describe("ingest guide CI samples", () => {
     expect(md).toContain('\\"source\\":\\"gitlab\\"');
     expect(md).toContain("The stored start stays");
     expect(md).toContain("same `id` without `end_ts` while still open is skipped");
+    expect(md).toContain("/v1/probes");
+    expect(md).toContain('"up":0');
+    expect(md).toContain("TOPOSCOPE_PROBE_URL");
   });
 });
