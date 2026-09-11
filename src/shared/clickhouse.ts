@@ -33,14 +33,18 @@ export function toIsoTimestamp(value: string): string {
 }
 
 export async function pingClickHouse(): Promise<boolean> {
-  const url = clickhouseUrl();
-  url.pathname = "/ping";
-  const res = await fetch(url, { headers: { Authorization: authHeader() } });
-  if (!res.ok) {
+  try {
+    const url = clickhouseUrl();
+    url.pathname = "/ping";
+    const res = await fetch(url, { headers: { Authorization: authHeader() } });
+    if (!res.ok) {
+      return false;
+    }
+    const text = (await res.text()).trim();
+    return text === "Ok.";
+  } catch {
     return false;
   }
-  const text = (await res.text()).trim();
-  return text === "Ok.";
 }
 
 export async function clickhouseQuery<T>(

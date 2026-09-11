@@ -67,9 +67,14 @@ export function parseProbeUrl(raw: unknown): string {
   return parsed.toString();
 }
 
+type ProbeFetch = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
+
 export async function pullProbeUp(
   target: string,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: ProbeFetch = fetch,
 ): Promise<ProbeUp> {
   try {
     const res = await fetchImpl(target, {
