@@ -90,7 +90,7 @@ export function TokensDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Ingest tokens</DialogTitle>
           <DialogDescription>
-            Bearer tokens for POST /api/ingest, POST /v1/logs, and POST /v1/metrics. The secret is shown once.
+            Bearer tokens for POST /api/ingest, POST /v1/logs, POST /v1/metrics, and POST /v1/probes. The secret is shown once.
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-3" onSubmit={(e) => void onCreate(e)}>

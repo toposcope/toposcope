@@ -1,8 +1,8 @@
 # Ingest
 
-Toposcope accepts logs, metrics, change marks, traces, and profiles over HTTP. The canonical path is Vector → `POST /v1/logs` with OTLP protobuf.
+Toposcope accepts logs, metrics, change marks, probes, traces, and profiles over HTTP. The canonical path is Vector → `POST /v1/logs` with OTLP protobuf.
 
-Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token.
+Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/probes`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token.
 
 ## Create an ingest token
 
@@ -16,7 +16,7 @@ curl -u "toposcope:${TOPOSCOPE_PASSWORD}" -X POST http://127.0.0.1:8080/api/api-
 
 ## Limits and responses
 
-HTTP ingest bodies are limited to 1 MB decoded. A request may contain at most 500 log events, metric points, change marks, spans, or profiles, depending on the endpoint. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
+HTTP ingest bodies are limited to 1 MB decoded. A request may contain at most 500 log events, metric points, change marks, probes, spans, or profiles, depending on the endpoint. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
 
 Successful requests return the number of ingested records. Invalid batches return a `4xx` response. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream.
 
@@ -140,6 +140,55 @@ mark_deploy:
         -H "content-type: application/json" \
         -d "{\"kind\":\"deploy\",\"title\":\"${CI_COMMIT_TAG}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${CI_COMMIT_TAG}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${CI_COMMIT_TAG}\",\"sha\":\"${CI_COMMIT_SHA}\",\"source\":\"gitlab\"}}"
 ```
+
+## Probes / liveness
+
+A consumed check is an explicit `up=0` or `up=1` on the hunt clock — the same ingested `up` metric the Series picker already overlays. It is not a log row, not `/api/health`, and not a second Nagios. A missing pull is stored as `up=0`, not a silent green. Empty overlay buckets stay omitted (`null`); they are not a fake 0.
+
+`POST /v1/probes` attaches a result or pulls one status URL. Same bearer/basic, 1 MB body, and 500-item batch as other ingest. Hunt paints with `metric=up` (optional `ml=service:billing`). `GET /api/probes` lists samples in a window.
+
+**Attach** — `{ service, up: 0|1, ts?, host?, check? }`. `up` must be the number `0` or `1`. One object returns `{ ingested, up }`. An array is attach-only (`{ ingested }`).
+
+**Pull** — one object `{ service, url }` (`http`/`https`). Toposcope GETs that URL (5s timeout) and stores `up=1` on 2xx, otherwise `up=0` (timeout, connect error, or non-2xx). Arrays cannot pull. Optional `check` is a label ident (`github`, `k8s`).
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/probes \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"service":"billing","up":0,"check":"github"}'
+```
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/probes \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"service":"billing","url":"http://127.0.0.1:8081/health","check":"k8s"}'
+```
+
+```bash
+curl -u "toposcope:${TOPOSCOPE_PASSWORD}" \
+  "http://127.0.0.1:8080/api/probes?range=1h&service=billing"
+```
+
+### GitHub Actions
+
+After deploy, attach the check or let Toposcope pull the status URL (set `TOPOSCOPE_PROBE_URL` when pulling):
+
+```yaml
+- name: Record billing liveness in Toposcope
+  env:
+    TOPOSCOPE_URL: ${{ secrets.TOPOSCOPE_URL }}
+    TOPOSCOPE_INGEST_TOKEN: ${{ secrets.TOPOSCOPE_INGEST_TOKEN }}
+    TOPOSCOPE_SERVICE: billing
+    TOPOSCOPE_PROBE_URL: ${{ secrets.TOPOSCOPE_PROBE_URL }}
+  run: |
+    curl -fsS -X POST "${TOPOSCOPE_URL}/v1/probes" \
+      -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+      -H "content-type: application/json" \
+      -d "{\"service\":\"${TOPOSCOPE_SERVICE}\",\"url\":\"${TOPOSCOPE_PROBE_URL}\",\"check\":\"github\"}"
+```
+
+To attach without a pull, POST `{"service":"billing","up":0}` when the job failed, or `up:1` when it passed.
 
 ## Traces
 

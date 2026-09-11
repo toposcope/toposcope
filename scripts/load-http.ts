@@ -103,6 +103,19 @@ export async function postMarks(
   return postJson(env, "/v1/marks", "application/json", JSON.stringify(marks));
 }
 
+export async function postProbes(
+  env: LoadHttpEnv,
+  probes: Array<{
+    service: string;
+    up: 0 | 1;
+    ts: string;
+    check?: string;
+    host?: string;
+  }>,
+): Promise<number> {
+  return postJson(env, "/v1/probes", "application/json", JSON.stringify(probes));
+}
+
 export async function postTraces(
   env: LoadHttpEnv,
   body: string | Uint8Array,

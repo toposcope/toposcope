@@ -11,6 +11,10 @@ export const HUNT_MARK_ID = "deploy-billing-v0.9";
 export const HUNT_CUSTOMER = "acme";
 export const HUNT_FLAG = "new-checkout";
 export const HUNT_ROW_COLS = "version,customer,flag";
+export const HUNT_PROBE_METRIC = "up";
+export const HUNT_PROBE_ML = "service:billing";
+export const HUNT_PROBE_STEP_MS = 60_000;
+export const HUNT_PROBE_DOWN_AFTER_MS = 10 * 60 * 1000;
 
 export type HuntEvent = {
   ts: string;
@@ -67,6 +71,13 @@ export const huntStillHere = {
   after: 28,
 } as const;
 
+export type HuntProbe = {
+  service: string;
+  up: 0 | 1;
+  ts: string;
+  check: string;
+};
+
 export type HuntSlice = {
   fromMs: number;
   toMs: number;
@@ -84,6 +95,7 @@ export type HuntSlice = {
     attrs: { version: string; source: string };
   };
   events: HuntEvent[];
+  probes: HuntProbe[];
   billingErrorBefore: number;
   billingErrorAfter: number;
 };
@@ -207,6 +219,7 @@ export function buildHuntSlice(nowMs: number): HuntSlice {
     ...stillAfter,
     ...firstSeen,
   ];
+  const probes = buildHuntProbes(fromMs, toMs, markMs);
 
   return {
     fromMs,
@@ -225,9 +238,30 @@ export function buildHuntSlice(nowMs: number): HuntSlice {
       attrs: { version: HUNT_MARK_TITLE, source: "hunt" },
     },
     events,
+    probes,
     billingErrorBefore: stillBefore.length,
     billingErrorAfter: stillAfter.length + firstSeen.length,
   };
+}
+
+export function buildHuntProbes(
+  fromMs: number,
+  toMs: number,
+  markMs: number,
+): HuntProbe[] {
+  const probes: HuntProbe[] = [];
+  const downUntil = markMs + HUNT_PROBE_DOWN_AFTER_MS;
+  for (let tsMs = fromMs; tsMs <= toMs; tsMs += HUNT_PROBE_STEP_MS) {
+    const afterMark = tsMs > markMs;
+    const down = afterMark && tsMs <= downUntil;
+    probes.push({
+      service: HUNT_MARK_SERVICE,
+      up: down ? 0 : 1,
+      ts: iso(tsMs),
+      check: "hunt",
+    });
+  }
+  return probes;
 }
 
 export type HuntManifest = {

@@ -6,6 +6,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 Ingest aliases OTEL `service.version` onto attr `version` when `version` is unset (sender `version` wins; the dotted key is dropped). `customer` and `flag` stay collector remaps. `bun run load:hunt` plants all three on the billing v0.9 slice, pins them as promoted columns, and writes `/tmp/toposcope-hunt.json` for screenshot capture. [#31](https://github.com/toposcope/toposcope/issues/31)
 
+`POST /v1/probes` attaches `{ service, up: 0|1 }` or pulls one status URL. A failed pull stores `up=0` (not a silent green). `GET /api/probes` lists samples. Hunt overlays the ingested `up` metric. `bun run load:hunt` plants billing down after the v0.9 mark and pins `metric=up&ml=service:billing`. [#33](https://github.com/toposcope/toposcope/issues/33)
+
 ## 0.4.7
 
 `POST /v1/marks` closes an open mark by posting the same caller `id` with `end_ts` (stored start stays). The same `id` without `end_ts` is still a skip, so a CI re-run does not move or close the glyph. Already closed is a skip, not a reopen. One object returns `{ ingested, id }`; an array returns `{ ingested, ids }`. [#28](https://github.com/toposcope/toposcope/issues/28)

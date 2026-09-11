@@ -45,6 +45,7 @@ describe("bootAllowsRequest", () => {
       expect(bootAllowsRequest(phase, "/api/search")).toBe(false);
       expect(bootAllowsRequest(phase, "/v1/logs")).toBe(false);
       expect(bootAllowsRequest(phase, "/v1/marks")).toBe(false);
+      expect(bootAllowsRequest(phase, "/v1/probes")).toBe(false);
     }
     expect(bootAllowsRequest("ready", "/api/search")).toBe(true);
   });

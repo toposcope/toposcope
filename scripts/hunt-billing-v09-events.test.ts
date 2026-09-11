@@ -7,6 +7,8 @@ import {
   huntFirstSeen,
   huntStillHere,
   HUNT_MARK_ID,
+  HUNT_PROBE_METRIC,
+  HUNT_PROBE_ML,
   HUNT_Q,
   HUNT_WINDOW_MS,
 } from "./hunt-billing-v09-events";
@@ -120,5 +122,20 @@ describe("buildHuntSlice", () => {
       }
     }
     expect(new Set(huntFirstSeen.map((bug) => bug.host)).size).toBe(3);
+  });
+
+  test("plants explicit up=0 after the mark, not a silent green", () => {
+    const before = slice.probes.filter((probe) => Date.parse(probe.ts) <= slice.markMs);
+    const after = slice.probes.filter((probe) => Date.parse(probe.ts) > slice.markMs);
+    expect(before.length).toBeGreaterThan(0);
+    expect(after.length).toBeGreaterThan(0);
+    expect(before.every((probe) => probe.up === 1)).toBe(true);
+    expect(after.some((probe) => probe.up === 0)).toBe(true);
+    expect(after.some((probe) => probe.up === 1)).toBe(true);
+    const firstDown = after.find((probe) => probe.up === 0);
+    expect(firstDown?.service).toBe("billing");
+    expect(Date.parse(firstDown?.ts ?? "")).toBeGreaterThan(slice.markMs);
+    expect(HUNT_PROBE_METRIC).toBe("up");
+    expect(HUNT_PROBE_ML).toBe("service:billing");
   });
 });

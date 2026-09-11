@@ -1,6 +1,6 @@
 # Architecture
 
-Two containers. Logs, ingested metrics, spans, profile samples, and change marks live in ClickHouse. The control plane (saved searches, alert rules, tokens, settings) lives in SQLite in the app process. Logs never go in SQLite. Metrics, spans, profiles, and change marks are not written into `logs`.
+Two containers. Logs, ingested metrics, spans, profile samples, and change marks live in ClickHouse. The control plane (saved searches, alert rules, tokens, settings) lives in SQLite in the app process. Logs never go in SQLite. Metrics, spans, profiles, and change marks are not written into `logs`. Consumed probes write the `up` metric; they are not a second table and not log rows.
 
 This file is the **shipped** system.
 
@@ -44,7 +44,7 @@ Query and facets read `attr_map`. `logs` has bloom skip indexes on `trace_id` an
 
 - `GET /api/health` and `GET /api/metrics` are open.
 - Browser UI and all other `/api/*` routes: HTTP basic auth, password `TOPOSCOPE_PASSWORD` (any username). Packaged boot refuses missing, empty, or demo (`toposcope` / `toposcope-ingest`) secrets and does not listen. `bun run dev` may fill localhost defaults.
-- `POST /api/ingest` and `POST /v1/logs` / `POST /v1/metrics` / `POST /v1/marks` / `POST /v1/traces` / `POST /v1/profiles` also accept `Authorization: Bearer` — env `TOPOSCOPE_INGEST_TOKEN` or a hashed row from `api_tokens`.
+- `POST /api/ingest` and `POST /v1/logs` / `POST /v1/metrics` / `POST /v1/marks` / `POST /v1/probes` / `POST /v1/traces` / `POST /v1/profiles` also accept `Authorization: Bearer` — env `TOPOSCOPE_INGEST_TOKEN` or a hashed row from `api_tokens`.
 
 ## HTTP
 
@@ -55,6 +55,8 @@ Query and facets read `attr_map`. `logs` has bloom skip indexes on `trace_id` an
 - `POST /v1/metrics` — JSON metric point or array (max 500, 1MB) `{ name, value, ts?, labels? }` → `{ ingested }`. Same bearer/basic as log ingest. Not Prometheus scrape.
 - `POST /v1/marks` — JSON change mark or array (max 500, 1MB) `{ kind, title, ts?, service?, attrs?, id?, end_ts? }` → one object `{ ingested, id }`, array `{ ingested, ids }`. `kind` is `deploy` | `flag` | `incident` | `note`. Omit `id` and ingest mints `mk_…`. Same caller `id` without `end_ts` while still open is skipped (CI retry; glyph stays). Same `id` with `end_ts` while open appends a close and **keeps the stored start**. Already closed is skipped (not a reopen). Valid POST is always 200. `end_ts` must be after the start (incident duration band on the hunt plot; other kinds stay points). Same bearer/basic. Writes `change_marks`, not `logs`.
 - `GET /api/marks?from=&to=&range=&kind=&service=` — `{ marks, before, after }` (cap 500, oldest first). `before` / `after` are the nearest neighbors outside the window. `range` or `from`+`to` required. Basic auth. Search / Follow draw them on the pinned volume plot; extra widgets, Surroundings, and boards do not.
+- `POST /v1/probes` — JSON check or array (max 500, 1MB). Attach `{ service, up: 0|1, ts?, host?, check?, url? }` or pull one `{ service, url }` (`http`/`https`, 5s GET). `up` is the number `0` or `1`. A failed pull (timeout, connect error, non-2xx) stores `up=0` — not a skip. Arrays are attach-only. One object `{ ingested, up }`, array `{ ingested }`. Same bearer/basic. Writes the ingested metric `up` (labels `service` / `host` / `check` / `target` / `source`), not `logs`. Hunt paints with the shipped Series overlay (`metric=up`). Not a check editor, not `/api/health`, not metric-threshold alerts.
+- `GET /api/probes?from=&to=&range=&service=` — `{ probes }` (cap 500, oldest first). `range` or `from`+`to` required. Basic auth. Each sample is `{ ts, service, host, check, target, up, source }`.
 - `POST /v1/traces` — OTLP JSON or protobuf traces → `{ ingested }`. Same bearer/basic, 1MB decoded body (gzip under that cap), and 500-span batch as log ingest. 429 when ClickHouse is busy. Maps `resourceSpans` onto `spans` (not `logs`). Store what arrives; sampling stays at the collector.
 - `GET /api/traces/:trace_id` — `{ spans, total }` for one request. The id must be 32 hex, not all zeros (400 otherwise; lowercased). 200 even when empty — not a 404. Cap 500 keeps the longest-duration branches plus their ancestors; `total` is the unclipped count. View trace joins when a log alias (`trace_id`, then `request_id`, then `traceid` / `req_id`) is that 32-hex shape; `req-…` is Follow only. Histogram / Follow / `q` stay on `logs`.
 - `POST /v1/profiles` — OTLP JSON or protobuf profiles → `{ ingested }`. Same bearer/basic, 1MB decoded body (gzip under that cap), and 500-`Profile` batch as log ingest. 429 when ClickHouse is busy. One decoded `Profile` is one renderable unit; do not merge. Store unlinked samples with empty `trace_id` / `span_id`. Sampling and whether `Link`s are attached stay at the collector.
