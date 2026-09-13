@@ -10,7 +10,8 @@ Locked chrome. Open the `.dc.html` files locally (they need `support.js` beside 
 Locked — compare vs a mark:
 
 - [Toposcope Compare.dc.html](Toposcope%20Compare.dc.html) — frames 3a–3j: inspector verb, fold under the lane, fingerprint as series, near now, zeros, Live freeze, crowded with the cut, anatomy, placement rejects, product rejects
-- [compare/](compare/) — crops of the Compare sheet for issues (3a–3j)
+- [Toposcope Compare Split.dc.html](Toposcope%20Compare%20Split.dc.html) — frames 4a–4j: the fold stacks one 30px row per key of the hunt’s existing histogram split (`level` | `service` | `host` | `none`); `none` is today’s single row; cap 8 + `other`; no second picker
+- [compare/](compare/) — crops of the Compare family for issues (3a–3j · 4a–4j)
 
 Locked — fingerprints after a mark:
 
