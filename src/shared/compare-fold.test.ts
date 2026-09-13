@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { fingerprintCutWindows } from "./fingerprint-cut";
+import { histogramSeriesCap } from "../query/histogram";
 import {
+  compareFoldCappedTotals,
   compareFoldKind,
   compareFoldMinus,
   compareFoldNote,
   compareFoldPercent,
+  compareFoldRowKeys,
   compareFoldSeriesText,
   compareFoldShowDelta,
+  compareFoldSideFromCount,
   compareFoldSideFromSearch,
   compareFoldSidesText,
   formatCompareFoldPercent,
@@ -45,9 +49,13 @@ describe("compareFoldPercent", () => {
     expect(formatCompareFoldPercent(-100)).toBe(`${compareFoldMinus}100%`);
   });
 
-  test("rounds under 9.5 to one decimal and under 0.95 to <1", () => {
+  test("rounds under 9.5 to one decimal, integers without .0, and sub-1% keeps the tenth", () => {
     expect(formatCompareFoldPercent(1.24)).toBe("+1.2%");
-    expect(formatCompareFoldPercent(-0.4)).toBe(`${compareFoldMinus}<1%`);
+    expect(formatCompareFoldPercent(4)).toBe("+4%");
+    expect(formatCompareFoldPercent(9)).toBe("+9%");
+    expect(formatCompareFoldPercent(0.47)).toBe("+0.5%");
+    expect(formatCompareFoldPercent(-0.4)).toBe(`${compareFoldMinus}0.4%`);
+    expect(formatCompareFoldPercent(0.04)).toBe("+<1%");
   });
 });
 
@@ -168,6 +176,48 @@ describe("compareFoldKind / side", () => {
       compareFoldSideFromSearch({ total: 0, agg: { stat: null, source: "numeric" } }, "numeric")
         .empty,
     ).toBe(true);
+  });
+});
+
+describe("compareFoldRowKeys", () => {
+  test("none is one events row; host caps 8 named plus other", () => {
+    expect(compareFoldRowKeys("none", new Map(), new Map())).toEqual(["events"]);
+    const before = new Map<string, number>();
+    const after = new Map<string, number>();
+    for (let i = 0; i < 10; i++) {
+      before.set(`host-${i}`, 10 - i);
+    }
+    const keys = compareFoldRowKeys("host", before, after);
+    expect(keys).toHaveLength(histogramSeriesCap + 1);
+    expect(keys[keys.length - 1]).toBe("other");
+    expect(keys).toContain("host-0");
+    expect(keys).not.toContain("host-9");
+    const capped = compareFoldCappedTotals("host", before);
+    expect(capped.get("other")).toBe(1 + 2);
+  });
+
+  test("preferred keys keep plot order, including other last", () => {
+    expect(
+      compareFoldRowKeys(
+        "host",
+        new Map([["billing-1", 850]]),
+        new Map([["billing-1", 854]]),
+        ["billing-1", "billing-2", "other"],
+      ),
+    ).toEqual(["billing-1", "billing-2", "other"]);
+  });
+
+  test("count and rate sides share the percent when windows are equal", () => {
+    const before = compareFoldSideFromCount(850, "count", 2940, false);
+    const after = compareFoldSideFromCount(854, "count", 2940, false);
+    expect(formatCompareFoldPercent(compareFoldPercent(before.v, after.v) ?? 0)).toBe(
+      "+0.5%",
+    );
+    const beforeRate = compareFoldSideFromCount(850, "rate", 2940, false);
+    const afterRate = compareFoldSideFromCount(854, "rate", 2940, false);
+    expect(
+      formatCompareFoldPercent(compareFoldPercent(beforeRate.v, afterRate.v) ?? 0),
+    ).toBe("+0.5%");
   });
 });
 

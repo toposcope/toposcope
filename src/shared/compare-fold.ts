@@ -1,4 +1,9 @@
+import {
+  histogramSeriesCap,
+  type HistogramSplit,
+} from "../query/histogram";
 import { fingerprintCutShortMs, type FingerprintCutWindows } from "./fingerprint-cut";
+import { levels } from "./log-event";
 
 /** Unicode minus — the fold paints −12% / −418, not a hyphen. */
 export const compareFoldMinus = "\u2212";
@@ -45,13 +50,17 @@ export function compareFoldPercent(
 export function formatCompareFoldPercent(p: number): string {
   const sign = p >= 0 ? "+" : compareFoldMinus;
   const abs = Math.abs(p);
-  const body =
-    abs >= 9.5
-      ? String(Math.round(abs))
-      : abs >= 0.95
-        ? abs.toFixed(1)
-        : "<1";
-  return `${sign}${body}%`;
+  if (abs >= 9.5) {
+    return `${sign}${Math.round(abs)}%`;
+  }
+  const tenths = Math.round(abs * 10) / 10;
+  if (tenths === 0) {
+    return `${sign}<1%`;
+  }
+  if (tenths >= 1 && Number.isInteger(tenths)) {
+    return `${sign}${tenths}%`;
+  }
+  return `${sign}${tenths.toFixed(1)}%`;
 }
 
 export function compareFoldSideFromSearch(
@@ -170,6 +179,122 @@ export function compareFoldSidesText(input: {
     ? `the band · ${input.formatDuration(input.windows.sideMs)}, mirrored`
     : `equal ${input.formatDuration(input.windows.sideMs)}`;
   return input.frozen ? `${core} · fixed ${input.frozenStamp}` : core;
+}
+
+export type CompareFoldBuckets = ReadonlyArray<{
+  n: number;
+  series: Record<string, number>;
+}>;
+
+export function compareFoldSeriesTotal(
+  buckets: CompareFoldBuckets,
+  key: string,
+  split: HistogramSplit,
+): number {
+  if (split === "none" || key === "events") {
+    return buckets.reduce((sum, bucket) => sum + bucket.n, 0);
+  }
+  return buckets.reduce((sum, bucket) => sum + (bucket.series[key] ?? 0), 0);
+}
+
+export function compareFoldTotals(
+  buckets: CompareFoldBuckets,
+  split: HistogramSplit,
+): Map<string, number> {
+  const totals = new Map<string, number>();
+  if (split === "none") {
+    totals.set("events", compareFoldSeriesTotal(buckets, "events", split));
+    return totals;
+  }
+  for (const bucket of buckets) {
+    for (const [key, n] of Object.entries(bucket.series)) {
+      totals.set(key, (totals.get(key) ?? 0) + n);
+    }
+  }
+  return totals;
+}
+
+export function compareFoldCappedTotals(
+  split: HistogramSplit,
+  totals: Map<string, number>,
+): Map<string, number> {
+  if (split === "none" || split === "level") {
+    return new Map(totals);
+  }
+  const named = [...totals.entries()]
+    .filter(([key]) => key !== "other")
+    .sort((a, b) => b[1] - a[1]);
+  const leftover = totals.get("other") ?? 0;
+  if (named.length <= histogramSeriesCap) {
+    const out = new Map(named);
+    if (leftover > 0) {
+      out.set("other", leftover);
+    }
+    return out;
+  }
+  const keep = named.slice(0, histogramSeriesCap);
+  const rest = named.slice(histogramSeriesCap);
+  const other = leftover + rest.reduce((sum, [, n]) => sum + n, 0);
+  const out = new Map(keep);
+  if (other > 0) {
+    out.set("other", other);
+  }
+  return out;
+}
+
+export function compareFoldRowKeys(
+  split: HistogramSplit,
+  before: Map<string, number>,
+  after: Map<string, number>,
+  preferred?: readonly string[],
+): string[] {
+  if (split === "none") {
+    return ["events"];
+  }
+  if (preferred && preferred.length > 0) {
+    return [...preferred];
+  }
+  const combined = new Map<string, number>();
+  for (const [key, n] of before) {
+    combined.set(key, (combined.get(key) ?? 0) + n);
+  }
+  for (const [key, n] of after) {
+    combined.set(key, (combined.get(key) ?? 0) + n);
+  }
+  const capped = compareFoldCappedTotals(split, combined);
+  if (split === "level") {
+    return levels.filter((level) => (capped.get(level) ?? 0) > 0);
+  }
+  const named = [...capped.keys()].filter((key) => key !== "other");
+  named.sort((a, b) => (capped.get(b) ?? 0) - (capped.get(a) ?? 0));
+  if (capped.has("other")) {
+    named.push("other");
+  }
+  return named;
+}
+
+export function compareFoldSideFromCount(
+  n: number,
+  kind: CompareFoldKind,
+  windowSec: number,
+  refused: boolean,
+): CompareFoldSide {
+  if (refused) {
+    return { v: null, n: 0, empty: true, refused: true };
+  }
+  if (kind === "count") {
+    return { v: n, n, empty: n === 0, refused: false };
+  }
+  if (kind === "rate") {
+    const v = windowSec > 0 ? n / windowSec : null;
+    return {
+      v: v != null && Number.isFinite(v) ? v : null,
+      n,
+      empty: n === 0,
+      refused: false,
+    };
+  }
+  return { v: n === 0 ? null : n, n, empty: n === 0, refused: false };
 }
 
 export function compareFoldShowDelta(

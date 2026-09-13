@@ -182,8 +182,7 @@ async function main(): Promise<void> {
     from: slice.from,
     to: slice.to,
     cols: HUNT_ROW_COLS,
-    metric: HUNT_PROBE_METRIC,
-    ml: HUNT_PROBE_ML,
+    split: "host",
   }).toString()}`;
   console.log(
     `billing errors ${slice.billingErrorBefore} → ${slice.billingErrorAfter} (search total ${billing})`,

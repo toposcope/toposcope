@@ -10,6 +10,7 @@ import {
   histogramIntervalSql,
   histogramUsesMinuteRollup,
   isOneColumnInterval,
+  histogramSeriesCap,
   parseHistogramChart,
   parseHistogramInterval,
   parseHistogramSplit,
@@ -246,7 +247,7 @@ describe("capHistogramSeries", () => {
     const capped = capHistogramSeries(foldHistogramRows(rows), "service");
     const keys = Object.keys(capped[0]?.series ?? {});
     expect(keys).toContain("other");
-    expect(keys).toHaveLength(9);
+    expect(keys).toHaveLength(histogramSeriesCap + 1);
     expect(capped[0]?.series.other).toBe(1 + 2);
   });
 });

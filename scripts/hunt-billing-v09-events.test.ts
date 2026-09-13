@@ -5,6 +5,8 @@ import {
   buildHuntSlice,
   huntBugFingerprint,
   huntFirstSeen,
+  huntHostPercents,
+  huntHostSlices,
   huntStillHere,
   HUNT_MARK_ID,
   HUNT_PROBE_METRIC,
@@ -12,6 +14,10 @@ import {
   HUNT_Q,
   HUNT_WINDOW_MS,
 } from "./hunt-billing-v09-events";
+import {
+  compareFoldPercent,
+  formatCompareFoldPercent,
+} from "../src/shared/compare-fold";
 
 const now = Date.parse("2026-08-31T18:00:00.000Z");
 
@@ -47,32 +53,59 @@ describe("buildHuntSlice", () => {
     }
   });
 
-  test("still-here timeouts sit on both sides", () => {
-    const before = slice.events.filter(
-      (event) =>
-        event.service === "billing" &&
-        event.level === "error" &&
-        event.message === huntStillHere.message &&
-        Date.parse(event.ts) < slice.markMs,
-    );
-    const after = slice.events.filter(
-      (event) =>
-        event.service === "billing" &&
-        event.level === "error" &&
-        event.message === huntStillHere.message &&
-        Date.parse(event.ts) > slice.markMs,
-    );
-    expect(before.length).toBe(huntStillHere.before);
-    expect(after.length).toBe(huntStillHere.after);
+  test("still-here timeouts sit on both sides of each billing host", () => {
+    const still = (host: string, side: "before" | "after") =>
+      slice.events.filter((event) => {
+        const ts = Date.parse(event.ts);
+        const onSide =
+          side === "before" ? ts < slice.markMs : ts > slice.markMs;
+        return (
+          event.service === "billing" &&
+          event.level === "error" &&
+          event.host === host &&
+          event.message === huntStillHere.message &&
+          onSide
+        );
+      });
+    for (const hostSlice of huntHostSlices) {
+      expect(still(hostSlice.host, "before").length).toBe(hostSlice.still);
+      expect(still(hostSlice.host, "after").length).toBe(hostSlice.still);
+    }
   });
 
   test("billing errors rise after the mark", () => {
+    const stillTotal = huntHostSlices.reduce((sum, host) => sum + host.still, 0);
     expect(slice.billingErrorAfter).toBeGreaterThan(slice.billingErrorBefore);
-    expect(slice.billingErrorBefore).toBe(huntStillHere.before);
+    expect(slice.billingErrorBefore).toBe(stillTotal);
     expect(slice.billingErrorAfter).toBe(
-      huntStillHere.after +
-        huntFirstSeen.reduce((sum, bug) => sum + bug.after, 0),
+      stillTotal + huntFirstSeen.reduce((sum, bug) => sum + bug.after, 0),
     );
+  });
+
+  test("split Host percents are 0.5 / 4 / 9 on the three billing hosts", () => {
+    expect(huntFirstSeen.map((bug) => bug.after)).toEqual(
+      huntHostSlices.map((host) => host.bugAfter),
+    );
+    const formatted = huntHostSlices.map((hostSlice) => {
+      const before = slice.events.filter(
+        (event) =>
+          event.service === "billing" &&
+          event.level === "error" &&
+          event.host === hostSlice.host &&
+          Date.parse(event.ts) < slice.markMs,
+      ).length;
+      const after = slice.events.filter(
+        (event) =>
+          event.service === "billing" &&
+          event.level === "error" &&
+          event.host === hostSlice.host &&
+          Date.parse(event.ts) > slice.markMs,
+      ).length;
+      expect(before).toBe(hostSlice.still);
+      expect(after).toBe(hostSlice.still + hostSlice.bugAfter);
+      return formatCompareFoldPercent(compareFoldPercent(before, after) ?? 0);
+    });
+    expect(formatted).toEqual([...huntHostPercents]);
   });
 
   test("first-seen bugs have distinct fingerprints", () => {

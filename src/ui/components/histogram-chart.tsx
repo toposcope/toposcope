@@ -66,7 +66,7 @@ import {
   MarkGlyph,
   type MarksOverlay,
 } from "./histogram-marks";
-import { CompareFold, type CompareFoldProps } from "./compare-fold";
+import { CompareFold, type CompareFoldHunt } from "./compare-fold";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
@@ -109,7 +109,7 @@ type Props = {
   marks?: MarksOverlay | null;
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
-  compareFold?: CompareFoldProps | null;
+  compareFold?: CompareFoldHunt | null;
 };
 
 function bucketEndMs(bucket: HistogramBucket, stepMs: number): number {
@@ -1483,7 +1483,9 @@ export function HistogramChart({
           )}
         </div>
       ) : null}
-      {marks && compareFold ? <CompareFold {...compareFold} /> : null}
+      {marks && compareFold ? (
+        <CompareFold {...compareFold} split={split} seriesKeys={keys} />
+      ) : null}
       <div className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2.5 border-t border-white/[0.08] pr-2.5 pb-1.5 pl-[47px] pt-1.5">
         {showVolume
           ? keys.map((key, i) => (

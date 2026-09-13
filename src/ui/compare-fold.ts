@@ -7,7 +7,7 @@ export type CompareFoldSnap = {
   openedAt: string;
 };
 
-/** Live polls slide from/to; the fold stays frozen until q, span, or series changes. */
+/** Live polls slide from/to; the fold stays frozen until q, span, split, or series changes. */
 export function compareFoldFetchKey(input: {
   q: string;
   live: boolean;
@@ -17,6 +17,7 @@ export function compareFoldFetchKey(input: {
   agg: string | null;
   metric: string | null;
   ml: string;
+  split: string;
 }): string {
-  return `${fingerprintCutFetchKey(input)}\0${input.agg ?? ""}\0${input.metric ?? ""}\0${input.ml}`;
+  return `${fingerprintCutFetchKey(input)}\0${input.agg ?? ""}\0${input.metric ?? ""}\0${input.ml}\0${input.split}`;
 }

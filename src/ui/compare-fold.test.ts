@@ -13,6 +13,7 @@ describe("compareFoldFetchKey", () => {
       agg: "rate" as string | null,
       metric: null as string | null,
       ml: "",
+      split: "none",
     };
     expect(compareFoldFetchKey(live)).toBe(
       compareFoldFetchKey({ ...live, from: "c", to: "d" }),
@@ -29,6 +30,9 @@ describe("compareFoldFetchKey", () => {
     expect(compareFoldFetchKey({ ...live, agg: null })).not.toBe(
       compareFoldFetchKey({ ...live, agg: null, metric: "cpu_seconds" }),
     );
+    expect(compareFoldFetchKey(live)).not.toBe(
+      compareFoldFetchKey({ ...live, split: "host" }),
+    );
   });
 });
 
@@ -41,7 +45,23 @@ describe("compare fold chrome", () => {
     expect(marks).toMatch(/onCompare/);
     expect(fold).toMatch(/h-\[30px\]/);
     expect(fold).toMatch(/ml-\[47px\]/);
+    expect(fold).toMatch(/>\s*split\s*</);
+    expect(fold).not.toMatch(/<select/);
     expect(chart).toMatch(/CompareFold/);
+    expect(chart).toMatch(/seriesKeys=\{keys\}/);
+  });
+
+  test("fold follows the hunt histogram split; × dismisses only the stack", () => {
+    const fold = readFileSync("src/ui/components/compare-fold.tsx", "utf8");
+    expect(fold).toMatch(/split !== "none"/);
+    expect(fold).toMatch(/seriesColor/);
+    expect(fold).not.toMatch(/onSplit/);
+    const app = readFileSync("src/ui/App.tsx", "utf8");
+    const open = app.slice(
+      app.indexOf("function openCompare"),
+      app.indexOf("function restorePaint"),
+    );
+    expect(open).not.toMatch(/setSplit\(/);
   });
 
   test("fold × does not clear the cut; Compare does not rewrite q", () => {
