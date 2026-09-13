@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Inspector Compare follows the hunt’s histogram split: `none` is the shipped single row; `level` / `service` / `host` stack one 30px row per series key under the lane (cap 8 + `other`), same mark / windows / percent rules. Sub-1% keeps its decimal. `bun run load:hunt` pins `split=host` so the billing hosts read **+0.5% / +4% / +9%**. [#35](https://github.com/toposcope/toposcope/issues/35)
+
 Ingest aliases OTEL `service.version` onto attr `version` when `version` is unset (sender `version` wins; the dotted key is dropped). `customer` and `flag` stay collector remaps. `bun run load:hunt` plants all three on the billing v0.9 slice, pins them as promoted columns, and writes `/tmp/toposcope-hunt.json` for screenshot capture. [#31](https://github.com/toposcope/toposcope/issues/31)
 
 `POST /v1/probes` attaches `{ service, up: 0|1 }` or pulls one status URL. A failed pull stores `up=0` (not a silent green). `GET /api/probes` lists samples. Hunt overlays the ingested `up` metric. `bun run load:hunt` plants billing down after the v0.9 mark and pins `metric=up&ml=service:billing`. [#33](https://github.com/toposcope/toposcope/issues/33)

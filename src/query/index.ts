@@ -23,6 +23,7 @@ import {
   histogramIntervalMs,
   histogramIntervalSql,
   histogramUsesMinuteRollup,
+  histogramSeriesCap,
   parseHistogramSplit,
   rollupSource,
   singleAttrKey,
@@ -425,8 +426,6 @@ export function foldHistogramRows(rows: HistogramRow[]): HistogramBucket[] {
   return [...byBucket.values()].sort((a, b) => a.t.localeCompare(b.t));
 }
 
-const seriesCap = 8;
-
 export function capHistogramSeries(
   buckets: HistogramBucket[],
   split: HistogramSplit,
@@ -441,10 +440,12 @@ export function capHistogramSeries(
     }
   }
   const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-  if (ranked.length <= seriesCap) {
+  if (ranked.length <= histogramSeriesCap) {
     return buckets;
   }
-  const keep = new Set(ranked.slice(0, seriesCap).map(([key]) => key));
+  const keep = new Set(
+    ranked.slice(0, histogramSeriesCap).map(([key]) => key),
+  );
   return buckets.map((bucket) => {
     const series: Record<string, number> = {};
     let other = 0;

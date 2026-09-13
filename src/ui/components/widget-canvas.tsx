@@ -6,7 +6,7 @@ import {
   HistogramMarksChip,
   type MarksOverlay,
 } from "@/components/histogram-marks";
-import { type CompareFoldProps } from "@/components/compare-fold";
+import { type CompareFoldHunt } from "@/components/compare-fold";
 import { HbarHead, HbarWidget, hbarPaintedRows, type HbarCommand } from "@/components/hbar-widget";
 import { StatHead, StatWidget, statSeriesFile } from "@/components/stat-widget";
 import {
@@ -99,7 +99,7 @@ type Props = {
   marks?: MarksOverlay | null;
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
-  compareFold?: CompareFoldProps | null;
+  compareFold?: CompareFoldHunt | null;
 };
 
 type Drag = {

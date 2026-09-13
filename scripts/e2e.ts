@@ -195,6 +195,54 @@ async function main(): Promise<void> {
     throw new Error("expected an error bucket in the histogram");
   }
 
+  const splitHosts = ["billing-1", "billing-2", "billing-3"] as const;
+  const splitIngestRes = await fetch(`${APP_URL}/api/ingest`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${INGEST_TOKEN}`,
+    },
+    body: JSON.stringify(
+      splitHosts.map((host) => ({
+        service: "billing",
+        host,
+        level: "error",
+        message: marker,
+      })),
+    ),
+  });
+  if (!splitIngestRes.ok) {
+    throw new Error(
+      `split ingest failed: ${splitIngestRes.status} ${await splitIngestRes.text()}`,
+    );
+  }
+  const splitSearchRes = await fetch(
+    `${APP_URL}/api/search?${new URLSearchParams({
+      from,
+      to,
+      q: `level:error service:billing ${marker}`,
+      split: "host",
+      events: "0",
+    }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  if (!splitSearchRes.ok) {
+    throw new Error(
+      `host split search failed: ${splitSearchRes.status} ${await splitSearchRes.text()}`,
+    );
+  }
+  const splitSearch = (await splitSearchRes.json()) as {
+    histogram: Array<{ series: Record<string, number> }>;
+  };
+  const splitKeys = new Set(
+    splitSearch.histogram.flatMap((bucket) => Object.keys(bucket.series)),
+  );
+  for (const host of splitHosts) {
+    if (!splitKeys.has(host)) {
+      throw new Error(`host split missing ${host}, keys=${[...splitKeys]}`);
+    }
+  }
+
   const booleanRes = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({
       from,

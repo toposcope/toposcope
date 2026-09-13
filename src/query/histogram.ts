@@ -4,6 +4,9 @@ import { analyzeQuery, forEachAttrKv, type CompiledQuery } from "./compile";
 export const histogramSplits = ["level", "service", "host", "none"] as const;
 export type HistogramSplit = (typeof histogramSplits)[number];
 
+/** Named series on service/host split; the rest collapse to `other`. */
+export const histogramSeriesCap = 8;
+
 export const histogramCharts = ["stacked", "grouped", "line", "area"] as const;
 export type HistogramChartKind = (typeof histogramCharts)[number];
 

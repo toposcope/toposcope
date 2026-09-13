@@ -43,7 +43,7 @@ export const huntFirstSeen: readonly HuntBug[] = [
       { file: "vendor/http.ts", function: "request" },
     ]),
     host: "billing-1",
-    after: 18,
+    after: 4,
   },
   {
     message: "invoice PDF render failed",
@@ -52,7 +52,7 @@ export const huntFirstSeen: readonly HuntBug[] = [
       { file: "billing/invoice.ts", function: "renderPdf", in_app: true },
     ]),
     host: "billing-2",
-    after: 12,
+    after: 21,
   },
   {
     message: "stripe webhook 409",
@@ -61,15 +61,22 @@ export const huntFirstSeen: readonly HuntBug[] = [
       { file: "billing/webhook.ts", function: "handleStripe", in_app: true },
     ]),
     host: "billing-3",
-    after: 9,
+    after: 63,
   },
 ];
 
 export const huntStillHere = {
   message: "timeout",
-  before: 24,
-  after: 28,
 } as const;
+
+/** Equal-window still-here plus the first-seen bug that is the host's delta. */
+export const huntHostSlices = [
+  { host: "billing-1", still: 850, bugAfter: 4 },
+  { host: "billing-2", still: 525, bugAfter: 21 },
+  { host: "billing-3", still: 700, bugAfter: 63 },
+] as const;
+
+export const huntHostPercents = ["+0.5%", "+4%", "+9%"] as const;
 
 export type HuntProbe = {
   service: string;
@@ -196,18 +203,15 @@ export function buildHuntSlice(nowMs: number): HuntSlice {
     background.push(event);
   }
 
-  const stillBefore = spread(
-    huntStillHere.before,
-    fromMs,
-    beforeTo,
-    (_i, tsMs) => billingError(tsMs, huntStillHere.message),
+  const stillBefore = huntHostSlices.flatMap((slice) =>
+    spread(slice.still, fromMs, beforeTo, (_i, tsMs) =>
+      billingError(tsMs, huntStillHere.message, {}, slice.host),
+    ),
   );
-  const stillAfter = spread(
-    huntStillHere.after,
-    afterFrom,
-    toMs,
-    (_i, tsMs) =>
-      billingError(tsMs, huntStillHere.message, { version: HUNT_MARK_TITLE }),
+  const stillAfter = huntHostSlices.flatMap((slice) =>
+    spread(slice.still, afterFrom, toMs, (_i, tsMs) =>
+      billingError(tsMs, huntStillHere.message, { version: HUNT_MARK_TITLE }, slice.host),
+    ),
   );
   const firstSeen = huntFirstSeen.flatMap((bug) =>
     spread(bug.after, afterFrom, toMs, (_i, tsMs) => framed(tsMs, bug)),

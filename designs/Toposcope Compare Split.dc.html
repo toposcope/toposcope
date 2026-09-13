@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:oklch(0.906 0.014 84); text-decoration:none; }
+  a:hover { color:oklch(0.985 0 0); }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:oklch(1 0 0 / 12%); border-radius:99px; border:3px solid oklch(0.115 0.004 285.8); }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="max-width:1120px;">
+    <div style="display:flex; align-items:baseline; gap:12px;">
+      <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+      <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Compare — split one facet</h1>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Search · frames 4a–4j · continues Compare 3a–3j</span>
+    </div>
+    <p style="margin:10px 0 0; max-width:940px; font-size:13px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">The fold prices one series across one mark. This sheet makes it price the series the plot already draws — <span style="color:oklch(0.985 0 0);">one 30px row per key of the hunt&rsquo;s existing histogram split</span>, stacked under the same mark, the same equal windows, the same &times;. Split <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">host</span> on <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;">level:error service:billing</span> is the sentence this chrome must let an operator type: <span style="color:oklch(0.985 0 0);">v0.9 increased the error rate on the billing servers by 0.5%, 4% and 9% respectively.</span> No new picker, no table widget, no percent painted on the plot. Drawn states, not one happy path. Continues <a href="Toposcope%20Compare.dc.html">Toposcope Compare.dc.html</a>.</p>
+    <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding:12px 14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ system }}" as="s" hint-placeholder-count="5">
+        <div style="display:flex; gap:9px; font-size:12.5px; line-height:1.5; color:oklch(0.705 0.015 286.067);">
+          <span style="flex:0 0 auto; width:14px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84 / 75%);">{{ s.n }}</span>
+          <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ s.head }}</span> {{ s.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-for list="{{ frames }}" as="f" hint-placeholder-count="2">
+    <div id="{{ f.id }}" data-screen-label="{{ f.label }}" style="margin-top:40px; max-width:1120px;">
+      <div style="display:flex; gap:12px; align-items:baseline; max-width:1120px;">
+        <a href="{{ f.href }}" style="{{ badge }}">{{ f.id }}</a>
+        <div style="min-width:0;">
+          <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">{{ f.title }}</div>
+          <p style="{{ capBody }}">{{ f.body }}</p>
+        </div>
+      </div>
+      <div style="width:1120px; margin-top:12px; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:oklch(0.141 0.005 285.823); box-shadow:0 20px 50px oklch(0 0 0 / 35%); overflow:hidden;">
+        <div style="display:flex; align-items:stretch;">
+          <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column; padding:12px;">
+            <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; height:32px; margin-bottom:10px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:oklch(0.141 0.005 285.823);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12.5px; color:oklch(0.985 0 0);">{{ f.bar }}</span>
+              <span style="flex:1;"></span>
+              <sc-if value="{{ f.splits }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;">
+                  <sc-for list="{{ f.splits }}" as="s" hint-placeholder-count="4"><span style="{{ s.s }}">{{ s.t }}</span></sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ f.series }}" hint-placeholder-val="{{ false }}">
+                <span style="flex:0 0 auto; white-space:nowrap; font-size:11px; color:oklch(0.705 0.015 286.067);">Series</span>
+                <span style="display:flex; align-items:center; gap:6px; flex:0 0 auto; height:24px; padding:0 7px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:#18181b; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0);">{{ f.series }} <span style="font-size:8px; color:oklch(0.705 0.015 286.067);">▾</span></span>
+              </sc-if>
+              <sc-if value="{{ f.live }}" hint-placeholder-val="{{ false }}">
+                <span style="display:flex; align-items:center; gap:5px; flex:0 0 auto; font-size:11px; color:oklch(0.985 0 0 / 80%);"><span style="width:6px; height:6px; border-radius:99px; background:#4ade80;"></span>Live</span>
+              </sc-if>
+            </div>
+            <div style="{{ f.plotBox }}">
+              <div style="position:absolute; inset:4px 0; display:flex; align-items:flex-end; gap:1px; padding:0 2px;">
+                <sc-for list="{{ f.cols }}" as="c" hint-placeholder-count="24"><div style="{{ c }}"></div></sc-for>
+              </div>
+              <sc-for list="{{ f.washes }}" as="w" hint-placeholder-count="2"><div style="{{ w }}"></div></sc-for>
+              <sc-for list="{{ f.tags }}" as="tg" hint-placeholder-count="1"><div style="{{ tg.s }}">{{ tg.t }}</div></sc-for>
+            </div>
+            <div style="{{ f.laneBox }}">
+              <sc-for list="{{ f.lane }}" as="m" hint-placeholder-count="1">
+                <span style="{{ m.wrap }}">
+                  <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto; display:block;"><path d="{{ m.d }}" fill="{{ m.f }}"></path></svg>
+                  <span style="{{ m.labelStyle }}">{{ m.label }}</span>
+                </span>
+              </sc-for>
+            </div>
+            <sc-if value="{{ f.axisOn }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; justify-content:space-between; margin-top:2px; padding:0 2px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">
+                <sc-for list="{{ f.axis }}" as="a" hint-placeholder-count="5"><span>{{ a }}</span></sc-for>
+              </div>
+            </sc-if>
+            <sc-for list="{{ f.stacks }}" as="stk" hint-placeholder-count="1">
+              <div style="flex:0 0 auto; margin-top:6px;">
+                <sc-if value="{{ stk.label }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-bottom:3px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px; color:oklch(0.705 0.015 286.067 / 70%);">{{ stk.label }}</div>
+                </sc-if>
+                <div style="{{ stk.wrap }}">
+                  <div style="{{ stkHead }}">
+                    <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg>
+                    <sc-for list="{{ stk.head }}" as="fs" hint-placeholder-count="7"><span style="{{ fs.s }}">{{ fs.t }}<span style="{{ fs.chip }}">{{ fs.n }}</span></span></sc-for>
+                    <span style="{{ xBtn }}" title="Dismiss compare — the mark stays selected; the hunt&rsquo;s split stays where it was">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                    </span>
+                  </div>
+                  <sc-for list="{{ stk.rows }}" as="r" hint-placeholder-count="3">
+                    <div style="{{ stkRow }}">
+                      <span style="{{ r.sw }}"></span>
+                      <sc-for list="{{ r.segs }}" as="fs" hint-placeholder-count="7"><span style="{{ fs.s }}">{{ fs.t }}<span style="{{ fs.chip }}">{{ fs.n }}</span></span></sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ f.foldVars }}" as="fv" hint-placeholder-count="1">
+              <div style="{{ foldVarWrap }}">
+                <span style="{{ foldVarLbl }}">{{ fv.label }}</span>
+                <sc-for list="{{ fv.segs }}" as="fs" hint-placeholder-count="6"><span style="{{ fs.s }}">{{ fs.t }}</span></sc-for>
+              </div>
+            </sc-for>
+            <sc-if value="{{ f.strip }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; align-items:center; gap:6px; flex:0 0 auto; margin-top:8px;">
+                <sc-for list="{{ f.strip }}" as="sp" hint-placeholder-count="2"><span style="{{ sp.s }}">{{ sp.t }}</span></sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ f.void }}" hint-placeholder-val="{{ false }}">
+              <div style="flex:1 1 auto; display:flex; align-items:center; justify-content:center; min-height:56px; margin-top:10px; border:1px dashed oklch(1 0 0 / 10%); border-radius:4.4px;">
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 55%);">{{ f.void }}</span>
+              </div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ f.cut }}" hint-placeholder-val="{{ false }}">
+            <aside style="display:flex; flex-direction:column; flex:0 0 398px; min-width:0; border-left:1px solid oklch(1 0 0 / 10%); background:#0f0f11;">
+              <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:9px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+                <svg width="12" height="12" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg>
+                <span style="flex:1; min-width:0; font-size:12.5px; font-weight:600; color:oklch(0.985 0 0); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ f.cut.title }}</span>
+                <span style="{{ xBtn }}" title="End Fingerprints">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                </span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:3px; flex:0 0 auto; padding:8px 10px; border-bottom:1px solid oklch(1 0 0 / 10%);">
+                <sc-for list="{{ f.cut.sub }}" as="cw" hint-placeholder-count="3">
+                  <div style="display:flex; gap:8px;">
+                    <span style="flex:0 0 52px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067 / 75%);">{{ cw.k }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0 / 88%); white-space:nowrap;">{{ cw.v }}</span>
+                  </div>
+                </sc-for>
+                <sc-for list="{{ f.cut.notes }}" as="cn" hint-placeholder-count="1">
+                  <div style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; line-height:1.45;">
+                    <span style="flex:0 0 auto; color:#fbbf24;">▲</span><span style="text-wrap:pretty; color:oklch(0.906 0.014 84 / 90%);">{{ cn }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:1 1 auto; min-height:0;">
+                <sc-for list="{{ f.cut.sets }}" as="cs" hint-placeholder-count="3">
+                  <div>
+                    <div style="display:flex; align-items:baseline; gap:7px; padding:9px 10px 5px;">
+                      <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.985 0 0);">{{ cs.name }}</span>
+                      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cs.count }}</span>
+                    </div>
+                    <sc-for list="{{ cs.rows }}" as="cr" hint-placeholder-count="2">
+                      <div style="{{ cr.wrap }}">
+                        <div style="display:flex; align-items:center; gap:7px;">
+                          <span style="flex:1; min-width:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0 / 90%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ cr.msg }}</span>
+                          <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067); font-variant-numeric:tabular-nums;">{{ cr.counts }}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:7px;">
+                          <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.906 0.014 84 / 85%);">{{ cr.hex }}</span>
+                          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ cr.svc }}</span>
+                          <span style="flex:1;"></span>
+                          <span style="{{ cr.fStyle }}">{{ cr.fLabel }}</span>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{ cs.empty }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:2px 10px 8px; font-size:11px; color:oklch(0.705 0.015 286.067 / 60%);">{{ cs.empty }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:0 0 auto; padding:8px 10px; border-top:1px solid oklch(1 0 0 / 10%); background:oklch(0.141 0.005 285.823 / 45%);">
+                <p style="margin:0; font-size:10.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">{{ f.cut.foot }}</p>
+              </div>
+            </aside>
+          </sc-if>
+        </div>
+      </div>
+      <p style="margin:9px 0 0; max-width:1120px; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 85%);">{{ f.fine }}</p>
+    </div>
+  </sc-for>
+
+  <div id="4g" data-screen-label="4g anatomy" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#4g" style="{{ badge }}">4g</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Stack anatomy — one fold, more rows</div>
+        <p style="{{ capBody }}">Every part of the single fold survives; the split only multiplies the middle. Shared things are said once — the mark, the equal windows, the freeze stamp, the &times;. Per-key things are said per row — the key, both sides, the delta, the percent or its state. Nothing is titled, stored, or colored good or bad.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:14px; margin-top:12px; align-items:flex-start; width:1120px;">
+      <div style="flex:0 0 660px; max-width:660px; min-width:0;">
+        <div style="{{ anatWrap }}">
+          <div style="{{ anatHead }}">
+            <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg>
+            <sc-for list="{{ anatHeadSegs }}" as="fs" hint-placeholder-count="7"><span style="{{ fs.s }}">{{ fs.t }}<span style="{{ fs.chip }}">{{ fs.n }}</span></span></sc-for>
+            <span style="{{ xBtn }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg></span>
+          </div>
+          <sc-for list="{{ anatRows }}" as="r" hint-placeholder-count="5">
+            <div style="{{ stkRow }}">
+              <span style="{{ r.sw }}"></span>
+              <sc-for list="{{ r.segs }}" as="fs" hint-placeholder-count="7"><span style="{{ fs.s }}">{{ fs.t }}<span style="{{ fs.chip }}">{{ fs.n }}</span></span></sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:7px 16px;">
+        <sc-for list="{{ anatomy }}" as="an" hint-placeholder-count="7">
+          <div style="display:flex; gap:8px; font-size:11.5px; line-height:1.45; color:oklch(0.705 0.015 286.067);">
+            <span style="{{ numChipL }}">{{ an.n }}</span>
+            <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ an.head }}</span> {{ an.body }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div id="4h" data-screen-label="4h placement rejects" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#4h" style="{{ badge }}">4h</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Where the rows do not live</div>
+        <p style="{{ capBody }}">Four placements tried before stacking the fold. Each breaks a promise the hunt already made — a quiet toolbar, an ungrabbed plot, a legend that counts, a fold with exactly one owner of the split.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px; width:1120px;">
+      <sc-for list="{{ placeRej }}" as="rc" hint-placeholder-count="4">
+        <div style="flex:1; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;">✕</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ rc.title }}</span>
+          </div>
+          <div style="position:relative; height:74px; margin-top:9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ rc.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ rc.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="4i" data-screen-label="4i product rejects" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#4i" style="{{ badge }}">4i</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Tried and put down</div>
+        <p style="{{ capBody }}">Five ways the stack could grow into a different product. If the stack cannot be told from a Top-N table, a Trends board, or a verdict, the drawing failed. The split stays the plot&rsquo;s three facets; the fold stays a reader.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:12px; width:1120px;">
+      <sc-for list="{{ prodRej }}" as="rc" hint-placeholder-count="5">
+        <div style="flex:1; min-width:0; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <span style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:16px; height:16px; border-radius:99px; background:oklch(0.577 0.245 27.325 / 15%); color:#fca5a5; font-size:10px;">✕</span>
+            <span style="font-size:12px; font-weight:600; color:oklch(0.985 0 0);">{{ rc.title }}</span>
+          </div>
+          <div style="position:relative; height:74px; margin-top:9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;">
+            <sc-for list="{{ rc.shapes }}" as="sh" hint-placeholder-count="3"><div style="{{ sh.s }}">{{ sh.t }}</div></sc-for>
+          </div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ rc.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="4j" data-screen-label="4j done reading" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#4j" style="{{ badge }}">4j</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Done reading — the sentence, typed from the fold</div>
+        <p style="{{ capBody }}">The finish line for 0.4.8: an operator writes the incident line from the stack without a second tool. The mark names the version, the cut counts the bugs, the host rows supply the three percents. Nothing on screen said caused — the operator did, and can defend it.</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:14px; margin-top:12px; align-items:stretch; width:1120px;">
+      <div style="flex:0 0 660px; max-width:660px; min-width:0; display:flex; flex-direction:column; gap:6px;">
+        <div style="{{ anatWrap }}">
+          <div style="{{ stkHead }}">
+            <svg width="11" height="11" viewBox="0 0 12 12" style="flex:0 0 auto;"><path d="M6 1.6 L11 10.4 L1 10.4 Z" fill="oklch(0.906 0.014 84)"></path></svg>
+            <sc-for list="{{ doneHead }}" as="fs" hint-placeholder-count="7"><span style="{{ fs.s }}">{{ fs.t }}<span style="{{ fs.chip }}">{{ fs.n }}</span></span></sc-for>
+            <span style="{{ xBtn }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg></span>
+          </div>
+          <sc-for list="{{ doneRows }}" as="r" hint-placeholder-count="3">
+            <div style="{{ stkRow }}">
+              <span style="{{ r.sw }}"></span>
+              <sc-for list="{{ r.segs }}" as="fs" hint-placeholder-count="7"><span style="{{ fs.s }}">{{ fs.t }}<span style="{{ fs.chip }}">{{ fs.n }}</span></span></sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; align-items:center; gap:7px; height:26px; padding:0 10px; border:1px solid oklch(1 0 0 / 12%); border-radius:4.4px; background:#0f0f11;">
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">the cut, beside it:</span>
+          <span style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.985 0 0);">First seen</span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.906 0.014 84);">3</span>
+          <span style="flex:1;"></span>
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">same mark · same 49m sides</span>
+        </div>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column; padding:16px 18px; border:1px solid oklch(0.906 0.014 84 / 22%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+        <div style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px; letter-spacing:0.06em; text-transform:uppercase; color:oklch(0.705 0.015 286.067 / 70%);">what the operator types</div>
+        <p style="margin:10px 0 0; font-size:15.5px; line-height:1.75; text-wrap:pretty; color:oklch(0.985 0 0);">&ldquo;<span style="{{ mapMark }}">v0.9</span> introduced <span style="{{ mapCut }}">3 new bugs</span> which increased the error rate on <span style="{{ mapHunt }}">the billing servers</span> by <span style="{{ mapRows }}">0.5%, 4% and 9%</span> respectively.&rdquo;</p>
+        <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding-top:12px; border-top:1px solid oklch(1 0 0 / 10%);">
+          <sc-for list="{{ mapLegend }}" as="ml" hint-placeholder-count="4">
+            <div style="display:flex; gap:8px; align-items:baseline; font-size:11.5px; line-height:1.45; color:oklch(0.705 0.015 286.067);">
+              <span style="{{ ml.s }}">{{ ml.k }}</span>
+              <span style="text-wrap:pretty;">{{ ml.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <span style="flex:1;"></span>
+        <p style="margin:12px 0 0; font-size:10.5px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 80%);">Per-bug percents are the one thing this stack does not hand over: a fingerprint stays <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">e1:&lt;hex&gt;</span> in q, so three bugs are three hunts — unless the hunt&rsquo;s split is already that facet, which host is not.</p>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin:52px 0 0; max-width:1120px; padding-top:20px; border-top:1px solid oklch(1 0 0 / 12%); font-size:11.5px; line-height:1.5; color:oklch(0.705 0.015 286.067 / 70%);">Not the shipped app. Do not invent chrome these frames do not draw — if a control is not here, it is not in 0.4.8. The stack rides the fold&rsquo;s slot on Search and Follow only, session-only, never the URL. The locked chrome this sheet continues: <a href="Toposcope%20Compare.dc.html">Toposcope Compare.dc.html</a> · <a href="Toposcope%20App.dc.html">Toposcope App.dc.html</a>.</p>
+
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    const MONO = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace;';
+    const DIM = 'oklch(0.705 0.015 286.067)';
+    const W = 'oklch(0.985 0 0)';
+    const BONE = 'oklch(0.906 0.014 84)';
+    const badge = `flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:26px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; ${MONO} font-size:11px; color:${BONE};`;
+    const capBody = `margin:4px 0 0; max-width:880px; font-size:12.5px; line-height:1.5; text-wrap:pretty; color:${DIM};`;
+    const numChipL = `flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; margin-top:2px; border-radius:99px; background:oklch(0.906 0.014 84 / 15%); color:${BONE}; font-size:9px;`;
+    const xBtn = `display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:24px; height:24px; margin-left:2px; border-radius:4.4px; color:${DIM}; cursor:pointer;`;
+
+    // ── segments (canon: Compare 3a–3j) ───────────────────────────
+    const sTitle = `font-size:12px; font-weight:600; color:${W}; white-space:nowrap;`;
+    const sDot = `${MONO} font-size:11px; color:oklch(0.705 0.015 286.067 / 45%);`;
+    const sLbl = `font-size:10.5px; color:${DIM}; white-space:nowrap;`;
+    const sVal = `${MONO} font-size:11.5px; color:${W}; white-space:nowrap; font-variant-numeric:tabular-nums;`;
+    const sSeries = `${MONO} font-size:10.5px; color:oklch(0.985 0 0 / 85%); white-space:nowrap;`;
+    const sPct = `display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; min-width:56px; height:18px; padding:0 6px; border:1px solid oklch(0.906 0.014 84 / 35%); border-radius:3.4px; ${MONO} font-size:11px; color:${BONE}; white-space:nowrap; font-variant-numeric:tabular-nums;`;
+    const sAmb = `flex:0 0 auto; font-size:10.5px; color:#fbbf24;`;
+    const sNote = `font-size:10.5px; color:oklch(0.906 0.014 84 / 90%); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis;`;
+    const sSides = `${MONO} font-size:10px; color:${DIM}; white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis;`;
+    const SP = `flex:1 1 auto; min-width:8px;`;
+    // per-row aligned columns — tabular alignment, never column titles
+    const sKey = `${MONO} font-size:11.5px; color:${W}; white-space:nowrap; flex:0 0 112px; overflow:hidden; text-overflow:ellipsis;`;
+    const sB = `${MONO} font-size:11.5px; color:${W}; font-variant-numeric:tabular-nums; flex:0 0 52px; text-align:right; white-space:nowrap;`;
+    const sD = `${MONO} font-size:11.5px; color:${W}; font-variant-numeric:tabular-nums; flex:0 0 58px; text-align:right; white-space:nowrap;`;
+    const noChip = 'display:none;';
+    const chip = `display:inline-flex; align-items:center; justify-content:center; width:13px; height:13px; margin-left:4px; border-radius:99px; background:oklch(0.906 0.014 84 / 15%); color:${BONE}; font-size:9px; vertical-align:1px;`;
+    const t = (s, txt, n) => ({ s, t: txt, n: n || '', chip: n ? chip : noChip });
+    const dot = () => t(sDot, '·');
+
+    const stackWrap = `display:flex; flex-direction:column; border:1px solid oklch(0.906 0.014 84 / 28%); border-radius:4.4px; background:#0f0f11; overflow:hidden;`;
+    const stackWrapDash = `display:flex; flex-direction:column; border:1px dashed oklch(1 0 0 / 14%); border-radius:4.4px; background:#0f0f11; overflow:hidden;`;
+    const stkHead = `display:flex; align-items:center; gap:7px; flex:0 0 auto; min-width:0; overflow:hidden; height:30px; padding:0 5px 0 10px;`;
+    const stkRow = `display:flex; align-items:center; gap:7px; flex:0 0 auto; min-width:0; overflow:hidden; height:30px; padding:0 10px; border-top:1px solid oklch(1 0 0 / 7%);`;
+    const foldVarWrap = `display:flex; align-items:center; gap:7px; flex:0 0 auto; height:26px; margin-top:5px; padding:0 10px; border:1px dashed oklch(1 0 0 / 14%); border-radius:4.4px; background:#0f0f11;`;
+    const foldVarLbl = `flex:0 0 148px; ${MONO} font-size:9.5px; color:oklch(0.705 0.015 286.067 / 70%); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;`;
+    const anatWrap = stackWrap;
+    const anatHead = `display:flex; align-items:center; gap:6px; flex:0 0 auto; min-width:0; overflow:hidden; height:34px; padding:0 6px 0 11px;`;
+
+    // head builder — the shared line: mark · series · split · [note] · sides · ×
+    const head = o => {
+      const segs = [t(sTitle, 'vs ' + o.mark), dot(), t(sSeries, o.series), dot(), t(sLbl, 'split'), t(sVal, o.split)];
+      if (o.note) { segs.push(t(sAmb, '▲'), t(sNote, o.note)); }
+      segs.push(t(SP, ''), t(sSides, o.sides || ''));
+      return segs;
+    };
+    // single-fold head (today's `none` row) — values inline, as shipped in 3b
+    const headNone = o => {
+      const segs = [t(sTitle, 'vs ' + o.mark), dot(), t(sSeries, o.series), dot(),
+        t(sLbl, 'before'), t(sVal, o.b), t(sLbl, '→'), t(sLbl, 'after'), t(sVal, o.a), dot(), t(sVal, o.d)];
+      if (o.pct) { segs.push(t(sPct, o.pct)); }
+      segs.push(t(SP, ''), t(sSides, o.sides || ''));
+      return segs;
+    };
+    // row builder — swatch · key · before → after · delta · % | state
+    const row = o => {
+      const segs = [t(sKey, o.key), t(sB, o.b), t(sLbl, '→'), t(sB, o.a), dot(), t(sD, o.d)];
+      if (o.pct) { segs.push(t(sPct, o.pct)); }
+      else { segs.push(t(`${sPct} border-color:transparent; color:${DIM};`, '—')); }
+      if (o.note) { segs.push(t(sAmb, '▲'), t(sNote, o.note)); }
+      segs.push(t(SP, ''));
+      return { sw: `flex:0 0 8px; width:8px; height:8px; border-radius:2px; background:${o.c};`, segs };
+    };
+
+    // ── plot pieces (canon geometry from 3b: billing v0.9 at 79.6%, equal 49m) ──
+    const rng = s => () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const N = 56;
+    const wash = (l, r, a) => `position:absolute; top:0; bottom:0; left:${l}%; width:${(r - l).toFixed(2)}%; background:oklch(1 0 0 / ${a}%); pointer-events:none;`;
+    const dashRule = (x, c) => `position:absolute; top:0; bottom:0; left:${x}%; width:1px; background:repeating-linear-gradient(180deg, ${c} 0 4px, transparent 4px 7px); pointer-events:none;`;
+    const tag = (x, txt) => ({ s: `position:absolute; left:calc(${x}% + 5px); top:3px; ${MONO} font-size:9.5px; color:oklch(0.985 0 0 / 45%); pointer-events:none; white-space:nowrap;`, t: txt });
+    const laneMark = (x, label) => ({
+      wrap: `position:absolute; top:50%; left:${x}%; transform:translate(-50%,-50%); display:flex; align-items:center; gap:5px; height:18px; padding:0 4px; border-radius:3.4px; background:oklch(0.274 0.006 286.033); box-shadow:0 0 0 1px color-mix(in oklab, ${BONE} 50%, transparent); white-space:nowrap; cursor:default;`,
+      d: 'M6 1.6 L11 10.4 L1 10.4 Z', f: BONE,
+      labelStyle: label ? 'font-size:11px; color:oklch(0.985 0 0 / 82%);' : 'display:none;', label: label || ''
+    });
+    const plotBoxAt = h => `position:relative; flex:0 0 ${h}px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); overflow:hidden;`;
+    const laneBoxAt = h => `position:relative; flex:0 0 ${h}px; margin-top:4px;`;
+    // host-split stacked columns: defs = [{c, b, a}] share before/after the step
+    const hostCols = (seed, defs, o) => {
+      const r = rng(seed), out = [];
+      const step = o && o.step != null ? o.step : 2;
+      for (let i = 0; i < N; i++) {
+        const x = i / N, after = x >= step;
+        const dip = 0.78 + 0.22 * Math.sin((x + 0.15) * 3.1);
+        const h = (46 + r() * 44) * dip * (after ? (o && o.grow || 1.045) : 1);
+        const shares = defs.map(d => Math.max(0, (after ? d.a : d.b) * (0.9 + 0.2 * r())));
+        const tot = shares.reduce((a2, b2) => a2 + b2, 0) || 1;
+        let acc = 0;
+        const stops = defs.map((d, j) => {
+          const p0 = (acc / tot) * 100; acc += shares[j];
+          const p1 = (acc / tot) * 100;
+          return `${d.c} ${p0.toFixed(1)}% ${p1.toFixed(1)}%`;
+        }).join(', ');
+        out.push(`flex:1 1 0; height:${h.toFixed(1)}%; border-radius:1px 1px 0 0; background:linear-gradient(180deg, ${stops});`);
+      }
+      return out;
+    };
+
+    const markX = 79.6;
+    const washes49 = [wash(59.2, markX, 2.5), wash(markX, 100, 5), dashRule(59.2, 'oklch(1 0 0 / 30%)')];
+    const axis4h = ['11:00', '12:00', '13:00', '14:00', 'now'];
+    const sidesFull = 'equal 49m · 13:22 → 14:11 vs 14:11 → 15:00';
+    const splitsSeg = active => [['Level', 'level'], ['Service', 'service'], ['Host', 'host'], ['None', 'none']].map(([label, key]) => ({
+      t: label,
+      s: `display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; cursor:pointer; font-size:12px; background:${key === active ? 'oklch(0.274 0.006 286.033)' : 'transparent'}; color:${key === active ? W : DIM};`
+    }));
+
+    // hosts: histogram-series palette in series order (`other` pinned #94a3b8)
+    const B1 = '#38bdf8', B2 = '#a78bfa', B3 = '#34d399', C4 = '#fbbf24', C5 = '#fb7185', OTH = '#94a3b8', C6 = '#c084fc', C7 = '#2dd4bf';
+    const heroDefs = [
+      { c: B3, b: 0.34, a: 0.353 },  // billing-3, drawn top-down: 3 grows most
+      { c: B2, b: 0.25, a: 0.252 },
+      { c: B1, b: 0.41, a: 0.395 }
+    ];
+    const heroRows = [
+      row({ c: B1, key: 'billing-1', b: '850', a: '854', d: '+4', pct: '+0.5%' }),
+      row({ c: B2, key: 'billing-2', b: '525', a: '546', d: '+21', pct: '+4%' }),
+      row({ c: B3, key: 'billing-3', b: '700', a: '763', d: '+63', pct: '+9%' })
+    ];
+    const heroHead = mut => head(Object.assign({ mark: 'deployed: billing v0.9', series: 'Count', split: 'host', sides: sidesFull }, mut || {}));
+
+    const frames = [
+      {
+        id: '4a', href: '#4a', label: '4a happy path',
+        title: 'The stack — one row per key of the split the hunt already has',
+        body: 'The billing error hunt, histogram split Host in the toolbar it always had. Compare opens the same fold slot; because the plot draws three host series, the fold stacks three 30px rows under one shared line — the mark, the series, the split, the equal windows, one ×. The rows carry what the single fold carried: both sides, the delta, the percent. The washes above are still the same two windows for every row.',
+        fine: 'The row swatches are the plot\u2019s own series colors — the stack indexes the picture, it does not replace it. Sub-1% keeps its decimal in a stack: three hosts flattened to \u201c<1%\u201d would read as equal, and equal is the one thing they are not. The shared line says split host as a readout, never a control.',
+        bar: 'level:error service:billing', splits: splitsSeg('host'), series: 'Count', live: false,
+        plotBox: plotBoxAt(128), laneBox: laneBoxAt(22),
+        cols: hostCols(41, heroDefs, { step: markX / 100 }), washes: washes49, tags: [],
+        lane: [laneMark(markX, 'deployed: billing v0.9')], axisOn: true, axis: axis4h,
+        stacks: [{ label: '', wrap: stackWrap, head: heroHead(), rows: heroRows }],
+        foldVars: [], strip: null, void: 'results table · unchanged by the stack', cut: null
+      },
+      {
+        id: '4b', href: '#4b', label: '4b none vs host',
+        title: 'none is today — the split is the only thing that changed',
+        body: 'The same hunt, same mark, same Compare. With split None the fold is the shipped single row — 3a–3j, untouched. Switch the hunt\u2019s split to Host in the toolbar pill and the fold expands to the stack. There is no second picker on the fold, the inspector, or anywhere else: the fold follows the plot\u2019s split because it prices what the plot draws.',
+        fine: 'One owner for the split means the words and the picture can never disagree: whatever series the operator is looking at is exactly what gets priced. Switching split while the fold is open re-cuts the stack the same way switching Series always re-read the single fold.',
+        bar: 'level:error service:billing', splits: splitsSeg('host'), series: 'Count', live: false,
+        plotBox: plotBoxAt(84), laneBox: laneBoxAt(22),
+        cols: hostCols(41, heroDefs, { step: markX / 100 }), washes: washes49, tags: [],
+        lane: [laneMark(markX, 'deployed: billing v0.9')], axisOn: true, axis: axis4h,
+        stacks: [
+          { label: 'split: none — the shipped fold, one row, one percent', wrap: stackWrapDash, head: headNone({ mark: 'deployed: billing v0.9', series: 'Count', b: '2.08K', a: '2.16K', d: '+88', pct: '+4%', sides: 'equal 49m' }), rows: [] },
+          { label: 'split: host — the same fold, stacked; nothing else moved', wrap: stackWrap, head: heroHead({ sides: 'equal 49m' }), rows: heroRows }
+        ],
+        foldVars: [], strip: null, void: null, cut: null
+      },
+      {
+        id: '4c', href: '#4c', label: '4c overflow',
+        title: 'Overflow — 8 named keys + other, the plot\u2019s own cap',
+        body: 'A fleet-wide error hunt split Host: the stack caps where the plot caps — eight named series and one other, never a scroll, never a page two. other is priced like any row, in the plot\u2019s pinned grey. The reading survives the noise: only the billing hosts moved with this mark, and the stack says so without sorting, ranking, or a winners table.',
+        fine: 'No sort control and no rank: rows keep the plot\u2019s series order, so a row is found the way its color is found. Wanting more than 8 + other is wanting a narrower q — the fold follows the plot, it never out-draws it.',
+        bar: 'level:error', splits: splitsSeg('host'), series: 'Count', live: false,
+        plotBox: plotBoxAt(84), laneBox: laneBoxAt(22),
+        cols: hostCols(63, [
+          { c: B1, b: 0.2, a: 0.2 }, { c: B2, b: 0.19, a: 0.185 }, { c: B3, b: 0.13, a: 0.135 },
+          { c: C4, b: 0.085, a: 0.087 }, { c: C5, b: 0.11, a: 0.12 }, { c: C6, b: 0.155, a: 0.148 },
+          { c: C7, b: 0.075, a: 0.072 }, { c: OTH, b: 0.055, a: 0.053 }
+        ], { step: markX / 100, grow: 1.03 }), washes: washes49, tags: [],
+        lane: [laneMark(markX, 'deployed: billing v0.9')], axisOn: true, axis: axis4h,
+        stacks: [{ label: '', wrap: stackWrap, head: head({ mark: 'deployed: billing v0.9', series: 'Count', split: 'host', sides: 'equal 49m' }), rows: [
+          row({ c: B1, key: 'api-1', b: '1.21K', a: '1.22K', d: '+14', pct: '+1.2%' }),
+          row({ c: B2, key: 'api-2', b: '1.18K', a: '1.16K', d: '−24', pct: '−2%' }),
+          row({ c: B3, key: 'billing-1', b: '850', a: '854', d: '+4', pct: '+0.5%' }),
+          row({ c: C4, key: 'billing-2', b: '525', a: '546', d: '+21', pct: '+4%' }),
+          row({ c: C5, key: 'billing-3', b: '700', a: '763', d: '+63', pct: '+9%' }),
+          row({ c: C6, key: 'worker-1', b: '962', a: '948', d: '−14', pct: '−1.5%' }),
+          row({ c: C7, key: 'web-1', b: '431', a: '438', d: '+7', pct: '+1.6%' }),
+          row({ c: '#38bdf8', key: 'checkout-1', b: '389', a: '380', d: '−9', pct: '−2.3%' }),
+          row({ c: OTH, key: 'other', b: '312', a: '318', d: '+6', pct: '+1.9%', note: '4 more hosts — the plot\u2019s cap is the fold\u2019s cap' })
+        ] }],
+        foldVars: [], strip: null, void: null, cut: null
+      },
+      {
+        id: '4d', href: '#4d', label: '4d zeros',
+        title: 'Zeros are still states — per row now',
+        body: 'The percent rules do not bend because there are more rows. A host first seen after the mark keeps its counts and says new since this mark — never +∞%. A host that went quiet keeps its −100%, because its denominator exists. A hunt with nothing on either side gets no stack at all; it gets the sentence. Each row earns its own percent or its own state; neighbors never lend a denominator.',
+        fine: 'billing-canary appeared with this deploy and billing-0 was drained by it — the same clock cut reads both without a verdict. The empty-hunt fold below is what the whole stack collapses to when q matches nothing: one line of words, zero rows of ghosts.',
+        bar: 'level:error service:billing', splits: splitsSeg('host'), series: 'Count', live: false,
+        plotBox: plotBoxAt(84), laneBox: laneBoxAt(22),
+        cols: hostCols(85, [
+          { c: B3, b: 0.33, a: 0.32 }, { c: B2, b: 0.24, a: 0.23 }, { c: B1, b: 0.37, a: 0.35 },
+          { c: C4, b: 0, a: 0.06 }, { c: C5, b: 0.06, a: 0 }
+        ], { step: markX / 100 }), washes: washes49, tags: [],
+        lane: [laneMark(markX, 'deployed: billing v0.9')], axisOn: true, axis: axis4h,
+        stacks: [{ label: '', wrap: stackWrap, head: heroHead({ sides: 'equal 49m' }), rows: [
+          row({ c: B1, key: 'billing-1', b: '850', a: '854', d: '+4', pct: '+0.5%' }),
+          row({ c: B2, key: 'billing-2', b: '525', a: '546', d: '+21', pct: '+4%' }),
+          row({ c: B3, key: 'billing-3', b: '700', a: '763', d: '+63', pct: '+9%' }),
+          row({ c: C4, key: 'billing-canary', b: '0', a: '112', d: '+112', note: 'new since this mark — a percent needs a before' }),
+          row({ c: C5, key: 'billing-0', b: '131', a: '0', d: '−131', pct: '−100%', note: 'quiet after this mark' })
+        ] }],
+        foldVars: [
+          { label: 'an empty hunt', segs: [t(sSeries, 'level:info service:ghost · split host'), dot(), t(sVal, '—'), t(sLbl, '→'), t(sVal, '—'), t(sAmb, '▲'), t(sNote, 'no events on either side — nothing to number, no rows to stack'), t(SP, ''), t(sSides, 'equal 49m')] }
+        ],
+        strip: null, void: null, cut: null
+      },
+      {
+        id: '4e', href: '#4e', label: '4e live',
+        title: 'Under Live — every row fixed at the same open',
+        body: 'The freeze the fold already taught, once: opening the stack under Live fixes all rows at that moment, on one stamp in the shared line — never a clock per row, never a row that re-reads while its neighbor holds still. Live keeps painting the plot, so the washes visibly stop short of now; that gap is the tell. × then Compare re-cuts every row at now, together, on purpose.',
+        fine: 'Rows that disagree about time cannot be compared to each other — and comparing rows to each other is the whole point of a stack. One freeze is what keeps 0.5 / 4 / 9 a sentence instead of three screenshots.',
+        bar: 'level:error service:billing', splits: splitsSeg('host'), series: 'Count', live: true,
+        plotBox: plotBoxAt(84), laneBox: laneBoxAt(22),
+        cols: hostCols(41, heroDefs, { step: markX / 100 }),
+        washes: [wash(59.2, markX, 2.5), wash(markX, 95.1, 5), dashRule(59.2, 'oklch(1 0 0 / 30%)'), dashRule(95.1, 'oklch(1 0 0 / 30%)')],
+        tags: [tag(95.4, 'live since fixed')],
+        lane: [laneMark(markX, 'deployed: billing v0.9')], axisOn: true, axis: axis4h,
+        stacks: [{ label: '', wrap: stackWrap, head: heroHead({ note: 'fixed at open 15:00:04', sides: 'equal 49m' }), rows: heroRows }],
+        foldVars: [], strip: null, void: 'results table · Live keeps appending; nothing shimmers', cut: null
+      },
+      {
+        id: '4f', href: '#4f', label: '4f crowded',
+        title: 'Crowded — when, which, how much per host, one screen',
+        body: 'Shipped density: the v0.9 cut parked on its 398px rail naming the three new bugs, Live on, chart+canvas shrunk as it always shrinks. The stack keeps its rows in the chart column — it never migrates to the rail, never floats, never collapses to a summary chip. Lane says when, rail says which, stack says how much and where. Both readers borrowed the same mark and the same sides, so they cannot disagree about time.',
+        fine: 'The stack\u2019s × closes only the stack; the cut\u2019s × still ends Fingerprints. Three first-seen hexes on the rail, three moved hosts in the stack — the correlation is the operator\u2019s to claim, not the chrome\u2019s to print.',
+        bar: 'level:error service:billing', splits: splitsSeg('host'), series: null, live: true,
+        plotBox: plotBoxAt(48), laneBox: laneBoxAt(18),
+        cols: hostCols(41, heroDefs, { step: markX / 100 }), washes: washes49, tags: [],
+        lane: [laneMark(markX, '')], axisOn: false, axis: [],
+        stacks: [{ label: '', wrap: stackWrap, head: head({ mark: 'billing v0.9', series: 'Count', split: 'host', note: 'fixed at open', sides: '' }), rows: [
+          row({ c: B1, key: 'billing-1', b: '850', a: '854', d: '+4', pct: '+0.5%' }),
+          row({ c: B2, key: 'billing-2', b: '525', a: '546', d: '+21', pct: '+4%' }),
+          row({ c: B3, key: 'billing-3', b: '700', a: '763', d: '+63', pct: '+9%' })
+        ] }],
+        foldVars: [], strip: null, void: 'results table · chart+canvas at 32%, as shipped',
+        cut: {
+          title: 'deployed: billing v0.9',
+          sub: [
+            { k: 'cut at', v: '2026-08-14 14:11:04.221' },
+            { k: 'after', v: '14:11:04 → 15:00:04 · 49m' },
+            { k: 'before', v: '13:22:08 → 14:11:04 · equal 49m' }
+          ],
+          notes: ['Frozen at open — Live moves the plot, not the cut.'],
+          sets: [
+            { name: 'First seen', count: '3', rows: [
+              this.crow('panic: nil map write in ledger.Apply (goroutine #)', 'ab6e14d9502c7f83', 'billing', 0, 241, false),
+              this.crow('decimal overflow in invoice.Round (cents #)', '2f81c6d4a9e0b357', 'billing', 0, 96, false),
+              this.crow('nil rate in tax.Lookup for region #', '8c3d51f7e2a94b06', 'billing', 0, 57, false)
+            ], empty: '' },
+            { name: 'Still here', count: '1', rows: [
+              this.crow('stripe webhook signature mismatch, dropping evt_#', '5c88a3e604b1d9f2', 'billing', 143, 149, false)
+            ], empty: '' },
+            { name: 'Stopped', count: '0', rows: [], empty: 'none' }
+          ],
+          foot: 'Parked and frozen. Three bugs are three hexes here — pricing one means Filter writes e1:<hex> and the fold reads that hunt. The host stack never splits by e1.'
+        }
+      }
+    ];
+
+    // ── 4g anatomy ────────────────────────────────────────────────
+    const anatHeadSegs = [
+      t(sTitle, 'vs deployed: billing v0.9', '1'), dot(),
+      t(sSeries, 'Count'), dot(),
+      t(sLbl, 'split'), t(sVal, 'host', '2'),
+      t(sAmb, '▲'), t(sNote, 'fixed at open 15:00:04', '7'),
+      t(SP, ''), t(sSides, 'equal 49m · 13:22 → 14:11 vs 14:11 → 15:00', '1')
+    ];
+    const anatRow = (o, marks) => {
+      const r = row(o);
+      const put = (i, n) => { const seg = r.segs[i]; if (seg) { seg.n = n; seg.chip = chip; } };
+      (marks || []).forEach(([i, n]) => put(i, n));
+      return r;
+    };
+    const anatRows = [
+      anatRow({ c: B1, key: 'billing-1', b: '850', a: '854', d: '+4', pct: '+0.5%' }, [[0, '2'], [3, '3'], [5, '4'], [6, '5']]),
+      anatRow({ c: B2, key: 'billing-2', b: '525', a: '546', d: '+21', pct: '+4%' }),
+      anatRow({ c: B3, key: 'billing-3', b: '700', a: '763', d: '+63', pct: '+9%' }),
+      anatRow({ c: C4, key: 'billing-canary', b: '0', a: '112', d: '+112', note: 'new since this mark' }, [[8, '5']]),
+      anatRow({ c: OTH, key: 'other', b: '148', a: '151', d: '+3', pct: '+2%' }, [[0, '6']])
+    ];
+    const anatomy = [
+      { n: '1', head: 'The shared line.', body: 'One mark, one pair of equal windows, said once. Rows never restate time — a stack with per-row clocks is two tools wearing one border.' },
+      { n: '2', head: 'The key, in plot colors.', body: 'Whatever the hunt\u2019s split names — level, service, or host. The swatch is the histogram\u2019s own series hue, so a row is found the way its bar is found.' },
+      { n: '3', head: 'Both sides, per row.', body: 'This key\u2019s events in each window, empty buckets staying null. Same math as the single fold, run per series.' },
+      { n: '4', head: 'Delta, absolute first.', body: 'Signed, in the series\u2019 units. +4 beside +63 is the honest scale check the percent alone would hide.' },
+      { n: '5', head: 'Percent, or its state.', body: '(after − before) / before per row. before = 0 writes new since this mark; after = 0 keeps −100%; never +∞%, never a red up or a green down.' },
+      { n: '6', head: 'other, priced too.', body: 'The plot\u2019s remainder series, in its pinned grey — capped at 8 named + other, exactly like the picture above it.' },
+      { n: '7', head: 'One × · one freeze.', body: 'The × dismisses the whole stack; the freeze stamps the whole stack. No per-row dismiss, no per-row refresh — rows live and die together.' }
+    ];
+
+    // ── 4h placement rejects ──────────────────────────────────────
+    const shape = (s, txt) => ({ s, t: txt || '' });
+    const placeRej = [
+      { title: 'A toolbar of percents', verdict: 'Three numbers with no mark, no windows, and no × in the hunt\u2019s calmest chrome. The toolbar is where the hunt is steered, not where it is read.', shapes: [
+        shape(`position:absolute; left:6%; top:16%; ${MONO} font-size:9px; color:${DIM};`, 'Level | Service | Host   Series Count'),
+        shape(`position:absolute; left:6%; top:44%; right:6%; padding:2px 6px; border:1px dashed #ef4444; border-radius:3px; ${MONO} font-size:8.5px; color:#fca5a5; white-space:nowrap; overflow:hidden;`, 'b-1 +0.5% · b-2 +4% · b-3 +9%'),
+        shape(`position:absolute; left:6%; bottom:12%; ${MONO} font-size:9px; color:${DIM};`, 'vs what? until when? closed how?')
+      ] },
+      { title: 'Numbers on the plot or legend', verdict: 'The plot owns hover, brush, drill and the washes; the legend counts this window. A delta pinned to either makes the picture claim what only the fold computed.', shapes: [
+        shape(`position:absolute; left:8%; bottom:14%; width:9%; height:52%; background:oklch(0.552 0.016 285.938 / 45%); border-radius:1px 1px 0 0;`),
+        shape(`position:absolute; left:21%; bottom:14%; width:9%; height:64%; background:oklch(0.552 0.016 285.938 / 60%); border-radius:1px 1px 0 0;`),
+        shape(`position:absolute; left:34%; bottom:14%; width:9%; height:40%; background:oklch(0.552 0.016 285.938 / 45%); border-radius:1px 1px 0 0;`),
+        shape(`position:absolute; left:50%; top:16%; padding:1px 5px; border:1px dashed #ef4444; border-radius:3px; ${MONO} font-size:9px; color:#fca5a5; text-decoration:line-through;`, 'billing-3 +9%'),
+        shape(`position:absolute; left:50%; bottom:16%; ${MONO} font-size:9px; color:${DIM};`, '■ billing-3 763 ← the legend counts')
+      ] },
+      { title: 'A compare table widget', verdict: 'Columns grow headers, headers grow sort, sort grows export — a spreadsheet the hunt never asked for, parked on a canvas that stores things. The stack is session-only and reads the hunt.', shapes: [
+        shape(`position:absolute; left:8%; top:12%; right:8%; bottom:12%; border:1px dashed #ef4444; border-radius:4px; display:flex; align-items:center; justify-content:center; ${MONO} font-size:9px; color:#fca5a5;`, 'host | before | after | Δ | %  ▾ sort'),
+        shape(`position:absolute; left:10%; bottom:16%; ${MONO} font-size:9px; color:${DIM};`, 'a widget stores; the fold reads')
+      ] },
+      { title: 'A split picker on the fold', verdict: 'Two pickers, two truths: a fold split by host over a plot split by level breaks the one promise the stack makes — the rows are the bars. The hunt\u2019s pill is the only split there is.', shapes: [
+        shape(`position:absolute; left:6%; top:22%; right:6%; height:24px; border:1px solid oklch(0.906 0.014 84 / 30%); border-radius:4px; display:flex; align-items:center; gap:6px; padding:0 8px; ${MONO} font-size:9px; color:oklch(0.985 0 0 / 80%); white-space:nowrap; overflow:hidden;`, '▲ vs billing v0.9'),
+        shape(`position:absolute; right:9%; top:26%; padding:1px 6px; border:1px dashed #ef4444; border-radius:3px; background:oklch(0.175 0.005 285.85); ${MONO} font-size:9px; color:#fca5a5;`, 'split: host ▾'),
+        shape(`position:absolute; left:6%; bottom:14%; ${MONO} font-size:9px; color:${DIM};`, 'the plot already owns this knob')
+      ] }
+    ];
+
+    // ── 4i product rejects ────────────────────────────────────────
+    const prodRej = [
+      { title: 'Split by e1', verdict: 'A fingerprint is a q, not a chart family: 2,314 hexes do not stack. Three bugs are three hunts — Filter writes one e1, the fold prices it. The cut already names them; the plot never splits by them.', shapes: [
+        shape(`position:absolute; left:6%; top:20%; padding:1px 6px; border:1px dashed #ef4444; border-radius:3px; ${MONO} font-size:9px; color:#fca5a5;`, 'split: e1 ▾'),
+        shape(`position:absolute; left:6%; top:52%; ${MONO} font-size:9px; color:${DIM};`, '2,314 series · 8 + other = a lie'),
+        shape(`position:absolute; left:6%; bottom:12%; ${MONO} font-size:9px; color:oklch(0.985 0 0 / 70%);`, 'e1:<hex> stays in q')
+      ] },
+      { title: 'Split by any attr', verdict: 'The hunt splits level | service | host — the three facets the store rolls up. An arbitrary-key split makes the fold lead the plot instead of following it, and cardinality does the rest.', shapes: [
+        shape(`position:absolute; left:6%; top:20%; padding:1px 6px; border:1px dashed #ef4444; border-radius:3px; ${MONO} font-size:9px; color:#fca5a5;`, 'split: customer_id ▾'),
+        shape(`position:absolute; left:6%; top:52%; ${MONO} font-size:9px; color:${DIM};`, 'level | service | host | none'),
+        shape(`position:absolute; left:6%; bottom:12%; ${MONO} font-size:9px; color:oklch(0.985 0 0 / 70%);`, 'the fold follows the plot')
+      ] },
+      { title: 'A Trends home', verdict: 'A stack per saved hunt per deploy is a board of deltas — a second product with its own ranges and its own staleness. The stack is Search; it exists only while the hunt does.', shapes: [
+        shape(`position:absolute; left:8%; top:18%; ${MONO} font-size:9.5px; color:oklch(0.985 0 0 / 85%);`, 'Search  Follow'),
+        shape(`position:absolute; left:8%; top:38%; padding:1px 6px; border:1px dashed #ef4444; border-radius:3px; ${MONO} font-size:9.5px; color:#fca5a5;`, 'Trends'),
+        shape(`position:absolute; left:8%; bottom:8%; ${MONO} font-size:8.5px; color:${DIM}; white-space:nowrap;`, 'a fourth nav = a second product')
+      ] },
+      { title: '“Caused by”', verdict: 'Nine percent after a deploy on one host is a fact; blame is a claim. The chrome never says caused, regressed, or culprit host — the rows report, the operator writes the sentence.', shapes: [
+        shape(`position:absolute; left:6%; top:12%; padding:1px 6px; border:1px dashed #ef4444; border-radius:3px; ${MONO} font-size:8.5px; color:#fca5a5; text-decoration:line-through; white-space:nowrap;`, 'culprit: billing-3'),
+        shape(`position:absolute; left:6%; top:44%; padding:1px 6px; border:1px solid oklch(0.906 0.014 84 / 35%); border-radius:3px; ${MONO} font-size:8.5px; color:oklch(0.906 0.014 84); white-space:nowrap;`, 'billing-3 · +9%'),
+        shape(`position:absolute; left:6%; bottom:9%; ${MONO} font-size:8.5px; color:${DIM}; white-space:nowrap;`, 'after — never because of')
+      ] },
+      { title: 'Compare without a mark', verdict: 'Rows need the same clock cut a single fold needs: someone\u2019s stated truth on the lane. No mark → no fold, no stack — drawn as absence, never as a disabled ghost waiting for a mode.', shapes: [
+        shape(`position:absolute; left:6%; top:24%; right:6%; height:24px; border:1px dashed #ef4444; border-radius:4px; display:flex; align-items:center; padding:0 8px; ${MONO} font-size:9px; color:#fca5a5; white-space:nowrap; overflow:hidden;`, 'vs last hour · per host · +…%'),
+        shape(`position:absolute; left:6%; bottom:16%; ${MONO} font-size:9px; color:${DIM};`, 'an auto-baseline is a guess, not a mark')
+      ] }
+    ];
+
+    // ── 4j done reading ───────────────────────────────────────────
+    const doneHead = heroHead({ sides: sidesFull });
+    const doneRows = heroRows;
+    const und = c => `border-bottom:1px dashed ${c}; padding-bottom:1px;`;
+    const mapMark = und(BONE);
+    const mapCut = und('#fbbf24');
+    const mapHunt = und('#38bdf8');
+    const mapRows = und('#34d399') + 'font-variant-numeric:tabular-nums;';
+    const mkKey = c => `flex:0 0 96px; ${MONO} font-size:10px; color:${c}; white-space:nowrap;`;
+    const mapLegend = [
+      { s: mkKey(BONE), k: 'v0.9', v: 'the selected mark — deployed: billing v0.9, its time lent to every row.' },
+      { s: mkKey('#fbbf24'), k: '3 new bugs', v: 'the cut\u2019s First seen count, frozen on the same mark and the same 49m sides.' },
+      { s: mkKey('#38bdf8'), k: 'billing servers', v: 'the hunt itself — q level:error service:billing, histogram split host.' },
+      { s: mkKey('#34d399'), k: '0.5 / 4 / 9', v: 'the stack — one percent per host row, each with its own denominator.' }
+    ];
+
+    return {
+      badge, capBody, numChipL, xBtn, stkHead, stkRow, foldVarWrap, foldVarLbl, anatWrap, anatHead,
+      system: [
+        { n: '1', head: 'The split is the hunt\u2019s split.', body: 'level | service | host | none — the histogram control that already exists, in the toolbar it already lives in. The fold grows no picker of its own; it prices whatever the plot draws. none is today\u2019s single row, unchanged.' },
+        { n: '2', head: 'One 30px row per series key.', body: 'Stacked under one shared line, capped at 8 named + other exactly like the plot, in the plot\u2019s own colors. Rows are the fold\u2019s grammar repeated — key, before → after, delta, percent — never a table with headers, sort, or export.' },
+        { n: '3', head: 'Percent rules bend for no row.', body: 'Per row: a percent needs a before; first-seen writes new since this mark and drops it; stopped is −100%; never +∞%. Up is not red and down is not green — the series decides what good means.' },
+        { n: '4', head: 'One mark, one freeze, one ×.', body: 'Same mark, same equal windows, same q / agg / metric as the single fold. Opening under Live fixes all rows at one stamp; × dismisses the whole stack and nothing else. Session-only, under the pinned lane, Search and Follow, nowhere else.' },
+        { n: '5', head: 'A fingerprint is still a q.', body: 'e1:<hex> filters the bar; it never becomes a split family. Three bugs → three hunts, each priced by the fold in turn — unless the hunt\u2019s split is already the facet you are asking about.' }
+      ],
+      frames, anatHeadSegs, anatRows, anatomy, placeRej, prodRej,
+      doneHead, doneRows, mapMark, mapCut, mapHunt, mapRows, mapLegend
+    };
+  }
+  crow(msg, hex, svc, nb, na, on) {
+    const MONO = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace;';
+    const fmt = n => n >= 10000 ? Math.round(n / 1000) + 'K' : n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n);
+    return {
+      msg, counts: `${fmt(nb)} → ${fmt(na)}`, hex: 'e1:' + hex, svc,
+      wrap: `display:flex; flex-direction:column; gap:3px; padding:7px 10px; border-bottom:1px solid oklch(1 0 0 / 6%);${on ? ' background:oklch(0.274 0.006 286.033 / 45%); box-shadow:inset 2px 0 0 oklch(0.906 0.014 84);' : ''}`,
+      fLabel: on ? 'Filtered' : 'Filter',
+      fStyle: `display:flex; align-items:center; gap:4px; flex:0 0 auto; height:20px; padding:0 7px; border:1px solid ${on ? 'oklch(0.906 0.014 84 / 55%)' : 'oklch(1 0 0 / 15%)'}; border-radius:3.4px; background:${on ? 'oklch(0.906 0.014 84 / 12%)' : 'transparent'}; font-size:10.5px; color:${on ? 'oklch(0.906 0.014 84)' : 'oklch(0.985 0 0)'}; cursor:pointer;`
+    };
+  }
+}
+</script>
+</body>
+</html>
