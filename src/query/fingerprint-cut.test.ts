@@ -38,8 +38,9 @@ describe("searchFingerprintCut ClickHouse", () => {
         TTL toDate(ts) + INTERVAL 30 DAY
       `);
       const token = `cut${Date.now()}`;
-      const markTs = Date.parse("2026-08-14T14:30:00.000Z");
-      const openedAt = markTs + 5 * 60_000;
+      // Stay inside change_marks / logs TTL (toDate(ts) + 30 DAY).
+      const openedAt = Date.now();
+      const markTs = openedAt - 5 * 60_000;
       const iso = (ms: number) => new Date(ms).toISOString();
       const mark = parseChangeMark({
         kind: "deploy",
@@ -151,7 +152,8 @@ describe("searchFingerprintCut ClickHouse", () => {
         TTL toDate(ts) + INTERVAL 30 DAY
       `);
       const title = `emptyid${Date.now()}`;
-      const ts = "2026-08-20T12:00:00.000Z";
+      const tsMs = Date.now();
+      const ts = new Date(tsMs).toISOString();
       await clickhouseInsertJsonEachRow(
         JSON.stringify({
           tenant_id: "default",
@@ -165,8 +167,8 @@ describe("searchFingerprintCut ClickHouse", () => {
         }),
         "change_marks",
       );
-      const from = "2026-08-20T00:00:00.000Z";
-      const to = "2026-08-20T23:59:59.000Z";
+      const from = new Date(tsMs - 60_000).toISOString();
+      const to = new Date(tsMs + 60_000).toISOString();
       let listed = (await searchChangeMarks({ from, to })).marks.find(
         (mark) => mark.title === title,
       );
@@ -195,8 +197,8 @@ describe("searchFingerprintCut ClickHouse", () => {
       }
       await clickhouseCommand(logsCreateTableSql);
       const token = `cutbudget${Date.now()}`;
-      const markTs = Date.parse("2026-08-14T16:00:00.000Z");
-      const openedAt = markTs + 5 * 60_000;
+      const openedAt = Date.now();
+      const markTs = openedAt - 5 * 60_000;
       const iso = (ms: number) => new Date(ms).toISOString();
       const mark = parseChangeMark({
         kind: "deploy",
