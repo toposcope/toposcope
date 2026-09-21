@@ -12,6 +12,11 @@ Locked — compare vs a mark:
 - [Toposcope Compare.dc.html](Toposcope%20Compare.dc.html) — frames 3a–3j: inspector verb, fold under the lane, fingerprint as series, near now, zeros, Live freeze, crowded with the cut, anatomy, placement rejects, product rejects
 - [compare/](compare/) — crops of the Compare sheet for issues (3a–3j)
 
+Locked — compare, split one facet:
+
+- [Toposcope Compare Split.dc.html](Toposcope%20Compare%20Split.dc.html) — frames 4a–4j: one 30px row per key of the hunt’s histogram split, under the same fold; none stays the single row; overflow, zeros, Live, crowded with the cut, anatomy, placement rejects, product rejects, the operator’s sentence
+- [compare-split/](compare-split/) — crops of that sheet for issues (4a–4j)
+
 Locked — fingerprints after a mark:
 
 - [Toposcope Cut.dc.html](Toposcope%20Cut.dc.html) — frames 1a–1i: entry, the three sets (first seen / still here / stopped), opening one e1, mark near now, incident band, overflow, empty, row anatomy, rejected shapes
