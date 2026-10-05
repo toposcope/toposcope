@@ -45,6 +45,20 @@ for (const target of ["wash", "rail"] as const) {
       expect(windows.dead).toBe(false);
       expect(windows.sideMs).toBe(30*60_000);
     });
+    test("loading uses exact custom timestamps before a response exists", () => {
+      const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z");
+      const loading={...input,result:null,cut:{...input.cut,result:null}};
+      expect(renderWindows(target,loading).afterTo).toBe(Date.parse(input.to+"Z"));
+    });
+    test("a response keeps a closed incident band when the selected mark is stale", () => {
+      const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z");
+      input.mark.kind="incident";
+      input.result.windows={...input.result.windows,afterTo:"2026-08-14T14:03:34.478Z",beforeFrom:"2026-08-14T13:43:34.478Z",sideMs:10*60_000,banded:true};
+      const windows=renderWindows(target,input);
+      expect(windows.banded).toBe(true);
+      expect(windows.sideMs).toBe(10*60_000);
+      expect(windows.openIncident).toBe(false);
+    });
     test("Live retains the returned open-time windows despite lagging plot bounds", () => {
       const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z",true);
       expect(renderWindows(target,input).afterTo).toBe(Date.parse(input.openedAt));
