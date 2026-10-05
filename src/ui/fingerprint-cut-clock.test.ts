@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import * as cutHelpers from "./fingerprint-cut";
 import { toLocalInput } from "./search-url";
+import { fingerprintCutNotes } from "../shared/fingerprint-cut";
 import type { ChangeMark } from "../shared/change-mark";
 import type { FingerprintCutResult, FingerprintCutWindows } from "../shared/fingerprint-cut";
 
@@ -67,3 +68,25 @@ for (const target of ["wash", "rail"] as const) {
     });
   });
 }
+
+function renderNotes(input: ReturnType<typeof scenario>): string[] {
+  const source=readFileSync("src/ui/components/fingerprint-cut-panel.tsx", "utf8");
+  const expression=source.match(/const notes\s*=([\s\S]*?);\s*const lines/);
+  if (!expression?.[1]) throw new Error("Cut notes expression not found");
+  const bindings={...input,windows:renderWindows("rail",input),nowMs:Date.parse(input.openedAt)+2000,fingerprintCutNotes};
+  return new Function(...Object.keys(bindings),`return (${expression[1]});`)(...Object.values(bindings));
+}
+
+describe("fingerprint cut notes keep the returned clock", () => {
+  test("Live adds a freeze note to an empty response note list", () => {
+    const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z",true);
+    expect(renderNotes(input).some(note=>note.includes("14:23:34") && note.includes("Live"))).toBe(true);
+  });
+  test("sampling refusal stays visible beside the exact Live freeze note", () => {
+    const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z",true);
+    input.result.notes=["Counts only — sampling this slice exceeded the scan budget."];
+    const notes=renderNotes(input);
+    expect(notes).toContain(input.result.notes[0]!);
+    expect(notes.some(note=>note.includes("14:23:34") && note.includes("Live"))).toBe(true);
+  });
+});
