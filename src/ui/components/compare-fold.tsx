@@ -25,7 +25,7 @@ import { formatFieldCount, useCountFormat } from "@/count-format";
 import { cn } from "@/lib/utils";
 import { facetValues, setFieldToken } from "../query-tokens";
 import { fingerprintCutHuntWindows } from "../fingerprint-cut";
-import { compareFoldFetchKey } from "../compare-fold";
+import { compareFoldFetchKey, compareFoldMetricLabels, compareFoldWindows } from "../compare-fold";
 import { seriesColor } from "../histogram-series";
 import type { SearchResult } from "../types";
 import type { HistogramSplit } from "../../query/histogram";
@@ -46,6 +46,8 @@ export type CompareFoldProps = {
   huntToMs: number;
   split: HistogramSplit;
   seriesKeys: string[];
+  plotReady?: boolean;
+  onPaintLines?: (lines: number) => void;
   onClose: () => void;
 };
 
@@ -121,36 +123,24 @@ function refuseReason(json: SearchResult): string {
   );
 }
 
-function withSplitMatcher(
-  ml: string,
-  split: HistogramSplit,
-  key: string,
-): string {
-  if (split === "none" || key === "other" || key === "events") {
-    return ml;
-  }
-  const token = `${split}:${key}`;
-  const parts = ml
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.includes(token)) {
-    return ml;
-  }
-  return [...parts, token].join(",");
-}
-
 async function searchSide(
   fromMs: number,
   toMs: number,
   input: Pick<CompareFoldProps, "q" | "agg" | "metric" | "ml" | "split">,
   signal: AbortSignal,
+  keep: readonly string[] = [],
+  other = false,
 ): Promise<SearchResult> {
   const params = new URLSearchParams();
   params.set("from", new Date(fromMs).toISOString());
   params.set("to", new Date(toMs).toISOString());
   params.set("events", "0");
   params.set("split", input.split);
+  params.set("exact", "1");
+  for (const key of keep) {
+    if (key !== "other") params.append("keep", key);
+  }
+  if (other) params.set("other", "1");
   const qVal = input.q.trim();
   if (qVal) {
     params.set("q", qVal);
@@ -193,11 +183,13 @@ export function CompareFold({
   huntToMs,
   split,
   seriesKeys,
+  plotReady = true,
+  onPaintLines,
   onClose,
 }: CompareFoldProps) {
   const countFormat = useCountFormat();
   const formatCount = (n: number) => formatFieldCount(n, countFormat);
-  const windows = fingerprintCutHuntWindows(mark, openedAt, huntFromMs, huntToMs);
+  const windows = compareFoldWindows({mark, openedAt, from, to, live, huntFromMs, huntToMs});
   const kind = compareFoldKind(agg, metric);
   const series = compareFoldSeriesText({
     e1: facetValues(q, fingerprintAttr),
@@ -222,19 +214,21 @@ export function CompareFold({
   plotKeysRef.current = seriesKeys;
 
   useEffect(() => {
-    if (windows.dead) {
+    if (windows.dead || !plotReady) {
       setSides(null);
       setError(null);
       return;
     }
     const ac = new AbortController();
     setError(null);
+    setSides(null);
+    const plotKeys = [...plotKeysRef.current];
     void (async () => {
       try {
         const common = { q, agg, metric, ml, split };
         const [beforeJson, afterJson] = await Promise.all([
-          searchSide(windows.beforeFrom, windows.beforeTo, common, ac.signal),
-          searchSide(windows.afterFrom, windows.afterTo, common, ac.signal),
+          searchSide(windows.beforeFrom, windows.beforeTo, common, ac.signal, plotKeys),
+          searchSide(windows.afterFrom, windows.afterTo, common, ac.signal, plotKeys),
         ]);
         if (ac.signal.aborted) {
           return;
@@ -246,7 +240,7 @@ export function CompareFold({
           split,
           compareFoldTotals(beforeJson.histogram, split),
           compareFoldTotals(afterJson.histogram, split),
-          stacked ? plotKeysRef.current : undefined,
+          stacked ? plotKeys : undefined,
         );
         let rows: FoldRow[];
         if (!stacked) {
@@ -274,19 +268,25 @@ export function CompareFold({
             ),
           }));
         } else {
-          const named = keys.filter((key) => key !== "other");
           const extras = await Promise.all(
-            named.map(async (key) => {
+            keys.map(async (key) => {
+              const other = key === "other";
+              const named = keys.filter((value) => value !== "other");
+              const rowMl = metric && !other ? compareFoldMetricLabels(ml, split, key) : ml;
+              if (rowMl === null) return { key, before: emptySide(), after: emptySide() };
+              const token = other
+                ? named.length ? `NOT (${named.map((value) => setFieldToken("", split, value)).join(" OR ")})` : ""
+                : setFieldToken("", split, key);
               const scoped = {
-                q: setFieldToken(q, split, key),
+                q: `${q.trim() ? `(${q}) ` : ""}${token}`,
                 agg,
                 metric,
-                ml: metric ? withSplitMatcher(ml, split, key) : ml,
-                split: "none" as const,
+                ml: rowMl,
+                split: metric && other ? split : "none" as const,
               };
               const [beforeKey, afterKey] = await Promise.all([
-                searchSide(windows.beforeFrom, windows.beforeTo, scoped, ac.signal),
-                searchSide(windows.afterFrom, windows.afterTo, scoped, ac.signal),
+                searchSide(windows.beforeFrom, windows.beforeTo, scoped, ac.signal, named, other),
+                searchSide(windows.afterFrom, windows.afterTo, scoped, ac.signal, named, other),
               ]);
               return {
                 key,
@@ -299,13 +299,6 @@ export function CompareFold({
             return;
           }
           rows = extras;
-          if (keys.includes("other")) {
-            rows.push({
-              key: "other",
-              before: emptySide(),
-              after: emptySide(),
-            });
-          }
         }
         const before = rows[0]?.before ?? compareFoldSideFromSearch(beforeJson, kind);
         const after = rows[0]?.after ?? compareFoldSideFromSearch(afterJson, kind);
@@ -335,6 +328,7 @@ export function CompareFold({
     kind,
     split,
     stacked,
+    plotReady,
   ]);
 
   const nowMs = Date.now();
@@ -347,10 +341,11 @@ export function CompareFold({
   const bothEmpty =
     loaded &&
     kind !== "metric" &&
-    rows.length > 0 &&
     rows.every((row) => row.before.empty && row.after.empty) &&
     !windows.dead;
   const showStack = stacked && loaded && !windows.dead && !bothEmpty;
+  const paintLines = showStack ? 1 + rows.length : 1;
+  useEffect(() => { onPaintLines?.(paintLines); }, [onPaintLines, paintLines]);
   const beforeTxt =
     windows.dead || bothEmpty || !loaded
       ? "—"
@@ -584,6 +579,7 @@ function StackRow({
         before,
         after,
         formatDuration: formatFingerprintCutDuration,
+        row: true,
       })
     : "";
   return (
@@ -609,7 +605,7 @@ function StackRow({
         {showDelta && delta != null ? formatAbs(kind, delta, formatCount) : "—"}
       </span>
       {pct != null ? (
-        <PercentChip value={formatCompareFoldPercent(pct)} />
+        <PercentChip value={formatCompareFoldPercent(pct, "stack")} />
       ) : (
         <span
           className="inline-flex h-[18px] min-w-[56px] shrink-0 items-center justify-center rounded-[3.4px] border px-1.5 font-mono text-[11px] whitespace-nowrap text-muted-foreground"

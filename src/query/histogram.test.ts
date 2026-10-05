@@ -250,4 +250,54 @@ describe("capHistogramSeries", () => {
     expect(keys).toHaveLength(histogramSeriesCap + 1);
     expect(capped[0]?.series.other).toBe(1 + 2);
   });
+
+  test("keeps plotted host keys when compare side counts have a different rank", () => {
+    const plottedKeys: readonly string[] = Array.from(
+      { length: histogramSeriesCap },
+      (_, i) => `billing-${i}`,
+    );
+    const buckets = foldHistogramRows([
+      ...plottedKeys.map((k, i) => ({
+        bucket: "2026-08-14 10:00:00",
+        k,
+        n: i + 1,
+      })),
+      { bucket: "2026-08-14 10:00:00", k: "before-only-a", n: 100 },
+      { bucket: "2026-08-14 10:00:00", k: "before-only-b", n: 200 },
+    ]);
+
+    const capped = capHistogramSeries(buckets, "host", plottedKeys);
+
+    expect(capped[0]?.series).toEqual({
+      "billing-0": 1,
+      "billing-1": 2,
+      "billing-2": 3,
+      "billing-3": 4,
+      "billing-4": 5,
+      "billing-5": 6,
+      "billing-6": 7,
+      "billing-7": 8,
+      other: 300,
+    });
+    expect(capped[0]?.n).toBe(336);
+  });
+
+  test("uses plotted keys for other membership below the compare side series cap", () => {
+    const plottedKeys: readonly string[] = ["billing-a", "billing-b"];
+    const buckets = foldHistogramRows([
+      { bucket: "2026-08-14 10:00:00", k: "billing-a", n: 1 },
+      { bucket: "2026-08-14 10:00:00", k: "billing-b", n: 2 },
+      { bucket: "2026-08-14 10:00:00", k: "before-only", n: 90 },
+      { bucket: "2026-08-14 10:01:00", k: "billing-a", n: 3 },
+      { bucket: "2026-08-14 10:01:00", k: "before-only", n: 4 },
+    ]);
+
+    const capped = capHistogramSeries(buckets, "host", plottedKeys);
+
+    expect(capped.map((bucket) => bucket.series)).toEqual([
+      { "billing-a": 1, "billing-b": 2, other: 90 },
+      { "billing-a": 3, other: 4 },
+    ]);
+    expect(capped.map((bucket) => bucket.n)).toEqual([93, 7]);
+  });
 });

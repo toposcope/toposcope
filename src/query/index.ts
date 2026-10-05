@@ -102,6 +102,9 @@ export type SearchFilters = {
   metric?: string;
   ml?: string;
   events?: string;
+  keep?: readonly string[];
+  exact?: boolean;
+  other?: boolean;
 };
 
 export type LevelCounts = Partial<Record<LogLevel, number>>;
@@ -210,7 +213,7 @@ function buildWhere(
     params.from = filters.from;
   }
   if (filters.to) {
-    where.push("ts <= parseDateTime64BestEffort({to:String})");
+    where.push(`ts ${filters.exact ? "<" : "<="} parseDateTime64BestEffort({to:String})`);
     params.to = filters.to;
   }
   if (withCursor && filters.cursor) {
@@ -429,6 +432,7 @@ export function foldHistogramRows(rows: HistogramRow[]): HistogramBucket[] {
 export function capHistogramSeries(
   buckets: HistogramBucket[],
   split: HistogramSplit,
+  preferred?: readonly string[],
 ): HistogramBucket[] {
   if (split === "level" || split === "none") {
     return buckets;
@@ -440,11 +444,12 @@ export function capHistogramSeries(
     }
   }
   const ranked = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-  if (ranked.length <= histogramSeriesCap) {
+  if (!preferred && ranked.length <= histogramSeriesCap) {
     return buckets;
   }
   const keep = new Set(
-    ranked.slice(0, histogramSeriesCap).map(([key]) => key),
+    preferred?.filter((key) => key !== "other").slice(0, histogramSeriesCap) ??
+      ranked.slice(0, histogramSeriesCap).map(([key]) => key),
   );
   return buckets.map((bucket) => {
     const series: Record<string, number> = {};
@@ -508,6 +513,7 @@ async function searchHistogramPage(
   const key = histogramKeySql(split);
   const source = sourceOf(compiled);
   const useMv =
+    !resolved.exact &&
     histogramUsesMinuteRollup(intervalMs) &&
     (source === "minute" || source === "attr");
   if (useMv) {
@@ -538,7 +544,7 @@ async function searchHistogramPage(
       ORDER BY bucket
     `;
     const rows = await clickhouseQuery<HistogramRow>(query, params);
-    return { buckets: finishHistogram(foldHistogramRows(rows), split) };
+    return { buckets: finishHistogram(foldHistogramRows(rows), split, resolved.keep) };
   }
   const { sql, params } = buildWhere(scoped, false);
   const query = key
@@ -565,7 +571,7 @@ async function searchHistogramPage(
   `;
   try {
     const rows = await clickhouseQueryBudgeted<HistogramRow>(query, params);
-    return { buckets: finishHistogram(foldHistogramRows(rows), split) };
+    return { buckets: finishHistogram(foldHistogramRows(rows), split, resolved.keep) };
   } catch (err) {
     if (isNumericAggBudgetError(err)) {
       return { buckets: [], refused: logsScanBudgetRefuseReason };
@@ -577,8 +583,9 @@ async function searchHistogramPage(
 function finishHistogram(
   buckets: HistogramBucket[],
   split: HistogramSplit,
+  keep?: readonly string[],
 ): HistogramBucket[] {
-  const capped = capHistogramSeries(buckets, split);
+  const capped = capHistogramSeries(buckets, split, keep);
   if (split !== "none") {
     return capped;
   }
@@ -889,6 +896,10 @@ export async function search(filters: SearchFilters): Promise<SearchResult> {
             intervalMs,
             name: metricName,
             labels: metricLabels,
+            exact: timed.exact,
+            exclude: timed.other && timed.split && timed.split !== "none" && timed.keep
+              ? { key: timed.split, values: timed.keep }
+              : undefined,
           })
         : aggSpec && aggSpec.op !== "rate"
           ? searchNumericAgg(timed, intervalMs, aggSpec)
@@ -977,7 +988,7 @@ async function searchNumericAgg(
     return refusedAgg(expr, keyReason);
   }
   const compiled = compiledFor(filters.q);
-  if (canUseNumericAgg(compiled) && histogramUsesMinuteRollup(intervalMs)) {
+  if (!filters.exact && canUseNumericAgg(compiled) && histogramUsesMinuteRollup(intervalMs)) {
     return searchNumericMvAgg(filters, intervalMs, agg, expr);
   }
   if (filters.since) {
@@ -1279,6 +1290,9 @@ export async function searchRoute(c: Context): Promise<Response> {
   const metric = c.req.query("metric") ?? undefined;
   const ml = c.req.query("ml") ?? undefined;
   const events = c.req.query("events") ?? undefined;
+  const keep = c.req.queries("keep")?.filter((key) => key && key !== "other").slice(0, histogramSeriesCap);
+  const exact = c.req.query("exact") === "1";
+  const other = c.req.query("other") === "1";
   const limitRaw = c.req.query("limit");
   const limit = limitRaw ? Number(limitRaw) : undefined;
 
@@ -1298,6 +1312,9 @@ export async function searchRoute(c: Context): Promise<Response> {
       metric,
       ml,
       events,
+      keep,
+      exact,
+      other,
     });
     return c.json(result);
   } catch (err) {

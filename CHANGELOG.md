@@ -6,7 +6,9 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 Fingerprints uses the returned exact windows for rail labels and plot washes. Events at a change mark belong to the after side only; minute buckets no longer put the same fingerprint on both sides. Cut counts use the existing bounded log scan, with an explicit refusal when that budget is exceeded. [#38](https://github.com/toposcope/toposcope/pull/38)
 
-Inspector Compare follows the hunt’s histogram split: `none` is the shipped single row; `level` / `service` / `host` stack one 30px row per series key under the lane (cap 8 + `other`), same mark / windows / percent rules. Sub-1% keeps its decimal. `bun run load:hunt` pins `split=host` so the billing hosts read **+0.5% / +4% / +9%**. [#35](https://github.com/toposcope/toposcope/issues/35)
+Inspector Compare follows the hunt’s histogram split: `none` is the shipped single row; `level` / `service` / `host` stack one 30px row per series key under the lane (cap 8 + `other`), same mark / windows / percent rules. A stacked row under 1% keeps its decimal; `none` keeps `+<1%`. `bun run load:hunt` pins `split=host` so the billing hosts read **+0.5% / +4% / +9%**. [#35](https://github.com/toposcope/toposcope/issues/35)
+
+Compare reads exact equal windows and retains the plot’s named keys on both sides, so `other` has the same membership before and after. Numeric and metric deltas need measured values on both sides. The stack keeps its plot space under Live and does not change stored widget positions. Closing Compare leaves Fingerprints open. [#37](https://github.com/toposcope/toposcope/issues/37)
 
 Ingest aliases OTEL `service.version` onto attr `version` when `version` is unset (sender `version` wins; the dotted key is dropped). `customer` and `flag` stay collector remaps. `bun run load:hunt` plants all three on the billing v0.9 slice, pins them as promoted columns, and writes `/tmp/toposcope-hunt.json` for screenshot capture. [#31](https://github.com/toposcope/toposcope/issues/31)
 

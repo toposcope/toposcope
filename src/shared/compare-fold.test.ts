@@ -9,6 +9,7 @@ import {
   compareFoldPercent,
   compareFoldRowKeys,
   compareFoldSeriesText,
+  compareFoldSeriesTotal,
   compareFoldShowDelta,
   compareFoldSideFromCount,
   compareFoldSideFromSearch,
@@ -34,6 +35,11 @@ function pointWindows() {
 }
 
 describe("compareFoldPercent", () => {
+  test("split none keeps the shipped sub-one-percent label", () => {
+    expect(formatCompareFoldPercent(0.47, "single")).toBe("+<1%");
+    expect(formatCompareFoldPercent(-0.4, "single")).toBe(`${compareFoldMinus}<1%`);
+  });
+
   test("percent is (after − before) / before when before exists", () => {
     expect(compareFoldPercent(1970, 2210)).toBeCloseTo(12.1827, 3);
     expect(formatCompareFoldPercent(12.1827)).toBe("+12%");
@@ -53,8 +59,8 @@ describe("compareFoldPercent", () => {
     expect(formatCompareFoldPercent(1.24)).toBe("+1.2%");
     expect(formatCompareFoldPercent(4)).toBe("+4%");
     expect(formatCompareFoldPercent(9)).toBe("+9%");
-    expect(formatCompareFoldPercent(0.47)).toBe("+0.5%");
-    expect(formatCompareFoldPercent(-0.4)).toBe(`${compareFoldMinus}0.4%`);
+    expect(formatCompareFoldPercent(0.47, "stack")).toBe("+0.5%");
+    expect(formatCompareFoldPercent(-0.4, "stack")).toBe(`${compareFoldMinus}0.4%`);
     expect(formatCompareFoldPercent(0.04)).toBe("+<1%");
   });
 });
@@ -158,6 +164,32 @@ describe("compareFoldSeriesText", () => {
 });
 
 describe("compareFoldKind / side", () => {
+  test("numeric rows without finite measurements are empty even when logs match", () => {
+    const empty = compareFoldSideFromSearch({ total: 10, agg: {stat: null, source: "numeric"} }, "numeric");
+    expect(empty.empty).toBe(true);
+    expect(compareFoldShowDelta(pointWindows(), "numeric", empty, empty)).toBe(false);
+  });
+
+  test("numeric and metric deltas require measured values on both sides", () => {
+    for (const kind of ["numeric", "metric"] as const) {
+      const missing = compareFoldSideFromSearch({total: 10, agg: {stat: null, source: kind}}, kind);
+      const measured = compareFoldSideFromSearch({total: 10, agg: {stat: 20, source: kind}}, kind);
+      expect(compareFoldShowDelta(pointWindows(), kind, missing, measured)).toBe(false);
+      expect(compareFoldShowDelta(pointWindows(), kind, measured, missing)).toBe(false);
+    }
+  });
+
+  test("a metric row without matching samples has no measured delta", () => {
+    const empty = compareFoldSideFromSearch({ total: 0, agg: {stat: null, source: "metric"} }, "metric");
+    expect(compareFoldShowDelta(pointWindows(), "metric", empty, empty)).toBe(false);
+  });
+
+  test("a metric row with no before sample names the new state", () => {
+    const before = compareFoldSideFromSearch({ total: 0, agg: {stat: null, source: "metric"} }, "metric");
+    const after = compareFoldSideFromSearch({ total: 0, agg: {stat: 10, source: "metric"} }, "metric");
+    expect(compareFoldNote({windows: pointWindows(), kind: "metric", before, after, row: true, formatDuration: () => "49m"})).toBe("new since this mark — a percent needs a before");
+  });
+
   test("count uses total; rate uses window stat; empty numeric is not a number", () => {
     expect(compareFoldKind(null, null)).toBe("count");
     expect(compareFoldKind("rate", null)).toBe("rate");
@@ -180,6 +212,10 @@ describe("compareFoldKind / side", () => {
 });
 
 describe("compareFoldRowKeys", () => {
+  test("a split value named events retains its own denominator", () => {
+    expect(compareFoldSeriesTotal([{n: 100, series: {events: 7, api: 93}}], "events", "service")).toBe(7);
+  });
+
   test("none is one events row; host caps 8 named plus other", () => {
     expect(compareFoldRowKeys("none", new Map(), new Map())).toEqual(["events"]);
     const before = new Map<string, number>();
@@ -210,13 +246,13 @@ describe("compareFoldRowKeys", () => {
   test("count and rate sides share the percent when windows are equal", () => {
     const before = compareFoldSideFromCount(850, "count", 2940, false);
     const after = compareFoldSideFromCount(854, "count", 2940, false);
-    expect(formatCompareFoldPercent(compareFoldPercent(before.v, after.v) ?? 0)).toBe(
+    expect(formatCompareFoldPercent(compareFoldPercent(before.v, after.v) ?? 0, "stack")).toBe(
       "+0.5%",
     );
     const beforeRate = compareFoldSideFromCount(850, "rate", 2940, false);
     const afterRate = compareFoldSideFromCount(854, "rate", 2940, false);
     expect(
-      formatCompareFoldPercent(compareFoldPercent(beforeRate.v, afterRate.v) ?? 0),
+      formatCompareFoldPercent(compareFoldPercent(beforeRate.v, afterRate.v) ?? 0, "stack"),
     ).toBe("+0.5%");
   });
 });

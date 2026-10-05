@@ -24,7 +24,7 @@ function finiteNum(value: string | number | null | undefined): number | null {
 
 function metricTimeWhere(
   column: "ts" | "minute",
-  filters: { from?: string; to?: string; since?: string },
+  filters: { from?: string; to?: string; since?: string; exact?: boolean },
 ): WhereClause {
   const params: Record<string, string> = { tenant_id: "default" };
   const where = ["tenant_id = {tenant_id:String}"];
@@ -37,7 +37,7 @@ function metricTimeWhere(
     params.from = filters.from;
   }
   if (filters.to) {
-    where.push(`${column} <= ${parse("to")}`);
+    where.push(`${column} ${filters.exact ? "<" : "<="} ${parse("to")}`);
     params.to = filters.to;
   }
   return { sql: where.join(" AND "), params };
@@ -68,15 +68,18 @@ export async function searchMetricSeries(opts: {
   intervalMs: HistogramIntervalMs;
   name: string;
   labels: Record<string, string>;
+  exact?: boolean;
+  exclude?: { key: string; values: readonly string[] };
 }): Promise<SearchAggResult> {
   const expr = metricExpr(opts.name, opts.labels);
   const interval = histogramIntervalSql(opts.intervalMs);
   const overlay = {
     from: tightenHistogramFrom(opts.from, opts.since, opts.intervalMs),
     to: opts.to,
+    exact: opts.exact,
   };
   const labeled = Object.keys(opts.labels).length > 0;
-  if (!labeled && histogramUsesMinuteRollup(opts.intervalMs)) {
+  if (!opts.exact && !opts.exclude && !labeled && histogramUsesMinuteRollup(opts.intervalMs)) {
     const overlayWhere = metricTimeWhere("minute", overlay);
     overlayWhere.params.metric_name = opts.name;
     const statWhere = metricTimeWhere("minute", { from: opts.from, to: opts.to });
@@ -103,10 +106,17 @@ export async function searchMetricSeries(opts: {
   overlayWhere.params.metric_name = opts.name;
   const overlayParts = [overlayWhere.sql, "name = {metric_name:String}"];
   pushLabels(overlayParts, overlayWhere.params, opts.labels);
-  const statWhere = metricTimeWhere("ts", { from: opts.from, to: opts.to });
+  const statWhere = metricTimeWhere("ts", { from: opts.from, to: opts.to, exact: opts.exact });
   statWhere.params.metric_name = opts.name;
   const statParts = [statWhere.sql, "name = {metric_name:String}"];
   pushLabels(statParts, statWhere.params, opts.labels);
+  if (opts.exclude) {
+    for (const [parts, params] of [[overlayParts, overlayWhere.params], [statParts, statWhere.params]] as const) {
+      params.exclude_key = opts.exclude.key;
+      params.exclude_values = JSON.stringify(opts.exclude.values);
+      parts.push("labels[{exclude_key:String}] NOT IN JSONExtract({exclude_values:String}, 'Array(String)')");
+    }
+  }
   const bucketQuery = `
     SELECT
       toStartOfInterval(ts, ${interval}) AS bucket,
