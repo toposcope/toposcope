@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.4.8
+
 Fingerprints uses the returned exact windows for rail labels and plot washes. Events at a change mark belong to the after side only; minute buckets no longer put the same fingerprint on both sides. Cut counts use the existing bounded log scan, with an explicit refusal when that budget is exceeded. [#38](https://github.com/toposcope/toposcope/pull/38)
 
 Inspector Compare follows the hunt’s histogram split: `none` is the shipped single row; `level` / `service` / `host` stack one 30px row per series key under the lane (cap 8 + `other`), same mark / windows / percent rules. A stacked row under 1% keeps its decimal; `none` keeps `+<1%`. `bun run load:hunt` pins `split=host` so the billing hosts read **+0.5% / +4% / +9%**. [#35](https://github.com/toposcope/toposcope/issues/35)
