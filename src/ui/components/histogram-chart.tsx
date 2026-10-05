@@ -110,6 +110,7 @@ type Props = {
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
   compareFold?: CompareFoldHunt | null;
+  onCompareLines?: (lines: number) => void;
 };
 
 function bucketEndMs(bucket: HistogramBucket, stepMs: number): number {
@@ -328,6 +329,7 @@ export function HistogramChart({
   focusMarkId = null,
   onFocusMark,
   compareFold = null,
+  onCompareLines,
 }: Props) {
   const surfaceRef = useRef<HTMLDivElement>(null);
   const laneHoverRef = useRef(false);
@@ -1484,7 +1486,7 @@ export function HistogramChart({
         </div>
       ) : null}
       {marks && compareFold ? (
-        <CompareFold {...compareFold} split={split} seriesKeys={keys} />
+        <CompareFold {...compareFold} split={split} seriesKeys={keys} plotReady={!loading} onPaintLines={onCompareLines} />
       ) : null}
       <div className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2.5 border-t border-white/[0.08] pr-2.5 pb-1.5 pl-[47px] pt-1.5">
         {showVolume

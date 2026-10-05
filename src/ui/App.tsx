@@ -94,11 +94,10 @@ import {
 import {
   cutCrumbLabel,
   cutRailSurface,
-  fingerprintCutHuntWindows,
   fingerprintCutViewWindows,
   type FingerprintCutSnap,
 } from "./fingerprint-cut";
-import type { CompareFoldSnap } from "./compare-fold";
+import { compareFoldWindows, type CompareFoldSnap } from "./compare-fold";
 import { fillHistogram, rangeDurationMs } from "./fill-histogram";
 import {
   bindForBoard,
@@ -3259,12 +3258,8 @@ export function App() {
       : null;
   const compareWindows =
     compare && Number.isFinite(windowFromMs) && spanMs > 0
-      ? fingerprintCutHuntWindows(
-          compare.mark,
-          compare.openedAt,
-          windowFromMs,
-          windowFromMs + spanMs,
-        )
+      ? compareFoldWindows({ mark: compare.mark, openedAt: compare.openedAt,
+          from, to, live, huntFromMs: windowFromMs, huntToMs: windowFromMs + spanMs })
       : null;
   const washWindows =
     cut && cutWindows && !cutWindows.dead

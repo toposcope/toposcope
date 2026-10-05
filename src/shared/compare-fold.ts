@@ -47,14 +47,14 @@ export function compareFoldPercent(
   return ((after - before) / before) * 100;
 }
 
-export function formatCompareFoldPercent(p: number): string {
+export function formatCompareFoldPercent(p: number, layout: "single" | "stack" = "single"): string {
   const sign = p >= 0 ? "+" : compareFoldMinus;
   const abs = Math.abs(p);
   if (abs >= 9.5) {
     return `${sign}${Math.round(abs)}%`;
   }
   const tenths = Math.round(abs * 10) / 10;
-  if (tenths === 0) {
+  if (layout === "single" && tenths < 1) {
     return `${sign}<1%`;
   }
   if (tenths >= 1 && Number.isInteger(tenths)) {
@@ -97,10 +97,11 @@ export function compareFoldSideFromSearch(
     };
   }
   const v = refused || n === 0 ? null : (json.agg?.stat ?? null);
+  const measured = v != null && Number.isFinite(v);
   return {
-    v: v != null && Number.isFinite(v) ? v : null,
+    v: measured ? v : null,
     n,
-    empty: n === 0,
+    empty: !measured,
     refused,
   };
 }
@@ -139,6 +140,7 @@ export function compareFoldNote(input: {
   before: CompareFoldSide;
   after: CompareFoldSide;
   formatDuration: (ms: number) => string;
+  row?: boolean;
 }): string {
   if (input.windows.dead) {
     return "the window ends before this mark — nothing after to read";
@@ -146,9 +148,11 @@ export function compareFoldNote(input: {
   if (input.before.refused || input.after.refused) {
     return "";
   }
-  const logEmpty = input.kind !== "metric";
+  const logEmpty = input.kind !== "metric" || input.row === true;
   if (logEmpty && input.before.empty && input.after.empty) {
-    return "no events on either side — nothing to number";
+    return input.kind === "numeric" || input.kind === "metric"
+      ? "no samples on either side — nothing to number"
+      : "no events on either side — nothing to number";
   }
   if (logEmpty && input.before.empty && !input.after.empty) {
     return "new since this mark — a percent needs a before";
@@ -157,6 +161,7 @@ export function compareFoldNote(input: {
     return "quiet after this mark";
   }
   if (
+    !input.row &&
     !input.windows.banded &&
     input.windows.sideMs > 0 &&
     input.windows.sideMs < fingerprintCutShortMs
@@ -191,7 +196,7 @@ export function compareFoldSeriesTotal(
   key: string,
   split: HistogramSplit,
 ): number {
-  if (split === "none" || key === "events") {
+  if (split === "none") {
     return buckets.reduce((sum, bucket) => sum + bucket.n, 0);
   }
   return buckets.reduce((sum, bucket) => sum + (bucket.series[key] ?? 0), 0);
@@ -306,7 +311,10 @@ export function compareFoldShowDelta(
   if (windows.dead || before.refused || after.refused) {
     return false;
   }
-  if (kind !== "metric" && before.empty && after.empty) {
+  if ((kind === "numeric" || kind === "metric") && (before.v == null || after.v == null)) {
+    return false;
+  }
+  if (before.empty && after.empty) {
     return false;
   }
   return true;

@@ -7,6 +7,7 @@ import {
   type MarksOverlay,
 } from "@/components/histogram-marks";
 import { type CompareFoldHunt } from "@/components/compare-fold";
+import { compareFoldExtraRows } from "@/compare-fold";
 import { HbarHead, HbarWidget, hbarPaintedRows, type HbarCommand } from "@/components/hbar-widget";
 import { StatHead, StatWidget, statSeriesFile } from "@/components/stat-widget";
 import {
@@ -202,6 +203,7 @@ export function WidgetCanvas({
   const dragRef = useRef<Drag | null>(null);
   const ghostRef = useRef<Cell | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [compareLines, setCompareLines] = useState(1);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [ghost, setGhost] = useState<Cell | null>(null);
   const [lift, setLift] = useState<{ dx: number; dy: number } | null>(null);
@@ -277,7 +279,12 @@ export function WidgetCanvas({
     }
     return widget;
   });
-  const rows = gridRows(displayWidgets);
+  const pinnedWidget = displayWidgets.find(isPinnedHistogram);
+  const extraRows = compareFold && !locked ? compareFoldExtraRows(compareLines) : 0;
+  const rows = gridRows(displayWidgets) + extraRows;
+  function canvasY(y: number): number {
+    return pinnedWidget && y >= pinnedWidget.y + pinnedWidget.h ? y + extraRows : y;
+  }
   const dashGhost =
     drag && ghost
       ? drag.mode === "resize"
@@ -691,7 +698,7 @@ export function WidgetCanvas({
             className="z-0 rounded-lg border border-dashed border-ring bg-ring/10"
             style={{
               gridColumn: `${dashGhost.x + 1} / span ${dashGhost.w}`,
-              gridRow: `${dashGhost.y + 1} / span ${dashGhost.h}`,
+              gridRow: `${canvasY(dashGhost.y) + 1} / span ${dashGhost.h + (drag?.id === pinnedWidget?.id ? extraRows : 0)}`,
             }}
           />
         ) : null}
@@ -719,7 +726,7 @@ export function WidgetCanvas({
               style={{
                 zIndex: dragging ? 30 : pinned ? 2 : 1,
                 gridColumn: `${widget.x + 1} / span ${widget.w}`,
-                gridRow: `${widget.y + 1} / span ${widget.h}`,
+                gridRow: `${canvasY(widget.y) + 1} / span ${widget.h + (pinned ? extraRows : 0)}`,
                 transform:
                   moving && lift
                     ? `translate(${Math.round(lift.dx)}px, ${Math.round(lift.dy)}px)`
@@ -792,6 +799,7 @@ export function WidgetCanvas({
                   focusMarkId={focusMarkId}
                   onFocusMark={onFocusMark}
                   compareFold={locked ? undefined : compareFold}
+                  onCompareLines={setCompareLines}
                   className="h-full"
                 />
               ) : (

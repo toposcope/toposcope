@@ -103,7 +103,7 @@ describe("buildHuntSlice", () => {
       ).length;
       expect(before).toBe(hostSlice.still);
       expect(after).toBe(hostSlice.still + hostSlice.bugAfter);
-      return formatCompareFoldPercent(compareFoldPercent(before, after) ?? 0);
+      return formatCompareFoldPercent(compareFoldPercent(before, after) ?? 0, "stack");
     });
     expect(formatted).toEqual([...huntHostPercents]);
   });
