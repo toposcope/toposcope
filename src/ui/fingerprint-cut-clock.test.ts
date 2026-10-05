@@ -49,7 +49,7 @@ for (const target of ["wash", "rail"] as const) {
     test("loading uses exact custom timestamps before a response exists", () => {
       const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z");
       const loading={...input,result:null,cut:{...input.cut,result:null}};
-      expect(renderWindows(target,loading).afterTo).toBe(Date.parse(input.to+"Z"));
+      expect(renderWindows(target,loading).afterTo).toBe(Date.parse(input.result.windows.afterTo));
     });
     test("a response keeps a closed incident band when the selected mark is stale", () => {
       const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z");
@@ -80,13 +80,20 @@ function renderNotes(input: ReturnType<typeof scenario>): string[] {
 describe("fingerprint cut notes keep the returned clock", () => {
   test("Live adds a freeze note to an empty response note list", () => {
     const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z",true);
-    expect(renderNotes(input).some(note=>note.includes("14:23:34") && note.includes("Live"))).toBe(true);
+    expect(renderNotes(input).some(note=>note.includes("2s ago") && note.includes("Live"))).toBe(true);
+  });
+  test("only the current Live age is shown when the response carries an older age", () => {
+    const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z",true);
+    input.result.notes=["Fixed when opened — 1s ago. Live moves the plot, not the cut; reopen to re-cut at now."];
+    const fixed=renderNotes(input).filter(note=>note.startsWith("Fixed when opened"));
+    expect(fixed).toHaveLength(1);
+    expect(fixed[0]).toContain("2s ago");
   });
   test("sampling refusal stays visible beside the exact Live freeze note", () => {
     const input=scenario("2026-08-14T13:23:34.478Z","2026-08-14T14:23:34.478Z","2026-08-14T13:53:34.478Z","2026-08-14T13:23:00.000Z","2026-08-14T14:23:00.000Z",true);
     input.result.notes=["Counts only — sampling this slice exceeded the scan budget."];
     const notes=renderNotes(input);
     expect(notes).toContain(input.result.notes[0]!);
-    expect(notes.some(note=>note.includes("14:23:34") && note.includes("Live"))).toBe(true);
+    expect(notes.some(note=>note.includes("2s ago") && note.includes("Live"))).toBe(true);
   });
 });

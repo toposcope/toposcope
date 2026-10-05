@@ -6,6 +6,7 @@ import {
 } from "../shared/fingerprint-cut";
 import type { ChangeMark } from "../shared/change-mark";
 import { formatEventClock } from "./event-time";
+import { isoFromLocal } from "./search-url";
 
 export type FingerprintCutSnap = {
   mark: ChangeMark;
@@ -83,6 +84,42 @@ export function fingerprintCutHuntWindows(
     huntTo: huntToMs,
     openedAt: Date.parse(openedAt),
   });
+}
+
+/** The returned windows own both the numbers and their labels while a new read is pending. */
+export function fingerprintCutViewWindows(input: {
+  mark: ChangeMark;
+  openedAt: string;
+  range: string;
+  from: string;
+  to: string;
+  spanMs: number;
+  fromMs: number;
+  toMs: number;
+  result: FingerprintCutResult | null;
+}): FingerprintCutWindows {
+  const openedMs = Date.parse(input.openedAt);
+  const custom = input.range === "custom";
+  const fromMs = custom ? Date.parse(isoFromLocal(input.from) ?? "") : openedMs - input.spanMs;
+  const toMs = custom ? Date.parse(isoFromLocal(input.to) ?? "") : openedMs;
+  const huntFrom = Number.isFinite(fromMs) ? fromMs : input.fromMs;
+  const huntTo = Number.isFinite(toMs) ? toMs : input.toMs;
+  const fallback = fingerprintCutHuntWindows(input.mark, input.openedAt, huntFrom, huntTo);
+  if (!input.result) return fallback;
+  const returned = input.result.windows;
+  const beforeFrom = Date.parse(returned.beforeFrom);
+  return {
+    ...fallback,
+    afterFrom: Date.parse(returned.afterFrom),
+    afterTo: Date.parse(returned.afterTo),
+    beforeFrom,
+    beforeTo: Date.parse(returned.beforeTo),
+    sideMs: returned.sideMs,
+    banded: returned.banded,
+    dead: returned.dead,
+    pastPlotFrom: beforeFrom < huntFrom,
+    openIncident: input.mark.kind === "incident" && !returned.banded,
+  };
 }
 
 export function formatCutWindowLines(

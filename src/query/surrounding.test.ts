@@ -188,7 +188,7 @@ describe("searchAroundTs ClickHouse", () => {
       }
       await clickhouseCommand(logsCreateTableSql);
       const token = `around${Date.now()}`;
-      const pivotMs = Date.parse("2026-08-25T16:29:37.732Z");
+      const pivotMs = Math.floor(Date.now() / 1000) * 1000 - 60_000 + 732;
       const iso = (ms: number) => new Date(ms).toISOString();
       const services = ["billing", "api", "worker"] as const;
       const rows: Array<{
