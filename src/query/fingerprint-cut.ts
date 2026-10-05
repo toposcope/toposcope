@@ -18,7 +18,6 @@ import {
   type FingerprintCutSideCount,
   type FingerprintCutWindows,
 } from "../shared/fingerprint-cut";
-import { getFieldSkipKeys } from "../shared/field-skip";
 import {
   emitQuerySql,
   QueryCompileError,
@@ -31,7 +30,6 @@ import {
   logsScanBudgetRefuseReason,
   numericScanSettings,
 } from "./agg";
-import { rollupSource } from "./histogram";
 import { clampSearchSpan, InvalidRangeError, resolveRange } from "./relative";
 
 type WhereClause = { sql: string; params: Record<string, string> };
@@ -131,33 +129,9 @@ function logsWhere(
   const where = [
     "tenant_id = {tenant_id:String}",
     "ts >= parseDateTime64BestEffort({from:String})",
-    "ts <= parseDateTime64BestEffort({to:String})",
+    "ts < parseDateTime64BestEffort({to:String})",
   ];
   const sql = emitQuerySql(compiled, params, "logs");
-  if (sql) {
-    where.push(sql);
-  }
-  return { sql: where.join(" AND "), params };
-}
-
-function attrMvWhere(
-  fromIso: string,
-  toIso: string,
-  compiled: CompiledQuery,
-): WhereClause {
-  const params: Record<string, string> = {
-    tenant_id: "default",
-    from: fromIso,
-    to: toIso,
-    attr_key: fingerprintAttr,
-  };
-  const where = [
-    "tenant_id = {tenant_id:String}",
-    "minute >= toStartOfMinute(parseDateTime64BestEffort({from:String}))",
-    "minute <= toStartOfMinute(parseDateTime64BestEffort({to:String}))",
-    "key = {attr_key:String}",
-  ];
-  const sql = emitQuerySql(compiled, params, "attr", fingerprintAttr);
   if (sql) {
     where.push(sql);
   }
@@ -169,22 +143,6 @@ async function e1Counts(
   toIso: string,
   compiled: CompiledQuery,
 ): Promise<Array<{ hex: string; n: number }>> {
-  const source = rollupSource(compiled, getFieldSkipKeys());
-  if (source === "minute") {
-    const { sql, params } = attrMvWhere(fromIso, toIso, compiled);
-    params.limit = String(fingerprintCutScanCap);
-    const query = `
-      SELECT value AS v, countMerge(n) AS n
-      FROM logs_attr_values_by_minute
-      WHERE ${sql} AND value != ''
-      GROUP BY v
-      ORDER BY n DESC, v ASC
-      LIMIT {limit:UInt32}
-      SETTINGS max_execution_time = 5
-    `;
-    const rows = await clickhouseQuery<CountRow>(query, params);
-    return rows.map((row) => ({ hex: String(row.v), n: rowN(row.n) }));
-  }
   const { sql, params } = logsWhere(fromIso, toIso, compiled);
   params.e1key = fingerprintAttr;
   params.limit = String(fingerprintCutScanCap);

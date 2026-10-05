@@ -15,7 +15,7 @@ import { isoFromLocal } from "../search-url";
 import { facetValues } from "../query-tokens";
 import {
   fingerprintCutFetchKey,
-  fingerprintCutHuntWindows,
+  fingerprintCutViewWindows,
   formatCutWindowLines,
 } from "../fingerprint-cut";
 import { MarkGlyph } from "./histogram-marks";
@@ -58,11 +58,15 @@ export function FingerprintCutPanel({
 }: Props) {
   const [error, setError] = useState<string | null>(null);
   const huntToMs = Number.isFinite(toMs) ? toMs : fromMs + spanMs;
-  const windows = fingerprintCutHuntWindows(mark, openedAt, fromMs, huntToMs);
+  const windows = fingerprintCutViewWindows({
+    mark, openedAt, range, from, to, spanMs,
+    fromMs, toMs: huntToMs, result,
+  });
   const nowMs = Date.now();
-  const notes = result?.notes?.length
-    ? result.notes
-    : fingerprintCutNotes(windows, { live, now: nowMs });
+  const notes = [...new Set([
+    ...(result?.notes ?? []).filter(note => !note.startsWith("Fixed when opened —")),
+    ...fingerprintCutNotes(windows, { live, now: nowMs }),
+  ])];
   const lines = formatCutWindowLines(windows, nowMs);
   const fetchKey = fingerprintCutFetchKey({ q, live, spanMs, from, to });
 

@@ -42,10 +42,13 @@ describe("searchProbes ClickHouse", () => {
       TTL toDate(ts) + INTERVAL 30 DAY
     `);
     const token = `probe${Date.now()}`;
-    const from = "2026-08-31T17:00:00.000Z";
-    const mark = "2026-08-31T17:30:00.000Z";
-    const to = "2026-08-31T18:00:00.000Z";
-    const down = "2026-08-31T17:31:00.000Z";
+    const toMs = Math.floor(Date.now() / 60_000) * 60_000;
+    const fromMs = toMs - 3_600_000;
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const from = iso(fromMs);
+    const mark = iso(fromMs + 30 * 60_000);
+    const to = iso(toMs);
+    const down = iso(fromMs + 31 * 60_000);
     const points = [
       probeToMetricPoint({
         ts: from,
