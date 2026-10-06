@@ -123,6 +123,24 @@ describe("computeFingerprint", () => {
       .toBe(hash("/tmp/checkout/build-202/src/billing/charge.ts"));
   });
 
+  test("a known deployment root and a deep relative source path share a fingerprint", () => {
+    const hash = (file: string) => computeFingerprint("error", "payment failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file, function: "charge" }],
+    });
+    expect(hash("/app/billing/handlers/v1/charge.ts"))
+      .toBe(hash("billing/handlers/v1/charge.ts"));
+  });
+
+  test("deep relative source paths retain their leading source-directory identity", () => {
+    const hash = (file: string) => computeFingerprint("error", "payment failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file, function: "charge" }],
+    });
+    expect(hash("billing/handlers/v1/charge.ts"))
+      .not.toBe(hash("orders/handlers/v1/charge.ts"));
+  });
+
   test("Windows and slash-separated source paths have the same fingerprint", () => {
     const hash = (file: string) => computeFingerprint("error", "payment failed", {
       "exception.type": "TypeError",
@@ -156,6 +174,59 @@ describe("computeFingerprint", () => {
     }));
     expect(hash("TypeError: failed\n    at charge (/app/billing.ts:41:9)"))
       .not.toBe(hash("TypeError: failed\n    at cancel (/app/orders.ts:88:2)"));
+  });
+
+  test("unknown stacktrace keeps the stabilized log-body fingerprint", () => {
+    const plain = { "exception.type": "TypeError" };
+    const unknown = liftException({ ...plain, "exception.stacktrace": "an unsupported stack representation" });
+    expect(computeFingerprint("error", "request 101 failed", unknown))
+      .toBe(computeFingerprint("error", "request 202 failed", plain));
+  });
+
+  test("a stack-looking log body is not parsed without an exception.stacktrace attribute", () => {
+    const type = { "exception.type": "TypeError" };
+    const a = "TypeError: failed\n    at charge (/app/billing.ts:41:9)";
+    const b = "TypeError: failed\n    at cancel (/app/orders.ts:88:2)";
+    expect(computeFingerprint("error", a, liftException(type)))
+      .not.toBe(computeFingerprint("error", b, liftException(type)));
+  });
+
+  test("hash path normalization keeps original exception paths and other attrs", () => {
+    const original = {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file: "/var/www/releases/2026-10-06/billing/charge.ts:41:9", function: "charge" }],
+      version: "v0.9",
+    };
+    const stamped = withFingerprint("error", "failed", liftException(original));
+    expect(stamped?.["exception.frames"]).toEqual(original["exception.frames"]);
+    expect(stamped?.version).toBe("v0.9");
+    expect(original).not.toHaveProperty("e1");
+    expect(stamped?.e1).toBe(computeFingerprint("error", "failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file: "billing/charge.ts", function: "charge" }],
+    }));
+  });
+
+  test("numeric release-directory stamps and file URLs share the source-file fingerprint", () => {
+    const hash = (file: string) => computeFingerprint("error", "failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file, function: "charge" }],
+    });
+    expect(hash("/var/www/releases/20261005123456/billing/charge.ts"))
+      .toBe(hash("file:///var/www/releases/20261006123456/billing/charge.ts"));
+    expect(hash("/var/www/releases/20261006123456/billing/charge.ts"))
+      .toBe(hash("billing/charge.ts"));
+  });
+
+  test("source file, function and exception type differences remain distinct after path normalization", () => {
+    const hash = (file: string, fn = "charge", type = "TypeError") => computeFingerprint("error", "failed", {
+      "exception.type": type,
+      "exception.frames": [{ file, function: fn }],
+    });
+    const base = hash("/app/billing/charge.ts");
+    expect(hash("/app/billing/cancel.ts")).not.toBe(base);
+    expect(hash("/app/billing/charge.ts", "cancel")).not.toBe(base);
+    expect(hash("/app/billing/charge.ts", "charge", "RangeError")).not.toBe(base);
   });
 
   test("without frames, error/fatal or a type uses stabilized message", () => {

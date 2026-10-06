@@ -128,6 +128,73 @@ describe("liftException", () => {
       { file: "/app/billing.ts", function: "charge" },
     ]);
   });
+
+  test("explicit frames take priority over a recognized SDK stacktrace and retain sender paths", () => {
+    const original = {
+      "exception.type": "TypeError",
+      "exception.frames": [
+        { file: "C:\\app\\original.ts:88:2", function: "original", in_app: true, line: 88 },
+      ],
+      "exception.stacktrace": "TypeError: failed\n    at charge (/app/billing.ts:41:9)",
+      customer: "acme",
+    };
+    const snapshot = JSON.stringify(original);
+    const lifted = liftException(original);
+    expect(lifted?.["exception.frames"]).toEqual([
+      { file: "C:\\app\\original.ts:88:2", function: "original", in_app: true },
+    ]);
+    expect(lifted?.["exception.stacktrace"]).toBe(original["exception.stacktrace"]);
+    expect(lifted?.customer).toBe("acme");
+    expect(JSON.stringify(original)).toBe(snapshot);
+  });
+
+  test.each([
+    "ordinary failure text",
+    "TypeError: failed\n    at charge (not-a-source:41:9)",
+    "TypeError: failed\n    at charge (/app/billing.ts:no:9)",
+    "TypeError: failed\n    at charge (javascript:alert(1):41:9)",
+    "TypeError: failed\n    at charge (/app/billing.ts\u0000:41:9)",
+    { frames: [{ file: "/app/billing.ts", function: "charge" }] },
+  ])("does not turn an unknown or invalid stacktrace into frames: %j", (stacktrace) => {
+    const lifted = liftException({
+      "exception.type": "TypeError",
+      "exception.stacktrace": stacktrace,
+    });
+    expect(lifted?.["exception.frames"]).toBeUndefined();
+    expect(lifted?.["exception.stacktrace"]).toBe(stacktrace);
+  });
+
+  test("SDK stack parsing caps frames at 50 and retains the complete original stacktrace", () => {
+    const stacktrace = "Error: failed\n" + Array.from({ length: 60 }, (_, i) =>
+      `    at fn${i} (/app/frame${i}.ts:${i + 1}:2)`,
+    ).join("\n");
+    const lifted = liftException({ "exception.type": "Error", "exception.stacktrace": stacktrace });
+    const parsed = lifted?.["exception.frames"] as Array<{ file: string; function: string }>;
+    expect(parsed).toHaveLength(50);
+    expect(parsed[49]).toEqual({ file: "/app/frame49.ts", function: "fn49" });
+    expect(lifted?.["exception.stacktrace"]).toBe(stacktrace);
+  });
+
+  test("ignores oversized stack lines and still reads later valid frames", () => {
+    const stacktrace = `    at ${"a (".repeat(10_000)}\n    at charge (/app/billing.ts:41:9)`;
+    expect(liftException({ "exception.stacktrace": stacktrace })?.["exception.frames"])
+      .toEqual([{ file: "/app/billing.ts", function: "charge" }]);
+  });
+
+  test("V8 anonymous file frames and .NET Windows source locations keep their valid paths", () => {
+    expect(liftException({ "exception.stacktrace": "Error: failed\n    at /app/billing.js:41:9" })?.["exception.frames"])
+      .toEqual([{ file: "/app/billing.js", function: "" }]);
+    expect(liftException({ "exception.stacktrace": "System.Exception: failed\n   at Billing.Charge() in C:\\app\\Billing.cs:line 41" })?.["exception.frames"])
+      .toEqual([{ file: "C:\\app\\Billing.cs", function: "Billing.Charge()" }]);
+  });
+
+  test.each([
+    { label: "blank named function", line: "    at   (/app/billing.ts:41:9)" },
+    { label: "source directory instead of file", line: "    at charge (/app/:41:9)" },
+  ])("rejects malformed V8 frame: $label", ({ line }) => {
+    expect(liftException({ "exception.stacktrace": `Error: failed\n${line}` })?.["exception.frames"])
+      .toBeUndefined();
+  });
 });
 
 describe("parseExceptionFrames", () => {

@@ -1,3 +1,5 @@
+import { parseExceptionStacktrace } from "./exception-stacktrace";
+
 /** At most 50 frames — same cap fingerprints will hash. */
 export const maxExceptionFrames = 50;
 
@@ -60,8 +62,9 @@ export function parseExceptionFrames(raw: unknown): ExceptionFrame[] {
 
 /**
  * Lift exception.type / exception.frames to top-level attrs when the sender
- * already structured them (app, OTEL, or a collector remap).
- * Does not parse `message` or `exception.stacktrace`.
+ * already structured them (app, OTEL, or a collector remap). Known SDK
+ * `exception.stacktrace` formats supply frames only when no valid frames arrive.
+ * Does not parse `message`.
  */
 export function liftException(
   attrs: Record<string, unknown> | undefined,
@@ -97,7 +100,10 @@ export function liftException(
     }
   }
 
-  const frames = parseExceptionFrames(next["exception.frames"]);
+  const supplied = parseExceptionFrames(next["exception.frames"]);
+  const frames = supplied.length > 0
+    ? supplied
+    : parseExceptionStacktrace(next["exception.stacktrace"], maxExceptionFrames);
   if (frames.length > 0) {
     next["exception.frames"] = frames;
   } else {
