@@ -1,8 +1,32 @@
 import { describe, expect, test } from "bun:test";
 import { mapOtlpJson, toOtlpJson } from "./otlp";
 import { decodeOtlpProtobuf, encodeOtlpProtobuf } from "./otlp-protobuf";
+import { withFingerprint } from "../shared/fingerprint";
 
 describe("mapOtlpJson", () => {
+  test.each(["JSON", "protobuf"])("stock exception stacktrace attrs produce frame fingerprints through OTLP %s", (format) => {
+    const record = (body: string) => ({
+      severityText: "ERROR",
+      body: { stringValue: body },
+      attributes: [
+        { key: "exception.type", value: { stringValue: "TypeError" } },
+        { key: "exception.message", value: { stringValue: "payment failed" } },
+        { key: "exception.stacktrace", value: { stringValue: "TypeError: payment failed\n    at charge (/app/billing.ts:41:9)" } },
+      ],
+    });
+    const payload = {
+      resourceLogs: [{ scopeLogs: [{ logRecords: [record("payment failed"), record("request failed")] }] }],
+    };
+    const input = format === "JSON" ? payload : decodeOtlpProtobuf(encodeOtlpProtobuf(payload));
+    const [a, b] = mapOtlpJson(input);
+    expect(a?.attrs?.["exception.frames"]).toEqual([
+      { file: "/app/billing.ts", function: "charge" },
+    ]);
+    const first = withFingerprint(a!.level, a!.message, a!.attrs)?.e1;
+    const second = withFingerprint(b!.level, b!.message, b!.attrs)?.e1;
+    expect(first).toBe(second);
+  });
+
   test("maps resourceLogs to LogEvent", () => {
     const events = mapOtlpJson({
       resourceLogs: [

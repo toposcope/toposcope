@@ -81,6 +81,83 @@ describe("computeFingerprint", () => {
     expect(a).toBe(b);
   });
 
+  test("deployment release directories do not make an existing error a new fingerprint", () => {
+    const attrs = (file: string) => ({
+      "exception.type": "TypeError",
+      "exception.frames": [{ file, function: "charge", in_app: true }],
+    });
+    const before = computeFingerprint(
+      "error",
+      "payment failed",
+      attrs("/var/www/releases/2026-10-05/src/billing/charge.ts"),
+    );
+    const after = computeFingerprint(
+      "error",
+      "payment failed",
+      attrs("/var/www/releases/2026-10-06/src/billing/charge.ts"),
+    );
+    expect(after).toBe(before);
+  });
+
+  test.each([
+    "/app/billing/charge.ts",
+    "/src/billing/charge.ts",
+    "/usr/src/app/billing/charge.ts",
+    "/var/www/billing/charge.ts",
+    "/var/www-prod/billing/charge.ts",
+    "/home/alice/billing/charge.ts",
+  ])("deployment root %s does not change the source-file fingerprint", (file) => {
+    const hash = (path: string) => computeFingerprint("error", "payment failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file: path, function: "charge" }],
+    });
+    expect(hash(file)).toBe(hash("billing/charge.ts"));
+  });
+
+  test("different build roots use the same final three source-file segments", () => {
+    const hash = (file: string) => computeFingerprint("error", "payment failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file, function: "charge" }],
+    });
+    expect(hash("/opt/runner/build-101/src/billing/charge.ts"))
+      .toBe(hash("/tmp/checkout/build-202/src/billing/charge.ts"));
+  });
+
+  test("Windows and slash-separated source paths have the same fingerprint", () => {
+    const hash = (file: string) => computeFingerprint("error", "payment failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file, function: "charge" }],
+    });
+    expect(hash("C:\\work\\project\\src\\billing\\charge.ts"))
+      .toBe(hash("/opt/project/src/billing/charge.ts"));
+  });
+
+  test("line and column suffixes inside frame file strings do not change the fingerprint", () => {
+    const hash = (file: string) => computeFingerprint("error", "payment failed", {
+      "exception.type": "TypeError",
+      "exception.frames": [{ file, function: "charge" }],
+    });
+    expect(hash("billing/charge.ts:41:9")).toBe(hash("billing/charge.ts:88:2"));
+  });
+
+  test("stacktrace-only exception frames group the same error across different log bodies", () => {
+    const attrs = liftException({
+      "exception.type": "TypeError",
+      "exception.stacktrace": "TypeError: payment failed\n    at charge (/app/billing.ts:41:9)",
+    });
+    expect(computeFingerprint("error", "payment failed", attrs))
+      .toBe(computeFingerprint("error", "request failed", attrs));
+  });
+
+  test("stacktrace-only exception frames distinguish different errors with the same log body", () => {
+    const hash = (stacktrace: string) => computeFingerprint("error", "request failed", liftException({
+      "exception.type": "TypeError",
+      "exception.stacktrace": stacktrace,
+    }));
+    expect(hash("TypeError: failed\n    at charge (/app/billing.ts:41:9)"))
+      .not.toBe(hash("TypeError: failed\n    at cancel (/app/orders.ts:88:2)"));
+  });
+
   test("without frames, error/fatal or a type uses stabilized message", () => {
     const a = computeFingerprint("error", "timeout id=9 from 1.2.3.4", {});
     const b = computeFingerprint("fatal", "timeout id=80 from 9.9.9.9", {});

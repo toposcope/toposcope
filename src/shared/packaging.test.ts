@@ -3,6 +3,14 @@ import { ghcrAppPin } from "../../scripts/check-release-pin";
 
 const root = `${import.meta.dir}/../..`;
 
+test("security policy does not name an older current release", async () => {
+  const policy = await Bun.file(`${root}/SECURITY.md`).text();
+  const version = ((await Bun.file(`${root}/package.json`).json()) as { version: string }).version;
+  const named = policy.match(/presently `([^`]+)`/);
+  expect(policy).toContain("current release");
+  if (named) expect(named[1]).toBe(version);
+});
+
 describe("packaged compose", () => {
   test("pins a versioned image and has no demo secrets", async () => {
     const yaml = await Bun.file(`${root}/compose.yml`).text();
