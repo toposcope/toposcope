@@ -9,6 +9,7 @@ import {
 } from "../shared/clickhouse";
 import { fingerprintCutScanCap } from "../shared/fingerprint-cut";
 import { logsCreateTableSql } from "../shared/migrate";
+import { requireCompiled } from "./compile";
 import { fingerprintCutScans, searchFingerprintCut } from "./fingerprint-cut";
 
 const targetHex = "ffffffffffffffff";
@@ -75,13 +76,14 @@ process.env.CLICKHOUSE_URL ??= "http://127.0.0.1:8123";
 const clickhouseAvailable = await pingClickHouse();
 
 describe.skipIf(!clickhouseAvailable)("fingerprint cut cardinality ClickHouse", () => {
-  async function crowdedCut(beforeCrowded: boolean, afterCrowded: boolean) {
+  async function insertCutFixture(
+    before: ReturnType<typeof sideCounts>,
+    after: ReturnType<typeof sideCounts>,
+  ) {
     await clickhouseCommand(logsCreateTableSql);
     const service = `cutcard${crypto.randomUUID().replaceAll("-", "")}`;
     const input = cutInput(service);
     const markMs = Date.parse(input.mark.ts);
-    const before = sideCounts(beforeCrowded, beforeCrowded ? 1 : 10);
-    const after = sideCounts(afterCrowded, afterCrowded ? 1 : 10);
     const logs: string[] = [];
     for (const [ms, counts] of [
       [markMs - 60_000, before],
@@ -113,6 +115,14 @@ describe.skipIf(!clickhouseAvailable)("fingerprint cut cardinality ClickHouse", 
     `, { service, mark: input.mark.ts });
     expect(Number(stored[0]?.before)).toBe(before.length);
     expect(Number(stored[0]?.after)).toBe(after.length);
+    return input;
+  }
+
+  async function crowdedCut(beforeCrowded: boolean, afterCrowded: boolean) {
+    const input = await insertCutFixture(
+      sideCounts(beforeCrowded, beforeCrowded ? 1 : 10),
+      sideCounts(afterCrowded, afterCrowded ? 1 : 10),
+    );
     return searchFingerprintCut(input);
   }
 
@@ -135,5 +145,37 @@ describe.skipIf(!clickhouseAvailable)("fingerprint cut cardinality ClickHouse", 
     expect(result.scan?.source).toBe("refused");
     expect(result.sets).toEqual([]);
     expect(result.empty).toContain(String(fingerprintCutScanCap));
+  });
+
+  test("accepts exactly 200 fingerprints on each side with complete counts", async () => {
+    const input = await insertCutFixture(
+      sideCounts(true, 1).slice(1),
+      sideCounts(true, 3).slice(1),
+    );
+    const result = await searchFingerprintCut(input);
+    expect(result.scan).toBeUndefined();
+    expect(result.empty).toBe("");
+    expect(result.sets.find((set) => set.id === "first_seen")?.count).toBe(0);
+    expect(result.sets.find((set) => set.id === "stopped")?.count).toBe(0);
+    const stillHere = result.sets.find((set) => set.id === "still_here");
+    expect(stillHere?.count).toBe(fingerprintCutScanCap);
+    expect(stillHere?.rows.find((row) => row.hex === targetHex)).toMatchObject({
+      before: 1,
+      after: 3,
+    });
+  });
+
+  test("bounds the physical count query at 201 fingerprints including the overflow row", async () => {
+    const before = Array.from({ length: fingerprintCutScanCap + 50 }, (_, i) => ({
+      hex: (i + 1).toString(16).padStart(16, "0"),
+      n: 1,
+    }));
+    const input = await insertCutFixture(before, sideCounts(false, 1));
+    const rows = await fingerprintCutScans.counts(
+      input.from,
+      input.mark.ts,
+      requireCompiled(input.q),
+    );
+    expect(rows).toHaveLength(fingerprintCutScanCap + 1);
   });
 });
