@@ -70,8 +70,11 @@ export async function requireClickHouseVersion(): Promise<void> {
   if (clickhouseVersionAtLeast(version, minClickHouseVersion)) {
     return;
   }
+  const compose = process.env.TOPOSCOPE_DEV === "1"
+    ? "docker compose -f compose.dev.yml"
+    : "docker compose -f compose.yml";
   throw new Error(
-    `ClickHouse ${version || "(unknown)"} is too old for the message text index (need ${minClickHouseVersion}+). Recreate the container from compose.dev.yml: docker compose -f compose.dev.yml pull clickhouse && docker compose -f compose.dev.yml up -d clickhouse. If a 24.8 data dir refuses to start, remove the ch_data volume in dev.`,
+    `ClickHouse ${version || "(unknown)"} is too old for the message text index (need ${minClickHouseVersion}+). Back up both stores before upgrading. Update the supported ClickHouse image: ${compose} pull clickhouse && ${compose} up -d clickhouse. If an older data directory cannot start, restore from backup. See docs/operations.md for backup and restore.`,
   );
 }
 

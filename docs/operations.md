@@ -2,9 +2,9 @@
 
 Toposcope is a single-node deployment: one app instance plus one ClickHouse. It does not provide high availability.
 
-Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token.
+Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.4.8` and should not be replaced with `:latest`.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.4.9` and should not be replaced with `:latest`.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -46,12 +46,14 @@ docker compose up -d
 
 - ClickHouse tables such as `logs_by_minute` and `logs_attr_values_by_minute` are created on boot, and missing day partitions are backfilled from `logs`.
 - SQLite adds new tables and columns on boot.
-- Retention follows `PUT /api/settings` with `{ "retention_days": 30 }` and accepts values from 1 to 365.
+- Retention follows `PUT /api/settings` with `{ "retention_days": 30 }` and requires an integer from 1 to 365. Invalid values return **400** before any SQLite write or TTL change. A valid lower retention can delete older data as ClickHouse applies TTL.
 - TTL is always `toDate(ts) + INTERVAL n DAY`, never `TTL ts + …`.
 - The `ALTER` does not wait for `MATERIALIZE TTL` (`alter_sync = 0`), and SQLite is written first.
 - `spans`, `profile_samples`, and `change_marks` are created on boot.
 
-ClickHouse 26.3 is the supported LTS line. If an older ClickHouse data directory refuses to start after a 24.8 → 26.3 migration, restore the data instead of pinning a different tag.
+ClickHouse 26.3 is the supported LTS line. A too-old-server boot error selects `compose.yml` for a packaged install and `compose.dev.yml` for local development. Back up both stores before upgrading, then pull and restart ClickHouse with that Compose file. Do not remove the data volumes. If an older ClickHouse data directory refuses to start after a 24.8 → 26.3 migration, restore the data instead of pinning a different tag.
+
+Version 0.4.9 changes fingerprint hash inputs for normalized paths and parsed stacks. Existing rows keep their stored ids, so affected errors can receive a new id once when upgraded. Later events use the corrected inputs; see [exception fingerprints](ingest.md#exception-fingerprints).
 
 ## Backup and restore
 
@@ -84,7 +86,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 To roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin. Pin `0.4.7` to roll back application code from `0.4.8`.
+`0.3.14` is the first public pin. Pin `0.4.8` to roll back application code from `0.4.9`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe.
 

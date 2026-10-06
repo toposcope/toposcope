@@ -145,7 +145,7 @@ async function e1Counts(
 ): Promise<Array<{ hex: string; n: number }>> {
   const { sql, params } = logsWhere(fromIso, toIso, compiled);
   params.e1key = fingerprintAttr;
-  params.limit = String(fingerprintCutScanCap);
+  params.limit = String(fingerprintCutScanCap + 1);
   const query = `
     SELECT attr_map[{e1key:String}] AS v, count() AS n
     FROM logs
@@ -317,6 +317,16 @@ export async function searchFingerprintCut(input: {
       fingerprintCutScans.counts(iso(w.beforeFrom), iso(w.beforeTo), compiled),
       fingerprintCutScans.counts(iso(w.afterFrom), iso(w.afterTo), compiled),
     ]);
+    if (
+      before.length > fingerprintCutScanCap ||
+      after.length > fingerprintCutScanCap
+    ) {
+      const reason = `More than ${fingerprintCutScanCap} fingerprints match one side of this cut. Narrow the hunt to compare complete sets.`;
+      return emptyResult(input.mark, w, notes, {
+        empty: reason,
+        scan: { source: "refused", reason },
+      });
+    }
     const merged = mergeFingerprintCutSides(before, after);
     if (merged.length === 0) {
       return emptyResult(input.mark, w, notes, {

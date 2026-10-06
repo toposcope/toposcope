@@ -22,6 +22,24 @@ function framesForHash(frames: ExceptionFrame[]): ExceptionFrame[] {
   return inApp.length > 0 ? inApp : frames;
 }
 
+/** Normalize hash input only; stored frame paths remain the sender's paths. */
+function normalizedFile(file: string): string {
+  let path = file
+    .replace(/\\/g, "/")
+    .replace(/:\d+(?::\d+)?$/, "")
+    .replace(/^file:\/\//i, "")
+    .replace(/^[a-z]:\//i, "/")
+    .replace(/\/{2,}/g, "/")
+    .replace(/\/releases\/(?:\d{8,14}|\d{4}-\d{2}-\d{2})(?=\/)/gi, "");
+  const root = /^(?:\/usr\/src\/app|\/var\/www[^/]*|\/app|\/src|\/home\/[^/]+)(?=\/|$)/i;
+  if (root.test(path)) {
+    path = path.replace(root, "").replace(/^\//, "");
+  } else if (path.startsWith("/") || /^[a-z][a-z0-9+.-]*:\//i.test(path)) {
+    path = path.split("/").filter(Boolean).slice(-3).join("/");
+  }
+  return path.toLowerCase();
+}
+
 /**
  * Fold ids, IPs, timestamps, and digit runs so the same bug hashes together.
  * Does not parse stacks — that is `liftException`.
@@ -53,7 +71,7 @@ export function computeFingerprint(
     const used = framesForHash(frames);
     return hashParts([
       type,
-      ...used.flatMap((frame) => [frame.file.toLowerCase(), frame.function.toLowerCase()]),
+      ...used.flatMap((frame) => [normalizedFile(frame.file), frame.function.toLowerCase()]),
     ]);
   }
   if (type.length > 0 || level === "error" || level === "fatal") {
