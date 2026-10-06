@@ -57,6 +57,14 @@ Content-Type: application/x-protobuf
 
 Collectors send the protobuf body directly on that path.
 
+### Exception fingerprints
+
+Send `exception.type` and either `exception.frames` or `exception.stacktrace` as attrs. Valid supplied frames take priority. Without valid frames, ingest reads known Node/V8, Python, JVM, .NET, PHP, and Go stack formats into at most 50 frames. The raw stacktrace stays stored. [OpenTelemetry defines stacktrace as a runtime-specific string](https://opentelemetry.io/docs/specs/semconv/registry/attributes/exception/), so unsupported formats use the fallback below.
+
+With frames, `e1` hashes the lower-case type plus frame file/function pairs. When any supplied frame is `in_app`, only those frames are used. Hash input normalizes path separators, file URLs, drive prefixes, and trailing line/column numbers; removes `/releases/<stamp>/` for an 8–14 digit or `YYYY-MM-DD` stamp; and strips common roots (`/app`, `/src`, `/usr/src/app`, `/var/www*`, `/home/<user>`). Full relative paths are preserved; unrecognized absolute roots use the last three path segments. Paths and functions are lowercased for hashing. Stored supplied frame paths keep the sender's values.
+
+Without usable frames, an exception type or an `error`/`fatal` event hashes type plus the stabilized log body. `exception.message` does not replace that body. Ingest does not parse stacks out of `message` or use log templates. Existing rows keep their stored `e1`; corrected inputs in 0.4.9 can give an affected error a new id once at upgrade.
+
 ## Metrics
 
 Metrics use the same bearer token as logs. This is not Prometheus scrape; that stays `GET /api/metrics`.
@@ -284,7 +292,7 @@ Supported collector-side operations:
 
 Match on `service` and/or required-key existence so every event does not run every rule. Nested objects become one JSON blob and are not dotted `q` paths. Extra keys count toward the 50-key cap. A detail-panel lookup does not satisfy `q` or Top-N.
 
-Direct ingest without a collector does not grow collector-style derived keys (alias/combine/bucket/lookup). `exception.type` and `exception.frames` are ordinary attrs: store them when they arrive (app, OTEL, or collector enrich). Ingest does not parse them out of `message`. Ingest does write `e1` (16-hex SHA-256) when frames are present, or when `exception.type` is set or the level is `error`/`fatal`, so `e1:…` hunts the same bug. OTEL `service.version` is aliased onto attr `version` when `version` is unset (the dotted key is dropped; sender `version` wins). `customer` and `flag` are not inferred — copy them at the collector (`customer_id` → `customer`, `feature_flag` → `flag`) so hunt can pin them as promoted columns. Existing rows are not rewritten.
+Direct ingest without a collector does not grow collector-style derived keys (alias/combine/bucket/lookup). Exception attrs come from the app, OTEL, or collector enrich. Ingest uses supplied frames or known `exception.stacktrace` formats and writes `e1` (16-hex SHA-256); see [exception fingerprints](#exception-fingerprints). OTEL `service.version` is aliased onto attr `version` when `version` is unset (the dotted key is dropped; sender `version` wins). `customer` and `flag` are not inferred — copy them at the collector (`customer_id` → `customer`, `feature_flag` → `flag`) so hunt can pin them as promoted columns. Existing rows are not rewritten.
 
 Vector remap for those two identities (run before the sink):
 

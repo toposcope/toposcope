@@ -8,15 +8,15 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 
 | | |
 | --- | --- |
-| **Today** | [0.4.8](https://github.com/toposcope/toposcope/releases/tag/v0.4.8) — hunt, fingerprints, change marks, compare per plotted series |
+| **Today** | [0.4.9](https://github.com/toposcope/toposcope/releases/tag/v0.4.9) — hunt, fingerprints, change marks, compare per plotted series |
 | **v0.x** | What changed after a deploy, on one clock |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
-## Today — 0.4.8
+## Today — 0.4.9
 
-Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.4.8`.
+Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.4.9`.
 
-Hunt is a self-hosted log manager: `key:value`, saved searches, alerts, histogram, workspaces, boards, Fields, OTLP traces and profiles, Vector → `POST /v1/logs`. Ingest stores `exception.type` / `exception.frames` when they arrive, writes `e1` fingerprints, and stores change marks (`POST /v1/marks`). Search / Follow draw them on the pinned volume plot and as seams between event rows. Compare shows the before and after values for each plotted level, service, or host on exact equal windows around a mark. Fingerprints uses the same exact clock. Ingest copies `service.version` to `version` and consumes attached or pulled status checks. Lockup is Fault. Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
+Hunt is a self-hosted log manager: `key:value`, saved searches, alerts, histogram, workspaces, boards, Fields, OTLP traces and profiles, Vector → `POST /v1/logs`. Ingest stores exception attrs, uses supplied frames or known `exception.stacktrace` formats for `e1` fingerprints, and stores change marks (`POST /v1/marks`). Search / Follow draw them on the pinned volume plot and as seams between event rows. Compare shows the before and after values for each plotted level, service, or host on exact equal windows around a mark. Fingerprints uses the same exact clock and refuses sets when either side exceeds 200 distinct ids. Ingest copies `service.version` to `version` and consumes attached or pulled status checks. Lockup is Fault. Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
 
 0.3 hunt stays. Later v0.x work adds evidence on that hunt; it does not replace the bar.
 

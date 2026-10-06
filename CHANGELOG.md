@@ -4,6 +4,16 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.4.9
+
+Framed errors keep the same `e1` across dated release directories and common deployment roots. Hashing normalizes source paths without changing stored frames. Ingest also reads known Node/V8, Python, JVM, .NET, PHP, and Go `exception.stacktrace` formats when no valid `exception.frames` arrive. Unknown formats keep the type plus stabilized log-body fallback. Old rows are not rewritten; corrected inputs can receive a new id once at upgrade. See the [ingest guide](docs/ingest.md#exception-fingerprints).
+
+Fingerprints refuses the cut when either side exceeds 200 distinct `e1` values. It reads a 201st value to detect the limit instead of calling an omitted old bug first seen or an omitted current bug stopped.
+
+`PUT /api/settings` requires an integer from 1 to 365 before writing SQLite or changing TTL. Invalid retention no longer becomes one day. The shared operator password still permits valid retention changes. Unknown `/api/*` paths return JSON **404** instead of the UI page.
+
+The too-old-ClickHouse boot error uses the packaged or development Compose command and points to backup and restore without volume removal. Current image pins, release links, and the security policy name **0.4.9**.
+
 ## 0.4.8
 
 Fingerprints uses the returned exact windows for rail labels and plot washes. Events at a change mark belong to the after side only; minute buckets no longer put the same fingerprint on both sides. Cut counts use the existing bounded log scan, with an explicit refusal when that budget is exceeded. [#38](https://github.com/toposcope/toposcope/pull/38)
