@@ -44,6 +44,9 @@ export async function putSettings(c: Context): Promise<Response> {
   if (typeof rec.retention_days !== "number") {
     return c.json({ error: "retention_days is required" }, 400);
   }
+  if (!Number.isInteger(rec.retention_days) || rec.retention_days < 1 || rec.retention_days > 365) {
+    return c.json({ error: "Retention must be 1–365 whole days" }, 400);
+  }
   const days = writeRetentionDays(rec.retention_days);
   try {
     await applyRetentionDays(days);

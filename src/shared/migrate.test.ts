@@ -60,6 +60,8 @@ describe("ensure logs", () => {
 describe("ClickHouse version", () => {
   test("old-server boot guidance uses the packaged stack and preserves data", async () => {
     const previousFetch = globalThis.fetch;
+    const previousDev = process.env.TOPOSCOPE_DEV;
+    delete process.env.TOPOSCOPE_DEV;
     globalThis.fetch = Object.assign(
       async () => Response.json({ data: [{ v: "24.8.14.39" }] }),
       { preconnect: previousFetch.preconnect },
@@ -71,6 +73,8 @@ describe("ClickHouse version", () => {
       message = error instanceof Error ? error.message : String(error);
     } finally {
       globalThis.fetch = previousFetch;
+      if (previousDev === undefined) delete process.env.TOPOSCOPE_DEV;
+      else process.env.TOPOSCOPE_DEV = previousDev;
     }
     expect(message).toContain("compose.yml");
     expect(message).not.toContain("compose.dev.yml");

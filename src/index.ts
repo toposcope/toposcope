@@ -141,6 +141,8 @@ app.put("/api/settings", putSettings);
 app.get("/api/fields", getFields);
 app.put("/api/fields", putFields);
 
+app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
+
 app.use("/*", serveStatic({ root: "./src/ui/dist" }));
 app.get("*", async (c) => {
   const file = Bun.file("./src/ui/dist/index.html");

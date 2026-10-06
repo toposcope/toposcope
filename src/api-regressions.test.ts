@@ -52,6 +52,21 @@ beforeAll(async () => {
       const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: '{"retention_days":' + value + '}' }));
       out[value] = { status: response.status, contentType: response.headers.get("content-type"), body: await response.json(), stored: settings.getRetentionDays(), commands: [...commands] };
     }
+    for (const days of [1, 365]) {
+      commands.length = 0;
+      const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: JSON.stringify({ retention_days: days }) }));
+      out["valid-" + days] = { status: response.status, contentType: response.headers.get("content-type"), body: await response.json(), stored: settings.getRetentionDays(), commands: [...commands] };
+    }
+    for (const [name, path, requestHeaders, method] of [
+      ["unauthorized", "/api/no-such-endpoint", {}, "GET"],
+      ["known", "/api/settings", headers, "GET"],
+      ["post", "/api/no-such-endpoint", headers, "POST"],
+      ["spa", "/workspace/reader", headers, "GET"],
+    ]) {
+      const response = await app.fetch(new Request("http://app.test" + path, { headers: requestHeaders, method }));
+      const text = await response.text();
+      out[name] = { status: response.status, contentType: response.headers.get("content-type"), body: text.startsWith("{") ? JSON.parse(text) : text };
+    }
     for (const name of ["built", "unbuilt"]) {
       if (name === "unbuilt") (await import("node:fs")).unlinkSync("src/ui/dist/index.html");
       const response = await app.fetch(new Request("http://app.test/api/no-such-endpoint", { headers }));
@@ -89,6 +104,14 @@ describe("retention HTTP validation", () => {
       expect(result.commands).toEqual([]);
     },
   );
+  test.each([1, 365])("accepts valid boundary %s and applies TTL", (days) => {
+    const result = results[`valid-${days}`]!;
+    expect(result.status).toBe(200);
+    expect(result.stored).toBe(days);
+    expect(result.body).toEqual({ retention_days: days });
+    expect(result.commands?.filter((sql) => sql.startsWith("ALTER TABLE"))).toHaveLength(10);
+    expect(result.commands?.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain(`INTERVAL ${days} DAY`);
+  });
 });
 
 describe("API not found", () => {
@@ -96,5 +119,20 @@ describe("API not found", () => {
     expect(results[state]!.status).toBe(404);
     expect(results[state]!.contentType).toContain("application/json");
     expect(results[state]!.body).toEqual({ error: "Not found" });
+  });
+  test("unknown API still requires operator authentication", () => {
+    expect(results.unauthorized!.status).toBe(401);
+  });
+  test("known API still returns its JSON result", () => {
+    expect(results.known!.status).toBe(200);
+    expect(results.known!.body).toEqual({ retention_days: 365 });
+  });
+  test("unknown POST returns the same JSON 404", () => {
+    expect(results.post!.status).toBe(404);
+    expect(results.post!.body).toEqual({ error: "Not found" });
+  });
+  test("non-API workspace paths retain the UI fallback", () => {
+    expect(results.spa!.status).toBe(200);
+    expect(results.spa!.contentType).toContain("text/html");
   });
 });
