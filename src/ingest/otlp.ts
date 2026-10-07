@@ -5,6 +5,9 @@ import type { LogEvent, LogLevel } from "../shared/log-event";
 import { levels } from "../shared/log-event";
 import type { Losses } from "./otlp-reply";
 
+/** The name OpenTelemetry gives the scope's name wherever it leaves OTLP. */
+const scopeNameKey = "otel.scope.name";
+
 const otlpSeverityNumber: Record<LogLevel, number> = {
   debug: 5,
   info: 9,
@@ -229,6 +232,10 @@ export function mapOtlpJson(payload: unknown, losses?: Losses): LogEvent[] {
       if (!Array.isArray(logRecords)) {
         continue;
       }
+      // For most logging libraries the scope is the logger: the class or module that wrote the line.
+      const scope = (sl as Record<string, unknown>).scope as { name?: unknown } | undefined;
+      const scopeName =
+        typeof scope?.name === "string" && scope.name.length > 0 ? scope.name : undefined;
       for (const rec of logRecords) {
         if (!rec || typeof rec !== "object") {
           continue;
@@ -245,7 +252,7 @@ export function mapOtlpJson(payload: unknown, losses?: Losses): LogEvent[] {
           typeof row.severityNumber === "number" ? row.severityNumber : undefined;
         // Order is what the 50-key cap keeps: the record's own attributes with
         // the frames read from its stack, then a map body's fields, then its
-        // trace and span ids, then the resource's.
+        // trace and span ids, then the logger's name, then the resource's.
         const attrs =
           liftException(attrRecord(row.attributes as Attr[] | undefined, new Set())) ?? {};
         // A map body's fields count with the record's own attributes, after them.
@@ -261,6 +268,9 @@ export function mapOtlpJson(payload: unknown, losses?: Losses): LogEvent[] {
         }
         if (spanId && attrs.span_id === undefined) {
           attrs.span_id = spanId;
+        }
+        if (scopeName && attrs[scopeNameKey] === undefined) {
+          attrs[scopeNameKey] = scopeName;
         }
         for (const [key, value] of Object.entries(resourceAttrs)) {
           if (!(key in attrs)) {
