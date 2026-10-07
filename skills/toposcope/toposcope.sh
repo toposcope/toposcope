@@ -86,7 +86,7 @@ cmd_cost() {
 
   printf 'Standing up Toposcope %s on this machine will:\n' "$VERSION"
   printf -- '- start two containers, ClickHouse and the app, published only on 127.0.0.1 (8080, and 5514/udp for syslog)\n'
-  printf -- '- take about 800 MiB of memory when empty and idle; ClickHouse may use up to 4 GB and the app 512 MB\n'
+  printf -- '- take about 2 GB of memory even with nothing arriving (ClickHouse levels off near 1.7 GiB); its limits are 4 GB for ClickHouse and 512 MB for the app\n'
   printf -- '- pull about 1.7 GB of images the first time\n'
   printf -- '- keep its files and three generated secrets in %s, and its data in two Docker volumes\n' "$ROOT"
   if [ -z "$arch" ]; then
