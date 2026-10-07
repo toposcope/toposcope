@@ -16,14 +16,19 @@ function frame(file: string, fn: string, anonymous = false): ExceptionFrame | un
   return { file: path, function: name };
 }
 
-/** Read known SDK stack formats. The raw stack stays stored; no log-body parsing. */
+/**
+ * Read known SDK stack formats. The raw stack stays stored; no log-body parsing.
+ * Keeps the frames nearest the raise. Python prints the outermost call first, so
+ * those are its last frames; the other formats print the raise first.
+ */
 export function parseExceptionStacktrace(raw: unknown, maxFrames: number): ExceptionFrame[] {
   if (typeof raw !== "string") {
     return [];
   }
   const lines = raw.split(/\r?\n/);
   const frames: ExceptionFrame[] = [];
-  for (let i = 0; i < lines.length && frames.length < maxFrames; i++) {
+  let outermostFirst = false;
+  for (let i = 0; i < lines.length && (outermostFirst || frames.length < maxFrames); i++) {
     const line = lines[i]!;
     if (line.length > 8192) {
       continue;
@@ -32,6 +37,7 @@ export function parseExceptionStacktrace(raw: unknown, maxFrames: number): Excep
     let match: RegExpMatchArray | null;
     if ((match = line.match(/^\s*File "([^"]+)", line \d+, in (.+?)\s*$/))) {
       parsed = frame(match[1]!, match[2]!);
+      outermostFirst = true;
     } else if ((match = line.match(/^\s*at (.+?) in (.+):line \d+\s*$/))) {
       parsed = frame(match[2]!, match[1]!);
     } else if ((match = line.match(/^\s*#\d+ (.+?)\(\d+\): ([^(]+)\(.*\)\s*$/))) {
@@ -52,5 +58,5 @@ export function parseExceptionStacktrace(raw: unknown, maxFrames: number): Excep
       frames.push(parsed);
     }
   }
-  return frames;
+  return outermostFirst ? frames.slice(-maxFrames) : frames.slice(0, maxFrames);
 }
