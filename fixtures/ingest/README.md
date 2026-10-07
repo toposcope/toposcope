@@ -14,7 +14,7 @@ The Python exporter refuses `http/json`, so Python has no JSON request.
 
 ## What the captures showed
 
-- **PHP 8.4 and later** name a closure frame `{closure:/app/public/index.php:15}`. The path and the line are in the function name, so the same error gets a different `e1` in each deploy directory. The test for it is pinned as a known failure in `src/shared/real-stacks.test.ts`.
+- **PHP 8.4 and later** name a closure frame `{closure:/app/public/index.php:15}`. The path and the line are in the function name, so the same error got a different `e1` in each deploy directory. Since 0.4.11 the frame is hashed without the line and with its path normalized.
 - **V8** prints ten frames unless the app raises `Error.stackTraceLimit`.
 - **.NET** frames with no source information are not read: every framework frame, and every app frame when no PDB is deployed. In a Release build a one-line handler and the method it calls are inlined into `lambda_method1(Closure, Object, HttpContext)`, which has none. The program here awaits, as ASP.NET Core code usually does.
 - **pino’s `err`** arrives as `exception.type`, `exception.message`, and `exception.stacktrace`.
