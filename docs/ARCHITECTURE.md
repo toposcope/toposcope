@@ -50,7 +50,7 @@ Query and facets read `attr_map`. `logs` has bloom skip indexes on `trace_id` an
 
 ## HTTP
 
-- `GET /api/health` — `{ ok, phase, clickhouse, sqlite }`. `phase` is `starting` | `schema` | `repair` | `ready`. **200** only when `phase` is `ready` and both stores ping; otherwise **503**. Hunt and ingest are 503 until ready. The process listens before migrate so Compose can healthcheck during schema.
+- `GET /api/health` — `{ ok, phase, clickhouse, sqlite, version }`. `phase` is `starting` | `schema` | `repair` | `ready`. `version` is the running release: the `package.json` version, the same string as the image tag. **200** only when `phase` is `ready` and both stores ping; otherwise **503**. Hunt and ingest are 503 until ready. The process listens before migrate so Compose can healthcheck during schema.
 - `GET /api/metrics` — Prometheus text
 - `POST /api/ingest` — JSON, JSON array, or NDJSON → `{ ingested }`
 - `POST /v1/logs` — OTLP JSON or protobuf logs → `{ ingested }`. Optional `Content-Encoding: gzip` inflates under the 1MB cap.

@@ -44,6 +44,8 @@ docker compose pull
 docker compose up -d
 ```
 
+`curl -fsS http://127.0.0.1:8080/api/health` prints `version`, so the new pin can be confirmed once it is up.
+
 - ClickHouse tables such as `logs_by_minute` and `logs_attr_values_by_minute` are created on boot, and missing day partitions are backfilled from `logs`.
 - SQLite adds new tables and columns on boot.
 - Retention follows `PUT /api/settings` with `{ "retention_days": 30 }` and requires an integer from 1 to 365. Invalid values return **400** before any SQLite write or TTL change. A valid lower retention can delete older data as ClickHouse applies TTL.
@@ -96,7 +98,7 @@ If a ClickHouse data directory from an older release refuses to start after the 
 
 `GET /api/health` and `GET /api/metrics` are open endpoints.
 
-`GET /api/health` is **200** only when `phase` is `ready` and both stores ping; otherwise **503** with `phase`.
+`GET /api/health` is **200** only when `phase` is `ready` and both stores ping; otherwise **503** with `phase`. Either way the body carries `version`, the running release — the same string as the image tag.
 
 `GET /api/metrics` returns Prometheus text.
 
