@@ -33,6 +33,20 @@ toposcope.example.com {
 - Probes: `POST /v1/probes` on the same port and ingest token; `GET /api/probes` lists `up` samples. Hunt overlays `metric=up`. A failed pull stores `up=0`. GitHub Actions sample in the [ingest guide](ingest.md).
 - `GET /api/metrics`: Prometheus text, unauthenticated
 
+## Memory
+
+An instance that is doing nothing still takes memory, and almost all of it is ClickHouse: it fills its own caches and system tables whether or not anything arrives, then levels off. Plan for about 2 GB for an idle instance.
+
+Measured with `docker stats` on an empty 0.4.10 instance, with no ingest and no searches:
+
+| Minutes since ready | 0 | 5 | 10 | 15 | 20 | 30 | 40 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ClickHouse, GiB | 0.66 | 1.25 | 1.51 | 1.70 | 1.70 | 1.60 | 1.75 |
+
+The app stayed near 30 MiB throughout. A second run, stopped at ten minutes, climbed more slowly: 0.25 GiB at ready and 0.71 GiB at ten minutes. Both ran arm64 images on Docker Desktop.
+
+The packaged Compose file lets ClickHouse use up to 4 GB and the app up to 512 MB.
+
 ## Upgrade and retention
 
 Boot is idempotent. No volume wipe is required for a normal upgrade. The process listens on `:8080` before migrate; `/api/health` is **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe, then **200**. Packaged Compose healthchecks that URL.

@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
-The README quick start writes the three secrets into `.env` without printing them, instead of asking for three `openssl` outputs to be pasted in. A test runs those commands.
+The README quick start writes the three secrets into `.env` without printing them, instead of asking for three `openssl` outputs to be pasted in. A test runs those commands. `docs/operations.md` says what an idle instance takes, measured: about 1.7 GiB once ClickHouse has levelled off, a quarter of an hour after starting.
 
 The image is published for `linux/arm64` as well as `linux/amd64`. Earlier images are amd64 only, and on an arm64 host Docker refuses to pull one unless the `app` service names `platform: linux/amd64`.
 
