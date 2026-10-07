@@ -207,6 +207,15 @@ describe("release image", () => {
     expect(workflow).toContain("platforms: linux/amd64,linux/arm64");
   });
 
+  test("is built the same way, without a push, when a pull request touches it", async () => {
+    const check = await Bun.file(`${root}/.github/workflows/image-build.yml`).text();
+    expect(check).toContain("platforms: linux/amd64,linux/arm64");
+    expect(check).toContain("push: false");
+    for (const path of ["Dockerfile", "package.json", "bun.lock", ".github/workflows/release-image.yml"]) {
+      expect(check).toContain(`      - ${path}\n`);
+    }
+  });
+
   test("runs commands only on the builder's platform, so nothing is built under emulation", async () => {
     const dockerfile = await Bun.file(`${root}/Dockerfile`).text();
     const stages = dockerfile.split(/^FROM /m).slice(1);
