@@ -73,6 +73,11 @@ beforeAll(async () => {
       ["known", "/api/settings", headers, "GET"],
       ["post", "/api/no-such-endpoint", headers, "POST"],
       ["spa", "/workspace/reader", headers, "GET"],
+      ["v1Get", "/v1/no-such-endpoint", headers, "GET"],
+      ["v1WrongMethod", "/v1/logs", headers, "GET"],
+      ["v1Post", "/v1/no-such-endpoint", headers, "POST"],
+      ["v1Unauthorized", "/v1/no-such-endpoint", {}, "GET"],
+      ["v1DevGet", "/v1development/no-such-endpoint", headers, "GET"],
     ]) {
       const response = await app.fetch(new Request("http://app.test" + path, { headers: requestHeaders, method }));
       const text = await response.text();
@@ -155,5 +160,29 @@ describe("API not found", () => {
 describe("ingest bearer token", () => {
   test.each(ingestPaths)("%s refuses a token that was never issued", (path) => {
     expect(results[`bearer:${path}`]!.status).toBe(401);
+  });
+});
+
+describe("/v1 not found", () => {
+  test("unknown GET returns JSON 404, not the UI page", () => {
+    expect(results.v1Get!.status).toBe(404);
+    expect(results.v1Get!.contentType).toContain("application/json");
+    expect(results.v1Get!.body).toEqual({ error: "Not found" });
+  });
+  test("GET on an ingest path returns JSON, not the UI page", () => {
+    expect([404, 405]).toContain(results.v1WrongMethod!.status);
+    expect(results.v1WrongMethod!.contentType).toContain("application/json");
+  });
+  test("unknown POST returns the same JSON 404", () => {
+    expect(results.v1Post!.status).toBe(404);
+    expect(results.v1Post!.contentType).toContain("application/json");
+    expect(results.v1Post!.body).toEqual({ error: "Not found" });
+  });
+  test("an unknown path still requires authentication first", () => {
+    expect(results.v1Unauthorized!.status).toBe(401);
+  });
+  test("the development profiles prefix answers the same way", () => {
+    expect(results.v1DevGet!.status).toBe(404);
+    expect(results.v1DevGet!.body).toEqual({ error: "Not found" });
   });
 });

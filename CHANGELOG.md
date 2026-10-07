@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Unknown `/v1/*` paths, and a wrong method on an ingest path, return JSON **404** instead of the UI page or a plain-text 404. A sender with a typo in its endpoint no longer sees a 200 and a body it cannot parse. [#66](https://github.com/toposcope/toposcope/issues/66)
+
 An OTLP log record with no event time is stored at its observed time, when a collector set one, instead of the time it arrived. A batch that sat in a collector’s buffer no longer lands late on the clock or on the wrong side of a change mark. A record with both keeps its event time. [#65](https://github.com/toposcope/toposcope/issues/65)
 
 On `POST /v1/logs` the level comes from `severityNumber` when it is 1–24, and a record with only a severity text is read by its word. Before, the text was read first and only a few words were known, so a text-only `CRITICAL`, `CRIT`, `ALERT`, or `SEVERE` was stored as `info`, and an unspecified number (0) as `debug`. [#64](https://github.com/toposcope/toposcope/issues/64)
