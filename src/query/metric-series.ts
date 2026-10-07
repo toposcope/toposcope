@@ -1,6 +1,6 @@
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { metricExpr } from "../shared/metric";
-import { metricKind } from "../shared/metric-kinds";
+import { metricKind, type MetricKind } from "../shared/metric-kinds";
 import { maxAttrKeys } from "../shared/attrs";
 import {
   histogramIntervalSql,
@@ -105,7 +105,7 @@ export async function searchMetricSeries(opts: {
       FROM metrics_by_minute
       WHERE ${statWhere.sql} AND ${namePred}
     `;
-    return metricResult(expr, bucketQuery, statQuery, overlayWhere.params, statWhere.params);
+    return metricResult(expr, counter, bucketQuery, statQuery, overlayWhere.params, statWhere.params);
   }
 
   const overlayWhere = metricTimeWhere("ts", overlay);
@@ -137,11 +137,12 @@ export async function searchMetricSeries(opts: {
     FROM metrics
     WHERE ${statParts.join(" AND ")}
   `;
-  return metricResult(expr, bucketQuery, statQuery, overlayWhere.params, statWhere.params);
+  return metricResult(expr, counter, bucketQuery, statQuery, overlayWhere.params, statWhere.params);
 }
 
 async function metricResult(
   expr: string,
+  counter: boolean,
   bucketQuery: string,
   statQuery: string,
   overlayParams: Record<string, string>,
@@ -167,25 +168,77 @@ async function metricResult(
     source: "metric",
     buckets,
     stat: finiteNum(statRows[0]?.v),
+    kind: counter ? "counter" : "gauge",
   };
 }
 
+export type MetricNameRow = { k: string; n: number; kind: MetricKind };
+
+/** A name with no stored kind was posted as a plain point and reads as a gauge. */
+async function withKinds(rows: Array<{ k: string; n: number }>): Promise<MetricNameRow[]> {
+  const out: MetricNameRow[] = [];
+  for (const row of rows) {
+    out.push({ ...row, kind: (await metricKind(row.k)) ?? "gauge" });
+  }
+  return out;
+}
+
+/**
+ * Names with points in the window, busiest first, each with its kind.
+ * `find` keeps the names that contain it, anywhere, in any case. `total` counts
+ * every name with points, found or not. `picked` answers for the names a card
+ * already holds, points or no points: a saved search can carry one that went quiet.
+ */
 export async function metricNames(opts: {
   from?: string;
   to?: string;
-}): Promise<Array<{ k: string; n: number }>> {
+  find?: string;
+  picked?: readonly string[];
+}): Promise<{ keys: MetricNameRow[]; total: number; picked: MetricNameRow[] }> {
   const { sql, params } = metricTimeWhere("minute", opts);
-  const query = `
+  const find = (opts.find ?? "").trim().toLowerCase();
+  const picked = [...new Set(opts.picked ?? [])].slice(0, maxAttrKeys);
+  const listParams: Record<string, string> = { ...params };
+  let found = "";
+  if (find.length > 0) {
+    listParams.find = find;
+    found = "AND positionCaseInsensitive(name, {find:String}) > 0";
+  }
+  const pickedParams: Record<string, string> = { ...params, picked: JSON.stringify(picked) };
+  const number = (value: string | number | undefined) =>
+    typeof value === "number" ? value : Number(value ?? 0);
+  const [rows, totals, pickedRows] = await Promise.all([
+    clickhouseQuery<{ k: string; n: string | number }>(
+      `
     SELECT name AS k, countMerge(n) AS n
     FROM metrics_by_minute
-    WHERE ${sql} AND name != ''
+    WHERE ${sql} AND name != '' ${found}
     GROUP BY k
     ORDER BY n DESC, k ASC
     LIMIT ${maxAttrKeys}
-  `;
-  const rows = await clickhouseQuery<{ k: string; n: string | number }>(query, params);
-  return rows.map((row) => ({
-    k: String(row.k),
-    n: typeof row.n === "number" ? row.n : Number(row.n),
-  }));
+  `,
+      listParams,
+    ),
+    clickhouseQuery<{ total: string | number }>(
+      `SELECT uniqExact(name) AS total FROM metrics_by_minute WHERE ${sql} AND name != ''`,
+      params,
+    ),
+    picked.length === 0
+      ? Promise.resolve([])
+      : clickhouseQuery<{ k: string; n: string | number }>(
+          `
+    SELECT name AS k, countMerge(n) AS n
+    FROM metrics_by_minute
+    WHERE ${sql} AND name IN JSONExtract({picked:String}, 'Array(String)')
+    GROUP BY k
+  `,
+          pickedParams,
+        ),
+  ]);
+  const withPoints = new Map(pickedRows.map((row) => [String(row.k), number(row.n)]));
+  return {
+    keys: await withKinds(rows.map((row) => ({ k: String(row.k), n: number(row.n) }))),
+    total: number(totals[0]?.total),
+    picked: await withKinds(picked.map((name) => ({ k: name, n: withPoints.get(name) ?? 0 }))),
+  };
 }

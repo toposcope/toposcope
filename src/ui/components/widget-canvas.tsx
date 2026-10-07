@@ -14,7 +14,8 @@ import {
   usedCanvasFieldValues,
   usedCanvasSeriesValues,
 } from "@/head-query";
-import { TimeseriesSpark } from "@/components/timeseries-spark";
+import { bucketStepLabel, TimeseriesSpark } from "@/components/timeseries-spark";
+import { metricReading, midCut } from "../series-list";
 import { WidgetUpdated } from "@/components/widget-updated";
 import { Button } from "@/components/ui/button";
 import {
@@ -542,7 +543,7 @@ export function WidgetCanvas({
     }
   }
 
-  function extraIdentity(widget: WidgetDef): ReactNode {
+  function extraIdentity(widget: WidgetDef, data: SeriesData): ReactNode {
     switch (widget.kind) {
       case "stat":
         return (
@@ -588,8 +589,24 @@ export function WidgetCanvas({
             onN={(next) => onWidgets(patchWidget(widgets, widget.id, { n: next }))}
           />
         );
-      case "timeseries":
-        return null;
+      case "timeseries": {
+        if (!widget.metric) {
+          return null;
+        }
+        // A metric's card is titled by how it is read, first, then its name cut in the middle.
+        const kind = data.agg?.kind ?? "gauge";
+        const reading = metricReading(kind, bucketStepLabel(data.histogram), true);
+        const split = widget.split === "level" ? "" : ` · ${widget.split}`;
+        return (
+          <span
+            className="min-w-0 truncate font-mono text-[11.5px]"
+            title={`${metricReading(kind, bucketStepLabel(data.histogram))} · ${widget.metric} · ${kind}`}
+          >
+            {reading} · {midCut(widget.metric, 18)}
+            {split}
+          </span>
+        );
+      }
       default: {
         const _exhaustive: never = widget.kind;
         return _exhaustive;
@@ -810,7 +827,7 @@ export function WidgetCanvas({
                   moving={Boolean(moving)}
                   highlight={isFresh}
                   lockChrome={locked}
-                  identity={extraIdentity(widget)}
+                  identity={extraIdentity(widget, data)}
                   pct={widget.pct}
                   onPct={
                     widget.kind === "hbar"

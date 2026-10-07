@@ -3,7 +3,7 @@ import { insertMetricPoints } from "../ingest/metrics";
 import { pingClickHouse } from "../shared/clickhouse";
 import { forgetMetricKinds, metricKind, rememberMetricKinds } from "../shared/metric-kinds";
 import { migrateStore } from "../shared/migrate";
-import { searchMetricSeries } from "./metric-series";
+import { metricNames, searchMetricSeries } from "./metric-series";
 
 process.env.CLICKHOUSE_USER ??= "default";
 process.env.CLICKHOUSE_PASSWORD ??= "toposcope";
@@ -66,6 +66,37 @@ describe("a metric is read by the kind it came as", () => {
     const labels = { service: `kind-${run}` };
     expect(await read(counter, labels)).toEqual({ bars: [12, 4], stat: 16 });
     expect(await read(gauge, labels)).toEqual({ bars: [6, 4], stat: 16 / 3 });
+  });
+
+  test("the series says how it was read", async () => {
+    if (!ready) return;
+    expect((await searchMetricSeries({ from, to, intervalMs: 60_000, name: counter, labels: {} })).kind).toBe("counter");
+    expect((await searchMetricSeries({ from, to, intervalMs: 60_000, name: plain, labels: {} })).kind).toBe("gauge");
+  });
+
+  test("the names of a window come with their kinds, and can be found by any part", async () => {
+    if (!ready) return;
+    const found = await metricNames({ from, to, find: `JOBS.${run}` });
+    expect(found.keys).toEqual([{ k: counter, n: 3, kind: "counter" }]);
+    expect(found.total).toBeGreaterThanOrEqual(3);
+    const all = await metricNames({ from, to, find: `kind_test.` });
+    expect(all.keys.filter((row) => row.k.endsWith(String(run))).map((row) => [row.k, row.kind]).sort()).toEqual(
+      [[counter, "counter"], [gauge, "gauge"], [plain, "gauge"]].sort(),
+    );
+  });
+
+  test("a picked name is answered for with no points in the window, kind and all", async () => {
+    if (!ready) return;
+    const quiet = await metricNames({
+      from: iso(first - 3 * 3_600_000),
+      to: iso(first - 2 * 3_600_000),
+      picked: [counter, "kind_test.never.sent"],
+    });
+    expect(quiet.picked).toEqual([
+      { k: counter, n: 0, kind: "counter" },
+      { k: "kind_test.never.sent", n: 0, kind: "gauge" },
+    ]);
+    expect((await metricNames({ from, to, picked: [counter] })).picked).toEqual([{ k: counter, n: 3, kind: "counter" }]);
   });
 
   test("a name remembers its kind across a restart, and the newest kind wins", async () => {

@@ -17,6 +17,7 @@ import { getFieldSkipKeys } from "../shared/field-skip";
 import {
   InvalidMetricError,
   parseMetricLabels,
+  parseMetricName,
   requireMetricName,
 } from "../shared/metric";
 import {
@@ -1269,9 +1270,18 @@ export async function metricNamesRoute(c: Context): Promise<Response> {
       to: c.req.query("to") ?? undefined,
       range: c.req.query("range") ?? undefined,
     });
-    return c.json({
-      keys: await metricNames({ from: resolved.from, to: resolved.to }),
-    });
+    const picked = (c.req.query("picked") ?? "")
+      .split(",")
+      .map((name) => parseMetricName(name))
+      .filter((name): name is string => name !== null);
+    return c.json(
+      await metricNames({
+        from: resolved.from,
+        to: resolved.to,
+        find: c.req.query("find") ?? undefined,
+        picked,
+      }),
+    );
   } catch (err) {
     return queryHttpError(c, err) ?? Promise.reject(err);
   }
