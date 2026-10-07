@@ -56,6 +56,7 @@ beforeAll(async () => {
     }
     const settings = await import(root + "/control/settings.ts");
     const headers = { authorization: "Basic " + btoa("operator:regression-only"), "content-type": "application/json" };
+    const sender = { authorization: "Bearer regression-ingest", "content-type": "application/json" };
     const out = {};
     for (const value of ["0", "-1", "0.5", "10.5", "366", "1e400", "-1e400"]) {
       settings.writeRetentionDays(30);
@@ -78,6 +79,13 @@ beforeAll(async () => {
       ["v1Post", "/v1/no-such-endpoint", headers, "POST"],
       ["v1Unauthorized", "/v1/no-such-endpoint", {}, "GET"],
       ["v1DevGet", "/v1development/no-such-endpoint", headers, "GET"],
+      ["senderTypo", "/v1/log", sender, "POST"],
+      ["senderUnknown", "/v1/no-such-endpoint", sender, "POST"],
+      ["senderDevUnknown", "/v1development/no-such-endpoint", sender, "POST"],
+      ["senderWrongMethod", "/v1/logs", sender, "GET"],
+      ["strangerUnknown", "/v1/no-such-endpoint", { authorization: "Bearer never-issued" }, "POST"],
+      ["senderReads", "/api/settings", sender, "GET"],
+      ["senderApiUnknown", "/api/no-such-endpoint", sender, "POST"],
     ]) {
       const response = await app.fetch(new Request("http://app.test" + path, { headers: requestHeaders, method }));
       const text = await response.text();
@@ -102,6 +110,7 @@ beforeAll(async () => {
       NODE_PATH: join(root, "../node_modules"),
       TOPOSCOPE_DEV: "1",
       TOPOSCOPE_PASSWORD: "regression-only",
+      TOPOSCOPE_INGEST_TOKEN: "regression-ingest",
       SQLITE_PATH: ":memory:",
       CLICKHOUSE_URL: "http://clickhouse.test",
     },
@@ -154,6 +163,33 @@ describe("API not found", () => {
   test("non-API workspace paths retain the UI fallback", () => {
     expect(results.spa!.status).toBe(200);
     expect(results.spa!.contentType).toContain("text/html");
+  });
+});
+
+describe("/v1 not found, for a sender", () => {
+  // A sender holds the ingest token and nothing else. A wrong path must not read as a wrong token.
+  test.each([
+    ["a typo in an ingest path", "senderTypo"],
+    ["an unknown path", "senderUnknown"],
+    ["an unknown path under the development profiles prefix", "senderDevUnknown"],
+  ])("%s answers JSON 404 to a valid ingest token, not 401", (_case, key) => {
+    expect(results[key]!.status).toBe(404);
+    expect(results[key]!.contentType).toContain("application/json");
+    expect(results[key]!.body).toEqual({ error: "Not found" });
+  });
+});
+
+describe("an ingest token outside the ingest routes", () => {
+  test("a wrong method on an ingest path is a JSON 404 too", () => {
+    expect(results.senderWrongMethod!.status).toBe(404);
+    expect(results.senderWrongMethod!.body).toEqual({ error: "Not found" });
+  });
+  test("a token that was never issued still gets 401 on an unknown /v1 path", () => {
+    expect(results.strangerUnknown!.status).toBe(401);
+  });
+  test("an ingest token still reads nothing under /api", () => {
+    expect(results.senderReads!.status).toBe(401);
+    expect(results.senderApiUnknown!.status).toBe(401);
   });
 });
 

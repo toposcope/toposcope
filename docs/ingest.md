@@ -67,6 +67,7 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
 | `200` | Stored. `ingested` counts rows, not what each row kept. | — |
 | `400` | Unreadable body, an invalid row, or a batch over the [cap](#limits-and-responses). Nothing stored. | Fix it; an exporter does not retry, so the batch is gone. |
 | `401` | Missing or wrong token. | Fix the header. |
+| `404` | The token is good and the path is not an ingest route. | Fix the endpoint. |
 | `413` | Over 1 MB decoded. | Send smaller batches. |
 | `429` | ClickHouse is busy; `Retry-After: 1`. | Retry. |
 | `503` | Not ready, or the insert failed. | Retry. |
