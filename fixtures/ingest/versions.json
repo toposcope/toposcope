@@ -1,0 +1,72 @@
+{
+  "captured": "2026-10-07",
+  "stacks": {
+    "node": {
+      "image": "node:24-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20",
+      "runtime": "Node 24.21.0",
+      "framework": "Express 5.2.1",
+      "type": "TypeError",
+      "raise": "charge"
+    },
+    "python": {
+      "image": "python:3.13-slim@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c",
+      "runtime": "Python 3.13.16",
+      "framework": "Flask 3.1.3",
+      "type": "KeyError",
+      "raise": "charge"
+    },
+    "jvm": {
+      "image": "maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320",
+      "runtime": "OpenJDK 21.0.12",
+      "framework": "Spring Boot 3.5.0",
+      "type": "java.lang.IllegalStateException",
+      "raise": "com.example.billing.Billing.charge"
+    },
+    "dotnet": {
+      "image": "mcr.microsoft.com/dotnet/sdk:10.0@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317",
+      "runtime": ".NET 10.0.12",
+      "framework": "ASP.NET Core 10.0.12",
+      "type": "System.NullReferenceException",
+      "raise": "Billing.ChargeAsync(Order order)"
+    },
+    "php": {
+      "image": "composer:2@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac",
+      "runtime": "PHP 8.5.11",
+      "framework": "Slim 4.15.3",
+      "type": "DomainException",
+      "raise": "Billing\\Billing->charge"
+    },
+    "go": {
+      "image": "golang:1.26@sha256:eb36c1664dd974cde625f736e02c204383deebe03977365caaec5bf49f794348",
+      "runtime": "Go 1.26.8",
+      "framework": "Gin 1.12.0",
+      "type": "runtime.errorString",
+      "raise": "main.charge"
+    }
+  },
+  "otlp": {
+    "node": {
+      "image": "node:24-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20",
+      "runtime": "Node 24.21.0",
+      "exporter": "OpenTelemetry JS 0.223.0",
+      "bridge": "pino 10.4.0",
+      "setup": "@opentelemetry/auto-instrumentations-node 0.81.0, instrumentation-pino 0.69.0",
+      "type": "TypeError",
+      "requests": {
+        "protobuf": "node.logs.bin",
+        "json": "node.logs.json"
+      }
+    },
+    "python": {
+      "image": "python:3.13-slim@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c",
+      "runtime": "Python 3.13.16",
+      "exporter": "OpenTelemetry Python 1.45.1",
+      "bridge": "logging",
+      "setup": "opentelemetry-distro 0.66b1 (opentelemetry-instrument), exporter-otlp-proto-http 1.45.1",
+      "type": "KeyError",
+      "requests": {
+        "protobuf": "python.logs.bin"
+      }
+    }
+  }
+}

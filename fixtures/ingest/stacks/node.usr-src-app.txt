@@ -1,0 +1,11 @@
+TypeError: Cannot read properties of undefined (reading 'token')
+    at charge (/usr/src/app/src/billing.js:4:32)
+    at /usr/src/app/src/server.js:10:12
+    at Layer.handleRequest (/usr/src/app/node_modules/router/lib/layer.js:152:17)
+    at next (/usr/src/app/node_modules/router/lib/route.js:157:13)
+    at Route.dispatch (/usr/src/app/node_modules/router/lib/route.js:117:3)
+    at handle (/usr/src/app/node_modules/router/index.js:435:11)
+    at Layer.handleRequest (/usr/src/app/node_modules/router/lib/layer.js:152:17)
+    at /usr/src/app/node_modules/router/index.js:295:15
+    at processParams (/usr/src/app/node_modules/router/index.js:582:12)
+    at next (/usr/src/app/node_modules/router/index.js:291:5)

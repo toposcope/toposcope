@@ -1,0 +1,29 @@
+panic: runtime error: invalid memory address or nil pointer dereference
+
+goroutine 5 [running]:
+runtime/debug.Stack()
+	/usr/local/go/src/runtime/debug/stack.go:26 +0x64
+main.main.func1.1()
+	/app/main.go:21 +0x3c
+panic({0x6838e0?, 0xcf9c30?})
+	/usr/local/go/src/runtime/panic.go:860 +0x12c
+main.charge(...)
+	/app/billing.go:8
+main.main.func2(0x49f108728300)
+	/app/main.go:31 +0x20
+github.com/gin-gonic/gin.(*Context).Next(0x49f108728300)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x74
+main.main.func1(0x4?)
+	/app/main.go:27 +0x40
+github.com/gin-gonic/gin.(*Context).Next(0x49f108728300)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x74
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0x49f108736380, 0x49f108728300)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x350
+github.com/gin-gonic/gin.(*Engine).ServeHTTP(0x49f108736380, {0x767f90, 0x49f10875c000}, 0x49f1085f0140)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x17c
+net/http.serverHandler.ServeHTTP({0x49f1086240c0?}, {0x767f90?, 0x49f10875c000?}, 0x1?)
+	/usr/local/go/src/net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x49f108616120, {0x7687b8, 0x49f108780120})
+	/usr/local/go/src/net/http/server.go:2067 +0x55c
+created by net/http.(*Server).Serve in goroutine 21
+	/usr/local/go/src/net/http/server.go:3464 +0x37c

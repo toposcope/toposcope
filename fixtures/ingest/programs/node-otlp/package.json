@@ -1,0 +1,10 @@
+{
+  "name": "billing",
+  "version": "1.4.2",
+  "private": true,
+  "dependencies": {
+    "@opentelemetry/api": "^1",
+    "@opentelemetry/auto-instrumentations-node": "*",
+    "pino": "*"
+  }
+}

@@ -1,0 +1,6 @@
+System.NullReferenceException: Object reference not set to an instance of an object.
+   at Billing.ChargeAsync(Order order) in /usr/src/app/Billing.cs:line 10
+   at Program.<>c.<<<Main>$>b__0_1>d.MoveNext() in /usr/src/app/Program.cs:line 22
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Http.RequestDelegateFactory.<ExecuteTaskOfString>g__ExecuteAwaited|135_0(Task`1 task, HttpContext httpContext)
+   at Program.<>c.<<<Main>$>b__0_0>d.MoveNext() in /usr/src/app/Program.cs:line 11

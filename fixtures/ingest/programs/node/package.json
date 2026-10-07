@@ -1,0 +1,8 @@
+{
+  "name": "billing",
+  "version": "1.4.2",
+  "private": true,
+  "dependencies": {
+    "express": "^5"
+  }
+}

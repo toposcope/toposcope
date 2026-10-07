@@ -1,0 +1,29 @@
+panic: runtime error: invalid memory address or nil pointer dereference
+
+goroutine 34 [running]:
+runtime/debug.Stack()
+	/usr/local/go/src/runtime/debug/stack.go:26 +0x64
+main.main.func1.1()
+	/usr/src/app/main.go:21 +0x3c
+panic({0x6838e0?, 0xcf9c30?})
+	/usr/local/go/src/runtime/panic.go:860 +0x12c
+main.charge(...)
+	/usr/src/app/billing.go:8
+main.main.func2(0x3d855cabc000)
+	/usr/src/app/main.go:31 +0x20
+github.com/gin-gonic/gin.(*Context).Next(0x3d855cabc000)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x74
+main.main.func1(0x3d855c96d908?)
+	/usr/src/app/main.go:27 +0x40
+github.com/gin-gonic/gin.(*Context).Next(0x3d855cabc000)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 +0x74
+github.com/gin-gonic/gin.(*Engine).handleHTTPRequest(0x3d855c9b6380, 0x3d855cabc000)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 +0x350
+github.com/gin-gonic/gin.(*Engine).ServeHTTP(0x3d855c9b6380, {0x767f90, 0x3d855cab6000}, 0x3d855caa4000)
+	/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 +0x17c
+net/http.serverHandler.ServeHTTP({0x3d855ca9c000?}, {0x767f90?, 0x3d855cab6000?}, 0x1?)
+	/usr/local/go/src/net/http/server.go:3311 +0xb0
+net/http.(*conn).serve(0x3d855ca88000, {0x7687b8, 0x3d855ca04120})
+	/usr/local/go/src/net/http/server.go:2067 +0x55c
+created by net/http.(*Server).Serve in goroutine 21
+	/usr/local/go/src/net/http/server.go:3464 +0x37c
