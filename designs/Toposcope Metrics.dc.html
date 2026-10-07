@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#a78bfa" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:oklch(0.906 0.014 84); text-decoration:none; }
+  a:hover { color:oklch(0.985 0 0); }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="max-width:1120px;">
+    <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+      <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+      <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Picking a metric</h1>
+      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Search · frames 11a–11n · the Series control on the pinned toolbar, a timeseries footer and a Stat head · talked 2026-10-07 — not locked</span>
+    </div>
+    <p style="margin:10px 0 0; max-width:940px; font-size:13px; line-height:1.55; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Apps now send OpenTelemetry metrics straight in: sixty names, long ones, of three kinds. This sheet draws one change to one control. <span style="color:oklch(0.985 0 0);">The Series menu becomes a list you can type into, that names each metric’s kind, and that puts a histogram’s reading where a log field’s reducer already sits.</span> Same slot, same 26px, same one series per card. Not a metrics browser, not a tree, not a second query language — the search bar still only searches logs. Drawn states, not one happy path.</p>
+    <div style="display:flex; flex-direction:column; gap:5px; margin-top:14px; padding:12px 14px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+      <sc-for list="{{ system }}" as="s" hint-placeholder-count="6">
+        <div style="display:flex; gap:9px; font-size:12.5px; line-height:1.5; color:oklch(0.705 0.015 286.067);">
+          <span style="flex:0 0 auto; width:14px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84 / 75%);">{{ s.n }}</span>
+          <span style="text-wrap:pretty;"><span style="color:oklch(0.985 0 0);">{{ s.head }}</span> {{ s.body }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-for list="{{ frames }}" as="f" hint-placeholder-count="2">
+    <div id="{{ f.id }}" data-screen-label="{{ f.label }}" style="margin-top:40px;">
+      <div style="display:flex; gap:12px; align-items:baseline; max-width:1120px;">
+        <a href="{{ f.href }}" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:26px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">{{ f.id }}</a>
+        <div style="min-width:0;">
+          <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">{{ f.title }}</div>
+          <p style="margin:4px 0 0; max-width:880px; font-size:12.5px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ f.body }}</p>
+        </div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:18px 16px; align-items:flex-start; width:1120px; margin-top:12px; padding:14px; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:oklch(0.141 0.005 285.823); box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+        <sc-for list="{{ f.views }}" as="v" hint-placeholder-count="1">
+          <div style="{{ v.wrap }}">
+            <div style="{{ v.capStyle }}">{{ v.cap }}</div>
+
+            <sc-if value="{{ v.isMain }}" hint-placeholder-val="{{ true }}">
+              <div style="{{ v.sbStyle }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+                <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px; color:oklch(0.985 0 0);">{{ v.sbQ }}</span>
+                <span style="flex:1;"></span>
+                <span style="{{ v.sbLiveStyle }}"><span style="width:6px; height:6px; border-radius:99px; background:#4ade80;"></span>Live</span>
+              </div>
+              <div style="display:flex; flex-direction:column; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.21 0.006 285.885);">
+                <div style="{{ v.barStyle }}">
+                  <div style="display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;">
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-size:12px; background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);">Level</span>
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-size:12px; color:oklch(0.705 0.015 286.067);">Service</span>
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-size:12px; color:oklch(0.705 0.015 286.067);">Host</span>
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-size:12px; color:oklch(0.705 0.015 286.067);">None</span>
+                  </div>
+                  <div style="flex:0 0 auto; width:1px; height:16px; background:oklch(1 0 0 / 10%);"></div>
+                  <div style="display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;">
+                    <span title="Stacked" style="display:flex; align-items:center; justify-content:center; min-width:26px; height:22px; padding:0 6px; border-radius:2.4px; background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M8 17v-3"></path><path d="M8 14v-3"></path><path d="M14 17v-4"></path><path d="M14 13v-4"></path><path d="M20 17v-2"></path><path d="M20 15v-3"></path></svg></span>
+                    <span title="Grouped" style="display:flex; align-items:center; justify-content:center; min-width:26px; height:22px; padding:0 6px; border-radius:2.4px; color:oklch(0.705 0.015 286.067);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M8 17V9"></path><path d="M12 17v-5"></path><path d="M16 17v-9"></path><path d="M20 17v-4"></path></svg></span>
+                    <span title="Line" style="display:flex; align-items:center; justify-content:center; min-width:26px; height:22px; padding:0 6px; border-radius:2.4px; color:oklch(0.705 0.015 286.067);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="m7 15 3-4 3 2 4-6"></path></svg></span>
+                    <span title="Area" style="display:flex; align-items:center; justify-content:center; min-width:26px; height:22px; padding:0 6px; border-radius:2.4px; color:oklch(0.705 0.015 286.067);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="m7 16 4-6 3 3 5-7v10H7z" fill="currentColor" fill-opacity="0.35"></path></svg></span>
+                  </div>
+                  <div style="flex:0 0 auto; width:1px; height:16px; background:oklch(1 0 0 / 10%);"></div>
+                  <span style="display:flex; align-items:center; flex:0 0 auto; white-space:nowrap; height:26px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; font-size:11.5px; color:oklch(0.985 0 0);">Linear</span>
+                  <div style="display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;">
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; white-space:nowrap; background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);">Auto · 1m</span>
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1m</span>
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">5m</span>
+                    <span style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">15m</span>
+                  </div>
+                  <div style="flex:0 0 auto; width:1px; height:16px; background:oklch(1 0 0 / 10%);"></div>
+                  <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
+                    <span style="flex:0 0 auto; white-space:nowrap; font-size:11.5px; color:oklch(0.705 0.015 286.067);">Series</span>
+                    <span style="position:relative; display:flex; flex:0 1 auto; min-width:0;">
+                      <span title="{{ v.tb.title }}" style="{{ v.tb.trig }}">
+                        <span style="{{ v.tb.kindStyle }}">{{ v.tb.kind }}</span>
+                        <span style="{{ v.tb.nameStyle }}">{{ v.tb.name }}</span>
+                        <span style="flex:0 0 auto; font-size:8px; color:oklch(0.705 0.015 286.067);">▾</span>
+                      </span>
+                      <sc-for list="{{ v.tb.trigTips }}" as="T" hint-placeholder-count="0"><div style="{{ T.style }}"><div style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.985 0 0);">{{ T.text }}</div><div style="margin-top:2px; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ T.sub }}</div></div></sc-for>
+                      <sc-for list="{{ v.tb.pops }}" as="P" hint-placeholder-count="0">
+                        <div style="{{ P.style }}">
+                          <div style="display:flex; align-items:center; gap:7px; height:30px; margin:-4px -4px 0; padding:0 9px; border-bottom:1px solid oklch(1 0 0 / 8%);">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+                            <span style="display:flex; align-items:center; flex:1 1 auto; min-width:0;">
+                              <span style="{{ P.qStyle }}">{{ P.q }}</span>
+                              <span style="flex:0 0 auto; width:1px; height:14px; margin:0 1px; background:oklch(0.985 0 0);"></span>
+                              <span style="{{ P.phStyle }}">Find a field or metric</span>
+                            </span>
+                            <span style="flex:0 0 auto; padding:0 4px; border:1px solid oklch(1 0 0 / 15%); border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px; color:oklch(0.705 0.015 286.067);">esc</span>
+                          </div>
+                          <sc-for list="{{ P.secs }}" as="s" hint-placeholder-count="3">
+                            <div style="{{ s.headStyle }}"><span>{{ s.head }}</span><span style="margin-left:auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; letter-spacing:0; text-transform:none; color:oklch(0.705 0.015 286.067 / 80%);">{{ s.meta }}</span></div>
+                            <sc-for list="{{ s.rows }}" as="r" hint-placeholder-count="3">
+                              <div style="{{ r.style }}">
+                                <span style="{{ r.tickStyle }}">✓</span>
+                                <span style="{{ r.nameStyle }}">{{ r.pre }}<span style="color:oklch(0.985 0 0); background:oklch(1 0 0 / 16%); border-radius:2px;">{{ r.hit }}</span>{{ r.post }}</span>
+                                <span style="{{ r.tagStyle }}">{{ r.tag }}</span>
+                              </div>
+                            </sc-for>
+                          </sc-for>
+                          <div style="{{ P.moreStyle }}">{{ P.more }}</div>
+                          <div style="{{ P.emptyStyle }}"><div style="margin-bottom:4px; color:oklch(0.985 0 0);">{{ P.emptyTitle }}</div>{{ P.emptyBody }}</div>
+                          <div style="{{ P.liveStyle }}"><span style="flex:0 0 auto; width:6px; height:6px; margin-top:5px; border-radius:99px; background:#4ade80;"></span><span style="text-wrap:pretty;">{{ P.live }}</span></div>
+                          <div style="display:flex; align-items:center; gap:5px; margin:3px -4px -4px; padding:6px 9px; border-top:1px solid oklch(1 0 0 / 8%); font-size:10.5px; color:oklch(0.705 0.015 286.067);">
+                            <span style="padding:0 4px; border:1px solid oklch(1 0 0 / 15%); border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px;">↑↓</span><span>move</span>
+                            <span style="margin-left:6px; padding:0 4px; border:1px solid oklch(1 0 0 / 15%); border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px;">↵</span><span>pick</span>
+                            <span style="flex:1;"></span>
+                            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 80%);">{{ P.footR }}</span>
+                          </div>
+                        </div>
+                      </sc-for>
+                    </span>
+                    <span style="position:relative; display:flex; flex:0 0 auto;">
+                      <span style="{{ v.tb.rdBtnStyle }}">{{ v.tb.rd }}<span style="font-size:8px; color:oklch(0.705 0.015 286.067);">▾</span></span>
+                      <span title="{{ v.tb.rdTitle }}" style="{{ v.tb.rdStatStyle }}">{{ v.tb.rd }}</span>
+                      <sc-for list="{{ v.tb.rdTips }}" as="T" hint-placeholder-count="0"><div style="{{ T.style }}"><div style="font-size:11px; color:oklch(0.985 0 0);">{{ T.text }}</div><div style="margin-top:2px; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ T.sub }}</div></div></sc-for>
+                      <sc-for list="{{ v.tb.rms }}" as="R" hint-placeholder-count="0">
+                        <div style="{{ R.style }}">
+                          <div style="padding:4px 7px 5px; margin-bottom:2px; border-bottom:1px solid oklch(1 0 0 / 8%); font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:#a78bfa;">{{ R.head }}</div>
+                          <sc-for list="{{ R.rows }}" as="r" hint-placeholder-count="5">
+                            <div style="{{ r.style }}">
+                              <span style="{{ r.tickStyle }}">✓</span>
+                              <span style="flex:0 0 38px; color:oklch(0.985 0 0);">{{ r.label }}</span>
+                              <span style="flex:1; min-width:0; font-family:ui-sans-serif, system-ui, sans-serif; font-size:11px; color:oklch(0.705 0.015 286.067);">{{ r.hint }}</span>
+                            </div>
+                          </sc-for>
+                          <div style="margin:3px -4px -4px; padding:6px 9px; border-top:1px solid oklch(1 0 0 / 8%); font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ R.foot }}</div>
+                        </div>
+                      </sc-for>
+                    </span>
+                    <span title="Metric label from the saved field link — the log query is unchanged" style="{{ v.tb.chipStyle }}">{{ v.tb.chip }}<span style="display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:2.4px; font-size:12px; line-height:1;">×</span></span>
+                    <div style="{{ v.tb.axisStyle }}">
+                      <span title="Keep the volume bars, put the series on the right axis" style="display:flex; align-items:center; height:22px; padding:0 8px; border-radius:2.4px; font-size:11.5px; white-space:nowrap; background:oklch(0.274 0.006 286.033); color:oklch(0.985 0 0);">Overlay</span>
+                      <span title="Series only, on the left axis" style="display:flex; align-items:center; height:22px; padding:0 8px; margin-left:2px; border-radius:2.4px; font-size:11.5px; white-space:nowrap; color:oklch(0.705 0.015 286.067);">Replace</span>
+                    </div>
+                  </div>
+                  <div style="{{ v.tb.noteStyle }}">{{ v.tb.note }}</div>
+                </div>
+
+                <sc-if value="{{ v.plotOn }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; gap:6px; padding:8px 9px 0;">
+                    <div style="position:relative; flex:0 0 32px; margin:4px 0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">
+                      <sc-for list="{{ v.plot.lt }}" as="y" hint-placeholder-count="3"><span style="{{ y.s }}">{{ y.t }}</span></sc-for>
+                    </div>
+                    <div style="{{ v.plot.box }}">
+                      <div style="position:absolute; inset:4px 0; display:flex; flex-direction:column; justify-content:space-between; pointer-events:none;">
+                        <div style="height:1px; background:oklch(1 0 0 / 7%);"></div>
+                        <div style="height:1px; background:oklch(1 0 0 / 7%);"></div>
+                        <div style="height:1px; background:oklch(1 0 0 / 7%);"></div>
+                        <div style="height:1px; background:oklch(1 0 0 / 12%);"></div>
+                      </div>
+                      <div style="position:absolute; inset:4px 0; display:flex; align-items:flex-end; gap:1px;">
+                        <sc-for list="{{ v.plot.cols }}" as="c" hint-placeholder-count="40"><div style="{{ c }}"></div></sc-for>
+                      </div>
+                      <svg viewBox="0 0 600 100" preserveAspectRatio="none" style="{{ v.plot.ovStyle }}"><polyline points="{{ v.plot.ovPts }}" fill="none" stroke="#a78bfa" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity="0.95"></polyline></svg>
+                      <div style="{{ v.plot.hair }}"></div>
+                      <sc-for list="{{ v.plot.tips }}" as="t" hint-placeholder-count="0">
+                        <div style="{{ t.style }}">
+                          <div style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.985 0 0); padding-bottom:3px; margin-bottom:1px; border-bottom:1px solid oklch(1 0 0 / 10%);">{{ t.head }}</div>
+                          <sc-for list="{{ t.rows }}" as="hr" hint-placeholder-count="3">
+                            <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                              <span style="{{ hr.sw }}"></span>
+                              <span style="flex:1; min-width:0; color:oklch(0.705 0.015 286.067);">{{ hr.key }}</span>
+                              <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.985 0 0);">{{ hr.val }}</span>
+                            </div>
+                          </sc-for>
+                          <div style="height:1px; margin:5px 0 3px; background:oklch(1 0 0 / 10%);"></div>
+                          <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="flex:0 0 auto; width:7px; height:7px; border-radius:2.4px; background:#a78bfa;"></span>
+                            <span style="flex:1; min-width:0; overflow:hidden; white-space:nowrap; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.985 0 0 / 85%);"><span style="color:#a78bfa;">{{ t.srd }}</span> {{ t.sname }}</span>
+                            <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.985 0 0);">{{ t.sval }}</span>
+                          </div>
+                          <div style="margin:2px 0 0 13px; font-size:10px; color:oklch(0.705 0.015 286.067);">{{ t.ssub }}</div>
+                          <div style="margin-top:4px; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">drag to pan · ⇧drag to select</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="{{ v.plot.rg }}">
+                      <sc-for list="{{ v.plot.rt }}" as="y" hint-placeholder-count="3"><span style="{{ y.s }}">{{ y.t }}</span></sc-for>
+                    </div>
+                  </div>
+                  <div style="{{ v.plot.axisRow }}">
+                    <sc-for list="{{ v.plot.axis }}" as="a" hint-placeholder-count="5"><span>{{ a }}</span></sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ v.isTs }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ v.card }}">
+                <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; height:30px; padding:0 4px 0 12px; border-bottom:1px solid oklch(1 0 0 / 8%); border-radius:5.4px 5.4px 0 0; background:oklch(0.141 0.005 285.823 / 45%);">
+                  <span title="{{ v.titleFull }}" style="flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.985 0 0);">{{ v.title }}</span>
+                  <div style="flex:1 1 auto; min-width:0;"></div>
+                  <span style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:22px; height:22px; color:oklch(0.705 0.015 286.067);"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></span>
+                  <span style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:22px; height:22px; font-size:14px; line-height:1; color:oklch(0.705 0.015 286.067);">×</span>
+                </div>
+                <div style="position:relative; flex:1; min-height:0; margin:12px;">
+                  <svg viewBox="0 0 200 60" preserveAspectRatio="none" style="position:absolute; inset:0; display:block; width:100%; height:100%;"><polyline points="{{ v.linePts }}" fill="none" stroke="#a78bfa" stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" opacity="0.95"></polyline></svg>
+                  <span style="position:absolute; top:0; left:0; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.705 0.015 286.067);">{{ v.lineTag }}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; padding:0 12px 8px;">
+                  <span style="display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; height:26px; padding:0 6px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px; background:#18181b; font-size:11.5px; color:oklch(0.985 0 0);">None<span style="font-size:8px; color:oklch(0.705 0.015 286.067);">▾</span></span>
+                  <span title="{{ v.tb.title }}" style="{{ v.tb.trig }}">
+                    <span style="{{ v.tb.kindStyle }}">{{ v.tb.kind }}</span>
+                    <span style="{{ v.tb.nameStyle }}">{{ v.tb.name }}</span>
+                    <span style="flex:0 0 auto; font-size:8px; color:oklch(0.705 0.015 286.067);">▾</span>
+                  </span>
+                  <span style="{{ v.tb.rdBtnStyle }}">{{ v.tb.rd }}<span style="font-size:8px; color:oklch(0.705 0.015 286.067);">▾</span></span>
+                  <span title="{{ v.tb.rdTitle }}" style="{{ v.tb.rdStatStyle }}">{{ v.tb.rd }}</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ v.isStat }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ v.card }}">
+                <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto; height:30px; padding:0 4px 0 12px; border-bottom:1px solid oklch(1 0 0 / 8%); border-radius:5.4px 5.4px 0 0; background:oklch(0.141 0.005 285.823 / 45%);">
+                  <div style="display:flex; align-items:center; gap:2px; flex:0 1 auto; min-width:0;">
+                    <span title="{{ v.fnTitle }}" style="{{ v.fnStyle }}">{{ v.fn }}</span>
+                    <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">(</span>
+                    <span title="{{ v.nmTitle }}" style="{{ v.nmStyle }}">{{ v.nm }}</span>
+                    <span style="flex:0 0 auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">)</span>
+                  </div>
+                  <div style="flex:1 1 auto; min-width:0;"></div>
+                  <span style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:22px; height:22px; color:oklch(0.705 0.015 286.067);"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></span>
+                  <span style="display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:22px; height:22px; font-size:14px; line-height:1; color:oklch(0.705 0.015 286.067);">×</span>
+                </div>
+                <div style="display:flex; flex-direction:column; justify-content:center; flex:1; min-height:0; padding:0 12px 12px;">
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:34px; line-height:1; font-weight:500; letter-spacing:-0.025em; color:oklch(0.985 0 0);">{{ v.val }}</span>
+                  <span style="margin-top:6px; font-size:10.5px; line-height:1.4; color:oklch(0.705 0.015 286.067); text-wrap:pretty;">{{ v.note }}</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ v.isTip }}" hint-placeholder-val="{{ false }}">
+              <sc-for list="{{ v.tips }}" as="t" hint-placeholder-count="1">
+                <div style="{{ t.style }}">
+                  <div style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.985 0 0); padding-bottom:3px; margin-bottom:1px; border-bottom:1px solid oklch(1 0 0 / 10%);">{{ t.head }}</div>
+                  <sc-for list="{{ t.rows }}" as="hr" hint-placeholder-count="3">
+                    <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                      <span style="{{ hr.sw }}"></span>
+                      <span style="flex:1; min-width:0; color:oklch(0.705 0.015 286.067);">{{ hr.key }}</span>
+                      <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.985 0 0);">{{ hr.val }}</span>
+                    </div>
+                  </sc-for>
+                  <div style="height:1px; margin:5px 0 3px; background:oklch(1 0 0 / 10%);"></div>
+                  <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="flex:0 0 auto; width:7px; height:7px; border-radius:2.4px; background:#a78bfa;"></span>
+                    <span style="flex:1; min-width:0; overflow:hidden; white-space:nowrap; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; color:oklch(0.985 0 0 / 85%);"><span style="color:#a78bfa;">{{ t.srd }}</span> {{ t.sname }}</span>
+                    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; color:oklch(0.985 0 0);">{{ t.sval }}</span>
+                  </div>
+                  <div style="margin:2px 0 0 13px; font-size:10px; color:oklch(0.705 0.015 286.067);">{{ t.ssub }}</div>
+                  <div style="margin-top:4px; font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);">drag to pan · ⇧drag to select</div>
+                </div>
+              </sc-for>
+            </sc-if>
+
+            <sc-for list="{{ v.pops }}" as="P" hint-placeholder-count="0">
+              <div style="{{ P.style }}">
+                <div style="display:flex; align-items:center; gap:7px; height:30px; margin:-4px -4px 0; padding:0 9px; border-bottom:1px solid oklch(1 0 0 / 8%);">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="oklch(0.705 0.015 286.067)" stroke-width="2" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+                  <span style="display:flex; align-items:center; flex:1 1 auto; min-width:0;">
+                    <span style="{{ P.qStyle }}">{{ P.q }}</span>
+                    <span style="flex:0 0 auto; width:1px; height:14px; margin:0 1px; background:oklch(0.985 0 0);"></span>
+                    <span style="{{ P.phStyle }}">Find a field or metric</span>
+                  </span>
+                  <span style="flex:0 0 auto; padding:0 4px; border:1px solid oklch(1 0 0 / 15%); border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px; color:oklch(0.705 0.015 286.067);">esc</span>
+                </div>
+                <sc-for list="{{ P.secs }}" as="s" hint-placeholder-count="3">
+                  <div style="{{ s.headStyle }}"><span>{{ s.head }}</span><span style="margin-left:auto; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; letter-spacing:0; text-transform:none; color:oklch(0.705 0.015 286.067 / 80%);">{{ s.meta }}</span></div>
+                  <sc-for list="{{ s.rows }}" as="r" hint-placeholder-count="3">
+                    <div style="{{ r.style }}">
+                      <span style="{{ r.tickStyle }}">✓</span>
+                      <span style="{{ r.nameStyle }}">{{ r.pre }}<span style="color:oklch(0.985 0 0); background:oklch(1 0 0 / 16%); border-radius:2px;">{{ r.hit }}</span>{{ r.post }}</span>
+                      <span style="{{ r.tagStyle }}">{{ r.tag }}</span>
+                    </div>
+                  </sc-for>
+                </sc-for>
+                <div style="{{ P.moreStyle }}">{{ P.more }}</div>
+                <div style="{{ P.emptyStyle }}"><div style="margin-bottom:4px; color:oklch(0.985 0 0);">{{ P.emptyTitle }}</div>{{ P.emptyBody }}</div>
+                <div style="{{ P.liveStyle }}"><span style="flex:0 0 auto; width:6px; height:6px; margin-top:5px; border-radius:99px; background:#4ade80;"></span><span style="text-wrap:pretty;">{{ P.live }}</span></div>
+                <div style="display:flex; align-items:center; gap:5px; margin:3px -4px -4px; padding:6px 9px; border-top:1px solid oklch(1 0 0 / 8%); font-size:10.5px; color:oklch(0.705 0.015 286.067);">
+                  <span style="padding:0 4px; border:1px solid oklch(1 0 0 / 15%); border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px;">↑↓</span><span>move</span>
+                  <span style="margin-left:6px; padding:0 4px; border:1px solid oklch(1 0 0 / 15%); border-radius:2.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:9.5px;">↵</span><span>pick</span>
+                  <span style="flex:1;"></span>
+                  <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:oklch(0.705 0.015 286.067 / 80%);">{{ P.footR }}</span>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="{{ v.asideStyle }}">{{ v.aside }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:9px 0 0; max-width:1120px; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067 / 85%);">{{ f.fine }}</p>
+    </div>
+  </sc-for>
+
+  <div id="11m" data-screen-label="11m rejects" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#11m" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:26px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">11m</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Tried and put down</div>
+        <p style="margin:4px 0 0; max-width:880px; font-size:12.5px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">Each of these either hides a metric that is there, lets a sum pass for a level, or starts to look like a metrics product.</p>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin-top:12px; width:1120px;">
+      <sc-for list="{{ rejects }}" as="rj" hint-placeholder-count="8">
+        <div style="display:flex; flex-direction:column; padding:12px 13px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823);">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:oklch(0.705 0.015 286.067);">{{ rj.title }}</div>
+          <div style="margin-top:8px; padding:8px 9px; border-radius:4.4px; background:oklch(0.175 0.005 285.85); font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10.5px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; color:oklch(0.985 0 0 / 70%);">{{ rj.sketch }}</div>
+          <p style="margin:8px 0 0; font-size:11.5px; line-height:1.45; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ rj.verdict }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div id="11n" data-screen-label="11n anatomy" style="margin-top:40px; max-width:1120px;">
+    <div style="display:flex; gap:12px; align-items:baseline;">
+      <a href="#11n" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:26px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">11n</a>
+      <div style="min-width:0;">
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Anatomy — what to build from</div>
+        <p style="margin:4px 0 0; max-width:880px; font-size:12.5px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">The numbers and rules behind every frame above. One list, three homes; nothing here is new chrome beyond the list itself.</p>
+      </div>
+    </div>
+    <div style="margin-top:12px; width:1120px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.141 0.005 285.823); overflow:hidden;">
+      <sc-for list="{{ anatomy }}" as="an" hint-placeholder-count="10">
+        <div style="display:grid; grid-template-columns:200px minmax(0, 1fr); gap:16px; padding:8px 14px; border-bottom:1px solid oklch(1 0 0 / 6%);">
+          <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.906 0.014 84 / 90%);">{{ an.k }}</span>
+          <span style="font-size:12.5px; line-height:1.5; text-wrap:pretty; color:oklch(0.705 0.015 286.067);">{{ an.v }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const MONO = 'font-family:ui-monospace, SFMono-Regular, Menlo, monospace;';
+    const DIM = 'oklch(0.705 0.015 286.067)';
+    const W = 'oklch(0.985 0 0)';
+    const VIO = '#a78bfa';
+    const AMB = '#fbbf24';
+    const SEL = 'oklch(0.274 0.006 286.033)';
+    const FOCUS = 'oklch(0.552 0.016 285.938)';
+    const TOTAL = 64;
+
+    // fixture: busiest first in the last 1h
+    const M = [
+      ['http.server.request.duration', 'histogram'],
+      ['http.server.active_requests', 'gauge'],
+      ['app.jobs.processed', 'counter'],
+      ['process.cpu.utilization', 'gauge'],
+      ['http.client.request.duration', 'histogram'],
+      ['db.client.connection.count', 'gauge'],
+      ['process.memory.usage', 'gauge'],
+      ['http.server.request.body.size', 'histogram'],
+      ['rpc.server.duration', 'histogram'],
+      ['db.client.operation.duration', 'histogram'],
+      ['messaging.process.duration', 'histogram'],
+      ['process.cpu.time', 'counter'],
+      ['jvm.gc.duration', 'histogram'],
+      ['system.cpu.utilization', 'gauge'],
+      ['rpc.client.duration', 'histogram'],
+      ['container.cpu.usage', 'gauge'],
+      ['http.server.duration', 'histogram'],
+      ['process.runtime.jvm.memory.usage_after_last_gc', 'gauge']
+    ];
+    const LOGF = ['duration_ms', 'status', 'bytes_out', 'upstream_ms', 'queue_ms', 'retries'];
+
+    const zw = s => s.replace(/\./g, '.\u200b');
+    // cut at dots, from the middle: keep the first and last segments, then add back
+    // head and tail segments alternately while it fits
+    const midCut = (s, max) => {
+      if (s.length <= max) return s;
+      const g = s.split('.');
+      if (g.length < 2) return s.slice(0, max - 1) + '…';
+      let a = 1, b = 1;
+      const mk = () => g.slice(0, a).join('.') + '…' + g.slice(g.length - b).join('.');
+      if (mk().length > max) return '…' + s.slice(-(max - 1));
+      let turn = 0, stuck = 0;
+      while (a + b < g.length && stuck < 2) {
+        const pa = a, pb = b;
+        if (turn % 2 === 0) a++; else b++;
+        if (mk().length > max) { a = pa; b = pb; stuck++; } else stuck = 0;
+        turn++;
+      }
+      return mk();
+    };
+    const split3 = (s, q) => {
+      if (!q) return [s, '', ''];
+      const i = s.toLowerCase().indexOf(q.toLowerCase());
+      return i < 0 ? [s, '', ''] : [s.slice(0, i), s.slice(i, i + q.length), s.slice(i + q.length)];
+    };
+
+    const row = (name, kind, o) => {
+      o = o || {};
+      const [a, b, c] = split3(name, o.q);
+      const sans = kind === 'base';
+      return {
+        pre: zw(a), hit: zw(b), post: zw(c),
+        style: `display:flex; align-items:flex-start; gap:7px; min-height:25px; padding:5px 7px; border-radius:3.4px; background:${o.cur ? SEL : 'transparent'}; line-height:15px;`,
+        tickStyle: `flex:0 0 auto; width:9px; font-size:10px; line-height:15px; color:${W};${o.on ? '' : ' opacity:0;'}`,
+        nameStyle: `flex:1 1 auto; min-width:0; overflow-wrap:anywhere; text-align:left; ${sans ? 'font-size:12px;' : MONO + ' font-size:11.5px;'} color:${o.q ? 'oklch(0.985 0 0 / 72%)' : W};`,
+        tag: o.tag != null ? o.tag : (sans ? '' : kind),
+        tagStyle: `flex:0 0 auto; ${MONO} font-size:10px; line-height:15px; color:${o.amber ? AMB : DIM};`
+      };
+    };
+    const headS = (head, first) => !head ? 'display:none;'
+      : `display:flex; align-items:baseline; gap:6px; ${first ? 'padding:7px 7px 4px;' : 'margin-top:3px; padding:8px 7px 4px; border-top:1px solid oklch(1 0 0 / 8%);'} font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:${DIM};`;
+
+    const mkPop = o => {
+      const q = o.q || '';
+      const secs = [];
+      const onName = o.picked ? o.picked.name : (o.card ? 'Count' : 'Off');
+      if (o.picked) secs.push({ head: 'Picked', meta: o.picked.none ? '' : 'stays here while picked', rows: [row(o.picked.name, o.picked.kind, {
+        on: true, cur: o.cur === '@picked', tag: o.picked.none ? 'no points · ' + o.picked.kind : o.picked.kind, amber: o.picked.none, q: q && o.picked.name.includes(q) ? q : '' })] });
+      const base = [o.card ? 'Count' : 'Off', 'Rate'].filter(n => !q || n.toLowerCase().includes(q));
+      if (base.length) secs.push({ head: '', rows: base.map(n => row(n, 'base', { on: n === onName, cur: o.cur === n })) });
+      const f = LOGF.filter(n => !q || n.includes(q));
+      if (f.length) secs.push({ head: 'Log fields', meta: q ? `${f.length} of ${LOGF.length}` : String(f.length), rows: f.map(n => row(n, 'field', { q, on: n === onName, cur: o.cur === n })) });
+      const allM = M.filter(m => !q || m[0].includes(q));
+      const ms = q ? allM : allM.slice(0, 8);
+      if (ms.length) secs.push({ head: 'Metrics', meta: q ? `${ms.length} of ${TOTAL} with points · 1h` : `busiest 8 of ${TOTAL} · 1h`, rows: ms.map(m => row(m[0], m[1], { q, on: m[0] === onName, cur: o.cur === m[0] })) });
+      let firstHead = true;
+      secs.forEach((s, i) => {
+        s.headStyle = headS(s.head, i === 0 && firstHead);
+        if (i === 0 && !s.head) firstHead = false;
+      });
+      // the first visible section keeps no rule; everything after it gets one
+      secs.forEach((s, i) => { if (s.head) s.headStyle = headS(s.head, i === 0); });
+      const empty = !!q && !f.length && !allM.length;
+      return {
+        style: (o.pos ? `position:absolute; z-index:8; ${o.pos}` : 'position:relative;') + ` width:${o.w || 336}px; padding:4px; border:1px solid oklch(1 0 0 / 12%); border-radius:6.4px; background:#18181b; box-shadow:0 12px 28px oklch(0 0 0 / 55%); text-align:left; font-size:12px; color:${W};`,
+        q, qStyle: q ? `${MONO} font-size:12px; color:${W}; white-space:pre;` : 'display:none;',
+        phStyle: q ? 'display:none;' : 'font-size:12px; color:oklch(0.705 0.015 286.067 / 65%); white-space:nowrap;',
+        secs,
+        more: q || o.noMore ? '' : `${TOTAL - 8} more metrics have points in the last 1h — type any part of a name to find one.`,
+        moreStyle: q || o.noMore ? 'display:none;' : `margin-top:2px; padding:7px 7px 5px; border-top:1px dashed oklch(1 0 0 / 10%); font-size:11px; line-height:1.45; text-wrap:pretty; color:${DIM};`,
+        emptyTitle: empty ? `Nothing named like “${q}” has points in the last 1h.` : '',
+        emptyBody: empty ? 'A metric is listed only while it has points in this window — one sent earlier is still stored. Widen the time range to look further back.' : '',
+        emptyStyle: empty ? `padding:12px 9px 12px; font-size:11.5px; line-height:1.5; text-wrap:pretty; color:${DIM};` : 'display:none;',
+        live: o.live || '',
+        liveStyle: o.live ? `display:flex; gap:7px; margin-top:3px; padding:7px 7px 5px; border-top:1px solid oklch(1 0 0 / 8%); font-size:11px; line-height:1.45; color:oklch(0.985 0 0 / 80%);` : 'display:none;',
+        footR: o.footR || ''
+      };
+    };
+
+    const tipS = (pos, w) => `position:absolute; ${pos} z-index:9; ${w ? 'width:' + w + 'px;' : 'white-space:nowrap;'} padding:5px 7px; border:1px solid oklch(1 0 0 / 14%); border-radius:4.4px; background:oklch(0.21 0.006 285.885 / 97%); box-shadow:0 6px 18px oklch(0 0 0 / 50%); font-size:11px; pointer-events:none; text-align:left;`;
+
+    const RD_TITLE = {
+      gauge: 'Gauge — a level. Each bar is the average of the values sent inside it.',
+      counter: 'Counter — an amount. Each bar is the sum of what arrived in its 1m; wider bars sum more. Not a level.'
+    };
+    const mkTb = (sel, o) => {
+      o = o || {};
+      const k = sel.k;
+      const isNamed = k !== 'off' && k !== 'rate' && k !== 'count';
+      const menuRd = k === 'field' || k === 'histogram';
+      const statRd = k === 'gauge' || k === 'counter';
+      const label = k === 'off' ? 'Off' : k === 'count' ? 'Count' : k === 'rate' ? 'Rate' : midCut(sel.name, o.max || 29);
+      return {
+        title: isNamed ? `${sel.name} · ${k}` : label,
+        trig: `display:inline-flex; align-items:center; gap:6px; flex:0 1 auto; min-width:0; max-width:${o.compact ? '100%' : '18rem'}; height:26px; padding:0 7px 0 ${isNamed && !o.compact ? 4 : 7}px; border:1px solid ${o.open ? FOCUS : 'oklch(1 0 0 / 15%)'}; border-radius:4.4px; background:#18181b; color:${W}; font-size:11.5px; white-space:nowrap; cursor:pointer;${o.open ? ' box-shadow:0 0 0 1px oklch(0.552 0.016 285.938 / 35%);' : ''}`,
+        kind: isNamed ? k : '',
+        kindStyle: isNamed && !o.compact ? `flex:0 0 auto; height:18px; padding:0 5px; border-radius:2.4px; background:oklch(1 0 0 / 8%); font-size:10px; line-height:18px; color:${DIM};` : 'display:none;',
+        name: label,
+        nameStyle: `flex:0 1 auto; min-width:0; overflow:hidden; white-space:nowrap; ${isNamed ? MONO + ' font-size:11.5px;' : 'font-size:11.5px;'}`,
+        rd: menuRd ? sel.rd : k === 'gauge' ? 'avg' : k === 'counter' ? (o.compact ? 'sum/1m' : 'sum / 1m') : '',
+        rdBtnStyle: menuRd ? `display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; height:26px; padding:0 7px; border:1px solid ${o.rdOpen ? FOCUS : 'oklch(1 0 0 / 15%)'}; border-radius:4.4px; background:#18181b; ${MONO} font-size:11.5px; color:${W}; white-space:nowrap;${o.rdOpen ? ' box-shadow:0 0 0 1px oklch(0.552 0.016 285.938 / 35%);' : ''}` : 'display:none;',
+        rdStatStyle: statRd ? `display:inline-flex; align-items:center; flex:0 0 auto; height:26px; padding:0 2px; ${MONO} font-size:11.5px; color:${o.tipRd ? W : DIM}; white-space:nowrap; text-decoration:underline dotted oklch(1 0 0 / 35%); text-underline-offset:4px; cursor:help;` : 'display:none;',
+        rdTitle: RD_TITLE[k] || '',
+        chip: o.chip || '',
+        chipStyle: o.chip ? `display:inline-flex; align-items:center; gap:5px; flex:0 0 auto; height:26px; padding:0 4px 0 8px; border:1px solid ${VIO}; border-radius:4.4px; background:rgba(167,139,250,0.16); color:${VIO}; ${MONO} font-size:11.5px; white-space:nowrap;` : 'display:none;',
+        axisStyle: k !== 'off' ? 'display:flex; align-items:center; flex:0 0 auto; height:26px; padding:2px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;' : 'display:none;',
+        note: o.note || '',
+        noteStyle: o.note ? `flex:1 1 100%; min-width:0; padding:1px 2px 0; font-size:11.5px; color:${AMB};` : 'display:none;',
+        pops: o.pop ? [o.pop] : [],
+        rms: o.rm ? [o.rm] : [],
+        trigTips: o.trigTip ? [o.trigTip] : [],
+        rdTips: o.rdTip ? [o.rdTip] : []
+      };
+    };
+
+    const mkRm = on => ({
+      style: `position:absolute; top:30px; left:0; z-index:8; width:246px; padding:4px; border:1px solid oklch(1 0 0 / 12%); border-radius:6.4px; background:#18181b; box-shadow:0 12px 28px oklch(0 0 0 / 55%); text-align:left;`,
+      head: 'Reading · histogram',
+      rows: [['count', 'how many were observed'], ['avg', 'mean of observations'], ['p50', 'median'], ['p90', '90th percentile'], ['p99', '99th percentile']].map(r => ({
+        label: r[0], hint: r[1],
+        style: `display:flex; align-items:center; gap:7px; height:25px; padding:0 7px; border-radius:3.4px; background:${r[0] === on ? SEL : 'transparent'}; ${MONO} font-size:11.5px;`,
+        tickStyle: `flex:0 0 auto; width:9px; font-size:10px; color:${VIO};${r[0] === on ? '' : ' opacity:0;'}`
+      })),
+      foot: 'Per bar. One reading is drawn at a time.'
+    });
+
+    // seeded bars and overlay (canon: Compare sheet)
+    const rng = s => () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const bars = (seed, n) => {
+      const r = rng(seed), out = [];
+      for (let i = 0; i < n; i++) {
+        const x = i / n;
+        const dip = 0.78 + 0.22 * Math.sin((x + 0.15) * 3.1);
+        const h = (46 + r() * 44) * dip;
+        const e = 1.6 + r() * 1.4, w = 10 + r() * 6;
+        out.push(`flex:1 1 0; min-width:0; height:${h.toFixed(1)}%; opacity:.9; border-radius:1px 1px 0 0; background:linear-gradient(180deg, #ef4444 0 ${e.toFixed(1)}%, #f59e0b ${e.toFixed(1)}% ${(e + w).toFixed(1)}%, #0ea5e9 ${(e + w).toFixed(1)}% 100%);`);
+      }
+      return out;
+    };
+    const ovLine = (seed, base, swing, peak, n, vw, vh) => {
+      const r = rng(seed), pts = [];
+      n = n || 56; vw = vw || 600; vh = vh || 100;
+      for (let i = 0; i < n; i++) {
+        const x = (i + 0.5) / n;
+        const v = base * (1 + swing * Math.sin(x * 5.2 + 0.6)) * (0.9 + 0.2 * r());
+        pts.push(`${(x * vw).toFixed(1)},${(vh - Math.max(0, Math.min(1, v / peak)) * (vh - 2) - 1).toFixed(1)}`);
+      }
+      return pts.join(' ');
+    };
+    const tick = (pos, t, c) => ({ s: `position:absolute; left:0; top:${pos}%; transform:translateY(-50%); white-space:nowrap; color:${c || 'inherit'};`, t });
+    const mkPlot = o => ({
+      box: `position:relative; flex:1 1 auto; min-width:0; height:${o.h}px;`,
+      cols: bars(o.seed || 41, o.n || 56),
+      ovStyle: o.ov ? 'position:absolute; inset:4px 0; display:block; width:100%; height:calc(100% - 8px); pointer-events:none;' : 'display:none;',
+      ovPts: o.ov || '',
+      lt: [tick(0, '2.4K'), tick(50, '1.2K'), tick(100, '0')],
+      rg: o.rt ? `position:relative; flex:0 0 34px; margin:4px 0; ${MONO} font-size:10px;` : 'display:none;',
+      rt: o.rt ? [tick(0, o.rt[0], VIO), tick(50, o.rt[1], VIO), tick(100, '0', 'oklch(0.705 0.015 286.067 / 70%)')] : [],
+      hair: o.hair != null ? `position:absolute; top:0; bottom:0; left:${o.hair}%; width:1px; background:oklch(1 0 0 / 32%); pointer-events:none; z-index:5;` : 'display:none;',
+      tips: o.tips || [],
+      axisRow: `display:flex; justify-content:space-between; padding:4px ${o.rt ? 49 : 9}px 9px 47px; ${MONO} font-size:10px; color:oklch(0.705 0.015 286.067 / 70%);`,
+      axis: ['14:00', '14:15', '14:30', '14:45', 'now']
+    });
+    const sw = c => `flex:0 0 auto; width:7px; height:7px; border-radius:2.4px; background:${c};`;
+    const readout = (pos, srd, sname, sval, ssub) => ({
+      style: tipS(pos, 250).replace('pointer-events:none;', ''),
+      head: '14:31–14:32 · 1.2K',
+      rows: [{ sw: sw('#ef4444'), key: 'error', val: '24' }, { sw: sw('#f59e0b'), key: 'warn', val: '161' }, { sw: sw('#0ea5e9'), key: 'info', val: '1.0K' }],
+      srd, sname, sval, ssub
+    });
+
+    const base = { isMain: false, isTs: false, isStat: false, isTip: false, pops: [], tips: [], cap: '', capStyle: 'display:none;', aside: '', asideStyle: 'display:none;' };
+    const CAP = `margin-bottom:6px; ${MONO} font-size:10.5px; color:${DIM};`;
+    const wrapS = (w, h) => `position:relative; flex:0 0 auto; width:${w}px;${h ? ` min-height:${h}px;` : ''}`;
+    const BAR = 'display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; flex:0 0 auto; padding:8px 12px; border-bottom:1px solid oklch(1 0 0 / 8%); border-radius:5.4px 5.4px 0 0; background:oklch(0.141 0.005 285.823 / 45%);';
+    const BARN = BAR.replace('flex-wrap:wrap;', 'flex-wrap:nowrap; overflow:hidden;') + ' -webkit-mask-image:linear-gradient(90deg, #000 88%, transparent); mask-image:linear-gradient(90deg, #000 88%, transparent);';
+    const EMPTYPLOT = mkPlot({ h: 10 });
+    const main = o => Object.assign({}, base, {
+      isMain: true, wrap: wrapS(o.w || 1092, o.h), cap: o.cap || '', capStyle: o.cap ? CAP : 'display:none;',
+      sbStyle: o.sb ? 'display:flex; align-items:center; gap:7px; height:32px; margin-bottom:10px; padding:0 9px; border:1px solid oklch(1 0 0 / 15%); border-radius:4.4px;' : 'display:none;',
+      sbQ: o.sb ? o.sb.q : '', sbLiveStyle: o.sb && o.sb.live ? 'display:flex; align-items:center; gap:5px; flex:0 0 auto; font-size:11px; color:oklch(0.985 0 0 / 80%);' : 'display:none;',
+      barStyle: o.narrow ? BARN : BAR, tb: o.tb, plotOn: !!o.plot, plot: o.plot || EMPTYPLOT,
+      aside: o.aside || '', asideStyle: o.aside ? `margin-top:8px; max-width:${o.w || 1092}px; font-size:11.5px; line-height:1.45; color:${DIM};` : 'display:none;'
+    });
+    const CARD = (w, h) => `display:flex; flex-direction:column; width:${w}px; height:${h}px; border:1px solid oklch(1 0 0 / 10%); border-radius:6.4px; background:oklch(0.21 0.006 285.885);`;
+    const ts = o => Object.assign({}, base, {
+      isTs: true, wrap: wrapS(o.w || 260), cap: o.cap || '', capStyle: o.cap ? CAP : 'display:none;',
+      card: CARD(o.w || 260, o.h || 210), title: o.title, titleFull: o.titleFull,
+      tb: o.tb, linePts: ovLine(o.seed || 9, 0.5, 0.35, 1, 40, 200, 60), lineTag: o.tag
+    });
+    const fnS = pick => `display:inline-flex; align-items:center; flex:0 0 auto; padding:0 1px; border:none; ${pick ? 'border-bottom:1px dashed #a78bfa85;' : 'border-bottom:1px solid transparent;'} color:${VIO}; ${MONO} font-size:11.5px; line-height:1.55; white-space:nowrap;${pick ? ' cursor:pointer;' : ' cursor:help;'}`;
+    const nmS = on => `display:inline-flex; align-items:center; flex:0 1 auto; min-width:0; padding:0 1px; border-bottom:1px dashed ${on ? W : 'oklch(1 0 0 / 34%)'}; background:${on ? 'oklch(1 0 0 / 10%)' : 'transparent'}; color:${W}; ${MONO} font-size:11.5px; line-height:1.55; overflow:hidden; white-space:nowrap; cursor:pointer;`;
+    const stat = o => Object.assign({}, base, {
+      isStat: true, wrap: wrapS(o.w || 260, o.h), cap: o.cap || '', capStyle: o.cap ? CAP : 'display:none;',
+      card: CARD(260, 132),
+      fn: o.fn, fnStyle: fnS(o.pick), fnTitle: o.pick ? 'Reading — histogram: count, avg, p50, p90, p99' : RD_TITLE[o.kind],
+      nm: midCut(o.name, 17), nmTitle: o.name + ' · ' + o.kind, nmStyle: nmS(o.open),
+      val: o.val, note: o.note, pops: o.pop ? [o.pop] : []
+    });
+    const tipView = o => Object.assign({}, base, { isTip: true, wrap: wrapS(o.w || 260), cap: o.cap || '', capStyle: o.cap ? CAP : 'display:none;', tips: o.tips });
+    const popView = o => Object.assign({}, base, { wrap: wrapS(o.w || 336), cap: o.cap || '', capStyle: o.cap ? CAP : 'display:none;', pops: [o.pop], aside: o.aside || '', asideStyle: o.aside ? `margin-top:8px; font-size:11.5px; line-height:1.45; color:${DIM}; text-wrap:pretty;` : 'display:none;' });
+
+    const H = 'http.server.request.duration';
+    const POPAT = 'top:30px; left:0;';
+    const sbApi = { q: 'service:api' };
+    const plotHist = (o) => mkPlot(Object.assign({ h: 112, ov: ovLine(23, 0.42, 0.25, 0.62), rt: ['0.6', '0.3'] }, o || {}));
+
+    const frames = [
+      {
+        id: '11a', title: 'Closed, nothing picked — the menu is a button now',
+        body: 'Same slot after Series, same 26px, same word in it. What changed is behind it: a native menu cannot be typed into and cuts a long name at its end, so the trigger opens our own list — the same kind of menu the Stat head already opens. Nothing else on the toolbar moves.',
+        fine: 'On an extra card the same trigger reads Count, as shipped. With nothing picked there is no reading slot, no chip and no Overlay | Replace — they appear only when a series is on.',
+        views: [main({ sb: sbApi, tb: mkTb({ k: 'off' }), plot: mkPlot({ h: 96 }) })]
+      },
+      {
+        id: '11b', title: 'Open, nothing typed — log fields where they were, metrics below',
+        body: 'The list opens under the trigger with its own field focused. Off and Rate first, then every numeric log field, then the eight metrics with the most points in this window. The right column says what each row is, in a word: field, gauge, counter, histogram. The last line says how many metrics are not shown and how to reach every one of them.',
+        fine: 'Focus moves into the list; the search bar keeps its query and its caret, and nothing typed here reaches it. Esc closes and gives focus back to the trigger. Above 420px tall only the Metrics section scrolls, so duration_ms can never scroll away under sixty names.',
+        views: [main({ h: 640, sb: sbApi, tb: mkTb({ k: 'off' }, { open: true, pop: mkPop({ pos: POPAT, cur: 'Off' }) }), plot: mkPlot({ h: 96 }) })]
+      },
+      {
+        id: '11c', title: 'Typing part of a name — a match in the middle',
+        body: '“duration” finds http.server.request.duration in its middle, and the log field duration_ms in its own section — two things with one word in them, in two labelled places, with two different words in the right column. Matches stay busiest first. Off and Rate step aside while they do not match.',
+        fine: 'The match is lit where it is found. Names wrap at their dots instead of losing their ends. ↑↓ walk across sections; Enter picks the lit row and closes. The search bar above still reads service:api.',
+        views: [main({ h: 420, sb: sbApi, tb: mkTb({ k: 'off' }, { open: true, pop: mkPop({ pos: POPAT, q: 'duration', cur: H, footR: '9 match' }) }), plot: mkPlot({ h: 96 }) })]
+      },
+      {
+        id: '11d', title: 'No match — said in words, and about this window',
+        body: 'A typo or a quiet metric looks the same here, so the list says exactly what it checked: names with points in the last 1h. It does not say the metric was never sent, because it cannot know that.',
+        fine: 'Backspace brings the sections back as they match. Widening the time range re-asks the list on its next open; an open list never re-asks on its own.',
+        views: [main({ h: 270, sb: sbApi, tb: mkTb({ k: 'off' }, { open: true, pop: mkPop({ pos: POPAT, q: 'duraton' }) }), plot: mkPlot({ h: 96 }) })]
+      },
+      {
+        id: '11e', title: 'Picked, closed — the kind and the reading on the toolbar',
+        body: 'The kind rides inside the trigger as a word; the reading sits where a log field’s reducer sits. A histogram offers a choice. A gauge and a counter do not: their one reading is printed, not a button — avg for a level, sum / 1m for an amount. The bar width is part of a counter’s reading because it is part of the number: at 5m bars the same counter reads five times higher.',
+        fine: 'Hovering a printed reading says what it means (see 11f). The log field strip is today’s behaviour on the new trigger: field, name, reducer.',
+        views: [
+          main({ cap: 'gauge — a level', tb: mkTb({ k: 'gauge', name: 'process.cpu.utilization' }) }),
+          main({ cap: 'counter — an amount per bar', tb: mkTb({ k: 'counter', name: 'app.jobs.processed' }) }),
+          main({ cap: 'histogram — a distribution, read one way', tb: mkTb({ k: 'histogram', name: H, rd: 'p99' }) }),
+          main({ cap: 'log field — unchanged', tb: mkTb({ k: 'field', name: 'duration_ms', rd: 'p99' }) })
+        ]
+      },
+      {
+        id: '11f', title: 'Choosing a histogram’s reading',
+        body: 'Same place and shape as the log field reducer: the reading opens under itself, five rows, one ticked, each saying what it measures per bar. Switching redraws the one line. There is never a second line for a second reading. A gauge or counter shows no menu here — hover tells you what its one reading is.',
+        fine: 'The list of readings is data, not layout: if p95 joins or count leaves, the menu grows or shrinks a row and nothing else moves. Its head is violet, like the Function menu on a Stat head — violet is what we do to the data.',
+        views: [
+          main({ h: 300, sb: sbApi, tb: mkTb({ k: 'histogram', name: H, rd: 'p99' }, { rdOpen: true, rm: mkRm('p99') }), plot: plotHist({ h: 104 }) }),
+          main({ h: 130, cap: 'a counter’s printed reading, hovered', tb: mkTb({ k: 'counter', name: 'app.jobs.processed' }, { tipRd: true, rdTip: { style: tipS('top:31px; left:0;', 300), text: 'sum / 1m — counter', sub: 'Each bar is the sum of what arrived in its 1m. Wider bars sum more. Not a level.' } }) })
+        ]
+      },
+      {
+        id: '11g', title: 'The pinned toolbar at its most crowded',
+        body: 'Split, chart, scale, interval, then the Series group: trigger, reading, label chip, Overlay | Replace — all as shipped. The group wraps as one unit when the card is full width, and under 8 columns the toolbar scrolls sideways instead, exactly as it does today. The trigger caps at 18rem; names up to 29 characters fit whole.',
+        fine: 'The chip keeps the series’ violet; the trigger and reading stay neutral like every other toolbar control. Nothing in the group is new except the kind word and a printed reading.',
+        views: [
+          main({ sb: sbApi, tb: mkTb({ k: 'histogram', name: H, rd: 'p99' }, { chip: 'service:api' }), plot: plotHist({ h: 96 }) }),
+          main({ w: 640, narrow: true, cap: '7 columns — the toolbar scrolls, it does not wrap into four rows', tb: mkTb({ k: 'histogram', name: H, rd: 'p99' }, { chip: 'service:api' }) })
+        ]
+      },
+      {
+        id: '11h', title: 'A timeseries footer at its narrowest, and a Stat head',
+        body: 'At 3 columns the footer drops the kind word from the trigger and cuts the name at a dot; the card’s line tag names the reading and the kind instead, so both are still one glance away. A Stat head keeps today’s dashed pickers: the reading is the violet function, the metric is the white value — a histogram’s function is dashed because it is a choice; a counter’s and a gauge’s are solid because they are not.',
+        fine: 'The list opens from a Stat head exactly as from the toolbar, 336px wide, escaping the card. Typing “cpu” filters the metrics; the picked histogram stays listed at the top even though it does not match.',
+        views: [
+          ts({ cap: 'timeseries · 3 col · histogram', title: 'p99 · ' + midCut(H, 18), titleFull: 'p99 · ' + H + ' · histogram', tag: 'p99 · histogram · peak 0.61', tb: mkTb({ k: 'histogram', name: H, rd: 'p99' }, { compact: true, max: 13 }) }),
+          ts({ cap: 'timeseries · 3 col · counter', seed: 14, title: 'sum/1m · ' + midCut('app.jobs.processed', 14), titleFull: 'sum / 1m · app.jobs.processed · counter', tag: 'sum / 1m · counter · peak 340', tb: mkTb({ k: 'counter', name: 'app.jobs.processed' }, { compact: true, max: 13 }) }),
+          stat({ cap: 'stat · counter', fn: 'sum', kind: 'counter', name: 'app.jobs.processed', val: '18.4K', note: 'sum over the last 1h · counter' }),
+          stat({ cap: 'stat · gauge', fn: 'avg', kind: 'gauge', name: 'process.cpu.utilization', val: '0.34', note: 'avg level over the last 1h · gauge' }),
+          stat({ w: 560, h: 420, cap: 'stat · histogram, picker open, typing “cpu”', fn: 'p99', pick: true, kind: 'histogram', name: H, open: true, val: '0.41', note: 'p99 of every observation in the last 1h · histogram',
+            pop: mkPop({ pos: 'top:68px; left:44px;', q: 'cpu', card: true, picked: { name: H, kind: 'histogram' }, cur: 'process.cpu.utilization' }) })
+        ]
+      },
+      {
+        id: '11i', title: 'A very long name — cut once picked, whole in the list',
+        body: 'process.runtime.jvm.memory.usage_after_last_gc is 46 characters. On the trigger it is cut in the middle at its dots — the first segment and as much of the end as fits — so the part that tells it apart from …usage survives. In the list it is never cut: it wraps at a dot onto a second line.',
+        fine: 'One hover on the trigger shows the whole name and its kind. The cut is computed, never typed: first segment, then segments added back from both ends while they fit.',
+        views: [
+          main({ h: 120, cap: 'picked, closed, hovered', tb: mkTb({ k: 'gauge', name: 'process.runtime.jvm.memory.usage_after_last_gc' }, { trigTip: { style: tipS('top:31px; left:0;'), text: 'process.runtime.jvm.memory.usage_after_last_gc', sub: 'gauge · avg per bar' } }) }),
+          popView({ cap: 'open, typing “gc”', pop: mkPop({ q: 'gc', picked: { name: 'process.runtime.jvm.memory.usage_after_last_gc', kind: 'gauge' }, cur: 'jvm.gc.duration' }) }),
+          popView({ cap: 'open, nothing typed — the picked row on top', pop: mkPop({ picked: { name: 'process.runtime.jvm.memory.usage_after_last_gc', kind: 'gauge' }, cur: '@picked', noMore: false }) })
+        ]
+      },
+      {
+        id: '11j', title: 'A picked metric with no points in this window',
+        body: 'A saved search can carry a metric that has gone quiet. It stays picked and listed; the toolbar’s amber note — the one that already reports a series it cannot draw — says it has no points here, and that the empty line is missing, not zero.',
+        fine: 'The right axis prints a dash rather than a scale for nothing. Overlay | Replace stay, so the pick survives the window being widened back.',
+        views: [
+          main({ sb: { q: 'service:billing' }, tb: mkTb({ k: 'counter', name: 'app.refunds.issued' }, { note: '▲ app.refunds.issued has no points in the last 1h — the line is missing, not zero. It stays picked.' }), plot: mkPlot({ h: 84, rt: ['—', ''] }) }),
+          popView({ cap: 'the same pick, list open', pop: mkPop({ picked: { name: 'app.refunds.issued', kind: 'counter', none: true }, cur: '@picked' }) })
+        ]
+      },
+      {
+        id: '11k', title: 'Live on, the list open',
+        body: 'Live keeps moving the window, so busiest-first keeps changing. While the list is open it holds still: same rows, same order, same counts, so the row under the pointer is the row you click. Names that gained points join on the next open.',
+        fine: 'The plot behind keeps tailing; only the list is held. Typing still filters the held set.',
+        views: [main({ h: 790, sb: { q: 'service:api', live: true }, tb: mkTb({ k: 'histogram', name: H, rd: 'p99' }, { open: true, pop: mkPop({ pos: POPAT, picked: { name: H, kind: 'histogram' }, cur: 'process.cpu.utilization', live: 'Live — held while open. 3 more metrics gained points; they join the list when it next opens.' }) }), plot: plotHist({ h: 96 }) })]
+      },
+      {
+        id: '11l', title: 'The hover readout and a Stat card name the reading',
+        body: 'Wherever the series is named, its reading is named first, in violet: p99 http.server.request.duration in the readout, p99( … ) on the Stat head. The readout adds a second line in words, so a counter’s bar reads as what arrived in that minute and never as a level.',
+        fine: 'The readout’s level rows are unchanged; the series row joins under a rule, the way marks already do. The name in the readout is cut by the same rule as the trigger.',
+        views: [
+          main({ sb: sbApi, tb: mkTb({ k: 'histogram', name: H, rd: 'p99' }), plot: plotHist({ h: 150, hair: 62, tips: [readout('top:0; left:62%; margin-left:9px;', 'p99', midCut(H, 26), '0.47', 'histogram · 99th percentile of this minute')] }) }),
+          stat({ cap: 'stat · histogram', fn: 'p99', pick: true, kind: 'histogram', name: H, val: '0.41', note: 'p99 of every observation in the last 1h · histogram' }),
+          stat({ cap: 'stat · counter', fn: 'sum', kind: 'counter', name: 'app.jobs.processed', val: '18.4K', note: 'sum over the last 1h · counter' }),
+          tipView({ cap: 'readout · counter', tips: [Object.assign(readout('', 'sum / 1m', 'app.jobs.processed', '312', 'counter · arrived in this 1m — not a level'), { style: tipS('', 250).replace('position:absolute;', 'position:relative;') })] }),
+          tipView({ cap: 'readout · gauge', tips: [Object.assign(readout('', 'avg', 'process.cpu.utilization', '0.36', 'gauge · average level in this 1m'), { style: tipS('', 250).replace('position:absolute;', 'position:relative;') })] })
+        ]
+      }
+    ].map(f => Object.assign(f, { href: '#' + f.id, label: f.id + ' ' + f.title.split(' — ')[0].toLowerCase() }));
+
+    return {
+      system: [
+        { n: '1', head: 'One trigger, three homes.', body: 'The native Series menu becomes a 26px button that opens a typed list in place — on the pinned toolbar, in a timeseries footer, on a Stat head. Same list, same keys, same Esc everywhere.' },
+        { n: '2', head: 'Fields first, metrics after.', body: 'Off (Count on a card), Rate and the numeric log fields keep the top. Metrics follow in their own labelled section: the busiest eight, then a line saying how many more there are and that typing finds any of them.' },
+        { n: '3', head: 'Kind is a word.', body: 'field, gauge, counter, histogram — in the list’s right column and inside the picked trigger. Never a color, never a letter to decode.' },
+        { n: '4', head: 'The reading sits where the reducer sits.', body: 'A histogram picks count, avg, p50, p90 or p99 in the slot a log field uses for its reducer. A gauge prints avg; a counter prints sum / 1m — the bar width rides with the sum, so it cannot be read as a level.' },
+        { n: '5', head: 'Names are cut in the middle, at a dot.', body: 'Whole in the list, wrapped if needed. Cut on a picked control only, keeping the first segment and the end, with the whole name one hover away.' },
+        { n: '6', head: 'The window decides what is listed.', body: 'A metric with no points in this window is not offered, and an empty search says so in those words. A metric already picked is always listed, points or not.' }
+      ],
+      frames,
+      rejects: [
+        { title: 'A longer native menu', sketch: 'Series [ http.server.requ… ▾ ]\n  http.server.active_req…\n  http.server.request.bo…', verdict: 'Cannot be typed into, cuts every name at its end — exactly where http.server.request.duration and …body.size differ. Sixty rows of that is the failure we were asked to fix.' },
+        { title: 'Kinds as the groups', sketch: 'GAUGES 31\nCOUNTERS 18\nHISTOGRAMS 15', verdict: 'To find a metric you must already know its kind; busiest-first is lost across three lists; and the log fields slide below three headings. Kind is a label, not an address.' },
+        { title: 'Readings as rows', sketch: 'http.server.request.duration · count\nhttp.server.request.duration · avg\nhttp.server.request.duration · p50\n…', verdict: 'Fifteen histograms become seventy-five rows, the reading leaves the toolbar, and switching p99 → p90 means reopening the list and finding the name again.' },
+        { title: 'Cut from the front', sketch: '…request.duration\n…request.duration', verdict: 'The end survives but the beginning that tells http.server from http.client is gone. Middle-cut at dots keeps both ends.' },
+        { title: 'Kind by color', sketch: '● http.server.active_requests\n● app.jobs.processed\n● http.server.request.duration', verdict: 'Fails on its own rule, and fights the one violet that means the series. A word reads in grayscale and in a screenshot pasted into an issue.' },
+        { title: 'Typing metric= in the search bar', sketch: 'service:api metric=http.server…', verdict: 'The search bar is the one place a log query is typed. A metric name there reads as a log filter and would silently match nothing.' },
+        { title: 'A metrics side panel', sketch: '┃ Metrics (64)\n┃ ▸ http\n┃ ▸ process\n┃ ▸ db', verdict: 'A panel that stays, with a tree of names, is a metrics browser — out of this drawing, and the moment Toposcope starts to read as a dashboard tool.' },
+        { title: 'Showing all sixty untyped', sketch: 'METRICS 64\n  … 64 rows …', verdict: 'Pushes nothing out of sight only if log fields come first, and still turns a pick into a scroll. Eight plus an honest count, with typing as the way in, is shorter and complete.' }
+      ],
+      anatomy: [
+        { k: 'trigger', v: '26px high, 11.5px type, #18181b, 1px oklch(1 0 0 / 15%), radius 4.4px — today’s select box. Kind word inside on the left (10px, 18px pill, oklch(1 0 0 / 8%)), name in mono, ▾ at 8px. Open: border oklch(0.552 0.016 285.938) + 1px ring. Max width 18rem on the toolbar; in a footer it shrinks and drops the kind word.' },
+        { k: 'reading slot', v: 'histogram and log field: a 26px button like the trigger, opening a 246px menu under itself. gauge: printed avg. counter: printed sum / <bar width>. Printed readings are dim, dotted-underlined, with a hover tip; not focusable as a choice.' },
+        { k: 'list', v: '336px wide, opens under the trigger (flips up near the bottom, like every menu here), escapes the card. Filter field 30px on top. Max height 420px; only the Metrics section scrolls. Close on Esc, outside press, or a pick.' },
+        { k: 'rows', v: '25px minimum, 5px 7px padding, ✓ column 9px, name in mono 11.5px, kind in mono 10px on the right. Names wrap at dots; never ellipsised in the list. Keyboard row: oklch(0.274 0.006 286.033).' },
+        { k: 'order', v: 'Picked (if any, always, even with no points) → Off / Count, Rate → Log fields (all numeric, up to eight) → Metrics (busiest first by points in the window; eight untyped, all matches typed).' },
+        { k: 'matching', v: 'Case-insensitive substring anywhere in the name, applied to every section. Lit with oklch(1 0 0 / 16%), the rest of the name dimmed to 72%.' },
+        { k: 'empty', v: '“Nothing named like “<text>” has points in the last <window>.” + why a metric would be missing and how to look further back.' },
+        { k: 'cut rule', v: 'Only on picked controls. Keep the first and last dot-segments; add segments back alternately from the front and the end while they fit. If even first…last does not fit, keep the end: …<end>. Whole name in title.' },
+        { k: 'live', v: 'The open list is a snapshot: no reorder, no new rows, no count changes. A line says how many metrics gained points; they join on the next open.' },
+        { k: 'naming', v: 'Reading before name, reading in violet: toolbar reading slot, readout series row, card line tag, Stat head function, Stat note (“p99 of every observation in the last 1h · histogram”).' },
+        { k: 'keys', v: 'Opening focuses the filter field. Type filters; ↑↓ move across sections; Enter picks and closes; Esc closes and returns focus to the trigger. The search bar never receives these keys.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
