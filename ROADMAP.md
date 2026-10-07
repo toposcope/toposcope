@@ -55,4 +55,4 @@ These need a drawing or an explicit choice before they are work:
 
 Do not send these as PRs expecting a merge. They are a different product.
 
-PromQL, Grafana, pie / heatmap, Helm, k8s, S3 / cold volume, SSO, users / roles, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, OTLP metrics protobuf, a Fields role that text-indexes an attr.
+PromQL, Grafana, pie / heatmap, Helm, k8s, S3 / cold volume, SSO, users / roles, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr.
