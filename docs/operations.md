@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.4.10` and should not be replaced with `:latest`.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.4.10` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 

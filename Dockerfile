@@ -1,9 +1,13 @@
-FROM oven/bun:1.3 AS deps
+# Both bun stages run on the builder's own platform, so no image is built under
+# emulation. Production dependencies are still resolved for the target.
+FROM --platform=$BUILDPLATFORM oven/bun:1.3 AS deps
+ARG TARGETARCH
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN cpu="$TARGETARCH"; [ "$cpu" != "amd64" ] || cpu="x64"; \
+    bun install --frozen-lockfile --production ${cpu:+--os=linux --cpu=$cpu}
 
-FROM oven/bun:1.3 AS build
+FROM --platform=$BUILDPLATFORM oven/bun:1.3 AS build
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
