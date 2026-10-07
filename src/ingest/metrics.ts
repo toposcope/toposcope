@@ -13,6 +13,10 @@ import { mapOtlpMetrics } from "./otlp-metrics";
 import { decodeOtlpMetricsProtobuf } from "./otlp-metrics-protobuf";
 import { isOtlpProtobufContentType } from "./otlp-protobuf";
 import { Losses, otlpReply } from "./otlp-reply";
+import { RunningTotals } from "./running-totals";
+
+/** The last total of every series a stock exporter sends. It lives as long as the process. */
+const runningTotals = new RunningTotals();
 
 function parseNdjson(text: string): unknown[] {
   const lines = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
@@ -94,7 +98,7 @@ async function otlpMetrics(c: Context, payload: unknown): Promise<Response> {
   const losses = new Losses();
   let mapped;
   try {
-    mapped = mapOtlpMetrics(payload, losses);
+    mapped = mapOtlpMetrics(payload, losses, runningTotals);
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : "Invalid OTLP payload" }, 400);
   }

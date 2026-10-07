@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A counter or a histogram sent as a running total is converted, so a stock OpenTelemetry setup needs no setting. An exporter sends totals since the process started unless it is told otherwise, and 0.5.0 refused those. `POST /v1/metrics` now keeps the last total of each series in memory and stores the difference. A service that restarts is counted from its new start, and an export that never arrived is made up by the next one. A restart of Toposcope costs a series that was already running what it counted since its last stored export: the first total seen afterwards is only its baseline, and the reply says how many points were taken that way. The skill and the guide drop `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`; an exporter that still sends deltas is stored as before. [#74](https://github.com/toposcope/toposcope/issues/74)
+
 ## 0.5.0
 
 On `POST /v1/logs` the logger’s name is kept. OTLP carries it as the scope’s name beside each group of records, and it was dropped; a row now has it as `otel.scope.name`, an ordinary attribute, counted toward the 50-attribute cap after the record’s own attributes and its trace and span ids. [#72](https://github.com/toposcope/toposcope/issues/72)

@@ -51,7 +51,7 @@ Look first at what the app already has. If it already exports OpenTelemetry, or 
 
 Then:
 
-1. Run `app-env <file> --service <name> --version <version>`, with a file the app’s runtime loads and git ignores. It writes the endpoint, the protocol, the token header, the service name and version, and it turns the OTLP metrics exporter on, sending deltas. Add the file to `.gitignore` if it is not already covered.
+1. Run `app-env <file> --service <name> --version <version>`, with a file the app’s runtime loads and git ignores. It writes the endpoint, the protocol, the token header, the service name and version, and it turns the OTLP metrics exporter on. Add the file to `.gitignore` if it is not already covered.
 2. Wire the way that was chosen through the app’s existing logger. Do not write a logging library.
 3. Make one change in app code, whichever way was chosen: a single uncaught-error path that logs the exception through the app’s own logger, so its type and stack ride on the log row. Look first at whether the logger already attaches them; many do.
 
@@ -80,7 +80,7 @@ A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is sto
 
 ### Three ways in
 
-**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`, not gRPC) with the ingest token, a service name, and a version. Metrics need one more setting: counters and histograms are stored as the amount per interval, so the exporter has to send deltas. A running total is refused, and the reply says so.
+**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`, not gRPC) with the ingest token, a service name, and a version. Metrics need no setting: counters and histograms are stored as the amount per interval, whether the exporter sends deltas or, as it does by default, running totals.
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080
@@ -90,7 +90,6 @@ OTEL_SERVICE_NAME=billing
 OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2
 OTEL_LOGS_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
-OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta
 ```
 
 The app’s logger has to be bridged to the exporter, and an uncaught error logged through it with the exception attached. What arrives:

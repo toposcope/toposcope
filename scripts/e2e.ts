@@ -1163,7 +1163,7 @@ async function main(): Promise<void> {
     throw new Error("expected unlabeled cpu_seconds window stat");
   }
 
-  // OTLP metrics: a counter sent as deltas reads as a sum, a gauge as an average, a running total is refused.
+  // OTLP metrics: a counter sent as deltas reads as a sum, a gauge as an average, a running total is converted.
   const otlpMetricRun = Date.now();
   const otlpCounter = `e2e.jobs.c${otlpMetricRun}`;
   const otlpGauge = `e2e.memory.g${otlpMetricRun}`;
@@ -1196,12 +1196,8 @@ async function main(): Promise<void> {
                 },
               },
               {
-                name: `e2e.total.t${otlpMetricRun}`,
-                sum: {
-                  aggregationTemporality: 2,
-                  isMonotonic: true,
-                  dataPoints: [{ timeUnixNano: otlpNano, asInt: "99" }],
-                },
+                name: `e2e.summary.s${otlpMetricRun}`,
+                summary: { dataPoints: [{ timeUnixNano: otlpNano }] },
               },
             ],
           },
@@ -1222,7 +1218,7 @@ async function main(): Promise<void> {
     otlpMetricsRes.status !== 200 ||
     otlpMetricsReply.ingested !== 4 ||
     otlpMetricsReply.partialSuccess?.rejectedDataPoints !== "1" ||
-    !otlpMetricsReply.partialSuccess.errorMessage?.includes("running totals")
+    !otlpMetricsReply.partialSuccess.errorMessage?.includes("summaries")
   ) {
     throw new Error(`OTLP metrics ingest: ${otlpMetricsRes.status} ${JSON.stringify(otlpMetricsReply)}`);
   }
@@ -1252,16 +1248,64 @@ async function main(): Promise<void> {
   ) {
     throw new Error(`OTLP metrics protobuf ingest: ${otlpMetricsProtoRes.status}`);
   }
+  // A running total from a series that started just now: 99, then 104, is 99 and then 5.
+  const otlpTotal = `e2e.total.t${otlpMetricRun}`;
+  const otlpTotalStart = String(Date.now() * 1_000_000);
+  for (const [value, wantIngested] of [
+    ["99", 1],
+    ["104", 1],
+    ["104", 0],
+  ] as const) {
+    const res = await fetch(`${APP_URL}/v1/metrics`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+      body: JSON.stringify({
+        resourceMetrics: [
+          {
+            resource: { attributes: [{ key: "service.name", value: { stringValue: "otlp-e2e" } }] },
+            scopeMetrics: [
+              {
+                metrics: [
+                  {
+                    name: otlpTotal,
+                    sum: {
+                      aggregationTemporality: 2,
+                      isMonotonic: true,
+                      dataPoints: [
+                        {
+                          startTimeUnixNano: otlpTotalStart,
+                          timeUnixNano: String(Date.now() * 1_000_000),
+                          asInt: value,
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    const reply = (await res.json()) as { ingested?: number; partialSuccess?: unknown };
+    if (res.status !== 200 || reply.ingested !== wantIngested || reply.partialSuccess !== undefined) {
+      throw new Error(`running total ${value}: ${res.status} ${JSON.stringify(reply)}`);
+    }
+    await Bun.sleep(5);
+  }
   for (const [name, want] of [
     [otlpCounter, 12],
     [otlpGauge, 15],
+    [otlpTotal, 104],
   ] as const) {
     const res = await fetch(
       `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", events: "0", metric: name }).toString()}`,
       { headers: { authorization: basicAuth() } },
     );
     const body = (await res.json()) as { agg?: { stat: number | null; buckets: Array<{ v: number }> } };
-    if (body.agg?.stat !== want || !body.agg.buckets.some((bucket) => bucket.v === want)) {
+    // The running total's two amounts can fall either side of a bar's edge; the window's sum cannot.
+    const inOneBar = name === otlpTotal || body.agg?.buckets.some((bucket) => bucket.v === want);
+    if (body.agg?.stat !== want || !inOneBar) {
       throw new Error(`expected ${name} to read ${want}, got ${JSON.stringify(body.agg)}`);
     }
   }
