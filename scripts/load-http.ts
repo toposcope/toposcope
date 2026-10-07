@@ -1,3 +1,4 @@
+import { decodeOtlpReply } from "../src/ingest/otlp-reply";
 import { encodeLoadBatch, type EncodedLoadBatch } from "./load-encode";
 
 export type LoadHttpEnv = {
@@ -36,11 +37,13 @@ export function retryDelayMs(attempt: number, retryAfter: string | null): number
   return 250 * (attempt + 1);
 }
 
+/** `sent` is the number of records in the body, for a reply that does not count what it stored. */
 async function postJson(
   env: LoadHttpEnv,
   path: string,
   contentType: string,
   body: string | Uint8Array,
+  sent = 0,
 ): Promise<number> {
   return withHttpSlot(async () => {
     let last = "";
@@ -61,6 +64,10 @@ async function postJson(
       if (!res.ok) {
         throw new Error(`ingest ${path} failed: ${res.status} ${await res.text()}`);
       }
+      // An OTLP protobuf request is answered in protobuf: what was rejected, not what was stored.
+      if ((res.headers.get("content-type") ?? "").includes("protobuf")) {
+        return sent - decodeOtlpReply(new Uint8Array(await res.arrayBuffer())).rejected;
+      }
       const json = (await res.json()) as { ingested: number };
       return json.ingested;
     }
@@ -73,8 +80,9 @@ export async function postIngest(
   path: "/api/ingest" | "/v1/logs",
   contentType: string,
   body: string | Uint8Array,
+  sent = 0,
 ): Promise<number> {
-  return postJson(env, path, contentType, body);
+  return postJson(env, path, contentType, body, sent);
 }
 
 export async function postMetrics(
@@ -120,12 +128,14 @@ export async function postTraces(
   env: LoadHttpEnv,
   body: string | Uint8Array,
   proto: boolean,
+  sent = 0,
 ): Promise<number> {
   return postJson(
     env,
     "/v1/traces",
     proto ? "application/x-protobuf" : "application/json",
     body,
+    sent,
   );
 }
 
@@ -141,7 +151,7 @@ export async function sendEncoded(
     }
     return encoded.datagrams.length;
   }
-  return postIngest(env, encoded.path, encoded.contentType, encoded.body);
+  return postIngest(env, encoded.path, encoded.contentType, encoded.body, encoded.count);
 }
 
 export { encodeLoadBatch };

@@ -10,6 +10,8 @@ export type EncodedLoadBatch =
       path: "/api/ingest" | "/v1/logs";
       contentType: string;
       body: string | Uint8Array;
+      /** Events in the body. A protobuf reply says what was rejected, not what was stored. */
+      count: number;
     }
   | { transport: "udp"; datagrams: string[] };
 
@@ -24,6 +26,7 @@ export function encodeLoadBatch(
         path: "/api/ingest",
         contentType: "application/json",
         body: JSON.stringify(events),
+        count: events.length,
       };
     case "ndjson":
       return {
@@ -31,6 +34,7 @@ export function encodeLoadBatch(
         path: "/api/ingest",
         contentType: "application/x-ndjson",
         body: events.map((event) => JSON.stringify(event)).join("\n"),
+        count: events.length,
       };
     case "otlp-json":
       return {
@@ -38,6 +42,7 @@ export function encodeLoadBatch(
         path: "/v1/logs",
         contentType: "application/json",
         body: JSON.stringify(toOtlpJson(events)),
+        count: events.length,
       };
     case "otlp-protobuf":
       return {
@@ -45,6 +50,7 @@ export function encodeLoadBatch(
         path: "/v1/logs",
         contentType: "application/x-protobuf",
         body: encodeOtlpProtobuf(toOtlpJson(events)),
+        count: events.length,
       };
     case "syslog":
       return {

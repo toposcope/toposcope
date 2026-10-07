@@ -1,5 +1,6 @@
 import { toOtlpJson } from "../src/ingest/otlp";
 import { encodeOtlpProtobuf } from "../src/ingest/otlp-protobuf";
+import { decodeOtlpReply } from "../src/ingest/otlp-reply";
 import { toOtlpProfilesJson } from "../src/ingest/otlp-profiles";
 import { encodeOtlpProfilesProtobuf } from "../src/ingest/otlp-profiles-protobuf";
 import { toOtlpTracesJson } from "../src/ingest/otlp-traces";
@@ -1844,9 +1845,64 @@ async function main(): Promise<void> {
       `otlp protobuf ingest failed: ${otlpProtoRes.status} ${await otlpProtoRes.text()}`,
     );
   }
-  const otlpProtoIngested = (await otlpProtoRes.json()) as { ingested: number };
-  if (otlpProtoIngested.ingested !== 1) {
-    throw new Error(`expected otlp protobuf ingested=1, got ${otlpProtoIngested.ingested}`);
+  // A protobuf request is answered in protobuf, and a full success is an empty message.
+  const otlpProtoReply = new Uint8Array(await otlpProtoRes.arrayBuffer());
+  if (
+    otlpProtoRes.headers.get("content-type") !== "application/x-protobuf" ||
+    otlpProtoReply.byteLength !== 0
+  ) {
+    throw new Error(
+      `expected an empty protobuf reply, got ${otlpProtoRes.headers.get("content-type")} with ${otlpProtoReply.byteLength} bytes`,
+    );
+  }
+
+  // One bodiless record in a batch: the rest are stored and the reply counts it, in the request's encoding.
+  const partialBatch = {
+    resourceLogs: [
+      {
+        resource: { attributes: [{ key: "service.name", value: { stringValue: "otlp-e2e" } }] },
+        scopeLogs: [
+          {
+            logRecords: [
+              { severityText: "INFO", body: { stringValue: `${otlpProtoMarker} partial one` } },
+              { severityText: "INFO" },
+              { severityText: "INFO", body: { stringValue: `${otlpProtoMarker} partial two` } },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const partialJsonRes = await fetch(`${APP_URL}/v1/logs`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+    body: JSON.stringify(partialBatch),
+  });
+  const partialJson = (await partialJsonRes.json()) as {
+    ingested?: number;
+    partialSuccess?: { rejectedLogRecords?: string; errorMessage?: string };
+  };
+  if (
+    partialJsonRes.status !== 200 ||
+    partialJson.ingested !== 2 ||
+    partialJson.partialSuccess?.rejectedLogRecords !== "1" ||
+    !partialJson.partialSuccess.errorMessage?.includes("no body")
+  ) {
+    throw new Error(`expected a JSON partial success, got ${partialJsonRes.status} ${JSON.stringify(partialJson)}`);
+  }
+  const partialProtoRes = await fetch(`${APP_URL}/v1/logs`, {
+    method: "POST",
+    headers: { "content-type": "application/x-protobuf", authorization: `Bearer ${INGEST_TOKEN}` },
+    body: Buffer.from(encodeOtlpProtobuf(partialBatch)),
+  });
+  const partialProto = decodeOtlpReply(new Uint8Array(await partialProtoRes.arrayBuffer()));
+  if (
+    partialProtoRes.status !== 200 ||
+    partialProtoRes.headers.get("content-type") !== "application/x-protobuf" ||
+    partialProto.rejected !== 1 ||
+    !partialProto.errorMessage.includes("no body")
+  ) {
+    throw new Error(`expected a protobuf partial success, got ${partialProtoRes.status} ${JSON.stringify(partialProto)}`);
   }
   const otlpProtoSearch = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: otlpProtoMarker }).toString()}`,

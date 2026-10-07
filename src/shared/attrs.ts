@@ -14,41 +14,60 @@ export function isAttrIdent(key: string): boolean {
 export function flattenAttrs(
   attrs: Record<string, unknown> | undefined,
 ): Record<string, string> {
-  const out: Record<string, string> = {};
-  if (!attrs) {
-    return out;
+  return flattenAttrsCounted(attrs).attrs;
+}
+
+/** An attribute's stored text, or nothing when it has no value to store. */
+function attrText(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value.length > 0 ? value : undefined;
   }
-  for (const [rawKey, value] of Object.entries(attrs)) {
-    if (Object.keys(out).length >= maxAttrKeysPerEvent) {
-      break;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : undefined;
+  }
+  if (typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "object" && value !== null) {
+    return JSON.stringify(value);
+  }
+  return undefined;
+}
+
+/**
+ * flattenAttrs, and how many attributes with a value it left out: `pastCap`
+ * beyond the per-row cap, `badName` under a name a row cannot hold.
+ */
+export function flattenAttrsCounted(attrs: Record<string, unknown> | undefined): {
+  attrs: Record<string, string>;
+  pastCap: number;
+  badName: number;
+} {
+  const out: Record<string, string> = {};
+  let kept = 0;
+  let pastCap = 0;
+  let badName = 0;
+  for (const [rawKey, value] of Object.entries(attrs ?? {})) {
+    const text = attrText(value);
+    if (text === undefined) {
+      continue;
     }
     const key = rawKey.toLowerCase();
-    if (!isAttrIdent(key) || key in out) {
+    if (!isAttrIdent(key)) {
+      badName += 1;
       continue;
     }
-    if (value === null || value === undefined) {
+    if (key in out) {
       continue;
     }
-    if (typeof value === "string") {
-      if (value.length === 0) {
-        continue;
-      }
-      out[key] = value;
+    if (kept >= maxAttrKeysPerEvent) {
+      pastCap += 1;
       continue;
     }
-    if (typeof value === "number" && Number.isFinite(value)) {
-      out[key] = String(value);
-      continue;
-    }
-    if (typeof value === "boolean") {
-      out[key] = String(value);
-      continue;
-    }
-    if (typeof value === "object") {
-      out[key] = JSON.stringify(value);
-    }
+    out[key] = text;
+    kept += 1;
   }
-  return out;
+  return { attrs: out, pastCap, badName };
 }
 
 export function parseAttrFacets(raw: string | null | undefined): string[] {

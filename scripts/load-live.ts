@@ -192,6 +192,7 @@ export async function runLiveLoad(
           env,
           proto ? encodeOtlpTracesProtobuf(payload) : JSON.stringify(payload),
           proto,
+          spans.length,
         ),
       );
     });

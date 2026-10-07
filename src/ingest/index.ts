@@ -6,7 +6,7 @@ import {
 } from "../shared/clickhouse";
 import { incMetric } from "../metrics";
 import { recordReceived } from "./received-ring";
-import { flattenAttrs } from "../shared/attrs";
+import { flattenAttrsCounted } from "../shared/attrs";
 import { liftException } from "../shared/exception";
 import { liftIdentities } from "../shared/identity";
 import { withFingerprint } from "../shared/fingerprint";
@@ -17,6 +17,7 @@ import {
   type LogEvent,
 } from "../shared/log-event";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
+import type { Losses } from "./otlp-reply";
 
 export { InsertBackpressureError } from "./backpressure";
 
@@ -25,20 +26,22 @@ export const MAX_BATCH = 500;
 export const MAX_OTLP_BATCH = 1_024;
 export const MAX_BODY_BYTES = 1_000_000;
 
-export async function insertEvents(events: LogEvent[]): Promise<number> {
+export async function insertEvents(events: LogEvent[], losses?: Losses): Promise<number> {
   if (events.length === 0) {
     return 0;
   }
   return withInsertSlot(async () => {
     const body = events
       .map((event) => {
-        const attr_map = flattenAttrs(
+        const flat = flattenAttrsCounted(
           withFingerprint(
             event.level,
             event.message,
             liftIdentities(liftException(event.attrs)),
           ),
         );
+        const attr_map = flat.attrs;
+        losses?.attrsCut(flat);
         return JSON.stringify({
           tenant_id: "default",
           ts: toClickHouseDateTime(event.ts),

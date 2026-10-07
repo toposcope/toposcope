@@ -11,6 +11,7 @@ import {
   MAX_OTLP_BATCH,
 } from "./index";
 import { readOtlpBody } from "./otlp-body";
+import { Losses, otlpReply } from "./otlp-reply";
 import { isOtlpProtobufContentType } from "./otlp-protobuf";
 import { decodeOtlpTracesProtobuf } from "./otlp-traces-protobuf";
 import { mapOtlpTraces } from "./otlp-traces";
@@ -75,9 +76,10 @@ export async function otlpTracesRoute(c: Context): Promise<Response> {
       400,
     );
   }
+  const losses = new Losses();
   let spans;
   try {
-    spans = mapOtlpTraces(payload);
+    spans = mapOtlpTraces(payload, losses);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Invalid OTLP payload";
     return c.json({ error: message }, 400);
@@ -88,7 +90,7 @@ export async function otlpTracesRoute(c: Context): Promise<Response> {
   try {
     const ingested = await insertSpans(spans);
     incMetric("otlp_spans", ingested);
-    return c.json({ ingested });
+    return otlpReply(c, "traces", ingested, losses);
   } catch (err) {
     return ingestFail(c, err);
   }

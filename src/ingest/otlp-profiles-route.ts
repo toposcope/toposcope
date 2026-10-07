@@ -11,6 +11,7 @@ import {
   MAX_OTLP_BATCH,
 } from "./index";
 import { readOtlpBody } from "./otlp-body";
+import { Losses, otlpReply } from "./otlp-reply";
 import { isOtlpProtobufContentType } from "./otlp-protobuf";
 import { mapOtlpProfiles } from "./otlp-profiles";
 import { decodeOtlpProfilesProtobuf } from "./otlp-profiles-protobuf";
@@ -91,7 +92,7 @@ export async function otlpProfilesRoute(c: Context): Promise<Response> {
   try {
     const ingested = await insertProfileSamples(mapped.samples);
     incMetric("otlp_profile_samples", ingested);
-    return c.json({ ingested });
+    return otlpReply(c, "profiles", ingested, new Losses());
   } catch (err) {
     return ingestFail(c, err);
   }

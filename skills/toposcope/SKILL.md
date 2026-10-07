@@ -76,7 +76,7 @@ The exception goes on the log record: `exception.type`, and either `exception.st
 
 ### Attributes
 
-A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is stored in lower case. `level`, `service`, `host`, `ts`, `message`, and `tenant_id` are taken. A row keeps 50 attributes. A key that breaks the rule, or one past the cap, is dropped with a 200. Nested values become JSON strings.
+A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is stored in lower case. `level`, `service`, `host`, `ts`, `message`, and `tenant_id` are taken. A row keeps 50 attributes. A key that breaks the rule, or one past the cap, is dropped with a 200; on the OTLP routes the reply says so. Nested values become JSON strings.
 
 ### Three ways in
 
@@ -118,7 +118,7 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
 
 | Status | Meaning | Sender |
 | --- | --- | --- |
-| `200` | Stored. `ingested` counts rows, not what each row kept. | — |
+| `200` | Stored. `ingested` counts rows, not what each row kept. On the OTLP routes `partialSuccess` counts the records that were not stored and says in one line what was rejected or cut. | Read `partialSuccess`; an exporter logs it. |
 | `400` | Unreadable body, an invalid row, or a batch over the [cap](#limits-and-responses). Nothing stored. | Fix it; an exporter does not retry, so the batch is gone. |
 | `401` | Missing or wrong token. | Fix the header. |
 | `404` | The token is good and the path is not an ingest route. | Fix the endpoint. |
