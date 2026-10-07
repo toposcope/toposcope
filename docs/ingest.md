@@ -130,7 +130,7 @@ A stored row keeps 50 attributes. On OTLP the record’s own attributes are coun
 
 ### Exception fingerprints
 
-Send `exception.type` and either `exception.frames` or `exception.stacktrace` as attrs. Valid supplied frames take priority. Without valid frames, ingest reads known Node/V8, Python, JVM, .NET, PHP, and Go stack formats into at most 50 frames. The raw stacktrace stays stored. [OpenTelemetry defines stacktrace as a runtime-specific string](https://opentelemetry.io/docs/specs/semconv/registry/attributes/exception/), so unsupported formats use the fallback below.
+Send `exception.type` and either `exception.frames` or `exception.stacktrace` as attrs. Valid supplied frames take priority. Without valid frames, ingest reads known Node/V8, Python, JVM, .NET, PHP, and Go stack formats into at most 50 frames, the ones nearest the raise: the end of a Python traceback, the start of the others. The raw stacktrace stays stored. [OpenTelemetry defines stacktrace as a runtime-specific string](https://opentelemetry.io/docs/specs/semconv/registry/attributes/exception/), so unsupported formats use the fallback below.
 
 With frames, `e1` hashes the lower-case type plus frame file/function pairs. When any supplied frame is `in_app`, only those frames are used. Hash input normalizes path separators, file URLs, drive prefixes, and trailing line/column numbers; removes `/releases/<stamp>/` for an 8–14 digit or `YYYY-MM-DD` stamp; and strips common roots (`/app`, `/src`, `/usr/src/app`, `/var/www*`, `/home/<user>`). Full relative paths are preserved; unrecognized absolute roots use the last three path segments. Paths and functions are lowercased for hashing. Stored supplied frame paths keep the sender's values.
 

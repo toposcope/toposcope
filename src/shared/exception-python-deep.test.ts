@@ -40,4 +40,37 @@ describe("deep Python traceback", () => {
     const b = computeFingerprint("error", "declined", lifted(refund));
     expect(a).not.toBe(b);
   });
+
+  test("a traceback of 50 frames or fewer keeps every frame, in the order printed", () => {
+    const short = [
+      "Traceback (most recent call last):",
+      '  File "/app/api.py", line 88, in process_payment',
+      "    charge()",
+      '  File "/app/billing.py", line 41, in charge',
+      '    raise ValueError("declined")',
+      "ValueError: declined",
+    ].join("\n");
+    expect(
+      liftException({ "exception.type": "ValueError", "exception.stacktrace": short })?.[
+        "exception.frames"
+      ],
+    ).toEqual([
+      { file: "/app/api.py", function: "process_payment" },
+      { file: "/app/billing.py", function: "charge" },
+    ]);
+  });
+
+  test("a format that prints the raise first still keeps its first 50 frames", () => {
+    const deep = [
+      "Error: declined",
+      "    at charge (/app/src/billing.js:41:9)",
+      ...Array.from({ length: 60 }, (_, i) => `    at layer${i} (/app/src/stack.js:${i + 1}:3)`),
+    ].join("\n");
+    const frames = liftException({ "exception.type": "Error", "exception.stacktrace": deep })?.[
+      "exception.frames"
+    ] as ExceptionFrame[];
+    expect(frames).toHaveLength(50);
+    expect(frames[0]).toEqual({ file: "/app/src/billing.js", function: "charge" });
+    expect(frames.at(-1)?.function).toBe("layer48");
+  });
 });

@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A Python traceback deeper than 50 frames keeps the 50 nearest the raise instead of the outermost 50, so two errors under the same framework frames no longer share one `e1`. Deep Python stacks get a new id once at upgrade; old rows are not rewritten. [#62](https://github.com/toposcope/toposcope/issues/62)
+
 ## 0.4.10
 
 Ingest accepts a bearer token only when it is the configured ingest token or a created API token that still exists. Before, a token that was never issued, or one that had been deleted, was accepted on `/api/ingest` and every `/v1/*` ingest route. Search and the other routes take the operator password and were not affected.
