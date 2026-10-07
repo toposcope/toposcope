@@ -12,7 +12,7 @@ Hunt reads what is on the row, and a request can return 200 and still leave a ro
 
 - `service` — on OTLP, the resource’s `service.name`; without one the row is stored under `otlp`.
 - `level` — `debug`, `info`, `warn`, `error`, or `fatal`; on OTLP, the record’s severity.
-- `message` — a string. An OTLP record whose body is not a string is dropped.
+- `message` — a string. On OTLP a number or a boolean body becomes its text, and a map becomes one line — its `message` or `msg`, else the map as JSON — with its other top-level fields as attributes. A record with no body takes its event name; one with neither is not stored, and the reply counts it.
 - An event time with a zone — `ts` in RFC 3339, or `timeUnixNano` on OTLP. Without one the row takes the time a collector first saw it (`observedTimeUnixNano`), or else the time it arrives.
 - The release — `service.version` on the OTLP resource, or `version` in `attrs`. It is stored as `version`.
 
@@ -129,7 +129,7 @@ Collectors send the protobuf body directly on that path.
 
 ### OTLP attributes
 
-A stored row keeps 50 attributes. On OTLP the record’s own attributes are counted first, with the frames read from its stack, then its trace and span ids, then the resource’s. A resource full of process, runtime, and host details cannot push out what the app put on the record or the trace id that View trace needs. `e1` and `version` are stamped ahead of all of them. What does not fit is dropped.
+A stored row keeps 50 attributes. On OTLP the record’s own attributes are counted first, with the frames read from its stack, then a map body’s top-level fields, then its trace and span ids, then the resource’s. A resource full of process, runtime, and host details cannot push out what the app put on the record or the trace id that View trace needs. `e1` and `version` are stamped ahead of all of them. What does not fit is dropped.
 
 ### Exception fingerprints
 

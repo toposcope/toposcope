@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+On `POST /v1/logs` a record whose body is not a string is kept. A number or a boolean becomes its text. A map — what a collector that parses JSON lines sends, or a logger handed a dict — keeps one line as the message, its `message` or `msg` field or else the whole map as JSON, and its other top-level fields join the row’s attributes after the record’s own. A record with no body takes its event name. One with neither is still not stored, and the reply counts it. Before, every one of these was dropped with a 200. [#71](https://github.com/toposcope/toposcope/issues/71)
+
 A 200 from an OTLP route now says what did not land. `POST /v1/logs`, `/v1/traces`, and `/v1/profiles` fill OTLP’s partial success: a count of the records that were not stored and one line of why, or a count of zero and a warning when everything was stored but something was cut, such as attributes past the 50-attribute cap. The rest of the request is still stored. A protobuf request is answered in protobuf, as the protocol says, so an exporter no longer logs that it could not read the reply; a JSON reply keeps `ingested` beside the new field. A request that cannot be read keeps its 4xx. [#69](https://github.com/toposcope/toposcope/issues/69)
 
 ## 0.4.12
