@@ -130,7 +130,7 @@ Collectors send the protobuf body directly on that path.
 
 ### OTLP attributes
 
-A stored row keeps 50 attributes. On OTLP the record’s own attributes are counted first, with the frames read from its stack, then a map body’s top-level fields, then its trace and span ids, then the resource’s. A resource full of process, runtime, and host details cannot push out what the app put on the record or the trace id that View trace needs. `e1` and `version` are stamped ahead of all of them. What does not fit is dropped.
+A stored row keeps 50 attributes. On OTLP the record’s own attributes are counted first, with the frames read from its stack, then a map body’s top-level fields, then its trace and span ids, then the logger’s name, then the resource’s. The logger’s name is the OTLP scope’s name, stored as `otel.scope.name`. A resource full of process, runtime, and host details cannot push out what the app put on the record or the trace id that View trace needs. `e1` and `version` are stamped ahead of all of them. What does not fit is dropped.
 
 ### Exception fingerprints
 

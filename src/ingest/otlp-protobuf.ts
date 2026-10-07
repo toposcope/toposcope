@@ -19,7 +19,12 @@ message Resource {
 }
 
 message ScopeLogs {
+  InstrumentationScope scope = 1;
   repeated LogRecord log_records = 2;
+}
+
+message InstrumentationScope {
+  string name = 1;
 }
 
 message LogRecord {
