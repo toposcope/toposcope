@@ -15,8 +15,9 @@ export function hashToken(token: string): string {
 export function tokenHashExists(tokenHash: string): boolean {
   const row = getDb()
     .query("SELECT id FROM api_tokens WHERE token_hash = ?")
-    .get(tokenHash) as { id: string } | undefined;
-  return row !== undefined;
+    .get(tokenHash) as { id: string } | null | undefined;
+  // bun:sqlite answers null, not undefined, when no row matches.
+  return Boolean(row);
 }
 
 function allTokens(): ApiToken[] {

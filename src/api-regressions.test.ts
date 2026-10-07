@@ -14,6 +14,17 @@ type Result = {
 };
 let results: Record<string, Result>;
 
+const ingestPaths = [
+  "/api/ingest",
+  "/v1/logs",
+  "/v1/metrics",
+  "/v1/marks",
+  "/v1/probes",
+  "/v1/traces",
+  "/v1/profiles",
+  "/v1development/profiles",
+];
+
 beforeAll(async () => {
   await Bun.write(join(fixture, "src/ui/dist/index.html"), "<!doctype html><html>test UI</html>");
   // Boot services are stubbed in a child process so module mocks cannot affect
@@ -66,6 +77,10 @@ beforeAll(async () => {
       const response = await app.fetch(new Request("http://app.test" + path, { headers: requestHeaders, method }));
       const text = await response.text();
       out[name] = { status: response.status, contentType: response.headers.get("content-type"), body: text.startsWith("{") ? JSON.parse(text) : text };
+    }
+    for (const path of ${JSON.stringify(ingestPaths)}) {
+      const response = await app.fetch(new Request("http://app.test" + path, { method: "POST", headers: { authorization: "Bearer never-issued", "content-type": "application/json" }, body: "{}" }));
+      out["bearer:" + path] = { status: response.status, contentType: response.headers.get("content-type"), body: await response.text() };
     }
     for (const name of ["built", "unbuilt"]) {
       if (name === "unbuilt") (await import("node:fs")).unlinkSync("src/ui/dist/index.html");
@@ -134,5 +149,11 @@ describe("API not found", () => {
   test("non-API workspace paths retain the UI fallback", () => {
     expect(results.spa!.status).toBe(200);
     expect(results.spa!.contentType).toContain("text/html");
+  });
+});
+
+describe("ingest bearer token", () => {
+  test.each(ingestPaths)("%s refuses a token that was never issued", (path) => {
+    expect(results[`bearer:${path}`]!.status).toBe(401);
   });
 });
