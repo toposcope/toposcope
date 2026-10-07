@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+The app exits when it is told to stop. On SIGTERM — `docker compose stop`, an upgrade, a host shutdown — it finishes the requests in flight and the syslog queue, turns anything new away with **503**, and exits 0. Before, the signal was ignored: every stop waited out Docker’s ten-second grace period, and the app was then killed with any request that was still inserting cut off. [#83](https://github.com/toposcope/toposcope/issues/83)
+
 ## 0.4.11
 
 An [agent skill](skills/toposcope/SKILL.md) ships in the repo: one `SKILL.md` and one script. It stands up one Toposcope on the machine from the pinned release files (or uses the one running), writes the settings an app needs without printing a secret, and checks one test error end to end, answering **frames**, **message**, or **nothing arrived** with the `q` and window to paste. It carries the ingest guide’s *What an app sends* word for word. It talks only to 127.0.0.1, stops the instance when asked, and never removes data. No MCP server and no CLI. [#52](https://github.com/toposcope/toposcope/issues/52)
