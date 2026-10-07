@@ -46,4 +46,35 @@ describe("OTLP record with only an observed time", () => {
     const [event] = mapOtlpJson(decodeOtlpProtobuf(bytes));
     expect(event?.ts).toBe(observedIso);
   });
+
+  test("a record with both keeps its event time", () => {
+    const [event] = mapOtlpJson({
+      resourceLogs: [
+        {
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  timeUnixNano: "1692000060000000000",
+                  observedTimeUnixNano: observed,
+                  body: { stringValue: "tailed line" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(event?.ts).toBe("2023-08-14T08:01:00.000Z");
+  });
+
+  test("a record with neither is stamped when it arrives", () => {
+    const before = Date.now();
+    const [event] = mapOtlpJson({
+      resourceLogs: [{ scopeLogs: [{ logRecords: [{ body: { stringValue: "tailed line" } }] }] }],
+    });
+    const stamped = Date.parse(event?.ts ?? "");
+    expect(stamped).toBeGreaterThanOrEqual(before);
+    expect(stamped).toBeLessThanOrEqual(Date.now());
+  });
 });

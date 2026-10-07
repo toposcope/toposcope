@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+An OTLP log record with no event time is stored at its observed time, when a collector set one, instead of the time it arrived. A batch that sat in a collector’s buffer no longer lands late on the clock or on the wrong side of a change mark. A record with both keeps its event time. [#65](https://github.com/toposcope/toposcope/issues/65)
+
 On `POST /v1/logs` the level comes from `severityNumber` when it is 1–24, and a record with only a severity text is read by its word. Before, the text was read first and only a few words were known, so a text-only `CRITICAL`, `CRIT`, `ALERT`, or `SEVERE` was stored as `info`, and an unspecified number (0) as `debug`. [#64](https://github.com/toposcope/toposcope/issues/64)
 
 A PHP closure frame is hashed without its line number and with its path normalized. PHP 8.4 and later name a closure with where it was declared (`{closure:/app/public/index.php:15}`), so the same error got a new `e1` in every deploy directory and whenever the closure’s line moved. Errors with such a frame get a new id once at upgrade; old rows are not rewritten. [#67](https://github.com/toposcope/toposcope/issues/67)

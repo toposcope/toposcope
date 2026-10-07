@@ -30,6 +30,7 @@ message LogRecord {
   repeated KeyValue attributes = 6;
   bytes trace_id = 9;
   bytes span_id = 10;
+  fixed64 observed_time_unix_nano = 11;
 }
 
 message KeyValue {
