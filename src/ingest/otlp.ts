@@ -194,8 +194,11 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
         const severityText = typeof row.severityText === "string" ? row.severityText : undefined;
         const severityNumber =
           typeof row.severityNumber === "number" ? row.severityNumber : undefined;
-        const logAttrs = attrRecord(row.attributes as Attr[] | undefined, new Set());
-        const attrs: Record<string, unknown> = { ...resourceAttrs, ...logAttrs };
+        // Order is what the 50-key cap keeps: the record's own attributes with
+        // the frames read from its stack, then its trace and span ids, then the
+        // resource's.
+        const attrs =
+          liftException(attrRecord(row.attributes as Attr[] | undefined, new Set())) ?? {};
         const traceId = otlpIdHex(row.traceId);
         const spanId = otlpIdHex(row.spanId);
         if (traceId && attrs.trace_id === undefined) {
@@ -203,6 +206,11 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
         }
         if (spanId && attrs.span_id === undefined) {
           attrs.span_id = spanId;
+        }
+        for (const [key, value] of Object.entries(resourceAttrs)) {
+          if (!(key in attrs)) {
+            attrs[key] = value;
+          }
         }
         const lifted = liftIdentities(
           liftException(Object.keys(attrs).length > 0 ? attrs : undefined),
