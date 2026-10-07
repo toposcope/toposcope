@@ -21,6 +21,8 @@ import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 export { InsertBackpressureError } from "./backpressure";
 
 export const MAX_BATCH = 500;
+/** Twice the 512 an OpenTelemetry exporter batches by default; it does not retry a 400. */
+export const MAX_OTLP_BATCH = 1_024;
 export const MAX_BODY_BYTES = 1_000_000;
 
 export async function insertEvents(events: LogEvent[]): Promise<number> {

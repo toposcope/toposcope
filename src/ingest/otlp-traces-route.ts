@@ -8,7 +8,7 @@ import type { Span } from "../shared/span";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import {
   insertErrorMessage,
-  MAX_BATCH,
+  MAX_OTLP_BATCH,
 } from "./index";
 import { readOtlpBody } from "./otlp-body";
 import { isOtlpProtobufContentType } from "./otlp-protobuf";
@@ -82,8 +82,8 @@ export async function otlpTracesRoute(c: Context): Promise<Response> {
     const message = err instanceof Error ? err.message : "Invalid OTLP payload";
     return c.json({ error: message }, 400);
   }
-  if (spans.length > MAX_BATCH) {
-    return c.json({ error: `Batch too large (max ${MAX_BATCH})` }, 400);
+  if (spans.length > MAX_OTLP_BATCH) {
+    return c.json({ error: `Batch too large (max ${MAX_OTLP_BATCH})` }, 400);
   }
   try {
     const ingested = await insertSpans(spans);
