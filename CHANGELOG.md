@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Ingest is tested against what real runtimes and exporters send, not hand-typed stacks: one stack each from Node, Python, the JVM, .NET, PHP, and Go with a real framework above the error, and the log requests the OpenTelemetry exporters for Node and Python send for one logged exception. The ingest guide names the versions. One capture found a gap: PHP 8.4 and later put a closure’s file and line in its frame name, so that error gets a different `e1` in each deploy directory; the test is pinned until it is fixed. [#47](https://github.com/toposcope/toposcope/issues/47)
+
 The ingest guide opens with **What an app sends**: the fields a row needs for hunt, the exception fields an error row needs for a stack fingerprint, the attribute rules and what is dropped with a 200, the three ways a row arrives, and what each reply means for a sender. The stated default is an app speaking OpenTelemetry straight to Toposcope, on a laptop and in production; a collector is optional and Vector stays the canonical one. The section’s examples run in `bun test` and in e2e. [#48](https://github.com/toposcope/toposcope/issues/48)
 
 On `POST /v1/logs` a stored row counts the record’s own attributes first, then its trace and span ids, then the resource’s. A stock OpenTelemetry resource carries enough process, runtime, and host details to fill the 50-attribute cap, and what was cut was the record’s request id or customer and the trace id that View trace needs. The cap, `e1`, and `version` are unchanged, and so is `/api/ingest`. [#51](https://github.com/toposcope/toposcope/issues/51)

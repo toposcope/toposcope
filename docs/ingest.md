@@ -136,6 +136,8 @@ With frames, `e1` hashes the lower-case type plus frame file/function pairs. Whe
 
 Without usable frames, an exception type or an `error`/`fatal` event hashes type plus the stabilized log body. `exception.message` does not replace that body. Ingest does not parse stacks out of `message` or use log templates. Existing rows keep their stored `e1`; corrected inputs in 0.4.9 can give an affected error a new id once at upgrade.
 
+The six formats are tested against stacks captured from real runtimes with a framework above the error: Node 24.21.0 with Express 5.2.1, Python 3.13.16 with Flask 3.1.3, OpenJDK 21.0.12 with Spring Boot 3.5.0, .NET 10.0.12 with ASP.NET Core 10.0.12, PHP 8.5.11 with Slim 4.15.3, and Go 1.26.8 with Gin 1.12.0. OTLP logs are tested against the requests real exporters sent for one logged exception: OpenTelemetry JS 0.223.0 with pino 10.4.0, as protobuf and JSON, and OpenTelemetry Python 1.45.1 with `logging`, as protobuf (that exporter has no JSON mode). The captures and the programs behind them are in [`fixtures/ingest`](../fixtures/ingest/).
+
 ## Metrics
 
 Metrics use the same bearer token as logs. This is not Prometheus scrape; that stays `GET /api/metrics`.

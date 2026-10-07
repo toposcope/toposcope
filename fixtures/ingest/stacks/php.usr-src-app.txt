@@ -1,0 +1,15 @@
+DomainException: order has no card in /usr/src/app/src/Billing.php:12
+Stack trace:
+#0 /usr/src/app/public/index.php(16): Billing\Billing->charge(Array)
+#1 /usr/src/app/vendor/slim/slim/Slim/Handlers/Strategies/RequestResponse.php(39): {closure:/usr/src/app/public/index.php:15}(Object(Slim\Psr7\Request), Object(Slim\Psr7\Response), Array)
+#2 /usr/src/app/vendor/slim/slim/Slim/Routing/Route.php(362): Slim\Handlers\Strategies\RequestResponse->__invoke(Object(Closure), Object(Slim\Psr7\Request), Object(Slim\Psr7\Response), Array)
+#3 /usr/src/app/vendor/slim/slim/Slim/MiddlewareDispatcher.php(73): Slim\Routing\Route->handle(Object(Slim\Psr7\Request))
+#4 /usr/src/app/vendor/slim/slim/Slim/MiddlewareDispatcher.php(73): Slim\MiddlewareDispatcher->handle(Object(Slim\Psr7\Request))
+#5 /usr/src/app/vendor/slim/slim/Slim/Routing/Route.php(321): Slim\MiddlewareDispatcher->handle(Object(Slim\Psr7\Request))
+#6 /usr/src/app/vendor/slim/slim/Slim/Routing/RouteRunner.php(74): Slim\Routing\Route->run(Object(Slim\Psr7\Request))
+#7 /usr/src/app/vendor/slim/slim/Slim/Middleware/ErrorMiddleware.php(77): Slim\Routing\RouteRunner->handle(Object(Slim\Psr7\Request))
+#8 /usr/src/app/vendor/slim/slim/Slim/MiddlewareDispatcher.php(129): Slim\Middleware\ErrorMiddleware->process(Object(Slim\Psr7\Request), Object(Slim\Routing\RouteRunner))
+#9 /usr/src/app/vendor/slim/slim/Slim/MiddlewareDispatcher.php(73): Psr\Http\Server\RequestHandlerInterface@anonymous->handle(Object(Slim\Psr7\Request))
+#10 /usr/src/app/vendor/slim/slim/Slim/App.php(209): Slim\MiddlewareDispatcher->handle(Object(Slim\Psr7\Request))
+#11 /usr/src/app/public/index.php(28): Slim\App->handle(Object(Slim\Psr7\Request))
+#12 {main}

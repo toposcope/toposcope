@@ -1,0 +1,12 @@
+{
+  "name": "example/billing",
+  "require": {
+    "slim/slim": "^4",
+    "slim/psr7": "^1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Billing\\": "src/"
+    }
+  }
+}

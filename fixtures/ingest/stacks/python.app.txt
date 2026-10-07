@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/app/app.py", line 13, in pay
+    return charge({})
+  File "/app/billing.py", line 2, in charge
+    return {"receipt": order["card"]["token"]}
+                       ~~~~~^^^^^^^^
+KeyError: 'card'
