@@ -16,7 +16,7 @@ curl -u "toposcope:${TOPOSCOPE_PASSWORD}" -X POST http://127.0.0.1:8080/api/api-
 
 ## Limits and responses
 
-HTTP ingest bodies are limited to 1 MB decoded. `POST /v1/logs` and `POST /v1/traces` take up to 1,000 log records or spans in a request, so the default batch of an OpenTelemetry exporter (512) fits. Every other endpoint takes at most 500 log events, metric points, change marks, probes, or profiles. A request over the cap is one **400** and stores nothing. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
+HTTP ingest bodies are limited to 1 MB decoded. The OTLP routes — `POST /v1/logs`, `POST /v1/traces`, and `POST /v1/profiles` — take up to 1,024 log records, spans, or profiles in a request: twice the 512 an OpenTelemetry exporter batches by default. Every other endpoint takes at most 500 log events, metric points, change marks, or probes. A request over the cap is one **400** and stores nothing. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
 
 Successful requests return the number of ingested records. Invalid batches return a `4xx` response. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream.
 

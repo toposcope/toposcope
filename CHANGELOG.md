@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
-`POST /v1/logs` and `POST /v1/traces` take up to 1,000 records in a request, up from 500. An OpenTelemetry exporter batches 512 by default and does not retry a **400**, so a full batch — what an error storm produces — was dropped whole. The 1 MB decoded-body cap and its **413** are unchanged, and `/api/ingest` keeps 500. [#50](https://github.com/toposcope/toposcope/issues/50)
+The OTLP routes — `POST /v1/logs`, `POST /v1/traces`, and `POST /v1/profiles` — take up to 1,024 records in a request, up from 500. An OpenTelemetry exporter batches 512 by default and does not retry a **400**, so a full batch — what an error storm produces — was dropped whole. The 1 MB decoded-body cap and its **413** are unchanged, and `/api/ingest` and the other endpoints keep 500. [#50](https://github.com/toposcope/toposcope/issues/50)
 
 `GET /api/health` carries `version`: the running release, the same string as `package.json` and the image tag. An install, an upgrade script, or the agent skill can confirm which Toposcope is answering. The route stays open and stays **503** until ready. [#49](https://github.com/toposcope/toposcope/issues/49)
 

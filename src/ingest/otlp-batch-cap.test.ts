@@ -4,6 +4,8 @@ import type { LogEvent } from "../shared/log-event";
 import type { Span } from "../shared/span";
 import { ingestRoute, MAX_BATCH, MAX_OTLP_BATCH } from "./index";
 import { toOtlpJson } from "./otlp";
+import { toOtlpProfilesJson, type ProfileDraft } from "./otlp-profiles";
+import { otlpProfilesRoute } from "./otlp-profiles-route";
 import { otlpLogsRoute } from "./otlp-route";
 import { toOtlpTracesJson } from "./otlp-traces";
 import { otlpTracesRoute } from "./otlp-traces-route";
@@ -15,6 +17,7 @@ const app = new Hono();
 app.post("/api/ingest", ingestRoute);
 app.post("/v1/logs", otlpLogsRoute);
 app.post("/v1/traces", otlpTracesRoute);
+app.post("/v1/profiles", otlpProfilesRoute);
 
 function logs(count: number): LogEvent[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -39,9 +42,25 @@ function spans(count: number): Span[] {
   }));
 }
 
+/** One sample each, so a stored row counts a profile. */
+function profiles(count: number): ProfileDraft[] {
+  return Array.from({ length: count }, (_, i) => ({
+    service: "api",
+    ts: "2026-01-01T00:00:00.000Z",
+    duration_ms: 1,
+    profile_id: (i + 1).toString(16).padStart(32, "0"),
+    samples: [{ frames: ["main", "charge"], value: 1 }],
+  }));
+}
+
 const routes = [
   { path: "/v1/logs", table: "logs", payload: (count: number) => toOtlpJson(logs(count)) },
   { path: "/v1/traces", table: "spans", payload: (count: number) => toOtlpTracesJson(spans(count)) },
+  {
+    path: "/v1/profiles",
+    table: "profile_samples",
+    payload: (count: number) => toOtlpProfilesJson(profiles(count)),
+  },
 ];
 
 function post(path: string, body: unknown): Promise<Response> {
@@ -87,7 +106,7 @@ describe("OTLP record cap", () => {
   });
 
   test.each(routes)("$path stores a batch at the cap", async ({ path, table, payload }) => {
-    expect(MAX_OTLP_BATCH).toBe(1_000);
+    expect(MAX_OTLP_BATCH).toBe(1_024);
     const res = await post(path, payload(MAX_OTLP_BATCH));
     expect(res.status).toBe(200);
     expect(stored).toEqual({ [table]: MAX_OTLP_BATCH });
@@ -96,7 +115,7 @@ describe("OTLP record cap", () => {
   test.each(routes)("$path refuses one over the cap with a single 400 and stores nothing", async ({ path, payload }) => {
     const res = await post(path, payload(MAX_OTLP_BATCH + 1));
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Batch too large (max 1000)" });
+    expect(await res.json()).toEqual({ error: "Batch too large (max 1024)" });
     expect(stored).toEqual({});
   });
 

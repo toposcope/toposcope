@@ -1893,9 +1893,9 @@ async function main(): Promise<void> {
   if (otlpBatchTotal !== 512) {
     throw new Error(`expected 512 stored OTLP log records, search total is ${otlpBatchTotal}`);
   }
-  const overflowLogs = await otlpLogBatch(1001);
+  const overflowLogs = await otlpLogBatch(1025);
   if (overflowLogs.status !== 400) {
-    throw new Error(`expected 400 for 1001 OTLP log records, got ${overflowLogs.status}`);
+    throw new Error(`expected 400 for 1025 OTLP log records, got ${overflowLogs.status}`);
   }
 
   const tokenRes = await fetch(`${APP_URL}/api/api-tokens`, {
@@ -2632,9 +2632,9 @@ async function main(): Promise<void> {
     throw new Error(`expected 512 stored spans, trace total is ${spanBatchTotal}`);
   }
 
-  const overflowRes = await postSpans(spanBatch("f".repeat(32), 1001));
+  const overflowRes = await postSpans(spanBatch("f".repeat(32), 1025));
   if (overflowRes.status !== 400) {
-    throw new Error(`expected 400 for 1001 spans, got ${overflowRes.status}`);
+    throw new Error(`expected 400 for 1025 spans, got ${overflowRes.status}`);
   }
 
   const profileTs = new Date().toISOString();
@@ -2791,7 +2791,7 @@ async function main(): Promise<void> {
     },
     body: JSON.stringify(
       toOtlpProfilesJson(
-        Array.from({ length: 501 }, (_, i) => ({
+        Array.from({ length: 1025 }, (_, i) => ({
           service: "overflow",
           ts: profileTs,
           duration_ms: 1,
@@ -2802,7 +2802,7 @@ async function main(): Promise<void> {
     ),
   });
   if (overflowProfiles.status !== 400) {
-    throw new Error(`expected 400 for 501 profiles, got ${overflowProfiles.status}`);
+    throw new Error(`expected 400 for 1025 profiles, got ${overflowProfiles.status}`);
   }
 
   const live = await runLiveLoad({
