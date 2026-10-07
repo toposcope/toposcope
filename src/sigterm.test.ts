@@ -192,6 +192,15 @@ function idleKeepAlive(port: number): Promise<Socket> {
   });
 }
 
+/** The status line of one more request on a connection that is already open. */
+function statusOn(socket: Socket): Promise<string> {
+  return new Promise((resolve) => {
+    socket.once("data", (chunk) => resolve(chunk.toString().split("\r\n")[0] ?? ""));
+    socket.once("close", () => resolve("closed"));
+    socket.write("GET /api/health HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+  });
+}
+
 describe("SIGTERM with nothing in flight", () => {
   let exit: Exit;
 
@@ -216,12 +225,15 @@ describe("SIGTERM with a request in flight", () => {
   let drainingAfterSignal: boolean;
   let inFlight: Reply;
   let late: Reply | "accepted";
+  let onOpenConnection: string;
   let inserted: string[];
   let exit: Exit;
 
   beforeAll(async () => {
     const clickhouse = startClickHouse();
     const app = await startApp(clickhouse.url);
+    const open = await idleKeepAlive(app.port);
+    open.on("error", () => {});
     const release = clickhouse.hold();
     const first = app.ingest("in flight");
     await until("the insert to reach ClickHouse", () => clickhouse.held() === 1);
@@ -235,10 +247,12 @@ describe("SIGTERM with a request in flight", () => {
       app.ingest("after the signal"),
       sleep(500).then(() => "accepted" as const),
     ]);
+    onOpenConnection = await statusOn(open);
     release();
     inFlight = await first;
     exit = await app.exit(sentAt);
     inserted = [...clickhouse.inserted];
+    open.destroy();
     clickhouse.stop();
   }, HOOK_TIMEOUT_MS);
 
@@ -254,6 +268,10 @@ describe("SIGTERM with a request in flight", () => {
       expect(late.status).toBe(503);
     }
     expect(inserted).toEqual(["in flight"]);
+  });
+
+  test("a request on a connection that was already open is turned away, not served", () => {
+    expect(["HTTP/1.1 503 Service Unavailable", "closed"]).toContain(onOpenConnection);
   });
 
   test("exits 0 well inside the grace period once that request is answered", () => {

@@ -16,10 +16,14 @@ export function syslogUdpPort(): number {
   return Math.floor(n);
 }
 
-export async function startSyslogUdp(): Promise<void> {
+/**
+ * Starts the listener. The returned function stops taking packets and resolves
+ * once every row already taken is inserted.
+ */
+export async function startSyslogUdp(): Promise<() => Promise<void>> {
   const port = syslogUdpPort();
   if (port === 0) {
-    return;
+    return async () => {};
   }
   const hostname = process.env.HOST ?? "0.0.0.0";
   const queue = createSyslogInsertQueue({
@@ -34,7 +38,7 @@ export async function startSyslogUdp(): Promise<void> {
     },
   });
   try {
-    await Bun.udpSocket({
+    const socket = await Bun.udpSocket({
       hostname,
       port,
       socket: {
@@ -50,7 +54,12 @@ export async function startSyslogUdp(): Promise<void> {
       },
     });
     console.error(`syslog UDP listening on ${hostname}:${port}`);
+    return async () => {
+      socket.close();
+      await queue.idle();
+    };
   } catch (err) {
     console.error("syslog UDP listen failed", err);
+    return async () => {};
   }
 }

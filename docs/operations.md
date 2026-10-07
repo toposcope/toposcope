@@ -51,6 +51,8 @@ The packaged Compose file lets ClickHouse use up to 4 GB and the app up to 512 M
 
 Boot is idempotent. No volume wipe is required for a normal upgrade. The process listens on `:8080` before migrate; `/api/health` is **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe, then **200**. Packaged Compose healthchecks that URL.
 
+On `docker compose stop`, an upgrade or a host shutdown the app finishes the requests in flight and the syslog queue, turns anything new away with **503**, and exits 0. Images up to 0.4.11 ignore the signal: Docker waits ten seconds and kills them, and a request that was still inserting is cut.
+
 Update the application image pin in `compose.yml`, then pull and restart:
 
 ```bash

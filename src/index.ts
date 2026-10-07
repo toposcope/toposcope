@@ -1,3 +1,4 @@
+import type { Server } from "bun";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { startAlertCron } from "./alerts/cron";
@@ -52,8 +53,24 @@ import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 requirePackagedSecrets();
 
 let bootPhase: BootPhase = "starting";
+/** Set by SIGTERM or SIGINT: the process is finishing what it has and takes nothing new. */
+let stopping = false;
+let server: Server<unknown> | undefined;
+let stopSyslog: () => Promise<void> = async () => {};
 
 const app = new Hono();
+
+// First, so it covers every route: a request on a connection that was already
+// open is turned away while the process stops. A sender retries a 503.
+app.use("/*", async (c, next) => {
+  if (stopping) {
+    return c.json({ error: "Stopping" }, 503, {
+      connection: "close",
+      "retry-after": "1",
+    });
+  }
+  return next();
+});
 
 app.onError((err, c) => {
   console.error(err);
@@ -160,10 +177,30 @@ export default {
   hostname: process.env.HOST ?? "0.0.0.0",
   /** Default 10s kills long scans (empty 7d, host facets); event pages widen lookback first. */
   idleTimeout: 120,
-  fetch: app.fetch,
+  // Bun hands the running server to fetch and to nothing else here; stop() needs it.
+  fetch(request: Request, bun?: Server<unknown>) {
+    server ??= bun;
+    return app.fetch(request, bun);
+  },
 };
 
+// `docker compose stop`, an upgrade and a host shutdown send SIGTERM, and in the
+// image this is process 1, which ignores a signal it does not handle.
+process.on("SIGTERM", () => void stop());
+process.on("SIGINT", () => void stop());
+
 void startBoot();
+
+/** Finish the requests in flight and the syslog queue, then exit 0. */
+async function stop(): Promise<void> {
+  if (stopping) {
+    return;
+  }
+  stopping = true;
+  // Refuses new connections and resolves once every request in flight has its reply.
+  await Promise.all([server?.stop(), stopSyslog()]);
+  process.exit(0);
+}
 
 async function startBoot(): Promise<void> {
   try {
@@ -174,7 +211,8 @@ async function startBoot(): Promise<void> {
     await syncFieldRoleSkip(storedSkipKeys());
     await applyRetentionDays(getRetentionDays());
     startAlertCron();
-    await startSyslogUdp();
+    // A stubbed listener in tests returns nothing.
+    stopSyslog = (await startSyslogUdp()) ?? stopSyslog;
     bootPhase = "ready";
   } catch (err) {
     console.error("boot failed", err);
