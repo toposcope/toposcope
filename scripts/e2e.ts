@@ -1,3 +1,4 @@
+import { toOtlpJson } from "../src/ingest/otlp";
 import { encodeOtlpProtobuf } from "../src/ingest/otlp-protobuf";
 import { toOtlpProfilesJson } from "../src/ingest/otlp-profiles";
 import { encodeOtlpProfilesProtobuf } from "../src/ingest/otlp-profiles-protobuf";
@@ -1856,6 +1857,47 @@ async function main(): Promise<void> {
     throw new Error(`expected 400 for invalid OTLP, got ${badOtlp.status}`);
   }
 
+  // An OpenTelemetry exporter batches 512 records by default; a full batch is stored.
+  const otlpBatchService = `e2ebatch${Date.now()}`;
+  const otlpBatchTs = new Date().toISOString();
+  const otlpLogBatch = (count: number) =>
+    fetch(`${APP_URL}/v1/logs`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${INGEST_TOKEN}`,
+      },
+      body: JSON.stringify(
+        toOtlpJson(
+          Array.from({ length: count }, (_, i) => ({
+            ts: otlpBatchTs,
+            service: otlpBatchService,
+            level: "info" as const,
+            message: `batch line ${i}`,
+          })),
+        ),
+      ),
+    });
+  const otlpBatchRes = await otlpLogBatch(512);
+  const otlpBatchJson = (await otlpBatchRes.json()) as { ingested?: number };
+  if (otlpBatchRes.status !== 200 || otlpBatchJson.ingested !== 512) {
+    throw new Error(
+      `expected a 512-record OTLP log batch to be stored, got ${otlpBatchRes.status} ${JSON.stringify(otlpBatchJson)}`,
+    );
+  }
+  const otlpBatchSearch = await fetch(
+    `${APP_URL}/api/search?q=${encodeURIComponent(`service:${otlpBatchService}`)}&range=15m&events=0`,
+    { headers: { authorization: basicAuth() } },
+  );
+  const otlpBatchTotal = ((await otlpBatchSearch.json()) as { total?: number }).total;
+  if (otlpBatchTotal !== 512) {
+    throw new Error(`expected 512 stored OTLP log records, search total is ${otlpBatchTotal}`);
+  }
+  const overflowLogs = await otlpLogBatch(1001);
+  if (overflowLogs.status !== 400) {
+    throw new Error(`expected 400 for 1001 OTLP log records, got ${overflowLogs.status}`);
+  }
+
   const tokenRes = await fetch(`${APP_URL}/api/api-tokens`, {
     method: "POST",
     headers: {
@@ -2551,27 +2593,48 @@ async function main(): Promise<void> {
     throw new Error(`junk trace id must be 400, got ${junkTrace.status}`);
   }
 
-  const overflow: Span[] = Array.from({ length: 501 }, (_, i) => ({
-    trace_id: "f".repeat(32),
-    span_id: (i + 1).toString(16).padStart(16, "0"),
-    parent_span_id: "",
-    service: "overflow",
-    name: "span",
-    ts: treeTs,
-    duration_ms: 1,
-    status: "unset",
-    attrs: {},
-  }));
-  const overflowRes = await fetch(`${APP_URL}/v1/traces`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${INGEST_TOKEN}`,
-    },
-    body: JSON.stringify(toOtlpTracesJson(overflow)),
+  const spanBatch = (traceIdHex: string, count: number): Span[] =>
+    Array.from({ length: count }, (_, i) => ({
+      trace_id: traceIdHex,
+      span_id: (i + 1).toString(16).padStart(16, "0"),
+      parent_span_id: "",
+      service: "overflow",
+      name: "span",
+      ts: treeTs,
+      duration_ms: 1,
+      status: "unset",
+      attrs: {},
+    }));
+  const postSpans = (batch: Span[]) =>
+    fetch(`${APP_URL}/v1/traces`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${INGEST_TOKEN}`,
+      },
+      body: JSON.stringify(toOtlpTracesJson(batch)),
+    });
+
+  // An OpenTelemetry exporter batches 512 spans by default; a full batch is stored.
+  const batchTraceId = crypto.randomUUID().replaceAll("-", "");
+  const spanBatchRes = await postSpans(spanBatch(batchTraceId, 512));
+  const spanBatchJson = (await spanBatchRes.json()) as { ingested?: number };
+  if (spanBatchRes.status !== 200 || spanBatchJson.ingested !== 512) {
+    throw new Error(
+      `expected a 512-span OTLP batch to be stored, got ${spanBatchRes.status} ${JSON.stringify(spanBatchJson)}`,
+    );
+  }
+  const spanBatchGet = await fetch(`${APP_URL}/api/traces/${batchTraceId}`, {
+    headers: { authorization: basicAuth() },
   });
+  const spanBatchTotal = ((await spanBatchGet.json()) as { total?: number }).total;
+  if (spanBatchTotal !== 512) {
+    throw new Error(`expected 512 stored spans, trace total is ${spanBatchTotal}`);
+  }
+
+  const overflowRes = await postSpans(spanBatch("f".repeat(32), 1001));
   if (overflowRes.status !== 400) {
-    throw new Error(`expected 400 for 501 spans, got ${overflowRes.status}`);
+    throw new Error(`expected 400 for 1001 spans, got ${overflowRes.status}`);
   }
 
   const profileTs = new Date().toISOString();
