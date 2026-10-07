@@ -4,13 +4,15 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.4.11
+
 An [agent skill](skills/toposcope/SKILL.md) ships in the repo: one `SKILL.md` and one script. It stands up one Toposcope on the machine from the pinned release files (or uses the one running), writes the settings an app needs without printing a secret, and checks one test error end to end, answering **frames**, **message**, or **nothing arrived** with the `q` and window to paste. It carries the ingest guide’s *What an app sends* word for word. It talks only to 127.0.0.1, stops the instance when asked, and never removes data. No MCP server and no CLI. [#52](https://github.com/toposcope/toposcope/issues/52)
 
 The README quick start writes the three secrets into `.env` without printing them, instead of asking for three `openssl` outputs to be pasted in. A test runs those commands. `docs/operations.md` says what an idle instance takes, measured: about 1.7 GiB once ClickHouse has levelled off, a quarter of an hour after starting.
 
 The image is published for `linux/arm64` as well as `linux/amd64`. Earlier images are amd64 only, and on an arm64 host Docker refuses to pull one unless the `app` service names `platform: linux/amd64`.
 
-Unknown `/v1/*` paths, and a wrong method on an ingest path, return JSON **404** instead of the UI page or a plain-text 404. A sender with a typo in its endpoint no longer sees a 200 and a body it cannot parse. [#66](https://github.com/toposcope/toposcope/issues/66)
+Unknown `/v1/*` paths, and a wrong method on an ingest path, return JSON **404** instead of the UI page or a plain-text 404. That is the answer to a request signed in as the operator, such as a probe pointed at an ingest path; it no longer sees a 200 and a body it cannot parse. A request that carries only an ingest token gets **401** on those paths, as before. [#66](https://github.com/toposcope/toposcope/issues/66)
 
 An OTLP log record with no event time is stored at its observed time, when a collector set one, instead of the time it arrived. A batch that sat in a collector’s buffer no longer lands late on the clock or on the wrong side of a change mark. A record with both keeps its event time. [#65](https://github.com/toposcope/toposcope/issues/65)
 
