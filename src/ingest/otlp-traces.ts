@@ -1,6 +1,7 @@
-import { flattenAttrs } from "../shared/attrs";
+import { flattenAttrsCounted } from "../shared/attrs";
 import { otlpIdHex } from "../shared/ids";
 import { spanStatuses, type Span, type SpanStatus } from "../shared/span";
+import type { Losses } from "./otlp-reply";
 
 type Attr = {
   key?: string;
@@ -94,7 +95,8 @@ function list(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-export function mapOtlpTraces(payload: unknown): Span[] {
+/** `losses` is told of every span that is not stored, and of attributes a stored span lost. */
+export function mapOtlpTraces(payload: unknown, losses?: Losses): Span[] {
   if (!payload || typeof payload !== "object") {
     throw new Error("Expected an OTLP traces object");
   }
@@ -130,6 +132,7 @@ export function mapOtlpTraces(payload: unknown): Span[] {
         const traceId = otlpIdHex(row.traceId ?? row.trace_id);
         const spanId = otlpIdHex(row.spanId ?? row.span_id);
         if (!traceId || !spanId) {
+          losses?.reject("no trace id or span id");
           continue;
         }
         const startNano = nanoNumber(
@@ -150,6 +153,8 @@ export function mapOtlpTraces(payload: unknown): Span[] {
           attrs["status.message"] = statusRec.message;
         }
         const name = typeof row.name === "string" && row.name.length > 0 ? row.name : "span";
+        const flat = flattenAttrsCounted(attrs);
+        losses?.attrsCut(flat);
         spans.push({
           trace_id: traceId,
           span_id: spanId,
@@ -159,7 +164,7 @@ export function mapOtlpTraces(payload: unknown): Span[] {
           ts: tsFromNano(startNano) ?? new Date().toISOString(),
           duration_ms: durationMs,
           status,
-          attrs: flattenAttrs(attrs),
+          attrs: flat.attrs,
         });
       }
     }

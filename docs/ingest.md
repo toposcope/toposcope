@@ -22,7 +22,7 @@ The exception goes on the log record: `exception.type`, and either `exception.st
 
 ### Attributes
 
-A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is stored in lower case. `level`, `service`, `host`, `ts`, `message`, and `tenant_id` are taken. A row keeps 50 attributes. A key that breaks the rule, or one past the cap, is dropped with a 200. Nested values become JSON strings.
+A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is stored in lower case. `level`, `service`, `host`, `ts`, `message`, and `tenant_id` are taken. A row keeps 50 attributes. A key that breaks the rule, or one past the cap, is dropped with a 200; on the OTLP routes the reply says so. Nested values become JSON strings.
 
 ### Three ways in
 
@@ -64,7 +64,7 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
 
 | Status | Meaning | Sender |
 | --- | --- | --- |
-| `200` | Stored. `ingested` counts rows, not what each row kept. | — |
+| `200` | Stored. `ingested` counts rows, not what each row kept. On the OTLP routes `partialSuccess` counts the records that were not stored and says in one line what was rejected or cut. | Read `partialSuccess`; an exporter logs it. |
 | `400` | Unreadable body, an invalid row, or a batch over the [cap](#limits-and-responses). Nothing stored. | Fix it; an exporter does not retry, so the batch is gone. |
 | `401` | Missing or wrong token. | Fix the header. |
 | `404` | The token is good and the path is not an ingest route. | Fix the endpoint. |
@@ -86,7 +86,7 @@ curl -u "toposcope:${TOPOSCOPE_PASSWORD}" -X POST http://127.0.0.1:8080/api/api-
 
 HTTP ingest bodies are limited to 1 MB decoded. The OTLP routes — `POST /v1/logs`, `POST /v1/traces`, and `POST /v1/profiles` — take up to 1,024 log records, spans, or profiles in a request: twice the 512 an OpenTelemetry exporter batches by default. Every other endpoint takes at most 500 log events, metric points, change marks, or probes. A request over the cap is one **400** and stores nothing. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
 
-Successful requests return the number of ingested records. Invalid batches return a `4xx` response. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream.
+Successful requests return the number of ingested records. An OTLP request is answered in its own encoding: JSON keeps `{ "ingested": n }`, and protobuf gets an `Export…ServiceResponse`, empty when nothing was lost. When records were not stored, or were stored without something they were sent with, the reply carries OTLP’s partial success — in JSON `{ "ingested": 2, "partialSuccess": { "rejectedLogRecords": "1", "errorMessage": "no body: 1 rejected" } }` — still with a **200**, and the rest of the request is stored. The count is zero when everything was stored and something was cut, such as attributes past the cap. Invalid batches return a `4xx` response, in JSON. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream.
 
 ## Logs
 

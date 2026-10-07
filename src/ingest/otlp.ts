@@ -3,6 +3,7 @@ import { liftException } from "../shared/exception";
 import { liftIdentities } from "../shared/identity";
 import type { LogEvent, LogLevel } from "../shared/log-event";
 import { levels } from "../shared/log-event";
+import type { Losses } from "./otlp-reply";
 
 const otlpSeverityNumber: Record<LogLevel, number> = {
   debug: 5,
@@ -154,7 +155,8 @@ function bodyMessage(body: unknown): string {
   return "";
 }
 
-export function mapOtlpJson(payload: unknown): LogEvent[] {
+/** `losses` is told of every record that does not become a row. */
+export function mapOtlpJson(payload: unknown, losses?: Losses): LogEvent[] {
   if (!payload || typeof payload !== "object") {
     throw new Error("Expected an OTLP JSON object");
   }
@@ -194,6 +196,7 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
         const row = rec as Record<string, unknown>;
         const message = bodyMessage(row.body);
         if (message.length === 0) {
+          losses?.reject(row.body === undefined || row.body === null ? "no body" : "a body that is not a string");
           continue;
         }
         const severityText = typeof row.severityText === "string" ? row.severityText : undefined;

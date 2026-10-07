@@ -8,6 +8,7 @@ import {
 } from "./index";
 import { mapOtlpJson } from "./otlp";
 import { readOtlpBody } from "./otlp-body";
+import { Losses, otlpReply } from "./otlp-reply";
 import { decodeOtlpProtobuf, isOtlpProtobufContentType } from "./otlp-protobuf";
 
 function ingestFail(c: Context, err: unknown): Response {
@@ -44,9 +45,10 @@ export async function otlpLogsRoute(c: Context): Promise<Response> {
       400,
     );
   }
+  const losses = new Losses();
   let events;
   try {
-    events = mapOtlpJson(payload);
+    events = mapOtlpJson(payload, losses);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Invalid OTLP payload";
     return c.json({ error: message }, 400);
@@ -55,10 +57,10 @@ export async function otlpLogsRoute(c: Context): Promise<Response> {
     return c.json({ error: `Batch too large (max ${MAX_OTLP_BATCH})` }, 400);
   }
   try {
-    const ingested = await insertEvents(events);
+    const ingested = await insertEvents(events, losses);
     incMetric("otlp_events", ingested);
     incMetric("ingest_events", ingested);
-    return c.json({ ingested });
+    return otlpReply(c, "logs", ingested, losses);
   } catch (err) {
     return ingestFail(c, err);
   }

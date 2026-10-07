@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A 200 from an OTLP route now says what did not land. `POST /v1/logs`, `/v1/traces`, and `/v1/profiles` fill OTLP’s partial success: a count of the records that were not stored and one line of why, or a count of zero and a warning when everything was stored but something was cut, such as attributes past the 50-attribute cap. The rest of the request is still stored. A protobuf request is answered in protobuf, as the protocol says, so an exporter no longer logs that it could not read the reply; a JSON reply keeps `ingested` beside the new field. A request that cannot be read keeps its 4xx. [#69](https://github.com/toposcope/toposcope/issues/69)
+
 ## 0.4.12
 
 A request that carries a valid ingest token and a wrong path under `/v1/` is answered JSON **404**, not **401**. Only the ingest routes take a bearer token, so a sender with a typo in its endpoint was told its token was wrong. A token that was never issued still gets 401 there, and an ingest token still reads nothing under `/api/`. [#84](https://github.com/toposcope/toposcope/issues/84)
