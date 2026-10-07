@@ -17,6 +17,8 @@ export type SearchAggResult = {
   reason?: string;
   buckets: AggBucket[];
   stat: number | null;
+  /** For an ingested metric: how its bars were read. A counter is a sum per bar, a gauge an average. */
+  kind?: "gauge" | "counter";
 };
 
 export class InvalidAggError extends Error {

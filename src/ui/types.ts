@@ -62,6 +62,8 @@ export type SearchAggResult = {
   reason?: string;
   buckets: AggBucket[];
   stat: number | null;
+  /** For an ingested metric: a counter's bar is a sum, a gauge's an average. */
+  kind?: "gauge" | "counter";
 };
 
 export type FacetValue = { v: string; n: number };

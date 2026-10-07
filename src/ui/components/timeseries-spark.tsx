@@ -9,16 +9,11 @@ import {
   histogramSplits,
   type HistogramSplit,
 } from "../../query/histogram";
-import {
-  aggFromOpSelect,
-  applySeriesSelect,
-  numericPickerOps,
-  parseNumericPickerOp,
-  pickerMetricNames,
-  pickerNumericKeys,
-  seriesPickFromWidget,
-  seriesSelectValue,
-} from "../agg-picker";
+import { seriesPickFromWidget } from "../agg-picker";
+import { pickedEntry, useSeriesCatalog } from "../series-catalog";
+import { metricReading } from "../series-list";
+import { formatSpanShort } from "../time-range";
+import { SeriesPicker, SeriesReading } from "./series-picker";
 
 const LINE = "#a78bfa";
 
@@ -28,8 +23,9 @@ type Props = {
   agg: string | null;
   metric: string | null;
   aggResult: SearchAggResult | null;
-  numericKeys: string[];
-  metricNames: string[];
+  /** Kept for callers; the Series list reads the window's catalog itself. */
+  numericKeys?: string[];
+  metricNames?: string[];
   loading: boolean;
   onSplit: (next: HistogramSplit) => void;
   onAgg: (next: string | null) => void;
@@ -37,14 +33,21 @@ type Props = {
   updated?: ReactNode;
 };
 
+/** The bar width of a card's series, as the plot would label it. Empty when there are not two bars to tell. */
+export function bucketStepLabel(buckets: readonly HistogramBucket[]): string {
+  if (buckets.length < 2) {
+    return "";
+  }
+  const step = Date.parse(buckets[1]!.t) - Date.parse(buckets[0]!.t);
+  return Number.isFinite(step) && step > 0 ? formatSpanShort(step) : "";
+}
+
 export function TimeseriesSpark({
   buckets,
   split,
   agg,
   metric,
   aggResult,
-  numericKeys,
-  metricNames,
   loading,
   onSplit,
   onAgg,
@@ -54,8 +57,9 @@ export function TimeseriesSpark({
   const numeric = Boolean(agg || metric);
   const refused = aggResult?.source === "refused";
   const pick = seriesPickFromWidget(agg, metric);
-  const seriesKeysList = pickerNumericKeys(numericKeys, agg);
-  const metricNamesList = pickerMetricNames(metricNames, metric);
+  const catalog = useSeriesCatalog();
+  const metricKind = metric ? (aggResult?.kind ?? pickedEntry(catalog, metric)?.kind) : undefined;
+  const stepLabel = bucketStepLabel(buckets);
   const keys = seriesKeys(buckets, split);
   const peak = Math.max(1, ...buckets.map((bucket) => bucket.n));
   const times = buckets.map((bucket) => bucket.t);
@@ -76,8 +80,14 @@ export function TimeseriesSpark({
     .filter((pt): pt is string => pt !== null)
     .join(" ");
   const finiteVals = lineVals.filter((v): v is number => v !== null);
-  const peakLabel =
+  const peakText =
     finiteVals.length > 0 ? `peak ${formatAggStat(Math.max(...finiteVals))}` : "";
+  // A metric's tag names how it is read and what it is, since the footer has no room for either.
+  const peakLabel = metric
+    ? [metricReading(metricKind ?? "gauge", stepLabel), metricKind ?? "gauge", peakText || "no points"]
+        .filter(Boolean)
+        .join(" · ")
+    : peakText;
 
   return (
     <>
@@ -172,48 +182,15 @@ export function TimeseriesSpark({
             </option>
           ))}
         </select>
-        <select
-          className={cn(extraSelectClass, "flex-1")}
-          value={seriesSelectValue(pick)}
-          aria-label="Series"
-          onChange={(e) => onSeries(applySeriesSelect(e.target.value, pick))}
-        >
-          <option value="">Count</option>
-          <option value="rate">Rate</option>
-          {seriesKeysList.map((key) => (
-            <option key={key} value={`k:${key}`}>
-              {key}
-            </option>
-          ))}
-          {metricNamesList.map((name) => (
-            <option key={`m:${name}`} value={`m:${name}`}>
-              {name}
-            </option>
-          ))}
-        </select>
-        {pick.kind === "key" ? (
-          <select
-            className={cn(extraSelectClass, "w-[62px] shrink-0")}
-            value={pick.op}
-            aria-label="Reducer"
-            onChange={(e) => {
-              const op = parseNumericPickerOp(e.target.value);
-              if (!op) {
-                return;
-              }
-              const next = aggFromOpSelect(op, pick);
-              if (next) {
-                onAgg(next);
-              }
-            }}
-          >
-            {numericPickerOps.map((op) => (
-              <option key={op} value={op}>
-                {op}
-              </option>
-            ))}
-          </select>
-        ) : null}
+        <SeriesPicker
+          variant="footer"
+          card
+          pick={pick}
+          agg={agg}
+          kind={metricKind}
+          onSeries={onSeries}
+        />
+        <SeriesReading variant="footer" pick={pick} kind={metricKind} step={stepLabel} onAgg={onAgg} />
         {updated}
       </div>
     </>

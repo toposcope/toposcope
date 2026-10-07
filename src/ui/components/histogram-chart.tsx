@@ -35,17 +35,11 @@ import {
   type HistogramIntervalId,
   type HistogramSplit,
 } from "../../query/histogram";
-import {
-  aggFromOpSelect,
-  applySeriesSelect,
-  numericPickerOps,
-  parseNumericPickerOp,
-  pickerMetricNames,
-  pickerNumericKeys,
-  seriesPickFromWidget,
-  seriesSelectValue,
-} from "../agg-picker";
+import { seriesPickFromWidget } from "../agg-picker";
+import { pickedEntry, useSeriesCatalog } from "../series-catalog";
+import { metricReading, midCut, readingWords } from "../series-list";
 import { formatSpanShort } from "../time-range";
+import { SeriesPicker, SeriesReading } from "./series-picker";
 import { markPlotSpanMs } from "../change-marks";
 import {
   clickHistogramWindow,
@@ -225,7 +219,7 @@ function HistogramHover({
   split: HistogramSplit;
   left: number | string;
   side: "left" | "right";
-  overlay?: { label: string; v: number | null } | null;
+  overlay?: { label: string; v: number | null; reading?: string; words?: string } | null;
   hint: string;
   markLines?: ReturnType<typeof markHoverLines>;
 }) {
@@ -265,11 +259,17 @@ function HistogramHover({
             className="size-1.5 rounded-[2px]"
             style={{ background: AGG_COLOR }}
           />
-          <span className="max-w-24 truncate">{overlay.label}</span>
+          <span className="min-w-0 truncate font-mono text-[10.5px] text-foreground/85">
+            {overlay.reading ? <span style={{ color: AGG_COLOR }}>{overlay.reading} </span> : null}
+            {overlay.label}
+          </span>
           <span className="ml-auto font-mono tabular-nums text-foreground">
             {formatAggStat(overlay.v)}
           </span>
         </div>
+      ) : null}
+      {overlay?.words ? (
+        <div className="ml-3 text-[10px] text-muted-foreground">{overlay.words}</div>
       ) : null}
       {markLines.slice(0, 2).map((row) => (
         <div
@@ -317,8 +317,6 @@ export function HistogramChart({
   replaceY,
   onReplaceY,
   aggResult,
-  numericKeys,
-  metricNames,
   updated = null,
   className,
   compactToolbar = false,
@@ -372,8 +370,11 @@ export function HistogramChart({
   headArmedRef.current = headArmed;
 
   const seriesPick = seriesPickFromWidget(agg, metric);
-  const seriesKeysList = pickerNumericKeys(numericKeys, agg);
-  const metricNamesList = pickerMetricNames(metricNames, metric);
+  const catalog = useSeriesCatalog();
+  // How the picked metric's bars are read: from its series when it has one, else from what the window knows.
+  const metricKind = metric
+    ? (aggResult?.kind ?? pickedEntry(catalog, metric)?.kind)
+    : undefined;
   const keys = seriesKeys(buckets, split);
   const stacked = chart === "stacked";
   const asLine = chart === "line";
@@ -400,6 +401,8 @@ export function HistogramChart({
     buckets,
     histogramIntervalMsById[displayedHistogramInterval(spanMs, interval, chart)],
   );
+  /** The bar width as the plot labels it; a counter's reading carries it. */
+  const stepLabel = formatSpanShort(stepMs);
   const liveRef = useRef({ buckets, spanMs, stepMs, onWindow, retentionMs });
   liveRef.current = { buckets, spanMs, stepMs, onWindow, retentionMs };
   const hoverBucket = hover !== null ? buckets[hover] : undefined;
@@ -901,10 +904,21 @@ export function HistogramChart({
         )}`
       : "";
   const overlayLabel = aggResult?.expr ?? metric ?? agg ?? "";
+  // A metric is named with how it is read, first: a counter's sum is never read as a level.
+  const metricReadingText = metric ? metricReading(metricKind ?? "gauge", stepLabel) : "";
   const hoverOverlay =
     overlayOn && hover !== null
-      ? { label: overlayLabel, v: overlayValues[hover] ?? null }
+      ? metric
+        ? {
+            label: midCut(overlayLabel, 26),
+            v: overlayValues[hover] ?? null,
+            reading: metricReadingText,
+            words: readingWords(metricKind ?? "gauge", stepLabel),
+          }
+        : { label: overlayLabel, v: overlayValues[hover] ?? null }
       : null;
+  const metricQuiet =
+    Boolean(metric) && aggResult?.source === "metric" && aggResult.buckets.length === 0;
   const headDrag = Boolean(brush && brushRef.current?.head);
   const sweepBins = headDrag && brush ? Math.abs(brush.end - brush.start) + 1 : 0;
   const knobBin = headDrag && brush ? brush.end : hover;
@@ -1000,27 +1014,23 @@ export function HistogramChart({
           onCommit={onInterval}
         />
         <div className="h-4 w-px shrink-0 bg-border" />
-        <label className="flex shrink-0 items-center gap-2 text-[11.5px] text-muted-foreground">
-          Series
-          <select
-            className="h-[26px] max-w-[9rem] rounded-md border border-input bg-[#18181b] px-[5px] text-[11.5px] text-foreground"
-            value={seriesSelectValue(seriesPick)}
-            onChange={(e) => onSeries(applySeriesSelect(e.target.value, seriesPick))}
-          >
-            <option value="">Off</option>
-            <option value="rate">Rate</option>
-            {seriesKeysList.map((key) => (
-              <option key={key} value={`k:${key}`}>
-                {key}
-              </option>
-            ))}
-            {metricNamesList.map((name) => (
-              <option key={`m:${name}`} value={`m:${name}`}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex min-w-0 shrink items-center gap-2">
+          <span className="shrink-0 text-[11.5px] whitespace-nowrap text-muted-foreground">Series</span>
+          <SeriesPicker
+            variant="toolbar"
+            card={false}
+            pick={seriesPick}
+            agg={agg}
+            kind={metricKind}
+            onSeries={onSeries}
+          />
+          <SeriesReading
+            variant="toolbar"
+            pick={seriesPick}
+            kind={metricKind}
+            step={stepLabel}
+            onAgg={onAgg}
+          />
         {Object.entries(metricLabels).map(([key, value]) => (
           <button
             key={`${key}:${value}`}
@@ -1036,29 +1046,6 @@ export function HistogramChart({
             <span aria-hidden>×</span>
           </button>
         ))}
-        {seriesPick.kind === "key" ? (
-          <select
-            className="h-[26px] w-[4.75rem] rounded-md border border-input bg-[#18181b] px-[5px] text-[11.5px] text-foreground"
-            value={seriesPick.op}
-            aria-label="Series reducer"
-            onChange={(e) => {
-              const op = parseNumericPickerOp(e.target.value);
-              if (!op) {
-                return;
-              }
-              const next = aggFromOpSelect(op, seriesPick);
-              if (next) {
-                onAgg(next);
-              }
-            }}
-          >
-            {numericPickerOps.map((op) => (
-              <option key={op} value={op}>
-                {op}
-              </option>
-            ))}
-          </select>
-        ) : null}
         {agg || metric ? (
           <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
             <button
@@ -1077,6 +1064,7 @@ export function HistogramChart({
             </button>
           </div>
         ) : null}
+        </div>
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           {updated}
           <WidgetExportMenu
@@ -1460,7 +1448,8 @@ export function HistogramChart({
                 className="absolute left-0 whitespace-nowrap"
                 style={{ top: `${[0, 33.334, 66.667, 100][i]}%`, transform: "translateY(-50%)" }}
               >
-                {i === 3 ? "0" : formatAggStat(tick)}
+                {/* A series with no points gets a dash, not a scale for nothing. */}
+                {metricQuiet ? (i === 0 ? "—" : "") : i === 3 ? "0" : formatAggStat(tick)}
               </span>
             ))}
           </div>
@@ -1477,8 +1466,14 @@ export function HistogramChart({
             <span>{scanReason}</span>
           ) : aggResult?.source === "refused" ? (
             <span>{aggResult.reason}</span>
+          ) : metricQuiet ? (
+            <span className="text-amber-400">
+              ▲ {metric} has no points in {catalog.window ? `the last ${catalog.window}` : "this window"} — the line is
+              missing, not zero. It stays picked.
+            </span>
           ) : (
             <span className="font-mono tabular-nums">
+              {metricReadingText ? <span style={{ color: AGG_COLOR }}>{metricReadingText} </span> : null}
               {overlayLabel} {formatAggStat(aggResult?.stat)}
               {agg === "rate" ? "/s" : ""}
             </span>

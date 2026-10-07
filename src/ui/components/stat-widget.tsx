@@ -6,19 +6,22 @@ import type { SearchAggResult } from "@/types";
 import { seriesLabel } from "../../query/agg";
 import {
   aggFromOpSelect,
-  applySeriesSelect,
   numericPickerOps,
   parseNumericPickerOp,
   seriesPickFromWidget,
-  seriesPickerOptions,
-  seriesSelectValue,
 } from "../agg-picker";
+import { pickedEntry, useSeriesCatalog } from "../series-catalog";
+import { statWords } from "../series-list";
+import { SeriesPicker } from "./series-picker";
+
+const FN = "#a78bfa";
 
 type HeadProps = {
   agg: string | null;
   metric: string | null;
-  numericKeys: string[];
-  metricNames: string[];
+  /** Kept for callers; the Series list reads the window's catalog itself. */
+  numericKeys?: string[];
+  metricNames?: string[];
   usedSeries?: readonly string[];
   onAgg: (next: string | null) => void;
   onSeries: (next: { agg: string | null; metric: string | null }) => void;
@@ -36,17 +39,13 @@ type Props = {
 export function StatHead({
   agg,
   metric,
-  numericKeys,
-  metricNames,
-  usedSeries = [],
   onAgg,
   onSeries,
 }: HeadProps) {
   const pick = seriesPickFromWidget(agg === "count" ? null : agg, metric);
-  const seriesValue = seriesSelectValue(pick);
-  const seriesOpts = seriesPickerOptions(numericKeys, metricNames, agg, metric);
-  const seriesLabelText =
-    seriesOpts.find((item) => item.value === seriesValue)?.label ?? "Count";
+  const catalog = useSeriesCatalog();
+  const metricKind = metric ? (pickedEntry(catalog, metric)?.kind ?? "gauge") : undefined;
+  const named = pick.kind === "key" || pick.kind === "metric";
   return (
     <div className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
       {pick.kind === "key" ? (
@@ -68,17 +67,30 @@ export function StatHead({
           }}
         />
       ) : null}
-      <HeadPicker
-        kind="value"
-        label={seriesLabelText}
-        title={pick.kind === "key" ? "Series this function reduces" : "What this panel counts"}
-        value={seriesValue}
-        items={seriesOpts}
-        used={usedSeries}
-        pre={pick.kind === "key" ? "(" : undefined}
-        post={pick.kind === "key" ? ")" : undefined}
-        onChange={(next) => onSeries(applySeriesSelect(next, pick))}
+      {pick.kind === "metric" ? (
+        // A gauge's and a counter's function is not a choice, so it is not dashed.
+        <span
+          className="shrink-0 cursor-help px-px font-mono text-[11.5px] leading-[1.55] whitespace-nowrap"
+          style={{ color: FN }}
+          title={
+            metricKind === "counter"
+              ? "Counter — the sum of what arrived in the window. Not a level."
+              : "Gauge — a level. The average of the values sent in the window."
+          }
+        >
+          {metricKind === "counter" ? "sum" : "avg"}
+        </span>
+      ) : null}
+      {named ? <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">(</span> : null}
+      <SeriesPicker
+        variant="head"
+        card
+        pick={pick}
+        agg={agg === "count" ? null : agg}
+        kind={metricKind}
+        onSeries={onSeries}
       />
+      {named ? <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">)</span> : null}
     </div>
   );
 }
@@ -91,6 +103,7 @@ export function StatWidget({
   loading,
   updated = null,
 }: Props) {
+  const catalog = useSeriesCatalog();
   const isCount = !metric && (!agg || agg === "count");
   const label = metric
     ? (aggResult?.expr ?? metric)
@@ -99,6 +112,14 @@ export function StatWidget({
       : agg === "rate"
         ? "rate"
         : agg ?? "count";
+  // A metric's one number is named by how it was read: a counter's is a sum, never a level.
+  const metricKind = metric ? (aggResult?.kind ?? pickedEntry(catalog, metric)?.kind ?? "gauge") : null;
+  const quiet = Boolean(metric) && aggResult?.source === "metric" && aggResult.stat === null;
+  const note = metricKind
+    ? quiet
+      ? `no points ${catalog.window ? `in the last ${catalog.window}` : "in this window"} · ${metricKind}`
+      : statWords(metricKind, catalog.window)
+    : `window ${label}`;
   const value = isCount
     ? abbrevCount(total)
     : aggResult?.source === "refused"
@@ -122,10 +143,10 @@ export function StatWidget({
             </div>
             <div
               className={`mt-[3px] truncate text-[10.5px] ${
-                aggResult?.source === "refused" ? "text-amber-400" : "text-muted-foreground"
+                aggResult?.source === "refused" || quiet ? "text-amber-400" : "text-muted-foreground"
               }`}
             >
-              {aggResult?.source === "refused" ? aggResult.reason : `window ${label}`}
+              {aggResult?.source === "refused" ? aggResult.reason : note}
               {updated}
             </div>
           </>

@@ -191,6 +191,8 @@ import {
   type RangeMode,
 } from "./search-url";
 import { SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./time-range";
+import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
+import type { MetricEntry } from "./series-list";
 import { windowHead, windowMeta } from "./window-identity";
 import { followQuery, followWindow } from "./follow";
 import {
@@ -202,6 +204,25 @@ import {
 } from "./live-widget-clock";
 
 const emptyFacets: Facets = { level: [], service: [], host: [] };
+
+type MetricNamesReply = {
+  keys: Array<{ k: string; n: number; kind?: MetricEntry["kind"] }>;
+  total?: number;
+  picked?: Array<{ k: string; n: number; kind?: MetricEntry["kind"] }>;
+};
+
+function metricEntry(item: MetricNamesReply["keys"][number]): MetricEntry {
+  return { name: item.k, kind: item.kind ?? "gauge", points: item.n };
+}
+
+/** A metric list is asked for by window alone: the log query does not filter metrics. */
+function metricWindowParams(query: string): URLSearchParams {
+  const params = new URLSearchParams(query);
+  for (const key of ["q", "agg", "metric", "ml"]) {
+    params.delete(key);
+  }
+  return params;
+}
 
 function facetOnlyParams(facetQuery: string): URLSearchParams {
   const params = new URLSearchParams(facetQuery);
@@ -459,6 +480,15 @@ export function App() {
   const [attrKeysLoading, setAttrKeysLoading] = useState(false);
   const [numericKeys, setNumericKeys] = useState<string[]>([]);
   const [metricNames, setMetricNames] = useState<string[]>([]);
+  /** The same names with their kinds, how many there are in all, and the ones cards already hold. */
+  const [metricCatalog, setMetricCatalog] = useState<{
+    entries: MetricEntry[];
+    total: number;
+    picked: Record<string, MetricEntry>;
+  }>({ entries: [], total: 0, picked: {} });
+  /** The window the names were last asked for, to ask it for more by name. */
+  const metricWindowRef = useRef("");
+  const pickedMetricsRef = useRef<string[]>([]);
   const [saved, setSaved] = useState<SavedSearch[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -768,26 +798,48 @@ export function App() {
   const loadMetricNames = useCallback(async (query: string) => {
     const gen = viewGenRef.current;
     try {
-      const params = new URLSearchParams(query);
-      params.delete("q");
-      params.delete("agg");
-      params.delete("metric");
-      params.delete("ml");
+      const params = metricWindowParams(query);
+      metricWindowRef.current = params.toString();
+      if (pickedMetricsRef.current.length > 0) {
+        params.set("picked", pickedMetricsRef.current.join(","));
+      }
       const res = await fetch(`/api/metric-names?${params.toString()}`);
       if (viewGenRef.current !== gen) {
         return;
       }
       if (!res.ok) {
         setMetricNames([]);
+        setMetricCatalog({ entries: [], total: 0, picked: {} });
         return;
       }
-      const json = (await res.json()) as { keys: Array<{ k: string; n: number }> };
+      const json = (await res.json()) as MetricNamesReply;
       setMetricNames(json.keys.map((item) => item.k));
+      setMetricCatalog({
+        entries: json.keys.map(metricEntry),
+        total: json.total ?? json.keys.length,
+        picked: Object.fromEntries((json.picked ?? []).map((item) => [item.k, metricEntry(item)])),
+      });
     } catch {
       if (viewGenRef.current !== gen) {
         return;
       }
       setMetricNames([]);
+      setMetricCatalog({ entries: [], total: 0, picked: {} });
+    }
+  }, []);
+
+  /** Names past the ones loaded, asked for by any part of the name. */
+  const findMetrics = useCallback(async (find: string): Promise<MetricEntry[]> => {
+    try {
+      const params = new URLSearchParams(metricWindowRef.current);
+      params.set("find", find);
+      const res = await fetch(`/api/metric-names?${params.toString()}`);
+      if (!res.ok) {
+        return [];
+      }
+      return ((await res.json()) as MetricNamesReply).keys.map(metricEntry);
+    } catch {
+      return [];
     }
   }, []);
 
@@ -3146,6 +3198,22 @@ export function App() {
   });
   const inFlightDim = searching && (events.length > 0 || histogram.length > 0);
   const spanMs = searchSpanMs(range, from, to, live, liveWindowMs.current);
+  // What the Series control can offer in this window. The pinned plot is a widget too.
+  pickedMetricsRef.current = [
+    ...new Set(widgets.map((widget) => widget.metric).filter((name): name is string => Boolean(name))),
+  ];
+  const seriesCatalog = useMemo<SeriesCatalog>(
+    () => ({
+      numericKeys,
+      metrics: metricCatalog.entries,
+      metricTotal: metricCatalog.total,
+      picked: metricCatalog.picked,
+      window: range === "custom" ? "" : range,
+      live,
+      find: findMetrics,
+    }),
+    [numericKeys, metricCatalog, range, live, findMetrics],
+  );
   const windowFromMs = histogram[0]
     ? Date.parse(histogram[0].t)
     : Date.parse(isoFromLocal(from) ?? "");
@@ -3829,112 +3897,114 @@ export function App() {
                 inFlightDim ? "pointer-events-none opacity-50" : "",
               )}
             >
-              <WidgetCanvas
-                widgets={widgets}
-                logs={logsOn}
-                onLogs={(on) => {
-                  if (on === logsOn) {
-                    return;
+              <SeriesCatalogContext.Provider value={seriesCatalog}>
+                <WidgetCanvas
+                  widgets={widgets}
+                  logs={logsOn}
+                  onLogs={(on) => {
+                    if (on === logsOn) {
+                      return;
+                    }
+                    setLogsOn(on);
+                    if (!on) {
+                      setDetailOpen(false);
+                      setPinnedEvent(null);
+                      setActiveInspect(null);
+                      setInspectTabs([]);
+                    }
+                    void runSearch("replace", { logs: on });
+                  }}
+                  onWidgets={(next) => {
+                    const prevQueries = widgetSeriesQueries(widgets);
+                    const nextQueries = widgetSeriesQueries(next);
+                    const prevPrimary = primaryTimeseries(widgets);
+                    const nextPrimary = primaryTimeseries(next);
+                    const prevHbar = widgetHbarFetch(widgets);
+                    const nextHbar = widgetHbarFetch(next);
+                    setWidgets(next);
+                    if (nextPrimary) {
+                      setSplit(nextPrimary.split);
+                      setChart(nextPrimary.chart);
+                      setLogScale(nextPrimary.logScale);
+                      setAgg(nextPrimary.agg);
+                      setReplaceY(nextPrimary.replaceY);
+                    }
+                    const queriesChanged =
+                      JSON.stringify(prevQueries) !== JSON.stringify(nextQueries);
+                    const stepWouldChange = histogramChartNeedsRefetch(
+                      spanMs,
+                      step,
+                      prevPrimary?.chart ?? "stacked",
+                      nextPrimary?.chart ?? "stacked",
+                    );
+                    if (queriesChanged || stepWouldChange) {
+                      void runSearch("replace", {
+                        split: nextPrimary?.split,
+                        chart: nextPrimary?.chart,
+                        agg: nextPrimary?.agg ?? null,
+                        metric: nextPrimary?.metric ?? null,
+                        metricLabels: nextPrimary?.metricLabels ?? {},
+                        widgets: next,
+                      });
+                    } else if (
+                      hbarFetchNeedsNetwork(prevHbar, nextHbar) ||
+                      nextHbar.none !== prevHbar.none
+                    ) {
+                      void refreshHbarSeries(next);
+                    }
+                  }}
+                  series={seriesByKey}
+                  loading={searching}
+                  live={live}
+                  numericKeys={numericKeys}
+                  metricNames={metricNames}
+                  attrKeys={chartAttrKeyOptions.map((item) => item.k)}
+                  skipAttrKeys={skipFacetKeys}
+                  spanMs={spanMs}
+                  interval={step}
+                  onInterval={(next) => {
+                    setStep(next);
+                    void runSearch("replace", { step: next });
+                  }}
+                  onWindow={onHistogramWindow}
+                  onCommand={onHbarCommand}
+                  locked={boardOn}
+                  retentionMs={retentionRangeMs(retentionDays)}
+                  scanReason={
+                    scanRefuse?.histogram ? scanRefuse.reason : null
                   }
-                  setLogsOn(on);
-                  if (!on) {
-                    setDetailOpen(false);
-                    setPinnedEvent(null);
-                    setActiveInspect(null);
-                    setInspectTabs([]);
+                  marks={marksOverlay}
+                  focusMarkId={focusMarkId}
+                  onFocusMark={setFocusMarkId}
+                  compareFold={
+                    compare && !isSurr && !boardOn
+                      ? {
+                          mark: compare.mark,
+                          openedAt: compare.openedAt,
+                          q,
+                          agg: pinnedSeries?.metric
+                            ? null
+                            : (pinnedSeries?.agg ?? agg),
+                          metric: pinnedSeries?.metric ?? null,
+                          ml: formatMetricLabels(pinnedSeries?.metricLabels ?? {}),
+                          live,
+                          from,
+                          to,
+                          spanMs,
+                          huntFromMs: windowFromMs,
+                          huntToMs: windowToMs,
+                          onClose: () => setCompare(null),
+                        }
+                      : null
                   }
-                  void runSearch("replace", { logs: on });
-                }}
-                onWidgets={(next) => {
-                  const prevQueries = widgetSeriesQueries(widgets);
-                  const nextQueries = widgetSeriesQueries(next);
-                  const prevPrimary = primaryTimeseries(widgets);
-                  const nextPrimary = primaryTimeseries(next);
-                  const prevHbar = widgetHbarFetch(widgets);
-                  const nextHbar = widgetHbarFetch(next);
-                  setWidgets(next);
-                  if (nextPrimary) {
-                    setSplit(nextPrimary.split);
-                    setChart(nextPrimary.chart);
-                    setLogScale(nextPrimary.logScale);
-                    setAgg(nextPrimary.agg);
-                    setReplaceY(nextPrimary.replaceY);
+                  anchorTs={
+                    activeInspect?.kind === "trace" ||
+                    activeInspect?.kind === "profile"
+                      ? activeInspect.ts
+                      : null
                   }
-                  const queriesChanged =
-                    JSON.stringify(prevQueries) !== JSON.stringify(nextQueries);
-                  const stepWouldChange = histogramChartNeedsRefetch(
-                    spanMs,
-                    step,
-                    prevPrimary?.chart ?? "stacked",
-                    nextPrimary?.chart ?? "stacked",
-                  );
-                  if (queriesChanged || stepWouldChange) {
-                    void runSearch("replace", {
-                      split: nextPrimary?.split,
-                      chart: nextPrimary?.chart,
-                      agg: nextPrimary?.agg ?? null,
-                      metric: nextPrimary?.metric ?? null,
-                      metricLabels: nextPrimary?.metricLabels ?? {},
-                      widgets: next,
-                    });
-                  } else if (
-                    hbarFetchNeedsNetwork(prevHbar, nextHbar) ||
-                    nextHbar.none !== prevHbar.none
-                  ) {
-                    void refreshHbarSeries(next);
-                  }
-                }}
-                series={seriesByKey}
-                loading={searching}
-                live={live}
-                numericKeys={numericKeys}
-                metricNames={metricNames}
-                attrKeys={chartAttrKeyOptions.map((item) => item.k)}
-                skipAttrKeys={skipFacetKeys}
-                spanMs={spanMs}
-                interval={step}
-                onInterval={(next) => {
-                  setStep(next);
-                  void runSearch("replace", { step: next });
-                }}
-                onWindow={onHistogramWindow}
-                onCommand={onHbarCommand}
-                locked={boardOn}
-                retentionMs={retentionRangeMs(retentionDays)}
-                scanReason={
-                  scanRefuse?.histogram ? scanRefuse.reason : null
-                }
-                marks={marksOverlay}
-                focusMarkId={focusMarkId}
-                onFocusMark={setFocusMarkId}
-                compareFold={
-                  compare && !isSurr && !boardOn
-                    ? {
-                        mark: compare.mark,
-                        openedAt: compare.openedAt,
-                        q,
-                        agg: pinnedSeries?.metric
-                          ? null
-                          : (pinnedSeries?.agg ?? agg),
-                        metric: pinnedSeries?.metric ?? null,
-                        ml: formatMetricLabels(pinnedSeries?.metricLabels ?? {}),
-                        live,
-                        from,
-                        to,
-                        spanMs,
-                        huntFromMs: windowFromMs,
-                        huntToMs: windowToMs,
-                        onClose: () => setCompare(null),
-                      }
-                    : null
-                }
-                anchorTs={
-                  activeInspect?.kind === "trace" ||
-                  activeInspect?.kind === "profile"
-                    ? activeInspect.ts
-                    : null
-                }
-              />
+                />
+              </SeriesCatalogContext.Provider>
             </div>
             {logsOn ? (
               <>
