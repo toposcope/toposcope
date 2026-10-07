@@ -41,6 +41,18 @@ function normalizedFile(file: string): string {
 }
 
 /**
+ * PHP 8.4 names a closure with where it was declared: `{closure:/app/index.php:15}`.
+ * Hash it without the line, and with a path normalized like a frame's file.
+ */
+function normalizedFunction(fn: string): string {
+  return fn
+    .replace(/\{closure:([^{}]*):\d+\}/g, (_match, scope: string) =>
+      `{closure:${/^(?:\/|[a-z]:[\\/])/i.test(scope) ? normalizedFile(scope) : scope}}`,
+    )
+    .toLowerCase();
+}
+
+/**
  * Fold ids, IPs, timestamps, and digit runs so the same bug hashes together.
  * Does not parse stacks — that is `liftException`.
  */
@@ -71,7 +83,7 @@ export function computeFingerprint(
     const used = framesForHash(frames);
     return hashParts([
       type,
-      ...used.flatMap((frame) => [normalizedFile(frame.file), frame.function.toLowerCase()]),
+      ...used.flatMap((frame) => [normalizedFile(frame.file), normalizedFunction(frame.function)]),
     ]);
   }
   if (type.length > 0 || level === "error" || level === "fatal") {

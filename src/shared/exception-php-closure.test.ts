@@ -29,4 +29,36 @@ describe("PHP closure frame named with its file", () => {
   test("the id does not move when the closure's line number changes", () => {
     expect(e1("/app", 17)).toBe(e1("/app")!);
   });
+
+  test("a closure declared in a method does not move with its line number either", () => {
+    const inMethod = (line: number) =>
+      computeFingerprint(
+        "error",
+        "order has no card",
+        liftException({
+          "exception.type": "DomainException",
+          "exception.stacktrace": [
+            "DomainException: order has no card in /app/src/Billing.php:12",
+            "Stack trace:",
+            `#0 /app/src/Checkout.php(31): {closure:App\\Checkout::pay():${line}}(Array)`,
+            "#1 {main}",
+          ].join("\n"),
+        }),
+      );
+    expect(inMethod(29)).toBe(inMethod(27)!);
+  });
+
+  test("a PHP 8.3 `{closure}` frame keeps the id it had", () => {
+    const attrs = liftException({
+      "exception.type": "DomainException",
+      "exception.stacktrace": [
+        "DomainException: order has no card in /app/src/Billing.php:12",
+        "Stack trace:",
+        "#0 /app/public/index.php(16): Billing\\Billing->charge(Array)",
+        "#1 /app/vendor/slim/slim/Slim/Handlers/Strategies/RequestResponse.php(39): {closure}(Object(Slim\\Psr7\\Request), Object(Slim\\Psr7\\Response), Array)",
+        "#2 {main}",
+      ].join("\n"),
+    });
+    expect(computeFingerprint("error", "order has no card", attrs)).toBe("7b241ba87454d9d5");
+  });
 });

@@ -15,9 +15,7 @@ const versions = (await Bun.file(`${fixtures}/versions.json`).json()) as {
 const checkouts = ["app", "usr-src-app"] as const;
 
 /** Findings from real output. Each is a named bug in the bug loop; unpin when it is fixed. */
-const pinned: Record<string, string> = {
-  php: "a PHP closure frame carries the checkout path in its function name",
-};
+const pinned: Record<string, string> = {};
 
 async function captured(runtime: string, checkout: (typeof checkouts)[number]) {
   const stacktrace = await Bun.file(`${fixtures}/stacks/${runtime}.${checkout}.txt`).text();
