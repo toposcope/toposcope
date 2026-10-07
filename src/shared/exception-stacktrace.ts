@@ -44,7 +44,8 @@ export function parseExceptionStacktrace(raw: unknown, maxFrames: number): Excep
       parsed = frame(match[1]!, match[2]!);
     } else if ((match = line.match(/^\s*at (.+?) \((.+):\d+:\d+\)\s*$/))) {
       parsed = frame(match[2]!, match[1]!);
-    } else if ((match = line.match(/^\s*at (.+):\d+:\d+\s*$/))) {
+    } else if ((match = line.match(/^\s*at (?:async )?(.+):\d+:\d+\s*$/))) {
+      // V8 prints an anonymous async frame as `at async <path>`; the file is the path.
       parsed = frame(match[1]!, "", true);
     } else if ((match = line.match(/^\s*at ([^\s(]+)\(([^)]+):\d+\)\s*$/))) {
       parsed = frame(match[2]!, match[1]!);

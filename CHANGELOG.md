@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A Node `at async /path/file.js:12:5` frame is read as that file. Before, `async` was taken as part of the path, the path was hashed as written, and the same error got a new `e1` in every deploy directory. Errors with such a frame get a new id once at upgrade; old rows are not rewritten. [#63](https://github.com/toposcope/toposcope/issues/63)
+
 A Python traceback deeper than 50 frames keeps the 50 nearest the raise instead of the outermost 50, so two errors under the same framework frames no longer share one `e1`. Deep Python stacks get a new id once at upgrade; old rows are not rewritten. [#62](https://github.com/toposcope/toposcope/issues/62)
 
 ## 0.4.10
