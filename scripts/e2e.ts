@@ -1904,6 +1904,50 @@ async function main(): Promise<void> {
   ) {
     throw new Error(`expected a protobuf partial success, got ${partialProtoRes.status} ${JSON.stringify(partialProto)}`);
   }
+
+  // A map body is kept: found by a word in its message, filterable by one of its top-level fields.
+  const mapBodyMarker = `mapbody${Date.now()}`;
+  const mapBodyRes = await fetch(`${APP_URL}/v1/logs`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+    body: JSON.stringify({
+      resourceLogs: [
+        {
+          resource: { attributes: [{ key: "service.name", value: { stringValue: "otlp-e2e" } }] },
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  severityText: "ERROR",
+                  body: {
+                    kvlistValue: {
+                      values: [
+                        { key: "message", value: { stringValue: `charge failed ${mapBodyMarker}` } },
+                        { key: "order_ref", value: { stringValue: mapBodyMarker } },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!mapBodyRes.ok) {
+    throw new Error(`map body ingest failed: ${mapBodyRes.status} ${await mapBodyRes.text()}`);
+  }
+  for (const q of [mapBodyMarker, `order_ref:${mapBodyMarker}`]) {
+    const found = await fetch(
+      `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q }).toString()}`,
+      { headers: { authorization: basicAuth() } },
+    );
+    const body = (await found.json()) as { events?: Array<{ message: string }> };
+    if (body.events?.[0]?.message !== `charge failed ${mapBodyMarker}`) {
+      throw new Error(`expected the map-body row for q=${q}, got ${JSON.stringify(body.events?.slice(0, 1))}`);
+    }
+  }
   const otlpProtoSearch = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: otlpProtoMarker }).toString()}`,
     { headers: { authorization: basicAuth() } },

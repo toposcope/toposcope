@@ -144,15 +144,55 @@ function tsFromNano(nano: string | number | undefined): string | undefined {
   return new Date(n / 1_000_000).toISOString();
 }
 
-function bodyMessage(body: unknown): string {
-  if (!body || typeof body !== "object") {
-    return "";
+/** The row's own columns. A map body often repeats them; they are not attributes. */
+const rowColumns = new Set(["level", "service", "host", "ts", "message", "tenant_id"]);
+
+type BodyRead =
+  | { message: string; fields?: Record<string, unknown> }
+  | { rejected: string };
+
+/**
+ * A record's line, and what a map body adds to its attributes. A string is the
+ * line. A number or a boolean becomes its text. A map gives its `message` or
+ * `msg` as the line, or itself as JSON, and its other top-level fields as
+ * attributes. With no body, the event name is the line.
+ */
+function readBody(body: unknown, eventName: unknown): BodyRead {
+  const value = (body && typeof body === "object" ? body : {}) as AnyVal & {
+    bytesValue?: unknown;
+  };
+  if (typeof value.stringValue === "string" && value.stringValue.length > 0) {
+    return { message: value.stringValue };
   }
-  const rec = body as Record<string, unknown>;
-  if (typeof rec.stringValue === "string") {
-    return rec.stringValue;
+  if (value.intValue !== undefined || value.doubleValue !== undefined) {
+    return { message: String(decodeAny(value)) };
   }
-  return "";
+  if (value.boolValue !== undefined) {
+    return { message: String(value.boolValue) };
+  }
+  if (value.kvlistValue?.values && value.kvlistValue.values.length > 0) {
+    const map = decodeAny(value) as Record<string, unknown>;
+    const lineKey = ["message", "msg"].find(
+      (key) => typeof map[key] === "string" && (map[key] as string).length > 0,
+    );
+    const fields: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(map)) {
+      if (key !== lineKey && !rowColumns.has(key.toLowerCase())) {
+        fields[key] = field;
+      }
+    }
+    return { message: lineKey ? (map[lineKey] as string) : JSON.stringify(map), fields };
+  }
+  if (value.arrayValue?.values && value.arrayValue.values.length > 0) {
+    return { message: JSON.stringify(decodeAny(value)) };
+  }
+  if (value.bytesValue !== undefined) {
+    return { rejected: "a body of bytes" };
+  }
+  if (typeof eventName === "string" && eventName.length > 0) {
+    return { message: eventName };
+  }
+  return { rejected: "no body" };
 }
 
 /** `losses` is told of every record that does not become a row. */
@@ -194,19 +234,26 @@ export function mapOtlpJson(payload: unknown, losses?: Losses): LogEvent[] {
           continue;
         }
         const row = rec as Record<string, unknown>;
-        const message = bodyMessage(row.body);
-        if (message.length === 0) {
-          losses?.reject(row.body === undefined || row.body === null ? "no body" : "a body that is not a string");
+        const body = readBody(row.body, row.eventName);
+        if ("rejected" in body) {
+          losses?.reject(body.rejected);
           continue;
         }
+        const message = body.message;
         const severityText = typeof row.severityText === "string" ? row.severityText : undefined;
         const severityNumber =
           typeof row.severityNumber === "number" ? row.severityNumber : undefined;
         // Order is what the 50-key cap keeps: the record's own attributes with
-        // the frames read from its stack, then its trace and span ids, then the
-        // resource's.
+        // the frames read from its stack, then a map body's fields, then its
+        // trace and span ids, then the resource's.
         const attrs =
           liftException(attrRecord(row.attributes as Attr[] | undefined, new Set())) ?? {};
+        // A map body's fields count with the record's own attributes, after them.
+        for (const [key, value] of Object.entries(body.fields ?? {})) {
+          if (!(key in attrs)) {
+            attrs[key] = value;
+          }
+        }
         const traceId = otlpIdHex(row.traceId);
         const spanId = otlpIdHex(row.spanId);
         if (traceId && attrs.trace_id === undefined) {
