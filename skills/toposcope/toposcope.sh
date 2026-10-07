@@ -4,7 +4,7 @@
 # Stops the instance when asked and never removes data.
 set -euo pipefail
 
-VERSION="0.4.10"
+VERSION="0.4.11"
 IMAGE="ghcr.io/toposcope/toposcope:$VERSION"
 RELEASE="https://github.com/toposcope/toposcope/releases/download/v$VERSION"
 ROOT="${TOPOSCOPE_DIR:-$HOME/.toposcope}"
