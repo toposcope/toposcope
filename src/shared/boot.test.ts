@@ -6,6 +6,10 @@ import {
   type BootPhase,
 } from "./boot";
 
+const pkg = (await Bun.file(`${import.meta.dir}/../../package.json`).json()) as {
+  version: string;
+};
+
 describe("healthFromPings", () => {
   test("200 only when ready and both stores ping", () => {
     expect(
@@ -18,6 +22,7 @@ describe("healthFromPings", () => {
       phase: "schema",
       clickhouse: true,
       sqlite: true,
+      version: pkg.version,
     });
     expect(
       healthFromPings("ready", { clickhouse: true, sqlite: false }).status,
@@ -31,6 +36,7 @@ describe("healthFromPings", () => {
         phase: "ready",
         clickhouse: true,
         sqlite: true,
+        version: pkg.version,
       },
     });
   });
@@ -72,13 +78,16 @@ describe("boot gate", () => {
     expect(await closed.json()).toEqual({ error: "not ready", phase: "schema" });
     const health = await app.request("/api/health");
     expect(health.status).toBe(503);
-    expect(((await health.json()) as { phase: string }).phase).toBe("schema");
+    const waiting = (await health.json()) as { phase: string; version: string };
+    expect(waiting.phase).toBe("schema");
+    expect(waiting.version).toBe(pkg.version);
 
     phase = "ready";
     const open = await app.request("/api/search");
     expect(open.status).toBe(200);
     const ready = await app.request("/api/health");
     expect(ready.status).toBe(200);
+    expect(((await ready.json()) as { version: string }).version).toBe(pkg.version);
   });
 });
 

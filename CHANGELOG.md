@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+`GET /api/health` carries `version`: the running release, the same string as `package.json` and the image tag. An install, an upgrade script, or the agent skill can confirm which Toposcope is answering. The route stays open and stays **503** until ready. [#49](https://github.com/toposcope/toposcope/issues/49)
+
 ## 0.4.9
 
 Framed errors keep the same `e1` across dated release directories and common deployment roots. Hashing normalizes source paths without changing stored frames. Ingest also reads known Node/V8, Python, JVM, .NET, PHP, and Go `exception.stacktrace` formats when no valid `exception.frames` arrive. Unknown formats keep the type plus stabilized log-body fallback. Old rows are not rewritten; corrected inputs can receive a new id once at upgrade. See the [ingest guide](docs/ingest.md#exception-fingerprints).

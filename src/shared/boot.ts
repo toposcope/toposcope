@@ -1,3 +1,5 @@
+import { version } from "./version";
+
 export const bootPhases = ["starting", "schema", "repair", "ready"] as const;
 export type BootPhase = (typeof bootPhases)[number];
 
@@ -6,6 +8,7 @@ export type Health = {
   phase: BootPhase;
   clickhouse: boolean;
   sqlite: boolean;
+  version: string;
 };
 
 export function healthFromPings(
@@ -19,6 +22,7 @@ export function healthFromPings(
       phase,
       clickhouse: pings.clickhouse,
       sqlite: pings.sqlite,
+      version,
     },
     status: ok ? 200 : 503,
   };

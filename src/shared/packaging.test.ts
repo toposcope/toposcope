@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ghcrAppPin } from "../../scripts/check-release-pin";
+import { healthFromPings } from "./boot";
 
 const root = `${import.meta.dir}/../..`;
 
@@ -26,6 +27,16 @@ describe("packaged compose", () => {
     expect(yaml).toContain("127.0.0.1:8080:8080");
     expect(yaml).toContain("TOPOSCOPE_PASSWORD: ${TOPOSCOPE_PASSWORD:?");
     expect(yaml).toContain("memory: 4G");
+  });
+
+  test("health reports the package version, which is the image pin", async () => {
+    const yaml = await Bun.file(`${root}/compose.yml`).text();
+    const version = (
+      (await Bun.file(`${root}/package.json`).json()) as { version: string }
+    ).version;
+    const health = healthFromPings("ready", { clickhouse: true, sqlite: true }).body;
+    expect(health.version).toBe(version);
+    expect(ghcrAppPin(yaml)).toBe(health.version);
   });
 
   test("healthchecks /api/health so a long migrate can answer 503", async () => {
