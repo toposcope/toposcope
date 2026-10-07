@@ -62,17 +62,27 @@ compose() {
   (cd "$ROOT" && docker compose "$@")
 }
 
+machine_arch() {
+  case "$(uname -m)" in
+    arm64 | aarch64) printf 'arm64' ;;
+    x86_64 | amd64) printf 'amd64' ;;
+    *) uname -m ;;
+  esac
+}
+
+# The architectures the app image is published for, space separated. Empty when it cannot be read.
+image_archs() {
+  local found
+  found="$(docker manifest inspect -v "$IMAGE" 2>/dev/null |
+    sed -n 's/.*"architecture": *"\([^"]*\)".*/\1/p' | grep -v unknown | sort -u | tr '\n' ' ' || true)"
+  printf '%s' "${found% }"
+}
+
 cmd_cost() {
   need docker
   local machine arch
-  case "$(uname -m)" in
-    arm64 | aarch64) machine="arm64" ;;
-    x86_64 | amd64) machine="amd64" ;;
-    *) machine="$(uname -m)" ;;
-  esac
-  arch="$(docker manifest inspect -v "$IMAGE" 2>/dev/null |
-    sed -n 's/.*"architecture": *"\([^"]*\)".*/\1/p' | grep -v unknown | sort -u | tr '\n' ' ' || true)"
-  arch="${arch% }"
+  machine="$(machine_arch)"
+  arch="$(image_archs)"
 
   printf 'Standing up Toposcope %s on this machine will:\n' "$VERSION"
   printf -- '- start two containers, ClickHouse and the app, published only on 127.0.0.1 (8080, and 5514/udp for syslog)\n'
@@ -128,6 +138,15 @@ cmd_up() {
     for key in CLICKHOUSE_PASSWORD TOPOSCOPE_PASSWORD TOPOSCOPE_INGEST_TOKEN; do
       [ -n "$(env_value "$key")" ] || die "$key was not written to $ROOT/.env: the release's env.example has changed. Nothing was started."
     done
+  fi
+
+  # An image with no build for this machine is not pulled at all unless its
+  # platform is named. Compose reads compose.override.yml beside compose.yml.
+  local machine arch
+  machine="$(machine_arch)"
+  arch="$(image_archs)"
+  if [ -n "$arch" ] && ! printf ' %s ' "$arch" | grep -q " $machine " && [ ! -f "$ROOT/compose.override.yml" ]; then
+    printf 'services:\n  app:\n    platform: linux/%s\n' "${arch%% *}" >"$ROOT/compose.override.yml"
   fi
 
   compose up -d --quiet-pull >/dev/null 2>"$ROOT/up.log" ||
