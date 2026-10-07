@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+The ingest guide opens with **What an app sends**: the fields a row needs for hunt, the exception fields an error row needs for a stack fingerprint, the attribute rules and what is dropped with a 200, the three ways a row arrives, and what each reply means for a sender. The stated default is an app speaking OpenTelemetry straight to Toposcope, on a laptop and in production; a collector is optional and Vector stays the canonical one. The section’s examples run in `bun test` and in e2e. [#48](https://github.com/toposcope/toposcope/issues/48)
+
 On `POST /v1/logs` a stored row counts the record’s own attributes first, then its trace and span ids, then the resource’s. A stock OpenTelemetry resource carries enough process, runtime, and host details to fill the 50-attribute cap, and what was cut was the record’s request id or customer and the trace id that View trace needs. The cap, `e1`, and `version` are unchanged, and so is `/api/ingest`. [#51](https://github.com/toposcope/toposcope/issues/51)
 
 The OTLP routes — `POST /v1/logs`, `POST /v1/traces`, and `POST /v1/profiles` — take up to 1,024 records in a request, up from 500. An OpenTelemetry exporter batches 512 by default and does not retry a **400**, so a full batch — what an error storm produces — was dropped whole. The 1 MB decoded-body cap and its **413** are unchanged, and `/api/ingest` and the other endpoints keep 500. [#50](https://github.com/toposcope/toposcope/issues/50)

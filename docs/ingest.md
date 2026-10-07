@@ -1,8 +1,75 @@
 # Ingest
 
-Toposcope accepts logs, metrics, change marks, probes, traces, and profiles over HTTP. The canonical path is Vector → `POST /v1/logs` with OTLP protobuf.
+Toposcope accepts logs, metrics, change marks, probes, traces, and profiles over HTTP. An app speaks OpenTelemetry to it: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional; when there is one, the canonical collector is Vector.
 
 Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/probes`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token.
+
+## What an app sends
+
+Hunt reads what is on the row, and a request can return 200 and still leave a row with no fingerprint. This is what has to arrive.
+
+### Every row
+
+- `service` — on OTLP, the resource’s `service.name`; without one the row is stored under `otlp`.
+- `level` — `debug`, `info`, `warn`, `error`, or `fatal`; on OTLP, the record’s severity.
+- `message` — a string. An OTLP record whose body is not a string is dropped.
+- An event time with a zone — `ts` in RFC 3339, or `timeUnixNano` on OTLP. Without one the row is stamped on arrival.
+- The release — `service.version` on the OTLP resource, or `version` in `attrs`. It is stored as `version`.
+
+### An error row
+
+The exception goes on the log record: `exception.type`, and either `exception.stacktrace` (the stack as the runtime prints it) or `exception.frames` (an array of `{ file, function, in_app? }`). Then `e1` comes from the frames and survives a reworded message; otherwise it falls back to the type and the message. An exception recorded only on a span never becomes a log row. See [Exception fingerprints](#exception-fingerprints).
+
+### Attributes
+
+A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is stored in lower case. `level`, `service`, `host`, `ts`, `message`, and `tenant_id` are taken. A row keeps 50 attributes. A key that breaks the rule, or one past the cap, is dropped with a 200. Nested values become JSON strings.
+
+### Three ways in
+
+**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`, not gRPC) with the ingest token, a service name, and a version. OTLP metrics are not taken yet, so that exporter stays off.
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20${TOPOSCOPE_INGEST_TOKEN}
+OTEL_SERVICE_NAME=billing
+OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2
+OTEL_LOGS_EXPORTER=otlp
+OTEL_METRICS_EXPORTER=none
+```
+
+The app’s logger has to be bridged to the exporter, and an uncaught error logged through it with the exception attached. What arrives:
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/logs \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"billing"}},{"key":"service.version","value":{"stringValue":"1.4.2"}}]},"scopeLogs":[{"logRecords":[{"timeUnixNano":"1772360100000000000","severityNumber":17,"severityText":"ERROR","body":{"stringValue":"charge failed"},"attributes":[{"key":"exception.type","value":{"stringValue":"TypeError"}},{"key":"exception.stacktrace","value":{"stringValue":"TypeError: charge failed\n    at charge (/app/src/billing.js:41:9)\n    at processPayment (/app/src/api.js:88:5)"}}]}]}]}]}'
+```
+
+**A collector reading the app’s log output** sets the same fields before it sends OTLP. Parsing a stack out of a log line is its job; ingest does not do it.
+
+**A direct post** needs neither, and suits a laptop. The same row:
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/ingest \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"ts":"2026-03-01T10:15:00.000Z","service":"billing","level":"error","message":"charge failed","attrs":{"version":"1.4.2","exception.type":"TypeError","exception.stacktrace":"TypeError: charge failed\n    at charge (/app/src/billing.js:41:9)\n    at processPayment (/app/src/api.js:88:5)"}}'
+```
+
+A collector between the app and Toposcope is optional. Add one when logs must outlive a Toposcope outage longer than an exporter’s retries, or when rows need enrichment. Then it is [Vector](#vector).
+
+### What a reply means
+
+| Status | Meaning | Sender |
+| --- | --- | --- |
+| `200` | Stored. `ingested` counts rows, not what each row kept. | — |
+| `400` | Unreadable body, an invalid row, or a batch over the [cap](#limits-and-responses). Nothing stored. | Fix it; an exporter does not retry, so the batch is gone. |
+| `401` | Missing or wrong token. | Fix the header. |
+| `413` | Over 1 MB decoded. | Send smaller batches. |
+| `429` | ClickHouse is busy; `Retry-After: 1`. | Retry. |
+| `503` | Not ready, or the insert failed. | Retry. |
 
 ## Create an ingest token
 
