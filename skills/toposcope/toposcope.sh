@@ -209,7 +209,9 @@ cmd_app_env() {
       printf 'OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf\n'
       printf 'OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%%20%s\n' "$token"
       printf 'OTEL_LOGS_EXPORTER=otlp\n'
-      printf 'OTEL_METRICS_EXPORTER=none\n'
+      printf 'OTEL_METRICS_EXPORTER=otlp\n'
+      # Counters and histograms are stored as the amount per interval; a running total is refused.
+      printf 'OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta\n'
       [ -z "$service" ] || printf 'OTEL_SERVICE_NAME=%s\n' "$service"
       [ -z "$version" ] || printf 'OTEL_RESOURCE_ATTRIBUTES=service.version=%s\n' "$version"
       printf 'TOPOSCOPE_URL=http://127.0.0.1:8080\n'
@@ -217,7 +219,7 @@ cmd_app_env() {
     } >"$file"
   )
   chmod 600 "$file"
-  printf 'Wrote %s. It sets the OTLP endpoint, protocol, token header, logs exporter on, metrics exporter off' "$file"
+  printf 'Wrote %s. It sets the OTLP endpoint, protocol, token header, logs and metrics exporters on, metrics as deltas' "$file"
   [ -z "$service" ] || printf ', service name'
   [ -z "$version" ] || printf ', service version'
   printf ', and TOPOSCOPE_URL and TOPOSCOPE_INGEST_TOKEN for a direct post. Values are not shown. It holds the ingest token: keep it out of git.\n'

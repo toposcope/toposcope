@@ -480,6 +480,17 @@ async function ensureMetrics(): Promise<void> {
     ORDER BY (tenant_id, name, minute)
     TTL toDate(minute) + INTERVAL 30 DAY
   `);
+  // A name remembers its kind (gauge or counter); the newest row for a name wins.
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS metric_kinds (
+      tenant_id LowCardinality(String),
+      name LowCardinality(String),
+      kind LowCardinality(String),
+      seen DateTime64(3, 'UTC')
+    )
+    ENGINE = ReplacingMergeTree(seen)
+    ORDER BY (tenant_id, name)
+  `);
   await clickhouseCommand("DROP VIEW IF EXISTS metrics_by_minute_mv");
   await clickhouseCommand(`
     CREATE MATERIALIZED VIEW metrics_by_minute_mv TO metrics_by_minute AS

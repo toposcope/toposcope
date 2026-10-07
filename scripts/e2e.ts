@@ -1,5 +1,6 @@
 import { toOtlpJson } from "../src/ingest/otlp";
 import { encodeOtlpProtobuf } from "../src/ingest/otlp-protobuf";
+import { encodeOtlpMetricsProtobuf } from "../src/ingest/otlp-metrics-protobuf";
 import { decodeOtlpReply } from "../src/ingest/otlp-reply";
 import { toOtlpProfilesJson } from "../src/ingest/otlp-profiles";
 import { encodeOtlpProfilesProtobuf } from "../src/ingest/otlp-profiles-protobuf";
@@ -1160,6 +1161,109 @@ async function main(): Promise<void> {
   }
   if (typeof metricSearch.agg.stat !== "number") {
     throw new Error("expected unlabeled cpu_seconds window stat");
+  }
+
+  // OTLP metrics: a counter sent as deltas reads as a sum, a gauge as an average, a running total is refused.
+  const otlpMetricRun = Date.now();
+  const otlpCounter = `e2e.jobs.c${otlpMetricRun}`;
+  const otlpGauge = `e2e.memory.g${otlpMetricRun}`;
+  const otlpNano = String((Date.now() - 30_000) * 1_000_000);
+  const otlpMetricsBody = {
+    resourceMetrics: [
+      {
+        resource: { attributes: [{ key: "service.name", value: { stringValue: "otlp-e2e" } }] },
+        scopeMetrics: [
+          {
+            metrics: [
+              {
+                name: otlpCounter,
+                sum: {
+                  aggregationTemporality: 1,
+                  isMonotonic: true,
+                  dataPoints: [
+                    { timeUnixNano: otlpNano, asInt: "5" },
+                    { timeUnixNano: otlpNano, asInt: "7" },
+                  ],
+                },
+              },
+              {
+                name: otlpGauge,
+                gauge: {
+                  dataPoints: [
+                    { timeUnixNano: otlpNano, asDouble: 10 },
+                    { timeUnixNano: otlpNano, asDouble: 20 },
+                  ],
+                },
+              },
+              {
+                name: `e2e.total.t${otlpMetricRun}`,
+                sum: {
+                  aggregationTemporality: 2,
+                  isMonotonic: true,
+                  dataPoints: [{ timeUnixNano: otlpNano, asInt: "99" }],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const otlpMetricsRes = await fetch(`${APP_URL}/v1/metrics`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+    body: JSON.stringify(otlpMetricsBody),
+  });
+  const otlpMetricsReply = (await otlpMetricsRes.json()) as {
+    ingested?: number;
+    partialSuccess?: { rejectedDataPoints?: string; errorMessage?: string };
+  };
+  if (
+    otlpMetricsRes.status !== 200 ||
+    otlpMetricsReply.ingested !== 4 ||
+    otlpMetricsReply.partialSuccess?.rejectedDataPoints !== "1" ||
+    !otlpMetricsReply.partialSuccess.errorMessage?.includes("running totals")
+  ) {
+    throw new Error(`OTLP metrics ingest: ${otlpMetricsRes.status} ${JSON.stringify(otlpMetricsReply)}`);
+  }
+  const otlpMetricsProtoRes = await fetch(`${APP_URL}/v1/metrics`, {
+    method: "POST",
+    headers: { "content-type": "application/x-protobuf", authorization: `Bearer ${INGEST_TOKEN}` },
+    body: Buffer.from(
+      encodeOtlpMetricsProtobuf({
+        resourceMetrics: [
+          {
+            scopeMetrics: [
+              {
+                metrics: [
+                  { name: `e2e.proto.p${otlpMetricRun}`, gauge: { dataPoints: [{ timeUnixNano: otlpNano, asDouble: 1 }] } },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ),
+  });
+  if (
+    otlpMetricsProtoRes.status !== 200 ||
+    otlpMetricsProtoRes.headers.get("content-type") !== "application/x-protobuf" ||
+    (await otlpMetricsProtoRes.arrayBuffer()).byteLength !== 0
+  ) {
+    throw new Error(`OTLP metrics protobuf ingest: ${otlpMetricsProtoRes.status}`);
+  }
+  for (const [name, want] of [
+    [otlpCounter, 12],
+    [otlpGauge, 15],
+  ] as const) {
+    const res = await fetch(
+      `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", events: "0", metric: name }).toString()}`,
+      { headers: { authorization: basicAuth() } },
+    );
+    const body = (await res.json()) as { agg?: { stat: number | null; buckets: Array<{ v: number }> } };
+    if (body.agg?.stat !== want || !body.agg.buckets.some((bucket) => bucket.v === want)) {
+      throw new Error(`expected ${name} to read ${want}, got ${JSON.stringify(body.agg)}`);
+    }
   }
 
   const metricWithQRes = await fetch(

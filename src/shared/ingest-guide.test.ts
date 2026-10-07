@@ -81,8 +81,9 @@ describe("ingest guide: What an app sends", () => {
     }
   });
 
-  test("the exporter settings ask for HTTP and leave OTLP metrics off", () => {
+  test("the exporter settings ask for HTTP, and for metrics as deltas", () => {
     expect(section).toContain("OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf");
-    expect(section).toContain("OTEL_METRICS_EXPORTER=none");
+    expect(section).toContain("OTEL_METRICS_EXPORTER=otlp");
+    expect(section).toContain("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta");
   });
 });

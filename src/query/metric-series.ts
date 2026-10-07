@@ -1,5 +1,6 @@
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { metricExpr } from "../shared/metric";
+import { metricKind } from "../shared/metric-kinds";
 import { maxAttrKeys } from "../shared/attrs";
 import {
   histogramIntervalSql,
@@ -58,8 +59,10 @@ function pushLabels(
 }
 
 /**
- * Avg of ingested samples. Unlabeled uses `metrics_by_minute`.
- * Label matchers scan `metrics` (not `logs`). Log `q` is never applied.
+ * Ingested samples, read by the kind the name came as: a counter is the sum of
+ * what arrived in each bar, anything else the average of its points.
+ * Unlabeled uses `metrics_by_minute`. Label matchers scan `metrics` (not
+ * `logs`). Log `q` is never applied.
  */
 export async function searchMetricSeries(opts: {
   from?: string;
@@ -79,6 +82,9 @@ export async function searchMetricSeries(opts: {
     exact: opts.exact,
   };
   const labeled = Object.keys(opts.labels).length > 0;
+  const counter = (await metricKind(opts.name)) === "counter";
+  const rolled = counter ? "sumMerge(v_sum)" : "sumMerge(v_sum) / nullIf(countMerge(n), 0)";
+  const scanned = counter ? "sum(value)" : "avg(value)";
   if (!opts.exact && !opts.exclude && !labeled && histogramUsesMinuteRollup(opts.intervalMs)) {
     const overlayWhere = metricTimeWhere("minute", overlay);
     overlayWhere.params.metric_name = opts.name;
@@ -88,14 +94,14 @@ export async function searchMetricSeries(opts: {
     const bucketQuery = `
       SELECT
         toStartOfInterval(minute, ${interval}) AS bucket,
-        sumMerge(v_sum) / nullIf(countMerge(n), 0) AS v
+        ${rolled} AS v
       FROM metrics_by_minute
       WHERE ${overlayWhere.sql} AND ${namePred}
       GROUP BY bucket
       ORDER BY bucket
     `;
     const statQuery = `
-      SELECT sumMerge(v_sum) / nullIf(countMerge(n), 0) AS v
+      SELECT ${rolled} AS v
       FROM metrics_by_minute
       WHERE ${statWhere.sql} AND ${namePred}
     `;
@@ -120,14 +126,14 @@ export async function searchMetricSeries(opts: {
   const bucketQuery = `
     SELECT
       toStartOfInterval(ts, ${interval}) AS bucket,
-      avg(value) AS v
+      ${scanned} AS v
     FROM metrics
     WHERE ${overlayParts.join(" AND ")}
     GROUP BY bucket
     ORDER BY bucket
   `;
   const statQuery = `
-    SELECT avg(value) AS v
+    SELECT ${scanned} AS v
     FROM metrics
     WHERE ${statParts.join(" AND ")}
   `;
