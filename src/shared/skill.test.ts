@@ -226,7 +226,6 @@ describe("app-env", () => {
       `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20${token}`,
       "OTEL_LOGS_EXPORTER=otlp",
       "OTEL_METRICS_EXPORTER=otlp",
-      "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta",
       "OTEL_SERVICE_NAME=billing",
       "OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2",
       `TOPOSCOPE_INGEST_TOKEN=${token}`,

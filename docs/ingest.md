@@ -26,7 +26,7 @@ A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is sto
 
 ### Three ways in
 
-**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`, not gRPC) with the ingest token, a service name, and a version. Metrics need one more setting: counters and histograms are stored as the amount per interval, so the exporter has to send deltas. A running total is refused, and the reply says so.
+**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`, not gRPC) with the ingest token, a service name, and a version. Metrics need no setting: counters and histograms are stored as the amount per interval, whether the exporter sends deltas or, as it does by default, running totals.
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080
@@ -36,7 +36,6 @@ OTEL_SERVICE_NAME=billing
 OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2
 OTEL_LOGS_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
-OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta
 ```
 
 The app’s logger has to be bridged to the exporter, and an uncaught error logged through it with the exception attached. What arrives:
@@ -149,12 +148,14 @@ Metrics use the same bearer token as logs. This is not Prometheus scrape; that s
 `POST /v1/metrics` takes two shapes. An OpenTelemetry exporter sends OTLP — JSON, protobuf, or either gzipped — and what fits a point is stored:
 
 - A **gauge** as it is. An up-down counter’s running total is a level, so it is a gauge too. Each bar is the average of its points.
-- A **counter** sent as deltas, as the amount per interval. Each bar is the sum of what arrived in it; a wider bar sums more.
-- A **histogram** sent as deltas, as two counters: `<name>.count` and `<name>.sum`. Buckets are not kept yet, so there is no average and no percentile.
+- A **counter**, as the amount per interval. Each bar is the sum of what arrived in it; a wider bar sums more.
+- A **histogram**, as two counters: `<name>.count` and `<name>.sum`. Buckets are not kept yet, so there is no average and no percentile.
 
 A name remembers the kind it came as, and that decides how the plot and every widget read it. Dotted names are kept as they are. A point’s attributes become labels, then the resource’s; `service.name` and `host.name` arrive as `service` and `host`. An OTLP request is limited by the 1 MB body and not by a count of points, because an exporter sends every series in one request.
 
-Anything else is counted as rejected in the reply’s partial success, with a **200**, and the rest of the request is stored: a counter or a histogram sent as a running total, an exponential histogram, a summary, and a name outside letters, digits, `_` and `.`. Set `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta` on the exporter so counters and histograms arrive as deltas.
+A counter or a histogram may arrive as deltas or as a running total since the process started, which is what an exporter sends by default. A running total is converted on the way in: Toposcope keeps the last total of each series in memory and stores the difference. A series that restarts is counted from its new start, and an export that never arrived is made up by the next one. The one cost is a restart of Toposcope itself: the first total it then sees from a series that was already running is only a baseline, so that series loses what it counted since its last stored export. The reply says how many points were taken that way.
+
+Anything else is counted as rejected in the reply’s partial success, with a **200**, and the rest of the request is stored: an exponential histogram, a summary, and a name outside letters, digits, `_` and `.`.
 
 The other shape is a plain JSON point or an array of up to 500. It has no kind and reads as a gauge:
 

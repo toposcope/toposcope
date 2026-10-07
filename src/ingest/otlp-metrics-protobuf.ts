@@ -58,6 +58,7 @@ message Empty {
 }
 
 message NumberDataPoint {
+  fixed64 start_time_unix_nano = 2;
   fixed64 time_unix_nano = 3;
   oneof value {
     double as_double = 4;
@@ -68,6 +69,7 @@ message NumberDataPoint {
 }
 
 message HistogramDataPoint {
+  fixed64 start_time_unix_nano = 2;
   fixed64 time_unix_nano = 3;
   fixed64 count = 4;
   optional double sum = 5;

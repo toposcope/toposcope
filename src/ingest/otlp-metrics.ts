@@ -2,6 +2,7 @@ import { maxAttrKeysPerEvent } from "../shared/attrs";
 import { isMetricIdent, type MetricPoint } from "../shared/metric";
 import type { MetricKind } from "../shared/metric-kinds";
 import type { Losses } from "./otlp-reply";
+import type { RunningTotals } from "./running-totals";
 
 type AnyVal = {
   stringValue?: string;
@@ -16,7 +17,8 @@ const CUMULATIVE = 2;
 /** DataPointFlags.NO_RECORDED_VALUE: the series went away; there is no value to store. */
 const NO_RECORDED_VALUE = 1;
 
-const runningTotal = "running totals, which need the exporter’s temporality preference set to delta";
+const baseline =
+  "running totals seen for the first time from a series that was already running, taken as its baseline";
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -96,9 +98,16 @@ function pointLabels(
   return out;
 }
 
-function tsFromNano(nano: unknown): string {
+/** Milliseconds, or 0 when the point does not say. */
+function msFromNano(nano: unknown): number {
   const n = typeof nano === "number" ? nano : Number(nano);
-  return Number.isFinite(n) && n > 0 ? new Date(n / 1_000_000).toISOString() : new Date().toISOString();
+  return Number.isFinite(n) && n > 0 ? n / 1_000_000 : 0;
+}
+
+/** A series is a name and its labels. */
+function seriesKey(name: string, labels: Record<string, string>): string {
+  const sorted = Object.entries(labels).sort(([a], [b]) => (a < b ? -1 : 1));
+  return String(Bun.hash(`${name}\u0000${JSON.stringify(sorted)}`));
 }
 
 function numberValue(point: Record<string, unknown>): number | undefined {
@@ -127,10 +136,16 @@ export type MappedMetrics = {
 /**
  * What fits a point: a gauge as it is, an up-down counter's running total as a
  * gauge too, a counter as the amount per interval, and a histogram as two
- * counters, `<name>.count` and `<name>.sum`. Everything else is counted in
- * `losses` and the rest of the request still lands.
+ * counters, `<name>.count` and `<name>.sum`. A counter or a histogram sent as
+ * a running total is turned into the amount since it was last seen, through
+ * `totals`. Everything else is counted in `losses` and the rest of the request
+ * still lands.
  */
-export function mapOtlpMetrics(payload: unknown, losses: Losses): MappedMetrics {
+export function mapOtlpMetrics(
+  payload: unknown,
+  losses: Losses,
+  totals: RunningTotals,
+): MappedMetrics {
   const root = asRecord(payload);
   if (!root || !Array.isArray(root.resourceMetrics)) {
     throw new Error("resourceMetrics is required");
@@ -174,34 +189,51 @@ export function mapOtlpMetrics(payload: unknown, losses: Losses): MappedMetrics 
 
         const temporality = Number((sum ?? histogram)?.aggregationTemporality ?? 0);
         const monotonic = sum?.isMonotonic === true;
-        // A running total of something that only goes up is not a level and not yet an amount.
-        if ((histogram || (sum && monotonic)) && temporality !== DELTA) {
-          losses.reject(
-            temporality === CUMULATIVE ? runningTotal : "a sum or histogram that does not say its temporality",
-            dataPoints.length,
-          );
+        const amount = Boolean(histogram || (sum && monotonic));
+        if (amount && temporality !== DELTA && temporality !== CUMULATIVE) {
+          losses.reject("a sum or histogram that does not say its temporality", dataPoints.length);
           continue;
         }
-        const kind: MetricKind = histogram || (sum && temporality === DELTA) ? "counter" : "gauge";
+        // A running total of something that only goes up is not a level: it is converted below.
+        const running = amount && temporality === CUMULATIVE;
+        const kind: MetricKind = histogram || (sum && (monotonic || temporality === DELTA)) ? "counter" : "gauge";
 
         for (const rawPoint of dataPoints) {
           const point = asRecord(rawPoint);
           if (!point || (Number(point.flags ?? 0) & NO_RECORDED_VALUE) !== 0) {
             continue;
           }
-          const ts = tsFromNano(point.timeUnixNano);
+          const timeMs = msFromNano(point.timeUnixNano) || Date.now();
+          const ts = new Date(timeMs).toISOString();
           const labels = pointLabels(point.attributes as Attr[] | undefined, resourceAttrs, losses);
+          /** The amounts to store: as sent, or since the series was last seen. Null sets a baseline. */
+          const amounts = (values: number[]): number[] | null =>
+            running
+              ? totals.advance(seriesKey(name, labels), msFromNano(point.startTimeUnixNano), timeMs, values)
+              : values;
           if (histogram) {
             const count = Number(point.count ?? 0);
             if (!Number.isFinite(count)) {
               losses.reject("a value that is not a number");
               continue;
             }
-            points.push({ ts, name: `${name}.count`, value: count, labels });
+            const hasSum = typeof point.sum === "number" && Number.isFinite(point.sum);
+            const since = amounts([count, hasSum ? (point.sum as number) : 0]);
+            if (since === null) {
+              losses.note(baseline);
+              continue;
+            }
             kinds.set(`${name}.count`, "counter");
-            if (typeof point.sum === "number" && Number.isFinite(point.sum)) {
-              points.push({ ts, name: `${name}.sum`, value: point.sum, labels });
+            if (hasSum) {
               kinds.set(`${name}.sum`, "counter");
+            }
+            // A running total that did not move is what a delta exporter would not have sent.
+            if (running && since[0] === 0) {
+              continue;
+            }
+            points.push({ ts, name: `${name}.count`, value: since[0]!, labels });
+            if (hasSum) {
+              points.push({ ts, name: `${name}.sum`, value: since[1]!, labels });
             }
             continue;
           }
@@ -210,8 +242,16 @@ export function mapOtlpMetrics(payload: unknown, losses: Losses): MappedMetrics 
             losses.reject("a value that is not a number");
             continue;
           }
-          points.push({ ts, name, value, labels });
+          const since = amounts([value]);
+          if (since === null) {
+            losses.note(baseline);
+            continue;
+          }
           kinds.set(name, kind);
+          if (running && since[0] === 0) {
+            continue;
+          }
+          points.push({ ts, name, value: since[0]!, labels });
         }
       }
     }

@@ -22,6 +22,7 @@ const MAX_MESSAGE = 500;
 export class Losses {
   private readonly rejected = new Map<string, number>();
   private readonly cut = new Map<string, number>();
+  private readonly noted = new Map<string, number>();
 
   /** A record that was not stored. */
   reject(reason: string, count = 1): void {
@@ -34,6 +35,13 @@ export class Losses {
   trim(reason: string, count = 1): void {
     if (count > 0) {
       this.cut.set(reason, (this.cut.get(reason) ?? 0) + count);
+    }
+  }
+
+  /** Something a sender should know that is neither a rejection nor a cut. */
+  note(reason: string, count = 1): void {
+    if (count > 0) {
+      this.noted.set(reason, (this.noted.get(reason) ?? 0) + count);
     }
   }
 
@@ -60,6 +68,7 @@ export class Losses {
     const parts = [
       ...[...this.rejected].map(([reason, count]) => `${reason}: ${count} rejected`),
       ...[...this.cut].map(([reason, count]) => `${reason}: cut on ${count}`),
+      ...[...this.noted].map(([reason, count]) => `${reason}: ${count}`),
     ];
     const line = parts.join("; ");
     return line.length > MAX_MESSAGE ? `${line.slice(0, MAX_MESSAGE - 1)}…` : line;
