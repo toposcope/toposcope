@@ -19,4 +19,11 @@ Locked — fingerprints after a mark:
 - [Toposcope Cut Rail.dc.html](Toposcope%20Cut%20Rail.dc.html) — frames 2a–2g: the rail is a stack (cut is the base; a selected line pushes its detail with a crumb back; two ×; trace-strip and Live; rejects)
 - [cut/](cut/) — crops of Cut + Cut Rail for issues (1a–1i · 2a–2g)
 
+Locked — picking a metric:
+
+- [Toposcope Metrics.dc.html](Toposcope%20Metrics.dc.html) — frames 11a–11n: the Series control becomes a list you can type into, on the pinned toolbar, a timeseries footer and a Stat head; each metric says its kind in a word; a histogram’s reading sits where a log field’s reducer sits; crowded toolbar, long names, no points, Live, the readout, rejects, anatomy
+- [metrics/](metrics/) — crops of the Metrics sheet for issues (11a–11n)
+
+Where [#77](https://github.com/toposcope/toposcope/issues/77) and [#78](https://github.com/toposcope/toposcope/issues/78) differ from the Metrics sheet, the issues win: a picked metric is listed once, “no points in this window” is said under the plot, and `sum` is one more reading of a histogram.
+
 Not the shipped app. Do not invent chrome these files do not draw.
