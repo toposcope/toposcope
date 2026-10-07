@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+The image is published for `linux/arm64` as well as `linux/amd64`. Earlier images are amd64 only, and on an arm64 host Docker refuses to pull one unless the `app` service names `platform: linux/amd64`.
+
 Unknown `/v1/*` paths, and a wrong method on an ingest path, return JSON **404** instead of the UI page or a plain-text 404. A sender with a typo in its endpoint no longer sees a 200 and a body it cannot parse. [#66](https://github.com/toposcope/toposcope/issues/66)
 
 An OTLP log record with no event time is stored at its observed time, when a collector set one, instead of the time it arrived. A batch that sat in a collector’s buffer no longer lands late on the clock or on the wrong side of a change mark. A record with both keeps its event time. [#65](https://github.com/toposcope/toposcope/issues/65)

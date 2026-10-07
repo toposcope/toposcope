@@ -201,6 +201,36 @@ describe("vector example", () => {
   });
 });
 
+describe("release image", () => {
+  test("is published for amd64 and arm64", async () => {
+    const workflow = await Bun.file(`${root}/.github/workflows/release-image.yml`).text();
+    expect(workflow).toContain("platforms: linux/amd64,linux/arm64");
+  });
+
+  test("is built the same way, without a push, when a pull request touches it", async () => {
+    const check = await Bun.file(`${root}/.github/workflows/image-build.yml`).text();
+    expect(check).toContain("platforms: linux/amd64,linux/arm64");
+    expect(check).toContain("push: false");
+    for (const path of ["Dockerfile", "package.json", "bun.lock", ".github/workflows/release-image.yml"]) {
+      expect(check).toContain(`      - ${path}\n`);
+    }
+  });
+
+  test("runs commands only on the builder's platform, so nothing is built under emulation", async () => {
+    const dockerfile = await Bun.file(`${root}/Dockerfile`).text();
+    const stages = dockerfile.split(/^FROM /m).slice(1);
+    expect(stages).toHaveLength(3);
+    for (const stage of stages) {
+      if (/^RUN /m.test(stage)) {
+        expect(stage.startsWith("--platform=$BUILDPLATFORM ")).toBe(true);
+      }
+    }
+    // The stage that becomes the image is for the target and only copies.
+    expect(stages[2]!.startsWith("oven/bun:")).toBe(true);
+    expect(stages[2]).not.toMatch(/^RUN /m);
+  });
+});
+
 describe("ingest guide CI samples", () => {
   test("GitHub and GitLab jobs POST a stable deploy id", async () => {
     const md = await Bun.file(`${root}/docs/ingest.md`).text();
