@@ -12,12 +12,19 @@ Bytes captured from real runtimes and real OpenTelemetry exporters on 2026-10-07
 
 The Python exporter refuses `http/json`, so Python has no JSON request.
 
+## OTLP metric requests
+
+`otlp/node.metrics.bin` and `.json` are the largest request an exporter posted to `/v1/metrics` for a small service that served twenty requests, with `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`. It holds one of each kind: the HTTP instrumentation’s request-duration histograms, the runtime’s gauges, and the program’s own counter, up-down counter and gauge. `otlp/node.metrics.stock.json` is the same service with no temporality setting, which is what a stock setup sends: its counters and histograms are running totals. `programs/node-otlp-metrics/` has the service and the small server that stood in for Toposcope. Each file is a run of its own, so the numbers differ between them and the names do not.
+
 ## What the captures showed
 
 - **PHP 8.4 and later** name a closure frame `{closure:/app/public/index.php:15}`. The path and the line are in the function name, so the same error got a different `e1` in each deploy directory. Since 0.4.11 the frame is hashed without the line and with its path normalized.
 - **V8** prints ten frames unless the app raises `Error.stackTraceLimit`.
 - **.NET** frames with no source information are not read: every framework frame, and every app frame when no PDB is deployed. In a Release build a one-line handler and the method it calls are inlined into `lambda_method1(Closure, Object, HttpContext)`, which has none. The program here awaits, as ASP.NET Core code usually does.
 - **pino’s `err`** arrives as `exception.type`, `exception.message`, and `exception.stacktrace`.
+- **Metrics with the delta setting:** 23 names and nothing refused. The request-duration histogram’s count is the twenty requests served. An up-down counter still arrives as a running total, which is a level.
+- **Metrics with no setting:** every counter and histogram is a running total, so nine points are refused and only the gauges are stored.
+- **A resource’s attributes ride on every point.** A stock Node resource has about twenty, so each point is stored with about that many labels.
 
 ## Capturing again
 
@@ -31,6 +38,6 @@ docker run --rm -v "$PWD/fixtures/ingest/programs/node":/src:ro -v "$PWD/out":/o
   done'
 ```
 
-The others follow the same shape with `pip install -r requirements.txt` and `python app.py`; `mvn package` and `java -jar`; `dotnet publish -c Release` and `dotnet billing.dll`; `composer install` and `php public/index.php`; `go mod tidy`, `go build`, and the binary. The two OTLP programs run `node capture.js` and `python capture.py` with the exporter pointed at `http://127.0.0.1:4318`.
+The others follow the same shape with `pip install -r requirements.txt` and `python app.py`; `mvn package` and `java -jar`; `dotnet publish -c Release` and `dotnet billing.dll`; `composer install` and `php public/index.php`; `go mod tidy`, `go build`, and the binary. The two OTLP programs run `node capture.js` and `python capture.py` with the exporter pointed at `http://127.0.0.1:4318`. The metrics program runs `node capture.js` the same way, with `OTEL_METRICS_EXPORTER=otlp`, `OTEL_LOGS_EXPORTER=none`, `OTEL_METRIC_EXPORT_INTERVAL=1000` and `SERVED=20`.
 
 Replace a fixture whole. Do not edit one by hand: a capture that fails a test is a finding, not something to trim.

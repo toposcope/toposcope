@@ -68,5 +68,19 @@
         "protobuf": "python.logs.bin"
       }
     }
+  },
+  "metrics": {
+    "node": {
+      "image": "node:24-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20",
+      "runtime": "Node 24.21.0",
+      "exporter": "OpenTelemetry JS 0.223.0",
+      "setup": "@opentelemetry/auto-instrumentations-node 0.81.0, sdk-metrics 2.12.0, instrumentation-http 0.223.0, instrumentation-runtime-node 0.36.0",
+      "served": 20,
+      "requests": {
+        "protobuf": "node.metrics.bin",
+        "json": "node.metrics.json",
+        "stock": "node.metrics.stock.json"
+      }
+    }
   }
 }

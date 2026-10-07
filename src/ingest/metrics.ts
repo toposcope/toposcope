@@ -4,13 +4,15 @@ import {
   toClickHouseDateTime,
 } from "../shared/clickhouse";
 import { InvalidMetricError, parseMetricPoint } from "../shared/metric";
+import { rememberMetricKinds } from "../shared/metric-kinds";
 import { incMetric } from "../metrics";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
-import {
-  insertErrorMessage,
-  MAX_BATCH,
-  MAX_BODY_BYTES,
-} from "./index";
+import { insertErrorMessage, MAX_BATCH } from "./index";
+import { readOtlpBody } from "./otlp-body";
+import { mapOtlpMetrics } from "./otlp-metrics";
+import { decodeOtlpMetricsProtobuf } from "./otlp-metrics-protobuf";
+import { isOtlpProtobufContentType } from "./otlp-protobuf";
+import { Losses, otlpReply } from "./otlp-reply";
 
 function parseNdjson(text: string): unknown[] {
   const lines = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
@@ -67,10 +69,63 @@ export async function insertMetricPoints(
   });
 }
 
+function ingestFail(c: Context, err: unknown): Response {
+  if (err instanceof InsertBackpressureError) {
+    return c.json({ error: "ClickHouse is busy" }, 429, {
+      "retry-after": "1",
+    });
+  }
+  return c.json({ error: insertErrorMessage(err) }, 503);
+}
+
+function isOtlpMetricsJson(row: unknown): boolean {
+  return (
+    typeof row === "object" &&
+    row !== null &&
+    Array.isArray((row as Record<string, unknown>).resourceMetrics)
+  );
+}
+
+/**
+ * An OTLP metrics request. It is limited by its size and not by a count of
+ * points: an exporter sends every series in one request and cannot split it.
+ */
+async function otlpMetrics(c: Context, payload: unknown): Promise<Response> {
+  const losses = new Losses();
+  let mapped;
+  try {
+    mapped = mapOtlpMetrics(payload, losses);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : "Invalid OTLP payload" }, 400);
+  }
+  try {
+    // Kinds first: writing one twice is harmless, and a retry after a failure here stores no point twice.
+    await rememberMetricKinds(mapped.kinds);
+    const ingested = await insertMetricPoints(mapped.points);
+    incMetric("ingest_metrics", ingested);
+    return otlpReply(c, "metrics", ingested, losses);
+  } catch (err) {
+    return ingestFail(c, err);
+  }
+}
+
 export async function ingestMetricsRoute(c: Context): Promise<Response> {
-  const buf = await c.req.arrayBuffer();
-  if (buf.byteLength > MAX_BODY_BYTES) {
-    return c.json({ error: `Body too large (max ${MAX_BODY_BYTES} bytes)` }, 413);
+  const contentType = c.req.header("content-type") ?? "";
+  const buf = await readOtlpBody(c);
+  if (buf instanceof Response) {
+    return buf;
+  }
+  if (isOtlpProtobufContentType(contentType)) {
+    if (buf.byteLength === 0) {
+      return c.json({ error: "Empty body" }, 400);
+    }
+    let payload: unknown;
+    try {
+      payload = decodeOtlpMetricsProtobuf(buf);
+    } catch {
+      return c.json({ error: "Invalid OTLP protobuf body" }, 400);
+    }
+    return otlpMetrics(c, payload);
   }
   const text = new TextDecoder().decode(buf).trim();
   if (text.length === 0) {
@@ -79,9 +134,12 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
 
   let raw: unknown[];
   try {
-    raw = parseBody(text, c.req.header("content-type") ?? "");
+    raw = parseBody(text, contentType);
   } catch {
     return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  if (raw.length === 1 && isOtlpMetricsJson(raw[0])) {
+    return otlpMetrics(c, raw[0]);
   }
 
   if (raw.length === 0) {
@@ -111,11 +169,6 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
     incMetric("ingest_metrics", ingested);
     return c.json({ ingested });
   } catch (err) {
-    if (err instanceof InsertBackpressureError) {
-      return c.json({ error: "ClickHouse is busy" }, 429, {
-        "retry-after": "1",
-      });
-    }
-    return c.json({ error: insertErrorMessage(err) }, 503);
+    return ingestFail(c, err);
   }
 }
