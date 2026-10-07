@@ -4,11 +4,11 @@ Toposcope is a lightweight, self-hosted log manager for searching live logs with
 
 It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability.
 
-Current release: `0.4.11` · [MIT Expat license](LICENSE)
+Current release: `0.4.12` · [MIT Expat license](LICENSE)
 
 ## Quick start
 
-The packaged install is the recommended path for operators. Download these four files from the [v0.4.11 release](https://github.com/toposcope/toposcope/releases/tag/v0.4.11) into one directory:
+The packaged install is the recommended path for operators. Download these four files from the [v0.4.12 release](https://github.com/toposcope/toposcope/releases/tag/v0.4.12) into one directory:
 
 - `compose.yml`
 - `env.example`
@@ -44,7 +44,7 @@ vector -c vector.yaml
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080). HTTP Basic Auth accepts any username; use `TOPOSCOPE_PASSWORD` from `.env` as the password. This shared operator password also permits writes, including retention changes. Search for `service:smoke`, save the search, then use **Alerts → Test** to verify the full path.
 
-The deployment pins `ghcr.io/toposcope/toposcope:0.4.11`; it never uses `:latest`. Anonymous image pulls need no registry login.
+The deployment pins `ghcr.io/toposcope/toposcope:0.4.12`; it never uses `:latest`. Anonymous image pulls need no registry login.
 
 ## What Toposcope does
 
