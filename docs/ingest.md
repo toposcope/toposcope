@@ -112,6 +112,8 @@ curl -X POST http://127.0.0.1:8080/v1/logs \
 
 For collectors, set `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` and `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080`.
 
+The level comes from `severityNumber` when it is 1–24. A record with only `severityText` is read by its word: `CRITICAL`, `ALERT`, and `EMERG` are `fatal`, `SEVERE` is `error`, and a word that is not recognized is `info`.
+
 ### OTLP protobuf
 
 This is the default path for Vector, Fluent Bit, and Alloy.

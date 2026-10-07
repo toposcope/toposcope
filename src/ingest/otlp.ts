@@ -92,15 +92,35 @@ function attrRecord(attrs: Attr[] | undefined, skip: Set<string>): Record<string
   return out;
 }
 
+/**
+ * The number decides when the sender set one (1–24). A record built by hand in a
+ * collector often carries only a text, which is read by the words senders use.
+ */
 function mapSeverity(text: string | undefined, number: number | undefined): LogLevel {
+  if (number !== undefined && number >= 1 && number <= 24) {
+    if (number >= 21) {
+      return "fatal";
+    }
+    if (number >= 17) {
+      return "error";
+    }
+    if (number >= 13) {
+      return "warn";
+    }
+    if (number >= 9) {
+      return "info";
+    }
+    return "debug";
+  }
   const lower = (text ?? "").toLowerCase();
   if (levels.includes(lower as LogLevel)) {
     return lower as LogLevel;
   }
-  if (lower.includes("fatal") || lower.includes("emerg") || lower.includes("panic")) {
+  // Syslog's emerg, alert and crit are fatal here, as the syslog listener has them.
+  if (["fatal", "emerg", "panic", "crit", "alert"].some((word) => lower.includes(word))) {
     return "fatal";
   }
-  if (lower.includes("err")) {
+  if (lower.includes("err") || lower.includes("severe")) {
     return "error";
   }
   if (lower.includes("warn")) {
@@ -109,22 +129,7 @@ function mapSeverity(text: string | undefined, number: number | undefined): LogL
   if (lower.includes("debug") || lower.includes("trace")) {
     return "debug";
   }
-  if (number === undefined || Number.isNaN(number)) {
-    return "info";
-  }
-  if (number >= 21) {
-    return "fatal";
-  }
-  if (number >= 17) {
-    return "error";
-  }
-  if (number >= 13) {
-    return "warn";
-  }
-  if (number >= 9) {
-    return "info";
-  }
-  return "debug";
+  return "info";
 }
 
 function tsFromNano(nano: string | number | undefined): string | undefined {
