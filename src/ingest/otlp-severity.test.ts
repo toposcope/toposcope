@@ -27,4 +27,31 @@ describe("OTLP severity", () => {
   test("an unspecified number (0) is info, as a missing one is", () => {
     expect(levelOf({ severityNumber: 0 })).toBe("info");
   });
+
+  test("every severity number lands on its level", () => {
+    const expected = (n: number) =>
+      n >= 21 ? "fatal" : n >= 17 ? "error" : n >= 13 ? "warn" : n >= 9 ? "info" : "debug";
+    for (let n = 1; n <= 24; n++) {
+      expect(levelOf({ severityNumber: n })).toBe(expected(n));
+    }
+  });
+
+  test.each([
+    ["TRACE", "debug"],
+    ["DEBUG", "debug"],
+    ["INFO", "info"],
+    ["NOTICE", "info"],
+    ["WARNING", "warn"],
+    ["ERR", "error"],
+    ["ERROR", "error"],
+    ["EMERG", "fatal"],
+    ["FATAL", "fatal"],
+    ["audit", "info"],
+  ])("text %s with no number is %s", (text, level) => {
+    expect(levelOf({ severityText: text })).toBe(level);
+  });
+
+  test("a record with no severity at all is info", () => {
+    expect(levelOf({})).toBe("info");
+  });
 });

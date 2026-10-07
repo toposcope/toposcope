@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+On `POST /v1/logs` the level comes from `severityNumber` when it is 1–24, and a record with only a severity text is read by its word. Before, the text was read first and only a few words were known, so a text-only `CRITICAL`, `CRIT`, `ALERT`, or `SEVERE` was stored as `info`, and an unspecified number (0) as `debug`. [#64](https://github.com/toposcope/toposcope/issues/64)
+
 A PHP closure frame is hashed without its line number and with its path normalized. PHP 8.4 and later name a closure with where it was declared (`{closure:/app/public/index.php:15}`), so the same error got a new `e1` in every deploy directory and whenever the closure’s line moved. Errors with such a frame get a new id once at upgrade; old rows are not rewritten. [#67](https://github.com/toposcope/toposcope/issues/67)
 
 A Node `at async /path/file.js:12:5` frame is read as that file. Before, `async` was taken as part of the path, the path was hashed as written, and the same error got a new `e1` in every deploy directory. Errors with such a frame get a new id once at upgrade; old rows are not rewritten. [#63](https://github.com/toposcope/toposcope/issues/63)
