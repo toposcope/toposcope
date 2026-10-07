@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.5.0
+
 On `POST /v1/logs` the logger’s name is kept. OTLP carries it as the scope’s name beside each group of records, and it was dropped; a row now has it as `otel.scope.name`, an ordinary attribute, counted toward the 50-attribute cap after the record’s own attributes and its trace and span ids. [#72](https://github.com/toposcope/toposcope/issues/72)
 
 `POST /v1/metrics` takes OTLP: JSON, protobuf, and gzip, beside the JSON point it always took. An app with a stock OpenTelemetry setup got a **400** on every metrics export. A gauge is stored as it is, and so is an up-down counter’s running total. A counter sent as deltas is stored as the amount per interval and drawn as a sum per bar, not an average. A histogram sent as deltas is stored as two counters, `<name>.count` and `<name>.sum`; buckets are not kept yet. A name remembers its kind, dotted names are kept, a point’s attributes become labels ahead of the resource’s, and a request is limited by its size, not by a count of points. A running total, an exponential histogram, and a summary are counted as rejected in the reply, with a 200, and the rest of the request is stored. The exporter needs one setting, `OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta`; the skill writes it and turns the metrics exporter on. [#70](https://github.com/toposcope/toposcope/issues/70)
