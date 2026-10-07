@@ -82,6 +82,10 @@ beforeAll(async () => {
       ["senderTypo", "/v1/log", sender, "POST"],
       ["senderUnknown", "/v1/no-such-endpoint", sender, "POST"],
       ["senderDevUnknown", "/v1development/no-such-endpoint", sender, "POST"],
+      ["senderWrongMethod", "/v1/logs", sender, "GET"],
+      ["strangerUnknown", "/v1/no-such-endpoint", { authorization: "Bearer never-issued" }, "POST"],
+      ["senderReads", "/api/settings", sender, "GET"],
+      ["senderApiUnknown", "/api/no-such-endpoint", sender, "POST"],
     ]) {
       const response = await app.fetch(new Request("http://app.test" + path, { headers: requestHeaders, method }));
       const text = await response.text();
@@ -172,6 +176,20 @@ describe("/v1 not found, for a sender", () => {
     expect(results[key]!.status).toBe(404);
     expect(results[key]!.contentType).toContain("application/json");
     expect(results[key]!.body).toEqual({ error: "Not found" });
+  });
+});
+
+describe("an ingest token outside the ingest routes", () => {
+  test("a wrong method on an ingest path is a JSON 404 too", () => {
+    expect(results.senderWrongMethod!.status).toBe(404);
+    expect(results.senderWrongMethod!.body).toEqual({ error: "Not found" });
+  });
+  test("a token that was never issued still gets 401 on an unknown /v1 path", () => {
+    expect(results.strangerUnknown!.status).toBe(401);
+  });
+  test("an ingest token still reads nothing under /api", () => {
+    expect(results.senderReads!.status).toBe(401);
+    expect(results.senderApiUnknown!.status).toBe(401);
   });
 });
 

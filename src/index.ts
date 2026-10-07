@@ -111,6 +111,13 @@ app.use("/*", async (c, next) => {
     ? checkBearer(header) || checkBasic(header)
     : checkBasic(header);
   if (!allowed) {
+    // A sender holds an ingest token and nothing else. On a wrong path under the
+    // ingest prefixes its token is good and its path is not, so say that.
+    const sendsHere =
+      c.req.path.startsWith("/v1/") || c.req.path.startsWith("/v1development/");
+    if (sendsHere && checkBearer(header)) {
+      return c.json({ error: "Not found" }, 404);
+    }
     return c.json({ error: "Unauthorized" }, 401, unauthorizedHeaders());
   }
   return next();
