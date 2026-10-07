@@ -142,6 +142,9 @@ app.get("/api/fields", getFields);
 app.put("/api/fields", putFields);
 
 app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
+// The ingest paths are an API too: a typo or a wrong method must not get the UI page.
+app.all("/v1/*", (c) => c.json({ error: "Not found" }, 404));
+app.all("/v1development/*", (c) => c.json({ error: "Not found" }, 404));
 
 app.use("/*", serveStatic({ root: "./src/ui/dist" }));
 app.get("*", async (c) => {

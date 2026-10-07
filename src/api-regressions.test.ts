@@ -76,6 +76,8 @@ beforeAll(async () => {
       ["v1Get", "/v1/no-such-endpoint", headers, "GET"],
       ["v1WrongMethod", "/v1/logs", headers, "GET"],
       ["v1Post", "/v1/no-such-endpoint", headers, "POST"],
+      ["v1Unauthorized", "/v1/no-such-endpoint", {}, "GET"],
+      ["v1DevGet", "/v1development/no-such-endpoint", headers, "GET"],
     ]) {
       const response = await app.fetch(new Request("http://app.test" + path, { headers: requestHeaders, method }));
       const text = await response.text();
@@ -175,5 +177,12 @@ describe("/v1 not found", () => {
     expect(results.v1Post!.status).toBe(404);
     expect(results.v1Post!.contentType).toContain("application/json");
     expect(results.v1Post!.body).toEqual({ error: "Not found" });
+  });
+  test("an unknown path still requires authentication first", () => {
+    expect(results.v1Unauthorized!.status).toBe(401);
+  });
+  test("the development profiles prefix answers the same way", () => {
+    expect(results.v1DevGet!.status).toBe(404);
+    expect(results.v1DevGet!.body).toEqual({ error: "Not found" });
   });
 });
