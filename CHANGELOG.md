@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.4.12
+
 A request that carries a valid ingest token and a wrong path under `/v1/` is answered JSON **404**, not **401**. Only the ingest routes take a bearer token, so a sender with a typo in its endpoint was told its token was wrong. A token that was never issued still gets 401 there, and an ingest token still reads nothing under `/api/`. [#84](https://github.com/toposcope/toposcope/issues/84)
 
 The app exits when it is told to stop. On SIGTERM — `docker compose stop`, an upgrade, a host shutdown — it finishes the requests in flight and the syslog queue, turns anything new away with **503**, and exits 0. Before, the signal was ignored: every stop waited out Docker’s ten-second grace period, and the app was then killed with any request that was still inserting cut off. [#83](https://github.com/toposcope/toposcope/issues/83)
