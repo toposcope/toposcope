@@ -56,7 +56,7 @@ Logs, ingested metrics, spans, profile samples, and change marks are stored in C
 
 ## Send data
 
-The canonical production path is Vector sending OTLP protobuf logs to `POST /v1/logs`; Fluent Bit and Alloy are supported alternatives. Collectors own buffering, parsing, sampling, and enrichment.
+An app speaks OpenTelemetry to Toposcope: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional — add one for a disk buffer or enrichment. Vector is the canonical collector; Fluent Bit and Alloy are supported alternatives. Collectors own buffering, parsing, sampling, and enrichment. The ingest guide says [what an app sends](docs/ingest.md#what-an-app-sends).
 
 | Input | Endpoint | Notes |
 | --- | --- | --- |

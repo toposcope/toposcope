@@ -11,6 +11,9 @@ import { parseLiveArgs } from "./load-rates";
 import { envValue } from "../src/shared/env";
 import { fakeFramedFingerprint } from "../src/shared/fake-event";
 import type { Span } from "../src/shared/span";
+import { liftException } from "../src/shared/exception";
+import { withFingerprint } from "../src/shared/fingerprint";
+import { guideExamples, guideSection } from "./ingest-guide-examples";
 
 const APP_URL = envValue("TOPOSCOPE_URL") ?? "http://127.0.0.1:8080";
 const INGEST_TOKEN = envValue("TOPOSCOPE_INGEST_TOKEN") ?? "toposcope-ingest";
@@ -124,6 +127,61 @@ async function main(): Promise<void> {
     throw new Error(
       `extra ingest failed: ${extraIngestRes.status} ${await extraIngestRes.text()}`,
     );
+  }
+
+  // The ingest guide's "What an app sends" examples, with only the event time moved to now.
+  const guideMd = await Bun.file(`${import.meta.dir}/../docs/ingest.md`).text();
+  const guideRows = guideExamples(guideSection(guideMd, "What an app sends"));
+  if (guideRows.length !== 2) {
+    throw new Error(`expected 2 examples in the ingest guide section, got ${guideRows.length}`);
+  }
+  const guideNowMs = Date.now();
+  for (const example of guideRows) {
+    const guideRes = await fetch(`${APP_URL}${example.path}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${INGEST_TOKEN}`,
+      },
+      body: JSON.stringify(example.body)
+        .replace(/"ts":"[^"]+"/, `"ts":"${new Date(guideNowMs).toISOString()}"`)
+        .replace(/"timeUnixNano":"\d+"/, `"timeUnixNano":"${BigInt(guideNowMs) * 1_000_000n}"`),
+    });
+    const guideIngested = (await guideRes.json()) as { ingested?: number };
+    if (guideRes.status !== 200 || guideIngested.ingested !== 1) {
+      throw new Error(
+        `ingest guide example for ${example.path} was not stored: ${guideRes.status} ${JSON.stringify(guideIngested)}`,
+      );
+    }
+  }
+  const guideDirect = guideRows.find((example) => example.path === "/api/ingest")?.body as
+    | { message: string; attrs: Record<string, unknown> }
+    | undefined;
+  const guideE1 = guideDirect
+    ? withFingerprint("error", guideDirect.message, liftException(guideDirect.attrs))?.e1
+    : undefined;
+  if (typeof guideE1 !== "string") {
+    throw new Error("ingest guide direct-post example has no fingerprint");
+  }
+  const guideSearch = await fetch(
+    `${APP_URL}/api/search?q=${encodeURIComponent(`e1:${guideE1}`)}&range=15m`,
+    { headers: { authorization: basicAuth() } },
+  );
+  const guideFound = (await guideSearch.json()) as {
+    total: number;
+    events: Array<{ service: string; attrs?: Record<string, string> }>;
+  };
+  if (guideFound.total < 2) {
+    throw new Error(`ingest guide examples should share one e1; found ${guideFound.total} rows for ${guideE1}`);
+  }
+  for (const event of guideFound.events) {
+    if (
+      event.service !== "billing" ||
+      event.attrs?.version !== "1.4.2" ||
+      !event.attrs?.["exception.frames"]
+    ) {
+      throw new Error(`ingest guide example row is missing a field: ${JSON.stringify(event)}`);
+    }
   }
 
   const throughputRes = await fetch(`${APP_URL}/api/throughput`, {
