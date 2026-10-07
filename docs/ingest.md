@@ -13,7 +13,7 @@ Hunt reads what is on the row, and a request can return 200 and still leave a ro
 - `service` — on OTLP, the resource’s `service.name`; without one the row is stored under `otlp`.
 - `level` — `debug`, `info`, `warn`, `error`, or `fatal`; on OTLP, the record’s severity.
 - `message` — a string. An OTLP record whose body is not a string is dropped.
-- An event time with a zone — `ts` in RFC 3339, or `timeUnixNano` on OTLP. Without one the row is stamped on arrival.
+- An event time with a zone — `ts` in RFC 3339, or `timeUnixNano` on OTLP. Without one the row takes the time a collector first saw it (`observedTimeUnixNano`), or else the time it arrives.
 - The release — `service.version` on the OTLP resource, or `version` in `attrs`. It is stored as `version`.
 
 ### An error row

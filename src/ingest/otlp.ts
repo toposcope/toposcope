@@ -220,8 +220,10 @@ export function mapOtlpJson(payload: unknown): LogEvent[] {
         const lifted = liftIdentities(
           liftException(Object.keys(attrs).length > 0 ? attrs : undefined),
         );
+        // The event's own time; else when a collector first saw it; else now.
         const ts =
           tsFromNano(row.timeUnixNano as string | number | undefined) ??
+          tsFromNano(row.observedTimeUnixNano as string | number | undefined) ??
           new Date().toISOString();
         events.push({
           ts,
