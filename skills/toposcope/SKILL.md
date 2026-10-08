@@ -72,7 +72,7 @@ Hunt reads what is on the row, and a request can return 200 and still leave a ro
 
 ### An error row
 
-The exception goes on the log record: `exception.type`, and either `exception.stacktrace` (the stack as the runtime prints it) or `exception.frames` (an array of `{ file, function, in_app? }`). Then `e1` comes from the frames and survives a reworded message; otherwise it falls back to the type and the message. An exception recorded only on a span never becomes a log row. See [Exception fingerprints](#exception-fingerprints).
+The exception goes on the log record: `exception.type`, and either `exception.stacktrace` (the stack as the runtime prints it) or `exception.frames` (an array of `{ file, function, in_app? }`). Then `e1` comes from the frames and survives a reworded message; otherwise it falls back to the type and the message. An exception recorded on a span is kept on that span, with the same `e1`, and shows in the waterfall. It never becomes a log row, so an exception has to be logged to be hunted: fingerprints, `level:error` and Compare read logged errors. See [Exception fingerprints](#exception-fingerprints).
 
 ### Attributes
 

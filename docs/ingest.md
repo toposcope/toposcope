@@ -18,7 +18,7 @@ Hunt reads what is on the row, and a request can return 200 and still leave a ro
 
 ### An error row
 
-The exception goes on the log record: `exception.type`, and either `exception.stacktrace` (the stack as the runtime prints it) or `exception.frames` (an array of `{ file, function, in_app? }`). Then `e1` comes from the frames and survives a reworded message; otherwise it falls back to the type and the message. An exception recorded only on a span never becomes a log row. See [Exception fingerprints](#exception-fingerprints).
+The exception goes on the log record: `exception.type`, and either `exception.stacktrace` (the stack as the runtime prints it) or `exception.frames` (an array of `{ file, function, in_app? }`). Then `e1` comes from the frames and survives a reworded message; otherwise it falls back to the type and the message. An exception recorded on a span is kept on that span, with the same `e1`, and shows in the waterfall. It never becomes a log row, so an exception has to be logged to be hunted: fingerprints, `level:error` and Compare read logged errors. See [Exception fingerprints](#exception-fingerprints).
 
 ### Attributes
 
@@ -292,6 +292,8 @@ To attach without a pull, POST `{"service":"billing","up":0}` when the job faile
 ## Traces
 
 Toposcope stores the spans it receives. Sampling stays at the collector.
+
+A span keeps the exception recorded on it: the `exception` event a tracing library writes with `recordException`, or by itself when an exception leaves the span. Its `exception.type`, `exception.message` and `exception.stacktrace` are stored on the span with the `e1` they give, worked out by the code that fingerprints a log row, so the span and the row that logged the same exception carry the same id. When a span recorded several, the last is kept. Other span events are not stored. The tracing library’s own frames at the outer ends of a span’s stack are left out of the id: the Python library records an exception as it passes through its own context managers, and the logged traceback never has those frames. The spans themselves are tested against what OpenTelemetry JS 0.223.0 and OpenTelemetry Python 1.45.1 send.
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/traces \

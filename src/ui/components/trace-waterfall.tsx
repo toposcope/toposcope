@@ -332,7 +332,9 @@ export function TraceWaterfall({
                 {Object.entries(selectedSpan.attrs).map(([k, v]) => (
                   <span
                     key={k}
-                    className="inline-flex min-w-0 items-baseline gap-1.5 font-mono text-[11px]"
+                    // A long value, such as a recorded exception's stack, is cut: the whole of it is one hover away.
+                    title={v.length > 60 ? v : undefined}
+                    className="inline-flex max-w-[28rem] min-w-0 items-baseline gap-1.5 font-mono text-[11px]"
                   >
                     <span className="text-muted-foreground">{k}</span>
                     <span className="min-w-0 truncate">{v}</span>

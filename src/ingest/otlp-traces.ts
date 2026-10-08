@@ -1,4 +1,6 @@
 import { flattenAttrsCounted } from "../shared/attrs";
+import { liftException, parseExceptionFrames, type ExceptionFrame } from "../shared/exception";
+import { withFingerprint } from "../shared/fingerprint";
 import { otlpIdHex } from "../shared/ids";
 import { spanStatuses, type Span, type SpanStatus } from "../shared/span";
 import type { Losses } from "./otlp-reply";
@@ -95,6 +97,76 @@ function list(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+const exceptionFields = ["exception.type", "exception.message", "exception.stacktrace"] as const;
+
+/** A frame of the tracing library itself, not of the app or its framework. */
+const tracingFrame = /(?:^|[\\/])opentelemetry[\\/]/i;
+
+/**
+ * A span's stack without the tracing library's own frames at its outer ends.
+ * The Python library records an exception as it passes through the context
+ * managers that hold the span, so those two frames head the span's stack and
+ * are never on the logged one. Left in, the span and the log row for the same
+ * exception would carry different ids.
+ */
+function withoutTracingFrames(frames: ExceptionFrame[]): ExceptionFrame[] {
+  let from = 0;
+  let to = frames.length;
+  while (from < to && tracingFrame.test(frames[from]!.file)) {
+    from += 1;
+  }
+  while (to > from && tracingFrame.test(frames[to - 1]!.file)) {
+    to -= 1;
+  }
+  return from < to ? frames.slice(from, to) : frames;
+}
+
+/**
+ * The exception a span recorded, as the attributes it is kept under: its type,
+ * its message, its stack, and the `e1` those give. A tracing library records
+ * one as an event named `exception`; the last one is the one the span ended
+ * with. The `e1` is worked out by the code that fingerprints a log row, so a
+ * span and the row that logged the same exception carry the same id.
+ */
+function spanException(
+  events: unknown,
+  attrs: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  let recorded: Record<string, unknown> | undefined;
+  for (const raw of list(events)) {
+    const event = asRecord(raw);
+    if (event?.name === "exception") {
+      recorded = attrRecord(event.attributes as Attr[] | undefined, new Set());
+    }
+  }
+  // Some libraries set the same fields on the span itself.
+  const from = recorded ?? attrs;
+  const kept: Record<string, unknown> = {};
+  for (const field of exceptionFields) {
+    const value = from[field];
+    if (typeof value === "string" && value.trim().length > 0) {
+      kept[field] = value;
+    }
+  }
+  if (Object.keys(kept).length === 0) {
+    return undefined;
+  }
+  // On the span itself a message alone is not an exception.
+  if (!recorded && kept["exception.type"] === undefined && kept["exception.stacktrace"] === undefined) {
+    return undefined;
+  }
+  const message = typeof kept["exception.message"] === "string" ? kept["exception.message"] : "";
+  const lifted = liftException(kept) ?? {};
+  const frames = parseExceptionFrames(lifted["exception.frames"]);
+  if (frames.length > 0) {
+    lifted["exception.frames"] = withoutTracingFrames(frames);
+  }
+  const stamped = withFingerprint("error", message, lifted) ?? {};
+  // The frames are read from the stack, which is kept; they are not kept twice.
+  delete stamped["exception.frames"];
+  return stamped;
+}
+
 /** `losses` is told of every span that is not stored, and of attributes a stored span lost. */
 export function mapOtlpTraces(payload: unknown, losses?: Losses): Span[] {
   if (!payload || typeof payload !== "object") {
@@ -153,7 +225,14 @@ export function mapOtlpTraces(payload: unknown, losses?: Losses): Span[] {
           attrs["status.message"] = statusRec.message;
         }
         const name = typeof row.name === "string" && row.name.length > 0 ? row.name : "span";
-        const flat = flattenAttrsCounted(attrs);
+        // A recorded exception goes first, so the attribute cap cannot drop it.
+        const exception = spanException(row.events, attrs);
+        if (exception) {
+          for (const field of [...exceptionFields, "e1"]) {
+            delete attrs[field];
+          }
+        }
+        const flat = flattenAttrsCounted(exception ? { ...exception, ...attrs } : attrs);
         losses?.attrsCut(flat);
         spans.push({
           trace_id: traceId,

@@ -30,7 +30,15 @@ message Span {
   fixed64 start_time_unix_nano = 7;
   fixed64 end_time_unix_nano = 8;
   repeated KeyValue attributes = 9;
+  repeated Event events = 11;
   Status status = 15;
+}
+
+// Only an event named "exception" is read: what the span recorded as thrown.
+message Event {
+  fixed64 time_unix_nano = 1;
+  string name = 2;
+  repeated KeyValue attributes = 3;
 }
 
 message Status {
