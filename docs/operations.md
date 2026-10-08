@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.5.1` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.5.2` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -88,6 +88,8 @@ Version 0.4.11 does the same for three stack shapes: a Python traceback deeper t
 
 Version 0.5.0 answers an OTLP protobuf request in protobuf, as the protocol says; every reply was JSON before. A script that read `ingested` from the reply to a protobuf request has to send JSON instead. Boot adds one ClickHouse table, `metric_kinds`, which holds whether a metric name is a gauge or a counter. Rolling back to 0.4.12 leaves it in place and unused, and a counter then draws as an average again.
 
+Version 0.5.2 publishes one more loopback port from the packaged `compose.yml`: `127.0.0.1:4319`, for OTLP over gRPC. The app container does not start if something on the host already has that port; change the host side of that mapping in `compose.yml`, or remove it. Boot adds two ClickHouse tables, `metric_buckets` and `metric_buckets_by_minute`, which hold histogram buckets. A histogram stored before the upgrade has no buckets, so its percentiles start with the first export afterwards; its count, sum and average read from the start. Rolling back to 0.5.1 leaves the tables in place and unused: a histogram is listed as its `.count` and `.sum` again, and a saved search or link that carries a reading (`metric=p99:…`) is refused there. `vector.yaml` now also listens for OTLP on ports 4317 and 4318 and keeps its buffers under `VECTOR_DATA_DIR`, so the quick start’s Vector step sets that directory and Vector keeps running after its three smoke events.
+
 ## Backup and restore
 
 Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`.
@@ -119,7 +121,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 To roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin. Pin `0.5.0` to roll back application code from `0.5.1`.
+`0.3.14` is the first public pin. Pin `0.5.1` to roll back application code from `0.5.2`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe.
 
