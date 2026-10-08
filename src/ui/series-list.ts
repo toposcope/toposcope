@@ -1,9 +1,60 @@
+import {
+  defaultHistogramReading,
+  histogramReadings,
+  type HistogramReading,
+} from "../shared/metric";
 import { pickerNumericKeys, type SeriesPick } from "./agg-picker";
 
 /** How an ingested metric's bars are read. */
-export type MetricKindName = "gauge" | "counter";
+export type MetricKindName = "gauge" | "counter" | "histogram";
 
-export type MetricEntry = { name: string; kind: MetricKindName; points: number };
+export type MetricEntry = {
+  name: string;
+  kind: MetricKindName;
+  points: number;
+  /** For the `.count` or `.sum` an older link carries: the histogram it is a reading of. */
+  of?: string;
+  reading?: HistogramReading;
+};
+
+/** A picked metric as it is shown: under which name, of what kind, read how. */
+export type MetricView = { name: string; kind: MetricKindName; reading: HistogramReading | null };
+
+/**
+ * The series result knows best, then the window's list, then the link itself.
+ * A link that carries a histogram's `.count` or `.sum` is shown as that
+ * reading of the histogram.
+ */
+export function metricView(
+  pick: { name: string; reading?: HistogramReading | null },
+  entry?: MetricEntry | null,
+  result?: { kind?: MetricKindName; reading?: HistogramReading; metric?: string } | null,
+): MetricView {
+  const kind = result?.kind ?? entry?.kind ?? "gauge";
+  if (kind !== "histogram") {
+    return { name: pick.name, kind, reading: null };
+  }
+  return {
+    name: result?.metric ?? entry?.of ?? pick.name,
+    kind,
+    reading: result?.reading ?? entry?.reading ?? pick.reading ?? defaultHistogramReading,
+  };
+}
+
+/** What each reading of a histogram measures, as its menu says it. */
+export const readingMenu: ReadonlyArray<{ reading: HistogramReading; words: string }> = histogramReadings.map(
+  (reading) => ({
+    reading,
+    words: {
+      count: "how many were observed",
+      sum: "sum of observations",
+      avg: "mean of observations",
+      p50: "median",
+      p90: "90th percentile",
+      p99: "99th percentile",
+    }[reading],
+  }),
+);
 
 /** The busiest metrics shown before anything is typed. */
 export const untypedMetrics = 8;
@@ -54,10 +105,19 @@ export function splitHit(name: string, q: string): [string, string, string] {
 }
 
 /**
- * A gauge's one reading and a counter's, as printed beside the name. The bar
- * width rides with a counter's sum because it is part of the number.
+ * How a metric's bar is read, as printed beside the name: a gauge's `avg`, a
+ * counter's sum with the bar width, because the width is part of the number,
+ * and a histogram's chosen reading.
  */
-export function metricReading(kind: MetricKindName, step: string, compact = false): string {
+export function metricReading(
+  kind: MetricKindName,
+  step: string,
+  compact = false,
+  reading: HistogramReading | null = null,
+): string {
+  if (kind === "histogram") {
+    return reading ?? defaultHistogramReading;
+  }
   if (kind === "gauge") {
     return "avg";
   }
@@ -65,21 +125,52 @@ export function metricReading(kind: MetricKindName, step: string, compact = fals
 }
 
 /** What that reading means for one bar, in words. */
-export function readingWords(kind: MetricKindName, step: string): string {
+export function readingWords(
+  kind: MetricKindName,
+  step: string,
+  reading: HistogramReading | null = null,
+): string {
   const bar = step.length > 0 ? `this ${step}` : "this bar";
+  if (kind === "histogram") {
+    const what = {
+      count: `observed in ${bar}`,
+      sum: `sum of what was observed in ${bar}`,
+      avg: `mean of what was observed in ${bar}`,
+      p50: `median of ${bar}`,
+      p90: `90th percentile of ${bar}`,
+      p99: `99th percentile of ${bar}`,
+    }[reading ?? defaultHistogramReading];
+    return `histogram · ${what}`;
+  }
   return kind === "gauge"
     ? `gauge · average level in ${bar}`
     : `counter · arrived in ${bar} — not a level`;
 }
 
 /** A Stat card's note: one number for the whole window. */
-export function statWords(kind: MetricKindName, window: string): string {
+export function statWords(
+  kind: MetricKindName,
+  window: string,
+  reading: HistogramReading | null = null,
+): string {
+  if (kind === "histogram") {
+    const within = window.length > 0 ? `in the last ${window}` : "in this window";
+    const read = reading ?? defaultHistogramReading;
+    return read === "count"
+      ? `observations ${within} · histogram`
+      : `${read === "avg" ? "mean" : read} of every observation ${within} · histogram`;
+  }
   const over = window.length > 0 ? `over the last ${window}` : "over this window";
   return kind === "gauge" ? `avg level ${over} · gauge` : `sum ${over} · counter`;
 }
 
+/** What picking a metric writes: its name, and for a histogram the reading it starts with. */
+function metricValue(name: string, kind: MetricKindName): string {
+  return kind === "histogram" ? `m:${defaultHistogramReading}:${name}` : `m:${name}`;
+}
+
 export type SeriesRow = {
-  /** What `applySeriesSelect` takes: "", "rate", "k:<field>", "m:<metric>". */
+  /** What `applySeriesSelect` takes: "", "rate", "k:<field>", "m:<metric>", "m:<reading>:<histogram>". */
   value: string;
   name: string;
   /** Off, Count and Rate are plain words; a field or a metric is a name. */
@@ -141,7 +232,8 @@ export function buildSeriesList(opts: {
           : "";
   const sections: SeriesSection[] = [];
 
-  const pickedName = opts.pick.kind === "metric" ? opts.pick.name : null;
+  // An older link's `<name>.count` is listed as the histogram it reads.
+  const pickedName = opts.pick.kind === "metric" ? (opts.picked?.of ?? opts.pick.name) : null;
   if (pickedName) {
     const kind = opts.picked?.kind ?? "gauge";
     const quiet = !opts.picked || opts.picked.points === 0;
@@ -151,7 +243,7 @@ export function buildSeriesList(opts: {
       meta: quiet ? "" : "stays here while picked",
       rows: [
         {
-          value: `m:${pickedName}`,
+          value: metricValue(pickedName, kind),
           name: pickedName,
           plain: false,
           tag: quiet ? `no points · ${kind}` : kind,
@@ -206,7 +298,7 @@ export function buildSeriesList(opts: {
         ? `${metrics.length} of ${total} with points${metaWindow}`
         : `busiest ${metrics.length} of ${total}${metaWindow}`,
       rows: metrics.map((metric) => ({
-        value: `m:${metric.name}`,
+        value: metricValue(metric.name, metric.kind),
         name: metric.name,
         plain: false,
         tag: metric.kind,

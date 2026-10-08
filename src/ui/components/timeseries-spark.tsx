@@ -11,7 +11,8 @@ import {
 } from "../../query/histogram";
 import { seriesPickFromWidget } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog } from "../series-catalog";
-import { metricReading } from "../series-list";
+import { formatMetricRef } from "../../shared/metric";
+import { metricReading, metricView } from "../series-list";
 import { formatSpanShort } from "../time-range";
 import { SeriesPicker, SeriesReading } from "./series-picker";
 
@@ -30,6 +31,8 @@ type Props = {
   onSplit: (next: HistogramSplit) => void;
   onAgg: (next: string | null) => void;
   onSeries: (next: { agg: string | null; metric: string | null }) => void;
+  /** The same metric, read another way: its labels stay. */
+  onMetric?: (next: string) => void;
   updated?: ReactNode;
 };
 
@@ -52,13 +55,15 @@ export function TimeseriesSpark({
   onSplit,
   onAgg,
   onSeries,
+  onMetric,
   updated = null,
 }: Props) {
   const numeric = Boolean(agg || metric);
   const refused = aggResult?.source === "refused";
   const pick = seriesPickFromWidget(agg, metric);
   const catalog = useSeriesCatalog();
-  const metricKind = metric ? (aggResult?.kind ?? pickedEntry(catalog, metric)?.kind) : undefined;
+  const view =
+    pick.kind === "metric" ? metricView(pick, pickedEntry(catalog, pick.name), aggResult) : null;
   const stepLabel = bucketStepLabel(buckets);
   const keys = seriesKeys(buckets, split);
   const peak = Math.max(1, ...buckets.map((bucket) => bucket.n));
@@ -83,8 +88,8 @@ export function TimeseriesSpark({
   const peakText =
     finiteVals.length > 0 ? `peak ${formatAggStat(Math.max(...finiteVals))}` : "";
   // A metric's tag names how it is read and what it is, since the footer has no room for either.
-  const peakLabel = metric
-    ? [metricReading(metricKind ?? "gauge", stepLabel), metricKind ?? "gauge", peakText || "no points"]
+  const peakLabel = view
+    ? [metricReading(view.kind, stepLabel, false, view.reading), view.kind, peakText || "no points"]
         .filter(Boolean)
         .join(" · ")
     : peakText;
@@ -187,10 +192,21 @@ export function TimeseriesSpark({
           card
           pick={pick}
           agg={agg}
-          kind={metricKind}
+          view={view}
           onSeries={onSeries}
         />
-        <SeriesReading variant="footer" pick={pick} kind={metricKind} step={stepLabel} onAgg={onAgg} />
+        <SeriesReading
+          variant="footer"
+          pick={pick}
+          view={view}
+          step={stepLabel}
+          onAgg={onAgg}
+          onReading={(reading) => {
+            if (view) {
+              onMetric?.(formatMetricRef({ name: view.name, reading }));
+            }
+          }}
+        />
         {updated}
       </div>
     </>

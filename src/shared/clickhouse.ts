@@ -77,6 +77,7 @@ const insertTables = new Set([
   "profile_samples",
   "change_marks",
   "metric_kinds",
+  "metric_buckets",
 ]);
 
 export async function clickhouseInsertJsonEachRow(

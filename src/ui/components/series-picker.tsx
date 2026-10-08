@@ -10,13 +10,15 @@ import {
   type SeriesSelectResult,
 } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog, type SeriesCatalog } from "../series-catalog";
+import type { HistogramReading } from "../../shared/metric";
 import {
   buildSeriesList,
   metricReading,
   midCut,
+  readingMenu,
   splitHit,
   type MetricEntry,
-  type MetricKindName,
+  type MetricView,
   type SeriesRow,
 } from "../series-list";
 
@@ -41,8 +43,8 @@ type Props = {
   pick: SeriesPick;
   /** The log series as the URL has it. */
   agg: string | null;
-  /** The picked metric's kind, when the series result knows it. */
-  kind?: MetricKindName;
+  /** The picked metric as it is shown: its name, kind and reading. */
+  view?: MetricView | null;
   onSeries: (next: SeriesSelectResult) => void;
 };
 
@@ -51,7 +53,7 @@ type Props = {
  * Off (Count on a card), Rate and the numeric log fields keep the top; metrics
  * follow, each with its kind in a word.
  */
-export function SeriesPicker({ variant, card, pick, agg, kind, onSeries }: Props) {
+export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props) {
   const live = useSeriesCatalog();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
@@ -63,7 +65,15 @@ export function SeriesPicker({ variant, card, pick, agg, kind, onSeries }: Props
   const catalog = open && held ? held : live;
 
   const pickedName = pick.kind === "metric" ? pick.name : null;
-  const picked = pickedEntry(live, pickedName, kind);
+  const entry = pickedEntry(live, pickedName, view?.kind);
+  // An older link's `<name>.count` is listed, and labelled, as the histogram it reads.
+  const picked = useMemo<MetricEntry | null>(
+    () =>
+      entry && view
+        ? { ...entry, kind: view.kind, of: view.name !== entry.name ? view.name : undefined }
+        : entry,
+    [entry, view],
+  );
   const typed = filter.trim();
 
   // Names past the ones loaded are asked for, a moment after the typing stops.
@@ -150,7 +160,8 @@ export function SeriesPicker({ variant, card, pick, agg, kind, onSeries }: Props
   }
 
   const named = pick.kind === "metric" || pick.kind === "key";
-  const fullName = pick.kind === "metric" ? pick.name : pick.kind === "key" ? pick.key : "";
+  const fullName =
+    pick.kind === "metric" ? (picked?.of ?? pick.name) : pick.kind === "key" ? pick.key : "";
   const kindWord = pick.kind === "key" ? "field" : pick.kind === "metric" ? (picked?.kind ?? "gauge") : "";
   const plainLabel = pick.kind === "rate" ? "Rate" : card ? "Count" : "Off";
   const cutAt = variant === "toolbar" ? 29 : variant === "footer" ? 13 : 17;
@@ -370,27 +381,35 @@ export function SeriesPicker({ variant, card, pick, agg, kind, onSeries }: Props
 type ReadingProps = {
   variant: Variant;
   pick: SeriesPick;
-  /** The picked metric's kind. */
-  kind?: MetricKindName;
+  /** The picked metric as it is shown. */
+  view?: MetricView | null;
   /** The bar width as the plot labels it: "1m". */
   step: string;
   onAgg: (next: string) => void;
+  /** A histogram's reading was chosen. */
+  onReading: (next: HistogramReading) => void;
 };
 
 /**
- * What sits beside the name. A log field's reducer is a choice. A gauge and a
- * counter have one reading each, printed and not a button, so a counter's sum
- * cannot be read as a level.
+ * What sits beside the name. A log field's reducer is a choice, and so is a
+ * histogram's reading. A gauge and a counter have one reading each, printed
+ * and not a button, so a counter's sum cannot be read as a level.
  */
-export function SeriesReading({ variant, pick, kind, step, onAgg }: ReadingProps) {
+export function SeriesReading({ variant, pick, view, step, onAgg, onReading }: ReadingProps) {
   const [open, setOpen] = useState(false);
-  if (pick.kind === "key") {
+  const choice = pick.kind === "key" || (pick.kind === "metric" && view?.kind === "histogram");
+  if (choice) {
+    const histogram = pick.kind === "metric";
+    const current = pick.kind === "key" ? pick.op : metricReading("histogram", step, false, view?.reading);
+    const rows: ReadonlyArray<{ value: string; words: string }> = histogram
+      ? readingMenu.map((row) => ({ value: row.reading, words: row.words }))
+      : numericPickerOps.map((op) => ({ value: op, words: "" }));
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label="Series reducer"
+            aria-label={histogram ? "Histogram reading" : "Series reducer"}
             onPointerDown={(e) => e.stopPropagation()}
             className={cn(triggerBox, "shrink-0 px-[7px] font-mono")}
             style={{
@@ -398,7 +417,7 @@ export function SeriesReading({ variant, pick, kind, step, onAgg }: ReadingProps
               boxShadow: open ? "0 0 0 1px oklch(0.552 0.016 285.938 / 35%)" : undefined,
             }}
           >
-            {pick.op}
+            {current}
             <span className="text-[8px]" style={{ color: DIM }}>
               ▾
             </span>
@@ -407,37 +426,52 @@ export function SeriesReading({ variant, pick, kind, step, onAgg }: ReadingProps
         <PopoverContent
           align="start"
           side="bottom"
-          className="w-[182px] rounded-[6.4px] border-white/[0.12] bg-[#18181b] p-1"
+          className={cn("rounded-[6.4px] border-white/[0.12] bg-[#18181b] p-1", histogram ? "w-[244px]" : "w-[182px]")}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div
             className="mb-0.5 border-b border-white/[0.08] px-[7px] pt-1 pb-[5px] text-[9.5px] tracking-[0.1em] uppercase"
             style={{ color: FN }}
           >
-            Function
+            {histogram ? "Reading · histogram" : "Function"}
           </div>
-          {numericPickerOps.map((op) => (
+          {rows.map((row) => (
             <button
-              key={op}
+              key={row.value}
               type="button"
               className={cn(
                 "flex h-[25px] w-full items-center gap-[7px] rounded-[3.4px] px-[7px] text-left font-mono text-[11.5px]",
-                op === pick.op ? "bg-accent" : "bg-transparent hover:bg-accent",
+                row.value === current ? "bg-accent" : "bg-transparent hover:bg-accent",
               )}
               onClick={() => {
                 setOpen(false);
-                const next = aggFromOpSelect(op, pick);
-                if (next) {
-                  onAgg(next);
+                if (pick.kind === "key") {
+                  const next = aggFromOpSelect(row.value as (typeof numericPickerOps)[number], pick);
+                  if (next) {
+                    onAgg(next);
+                  }
+                  return;
                 }
+                onReading(row.value as HistogramReading);
               }}
             >
-              <span className="w-[9px] shrink-0 text-[10px]" style={{ color: FN, opacity: op === pick.op ? 1 : 0 }}>
+              <span
+                className="w-[9px] shrink-0 text-[10px]"
+                style={{ color: FN, opacity: row.value === current ? 1 : 0 }}
+              >
                 ✓
               </span>
-              {op}
+              <span className={histogram ? "w-[38px] shrink-0" : undefined}>{row.value}</span>
+              {row.words ? (
+                <span className="min-w-0 truncate font-sans text-[11px] text-muted-foreground">{row.words}</span>
+              ) : null}
             </button>
           ))}
+          {histogram ? (
+            <div className="-mx-1 mt-1 -mb-1 border-t border-white/[0.08] px-[9px] py-1.5 text-[10.5px] text-muted-foreground">
+              Per bar. One reading is drawn at a time.
+            </div>
+          ) : null}
         </PopoverContent>
       </Popover>
     );
@@ -445,7 +479,7 @@ export function SeriesReading({ variant, pick, kind, step, onAgg }: ReadingProps
   if (pick.kind !== "metric") {
     return null;
   }
-  const metricKind = kind ?? "gauge";
+  const metricKind = view?.kind ?? "gauge";
   const reading = metricReading(metricKind, step, variant !== "toolbar");
   const bar = step.length > 0 ? `its ${step}` : "it";
   return (

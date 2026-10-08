@@ -138,7 +138,7 @@ describe("retention HTTP validation", () => {
     expect(result.status).toBe(200);
     expect(result.stored).toBe(days);
     expect(result.body).toEqual({ retention_days: days });
-    expect(result.commands?.filter((sql) => sql.startsWith("ALTER TABLE"))).toHaveLength(10);
+    expect(result.commands?.filter((sql) => sql.startsWith("ALTER TABLE"))).toHaveLength(12);
     expect(result.commands?.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain(`INTERVAL ${days} DAY`);
   });
 });

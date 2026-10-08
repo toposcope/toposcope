@@ -102,4 +102,25 @@ describe("series pick round-trip", () => {
       { value: "m:cpu_seconds", label: "cpu_seconds" },
     ]);
   });
+
+  test("a histogram's reading is part of the pick", () => {
+    expect(seriesPickFromWidget(null, "p90:http.server.request.duration")).toEqual({
+      kind: "metric",
+      name: "http.server.request.duration",
+      reading: "p90",
+    });
+  });
+
+  test("picking a histogram writes its reading; from one histogram to another the reading stays", () => {
+    expect(applySeriesSelect("m:p99:latency", { kind: "off" })).toEqual({ agg: null, metric: "p99:latency" });
+    expect(applySeriesSelect("m:p99:rpc.duration", { kind: "metric", name: "latency", reading: "p50" })).toEqual({
+      agg: null,
+      metric: "p50:rpc.duration",
+    });
+    // A gauge has no reading to carry over.
+    expect(applySeriesSelect("m:cpu_seconds", { kind: "metric", name: "latency", reading: "p50" })).toEqual({
+      agg: null,
+      metric: "cpu_seconds",
+    });
+  });
 });

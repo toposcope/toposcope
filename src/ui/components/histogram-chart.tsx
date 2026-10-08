@@ -37,7 +37,8 @@ import {
 } from "../../query/histogram";
 import { seriesPickFromWidget } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog } from "../series-catalog";
-import { metricReading, midCut, readingWords } from "../series-list";
+import { formatMetricRef, metricExpr } from "../../shared/metric";
+import { metricReading, metricView, midCut, readingWords } from "../series-list";
 import { formatSpanShort } from "../time-range";
 import { SeriesPicker, SeriesReading } from "./series-picker";
 import { markPlotSpanMs } from "../change-marks";
@@ -88,6 +89,8 @@ type Props = {
   metric: string | null;
   metricLabels?: Record<string, string>;
   onSeries: (next: { agg: string | null; metric: string | null }) => void;
+  /** The same metric, read another way: its labels stay. */
+  onMetric?: (next: string) => void;
   onClearMetricLabels?: () => void;
   replaceY: boolean;
   onReplaceY: (on: boolean) => void;
@@ -313,6 +316,7 @@ export function HistogramChart({
   metric,
   metricLabels = {},
   onSeries,
+  onMetric,
   onClearMetricLabels,
   replaceY,
   onReplaceY,
@@ -371,10 +375,11 @@ export function HistogramChart({
 
   const seriesPick = seriesPickFromWidget(agg, metric);
   const catalog = useSeriesCatalog();
-  // How the picked metric's bars are read: from its series when it has one, else from what the window knows.
-  const metricKind = metric
-    ? (aggResult?.kind ?? pickedEntry(catalog, metric)?.kind)
-    : undefined;
+  // The picked metric as it is shown: from its series when it has one, else from what the window knows.
+  const view =
+    seriesPick.kind === "metric"
+      ? metricView(seriesPick, pickedEntry(catalog, seriesPick.name), aggResult)
+      : null;
   const keys = seriesKeys(buckets, split);
   const stacked = chart === "stacked";
   const asLine = chart === "line";
@@ -903,9 +908,9 @@ export function HistogramChart({
           buckets.slice(lo, hi + 1).reduce((sum, bucket) => sum + bucket.n, 0),
         )}`
       : "";
-  const overlayLabel = aggResult?.expr ?? metric ?? agg ?? "";
   // A metric is named with how it is read, first: a counter's sum is never read as a level.
-  const metricReadingText = metric ? metricReading(metricKind ?? "gauge", stepLabel) : "";
+  const overlayLabel = view ? metricExpr(view.name, metricLabels) : (aggResult?.expr ?? agg ?? "");
+  const metricReadingText = view ? metricReading(view.kind, stepLabel, false, view.reading) : "";
   const hoverOverlay =
     overlayOn && hover !== null
       ? metric
@@ -913,7 +918,7 @@ export function HistogramChart({
             label: midCut(overlayLabel, 26),
             v: overlayValues[hover] ?? null,
             reading: metricReadingText,
-            words: readingWords(metricKind ?? "gauge", stepLabel),
+            words: readingWords(view?.kind ?? "gauge", stepLabel, view?.reading),
           }
         : { label: overlayLabel, v: overlayValues[hover] ?? null }
       : null;
@@ -1021,15 +1026,20 @@ export function HistogramChart({
             card={false}
             pick={seriesPick}
             agg={agg}
-            kind={metricKind}
+            view={view}
             onSeries={onSeries}
           />
           <SeriesReading
             variant="toolbar"
             pick={seriesPick}
-            kind={metricKind}
+            view={view}
             step={stepLabel}
             onAgg={onAgg}
+            onReading={(reading) => {
+              if (view) {
+                onMetric?.(formatMetricRef({ name: view.name, reading }));
+              }
+            }}
           />
         {Object.entries(metricLabels).map(([key, value]) => (
           <button
@@ -1468,7 +1478,7 @@ export function HistogramChart({
             <span>{aggResult.reason}</span>
           ) : metricQuiet ? (
             <span className="text-amber-400">
-              ▲ {metric} has no points in {catalog.window ? `the last ${catalog.window}` : "this window"} — the line is
+              ▲ {view?.name ?? metric} has no points in {catalog.window ? `the last ${catalog.window}` : "this window"} — the line is
               missing, not zero. It stays picked.
             </span>
           ) : (
@@ -1507,6 +1517,7 @@ export function HistogramChart({
               className="size-[7px] rounded-sm"
               style={{ background: AGG_COLOR }}
             />
+            {metricReadingText ? `${metricReadingText} ` : ""}
             {overlayLabel}
             <span className="font-mono text-muted-foreground/65">
               {formatAggStat(aggResult?.stat)}

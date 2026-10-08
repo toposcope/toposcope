@@ -3,11 +3,13 @@ import { clickhouseInsertJsonEachRow, clickhouseQuery } from "./clickhouse";
 /**
  * How a metric's points are read. A gauge is a level: each bar is the average
  * of its points. A counter is an amount per interval: each bar is their sum.
+ * A histogram is a distribution: its count and sum are the counters
+ * `<name>.count` and `<name>.sum`, and its buckets hold the percentiles.
  * A name with no kind — one posted as a plain JSON point — reads as a gauge.
  */
-export type MetricKind = "gauge" | "counter";
+export type MetricKind = "gauge" | "counter" | "histogram";
 
-const metricKinds: readonly MetricKind[] = ["gauge", "counter"];
+const metricKinds: readonly MetricKind[] = ["gauge", "counter", "histogram"];
 
 /** What this process has seen or looked up. Ingest and query share it. */
 const known = new Map<string, MetricKind | null>();

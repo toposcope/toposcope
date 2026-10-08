@@ -111,6 +111,8 @@ describe("retention TTL ALTER", () => {
       "logs_attr_numeric_by_minute",
       "metrics",
       "metrics_by_minute",
+      "metric_buckets",
+      "metric_buckets_by_minute",
       "spans",
       "profile_samples",
       "change_marks",

@@ -66,6 +66,13 @@ describe("widget URL tokens", () => {
     const dotted = "a.t.0.0.12.4.level.line.m:http.server.duration";
     expect(parseWidgetsParam(dotted)[0]?.metric).toBe("http.server.duration");
     expect(formatWidgetsParam(parseWidgetsParam(dotted))).toBe(dotted);
+    // A histogram's reading rides in front of its dotted name, and its labels still follow.
+    const read = "a.t.0.0.12.4.level.line.m:p90:http.server.request.duration.l:service:api";
+    expect(parseWidgetsParam(read)[0]).toMatchObject({
+      metric: "p90:http.server.request.duration",
+      metricLabels: { service: "api" },
+    });
+    expect(formatWidgetsParam(parseWidgetsParam(read))).toBe(read);
     const stat = "b.s.0.4.4.2.m:cpu_seconds";
     expect(parseWidgetsParam(stat).find((w) => w.id === "b")).toMatchObject({
       kind: "stat",

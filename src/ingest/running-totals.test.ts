@@ -111,4 +111,28 @@ describe("what is kept in memory", () => {
     // "a" was pushed out, and is seen for the first time again: young enough to be counted whole.
     expect(state.advance("a", 5_000_000, 5_050_000, [9])).toEqual([9]);
   });
+
+  test("a histogram's bucket totals are compared bucket by bucket, and never go below zero", () => {
+    const { state } = totals();
+    const bounds = [1, 2, Number.POSITIVE_INFINITY];
+    // count, sum, then one total for each bound.
+    expect(state.advance("h", 5_000_000, 5_020_000, [6, 9, 3, 2, 1], bounds)).toEqual([6, 9, 3, 2, 1]);
+    expect(state.advance("h", 5_000_000, 5_080_000, [9, 7, 3, 5, 1], bounds)).toEqual([3, -2, 0, 3, 0]);
+    // A bucket that reads lower than before, with the count still rising, gained nothing.
+    expect(state.advance("h", 5_000_000, 5_140_000, [10, 8, 2, 7, 1], bounds)).toEqual([1, 1, 0, 2, 0]);
+  });
+
+  test("totals kept under other bounds are laid under the new ones before the difference is taken", () => {
+    const { state } = totals();
+    const inf = Number.POSITIVE_INFINITY;
+    state.advance("h", 5_000_000, 5_020_000, [8, 0, 1, 3, 2, 2, 0], [1.5, 2, 3, 4, inf]);
+    // Coarser now: what was under 1.5 and 2 is under 2, what was under 3 and 4 is under 4.
+    expect(state.advance("h", 5_000_000, 5_080_000, [11, 0, 4, 4, 3, 0], [2, 4, 8, inf])).toEqual([3, 0, 0, 0, 3, 0]);
+  });
+
+  test("a histogram that starts sending buckets is counted from there, whole", () => {
+    const { state } = totals();
+    state.advance("h", 5_000_000, 5_020_000, [6, 9]);
+    expect(state.advance("h", 5_000_000, 5_080_000, [9, 12, 5, 4], [1, Number.POSITIVE_INFINITY])).toEqual([9, 12, 5, 4]);
+  });
 });

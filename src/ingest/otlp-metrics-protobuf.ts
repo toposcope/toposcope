@@ -29,8 +29,8 @@ message Metric {
     Gauge gauge = 5;
     Sum sum = 7;
     Histogram histogram = 9;
-    Uncounted exponential_histogram = 10;
-    Uncounted summary = 11;
+    ExponentialHistogram exponential_histogram = 10;
+    Summary summary = 11;
   }
 }
 
@@ -49,12 +49,13 @@ message Histogram {
   uint32 aggregation_temporality = 2;
 }
 
-// A kind that is not stored: only its points are counted.
-message Uncounted {
-  repeated Empty data_points = 1;
+message ExponentialHistogram {
+  repeated ExponentialHistogramDataPoint data_points = 1;
+  uint32 aggregation_temporality = 2;
 }
 
-message Empty {
+message Summary {
+  repeated SummaryDataPoint data_points = 1;
 }
 
 message NumberDataPoint {
@@ -73,8 +74,38 @@ message HistogramDataPoint {
   fixed64 time_unix_nano = 3;
   fixed64 count = 4;
   optional double sum = 5;
+  repeated fixed64 bucket_counts = 6;
+  repeated double explicit_bounds = 7;
   repeated KeyValue attributes = 9;
   uint32 flags = 10;
+}
+
+message ExponentialHistogramDataPoint {
+  repeated KeyValue attributes = 1;
+  fixed64 start_time_unix_nano = 2;
+  fixed64 time_unix_nano = 3;
+  fixed64 count = 4;
+  optional double sum = 5;
+  sint32 scale = 6;
+  fixed64 zero_count = 7;
+  Buckets positive = 8;
+  Buckets negative = 9;
+  uint32 flags = 10;
+
+  message Buckets {
+    sint32 offset = 1;
+    repeated uint64 bucket_counts = 2;
+  }
+}
+
+// A summary's quantiles are not read: only its count and sum are kept.
+message SummaryDataPoint {
+  fixed64 start_time_unix_nano = 2;
+  fixed64 time_unix_nano = 3;
+  fixed64 count = 4;
+  double sum = 5;
+  repeated KeyValue attributes = 7;
+  uint32 flags = 8;
 }
 
 message KeyValue {

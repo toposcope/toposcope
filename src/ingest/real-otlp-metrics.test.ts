@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import type { MetricPoint } from "../shared/metric";
+import type { MetricBuckets, MetricPoint } from "../shared/metric";
 import { mapOtlpMetrics } from "./otlp-metrics";
 import { decodeOtlpMetricsProtobuf } from "./otlp-metrics-protobuf";
 import { Losses } from "./otlp-reply";
@@ -26,9 +26,16 @@ async function read(file: string, totals = upBeforeTheService()) {
     ? decodeOtlpMetricsProtobuf(buf)
     : JSON.parse(new TextDecoder().decode(buf));
   const losses = new Losses();
-  const { points, kinds } = mapOtlpMetrics(payload, losses, totals);
-  return { points, kinds, losses };
+  const { points, buckets, kinds } = mapOtlpMetrics(payload, losses, totals);
+  return { points, buckets, kinds, losses };
 }
+
+/** Everything a histogram's stored buckets counted. */
+const observed = (buckets: MetricBuckets[], name: string) =>
+  buckets
+    .filter((row) => row.name === name)
+    .flatMap((row) => row.n)
+    .reduce((sum, count) => sum + count, 0);
 
 const total = (points: MetricPoint[], name: string) =>
   points.filter((point) => point.name === name).reduce((sum, point) => sum + point.value, 0);
@@ -48,6 +55,18 @@ describe("a real exporter with the delta setting", () => {
       expect(total(points, "http.server.request.duration.sum")).toBeGreaterThan(0);
       expect(kinds.get("http.server.request.duration.count")).toBe("counter");
       expect(kinds.get("http.server.request.duration.sum")).toBe("counter");
+    },
+  );
+
+  test.each(["protobuf", "json"] as const)(
+    "%s: the histogram's buckets hold every request, and its name is a histogram",
+    async (encoding) => {
+      const { buckets, kinds } = await read(source.requests[encoding]);
+      expect(observed(buckets, "http.server.request.duration")).toBe(source.served);
+      expect(kinds.get("http.server.request.duration")).toBe("histogram");
+      for (const row of buckets) {
+        expect(row.n).toHaveLength(row.le.length + 1);
+      }
     },
   );
 
@@ -79,11 +98,13 @@ describe("a real exporter with the delta setting", () => {
 
 describe("the same exporter with no setting, as a stock setup sends", () => {
   test("its counters and histograms are running totals, and are stored as amounts all the same", async () => {
-    const { points, kinds, losses } = await read(source.requests.stock);
+    const { points, buckets, kinds, losses } = await read(source.requests.stock);
     expect(losses.message()).toBe("");
     // The service started after this process did, so its first totals are all new.
     expect(total(points, "http.server.request.duration.count")).toBe(source.served);
+    expect(observed(buckets, "http.server.request.duration")).toBe(source.served);
     expect(total(points, "app.jobs.processed")).toBe(source.served);
+    expect(kinds.get("http.server.request.duration")).toBe("histogram");
     expect(kinds.get("http.server.request.duration.count")).toBe("counter");
     expect(kinds.get("app.jobs.processed")).toBe("counter");
     expect(kinds.get("app.requests.in_flight")).toBe("gauge");

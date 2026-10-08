@@ -34,7 +34,11 @@ export function useSeriesCatalog(): SeriesCatalog {
   return useContext(SeriesCatalogContext);
 }
 
-/** The picked metric as this window has it, or what is known of it when it has no points here. */
+/**
+ * The picked metric as this window has it, or what is known of it when it has
+ * no points here. What was asked about by name comes first: it also says when
+ * an older link's `.count` is a reading of a histogram.
+ */
 export function pickedEntry(
   catalog: SeriesCatalog,
   name: string | null,
@@ -44,8 +48,8 @@ export function pickedEntry(
     return null;
   }
   return (
-    catalog.metrics.find((metric) => metric.name === name) ??
     catalog.picked[name] ??
+    catalog.metrics.find((metric) => metric.name === name) ??
     (fallbackKind ? { name, kind: fallbackKind, points: 0 } : null)
   );
 }
