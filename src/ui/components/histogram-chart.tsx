@@ -65,6 +65,8 @@ import { CompareFold, type CompareFoldHunt } from "./compare-fold";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
+/** `inset-1`: the box the gridlines and an overlaid series share inside the plot. */
+const PLOT_INSET = 4;
 const HEAD_H = 12;
 const HEAD_GAP = 2;
 const AGG_COLOR = "#a78bfa";
@@ -1306,10 +1308,12 @@ export function HistogramChart({
                 </div>
               ) : null}
               {overlayOn && !overlayAsBars ? (
+                // The div holds the box. An svg left to `inset` takes its height from its viewBox and its width.
+                <div className="pointer-events-none absolute inset-1 z-[2]">
                 <svg
                   viewBox={`0 0 1000 ${PLOT_H}`}
                   preserveAspectRatio="none"
-                  className="pointer-events-none absolute inset-1 z-[2]"
+                  className="block h-full w-full"
                 >
                   {asArea || replaceY ? (
                     overlayAreaSegs.map((d) => (
@@ -1337,6 +1341,7 @@ export function HistogramChart({
                     ))
                   )}
                 </svg>
+                </div>
               ) : null}
               {marks && Number.isFinite(markFromMs) && spanMs > 0 ? (
                 <HistogramMarkRules
@@ -1450,7 +1455,17 @@ export function HistogramChart({
         {overlayOn && !replaceY ? (
           <div
             className="relative w-[34px] shrink-0 self-stretch font-mono text-[10px]"
-            style={{ marginTop: HEAD_H + HEAD_GAP, color: AGG_COLOR }}
+            // The gridlines' box: under the head strip, inset in the plot, above the mark lane.
+            style={{
+              marginTop: HEAD_H + HEAD_GAP + PLOT_INSET,
+              marginBottom: PLOT_INSET,
+              color: AGG_COLOR,
+              ...(marks
+                ? {
+                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + 2 * PLOT_INSET}px)`,
+                  }
+                : {}),
+            }}
           >
             {overlayTicks.map((tick, i) => (
               <span
