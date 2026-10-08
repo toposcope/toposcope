@@ -82,5 +82,42 @@
         "stock": "node.metrics.stock.json"
       }
     }
+  },
+  "traces": {
+    "captured": "2026-10-08",
+    "node": {
+      "image": "node:24-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20",
+      "runtime": "Node 24.21.0",
+      "exporter": "OpenTelemetry JS 0.223.0",
+      "bridge": "pino 10.4.0",
+      "setup": "@opentelemetry/auto-instrumentations-node 0.81.0, instrumentation-pino 0.69.0, sdk-trace-base 2.12.0",
+      "type": "TypeError",
+      "recorded": "span.recordException(err)",
+      "requests": {
+        "protobuf": {
+          "traces": "node.traces.bin",
+          "logs": "node.traces.logs.bin"
+        },
+        "json": {
+          "traces": "node.traces.json",
+          "logs": "node.traces.logs.json"
+        }
+      }
+    },
+    "python": {
+      "image": "python:3.13-slim@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c",
+      "runtime": "Python 3.13.16",
+      "exporter": "OpenTelemetry Python 1.45.1",
+      "bridge": "logging",
+      "setup": "opentelemetry-distro 0.66b1 (opentelemetry-instrument), exporter-otlp-proto-http 1.45.1, sdk 1.45.1",
+      "type": "KeyError",
+      "recorded": "by the library, as the exception leaves the span",
+      "requests": {
+        "protobuf": {
+          "traces": "python.traces.bin",
+          "logs": "python.traces.logs.bin"
+        }
+      }
+    }
   }
 }
