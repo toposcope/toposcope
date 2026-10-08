@@ -36,6 +36,7 @@ import { ingestProbesRoute } from "./ingest/probes";
 import { otlpLogsRoute } from "./ingest/otlp-route";
 import { otlpTracesRoute } from "./ingest/otlp-traces-route";
 import { otlpProfilesRoute } from "./ingest/otlp-profiles-route";
+import { startOtlpGrpc } from "./ingest/otlp-grpc";
 import { startSyslogUdp } from "./ingest/syslog";
 import { renderMetrics } from "./metrics";
 import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsRoute, metricNamesRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
@@ -57,6 +58,7 @@ let bootPhase: BootPhase = "starting";
 let stopping = false;
 let server: Server<unknown> | undefined;
 let stopSyslog: () => Promise<void> = async () => {};
+let stopGrpc: () => Promise<void> = async () => {};
 
 const app = new Hono();
 
@@ -205,7 +207,7 @@ async function stop(): Promise<void> {
   }
   stopping = true;
   // Refuses new connections and resolves once every request in flight has its reply.
-  await Promise.all([server?.stop(), stopSyslog()]);
+  await Promise.all([server?.stop(), stopSyslog(), stopGrpc()]);
   process.exit(0);
 }
 
@@ -220,6 +222,8 @@ async function startBoot(): Promise<void> {
     startAlertCron();
     // A stubbed listener in tests returns nothing.
     stopSyslog = (await startSyslogUdp()) ?? stopSyslog;
+    // OTLP over gRPC: each call goes through the same routes, and the same checks, as HTTP.
+    stopGrpc = (await startOtlpGrpc((request) => app.fetch(request)))?.stop ?? stopGrpc;
     bootPhase = "ready";
   } catch (err) {
     console.error("boot failed", err);

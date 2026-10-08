@@ -26,7 +26,7 @@ A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is sto
 
 ### Three ways in
 
-**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`, not gRPC) with the ingest token, a service name, and a version. Metrics need no setting: counters and histograms are stored as the amount per interval, whether the exporter sends deltas or, as it does by default, running totals.
+**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`), or over gRPC on its own port, with the ingest token, a service name, and a version. Metrics need no setting: counters and histograms are stored as the amount per interval, whether the exporter sends deltas or, as it does by default, running totals.
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080
@@ -37,6 +37,8 @@ OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2
 OTEL_LOGS_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
 ```
+
+An exporter left on gRPC, which several are by default, needs the other address and no protocol line: `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4319`, with the same header. See [OTLP over gRPC](#otlp-over-grpc).
 
 The app’s logger has to be bridged to the exporter, and an uncaught error logged through it with the exception attached. What arrives:
 
@@ -316,6 +318,29 @@ curl -X POST http://127.0.0.1:8080/v1/profiles \
 ```
 
 Toposcope does not use `/debug/pprof` scraping.
+
+## OTLP over gRPC
+
+Several OpenTelemetry exporters send gRPC unless told otherwise. Toposcope takes it on a second port, `4319`, for logs, traces, metrics and profiles. The token is the same, sent as the `authorization` metadata an exporter builds from `OTEL_EXPORTER_OTLP_HEADERS`:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4319
+OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20${TOPOSCOPE_INGEST_TOKEN}
+```
+
+A call is handed to the HTTP route for its signal, so the limits and the replies are the ones on this page: 1 MB a message, gzip under that, 1,024 log records or spans, and a reply whose partial success says what was not stored. What HTTP answers with a status, gRPC answers with a code:
+
+| HTTP | gRPC | An exporter |
+| --- | --- | --- |
+| 200 | `OK` | goes on |
+| 400 | `INVALID_ARGUMENT` | drops the request |
+| 401 | `UNAUTHENTICATED` | drops the request |
+| 413 | `RESOURCE_EXHAUSTED` | drops the request |
+| 429, 503 | `UNAVAILABLE` | tries again |
+
+The port is `4319` and not OTLP’s usual `4317`, which is left to a collector on the same host: the packaged [Vector](#vector) config listens there. `OTLP_GRPC_PORT` moves it, and `0` turns it off. The packaged install binds it to `127.0.0.1`, like the app’s port. It is plain HTTP/2 with no TLS; in front of a reverse proxy it needs a rule of its own, shown in the [operations guide](operations.md#tls).
+
+Tested with OpenTelemetry Python 1.45.1 on its gRPC default, OpenTelemetry JS 0.223.0 with `OTEL_EXPORTER_OTLP_PROTOCOL=grpc`, and the OpenTelemetry Collector 0.162.0.
 
 ## Vector
 

@@ -22,11 +22,22 @@ toposcope.example.com {
 }
 ```
 
+OTLP over gRPC is a second listener, on `127.0.0.1:4319`, speaking HTTP/2 without TLS. An exporter that sends gRPC to an `https://` address needs the proxy to terminate TLS and pass HTTP/2 through to it, on a name or a port of its own:
+
+```text
+otlp.toposcope.example.com {
+  reverse_proxy h2c://127.0.0.1:4319
+}
+```
+
+In nginx that is `grpc_pass grpc://127.0.0.1:4319;` in a `server` block that listens with `http2 on;`.
+
 ## Runtime ports and network
 
 - App: `127.0.0.1:8080`
 - ClickHouse: stays on the Docker network and is not published
 - Syslog UDP: `127.0.0.1:5514`
+- OTLP over gRPC: `127.0.0.1:4319` (`OTLP_GRPC_PORT`; `0` turns it off), for logs, traces, metrics and profiles, with the same ingest token
 - OTLP JSON and protobuf: the existing HTTP port on `/v1/logs`, `/v1/traces`, and `/v1/profiles`
 - Metric points: `POST /v1/metrics` on the same port and ingest token
 - Change marks: `POST /v1/marks` on the same port and ingest token; `GET /api/marks` lists them. Search / Follow draw them on the hunt histogram. GitHub Actions and GitLab CI samples in the [ingest guide](ingest.md) POST a deploy mark on release with a stable `id`.
