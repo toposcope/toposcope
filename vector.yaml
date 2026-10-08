@@ -1,12 +1,45 @@
-# Canonical collector path. Vector 0.51+.
-# TOPOSCOPE_INGEST_TOKEN must match packaged .env (not the demo value).
+# Vector between an app and Toposcope. Vector 0.51+.
 #
-#   set -a && source .env && set +a
-#   vector -c vector.yaml
+# An app can export OpenTelemetry straight to Toposcope, and that is the default.
+# Put this in between when what the app sends must outlive a Toposcope outage
+# longer than its exporter keeps retrying, or when rows need enrichment on the way.
 #
-# Search `service:smoke` (message `toposcope first event`). Then Save → Alerts Test.
+# Vector listens for OTLP from apps, over HTTP on 4318 and gRPC on 4317, keeps
+# what it receives on disk until Toposcope has taken it, and forwards each
+# request as the app sent it: logs, traces and metrics.
+#
+# The app changes one setting, the address, and needs no token: Vector adds it.
+#
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318    # http/protobuf
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317    # grpc
+#
+# Run it:
+#
+#   set -a && source .env && set +a      # TOPOSCOPE_INGEST_TOKEN
+#   VECTOR_DATA_DIR=vector-data vector -c vector.yaml
+#
+# TOPOSCOPE_URL is where Toposcope is; leave it unset on the same host.
+# VECTOR_DATA_DIR is where the disk buffers are kept; /var/lib/vector when unset.
+#
+# The smoke source below sends three events on every start. Search
+# `service:smoke` (message `toposcope first event`). Then Save → Alerts Test.
+# Vector keeps running afterwards; stop it with Ctrl-C.
+
+data_dir: "${VECTOR_DATA_DIR:-/var/lib/vector}"
 
 sources:
+  # OTLP from apps. It listens on this host only: anything that reaches these
+  # ports is forwarded with the ingest token. Use 0.0.0.0 inside a container,
+  # or for apps on other hosts of a private network.
+  apps:
+    type: opentelemetry
+    http:
+      address: 127.0.0.1:4318
+    grpc:
+      address: 127.0.0.1:4317
+    # Keep each request in OTLP's own shape, so it is forwarded unchanged.
+    use_otlp_decoding: true
+
   smoke:
     type: demo_logs
     interval: 1
@@ -36,15 +69,62 @@ transforms:
         }]
       }]
 
+# One sink for each signal. Each keeps up to 256 MB on disk, the smallest disk
+# buffer Vector allows, and holds the app back when it is full rather than
+# dropping. A request Toposcope cannot take yet (it is down, or busy) is tried
+# again until it lands. One event to a request: Toposcope's limits then apply
+# to what the app sent, as they do without a collector.
 sinks:
   toposcope:
     type: opentelemetry
-    inputs: [to_toposcope]
+    inputs: [apps.logs, to_toposcope]
     protocol:
       type: http
-      uri: http://127.0.0.1:8080/v1/logs
+      uri: "${TOPOSCOPE_URL:-http://127.0.0.1:8080}/v1/logs"
       encoding:
         codec: otlp
+      batch:
+        max_events: 1
       request:
         headers:
           Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"
+    buffer:
+      type: disk
+      max_size: 268435488
+      when_full: block
+
+  toposcope_traces:
+    type: opentelemetry
+    inputs: [apps.traces]
+    protocol:
+      type: http
+      uri: "${TOPOSCOPE_URL:-http://127.0.0.1:8080}/v1/traces"
+      encoding:
+        codec: otlp
+      batch:
+        max_events: 1
+      request:
+        headers:
+          Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"
+    buffer:
+      type: disk
+      max_size: 268435488
+      when_full: block
+
+  toposcope_metrics:
+    type: opentelemetry
+    inputs: [apps.metrics]
+    protocol:
+      type: http
+      uri: "${TOPOSCOPE_URL:-http://127.0.0.1:8080}/v1/metrics"
+      encoding:
+        codec: otlp
+      batch:
+        max_events: 1
+      request:
+        headers:
+          Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"
+    buffer:
+      type: disk
+      max_size: 268435488
+      when_full: block

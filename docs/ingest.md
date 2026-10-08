@@ -317,23 +317,31 @@ Toposcope does not use `/debug/pprof` scraping.
 
 ## Vector
 
-Vector is the canonical collector. The shipped `vector.yaml` uses OTLP HTTP protobuf and posts to `http://127.0.0.1:8080/v1/logs`.
+A collector between the app and Toposcope is optional, and without one nothing else changes: the app exports straight to Toposcope. Add one when what the app sends must outlive a Toposcope outage longer than its exporter keeps retrying, or when rows need enrichment on the way. The shipped `vector.yaml` is that collector, for Vector 0.51 or newer.
 
-```yaml
-sinks:
-  toposcope:
-    type: opentelemetry
-    inputs: [your_source]
-    protocol:
-      type: http
-      uri: http://127.0.0.1:8080/v1/logs
-      # traces sink: same block with uri …/v1/traces
-      encoding:
-        codec: otlp
-      request:
-        headers:
-          Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"
+Vector listens for OTLP from apps, over HTTP on port 4318 and gRPC on 4317, keeps what it receives on disk until Toposcope has taken it, and forwards each request as the app sent it, to `/v1/logs`, `/v1/traces` and `/v1/metrics`. The app changes one setting, the address, and needs no token, because Vector adds it:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
 ```
+
+Run Vector where the app can reach it:
+
+```bash
+set -a && source .env && set +a
+VECTOR_DATA_DIR=vector-data vector -c vector.yaml
+```
+
+`TOPOSCOPE_INGEST_TOKEN` is the ingest token. `TOPOSCOPE_URL` is where Toposcope is, when that is not `http://127.0.0.1:8080`. `VECTOR_DATA_DIR` is where the disk buffers are kept, `/var/lib/vector` when unset.
+
+- Over HTTP the app sends protobuf (`http/protobuf`, an exporter’s default). Vector does not take OTLP as JSON.
+- Each signal has its own disk buffer of 256 MB. When one is full Vector holds the app back; it does not drop.
+- A request Toposcope cannot take yet, because it is down or busy, is tried again until it lands. One it refuses outright, such as a wrong token, is not tried again, and Vector’s log says so.
+- Each request reaches Toposcope as the app sent it, so the limits are the ones a direct export meets: 1 MB, and 1,024 log records or spans.
+- Metrics pass through too. A restart of Toposcope still costs a series that was already running the one interval described under [Metrics](#metrics).
+- Vector listens on `127.0.0.1`. Whatever reaches those two ports is forwarded with the ingest token, so open them only to hosts you trust.
+
+The file also holds the smoke source the quick start uses: three events under `service:smoke` on every start.
 
 ## Fluent Bit
 

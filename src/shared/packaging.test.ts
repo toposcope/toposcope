@@ -188,16 +188,45 @@ describe("ee/", () => {
 });
 
 describe("vector example", () => {
+  const vector = Bun.file(`${root}/vector.yaml`).text();
+
   test("posts OTLP protobuf to /v1/logs with the env token", async () => {
-    const yaml = await Bun.file(`${root}/vector.yaml`).text();
-    expect(yaml).toContain("uri: http://127.0.0.1:8080/v1/logs");
+    const yaml = await vector;
+    expect(yaml).toContain('uri: "${TOPOSCOPE_URL:-http://127.0.0.1:8080}/v1/logs"');
     expect(yaml).toContain("codec: otlp");
     expect(yaml).toContain("request:");
     expect(yaml).toContain('Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"');
-    expect(yaml).not.toContain("uri: http://127.0.0.1:8080/v1/logs\n      headers:");
     expect(yaml).toContain('"service.name"');
     expect(yaml).toContain("smoke");
     expect(yaml).not.toContain("toposcope-ingest");
+  });
+
+  test("receives OTLP from apps over HTTP and gRPC, on this host only, and forwards it unchanged", async () => {
+    const yaml = await vector;
+    expect(yaml).toContain("type: opentelemetry\n    http:\n      address: 127.0.0.1:4318\n    grpc:\n      address: 127.0.0.1:4317");
+    expect(yaml).toContain("use_otlp_decoding: true");
+    expect(yaml).not.toContain("0.0.0.0:43");
+  });
+
+  test("forwards logs, traces and metrics, each from a disk buffer that holds the app back when full", async () => {
+    const yaml = await vector;
+    for (const [signal, route] of [
+      ["apps.logs", "/v1/logs"],
+      ["apps.traces", "/v1/traces"],
+      ["apps.metrics", "/v1/metrics"],
+    ] as const) {
+      expect(yaml).toContain(signal);
+      expect(yaml).toContain(`uri: "\${TOPOSCOPE_URL:-http://127.0.0.1:8080}${route}"`);
+    }
+    // The smoke source shares the logs sink.
+    expect(yaml).toContain("inputs: [apps.logs, to_toposcope]");
+    expect(yaml.match(/type: disk\n      max_size: 268435488\n      when_full: block/g)).toHaveLength(3);
+    expect(yaml.match(/Authorization: "Bearer \$\{TOPOSCOPE_INGEST_TOKEN\}"/g)).toHaveLength(3);
+  });
+
+  test("sends one event to a request, so Toposcope's limits apply to what the app sent", async () => {
+    const yaml = await vector;
+    expect(yaml.match(/batch:\n        max_events: 1\n/g)).toHaveLength(3);
   });
 });
 

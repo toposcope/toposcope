@@ -33,13 +33,13 @@ Wait for the application and ClickHouse:
 curl -fsS http://127.0.0.1:8080/api/health
 ```
 
-Start the included Vector smoke source with Vector 0.51 or newer:
+Start the included Vector config with Vector 0.51 or newer. It sends three smoke events, then keeps running as a collector an app can send OpenTelemetry to; stop it with Ctrl-C once you have seen the events:
 
 ```bash
 set -a
 source .env
 set +a
-vector -c vector.yaml
+VECTOR_DATA_DIR=vector-data vector -c vector.yaml
 ```
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080). HTTP Basic Auth accepts any username; use `TOPOSCOPE_PASSWORD` from `.env` as the password. This shared operator password also permits writes, including retention changes. Search for `service:smoke`, save the search, then use **Alerts → Test** to verify the full path.
