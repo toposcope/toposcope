@@ -149,13 +149,14 @@ Metrics use the same bearer token as logs. This is not Prometheus scrape; that s
 
 - A **gauge** as it is. An up-down counter’s running total is a level, so it is a gauge too. Each bar is the average of its points.
 - A **counter**, as the amount per interval. Each bar is the sum of what arrived in it; a wider bar sums more.
-- A **histogram**, as two counters: `<name>.count` and `<name>.sum`. Buckets are not kept yet, so there is no average and no percentile.
+- A **histogram**, with its buckets. It is one name, read one way at a time: `count`, `sum`, `avg`, `p50`, `p90` or `p99`. A percentile is read off the buckets of every matching series added together, so it is as exact as the buckets are wide; past the highest bound it is that bound. An exponential histogram is brought to the same shape, kept no finer than eight buckets to a doubling. Its count and sum are still stored as the counters `<name>.count` and `<name>.sum`, and a link that names one of those draws that reading.
+- A **summary**, as two counters: `<name>.count` and `<name>.sum`. Its quantiles were worked out by the sender and cannot be added up, so they are not kept.
 
 A name remembers the kind it came as, and that decides how the plot and every widget read it. Dotted names are kept as they are. A point’s attributes become labels, then the resource’s; `service.name` and `host.name` arrive as `service` and `host`. An OTLP request is limited by the 1 MB body and not by a count of points, because an exporter sends every series in one request.
 
-A counter or a histogram may arrive as deltas or as a running total since the process started, which is what an exporter sends by default. A running total is converted on the way in: Toposcope keeps the last total of each series in memory and stores the difference. A series that restarts is counted from its new start, and an export that never arrived is made up by the next one. The one cost is a restart of Toposcope itself: the first total it then sees from a series that was already running is only a baseline, so that series loses what it counted since its last stored export. The reply says how many points were taken that way.
+A counter, a histogram or a summary may arrive as deltas or as a running total since the process started, which is what an exporter sends by default. A running total is converted on the way in: Toposcope keeps the last total of each series in memory and stores the difference. A series that restarts is counted from its new start, and an export that never arrived is made up by the next one. The one cost is a restart of Toposcope itself: the first total it then sees from a series that was already running is only a baseline, so that series loses what it counted since its last stored export. The reply says how many points were taken that way.
 
-Anything else is counted as rejected in the reply’s partial success, with a **200**, and the rest of the request is stored: an exponential histogram, a summary, and a name outside letters, digits, `_` and `.`.
+Anything else is counted as rejected in the reply’s partial success, with a **200**, and the rest of the request is stored: a sum or histogram that does not say whether it is a delta or a running total, and a name outside letters, digits, `_` and `.`. Histogram buckets that do not fit their bounds are a warning; the count and sum still land.
 
 The other shape is a plain JSON point or an array of up to 500. It has no kind and reads as a gauge:
 

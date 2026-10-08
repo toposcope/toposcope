@@ -63,7 +63,7 @@ describe("what an OTLP metric becomes", () => {
     expect(out.kinds).toEqual({ "app.jobs.processed": "counter" });
   });
 
-  test("a histogram is two counters, its count and its sum", () => {
+  test("a histogram is its count and its sum, and its buckets under its own name", () => {
     const out = mapped([
       {
         name: "http.server.request.duration",
@@ -87,32 +87,125 @@ describe("what an OTLP metric becomes", () => {
       { ts: TS, name: "http.server.request.duration.count", value: 40, labels },
       { ts: TS, name: "http.server.request.duration.sum", value: 3.2, labels },
     ]);
+    // 30 at or under 0.1, 10 above it.
+    expect(out.buckets).toEqual([{ ts: TS, name: "http.server.request.duration", labels, le: [0.1], n: [30, 10] }]);
     expect(out.kinds).toEqual({
+      "http.server.request.duration": "histogram",
       "http.server.request.duration.count": "counter",
       "http.server.request.duration.sum": "counter",
     });
-    // Buckets are not kept yet, and that is not reported on every export.
     expect(out.losses.message()).toBe("");
   });
 
-  test("a histogram with no sum keeps its count", () => {
+  test("a histogram with no sum and no buckets keeps its count, and is not a histogram to read", () => {
     const out = mapped([
       { name: "queue.depth", histogram: { aggregationTemporality: DELTA, dataPoints: [{ timeUnixNano: T, count: "4" }] } },
     ]);
     expect(out.points.map((p) => [p.name, p.value])).toEqual([["queue.depth.count", 4]]);
+    expect(out.buckets).toEqual([]);
+    expect(out.kinds).toEqual({ "queue.depth.count": "counter" });
   });
 
-  test("an exponential histogram and a summary are refused by name, and so is a sum that does not say what it is", () => {
+  test("an empty bucket is not stored, unless the next one starts at it", () => {
     const out = mapped([
-      { name: "b", exponentialHistogram: { aggregationTemporality: DELTA, dataPoints: [{}, {}] } },
-      { name: "c", summary: { dataPoints: [{}] } },
-      { name: "d", sum: { isMonotonic: true, dataPoints: [num(1)] } },
+      {
+        name: "latency",
+        histogram: {
+          aggregationTemporality: DELTA,
+          dataPoints: [
+            { timeUnixNano: T, count: "8", sum: 40, bucketCounts: ["5", "0", "0", "3", "0"], explicitBounds: [1, 2, 4, 8] },
+          ],
+        },
+      },
     ]);
+    // 2 is gone; 4 stays, empty, because (4, 8] starts there.
+    expect(out.buckets.map((row) => [row.le, row.n])).toEqual([[[1, 4, 8], [5, 0, 3, 0]]]);
+  });
+
+  test("buckets that do not fit their bounds are a warning, and the count and sum still land", () => {
+    const out = mapped([
+      {
+        name: "latency",
+        histogram: {
+          aggregationTemporality: DELTA,
+          dataPoints: [{ timeUnixNano: T, count: "3", sum: 6, bucketCounts: ["1", "2"], explicitBounds: [1, 2, 4] }],
+        },
+      },
+    ]);
+    expect(out.points.map((p) => [p.name, p.value])).toEqual([["latency.count", 3], ["latency.sum", 6]]);
+    expect(out.buckets).toEqual([]);
+    expect(out.kinds).toEqual({ "latency.count": "counter", "latency.sum": "counter" });
+    expect(out.losses.rejectedCount).toBe(0);
+    expect(out.losses.message()).toBe("histogram buckets that do not fit their bounds: cut on 1");
+  });
+
+  test("an exponential histogram is brought under explicit bounds, with the edge its lowest bucket starts at", () => {
+    const out = mapped([
+      {
+        name: "latency",
+        exponentialHistogram: {
+          aggregationTemporality: DELTA,
+          // Scale 0: bucket i holds (2^i, 2^(i+1)].
+          dataPoints: [{ timeUnixNano: T, count: "6", sum: 14, scale: 0, zeroCount: "3", positive: { offset: 0, bucketCounts: ["1", "2"] } }],
+        },
+      },
+    ]);
+    expect(out.points.map((p) => [p.name, p.value])).toEqual([["latency.count", 6], ["latency.sum", 14]]);
+    expect(out.buckets.map((row) => [row.le, row.n])).toEqual([[[0, 1, 2, 4], [3, 0, 1, 2, 0]]]);
+    expect(out.kinds.latency).toBe("histogram");
+    expect(out.losses.message()).toBe("");
+  });
+
+  test("an exponential histogram finer than eight buckets to a doubling is folded down to that", () => {
+    const out = mapped([
+      {
+        name: "latency",
+        exponentialHistogram: {
+          aggregationTemporality: DELTA,
+          // Scale 5: 32 buckets to a doubling. Four of them make one kept bucket.
+          dataPoints: [{ timeUnixNano: T, count: "6", scale: 5, positive: { offset: 0, bucketCounts: ["1", "1", "1", "1", "2"] } }],
+        },
+      },
+    ]);
+    expect(out.buckets.map((row) => [row.le, row.n])).toEqual([[[1, 2 ** (1 / 8), 2 ** (2 / 8)], [0, 4, 2, 0]]]);
+  });
+
+  test("an exponential histogram's negative side lies below zero, largest first", () => {
+    const out = mapped([
+      {
+        name: "drift",
+        exponentialHistogram: {
+          aggregationTemporality: DELTA,
+          dataPoints: [{ timeUnixNano: T, count: "5", scale: 0, negative: { offset: 0, bucketCounts: ["5"] } }],
+        },
+      },
+    ]);
+    // Five between -2 and -1; -2 is the edge that bucket starts at.
+    expect(out.buckets.map((row) => [row.le, row.n])).toEqual([[[-2, -1], [0, 5, 0]]]);
+  });
+
+  test("a summary keeps its count and its sum, and not the quantiles its sender worked out", () => {
+    const out = mapped([
+      {
+        name: "rpc.duration",
+        summary: {
+          dataPoints: [
+            { startTimeUnixNano: nano(T_MS - 60_000), timeUnixNano: T, count: "40", sum: 3.2, quantileValues: [{ quantile: 0.99, value: 0.4 }] },
+          ],
+        },
+      },
+    ]);
+    expect(out.points.map((p) => [p.name, p.value])).toEqual([["rpc.duration.count", 40], ["rpc.duration.sum", 3.2]]);
+    expect(out.buckets).toEqual([]);
+    expect(out.kinds).toEqual({ "rpc.duration.count": "counter", "rpc.duration.sum": "counter" });
+    expect(out.losses.message()).toBe("");
+  });
+
+  test("a sum that does not say what it is is refused", () => {
+    const out = mapped([{ name: "d", sum: { isMonotonic: true, dataPoints: [num(1)] } }]);
     expect(out.points).toEqual([]);
-    expect(out.losses.rejectedCount).toBe(4);
-    expect(out.losses.message()).toBe(
-      "exponential histograms: 2 rejected; summaries: 1 rejected; a sum or histogram that does not say its temporality: 1 rejected",
-    );
+    expect(out.losses.rejectedCount).toBe(1);
+    expect(out.losses.message()).toBe("a sum or histogram that does not say its temporality: 1 rejected");
   });
 
   test("the point's attributes become labels first, then the resource's", () => {
@@ -151,9 +244,31 @@ describe("what an OTLP metric becomes", () => {
     const sent = request([
       { name: "process.memory.usage", gauge: { dataPoints: [{ timeUnixNano: T, asInt: "1024", attributes: [attr("pool", "heap")] }] } },
       { name: "app.jobs.processed", sum: { aggregationTemporality: DELTA, isMonotonic: true, dataPoints: [num(12)] } },
-      { name: "http.server.request.duration", histogram: { aggregationTemporality: DELTA, dataPoints: [{ timeUnixNano: T, count: "40", sum: 3.2 }] } },
-      { name: "b", exponentialHistogram: { dataPoints: [{}, {}] } },
-      { name: "c", summary: { dataPoints: [{}] } },
+      {
+        name: "http.server.request.duration",
+        histogram: {
+          aggregationTemporality: DELTA,
+          dataPoints: [{ timeUnixNano: T, count: "40", sum: 3.2, bucketCounts: ["30", "10"], explicitBounds: [0.1] }],
+        },
+      },
+      {
+        name: "b",
+        exponentialHistogram: {
+          aggregationTemporality: DELTA,
+          dataPoints: [
+            {
+              timeUnixNano: T,
+              count: "9",
+              sum: 4.5,
+              scale: 1,
+              zeroCount: "2",
+              positive: { offset: -3, bucketCounts: ["3", "0", "4"] },
+              negative: { offset: 1, bucketCounts: ["0"] },
+            },
+          ],
+        },
+      },
+      { name: "c", summary: { dataPoints: [{ startTimeUnixNano: nano(T_MS - 60_000), timeUnixNano: T, count: "7", sum: 2.5 }] } },
     ]);
     const fromJson = mapOtlpMetrics(sent, new Losses(), upAnHour());
     const losses = new Losses();
@@ -163,8 +278,10 @@ describe("what an OTLP metric becomes", () => {
       upAnHour(),
     );
     expect(fromProtobuf.points).toEqual(fromJson.points);
+    expect(fromProtobuf.buckets).toEqual(fromJson.buckets);
+    expect(fromJson.buckets.map((row) => row.name)).toEqual(["http.server.request.duration", "b"]);
     expect([...fromProtobuf.kinds]).toEqual([...fromJson.kinds]);
-    expect(losses.message()).toBe("exponential histograms: 2 rejected; summaries: 1 rejected");
+    expect(losses.message()).toBe("");
   });
 
   test("a request with no resourceMetrics cannot be read", () => {
@@ -299,6 +416,69 @@ describe("a counter or a histogram sent as a running total", () => {
   });
 });
 
+describe("a histogram's buckets sent as running totals", () => {
+  const explicit = (minute: number, count: number, bucketCounts: number[]) => ({
+    name: "latency",
+    histogram: {
+      aggregationTemporality: CUMULATIVE,
+      dataPoints: [
+        {
+          startTimeUnixNano: nano(T_MS - 30_000),
+          timeUnixNano: nano(T_MS + minute * 60_000),
+          count: String(count),
+          sum: count,
+          bucketCounts: bucketCounts.map(String),
+          explicitBounds: [1, 2, 4],
+        },
+      ],
+    },
+  });
+
+  test("each bucket is stored as what it gained since it was last seen", () => {
+    const totals = upAnHour();
+    const first = mapped([explicit(0, 10, [4, 3, 2, 1])], undefined, totals);
+    expect(first.buckets.map((row) => [row.le, row.n])).toEqual([[[1, 2, 4], [4, 3, 2, 1]]]);
+    const second = mapped([explicit(1, 16, [4, 8, 2, 2])], undefined, totals);
+    // Five more up to 2, one more above 4; the edge at 1 stays because (1, 2] starts there.
+    expect(second.buckets.map((row) => [row.le, row.n])).toEqual([[[1, 2, 4], [0, 5, 0, 1]]]);
+    expect(second.points.map((p) => [p.name, p.value])).toEqual([["latency.count", 6], ["latency.sum", 6]]);
+  });
+
+  test("a histogram that did not move stores no buckets", () => {
+    const totals = upAnHour();
+    mapped([explicit(0, 10, [4, 3, 2, 1])], undefined, totals);
+    const still = mapped([explicit(1, 10, [4, 3, 2, 1])], undefined, totals);
+    expect(still.buckets).toEqual([]);
+    expect(still.points).toEqual([]);
+  });
+
+  test("an exponential histogram whose bounds moved is compared under its new bounds", () => {
+    const totals = upAnHour();
+    const exponential = (minute: number, count: number, scale: number, offset: number, bucketCounts: number[]) => ({
+      name: "latency",
+      exponentialHistogram: {
+        aggregationTemporality: CUMULATIVE,
+        dataPoints: [
+          {
+            startTimeUnixNano: nano(T_MS - 30_000),
+            timeUnixNano: nano(T_MS + minute * 60_000),
+            count: String(count),
+            scale,
+            positive: { offset, bucketCounts: bucketCounts.map(String) },
+          },
+        ],
+      },
+    });
+    // Scale 1: buckets end at 2^0.5, 2, 2^1.5, 4.
+    mapped([exponential(0, 8, 1, 0, [1, 3, 2, 2])], undefined, totals);
+    // The range grew, so the exporter halved its scale: buckets now end at 2, 4, 8.
+    const wider = mapped([exponential(1, 11, 0, 0, [4, 4, 3])], undefined, totals);
+    // Nothing new up to 4; three new in (4, 8], and 4 is the edge that bucket starts at.
+    expect(wider.buckets.map((row) => [row.le, row.n])).toEqual([[[4, 8], [0, 3, 0]]]);
+    expect(wider.points.map((p) => [p.name, p.value])).toEqual([["latency.count", 3]]);
+  });
+});
+
 describe("POST /v1/metrics", () => {
   const app = new Hono();
   app.post("/v1/metrics", ingestMetricsRoute);
@@ -355,6 +535,24 @@ describe("POST /v1/metrics", () => {
     ]);
   });
 
+  test("a histogram's buckets are stored beside its count and sum, and its name is a histogram", async () => {
+    const res = await postJson(
+      request([
+        {
+          name: "latency",
+          histogram: {
+            aggregationTemporality: DELTA,
+            dataPoints: [{ timeUnixNano: T, count: "40", sum: 3.2, bucketCounts: ["30", "10"], explicitBounds: [0.1] }],
+          },
+        },
+      ]),
+    );
+    expect(await res.json()).toEqual({ ingested: 2 });
+    expect(stored.metrics!.map((row) => [row.name, row.value])).toEqual([["latency.count", 40], ["latency.sum", 3.2]]);
+    expect(stored.metric_buckets!.map((row) => [row.name, row.le, row.n])).toEqual([["latency", [0.1], [30, 10]]]);
+    expect(stored.metric_kinds!.map((row) => [row.name, row.kind])).toContainEqual(["latency", "histogram"]);
+  });
+
   test("a name's kind is written once, not on every export", async () => {
     await postJson(request(stock));
     await postJson(request(stock));
@@ -377,15 +575,16 @@ describe("POST /v1/metrics", () => {
   test("what is not taken is counted in the reply, and the rest still lands", async () => {
     const mixed = request([
       ...stock,
-      { name: "latency.exp", exponentialHistogram: { dataPoints: [{}] } },
-      { name: "latency", summary: { dataPoints: [{}] } },
+      { name: "http/requests-total", gauge: { dataPoints: [num(1)] } },
+      { name: "untold", sum: { isMonotonic: true, dataPoints: [num(1)] } },
     ]);
     const json = await postJson(mixed);
     expect(await json.json()).toEqual({
       ingested: 2,
       partialSuccess: {
         rejectedDataPoints: "2",
-        errorMessage: "exponential histograms: 1 rejected; summaries: 1 rejected",
+        errorMessage:
+          "a metric name that cannot be stored: 1 rejected; a sum or histogram that does not say its temporality: 1 rejected",
       },
     });
     const protobuf = await app.request("/v1/metrics", {

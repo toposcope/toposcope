@@ -1,5 +1,10 @@
 import { isAttrIdent, maxAttrFacets } from "../shared/attrs";
-import { parseMetricName } from "../shared/metric";
+import {
+  formatMetricRef,
+  parseMetricName,
+  parseMetricRef,
+  type HistogramReading,
+} from "../shared/metric";
 import {
   formatSearchAgg,
   parseSearchAgg,
@@ -25,15 +30,18 @@ export type SeriesPick =
   | { kind: "off" }
   | { kind: "rate" }
   | { kind: "key"; key: string; op: NumericAggOp }
-  | { kind: "metric"; name: string };
+  /** A histogram carries the reading that was chosen for it; nothing chosen is its p99. */
+  | { kind: "metric"; name: string; reading?: HistogramReading };
 
 export function seriesPickFromWidget(
   agg: string | null,
   metric: string | null,
 ): SeriesPick {
-  const name = parseMetricName(metric);
-  if (name) {
-    return { kind: "metric", name };
+  const ref = parseMetricRef(metric);
+  if (ref) {
+    return ref.reading
+      ? { kind: "metric", name: ref.name, reading: ref.reading }
+      : { kind: "metric", name: ref.name };
   }
   return seriesPickFromAgg(agg);
 }
@@ -157,8 +165,13 @@ export function applySeriesSelect(
     return { agg: null, metric: null };
   }
   if (value.startsWith("m:")) {
-    const name = parseMetricName(value.slice(2));
-    return { agg: null, metric: name };
+    const ref = parseMetricRef(value.slice(2));
+    if (!ref) {
+      return { agg: null, metric: null };
+    }
+    // From one histogram to another the reading stays, as a log field's reducer does.
+    const reading = ref.reading && prev.kind === "metric" && prev.reading ? prev.reading : ref.reading;
+    return { agg: null, metric: formatMetricRef({ name: ref.name, reading }) };
   }
   const logPrev: SeriesPick =
     prev.kind === "key" || prev.kind === "rate" || prev.kind === "off"

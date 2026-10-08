@@ -11,7 +11,8 @@ import {
   seriesPickFromWidget,
 } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog } from "../series-catalog";
-import { statWords } from "../series-list";
+import { formatMetricRef, histogramReadings, parseHistogramReading } from "../../shared/metric";
+import { metricView, statWords } from "../series-list";
 import { SeriesPicker } from "./series-picker";
 
 const FN = "#a78bfa";
@@ -25,6 +26,8 @@ type HeadProps = {
   usedSeries?: readonly string[];
   onAgg: (next: string | null) => void;
   onSeries: (next: { agg: string | null; metric: string | null }) => void;
+  /** The same metric, read another way: its labels stay. */
+  onMetric?: (next: string) => void;
 };
 
 type Props = {
@@ -41,10 +44,11 @@ export function StatHead({
   metric,
   onAgg,
   onSeries,
+  onMetric,
 }: HeadProps) {
   const pick = seriesPickFromWidget(agg === "count" ? null : agg, metric);
   const catalog = useSeriesCatalog();
-  const metricKind = metric ? (pickedEntry(catalog, metric)?.kind ?? "gauge") : undefined;
+  const view = pick.kind === "metric" ? metricView(pick, pickedEntry(catalog, pick.name)) : null;
   const named = pick.kind === "key" || pick.kind === "metric";
   return (
     <div className="flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden">
@@ -67,18 +71,33 @@ export function StatHead({
           }}
         />
       ) : null}
-      {pick.kind === "metric" ? (
+      {view?.kind === "histogram" ? (
+        // A histogram's reading is a choice, as a log field's function is.
+        <HeadPicker
+          kind="function"
+          label={view.reading ?? "p99"}
+          title="How this histogram is read"
+          value={view.reading ?? "p99"}
+          items={histogramReadings.map((reading) => ({ value: reading, label: reading }))}
+          onChange={(next) => {
+            const reading = parseHistogramReading(next);
+            if (reading) {
+              onMetric?.(formatMetricRef({ name: view.name, reading }));
+            }
+          }}
+        />
+      ) : view ? (
         // A gauge's and a counter's function is not a choice, so it is not dashed.
         <span
           className="shrink-0 cursor-help px-px font-mono text-[11.5px] leading-[1.55] whitespace-nowrap"
           style={{ color: FN }}
           title={
-            metricKind === "counter"
+            view.kind === "counter"
               ? "Counter — the sum of what arrived in the window. Not a level."
               : "Gauge — a level. The average of the values sent in the window."
           }
         >
-          {metricKind === "counter" ? "sum" : "avg"}
+          {view.kind === "counter" ? "sum" : "avg"}
         </span>
       ) : null}
       {named ? <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">(</span> : null}
@@ -87,7 +106,7 @@ export function StatHead({
         card
         pick={pick}
         agg={agg === "count" ? null : agg}
-        kind={metricKind}
+        view={view}
         onSeries={onSeries}
       />
       {named ? <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">)</span> : null}
@@ -113,12 +132,13 @@ export function StatWidget({
         ? "rate"
         : agg ?? "count";
   // A metric's one number is named by how it was read: a counter's is a sum, never a level.
-  const metricKind = metric ? (aggResult?.kind ?? pickedEntry(catalog, metric)?.kind ?? "gauge") : null;
+  const pick = seriesPickFromWidget(null, metric);
+  const view = pick.kind === "metric" ? metricView(pick, pickedEntry(catalog, pick.name), aggResult) : null;
   const quiet = Boolean(metric) && aggResult?.source === "metric" && aggResult.stat === null;
-  const note = metricKind
+  const note = view
     ? quiet
-      ? `no points ${catalog.window ? `in the last ${catalog.window}` : "in this window"} · ${metricKind}`
-      : statWords(metricKind, catalog.window)
+      ? `no points ${catalog.window ? `in the last ${catalog.window}` : "in this window"} · ${view.kind}`
+      : statWords(view.kind, catalog.window, view.reading)
     : `window ${label}`;
   const value = isCount
     ? abbrevCount(total)

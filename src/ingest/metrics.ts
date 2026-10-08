@@ -3,7 +3,7 @@ import {
   clickhouseInsertJsonEachRow,
   toClickHouseDateTime,
 } from "../shared/clickhouse";
-import { InvalidMetricError, parseMetricPoint } from "../shared/metric";
+import { InvalidMetricError, parseMetricPoint, type MetricBuckets } from "../shared/metric";
 import { rememberMetricKinds } from "../shared/metric-kinds";
 import { incMetric } from "../metrics";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
@@ -73,6 +73,28 @@ export async function insertMetricPoints(
   });
 }
 
+/** A histogram's buckets. `n` carries one more count than `le` has bounds. */
+export async function insertMetricBuckets(buckets: readonly MetricBuckets[]): Promise<void> {
+  if (buckets.length === 0) {
+    return;
+  }
+  await withInsertSlot(async () => {
+    const body = buckets
+      .map((row) =>
+        JSON.stringify({
+          tenant_id: "default",
+          ts: toClickHouseDateTime(row.ts),
+          name: row.name,
+          labels: row.labels,
+          le: row.le,
+          n: row.n,
+        }),
+      )
+      .join("\n");
+    await clickhouseInsertJsonEachRow(body, "metric_buckets");
+  });
+}
+
 function ingestFail(c: Context, err: unknown): Response {
   if (err instanceof InsertBackpressureError) {
     return c.json({ error: "ClickHouse is busy" }, 429, {
@@ -105,6 +127,9 @@ async function otlpMetrics(c: Context, payload: unknown): Promise<Response> {
   try {
     // Kinds first: writing one twice is harmless, and a retry after a failure here stores no point twice.
     await rememberMetricKinds(mapped.kinds);
+    // Buckets before the counts: a retry after a failure in between repeats a bar's
+    // buckets, which leaves its percentiles where they were, and no count twice.
+    await insertMetricBuckets(mapped.buckets);
     const ingested = await insertMetricPoints(mapped.points);
     incMetric("ingest_metrics", ingested);
     return otlpReply(c, "metrics", ingested, losses);

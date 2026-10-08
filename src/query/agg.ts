@@ -1,4 +1,5 @@
 import { isAttrIdent } from "../shared/attrs";
+import type { HistogramReading } from "../shared/metric";
 import { type CompiledQuery } from "./compile";
 import { rollupSource } from "./histogram";
 
@@ -18,7 +19,10 @@ export type SearchAggResult = {
   buckets: AggBucket[];
   stat: number | null;
   /** For an ingested metric: how its bars were read. A counter is a sum per bar, a gauge an average. */
-  kind?: "gauge" | "counter";
+  kind?: "gauge" | "counter" | "histogram";
+  /** For a histogram: which reading the bars are, and the histogram's own name. */
+  reading?: HistogramReading;
+  metric?: string;
 };
 
 export class InvalidAggError extends Error {

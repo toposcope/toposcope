@@ -154,7 +154,7 @@ import {
   type FieldsValuesPayload,
   type FieldsWave,
 } from "../shared/fields";
-import { formatMetricLabels } from "../shared/metric";
+import { formatMetricLabels, parseMetricRef } from "../shared/metric";
 import {
   histogramIntervalMs,
   type HistogramChartKind,
@@ -205,14 +205,22 @@ import {
 
 const emptyFacets: Facets = { level: [], service: [], host: [] };
 
-type MetricNamesReply = {
-  keys: Array<{ k: string; n: number; kind?: MetricEntry["kind"] }>;
-  total?: number;
-  picked?: Array<{ k: string; n: number; kind?: MetricEntry["kind"] }>;
+type MetricNameRow = {
+  k: string;
+  n: number;
+  kind?: MetricEntry["kind"];
+  of?: string;
+  reading?: MetricEntry["reading"];
 };
 
-function metricEntry(item: MetricNamesReply["keys"][number]): MetricEntry {
-  return { name: item.k, kind: item.kind ?? "gauge", points: item.n };
+type MetricNamesReply = {
+  keys: MetricNameRow[];
+  total?: number;
+  picked?: MetricNameRow[];
+};
+
+function metricEntry(item: MetricNameRow): MetricEntry {
+  return { name: item.k, kind: item.kind ?? "gauge", points: item.n, of: item.of, reading: item.reading };
 }
 
 /** A metric list is asked for by window alone: the log query does not filter metrics. */
@@ -3200,7 +3208,11 @@ export function App() {
   const spanMs = searchSpanMs(range, from, to, live, liveWindowMs.current);
   // What the Series control can offer in this window. The pinned plot is a widget too.
   pickedMetricsRef.current = [
-    ...new Set(widgets.map((widget) => widget.metric).filter((name): name is string => Boolean(name))),
+    ...new Set(
+      widgets
+        .map((widget) => parseMetricRef(widget.metric)?.name)
+        .filter((name): name is string => Boolean(name)),
+    ),
   ];
   const seriesCatalog = useMemo<SeriesCatalog>(
     () => ({

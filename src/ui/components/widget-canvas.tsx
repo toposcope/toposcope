@@ -15,7 +15,8 @@ import {
   usedCanvasSeriesValues,
 } from "@/head-query";
 import { bucketStepLabel, TimeseriesSpark } from "@/components/timeseries-spark";
-import { metricReading, midCut } from "../series-list";
+import { seriesPickFromWidget } from "../agg-picker";
+import { metricReading, metricView, midCut } from "../series-list";
 import { WidgetUpdated } from "@/components/widget-updated";
 import { Button } from "@/components/ui/button";
 import {
@@ -508,6 +509,7 @@ export function WidgetCanvas({
                 }),
               )
             }
+            onMetric={(next) => onWidgets(patchWidget(widgets, widget.id, { metric: next }))}
             updated={updated}
           />
         );
@@ -571,6 +573,7 @@ export function WidgetCanvas({
                 }),
               )
             }
+            onMetric={(next) => onWidgets(patchWidget(widgets, widget.id, { metric: next }))}
           />
         );
       case "hbar":
@@ -594,15 +597,19 @@ export function WidgetCanvas({
           return null;
         }
         // A metric's card is titled by how it is read, first, then its name cut in the middle.
-        const kind = data.agg?.kind ?? "gauge";
-        const reading = metricReading(kind, bucketStepLabel(data.histogram), true);
+        const pick = seriesPickFromWidget(null, widget.metric);
+        if (pick.kind !== "metric") {
+          return null;
+        }
+        const view = metricView(pick, null, data.agg);
+        const step = bucketStepLabel(data.histogram);
         const split = widget.split === "level" ? "" : ` · ${widget.split}`;
         return (
           <span
             className="min-w-0 truncate font-mono text-[11.5px]"
-            title={`${metricReading(kind, bucketStepLabel(data.histogram))} · ${widget.metric} · ${kind}`}
+            title={`${metricReading(view.kind, step, false, view.reading)} · ${view.name} · ${view.kind}`}
           >
-            {reading} · {midCut(widget.metric, 18)}
+            {metricReading(view.kind, step, true, view.reading)} · {midCut(view.name, 18)}
             {split}
           </span>
         );
@@ -800,6 +807,7 @@ export function WidgetCanvas({
                       }),
                     )
                   }
+                  onMetric={(next) => onWidgets(patchWidget(widgets, widget.id, { metric: next }))}
                   replaceY={widget.replaceY}
                   onReplaceY={(on) =>
                     onWidgets(patchWidget(widgets, widget.id, { replaceY: on }))

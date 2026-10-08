@@ -18,7 +18,7 @@ import {
   InvalidMetricError,
   parseMetricLabels,
   parseMetricName,
-  requireMetricName,
+  requireMetricRef,
 } from "../shared/metric";
 import {
   histogramIntervalMs,
@@ -870,9 +870,8 @@ export async function search(filters: SearchFilters): Promise<SearchResult> {
   const eventsOnly = skipSearchHistogram(timed);
   const skipEvents = skipSearchEvents(timed);
   const aggSpec = parseSearchAgg(timed.agg);
-  const metricName = timed.metric?.trim()
-    ? requireMetricName(timed.metric)
-    : null;
+  const metricRef = timed.metric?.trim() ? requireMetricRef(timed.metric) : null;
+  const metricName = metricRef?.name ?? null;
   const metricLabels = metricName ? parseMetricLabels(timed.ml) : {};
   const intervalMs = histogramIntervalMs(
     timed.from,
@@ -896,6 +895,7 @@ export async function search(filters: SearchFilters): Promise<SearchResult> {
             since: timed.since,
             intervalMs,
             name: metricName,
+            reading: metricRef?.reading,
             labels: metricLabels,
             exact: timed.exact,
             exclude: timed.other && timed.split && timed.split !== "none" && timed.keep

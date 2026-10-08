@@ -37,6 +37,67 @@ export function requireMetricName(raw: string | null | undefined): string {
   return name;
 }
 
+/** How a histogram is read. One reading is drawn at a time. */
+export const histogramReadings = ["count", "sum", "avg", "p50", "p90", "p99"] as const;
+export type HistogramReading = (typeof histogramReadings)[number];
+export const defaultHistogramReading: HistogramReading = "p99";
+
+export function parseHistogramReading(raw: string | null | undefined): HistogramReading | null {
+  return histogramReadings.find((reading) => reading === raw) ?? null;
+}
+
+/** The share of observations a percentile reading sits above, or null for count, sum and avg. */
+export function readingQuantile(reading: HistogramReading): number | null {
+  return reading === "p50" ? 0.5 : reading === "p90" ? 0.9 : reading === "p99" ? 0.99 : null;
+}
+
+/** A metric as a link carries it: its name, with a histogram's reading in front when one was chosen. */
+export type MetricRef = { name: string; reading: HistogramReading | null };
+
+/** `http.server.duration`, or `p99:http.server.duration`. */
+export function parseMetricRef(raw: string | null | undefined): MetricRef | null {
+  if (!raw) {
+    return null;
+  }
+  const text = raw.trim();
+  const colon = text.indexOf(":");
+  const reading = colon > 0 ? parseHistogramReading(text.slice(0, colon).toLowerCase()) : null;
+  if (colon >= 0 && !reading) {
+    return null;
+  }
+  const name = parseMetricName(reading ? text.slice(colon + 1) : text);
+  return name ? { name, reading } : null;
+}
+
+export function formatMetricRef(ref: MetricRef): string {
+  return ref.reading ? `${ref.reading}:${ref.name}` : ref.name;
+}
+
+/** The link's metric in one spelling, or null when it is not one. */
+export function normalizeMetricRef(raw: string | null | undefined): string | null {
+  const ref = parseMetricRef(raw);
+  return ref ? formatMetricRef(ref) : null;
+}
+
+export function requireMetricRef(raw: string | null | undefined): MetricRef {
+  const ref = parseMetricRef(raw);
+  if (!ref) {
+    throw new InvalidMetricError(raw ? `Invalid metric "${raw}"` : "Missing metric");
+  }
+  return ref;
+}
+
+/** A histogram's bucket counts for one interval of one series. */
+export type MetricBuckets = {
+  ts: string;
+  name: string;
+  labels: Record<string, string>;
+  /** Upper bounds, rising. */
+  le: number[];
+  /** What was observed up to each bound and above the one before; one more, last, for above them all. */
+  n: number[];
+};
+
 /** `service:api,host:api-1` — equality matchers only. Cap 4. */
 export function parseMetricLabels(
   raw: string | null | undefined,
@@ -75,9 +136,11 @@ export function formatMetricLabels(labels: Record<string, string>): string {
 export function metricExpr(
   name: string,
   labels: Record<string, string>,
+  reading: HistogramReading | null = null,
 ): string {
   const encoded = formatMetricLabels(labels);
-  return encoded.length > 0 ? `${name}{${encoded.replaceAll(":", "=")}}` : name;
+  const named = reading ? `${reading}:${name}` : name;
+  return encoded.length > 0 ? `${named}{${encoded.replaceAll(":", "=")}}` : named;
 }
 
 export function parseMetricPoint(input: unknown): MetricPoint {

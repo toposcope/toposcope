@@ -86,6 +86,8 @@ export const retentionTtlTables = [
   { table: "logs_attr_numeric_by_minute", clock: "minute" },
   { table: "metrics", clock: "ts" },
   { table: "metrics_by_minute", clock: "minute" },
+  { table: "metric_buckets", clock: "ts" },
+  { table: "metric_buckets_by_minute", clock: "minute" },
   { table: "spans", clock: "ts" },
   { table: "profile_samples", clock: "ts" },
   { table: "change_marks", clock: "ts" },
@@ -490,6 +492,50 @@ async function ensureMetrics(): Promise<void> {
     )
     ENGINE = ReplacingMergeTree(seen)
     ORDER BY (tenant_id, name)
+  `);
+  // A histogram's buckets, one row for each interval of each series. `n` has one
+  // more count than `le` has bounds: the last is what was observed above them all.
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS metric_buckets (
+      tenant_id LowCardinality(String),
+      ts DateTime64(3, 'UTC'),
+      name LowCardinality(String),
+      labels Map(LowCardinality(String), String),
+      le Array(Float64),
+      n Array(Float64)
+    )
+    ENGINE = MergeTree
+    PARTITION BY toDate(ts)
+    ORDER BY (tenant_id, name, ts)
+    TTL toDate(ts) + INTERVAL 30 DAY
+  `);
+  // One row for each bound, so series with different bounds still add up, and a
+  // bound nothing was counted under still says where the next bucket starts.
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS metric_buckets_by_minute (
+      tenant_id LowCardinality(String),
+      minute DateTime('UTC'),
+      name LowCardinality(String),
+      le Float64,
+      n SimpleAggregateFunction(sum, Float64)
+    )
+    ENGINE = AggregatingMergeTree
+    PARTITION BY toDate(minute)
+    ORDER BY (tenant_id, name, minute, le)
+    TTL toDate(minute) + INTERVAL 30 DAY
+  `);
+  await clickhouseCommand("DROP VIEW IF EXISTS metric_buckets_by_minute_mv");
+  await clickhouseCommand(`
+    CREATE MATERIALIZED VIEW metric_buckets_by_minute_mv TO metric_buckets_by_minute AS
+    SELECT
+      tenant_id,
+      toStartOfMinute(ts) AS minute,
+      name,
+      bound AS le,
+      sum(observed) AS n
+    FROM metric_buckets AS sent
+    ARRAY JOIN arrayPushBack(sent.le, inf) AS bound, sent.n AS observed
+    GROUP BY tenant_id, minute, name, le
   `);
   await clickhouseCommand("DROP VIEW IF EXISTS metrics_by_minute_mv");
   await clickhouseCommand(`

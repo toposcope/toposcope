@@ -24,7 +24,7 @@ import {
 import {
   formatMetricLabels,
   parseMetricLabels,
-  parseMetricName,
+  normalizeMetricRef,
 } from "../shared/metric";
 
 export type RangeMode = "custom" | string;
@@ -127,7 +127,7 @@ export function parseSearchUrl(search: string): SearchUrlState {
   const agg = parseAggParam(params.get("agg"));
   const replaceY = params.get("y") === "agg";
   const logs = params.get("logs") !== "0";
-  const metric = parseMetricName(params.get("metric"));
+  const metric = normalizeMetricRef(params.get("metric"));
   const metricLabels = metric ? parseMetricLabels(params.get("ml")) : {};
   const widgets = parseWidgetsParam(params.get("w"), {
     split,

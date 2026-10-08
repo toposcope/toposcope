@@ -46,6 +46,8 @@ async function main(): Promise<void> {
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS logs_attr_numeric_by_minute");
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS metrics");
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS metrics_by_minute");
+  await clickhouseCommand("TRUNCATE TABLE IF EXISTS metric_buckets");
+  await clickhouseCommand("TRUNCATE TABLE IF EXISTS metric_buckets_by_minute");
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS spans");
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS profile_samples");
   await clickhouseCommand("TRUNCATE TABLE IF EXISTS change_marks");

@@ -1163,10 +1163,12 @@ async function main(): Promise<void> {
     throw new Error("expected unlabeled cpu_seconds window stat");
   }
 
-  // OTLP metrics: a counter sent as deltas reads as a sum, a gauge as an average, a running total is converted.
+  // OTLP metrics: a counter sent as deltas reads as a sum, a gauge as an average, a running total is
+  // converted, and a histogram keeps its buckets.
   const otlpMetricRun = Date.now();
   const otlpCounter = `e2e.jobs.c${otlpMetricRun}`;
   const otlpGauge = `e2e.memory.g${otlpMetricRun}`;
+  const otlpHistogram = `e2e.latency.h${otlpMetricRun}`;
   const otlpNano = String((Date.now() - 30_000) * 1_000_000);
   const otlpMetricsBody = {
     resourceMetrics: [
@@ -1196,8 +1198,24 @@ async function main(): Promise<void> {
                 },
               },
               {
-                name: `e2e.summary.s${otlpMetricRun}`,
-                summary: { dataPoints: [{ timeUnixNano: otlpNano }] },
+                // 50 up to 100, 40 up to 200, 10 up to 400.
+                name: otlpHistogram,
+                histogram: {
+                  aggregationTemporality: 1,
+                  dataPoints: [
+                    {
+                      timeUnixNano: otlpNano,
+                      count: "100",
+                      sum: 14_000,
+                      bucketCounts: ["50", "40", "10", "0"],
+                      explicitBounds: [100, 200, 400],
+                    },
+                  ],
+                },
+              },
+              {
+                name: `e2e.untold.u${otlpMetricRun}`,
+                sum: { isMonotonic: true, dataPoints: [{ timeUnixNano: otlpNano, asInt: "1" }] },
               },
             ],
           },
@@ -1216,9 +1234,9 @@ async function main(): Promise<void> {
   };
   if (
     otlpMetricsRes.status !== 200 ||
-    otlpMetricsReply.ingested !== 4 ||
+    otlpMetricsReply.ingested !== 6 ||
     otlpMetricsReply.partialSuccess?.rejectedDataPoints !== "1" ||
-    !otlpMetricsReply.partialSuccess.errorMessage?.includes("summaries")
+    !otlpMetricsReply.partialSuccess.errorMessage?.includes("does not say its temporality")
   ) {
     throw new Error(`OTLP metrics ingest: ${otlpMetricsRes.status} ${JSON.stringify(otlpMetricsReply)}`);
   }
@@ -1308,6 +1326,40 @@ async function main(): Promise<void> {
     if (body.agg?.stat !== want || !inOneBar) {
       throw new Error(`expected ${name} to read ${want}, got ${JSON.stringify(body.agg)}`);
     }
+  }
+
+  // A histogram is read one way at a time. An older link's `.count` is its count.
+  for (const [metric, reading, want] of [
+    [`p50:${otlpHistogram}`, "p50", 100],
+    [`p99:${otlpHistogram}`, "p99", 380],
+    [otlpHistogram, "p99", 380],
+    [`avg:${otlpHistogram}`, "avg", 140],
+    [`${otlpHistogram}.count`, "count", 100],
+  ] as const) {
+    const res = await fetch(
+      `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", events: "0", metric }).toString()}`,
+      { headers: { authorization: basicAuth() } },
+    );
+    const body = (await res.json()) as {
+      agg?: { stat: number | null; kind?: string; reading?: string; metric?: string };
+    };
+    const agg = body.agg;
+    if (
+      agg?.kind !== "histogram" ||
+      agg.reading !== reading ||
+      agg.metric !== otlpHistogram ||
+      Math.abs((agg.stat ?? Number.NaN) - want) > 1e-6
+    ) {
+      throw new Error(`expected ${metric} to read ${want} as ${reading}, got ${JSON.stringify(agg)}`);
+    }
+  }
+  const otlpNamesRes = await fetch(
+    `${APP_URL}/api/metric-names?${new URLSearchParams({ range: "15m", find: `h${otlpMetricRun}` }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  const otlpNames = (await otlpNamesRes.json()) as { keys: Array<{ k: string; kind: string }> };
+  if (otlpNames.keys.length !== 1 || otlpNames.keys[0]?.k !== otlpHistogram || otlpNames.keys[0].kind !== "histogram") {
+    throw new Error(`expected the histogram listed once, got ${JSON.stringify(otlpNames.keys)}`);
   }
 
   const metricWithQRes = await fetch(

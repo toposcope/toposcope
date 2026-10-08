@@ -13,7 +13,26 @@ type Seen = {
   timeMs: number;
   /** When it was last seen, on this process's clock. */
   seenMs: number;
+  /** A histogram's upper bounds: one for each of the last totals in `values`. */
+  bounds?: number[];
 };
+
+function sameBounds(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((bound, i) => bound === b[i]);
+}
+
+/** Counts kept under one set of rising bounds, laid under another: each goes to the first bound that holds it. */
+function rebucket(counts: number[], from: number[], to: number[]): number[] {
+  const out = to.map(() => 0);
+  let j = 0;
+  for (let i = 0; i < from.length; i++) {
+    while (j < to.length - 1 && to[j]! < from[i]!) {
+      j += 1;
+    }
+    out[j] = (out[j] ?? 0) + (counts[i] ?? 0);
+  }
+  return out;
+}
 
 export class RunningTotals {
   /** Oldest first: a series is moved to the end each time it is seen. */
@@ -42,15 +61,25 @@ export class RunningTotals {
    *
    * A series that says it restarted, or whose first total went down, is counted
    * whole again. A point no newer than the last one seen adds nothing.
+   *
+   * A histogram's bucket totals come last in `values`, under `bounds`. When its
+   * bounds moved, as an exponential histogram's do, the totals last seen are
+   * laid under the new bounds before the difference is taken.
    */
-  advance(key: string, startMs: number, timeMs: number, values: number[]): number[] | null {
+  advance(
+    key: string,
+    startMs: number,
+    timeMs: number,
+    values: number[],
+    bounds?: number[],
+  ): number[] | null {
     const nowMs = this.now();
     const last = this.series.get(key);
     if (last && timeMs <= last.timeMs) {
       return values.map(() => 0);
     }
     this.series.delete(key);
-    this.series.set(key, { values, startMs, timeMs, seenMs: nowMs });
+    this.series.set(key, { values, startMs, timeMs, seenMs: nowMs, bounds });
     this.forget(nowMs);
 
     if (!last) {
@@ -58,10 +87,27 @@ export class RunningTotals {
       const age = startMs > 0 ? timeMs - startMs : Number.POSITIVE_INFINITY;
       return age >= 0 && age <= nowMs - this.bootMs ? values : null;
     }
+    const head = values.length - (bounds?.length ?? 0);
+    let before = last.values;
+    if (bounds && last.bounds && !sameBounds(bounds, last.bounds)) {
+      const lastHead = last.values.length - last.bounds.length;
+      before = [
+        ...last.values.slice(0, lastHead),
+        ...rebucket(last.values.slice(lastHead), last.bounds, bounds),
+      ];
+    }
     const restarted =
       (startMs > 0 && last.startMs > 0 && startMs !== last.startMs) ||
-      (values[0] ?? 0) < (last.values[0] ?? 0);
-    return restarted ? values : values.map((value, i) => value - (last.values[i] ?? 0));
+      (values[0] ?? 0) < (last.values[0] ?? 0) ||
+      before.length !== values.length;
+    if (restarted) {
+      return values;
+    }
+    // A bucket's total only goes up; the sum beside the count may go down.
+    return values.map((value, i) => {
+      const grew = value - (before[i] ?? 0);
+      return i >= head ? Math.max(0, grew) : grew;
+    });
   }
 
   private forget(nowMs: number): void {

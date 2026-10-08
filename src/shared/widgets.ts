@@ -15,7 +15,8 @@ import { isAttrIdent, maxAttrFacets } from "./attrs";
 import {
   formatMetricLabels,
   parseMetricLabels,
-  parseMetricName,
+  normalizeMetricRef,
+  parseMetricRef,
 } from "./metric";
 
 export const maxWidgets = 6;
@@ -229,7 +230,7 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
   const split = parseHistogramSplit(widget.split);
   const chart = parseHistogramChart(widget.chart);
   const metric =
-    widget.kind === "hbar" ? null : parseMetricName(widget.metric);
+    widget.kind === "hbar" ? null : normalizeMetricRef(widget.metric);
   const metricLabels = metric
     ? parseMetricLabels(formatMetricLabels(widget.metricLabels ?? {}))
     : {};
@@ -413,11 +414,17 @@ export function settleWidgets(widgets: WidgetDef[], winnerId: string): WidgetDef
   });
 }
 
+/** A metric as a title: a histogram's reading first, then its name. */
+function metricTitle(metric: string): string {
+  const ref = parseMetricRef(metric);
+  return ref?.reading ? `${ref.reading} · ${ref.name}` : metric;
+}
+
 export function widgetTitle(widget: WidgetDef): string {
   switch (widget.kind) {
     case "stat":
       if (widget.metric) {
-        return widget.metric;
+        return metricTitle(widget.metric);
       }
       return seriesLabel(widget.agg === "count" ? null : widget.agg);
     case "hbar": {
@@ -426,7 +433,7 @@ export function widgetTitle(widget: WidgetDef): string {
     }
     case "timeseries": {
       const series = widget.metric
-        ? widget.metric
+        ? metricTitle(widget.metric)
         : seriesLabel(widget.agg);
       return widget.split === "level" ? series : `${series} · ${widget.split}`;
     }
@@ -1012,7 +1019,7 @@ function consumeMetricSource(rest: string[]): {
   while (rest[0] && !rest[0].startsWith("l:") && !isFlagToken(rest[0])) {
     chunks.push(rest.shift()!);
   }
-  const metric = parseMetricName(chunks.join("."));
+  const metric = normalizeMetricRef(chunks.join("."));
   let metricLabels: Record<string, string> = {};
   if (rest[0]?.startsWith("l:")) {
     const raw = rest.shift()!.slice(2);

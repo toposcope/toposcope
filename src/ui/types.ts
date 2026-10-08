@@ -1,3 +1,4 @@
+import type { HistogramReading } from "../shared/metric";
 import type { WidgetLayout } from "../shared/widgets";
 import type { BoardSlots } from "../shared/boards";
 
@@ -63,7 +64,10 @@ export type SearchAggResult = {
   buckets: AggBucket[];
   stat: number | null;
   /** For an ingested metric: a counter's bar is a sum, a gauge's an average. */
-  kind?: "gauge" | "counter";
+  kind?: "gauge" | "counter" | "histogram";
+  /** For a histogram: which reading the bars are, and the histogram's own name. */
+  reading?: HistogramReading;
+  metric?: string;
 };
 
 export type FacetValue = { v: string; n: number };

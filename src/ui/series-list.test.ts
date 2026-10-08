@@ -1,5 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { buildSeriesList, metricReading, midCut, readingWords, splitHit, statWords, type MetricEntry } from "./series-list";
+import {
+  buildSeriesList,
+  metricReading,
+  metricView,
+  midCut,
+  readingMenu,
+  readingWords,
+  splitHit,
+  statWords,
+  type MetricEntry,
+} from "./series-list";
 
 describe("midCut", () => {
   test("a name that fits is whole", () => {
@@ -173,5 +183,61 @@ describe("a picked metric", () => {
   test("a picked log field outside the busiest eight stays listed", () => {
     const list = buildSeriesList({ ...base, pick: { kind: "key", key: "ninth_field", op: "p99" }, agg: "p99:ninth_field" });
     expect(list.sections[1]!.rows.find((row) => row.on)?.name).toBe("ninth_field");
+  });
+});
+
+describe("a histogram", () => {
+  const latency: MetricEntry = { name: "http.server.request.duration", kind: "histogram", points: 900 };
+
+  test("is listed as one name of its own kind, and picking it starts at its p99", () => {
+    const list = buildSeriesList({ ...base, metrics: [latency, ...metrics] });
+    const row = list.sections.at(-1)!.rows[0]!;
+    expect(row).toMatchObject({ name: "http.server.request.duration", tag: "histogram" });
+    expect(row.value).toBe("m:p99:http.server.request.duration");
+  });
+
+  test("its reading is the one chosen, with no bar width: p99 is not an amount", () => {
+    expect(metricReading("histogram", "1m", false, "p90")).toBe("p90");
+    expect(metricReading("histogram", "1m", true, "count")).toBe("count");
+    expect(metricReading("histogram", "1m")).toBe("p99");
+  });
+
+  test("the menu offers count, sum, avg and three percentiles, each in words", () => {
+    expect(readingMenu.map((row) => row.reading)).toEqual(["count", "sum", "avg", "p50", "p90", "p99"]);
+    expect(readingMenu.find((row) => row.reading === "p50")!.words).toBe("median");
+    expect(readingMenu.find((row) => row.reading === "count")!.words).toBe("how many were observed");
+  });
+
+  test("in words, the reading comes with what it is of", () => {
+    expect(readingWords("histogram", "1m", "p99")).toBe("histogram · 99th percentile of this 1m");
+    expect(readingWords("histogram", "5m", "count")).toBe("histogram · observed in this 5m");
+    expect(statWords("histogram", "1h", "p99")).toBe("p99 of every observation in the last 1h · histogram");
+    expect(statWords("histogram", "1h", "avg")).toBe("mean of every observation in the last 1h · histogram");
+    expect(statWords("histogram", "", "count")).toBe("observations in this window · histogram");
+  });
+
+  test("is shown by what its series says, then the window's list, then the link", () => {
+    const pick = { name: "http.server.request.duration", reading: "p50" as const };
+    expect(metricView(pick, latency)).toEqual({ name: pick.name, kind: "histogram", reading: "p50" });
+    expect(metricView({ name: pick.name }, latency)).toEqual({ name: pick.name, kind: "histogram", reading: "p99" });
+    expect(metricView(pick, null, { kind: "histogram", reading: "p90", metric: pick.name }).reading).toBe("p90");
+    // A reading in front of a gauge's name means nothing.
+    expect(metricView({ name: "process.memory.usage", reading: "p50" }, metrics[6]!)).toEqual({
+      name: "process.memory.usage",
+      kind: "gauge",
+      reading: null,
+    });
+  });
+
+  test("an older link's `.count` is shown, and listed, as the count of the histogram", () => {
+    const pick = { kind: "metric", name: "http.server.request.duration.count" } as const;
+    const entry: MetricEntry = { name: pick.name, kind: "histogram", points: 900, of: latency.name, reading: "count" };
+    expect(metricView(pick, entry)).toEqual({ name: latency.name, kind: "histogram", reading: "count" });
+    const list = buildSeriesList({ ...base, pick, picked: entry, metrics: [latency, ...metrics] });
+    expect(list.sections[0]!.rows).toEqual([
+      { value: "m:p99:http.server.request.duration", name: latency.name, plain: false, tag: "histogram", amber: false, on: true },
+    ]);
+    const listed = list.sections.flatMap((section) => section.rows.map((row) => row.name));
+    expect(listed.filter((name) => name === latency.name)).toHaveLength(1);
   });
 });
