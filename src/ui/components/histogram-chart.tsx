@@ -402,8 +402,8 @@ export function HistogramChart({
   );
   const volumePeak = Math.max(1, ...totals);
   const peak = replaceY && overlayOn ? overlayPeak : volumePeak;
-  const yTicks = histogramYTicks(peak, logScale);
-  const overlayTicks = histogramYTicks(overlayPeak, logScale);
+  const yTicks = histogramYTicks(peak, logScale, replaceY && overlayOn ? "series" : "count");
+  const overlayTicks = histogramYTicks(overlayPeak, logScale, "series");
   const stepMs = resolveHistogramStepMs(
     buckets,
     histogramIntervalMsById[displayedHistogramInterval(spanMs, interval, chart)],

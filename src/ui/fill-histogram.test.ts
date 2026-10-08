@@ -234,6 +234,13 @@ describe("histogramYTicks", () => {
     expect(ticks[1]).toBeGreaterThan(ticks[2] ?? 0);
     expect(ticks[2]).toBeGreaterThan(0);
   });
+
+  test("a count keeps whole ticks, asked for or not", () => {
+    expect(histogramYTicks(7, false)).toEqual([7, 5, 2, 0]);
+    expect(histogramYTicks(7, false, "count")).toEqual([7, 5, 2, 0]);
+    expect(histogramYTicks(1000, true, "count")).toEqual(histogramYTicks(1000, true));
+    expect(histogramYTicks(1000, true).every(Number.isInteger)).toBe(true);
+  });
 });
 
 // The four gridlines are evenly spaced, so a series' middle ticks are the values

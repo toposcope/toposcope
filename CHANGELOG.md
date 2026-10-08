@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+The axis of a rate, a p99 or a metric reads the values on its gridlines. It took the count axis’s ticks, which round the two in the middle to whole numbers: a p99 that peaked at 4.83 read `3` and `2` where 3.22 and 1.61 are drawn, and one that peaked at 0.48 read `0` and `0`. On a log scale those two were also worked out on a different curve from the one the line is drawn on, and a peak of 0.48 read `1` and `1`, above itself. The series’ axis on the right in Overlay and the axis on the left in Replace now print two thirds and one third of the peak, or on a log scale the values the line crosses at those gridlines. The count axis keeps whole numbers. [#101](https://github.com/toposcope/toposcope/pull/101)
+
 A metric drawn over the plot is drawn against the plot’s height. The drawing took its height from its width, so on a wide plot the bottom of its scale hung under the floor: at 1,440 pixels a value below a third of the peak drew nothing, and a line rose out of the floor when the value climbed. On a narrow plot zero floated above the baseline. Replace drawn as a line or an area was cut the same way; Replace as bars was right. The series’ axis on the right now ends at the floor with its ticks on the gridlines. It ran down beside the mark lane, so its `0` sat 22 pixels under the bars. [#99](https://github.com/toposcope/toposcope/issues/99)
 
 ## 0.5.2
