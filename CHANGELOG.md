@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A metric drawn over the plot is drawn against the plot’s height. The drawing took its height from its width, so on a wide plot the bottom of its scale hung under the floor: at 1,440 pixels a value below a third of the peak drew nothing, and a line rose out of the floor when the value climbed. On a narrow plot zero floated above the baseline. Replace drawn as a line or an area was cut the same way; Replace as bars was right. The series’ axis on the right now ends at the floor with its ticks on the gridlines. It ran down beside the mark lane, so its `0` sat 22 pixels under the bars. [#99](https://github.com/toposcope/toposcope/issues/99)
+
 ## 0.5.2
 
 OTLP over gRPC. Several OpenTelemetry exporters send gRPC unless told otherwise, and Toposcope took OTLP over HTTP only, so those apps failed to connect until someone found the protocol setting. A second listener, on port `4319`, takes the Export call of the logs, trace, metrics and profiles services, with the same ingest token as `authorization` metadata. Each call is handed to the HTTP route for its signal, so the 1 MB and 1,024-record caps, gzip and the partial-success reply are the same; a refusal comes back as `INVALID_ARGUMENT`, `UNAUTHENTICATED` or `RESOURCE_EXHAUSTED`, and busy or stopping as `UNAVAILABLE`, which an exporter retries. The port is not OTLP’s usual `4317`, which is left to a collector on the same host such as the packaged Vector config. `OTLP_GRPC_PORT` moves it and `0` turns it off; the packaged install binds it to `127.0.0.1`. It speaks HTTP/2 without TLS, so behind a reverse proxy it needs a rule of its own. [#75](https://github.com/toposcope/toposcope/issues/75)
