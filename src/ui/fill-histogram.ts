@@ -127,9 +127,22 @@ export function formatAggStat(n: number | null | undefined): string {
   return n.toPrecision(2);
 }
 
-export function histogramYTicks(peak: number, logScale: boolean): number[] {
+/**
+ * Four ticks, one on each gridline from the peak down to the floor. A count is
+ * read in whole events. A series (a rate, a p99, a metric) is not: its ticks
+ * are the values `scaleCount` draws on those gridlines.
+ */
+export function histogramYTicks(
+  peak: number,
+  logScale: boolean,
+  axis: "count" | "series" = "count",
+): number[] {
   if (peak <= 0) {
     return [0, 0, 0, 0];
+  }
+  if (axis === "series") {
+    const at = (frac: number) => (logScale ? (peak + 1) ** frac - 1 : peak * frac);
+    return [peak, at(2 / 3), at(1 / 3), 0];
   }
   if (!logScale) {
     return [peak, Math.round(peak * 0.66), Math.round(peak * 0.33), 0];

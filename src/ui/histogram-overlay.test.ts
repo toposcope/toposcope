@@ -39,3 +39,20 @@ describe("a series drawn over the plot", () => {
     expect(axis).toMatch(/MARK_LANE_H/);
   });
 });
+
+// A count is read in whole events. A rate, a p99 or a metric is not: its axis
+// took the count's whole-number ticks, so a peak of 4.83 read 3 and 2 on the
+// gridlines where 3.22 and 1.61 are drawn, and a peak of 0.48 read 0 and 0.
+describe("the axis of a series", () => {
+  test("on the right in Overlay it takes a series' ticks", () => {
+    const ticks = between(chart, "const overlayTicks =", ";");
+    expect(ticks).toMatch(/histogramYTicks\(\s*overlayPeak,/);
+    expect(ticks).toMatch(/"series"/);
+  });
+
+  test("on the left in Replace it takes a series' ticks", () => {
+    const ticks = between(chart, "const yTicks =", ";");
+    expect(ticks).toMatch(/replaceY && overlayOn/);
+    expect(ticks).toMatch(/"series"/);
+  });
+});

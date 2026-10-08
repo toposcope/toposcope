@@ -7,6 +7,7 @@ import {
   resolveHistogramStepMs,
   bucketIndexAt,
   abbrevCount,
+  formatAggStat,
   formatSeriesTotal,
   histogramYTicks,
   scaleCount,
@@ -232,6 +233,50 @@ describe("histogramYTicks", () => {
     expect(ticks[3]).toBe(0);
     expect(ticks[1]).toBeGreaterThan(ticks[2] ?? 0);
     expect(ticks[2]).toBeGreaterThan(0);
+  });
+
+  test("a count keeps whole ticks, asked for or not", () => {
+    expect(histogramYTicks(7, false)).toEqual([7, 5, 2, 0]);
+    expect(histogramYTicks(7, false, "count")).toEqual([7, 5, 2, 0]);
+    expect(histogramYTicks(1000, true, "count")).toEqual(histogramYTicks(1000, true));
+    expect(histogramYTicks(1000, true).every(Number.isInteger)).toBe(true);
+  });
+});
+
+// The four gridlines are evenly spaced, so a series' middle ticks are the values
+// drawn two thirds and one third of the way up. They were rounded to whole
+// numbers, which is right for a count of events and wrong for a p99 in seconds.
+describe("histogramYTicks for a series", () => {
+  const gridlines = [1, 2 / 3, 1 / 3, 0];
+
+  test("a p99 that peaks at 4.83 reads 3.22 and 1.61 on the middle gridlines, not 3 and 2", () => {
+    const ticks = histogramYTicks(4.83, false, "series");
+    expect(ticks[0]).toBe(4.83);
+    expect(ticks[1]).toBeCloseTo(3.22, 2);
+    expect(ticks[2]).toBeCloseTo(1.61, 2);
+    expect(ticks[3]).toBe(0);
+    expect(ticks.map(formatAggStat)).toEqual(["4.83", "3.22", "1.61", "0"]);
+  });
+
+  test("a peak under one keeps its middle ticks, they are not 0", () => {
+    const ticks = histogramYTicks(0.48, false, "series");
+    expect(ticks[1]).toBeCloseTo(0.32, 2);
+    expect(ticks[2]).toBeCloseTo(0.16, 2);
+    expect(ticks.map(formatAggStat)).toEqual(["0.48", "0.32", "0.16", "0"]);
+  });
+
+  test("on a log scale each tick is the value drawn on its gridline", () => {
+    for (const peak of [4.83, 0.48, 250]) {
+      const ticks = histogramYTicks(peak, true, "series");
+      ticks.forEach((tick, i) => {
+        expect(scaleCount(tick, peak, true)).toBeCloseTo(gridlines[i] ?? 0, 6);
+      });
+    }
+  });
+
+  test("on a log scale no tick is above the peak", () => {
+    const ticks = histogramYTicks(0.48, true, "series");
+    expect(Math.max(...ticks)).toBe(0.48);
   });
 });
 
