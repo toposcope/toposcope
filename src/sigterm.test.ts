@@ -119,6 +119,7 @@ async function startApp(clickhouseUrl: string, syslogPort = 0) {
       HOST: "127.0.0.1",
       PORT: String(port),
       SYSLOG_UDP_PORT: String(syslogPort),
+      OTLP_GRPC_PORT: "0",
     },
     stdout: "ignore",
     stderr: "pipe",

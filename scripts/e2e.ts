@@ -1,4 +1,7 @@
+import http2 from "node:http2";
+import net from "node:net";
 import { toOtlpJson } from "../src/ingest/otlp";
+import { grpcFrame } from "../src/ingest/otlp-grpc";
 import { encodeOtlpProtobuf } from "../src/ingest/otlp-protobuf";
 import { encodeOtlpMetricsProtobuf } from "../src/ingest/otlp-metrics-protobuf";
 import { decodeOtlpReply } from "../src/ingest/otlp-reply";
@@ -2105,6 +2108,77 @@ async function main(): Promise<void> {
     throw new Error(`expected a protobuf partial success, got ${partialProtoRes.status} ${JSON.stringify(partialProto)}`);
   }
 
+  // OTLP over gRPC: the same request as one call, on the second port, with the token as metadata.
+  const grpcPort = Number(envValue("OTLP_GRPC_PORT") ?? "4319");
+  if (grpcPort > 0) {
+    const grpcHost = new URL(APP_URL).hostname;
+    const grpcMarker = `grpc${Date.now()}`;
+    // Asked first over plain TCP: nothing listening is a clearer failure than a client error.
+    await new Promise<void>((resolve, reject) => {
+      const probe = net.connect(grpcPort, grpcHost);
+      probe.once("connect", () => {
+        probe.destroy();
+        resolve();
+      });
+      probe.once("error", () =>
+        reject(new Error(`OTLP gRPC is not listening on ${grpcHost}:${grpcPort}; set OTLP_GRPC_PORT (0 skips this)`)),
+      );
+    });
+    const grpcCall = (authorization: string | null) =>
+      new Promise<{ status: string | undefined; reply: number }>((resolve, reject) => {
+        const session = http2.connect(`http://${grpcHost}:${grpcPort}`);
+        session.on("error", reject);
+        const call = session.request({
+          ":method": "POST",
+          ":path": "/opentelemetry.proto.collector.logs.v1.LogsService/Export",
+          "content-type": "application/grpc",
+          te: "trailers",
+          ...(authorization ? { authorization } : {}),
+        });
+        let head: Record<string, unknown> = {};
+        let trailers: Record<string, unknown> = {};
+        let reply = 0;
+        call.on("response", (h) => (head = h));
+        call.on("trailers", (t) => (trailers = t));
+        call.on("data", (chunk: Buffer) => (reply += chunk.length));
+        call.on("error", reject);
+        call.on("end", () => {
+          session.close();
+          const status = trailers["grpc-status"] ?? head["grpc-status"];
+          resolve({ status: status === undefined ? undefined : String(status), reply });
+        });
+        call.end(
+          grpcFrame(
+            encodeOtlpProtobuf({
+              resourceLogs: [
+                {
+                  resource: { attributes: [{ key: "service.name", value: { stringValue: "otlp-e2e" } }] },
+                  scopeLogs: [{ logRecords: [{ severityText: "INFO", body: { stringValue: `over grpc ${grpcMarker}` } }] }],
+                },
+              ],
+            }),
+          ),
+        );
+      });
+    const grpcNoToken = await grpcCall(null);
+    if (grpcNoToken.status !== "16") {
+      throw new Error(`expected a gRPC call with no token to be UNAUTHENTICATED (16), got ${grpcNoToken.status}`);
+    }
+    const grpcSent = await grpcCall(`Bearer ${INGEST_TOKEN}`);
+    // OK, and an empty reply: its five-byte prefix and nothing after it.
+    if (grpcSent.status !== "0" || grpcSent.reply !== 5) {
+      throw new Error(`expected a gRPC export to be OK with an empty reply, got ${JSON.stringify(grpcSent)}`);
+    }
+    const grpcFound = await fetch(
+      `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: `service:otlp-e2e ${grpcMarker}` }).toString()}`,
+      { headers: { authorization: basicAuth() } },
+    );
+    const grpcRows = (await grpcFound.json()) as { total: number };
+    if (grpcRows.total !== 1) {
+      throw new Error(`expected the row sent over gRPC once, got ${grpcRows.total}`);
+    }
+  }
+
   // A map body is kept: found by a word in its message, filterable by one of its top-level fields.
   const mapBodyMarker = `mapbody${Date.now()}`;
   const mapBodyRes = await fetch(`${APP_URL}/v1/logs`, {
@@ -3234,7 +3308,7 @@ async function main(): Promise<void> {
     throw new Error("live sampled-out id must be empty");
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live");
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live");
 }
 
 await main();

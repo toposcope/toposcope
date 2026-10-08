@@ -66,6 +66,7 @@ A coding agent can do this for an app: the [toposcope skill](skills/toposcope/SK
 | Input | Endpoint | Notes |
 | --- | --- | --- |
 | OTLP logs | `POST /v1/logs` | JSON or protobuf |
+| OTLP over gRPC | port `4319` | Logs, traces, metrics and profiles; same token |
 | JSON or NDJSON logs | `POST /api/ingest` | One event, an array, or NDJSON |
 | Metrics | `POST /v1/metrics` | JSON metric points |
 | Change marks | `POST /v1/marks` | Deploy / flag / incident / note; CI samples in the [ingest guide](docs/ingest.md) |
@@ -93,7 +94,7 @@ See the [query language reference](docs/query.md) for operators, precedence, quo
 
 ## Operate Toposcope
 
-The packaged stack binds the application to `127.0.0.1:8080` and syslog UDP to `127.0.0.1:5514`. ClickHouse is available only on the internal Docker network.
+The packaged stack binds the application to `127.0.0.1:8080`, OTLP over gRPC to `127.0.0.1:4319`, and syslog UDP to `127.0.0.1:5514`. ClickHouse is available only on the internal Docker network.
 
 Terminate TLS with a reverse proxy already running on the host; the packaged Compose file intentionally does not include one. Back up both the ClickHouse and application volumes. Pin a previous image version to roll back application code, but restore data if a ClickHouse data directory cannot start.
 

@@ -113,6 +113,8 @@ beforeAll(async () => {
       TOPOSCOPE_INGEST_TOKEN: "regression-ingest",
       SQLITE_PATH: ":memory:",
       CLICKHOUSE_URL: "http://clickhouse.test",
+      // A listener would keep the child alive after the script is done.
+      OTLP_GRPC_PORT: "0",
     },
     stdout: "pipe",
     stderr: "pipe",

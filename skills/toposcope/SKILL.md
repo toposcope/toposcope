@@ -80,7 +80,7 @@ A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is sto
 
 ### Three ways in
 
-**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`, not gRPC) with the ingest token, a service name, and a version. Metrics need no setting: counters and histograms are stored as the amount per interval, whether the exporter sends deltas or, as it does by default, running totals.
+**An OpenTelemetry exporter in the app** is the default, on a laptop and in production. It sends OTLP over HTTP (`http/protobuf` or `http/json`), or over gRPC on its own port, with the ingest token, a service name, and a version. Metrics need no setting: counters and histograms are stored as the amount per interval, whether the exporter sends deltas or, as it does by default, running totals.
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080
@@ -91,6 +91,8 @@ OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2
 OTEL_LOGS_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
 ```
+
+An exporter left on gRPC, which several are by default, needs the other address and no protocol line: `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4319`, with the same header. See [OTLP over gRPC](#otlp-over-grpc).
 
 The app’s logger has to be bridged to the exporter, and an uncaught error logged through it with the exception attached. What arrives:
 
@@ -135,7 +137,7 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
 3. Run `check <word>` and relay its first line exactly. It is one of:
    - **frames** — the fingerprint came from the stack. Done. Give the user the `q` and the window it prints.
    - **message** — the row arrived, but its fingerprint fell back to the log line: the exception’s type and stack are not on the row, or the stack is not in a format ingest reads. Fix the uncaught-error path and check again.
-   - **nothing arrived** — no row. Look at the endpoint, the token, HTTP rather than gRPC, and whether the exporter flushed before the process ended. Then check again.
+   - **nothing arrived** — no row. Look at the endpoint and its port (8080 for HTTP, 4319 for gRPC), the token, and whether the exporter flushed before the process ended. Then check again.
 
 Check once for each app.
 

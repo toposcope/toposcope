@@ -25,6 +25,10 @@ describe("packaged compose", () => {
     expect(yaml).not.toMatch(/TOPOSCOPE_PASSWORD: toposcope\b/);
     expect(yaml).not.toContain("8123:8123");
     expect(yaml).toContain("127.0.0.1:8080:8080");
+    // OTLP over gRPC is a second port, bound to loopback like the first.
+    expect(yaml).toContain('"127.0.0.1:4319:4319"');
+    expect(yaml).toContain('OTLP_GRPC_PORT: "4319"');
+    expect(yaml).not.toMatch(/"(?:0\.0\.0\.0:)?4319:4319"/);
     expect(yaml).toContain("TOPOSCOPE_PASSWORD: ${TOPOSCOPE_PASSWORD:?");
     expect(yaml).toContain("memory: 4G");
   });

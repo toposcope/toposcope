@@ -37,10 +37,12 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:5514:5514/udp"
+      - "127.0.0.1:4319:4319"
     environment:
       HOST: "0.0.0.0"
       PORT: "8080"
       SYSLOG_UDP_PORT: "5514"
+      OTLP_GRPC_PORT: "4319"
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD in .env}
