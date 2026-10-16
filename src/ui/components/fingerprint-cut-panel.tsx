@@ -101,7 +101,7 @@ export function FingerprintCutPanel({
           signal: ac.signal,
         });
         if (res.status === 401) {
-          throw new Error("Unauthorized. Sign in with basic auth.");
+          throw new Error("Unauthorized. Sign in again.");
         }
         const json = (await res.json()) as FingerprintCutResult & {
           error?: string;

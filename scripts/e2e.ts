@@ -3340,6 +3340,31 @@ async function main(): Promise<void> {
     throw new Error("live sampled-out id must be empty");
   }
 
+  // #102: a browser with no Basic prompt signs in on a page; scripts keep Basic.
+  {
+    const page = await fetch(`${APP_URL}/`, { headers: { accept: "text/html" } });
+    const pageText = await page.text();
+    if (page.status !== 401 || page.headers.get("www-authenticate") || !pageText.includes("Signing in to")) {
+      throw new Error(`a page without the password should be the sign-in page, got ${page.status} ${page.headers.get("www-authenticate")}`);
+    }
+    const bare = await fetch(`${APP_URL}/api/saved-searches`);
+    if (bare.status !== 401 || !bare.headers.get("www-authenticate")?.startsWith('Basic realm="toposcope')) {
+      throw new Error(`an API call without credentials should keep the Basic challenge, got ${bare.status}`);
+    }
+    const wrong = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: `${PASSWORD}-not` }) });
+    if (wrong.status !== 401) throw new Error(`a wrong password should be refused, got ${wrong.status}`);
+    const right = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: PASSWORD }) });
+    const setCookie = right.headers.get("set-cookie") ?? "";
+    if (!right.ok || !/HttpOnly; SameSite=Strict/.test(setCookie)) throw new Error(`sign-in should set a cookie, got ${right.status} ${setCookie}`);
+    const cookie = setCookie.split(";")[0]!;
+    const withCookie = await fetch(`${APP_URL}/api/instance`, { headers: { cookie } });
+    const info = (await withCookie.json()) as { session?: { kind: string } };
+    if (!withCookie.ok || info.session?.kind !== "cookie") throw new Error(`the cookie should sign the browser in, got ${withCookie.status} ${JSON.stringify(info)}`);
+    await fetch(`${APP_URL}/api/sign-out`, { method: "POST", headers: { cookie } });
+    const after = await fetch(`${APP_URL}/api/saved-searches`, { headers: { cookie } });
+    if (after.status !== 401 || after.headers.get("www-authenticate")) throw new Error(`after Sign out the cookie should be refused without the challenge, got ${after.status}`);
+  }
+
   console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live");
 }
 
