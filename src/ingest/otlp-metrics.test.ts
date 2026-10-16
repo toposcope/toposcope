@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { forgetMetricKinds } from "../shared/metric-kinds";
+import { forgetMetricUnits } from "../shared/metric-units";
 import { MAX_BATCH } from "./index";
 import { ingestMetricsRoute } from "./metrics";
 import { mapOtlpMetrics } from "./otlp-metrics";
@@ -289,6 +290,68 @@ describe("what an OTLP metric becomes", () => {
   });
 });
 
+// #104: a memory panel read 26.8 and nothing said whether it was percent or GiB.
+describe("a metric's unit", () => {
+  const units = (metrics: object[]) =>
+    Object.fromEntries(mapOtlpMetrics(request(metrics), new Losses(), upAnHour()).units);
+
+  test("a gauge and a counter keep the unit they were sent with", () => {
+    expect(
+      units([
+        { name: "agental.box.memory", unit: "GiBy", gauge: { dataPoints: [num(26.8)] } },
+        {
+          name: "http.server.requests",
+          unit: "{request}",
+          sum: { aggregationTemporality: DELTA, isMonotonic: true, dataPoints: [num(3)] },
+        },
+      ]),
+    ).toEqual({ "agental.box.memory": "GiBy", "http.server.requests": "{request}" });
+  });
+
+  test("a histogram's unit is the unit of its values and its sum, not of its count", () => {
+    expect(
+      units([
+        {
+          name: "http.server.request.duration",
+          unit: "s",
+          histogram: {
+            aggregationTemporality: DELTA,
+            dataPoints: [{ timeUnixNano: T, count: "40", sum: 3.2, bucketCounts: ["30", "10"], explicitBounds: [0.1] }],
+          },
+        },
+      ]),
+    ).toEqual({ "http.server.request.duration": "s", "http.server.request.duration.sum": "s" });
+  });
+
+  test("a summary's unit is its sum's", () => {
+    expect(
+      units([
+        {
+          name: "gc.pause",
+          unit: "ms",
+          summary: { dataPoints: [{ startTimeUnixNano: nano(T_MS - 60_000), timeUnixNano: T, count: "7", sum: 2.5 }] },
+        },
+      ]),
+    ).toEqual({ "gc.pause.sum": "ms" });
+  });
+
+  test("no unit, or an empty one, is not a unit", () => {
+    expect(
+      units([
+        { name: "queue.depth", gauge: { dataPoints: [num(4)] } },
+        { name: "queue.age", unit: "  ", gauge: { dataPoints: [num(4)] } },
+      ]),
+    ).toEqual({});
+  });
+
+  test("protobuf carries the unit too", () => {
+    const body = request([{ name: "agental.box.disk", unit: "GiBy", gauge: { dataPoints: [num(416)] } }]);
+    const decoded = decodeOtlpMetricsProtobuf(encodeOtlpMetricsProtobuf(body));
+    const out = mapOtlpMetrics(decoded, new Losses(), upAnHour());
+    expect(Object.fromEntries(out.units)).toEqual({ "agental.box.disk": "GiBy" });
+  });
+});
+
 describe("a counter or a histogram sent as a running total", () => {
   /** One export of a counter and a histogram that both started `startedAgoMs` before the first export. */
   const exportAt = (minute: number, counter: number, count: number, sum: number, startedAgoMs = 30_000) => {
@@ -489,6 +552,7 @@ describe("POST /v1/metrics", () => {
   beforeEach(() => {
     stored = {};
     forgetMetricKinds();
+    forgetMetricUnits();
     globalThis.fetch = Object.assign(
       async (input: string | URL | Request, init?: RequestInit) => {
         const query = new URL(String(input)).searchParams.get("query") ?? "";
@@ -533,6 +597,34 @@ describe("POST /v1/metrics", () => {
       ["process.memory.usage", "gauge"],
       ["app.jobs.processed", "counter"],
     ]);
+  });
+
+  test("each name's unit is stored, when it came with one", async () => {
+    const res = await postJson(
+      request([
+        { name: "process.memory.usage", unit: "By", gauge: { dataPoints: [num(1024)] } },
+        { name: "queue.depth", gauge: { dataPoints: [num(4)] } },
+      ]),
+    );
+    expect(res.status).toBe(200);
+    expect(stored.metric_units!.map((row) => [row.name, row.unit])).toEqual([["process.memory.usage", "By"]]);
+  });
+
+  test("a JSON point's unit is stored with its name", async () => {
+    const res = await postJson([
+      { name: "agental.box.memory", value: 26.8, unit: "GiBy" },
+      { name: "agental.box.disk", value: 416 },
+    ]);
+    expect(res.status).toBe(200);
+    expect(stored.metric_units!.map((row) => [row.name, row.unit])).toEqual([["agental.box.memory", "GiBy"]]);
+    expect(stored.metrics).toHaveLength(2);
+  });
+
+  test("a JSON point whose unit is too long is refused, and nothing is stored", async () => {
+    const res = await postJson({ name: "agental.box.memory", value: 1, unit: "x".repeat(65) });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Metric unit is longer than 64 characters" });
+    expect(stored).toEqual({});
   });
 
   test("a histogram's buckets are stored beside its count and sum, and its name is a histogram", async () => {

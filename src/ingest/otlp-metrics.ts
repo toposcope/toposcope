@@ -1,5 +1,5 @@
 import { maxAttrKeysPerEvent } from "../shared/attrs";
-import { isMetricIdent, type MetricBuckets, type MetricPoint } from "../shared/metric";
+import { isMetricIdent, metricUnitOf, type MetricBuckets, type MetricPoint } from "../shared/metric";
 import type { MetricKind } from "../shared/metric-kinds";
 import type { Losses } from "./otlp-reply";
 import type { RunningTotals } from "./running-totals";
@@ -263,6 +263,12 @@ export type MappedMetrics = {
   buckets: MetricBuckets[];
   /** The kind each stored name came as. */
   kinds: Map<string, MetricKind>;
+  /**
+   * The unit each stored name came with, when it came with one. A histogram's
+   * and a summary's unit is the unit of their values: it goes on `<name>` and
+   * `<name>.sum`, not on `<name>.count`, which counts observations.
+   */
+  units: Map<string, string>;
 };
 
 /**
@@ -288,6 +294,7 @@ export function mapOtlpMetrics(
   const points: MetricPoint[] = [];
   const buckets: MetricBuckets[] = [];
   const kinds = new Map<string, MetricKind>();
+  const units = new Map<string, string>();
 
   for (const rm of root.resourceMetrics) {
     const resourceAttrs = asRecord(asRecord(rm)?.resource)?.attributes as Attr[] | undefined;
@@ -298,6 +305,7 @@ export function mapOtlpMetrics(
           continue;
         }
         const name = metricName(metric.name);
+        const unit = metricUnitOf(metric.unit);
         const gauge = asRecord(metric.gauge);
         const sum = asRecord(metric.sum);
         const histogram = asRecord(metric.histogram);
@@ -367,9 +375,11 @@ export function mapOtlpMetrics(
             kinds.set(`${name}.count`, "counter");
             if (hasSum) {
               kinds.set(`${name}.sum`, "counter");
+              if (unit) units.set(`${name}.sum`, unit);
             }
             if (kept) {
               kinds.set(name, "histogram");
+              if (unit) units.set(name, unit);
             }
             // A running total that did not move is what a delta exporter would not have sent.
             if (running && since[0] === 0) {
@@ -396,6 +406,7 @@ export function mapOtlpMetrics(
             continue;
           }
           kinds.set(name, kind);
+          if (unit) units.set(name, unit);
           if (running && since[0] === 0) {
             continue;
           }
@@ -404,5 +415,5 @@ export function mapOtlpMetrics(
       }
     }
   }
-  return { points, buckets, kinds };
+  return { points, buckets, kinds, units };
 }

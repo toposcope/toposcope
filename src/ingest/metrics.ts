@@ -3,8 +3,14 @@ import {
   clickhouseInsertJsonEachRow,
   toClickHouseDateTime,
 } from "../shared/clickhouse";
-import { InvalidMetricError, parseMetricPoint, type MetricBuckets } from "../shared/metric";
+import {
+  InvalidMetricError,
+  parseMetricPoint,
+  parseMetricPointUnit,
+  type MetricBuckets,
+} from "../shared/metric";
 import { rememberMetricKinds } from "../shared/metric-kinds";
+import { rememberMetricUnits } from "../shared/metric-units";
 import { incMetric } from "../metrics";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import { insertErrorMessage, MAX_BATCH } from "./index";
@@ -125,8 +131,9 @@ async function otlpMetrics(c: Context, payload: unknown): Promise<Response> {
     return c.json({ error: err instanceof Error ? err.message : "Invalid OTLP payload" }, 400);
   }
   try {
-    // Kinds first: writing one twice is harmless, and a retry after a failure here stores no point twice.
+    // Kinds and units first: writing one twice is harmless, and a retry after a failure here stores no point twice.
     await rememberMetricKinds(mapped.kinds);
+    await rememberMetricUnits(mapped.units);
     // Buckets before the counts: a retry after a failure in between repeats a bar's
     // buckets, which leaves its percentiles where they were, and no count twice.
     await insertMetricBuckets(mapped.buckets);
@@ -179,9 +186,15 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
   }
 
   const points = [];
+  const units = new Map<string, string>();
   for (const row of raw) {
     try {
-      points.push(parseMetricPoint(row));
+      const point = parseMetricPoint(row);
+      const unit = parseMetricPointUnit(row);
+      points.push(point);
+      if (unit) {
+        units.set(point.name, unit);
+      }
     } catch (err) {
       const message =
         err instanceof InvalidMetricError
@@ -194,6 +207,7 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
   }
 
   try {
+    await rememberMetricUnits(units);
     const ingested = await insertMetricPoints(points);
     incMetric("ingest_metrics", ingested);
     return c.json({ ingested });

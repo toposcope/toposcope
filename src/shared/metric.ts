@@ -143,6 +143,39 @@ export function metricExpr(
   return encoded.length > 0 ? `${named}{${encoded.replaceAll(":", "=")}}` : named;
 }
 
+/** Longer than this is not a unit; it is not kept. */
+export const maxMetricUnitLength = 64;
+
+/**
+ * A metric's unit as the app sent it (`GiBy`, `s`, `{request}`), or null when
+ * it sent none. Blank is none. It is kept as it came, not converted.
+ */
+export function metricUnitOf(raw: unknown): string | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const unit = raw.trim();
+  return unit.length > 0 && unit.length <= maxMetricUnitLength ? unit : null;
+}
+
+/** A JSON point's optional `unit`. Not a string, or too long, is refused; blank is none. */
+export function parseMetricPointUnit(input: unknown): string | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return null;
+  }
+  const raw = (input as Record<string, unknown>).unit;
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  if (typeof raw !== "string") {
+    throw new InvalidMetricError("Metric unit must be a string");
+  }
+  if (raw.trim().length > maxMetricUnitLength) {
+    throw new InvalidMetricError(`Metric unit is longer than ${maxMetricUnitLength} characters`);
+  }
+  return metricUnitOf(raw);
+}
+
 export function parseMetricPoint(input: unknown): MetricPoint {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new InvalidMetricError("Invalid metric point");

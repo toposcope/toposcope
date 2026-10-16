@@ -7,6 +7,7 @@ import {
   type HistogramReading,
 } from "../shared/metric";
 import { metricKind, type MetricKind } from "../shared/metric-kinds";
+import { metricUnit } from "../shared/metric-units";
 import { maxAttrKeys } from "../shared/attrs";
 import {
   histogramIntervalSql,
@@ -133,7 +134,25 @@ function seriesWindows(opts: SeriesOpts): { rolled: boolean; overlay: WhereClaus
 }
 
 /** What a result says about itself, beside its bars. */
-type Told = Pick<SearchAggResult, "expr" | "kind" | "reading" | "metric">;
+type Told = Pick<SearchAggResult, "expr" | "kind" | "reading" | "metric" | "unit">;
+
+/**
+ * The unit a reading is in. A histogram's values and sum carry its unit; its
+ * count is a number of observations and has none. An older histogram may have
+ * its unit only on `<name>.sum`.
+ */
+async function readingUnit(name: string, reading: HistogramReading | null): Promise<string | null> {
+  if (reading === null) {
+    return metricUnit(name);
+  }
+  if (reading === "count") {
+    return null;
+  }
+  return (await metricUnit(name)) ?? (await metricUnit(`${name}.sum`));
+}
+
+/** `{ unit }` when there is one, so a reply without a unit does not carry the key. */
+const withUnit = (unit: string | null) => (unit ? { unit } : {});
 
 /**
  * Ingested samples, read by the kind the name came as: a counter is the sum of
@@ -151,6 +170,7 @@ export async function searchMetricSeries(
       kind: "histogram",
       reading: histogram.reading,
       metric: histogram.base,
+      ...withUnit(await readingUnit(histogram.base, histogram.reading)),
     };
     const q = readingQuantile(histogram.reading);
     if (q !== null) {
@@ -171,7 +191,11 @@ export async function searchMetricSeries(
     return valueSeries(opts, told, amountOf(histogram.reading === "sum" ? sum : count));
   }
   const counter = (await metricKind(opts.name)) === "counter";
-  const told: Told = { expr: metricExpr(opts.name, opts.labels), kind: counter ? "counter" : "gauge" };
+  const told: Told = {
+    expr: metricExpr(opts.name, opts.labels),
+    kind: counter ? "counter" : "gauge",
+    ...withUnit(await metricUnit(opts.name)),
+  };
   return valueSeries(
     opts,
     told,
@@ -311,13 +335,17 @@ export type MetricNameRow = {
   /** For the `.count` or `.sum` of a histogram: the histogram it is a reading of. */
   of?: string;
   reading?: HistogramReading;
+  /** The unit it was last sent with. A histogram's is the unit of its values. */
+  unit?: string;
 };
 
 /** A name with no stored kind was posted as a plain point and reads as a gauge. */
 async function withKinds(rows: Array<{ k: string; n: number }>): Promise<MetricNameRow[]> {
   const out: MetricNameRow[] = [];
   for (const row of rows) {
-    out.push({ ...row, kind: (await metricKind(row.k)) ?? "gauge" });
+    const kind = (await metricKind(row.k)) ?? "gauge";
+    const unit = await readingUnit(row.k, kind === "histogram" ? defaultHistogramReading : null);
+    out.push({ ...row, kind, ...withUnit(unit) });
   }
   return out;
 }
@@ -424,11 +452,18 @@ export async function metricNames(opts: {
   for (const [name, { stored: storedName, histogram }] of pickedAs) {
     const n = withPoints.get(storedName) ?? 0;
     if (!histogram) {
-      pickedOut.push({ k: name, n, kind: (await metricKind(name)) ?? "gauge" });
+      pickedOut.push({ k: name, n, kind: (await metricKind(name)) ?? "gauge", ...withUnit(await metricUnit(name)) });
     } else if (histogram.base === name) {
-      pickedOut.push({ k: name, n, kind: "histogram" });
+      pickedOut.push({ k: name, n, kind: "histogram", ...withUnit(await readingUnit(name, defaultHistogramReading)) });
     } else {
-      pickedOut.push({ k: name, n, kind: "histogram", of: histogram.base, reading: histogram.reading });
+      pickedOut.push({
+        k: name,
+        n,
+        kind: "histogram",
+        of: histogram.base,
+        reading: histogram.reading,
+        ...withUnit(await readingUnit(histogram.base, histogram.reading)),
+      });
     }
   }
   return {

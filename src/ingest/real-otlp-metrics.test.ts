@@ -26,8 +26,8 @@ async function read(file: string, totals = upBeforeTheService()) {
     ? decodeOtlpMetricsProtobuf(buf)
     : JSON.parse(new TextDecoder().decode(buf));
   const losses = new Losses();
-  const { points, buckets, kinds } = mapOtlpMetrics(payload, losses, totals);
-  return { points, buckets, kinds, losses };
+  const { points, buckets, kinds, units } = mapOtlpMetrics(payload, losses, totals);
+  return { points, buckets, kinds, units, losses };
 }
 
 /** Everything a histogram's stored buckets counted. */
@@ -81,10 +81,23 @@ describe("a real exporter with the delta setting", () => {
     expect(kinds.get("v8js.memory.heap.used")).toBe("gauge");
   });
 
+  test.each(["protobuf", "json"] as const)("%s: each name keeps the unit the exporter sent", async (encoding) => {
+    const { units } = await read(source.requests[encoding]);
+    expect(units.get("app.memory.heap_used")).toBe("By");
+    expect(units.get("nodejs.eventloop.delay.p99")).toBe("s");
+    // A histogram's unit is its values' and its sum's; its count counts requests.
+    expect(units.get("http.server.request.duration")).toBe("s");
+    expect(units.get("http.server.request.duration.sum")).toBe("s");
+    expect(units.has("http.server.request.duration.count")).toBe(false);
+    // Sent with an empty unit.
+    expect(units.has("app.jobs.processed")).toBe(false);
+  });
+
   test("protobuf and JSON carry the same names and kinds", async () => {
     const protobuf = await read(source.requests.protobuf);
     const json = await read(source.requests.json);
     expect([...protobuf.kinds].sort()).toEqual([...json.kinds].sort());
+    expect([...protobuf.units].sort()).toEqual([...json.units].sort());
   });
 
   test("a point is labelled with its own attributes, then the service, then the rest of the resource", async () => {
