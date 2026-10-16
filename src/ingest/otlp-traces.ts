@@ -219,10 +219,17 @@ export function mapOtlpTraces(payload: unknown, losses?: Losses): Span[] {
             : 0;
         const status = mapStatus(row.status);
         const statusRec = asRecord(row.status);
-        const logAttrs = attrRecord(row.attributes as Attr[] | undefined, new Set());
-        const attrs = { ...resourceAttrs, ...logAttrs };
+        // Order is what the 50-key cap keeps, as on a log row: the span's own
+        // attributes and its status message, then the resource's. A key on both
+        // keeps the span's value.
+        const attrs = attrRecord(row.attributes as Attr[] | undefined, new Set());
         if (typeof statusRec?.message === "string" && statusRec.message.length > 0) {
           attrs["status.message"] = statusRec.message;
+        }
+        for (const [key, value] of Object.entries(resourceAttrs)) {
+          if (!(key in attrs)) {
+            attrs[key] = value;
+          }
         }
         const name = typeof row.name === "string" && row.name.length > 0 ? row.name : "span";
         // A recorded exception goes first, so the attribute cap cannot drop it.

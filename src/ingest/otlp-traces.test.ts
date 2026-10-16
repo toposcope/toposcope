@@ -203,6 +203,25 @@ describe("a span keeps the exception recorded on it", () => {
     expect(losses.message()).toContain("cap");
   });
 
+  test("a span's own attributes and status message come before the resource's under the cap", () => {
+    const own = Array.from({ length: 10 }, (_, i) => str(`app_${String(i).padStart(2, "0")}`, "span"));
+    const wide = Array.from({ length: 60 }, (_, i) => str(`process.detail_${String(i).padStart(2, "0")}`, "resource"));
+    const span = one(
+      {
+        status: { code: 2, message: "No answer within 2 seconds." },
+        attributes: [...own, str("host.name", "from-the-span")],
+      },
+      [str("service.name", "billing"), str("host.name", "control-1"), ...wide],
+    );
+    const keys = Object.keys(span.attrs);
+    expect(keys.slice(0, 12)).toEqual([...own.map((a) => a.key), "host.name", "status.message"]);
+    expect(span.attrs["status.message"]).toBe("No answer within 2 seconds.");
+    // A key on both keeps the span's value, where the span put it.
+    expect(span.attrs["host.name"]).toBe("from-the-span");
+    expect(keys).toHaveLength(50);
+    expect(keys.slice(12).every((key) => key.startsWith("process.detail_"))).toBe(true);
+  });
+
   test("the tracing library's own frames at the outer end of a stack are left out of the id", () => {
     const logged = [
       "Traceback (most recent call last):",
