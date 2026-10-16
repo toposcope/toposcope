@@ -32,6 +32,8 @@ otlp.toposcope.example.com {
 
 In nginx that is `grpc_pass grpc://127.0.0.1:4319;` in a `server` block that listens with `http2 on;`.
 
+Set `TOPOSCOPE_PUBLIC_URL` in `.env` to the address people open, such as `https://toposcope.example.com`, so an alert's webhook can link back to the search that fired. Toposcope cannot work it out itself: alerts are sent from a timer, and behind a proxy or a tunnel the address it listens on is not the one people open. Leave it unset and alerts carry no link. A path is kept, for a proxy that serves Toposcope under a prefix; a value that is not an `http` or `https` address, or that has a query or a `#`, stops the app at boot with that reason.
+
 ## Runtime ports and network
 
 - App: `127.0.0.1:8080`

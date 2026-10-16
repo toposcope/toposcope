@@ -32,6 +32,29 @@ export function isSlackIncomingUrl(url: string): boolean {
   }
 }
 
+/**
+ * The saved search over the window that fired, at the address Toposcope is
+ * opened at: its `q`, the window as a custom range (so it reads the same
+ * whenever it is opened), its series, and the saved search it came from.
+ */
+export function alertLink(
+  base: string,
+  fired: { savedId: string; query: string; agg: string | null; from: string; to: string },
+): string {
+  const params = new URLSearchParams();
+  if (fired.query.trim()) {
+    params.set("q", fired.query.trim());
+  }
+  params.set("range", "custom");
+  params.set("from", fired.from);
+  params.set("to", fired.to);
+  if (fired.agg) {
+    params.set("agg", fired.agg);
+  }
+  params.set("saved", fired.savedId);
+  return `${base}/?${params.toString()}`;
+}
+
 export function alertWebhookBody(args: {
   url: string;
   alert: { id: string; name: string; threshold: number };
@@ -40,9 +63,12 @@ export function alertWebhookBody(args: {
   agg: string | null;
   query: string;
   firedAt: string;
+  /** Back to Toposcope, when it knows its address (`TOPOSCOPE_PUBLIC_URL`). */
+  link?: string | null;
 }): unknown {
   const series = seriesLabel(args.agg);
   if (isSlackIncomingUrl(args.url)) {
+    const open = args.link ? `\n<${args.link}|Open in Toposcope>` : "";
     return {
       text: `Toposcope: ${args.alert.name} — ${series} ${args.value} ≥ ${args.alert.threshold}`,
       blocks: [
@@ -50,7 +76,7 @@ export function alertWebhookBody(args: {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*${args.alert.name}* fired\n\`${args.query || "*"}\`\n*${series}* ${args.value} ≥ ${args.alert.threshold}`,
+            text: `*${args.alert.name}* fired\n\`${args.query || "*"}\`\n*${series}* ${args.value} ≥ ${args.alert.threshold}${open}`,
           },
         },
       ],
@@ -63,5 +89,6 @@ export function alertWebhookBody(args: {
     agg: args.agg,
     query: args.query,
     fired_at: args.firedAt,
+    ...(args.link ? { link: args.link } : {}),
   };
 }

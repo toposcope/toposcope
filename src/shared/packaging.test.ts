@@ -30,6 +30,8 @@ describe("packaged compose", () => {
     expect(yaml).toContain('OTLP_GRPC_PORT: "4319"');
     expect(yaml).not.toMatch(/"(?:0\.0\.0\.0:)?4319:4319"/);
     expect(yaml).toContain("TOPOSCOPE_PASSWORD: ${TOPOSCOPE_PASSWORD:?");
+    // Optional: an alert links back only when it is set.
+    expect(yaml).toContain("TOPOSCOPE_PUBLIC_URL: ${TOPOSCOPE_PUBLIC_URL:-}");
     expect(yaml).toContain("memory: 4G");
   });
 

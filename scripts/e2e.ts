@@ -2538,7 +2538,18 @@ async function main(): Promise<void> {
     );
   }
   const p99Alert = (await p99AlertRes.json()) as { id: string };
-  await evaluateAlerts();
+  // The cron runs in this process: with an address, the body links back (#108).
+  const publicBefore = process.env.TOPOSCOPE_PUBLIC_URL;
+  process.env.TOPOSCOPE_PUBLIC_URL = "https://toposcope.e2e.test/logs/";
+  try {
+    await evaluateAlerts();
+  } finally {
+    if (publicBefore === undefined) {
+      delete process.env.TOPOSCOPE_PUBLIC_URL;
+    } else {
+      process.env.TOPOSCOPE_PUBLIC_URL = publicBefore;
+    }
+  }
   if (received.length < 1) {
     hook.stop();
     throw new Error("expected p99 alert to fire a webhook");
@@ -2548,10 +2559,23 @@ async function main(): Promise<void> {
       return false;
     }
     return (row as { agg?: string | null }).agg === "p99:duration_ms";
-  }) as { agg?: string | null; value?: number; count?: number } | undefined;
+  }) as { agg?: string | null; value?: number; count?: number; link?: string } | undefined;
   if (!fired || typeof fired.value !== "number") {
     hook.stop();
     throw new Error(`webhook missing agg/value: ${JSON.stringify(received)}`);
+  }
+  const firedLink = fired.link ? new URL(fired.link) : null;
+  if (
+    !firedLink ||
+    `${firedLink.origin}${firedLink.pathname}` !== "https://toposcope.e2e.test/logs/" ||
+    firedLink.searchParams.get("saved") !== p99Saved.id ||
+    firedLink.searchParams.get("agg") !== "p99:duration_ms" ||
+    firedLink.searchParams.get("range") !== "custom" ||
+    !firedLink.searchParams.get("from") ||
+    !firedLink.searchParams.get("to")
+  ) {
+    hook.stop();
+    throw new Error(`webhook link should open the saved search over the window that fired, got ${fired.link}`);
   }
   hook.stop();
   const p99AlertDel = await fetch(`${APP_URL}/api/alert-rules/${p99Alert.id}`, {
