@@ -84,7 +84,8 @@ Query and facets read `attr_map`. `logs` has bloom skip indexes on `trace_id` an
 - `GET /api/system` — `{ app, clickhouse }` process stats: `mem_used`, `mem_limit` (cgroup, or null on the host), `disk_used` / `disk_total` (ClickHouse default disk; app `disk_used` is the SQLite file), `cpu` (percent of cgroup CPUs, or of one core), `io_read` / `io_write` (bytes/s, ClickHouse only). First poll has null rates. ClickHouse comes from `system.metrics` / `system.asynchronous_metrics` / `system.events`; the app from RSS + cgroup files. No Docker socket. `clickhouse` is null if the query fails.
 - `GET/POST /api/saved-searches`
 - `PUT /api/saved-searches/:id` — name, query, range / from_ts / to_ts, optional `agg`, `widgets` (grid JSON), and `cols` (promoted hunt-table keys, cap 3); copies `query` onto linked alert rules
-- `DELETE /api/saved-searches/:id` — 409 if an alert rule references it
+- `DELETE /api/saved-searches/:id` — 409 if an alert rule references it; a deleted Home is no longer Home
+- `GET/PUT /api/home` — `{ saved_id }`: the saved search the bare address opens on (#109), the instance's own (SQLite settings), `null` for none; a board is refused (400), since it opens with its inputs unset. `GET /` with no query string redirects (302) to that saved search's own URL — its `q`, window, series, panels, columns and `saved=` — so Copy link, the tab's name and “· edited” work as for any saved search. Any other URL opens as it says.
 - `GET /api/saved-searches/:id/run` — search result plus `count`, `value` (the saved search’s series: count or window `stat`), `refused`, `reason`
 - `POST /api/saved-searches/:id/test` — `{ count, value, agg, refused, reason, sample }`
 - `GET/POST /api/alert-rules` — `PUT /api/alert-rules/:id` — `DELETE /api/alert-rules/:id`. `threshold` is a positive finite number.

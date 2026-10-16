@@ -280,6 +280,8 @@ export type Workspace = {
   kind: WorkspaceKind;
   label: string;
   board?: boolean;
+  /** Its saved search is Home (#109). */
+  home?: boolean;
   snap: WorkspaceSnap;
 };
 
@@ -377,6 +379,8 @@ export function workspaceLiveLabel(input: {
   focusMark?: ChangeMark | null;
   board?: boolean;
   boardBinds?: string[];
+  /** A Home tab keeps its name, edited or not (frame 12j). */
+  home?: boolean;
 }): string {
   if (input.kind === "surroundings") {
     if (input.focusMark) {
@@ -397,6 +401,9 @@ export function workspaceLiveLabel(input: {
   }
   if (input.savedName && !input.savedDirty) {
     return input.savedName;
+  }
+  if (input.savedName && input.home) {
+    return `${input.savedName} · edited`;
   }
   const q = input.q.trim();
   return q.length > 0 ? q : "All logs";

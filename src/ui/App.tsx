@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Copy, KeyRound, Menu, Settings, Undo2 } from "lucide-react";
+import { ChevronDown, Copy, House, KeyRound, Menu, Settings, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft } from "@/components/alert-rule-dialog";
 import { AlertsView, type AlertSeriesView } from "@/components/alerts-view";
@@ -507,6 +507,33 @@ export function App() {
   const [retentionDays, setRetentionDays] = useState(30);
   const [unauthorized, setUnauthorized] = useState(false);
   const [instance, setInstance] = useState<InstanceInfo | null>(null);
+  const [homeId, setHomeId] = useState<string | null>(null);
+
+  const loadHome = useCallback(async () => {
+    const res = await fetch("/api/home");
+    if (res.ok) {
+      setHomeId(((await res.json()) as { saved_id: string | null }).saved_id);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHome().catch(() => undefined);
+  }, [loadHome]);
+
+  async function setHome(id: string | null) {
+    const res = await fetch("/api/home", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ saved_id: id }),
+    });
+    const json = (await res.json().catch(() => null)) as { saved_id?: string | null; error?: string } | null;
+    if (!res.ok) {
+      toast.error(json?.error ?? `Home failed (${res.status})`);
+      return;
+    }
+    setHomeId(json?.saved_id ?? null);
+    toast.success(id ? "The bare address opens on this search" : "The bare address opens on All logs");
+  }
 
   const loadInstance = useCallback(async () => {
     const res = await fetch("/api/instance");
@@ -2472,6 +2499,7 @@ export function App() {
       q,
       savedName: item?.name ?? null,
       savedDirty: board ? false : !item || item.query !== q,
+      home: Boolean(item && item.id === homeId),
       follow,
       surrAnchor,
       focusMark,
@@ -2494,6 +2522,7 @@ export function App() {
         q: snap.q,
         savedName: item?.name ?? null,
         savedDirty: board ? false : Boolean(item && item.query !== snap.q),
+        home: Boolean(item && item.id === homeId),
         follow: snap.follow,
         surrAnchor: snap.surrAnchor,
         focusMark: snap.focusMark,
@@ -3346,6 +3375,7 @@ export function App() {
     kind: tab.id === wsId ? wsKind : tab.kind,
     label: stripLabels[i] ?? tab.label,
     board: tab.id === wsId ? boardOn : labelForSnap(tab.snap).board,
+    home: homeId !== null && (tab.id === wsId ? savedId : tab.snap.savedId) === homeId,
   }));
   const elsewhere: Record<string, number> = {};
   for (const tab of wsList) {
@@ -3430,6 +3460,8 @@ export function App() {
       alerts={alerts}
       counts={counts}
       activeSavedId={savedId}
+      homeId={homeId}
+      onSetHome={(id) => void setHome(id)}
       elsewhere={elsewhere}
       facets={facets}
       activeFacets={activeFacets}
@@ -3484,12 +3516,27 @@ export function App() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
-        <span className="flex items-center gap-1.5">
-          <BrandMark className="size-4 shrink-0 text-plate" />
-          <span className="text-[14px] font-semibold tracking-[-0.015em]">
-            toposcope
-          </span>
-        </span>
+        {(() => {
+          const home = homeId ? saved.find((item) => item.id === homeId && !item.board) : undefined;
+          const mark = (
+            <>
+              <BrandMark className="size-4 shrink-0 text-plate" />
+              <span className="text-[14px] font-semibold tracking-[-0.015em]">toposcope</span>
+            </>
+          );
+          return home ? (
+            <button
+              type="button"
+              title={`Home · ${home.name} · opens a new tab · this one stays as it is`}
+              className="flex items-center gap-1.5 rounded-md text-foreground"
+              onClick={() => openSavedTab(home)}
+            >
+              {mark}
+            </button>
+          ) : (
+            <span className="flex items-center gap-1.5">{mark}</span>
+          );
+        })()}
         {instance ? (
           <InstanceMenu
             info={instance}
@@ -3925,11 +3972,30 @@ export function App() {
                       ? "Board · its inputs are live, its template is locked"
                       : undefined
                   }
-                  className="inline-flex max-w-40 items-center gap-1 truncate rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground"
+                  className={cn(
+                    "inline-flex items-center gap-1 truncate rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground",
+                    activeSaved.id === homeId ? "max-w-60" : "max-w-40",
+                    activeSaved.id === homeId && dirty && "border-dashed",
+                  )}
                 >
+                  {activeSaved.id === homeId ? (
+                    <>
+                      <House className="size-3 shrink-0" />
+                      Home ·{" "}
+                    </>
+                  ) : null}
                   {activeSaved.name}
                   {dirty ? " · edited" : ""}
                 </span>
+              ) : null}
+              {activeSaved && activeSaved.id === homeId && dirty ? (
+                <button
+                  type="button"
+                  className="inline-flex h-6 items-center rounded-md bg-accent px-2 text-[12px] text-foreground hover:bg-accent/70"
+                  onClick={() => applySnap(snapFromSaved(activeSaved, {}), true)}
+                >
+                  Back to Home
+                </button>
               ) : null}
             </div>
             {boardUnbound && activeSaved?.board ? (
