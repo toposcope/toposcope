@@ -92,7 +92,28 @@ export type WidgetDef = {
   /** Ingested metric overlay (mutually exclusive with log `agg`). */
   metric: string | null;
   metricLabels: Record<string, string>;
+  /** A metric timeseries split by one of its labels (#104): one line per value. */
+  metricSplit?: string | null;
 };
+
+/** A label key in a `.`-separated widget token: its own dots are written `%2E`. */
+function encodeSplitToken(key: string): string {
+  return key.replaceAll("%", "%25").replaceAll(".", "%2E");
+}
+
+function decodeSplitToken(raw: string): string | null {
+  try {
+    return normalizeMetricSplit(decodeURIComponent(raw));
+  } catch {
+    return null;
+  }
+}
+
+/** What a label key can be, to split a metric by (#104). */
+export function normalizeMetricSplit(raw: unknown): string | null {
+  const key = typeof raw === "string" ? raw.trim() : "";
+  return key.length > 0 && key.length <= 64 && /^[A-Za-z0-9_.:\-\/]+$/.test(key) ? key : null;
+}
 
 export type WidgetLayout = {
   logs: boolean;
@@ -104,6 +125,7 @@ export type SeriesQuery = {
   agg: string | null;
   metric: string | null;
   metricLabels: Record<string, string>;
+  metricSplit?: string | null;
 };
 
 const idLetters = "abcdef";
@@ -175,7 +197,8 @@ export function isDefaultLayout(layout: WidgetLayout): boolean {
     !w.replaceY &&
     !w.logScale &&
     w.metric === null &&
-    Object.keys(w.metricLabels).length === 0
+    Object.keys(w.metricLabels).length === 0 &&
+    !w.metricSplit
   );
 }
 
@@ -192,6 +215,18 @@ export function isSingleHistogram(widgets: WidgetDef[]): boolean {
     w.w === widgetGridCols &&
     w.h === defaultWidgetH
   );
+}
+
+/**
+ * A saved search kept for its panels shows no log rows: its table is off and its pinned plot
+ * draws a metric in place of the log volume (#104). Its sidebar row has no count to show.
+ */
+export function showsNoLogRows(layout: WidgetLayout | null | undefined): boolean {
+  if (!layout || layout.logs) {
+    return false;
+  }
+  const primary = primaryTimeseries(layout.widgets);
+  return Boolean(primary?.metric && primary.replaceY);
 }
 
 export function primaryTimeseries(widgets: WidgetDef[]): WidgetDef | null {
@@ -252,6 +287,7 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
     n: widget.kind === "hbar" ? clampHbarN(widget.n) : defaultHbarN,
     metric,
     metricLabels,
+    metricSplit: metric && widget.kind === "timeseries" ? normalizeMetricSplit(widget.metricSplit) : null,
   };
 }
 
@@ -621,6 +657,7 @@ export function widgetSeriesQuery(widget: WidgetDef): SeriesQuery {
         agg: widget.agg,
         metric: widget.metric,
         metricLabels: widget.metricLabels,
+        ...(widget.metric && widget.metricSplit ? { metricSplit: widget.metricSplit } : {}),
       };
     case "stat":
       if (widget.metric) {
@@ -690,7 +727,8 @@ export function widgetSeriesQueries(widgets: WidgetDef[]): SeriesQuery[] {
 
 export function seriesQueryKey(query: SeriesQuery): string {
   const ml = formatMetricLabels(query.metricLabels ?? {});
-  return `${query.split}|${query.agg ?? ""}|${query.metric ?? ""}|${ml}`;
+  const ms = query.metricSplit ? `|s:${query.metricSplit}` : "";
+  return `${query.split}|${query.agg ?? ""}|${query.metric ?? ""}|${ml}${ms}`;
 }
 
 export function applySeriesSearchParams(
@@ -701,11 +739,15 @@ export function applySeriesSearchParams(
   params.delete("agg");
   params.delete("metric");
   params.delete("ml");
+  params.delete("msplit");
   if (query.metric) {
     params.set("metric", query.metric);
     const ml = formatMetricLabels(query.metricLabels);
     if (ml) {
       params.set("ml", ml);
+    }
+    if (query.metricSplit) {
+      params.set("msplit", query.metricSplit);
     }
     return;
   }
@@ -940,6 +982,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
   let n = defaultHbarN;
   let metric: string | null = null;
   let metricLabels: Record<string, string> = {};
+  let metricSplit: string | null = null;
   const rest = parts.slice(6);
   if (kind === "timeseries") {
     if (rest[0] && (histogramSplits as readonly string[]).includes(rest[0])) {
@@ -953,6 +996,9 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     const source = consumeMetricSource(rest);
     metric = source.metric;
     metricLabels = source.metricLabels;
+    if (metric && rest[0]?.startsWith("s:")) {
+      metricSplit = decodeSplitToken(rest.shift()!.slice(2));
+    }
     if (!metric && rest[0] && !isFlagToken(rest[0])) {
       agg = normalizeWidgetAgg("timeseries", rest[0] ?? null);
       rest.shift();
@@ -1001,6 +1047,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     n,
     metric,
     metricLabels,
+    metricSplit,
   });
 }
 
@@ -1016,7 +1063,7 @@ function consumeMetricSource(rest: string[]): {
     return { metric: null, metricLabels: {} };
   }
   const chunks = [rest.shift()!.slice(2)];
-  while (rest[0] && !rest[0].startsWith("l:") && !isFlagToken(rest[0])) {
+  while (rest[0] && !rest[0].startsWith("l:") && !rest[0].startsWith("s:") && !isFlagToken(rest[0])) {
     chunks.push(rest.shift()!);
   }
   const metric = normalizeMetricRef(chunks.join("."));
@@ -1046,6 +1093,9 @@ function formatWidgetToken(widget: WidgetDef): string {
         const ml = formatMetricLabels(widget.metricLabels);
         if (ml) {
           parts.push(`l:${ml}`);
+        }
+        if (widget.metricSplit) {
+          parts.push(`s:${encodeSplitToken(widget.metricSplit)}`);
         }
       } else if (widget.agg) {
         parts.push(widget.agg);

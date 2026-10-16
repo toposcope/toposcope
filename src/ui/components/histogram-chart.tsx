@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { withUnit } from "../metric-unit";
 import {
   abbrevCount,
   bucketIndexAt,
@@ -224,7 +225,7 @@ function HistogramHover({
   split: HistogramSplit;
   left: number | string;
   side: "left" | "right";
-  overlay?: { label: string; v: number | null; reading?: string; words?: string } | null;
+  overlay?: { label: string; v: number | null; reading?: string; words?: string; unit?: string } | null;
   hint: string;
   markLines?: ReturnType<typeof markHoverLines>;
 }) {
@@ -269,7 +270,7 @@ function HistogramHover({
             {overlay.label}
           </span>
           <span className="ml-auto font-mono tabular-nums text-foreground">
-            {formatAggStat(overlay.v)}
+            {withUnit(formatAggStat(overlay.v), overlay.unit)}
           </span>
         </div>
       ) : null}
@@ -919,10 +920,11 @@ export function HistogramChart({
         ? {
             label: midCut(overlayLabel, 26),
             v: overlayValues[hover] ?? null,
+            unit: aggResult?.unit,
             reading: metricReadingText,
             words: readingWords(view?.kind ?? "gauge", stepLabel, view?.reading),
           }
-        : { label: overlayLabel, v: overlayValues[hover] ?? null }
+        : { label: overlayLabel, v: overlayValues[hover] ?? null, unit: aggResult?.unit }
       : null;
   const metricQuiet =
     Boolean(metric) && aggResult?.source === "metric" && aggResult.buckets.length === 0;
@@ -1101,7 +1103,11 @@ export function HistogramChart({
         >
           {yTicks.map((tick, i) => (
             <span key={`${tick}-${i}`}>
-              {replaceY && overlayOn ? formatAggStat(tick) : abbrevCount(tick)}
+              {replaceY && overlayOn
+                ? i === 0
+                  ? withUnit(formatAggStat(tick), aggResult?.unit)
+                  : formatAggStat(tick)
+                : abbrevCount(tick)}
             </span>
           ))}
         </div>
@@ -1474,7 +1480,15 @@ export function HistogramChart({
                 style={{ top: `${[0, 33.334, 66.667, 100][i]}%`, transform: "translateY(-50%)" }}
               >
                 {/* A series with no points gets a dash, not a scale for nothing. */}
-                {metricQuiet ? (i === 0 ? "—" : "") : i === 3 ? "0" : formatAggStat(tick)}
+                {metricQuiet
+                  ? i === 0
+                    ? "—"
+                    : ""
+                  : i === 3
+                    ? "0"
+                    : i === 0
+                      ? withUnit(formatAggStat(tick), aggResult?.unit)
+                      : formatAggStat(tick)}
               </span>
             ))}
           </div>
@@ -1499,7 +1513,7 @@ export function HistogramChart({
           ) : (
             <span className="font-mono tabular-nums">
               {metricReadingText ? <span style={{ color: AGG_COLOR }}>{metricReadingText} </span> : null}
-              {overlayLabel} {formatAggStat(aggResult?.stat)}
+              {overlayLabel} {withUnit(formatAggStat(aggResult?.stat), aggResult?.unit)}
               {agg === "rate" ? "/s" : ""}
             </span>
           )}
@@ -1535,7 +1549,7 @@ export function HistogramChart({
             {metricReadingText ? `${metricReadingText} ` : ""}
             {overlayLabel}
             <span className="font-mono text-muted-foreground/65">
-              {formatAggStat(aggResult?.stat)}
+              {withUnit(formatAggStat(aggResult?.stat), aggResult?.unit)}
             </span>
           </span>
         ) : null}

@@ -851,6 +851,21 @@ export function App() {
     }
   }, []);
 
+  /** A metric's label keys in this window, for a panel's split picker. */
+  const metricLabelKeys = useCallback(async (name: string) => {
+    try {
+      const params = new URLSearchParams(metricWindowRef.current);
+      params.set("name", name);
+      const res = await fetch(`/api/metric-labels?${params.toString()}`);
+      if (!res.ok) {
+        return [];
+      }
+      return ((await res.json()) as { labels: Array<{ key: string; values: number }> }).labels;
+    } catch {
+      return [];
+    }
+  }, []);
+
   const loadNumericKeys = useCallback(async (query: string) => {
     const gen = viewGenRef.current;
     try {
@@ -3223,8 +3238,9 @@ export function App() {
       window: range === "custom" ? "" : range,
       live,
       find: findMetrics,
+      labels: metricLabelKeys,
     }),
-    [numericKeys, metricCatalog, range, live, findMetrics],
+    [numericKeys, metricCatalog, range, live, findMetrics, metricLabelKeys],
   );
   const windowFromMs = histogram[0]
     ? Date.parse(histogram[0].t)
