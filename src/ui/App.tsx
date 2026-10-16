@@ -35,6 +35,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type {
+  AlertKind,
   AlertRule,
   FacetValue,
   Facets,
@@ -462,6 +463,10 @@ export function App() {
   const [ingested, setIngested] = useState(false);
   const [histogram, setHistogram] = useState<HistogramBucket[]>([]);
   const [windowMarks, setWindowMarks] = useState<ChangeMark[]>([]);
+  // A first-seen alert's link (`cut=<mark id>`) opens that mark's Fingerprints once, on arrival.
+  const pendingCutRef = useRef<string | null>(
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("cut"),
+  );
   const [markBefore, setMarkBefore] = useState<ChangeMark | null>(null);
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
@@ -2156,6 +2161,7 @@ export function App() {
 
   async function createAlert(input: {
     name: string;
+    kind: AlertKind;
     saved_search_id: string;
     threshold: number;
     webhook_url: string;
@@ -2178,6 +2184,7 @@ export function App() {
     id: string,
     input: {
       name: string;
+      kind?: AlertKind;
       saved_search_id: string;
       threshold: number;
       webhook_url: string;
@@ -2635,6 +2642,21 @@ export function App() {
     setDetailOpen(false);
     setPinnedEvent(null);
   }
+
+  useEffect(() => {
+    const id = pendingCutRef.current;
+    if (!id) {
+      return;
+    }
+    const mark = windowMarks.find((m) => m.id === id);
+    if (!mark) {
+      return;
+    }
+    pendingCutRef.current = null;
+    openFingerprints(mark);
+    // openFingerprints reads the clock it is called with; the link's window is already set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowMarks]);
 
   function openCompare(mark: ChangeMark) {
     const openedAt = live

@@ -10,11 +10,29 @@ import { boardWatchRefuse } from "../shared/boards";
 import { getDb } from "./index";
 
 const RULE_COLS =
-  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at";
+  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark";
+
+/** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
+export const alertKinds = ["threshold", "first_seen"] as const;
+export type AlertKind = (typeof alertKinds)[number];
+
+/** The mark a first-seen alert last paged on, for the Alerts list. */
+export type AlertLastMark = {
+  id: string;
+  kind: string;
+  title: string;
+  service: string;
+  ts: string;
+  /** Fingerprints sent in that call. */
+  count: number;
+  at: number;
+};
 
 export type AlertRule = {
   id: string;
   name: string;
+  kind: AlertKind;
+  last_mark: AlertLastMark | null;
   query: string;
   webhook_url: string | null;
   saved_search_id: string | null;
@@ -29,20 +47,92 @@ export type AlertRule = {
   created_at: number;
 };
 
-function mapRule(row: AlertRule): AlertRule {
+type RuleRow = Omit<AlertRule, "kind" | "last_mark"> & {
+  kind: string | null;
+  last_mark: string | null;
+};
+
+function parseLastMark(raw: string | null): AlertLastMark | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const value = JSON.parse(raw) as AlertLastMark;
+    return value && typeof value === "object" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseAlertKind(value: unknown): AlertKind | null {
+  return typeof value === "string" && (alertKinds as readonly string[]).includes(value)
+    ? (value as AlertKind)
+    : null;
+}
+
+function mapRule(row: RuleRow): AlertRule {
   return {
     ...row,
+    kind: parseAlertKind(row.kind) ?? "threshold",
+    last_mark: parseLastMark(row.last_mark),
     threshold: Number(row.threshold),
     consecutive_failures: row.consecutive_failures ?? 0,
     silenced_until: row.silenced_until ?? null,
   };
 }
 
+/** A first-seen alert's threshold is a count of events: a whole number, at least 1. */
+function kindThreshold(kind: AlertKind, threshold: number): number | { error: string } {
+  if (kind === "first_seen" && (!Number.isInteger(threshold) || threshold < 1)) {
+    return { error: "threshold must be a whole number of events, at least 1" };
+  }
+  return threshold;
+}
+
+/** Fingerprints a first-seen alert has already sent for a mark: each is sent once. */
+export function sentFingerprints(ruleId: string, markId: string): Set<string> {
+  const rows = getDb()
+    .query("SELECT e1 FROM alert_sent_fingerprints WHERE rule_id = ? AND mark_id = ?")
+    .all(ruleId, markId) as Array<{ e1: string }>;
+  return new Set(rows.map((row) => row.e1));
+}
+
+export function recordSentFingerprints(
+  ruleId: string,
+  markId: string,
+  e1s: string[],
+  at: number,
+): void {
+  const insert = getDb().query(
+    "INSERT OR IGNORE INTO alert_sent_fingerprints (rule_id, mark_id, e1, sent_at) VALUES (?, ?, ?, ?)",
+  );
+  getDb().transaction(() => {
+    for (const e1 of e1s) {
+      insert.run(ruleId, markId, e1, at);
+    }
+  })();
+}
+
+/** A mark is watched for 24 hours; what was sent for it is not needed after that. */
+export function pruneSentFingerprints(before: number): void {
+  getDb().query("DELETE FROM alert_sent_fingerprints WHERE sent_at < ?").run(before);
+}
+
+function forgetSentFingerprints(ruleId: string): void {
+  getDb().query("DELETE FROM alert_sent_fingerprints WHERE rule_id = ?").run(ruleId);
+}
+
+export function recordLastMark(ruleId: string, mark: AlertLastMark): void {
+  getDb()
+    .query("UPDATE alert_rules SET last_mark = ? WHERE id = ?")
+    .run(JSON.stringify(mark), ruleId);
+}
+
 export function allAlertRules(): AlertRule[] {
   return (
     getDb()
       .query(`SELECT ${RULE_COLS} FROM alert_rules ORDER BY created_at DESC`)
-      .all() as AlertRule[]
+      .all() as RuleRow[]
   ).map(mapRule);
 }
 
@@ -52,7 +142,7 @@ export function enabledAlertRules(): AlertRule[] {
       .query(
         `SELECT ${RULE_COLS} FROM alert_rules WHERE enabled = 1 AND saved_search_id IS NOT NULL`,
       )
-      .all() as AlertRule[]
+      .all() as RuleRow[]
   ).map(mapRule);
 }
 
@@ -122,7 +212,7 @@ export function countAlertsForSavedSearch(savedSearchId: string): number {
 export function getAlert(id: string): AlertRule | null {
   const row = getDb()
     .query(`SELECT ${RULE_COLS} FROM alert_rules WHERE id = ?`)
-    .get(id) as AlertRule | undefined;
+    .get(id) as RuleRow | undefined;
   return row ? mapRule(row) : null;
 }
 
@@ -162,7 +252,12 @@ export async function createAlertRule(c: Context): Promise<Response> {
   const savedSearchId =
     typeof rec.saved_search_id === "string" ? rec.saved_search_id : "";
   const webhook = parseWebhook(rec.webhook_url);
-  const threshold = parseThreshold(rec.threshold);
+  const kind = rec.kind === undefined ? "threshold" : parseAlertKind(rec.kind);
+  if (!kind) {
+    return c.json({ error: "kind must be threshold or first_seen" }, 400);
+  }
+  const parsed = parseThreshold(rec.threshold);
+  const threshold = typeof parsed === "number" ? kindThreshold(kind, parsed) : parsed;
   if (name.length === 0) {
     return c.json({ error: "name is required" }, 400);
   }
@@ -185,6 +280,8 @@ export async function createAlertRule(c: Context): Promise<Response> {
   const rule: AlertRule = {
     id: crypto.randomUUID(),
     name,
+    kind,
+    last_mark: null,
     query: saved.query,
     webhook_url: webhook,
     saved_search_id: savedSearchId,
@@ -201,8 +298,8 @@ export async function createAlertRule(c: Context): Promise<Response> {
   getDb()
     .query(
       `INSERT INTO alert_rules
-        (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       rule.id,
@@ -214,6 +311,7 @@ export async function createAlertRule(c: Context): Promise<Response> {
       rule.enabled,
       rule.last_fired_at,
       rule.created_at,
+      rule.kind,
     );
   return c.json(rule, 201);
 }
@@ -250,10 +348,15 @@ export async function updateAlertRule(c: Context): Promise<Response> {
   if (webhook.length === 0) {
     return c.json({ error: "webhook_url must be http(s)" }, 400);
   }
-  const threshold =
+  const kind = rec.kind === undefined ? existing.kind : parseAlertKind(rec.kind);
+  if (!kind) {
+    return c.json({ error: "kind must be threshold or first_seen" }, 400);
+  }
+  const parsed =
     rec.threshold === undefined
       ? existing.threshold
       : parseThreshold(rec.threshold);
+  const threshold = typeof parsed === "number" ? kindThreshold(kind, parsed) : parsed;
   if (typeof threshold !== "number") {
     return c.json({ error: threshold.error }, 400);
   }
@@ -277,10 +380,15 @@ export async function updateAlertRule(c: Context): Promise<Response> {
   getDb()
     .query(
       `UPDATE alert_rules
-       SET name = ?, query = ?, webhook_url = ?, saved_search_id = ?, threshold = ?, silenced_until = ?
+       SET name = ?, query = ?, webhook_url = ?, saved_search_id = ?, threshold = ?, silenced_until = ?, kind = ?
        WHERE id = ?`,
     )
-    .run(name, saved.query, webhook, savedSearchId, threshold, silencedUntil, id);
+    .run(name, saved.query, webhook, savedSearchId, threshold, silencedUntil, kind, id);
+  // What was sent was sent for that kind and that search.
+  if (kind !== existing.kind || savedSearchId !== existing.saved_search_id) {
+    forgetSentFingerprints(id);
+    getDb().query("UPDATE alert_rules SET last_mark = NULL WHERE id = ?").run(id);
+  }
   if (webhookChanged) {
     getDb()
       .query(
@@ -309,5 +417,6 @@ export async function deleteAlertRule(c: Context): Promise<Response> {
     return c.json({ error: "Alert rule not found" }, 404);
   }
   getDb().query("DELETE FROM alert_rules WHERE id = ?").run(id);
+  forgetSentFingerprints(id);
   return c.json({ ok: true });
 }
