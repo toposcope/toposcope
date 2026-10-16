@@ -49,9 +49,11 @@ import { systemRoute } from "./query/system";
 import { throughputRoute } from "./query/throughput";
 import { applyRetentionDays, migrateStore, syncFieldRoleSkip } from "./shared/migrate";
 import { requirePackagedSecrets } from "./shared/secrets";
+import { requirePublicUrl } from "./shared/public-url";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 
 requirePackagedSecrets();
+requirePublicUrl();
 
 let bootPhase: BootPhase = "starting";
 /** Set by SIGTERM or SIGINT: the process is finishing what it has and takes nothing new. */

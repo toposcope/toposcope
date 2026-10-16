@@ -49,6 +49,8 @@ services:
       SQLITE_PATH: /data/toposcope.sqlite
       TOPOSCOPE_PASSWORD: ${TOPOSCOPE_PASSWORD:?Set TOPOSCOPE_PASSWORD in .env}
       TOPOSCOPE_INGEST_TOKEN: ${TOPOSCOPE_INGEST_TOKEN:?Set TOPOSCOPE_INGEST_TOKEN in .env}
+      # Optional: the address people open Toposcope at, so alerts can link back.
+      TOPOSCOPE_PUBLIC_URL: ${TOPOSCOPE_PUBLIC_URL:-}
     volumes:
       - app_data:/data
     depends_on:

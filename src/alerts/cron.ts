@@ -4,7 +4,8 @@ import { incMetric } from "../metrics";
 import { parseRangeMs } from "../query/relative";
 import { clipError, outcomeFromError, outcomeFromHttp } from "./delivery";
 import { shouldDeliver } from "./evaluate";
-import { alertWebhookBody } from "./payload";
+import { publicUrl } from "../shared/public-url";
+import { alertLink, alertWebhookBody } from "./payload";
 import { evaluateAlertSeries } from "./series";
 
 const FALLBACK_COOLDOWN_MS = 5 * 60 * 1000;
@@ -74,6 +75,15 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
         continue;
       }
       const firedAt = new Date(now).toISOString();
+      const base = publicUrl();
+      // The window the series was read over: the saved range up to now, or its fixed from/to.
+      const rangeMs = saved.range ? parseRangeMs(saved.range) : null;
+      const from = rangeMs !== null ? new Date(now - rangeMs).toISOString() : saved.from_ts;
+      const to = rangeMs !== null ? firedAt : saved.to_ts;
+      const link =
+        base && from && to
+          ? alertLink(base, { savedId: saved.id, query: saved.query, agg: saved.agg, from, to })
+          : null;
       const outcome = await postWebhook(
         rule.webhook_url,
         alertWebhookBody({
@@ -88,6 +98,7 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
           agg: series.expr,
           query: saved.query,
           firedAt,
+          link,
         }),
       );
       recordWebhookAttempt(rule.id, { at: now, ...outcome });
