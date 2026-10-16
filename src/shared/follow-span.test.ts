@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   followChangedWords,
+  followChipWords,
   followOpened,
   followOpenedWords,
   type FollowOpened,
@@ -50,6 +51,30 @@ describe("followOpened", () => {
       followOpened(at, { n: null, first: null, last: null, refused: "this query exceeds the scan budget" }),
     ).toEqual({ how: "refused", ...around });
     expect(followOpened(at, null)).toEqual({ how: "failed", ...around });
+  });
+});
+
+describe("cut at a day", () => {
+  test("first to last seen, still seen past an end", () => {
+    const span = { n: 40, first: "2026-10-14T06:21:00.000Z", last: iso(at) };
+    expect(followOpened(at, span).cut).toBeUndefined();
+    expect(followOpened(at, { ...span, pastBefore: true }).cut).toBe("before");
+    expect(followOpened(at, { ...span, pastAfter: true }).cut).toBe("after");
+    expect(followOpened(at, { ...span, pastBefore: true, pastAfter: true }).cut).toBe("both");
+    // Seen once in the day: ±5m, and nothing to cut.
+    expect(followOpened(at, { n: 1, first: iso(at), last: iso(at), pastBefore: true }).cut).toBeUndefined();
+  });
+
+  test("the chip says where", () => {
+    const opened = followOpened(at, {
+      n: 40,
+      first: "2026-10-14T06:21:00.000Z",
+      last: iso(at),
+      pastBefore: true,
+    });
+    expect(followChipWords(opened)).toBe("opened on first to last seen · cut at a day before");
+    expect(followChangedWords(opened)).toBe("opened on first to last seen · cut at a day before · 24h");
+    expect(followChipWords({ ...opened, how: "once" })).toBe("opened ±5m · seen once within a day");
   });
 });
 

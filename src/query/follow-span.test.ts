@@ -6,7 +6,7 @@ import {
   toClickHouseDateTime,
 } from "../shared/clickhouse";
 import { migrateStore } from "../shared/migrate";
-import { followOpened, followReachMs } from "../shared/follow-span";
+import { followEdgeMs, followOpened, followReachMs } from "../shared/follow-span";
 import { followSpanRoute, followSpanWhere, searchFollowSpan } from "./follow-span";
 import { search } from "./index";
 
@@ -27,13 +27,15 @@ function row(ms: number, service: string, attrs: Record<string, string>, message
 }
 
 describe("followSpanWhere", () => {
-  test("a day either side of the event, ANDed with the followed token", () => {
+  test("a day either side of the event and an hour past it, ANDed with the followed token", () => {
     const at = Date.parse("2026-10-15T06:20:41.118Z");
     const { sql, params } = followSpanWhere("sandbox_id:sandbox-41c9", at);
     expect(params.from).toBe(iso(at - followReachMs));
     expect(params.to).toBe(iso(at + followReachMs));
-    expect(sql).toContain("ts >= parseDateTime64BestEffort({from:String})");
-    expect(sql).toContain("ts <= parseDateTime64BestEffort({to:String})");
+    expect(params.outer_from).toBe(iso(at - followReachMs - followEdgeMs));
+    expect(params.outer_to).toBe(iso(at + followReachMs + followEdgeMs));
+    expect(sql).toContain("ts >= parseDateTime64BestEffort({outer_from:String})");
+    expect(sql).toContain("ts <= parseDateTime64BestEffort({outer_to:String})");
     expect(Object.values(params)).toContain("sandbox-41c9");
   });
 });
@@ -75,19 +77,18 @@ describe("follow span ClickHouse", () => {
       ),
       row(at - 2_000, `api${tag}`, { sandbox_id: sandbox }, "last try, not sent again"),
       row(at, `api${tag}`, { sandbox_id: sandbox }, "last try, not sent again"),
-      // Outside a day either side: not part of the story Follow opens on.
-      row(at - followReachMs - 60_000, `api${tag}`, { sandbox_id: sandbox }, "an older life"),
-      row(at + followReachMs + 60_000, `api${tag}`, { sandbox_id: sandbox }, "a later life"),
+      // More than a day either side, two hours past: not part of the story, and not read.
+      row(at - followReachMs - 2 * followEdgeMs, `api${tag}`, { sandbox_id: sandbox }, "an older life"),
+      row(at + followReachMs + 2 * followEdgeMs, `api${tag}`, { sandbox_id: sandbox }, "a later life"),
     ];
     await clickhouseInsertJsonEachRow(rows.join("\n"));
 
     const span = await searchFollowSpan(`sandbox_id:${sandbox}`, at);
-    expect(span.n).toBe(12);
-    expect(span.first).toBe(iso(first));
-    expect(span.last).toBe(iso(at));
+    expect(span).toEqual({ n: 12, first: iso(first), last: iso(at) });
 
     const opened = followOpened(at, span);
     expect(opened.how).toBe("span");
+    expect(opened.cut).toBeUndefined();
     expect(opened.fromMs).toBeLessThanOrEqual(first);
     expect(opened.toMs).toBeGreaterThan(at);
     expect(opened.toMs - opened.fromMs).toBeLessThan(21 * 3_600_000 + 10 * 60_000);
@@ -100,6 +101,24 @@ describe("follow span ClickHouse", () => {
     });
     expect(result.total).toBe(12);
     expect(result.events).toHaveLength(12);
+  });
+
+  test("a value still seen past a day before is cut at a day, and says so", async () => {
+    const tag = `${Date.now()}`;
+    const at = Date.now() - 3_600_000;
+    const key = `account_id:acct_${tag}`;
+    await clickhouseInsertJsonEachRow(
+      [
+        row(at - followReachMs - 30 * 60_000, `api${tag}`, { account_id: `acct_${tag}` }, "before the day"),
+        row(at - followReachMs + 60_000, `api${tag}`, { account_id: `acct_${tag}` }, "a day ago"),
+        row(at, `api${tag}`, { account_id: `acct_${tag}` }, "now"),
+      ].join("\n"),
+    );
+    const span = await searchFollowSpan(key, at);
+    expect(span.n).toBe(2);
+    expect(span.pastBefore).toBe(true);
+    expect(span.pastAfter).toBeUndefined();
+    expect(followOpened(at, span).cut).toBe("before");
   });
 
   test("an id seen once opens ±5m around it", async () => {

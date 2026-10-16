@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import {
   followChangedWords,
-  followOpenedWords,
+  followChipWords,
   type FollowOpened,
 } from "../../shared/follow-span";
 
@@ -29,7 +29,7 @@ export function FollowOpenedChip({
               : "border-white/25 text-foreground/90",
         )}
       >
-        {moved ? followChangedWords(opened) : followOpenedWords(opened.how)}
+        {moved ? followChangedWords(opened) : followChipWords(opened)}
       </span>
       {moved ? (
         <button
