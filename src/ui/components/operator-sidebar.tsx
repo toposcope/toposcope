@@ -215,8 +215,11 @@ export function OperatorSidebar({
                       {watched ? (
                         <Bell className="size-3 shrink-0 text-muted-foreground" />
                       ) : null}
-                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {count === undefined ? "—" : <CountText n={count} />}
+                      <span
+                        title={refuse ?? undefined}
+                        className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground"
+                      >
+                        {isBoard || count === undefined ? "—" : <CountText n={count} />}
                       </span>
                     </button>
                     {isBoard ? (

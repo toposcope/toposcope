@@ -14,6 +14,7 @@ import { EventTable } from "@/components/event-table";
 import { WorkspaceStrip } from "@/components/workspace-strip";
 import { OperatorSidebar } from "@/components/operator-sidebar";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
+import { loadSavedCounts } from "./saved-counts";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
@@ -730,32 +731,7 @@ export function App() {
   }
 
   const loadCounts = useCallback(async (searches: SavedSearch[]) => {
-    const entries = await Promise.all(
-      searches.map(async (item) => {
-        const res = await fetch(`/api/saved-searches/${item.id}/run`);
-        if (!res.ok) {
-          return [item.id, 0, { value: 0, refused: false }] as const;
-        }
-        const json = (await res.json()) as {
-          count: number;
-          value?: number;
-          refused?: boolean;
-        };
-        const count = json.count;
-        const value = typeof json.value === "number" ? json.value : count;
-        return [
-          item.id,
-          count,
-          { value, refused: Boolean(json.refused) },
-        ] as const;
-      }),
-    );
-    const next: Record<string, number> = {};
-    const nextSeries: Record<string, AlertSeriesView> = {};
-    for (const [id, n, point] of entries) {
-      next[id] = n;
-      nextSeries[id] = point;
-    }
+    const { counts: next, series: nextSeries } = await loadSavedCounts(searches);
     setCounts(next);
     setAlertSeries(nextSeries);
   }, []);
