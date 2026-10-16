@@ -199,15 +199,18 @@ export function EventDetail({
         ) : (
           <dl className="m-3 overflow-hidden rounded-lg border">
             {fieldsOf(event).map((field) => (
+              // At least 28px, and as tall as the value: a value that wraps
+              // pushes the rows under it down. The key and the icons stay on
+              // the value's first line; a one-line row is laid out as before.
               <div
                 key={field.k}
-                className="group grid h-7 grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-2 border-b border-white/[0.08] px-2.5 last:border-0"
+                className="group grid min-h-7 grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-[5px] last:border-0"
               >
-                <dt className="truncate font-mono text-[11px] text-muted-foreground">
+                <dt className="truncate font-mono text-[11px] leading-4 text-muted-foreground">
                   {field.k}
                 </dt>
                 <dd className="font-mono text-xs break-words">{field.v}</dd>
-                <div className="flex items-center justify-end gap-0.5">
+                <div className="-my-[3px] flex items-center justify-end gap-0.5">
                   {links[field.k] && onGraph ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
