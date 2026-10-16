@@ -2697,6 +2697,81 @@ async function main(): Promise<void> {
     if (!fsSavedDel.ok) throw new Error(`delete first-seen search failed: ${fsSavedDel.status}`);
   }
 
+  // #108: an alert's body of its own, a test call, and a body that does not parse.
+  {
+    const bodyQuery = 'service:e2e -"no such row"';
+    const bodySavedRes = await fetch(`${APP_URL}/api/saved-searches`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: basicAuth() },
+      body: JSON.stringify({ name: `e2e body ${marker}`, query: bodyQuery, range: "1h" }),
+    });
+    if (!bodySavedRes.ok) throw new Error(`body save failed: ${bodySavedRes.status}`);
+    const bodySaved = (await bodySavedRes.json()) as { id: string };
+    const got: Array<{ path: string; type: string; body: string }> = [];
+    const stand = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        const path = new URL(req.url).pathname;
+        const body = await req.text();
+        got.push({ path, type: req.headers.get("content-type") ?? "", body });
+        if (path === "/1/messages.json") {
+          const json = JSON.parse(body) as Record<string, unknown>;
+          const ok = ["token", "user", "message"].every((k) => typeof json[k] === "string" && json[k]);
+          return ok ? Response.json({ status: 1, request: "e2e" }) : Response.json({ status: 0, errors: ["user is missing"] }, { status: 400 });
+        }
+        return new Response("ok");
+      },
+    });
+    try {
+      const pushover = {
+        name: `e2e pushover ${marker}`,
+        kind: "threshold",
+        saved_search_id: bodySaved.id,
+        threshold: 1,
+        webhook_url: `http://127.0.0.1:${stand.port}/1/messages.json`,
+        body_kind: "json",
+        body_template: '{"token": "app", "user": "me", "message": "{{alert.name}}: {{value}} for {{query}}"}',
+      };
+      const tc = await fetch(`${APP_URL}/api/alert-rules/test-call`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify(pushover),
+      });
+      const tcBody = (await tc.json()) as { ok?: boolean; status?: number; reply?: string; sent?: string; error?: string };
+      if (!tc.ok || !tcBody.ok || tcBody.status !== 200 || tcBody.reply !== '{"status":1,"request":"e2e"}') {
+        throw new Error(`test call to the Pushover stand-in should be accepted, got ${tc.status} ${JSON.stringify(tcBody)}`);
+      }
+      const sentMessage = (JSON.parse(tcBody.sent ?? "{}") as { message?: string }).message ?? "";
+      if (!sentMessage.endsWith(`for ${bodyQuery}`)) throw new Error(`a q with quotes should be escaped into the JSON body, got ${tcBody.sent}`);
+      const broken = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ ...pushover, body_template: '{\n  "token": "app",\n  "user": "me"\n  "message": "{{alert.name}}"\n}' }),
+      });
+      const brokenBody = (await broken.json()) as { error?: string };
+      if (broken.status !== 400 || !brokenBody.error?.startsWith('Not JSON yet: line 4, column 3 — a , is missing after "me".')) {
+        throw new Error(`a JSON body that does not parse should be refused with where, got ${broken.status} ${JSON.stringify(brokenBody)}`);
+      }
+      const textRuleRes = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ ...pushover, name: `e2e ntfy ${marker}`, webhook_url: `http://127.0.0.1:${stand.port}/e2e-topic`, body_kind: "text", body_template: "{{alert.name}} fired: {{series}} {{value}} ≥ {{threshold}}" }),
+      });
+      if (!textRuleRes.ok) throw new Error(`text body alert failed: ${textRuleRes.status} ${await textRuleRes.text()}`);
+      const textRule = (await textRuleRes.json()) as { id: string; body_kind: string };
+      await evaluateAlerts();
+      const toTopic = got.filter((g) => g.path === "/e2e-topic");
+      if (toTopic.length !== 1 || !toTopic[0]!.type.startsWith("text/plain") || !/^e2e ntfy \S+ fired: Count \d+ ≥ 1$/.test(toTopic[0]!.body)) {
+        throw new Error(`a text body should reach the topic as that text, got ${JSON.stringify(toTopic)}`);
+      }
+      await fetch(`${APP_URL}/api/alert-rules/${textRule.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+    } finally {
+      stand.stop();
+    }
+    await fetch(`${APP_URL}/api/saved-searches/${bodySaved.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+  }
+
   const blocked = await fetch(`${APP_URL}/api/saved-searches/${saved.id}`, {
     method: "DELETE",
     headers: { authorization: basicAuth() },

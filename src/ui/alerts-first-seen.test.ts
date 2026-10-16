@@ -29,6 +29,8 @@ const base: AlertRule = {
   name: "",
   kind: "threshold",
   last_mark: null,
+  body_kind: "default",
+  body_template: null,
   saved_search_id: "s1",
   threshold: 1,
   webhook_url: "https://api.pushover.net/1/messages.json",

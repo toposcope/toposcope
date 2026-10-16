@@ -25,6 +25,8 @@ const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
   name: "new bugs after a deploy",
   kind: "first_seen",
   last_mark: null,
+  body_kind: "default",
+  body_template: null,
   query: "level:error service:api",
   webhook_url: "https://hooks.example.com/page",
   saved_search_id: "saved-1",
@@ -51,7 +53,7 @@ function harness(opts: {
   publicUrl?: string | null;
 }) {
   const sent = new Map<string, Set<string>>();
-  const posts: Array<{ url: string; body: any }> = [];
+  const posts: Array<{ url: string; body: any; contentType: string }> = [];
   const evals: Array<{ status: string; error: string | null }> = [];
   const webhooks: Array<{ ok: boolean }> = [];
   const lastMarks: unknown[] = [];
@@ -80,8 +82,12 @@ function harness(opts: {
     recordLastMark: (_id, m) => lastMarks.push(m),
     recordWebhook: (_id, attempt) => webhooks.push(attempt),
     recordEval: (_id, stamp) => evals.push(stamp),
-    post: async (url, body) => {
-      posts.push({ url, body });
+    post: async (url, payload) => {
+      let body: any = payload.body;
+      try {
+        body = JSON.parse(payload.body);
+      } catch {}
+      posts.push({ url, body, contentType: payload.contentType });
       const status = opts.status ?? 200;
       return { ok: status < 300, status: String(status), error: status < 300 ? null : "no" };
     },

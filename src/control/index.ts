@@ -66,6 +66,8 @@ export function getDb(): Database {
   // After the threshold rebuild, which copies only the columns it knows.
   addColumnIfMissing(db, "alert_rules", "kind", "TEXT NOT NULL DEFAULT 'threshold'");
   addColumnIfMissing(db, "alert_rules", "last_mark", "TEXT");
+  addColumnIfMissing(db, "alert_rules", "body_kind", "TEXT NOT NULL DEFAULT 'default'");
+  addColumnIfMissing(db, "alert_rules", "body_template", "TEXT");
   db.run(`
     CREATE TABLE IF NOT EXISTS alert_sent_fingerprints (
       rule_id TEXT NOT NULL,

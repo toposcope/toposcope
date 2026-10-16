@@ -34,6 +34,36 @@ In nginx that is `grpc_pass grpc://127.0.0.1:4319;` in a `server` block that lis
 
 Set `TOPOSCOPE_PUBLIC_URL` in `.env` to the address people open, such as `https://toposcope.example.com`, so an alert's webhook can link back to the search that fired. Toposcope cannot work it out itself: alerts are sent from a timer, and behind a proxy or a tunnel the address it listens on is not the one people open. Leave it unset and alerts carry no link. A path is kept, for a proxy that serves Toposcope under a prefix; a value that is not an `http` or `https` address, or that has a query or a `#`, stops the app at boot with that reason.
 
+## Alert bodies
+
+An alert sends its default body unless it is given one of its own in the alert dialog, under **Body**: **Text** (sent as `text/plain`) or **JSON** (sent as `application/json`). The default is the JSON Toposcope always sent, or a Slack message for a `hooks.slack.com` address.
+
+A body is written with fill-ins, listed beside it in the dialog: `{{alert.name}}`, `{{series}}`, `{{value}}`, `{{threshold}}`, `{{query}}`, `{{fired_at}}` and `{{link}}` for a threshold alert; `{{alert.name}}`, `{{query}}`, `{{mark.kind}}`, `{{mark.version}}`, `{{mark.at}}`, `{{fingerprints.count}}`, `{{fingerprints.first}}`, `{{fingerprints}}`, `{{more}}` and `{{link}}` for a new-fingerprints one. `{{link}}` is empty unless `TOPOSCOPE_PUBLIC_URL` is set. In a JSON body every fill-in is a string, escaped to sit inside quotes, so it goes between `"…"`; a body that does not parse is refused with its line and column. **Send a test call** sends the body now, filled in from the last evaluation (or the last mark the alert watched), and shows the status, the time and the reply's first 200 characters.
+
+A body is kept as the webhook address is, in SQLite, and anyone with the operator password can read it in the dialog; the Alerts list does not print it.
+
+Pushover takes JSON with its own fields, at `https://api.pushover.net/1/messages.json`:
+
+```json
+{
+  "token": "[YOUR APP TOKEN]",
+  "user": "[YOUR USER KEY]",
+  "title": "{{alert.name}}",
+  "message": "{{fingerprints.count}} new after {{mark.kind}} {{mark.version}}: {{fingerprints.first}}",
+  "url": "{{link}}",
+  "url_title": "Open in Toposcope"
+}
+```
+
+ntfy takes the body as the notification, at `https://ntfy.sh/<topic>`, so a text body is enough:
+
+```text
+{{alert.name}}: {{fingerprints.count}} new after {{mark.kind}} {{mark.version}}
+{{fingerprints}}
+{{more}}
+{{link}}
+```
+
 ## Runtime ports and network
 
 - App: `127.0.0.1:8080`
