@@ -7,7 +7,7 @@ import {
   emptyFieldsCatalog,
   isLinkableKey,
   isRoleableKey,
-  pickOverlapLink,
+  pickNameLink,
   suggestRolesFromKeys,
   type FieldCatalogRow,
   type FieldValuesKind,
@@ -325,9 +325,9 @@ export async function fieldsCatalogSuggest(
     if (!isLinkableKey(key)) {
       continue;
     }
-    const overlap = pickOverlapLink(logTops[key] ?? [], labelTops);
-    if (overlap) {
-      suggestLinks[key] = overlap;
+    const label = pickNameLink(key, logTops[key] ?? [], labelTops);
+    if (label) {
+      suggestLinks[key] = label;
     }
   }
 

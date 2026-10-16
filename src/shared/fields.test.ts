@@ -13,7 +13,7 @@ import {
   parseFieldLinks,
   parseFieldRoles,
   parseFieldsWave,
-  pickOverlapLink,
+  pickNameLink,
   shouldRollupAttrValue,
   skipKeysFromRoles,
   suggestFieldRole,
@@ -123,15 +123,40 @@ describe("suggestFieldRole", () => {
   });
 });
 
-describe("pickOverlapLink", () => {
-  test("picks the label whose top values overlap and does not invent a row", () => {
+describe("pickNameLink", () => {
+  test("links a field to the label of the same name when they share a value", () => {
     expect(
-      pickOverlapLink(["checkout", "billing"], {
-        source: ["checkout", "edge"],
-        instance: ["i-1"],
+      pickNameLink("sandbox_id", ["sb-1", "sb-2"], {
+        sandbox_id: ["sb-2", "sb-9"],
+        service: ["sb-1"],
       }),
-    ).toBe("source");
-    expect(pickOverlapLink(["checkout"], { instance: ["i-1"] })).toBeNull();
+    ).toBe("sandbox_id");
+  });
+
+  test("a shared value under another name is not a link", () => {
+    // #110: a scheduler's `kind` and the metrics' `service` shared `api`.
+    expect(pickNameLink("kind", ["api", "scale"], { service: ["api", "worker"] })).toBeNull();
+    expect(pickNameLink("otel.scope.name", ["control-1"], { host: ["control-1"] })).toBeNull();
+  });
+
+  test("the same name with no shared value is not a link", () => {
+    expect(pickNameLink("status", ["200", "500"], { status: ["queued", "done"] })).toBeNull();
+  });
+
+  test("a log row's version links to the resource's service.version", () => {
+    expect(pickNameLink("version", ["v0.9", "v0.8"], { "service.version": ["v0.9"] })).toBe(
+      "service.version",
+    );
+  });
+
+  test("the same name wins over service.version when both share a value", () => {
+    expect(
+      pickNameLink("version", ["v0.9"], { "service.version": ["v0.9"], version: ["v0.9"] }),
+    ).toBe("version");
+  });
+
+  test("names are compared as a log row stores them, in lower case", () => {
+    expect(pickNameLink("region", ["eu-1"], { Region: ["eu-1"] })).toBe("Region");
   });
 });
 

@@ -336,21 +336,42 @@ export function suggestFieldRole(
   return null;
 }
 
-export function pickOverlapLink(
+/** Ingest copies the resource's `service.version` to `version` on a log row; a metric label keeps it. */
+const linkNameAliases: Record<string, string> = { version: "service.version" };
+
+/**
+ * The metric label a log field links to: the label of the same name, or the
+ * name ingest gives it on a log row, when the two share a top value in the
+ * window. A shared value alone is not a link — a scheduler's `kind` and the
+ * metrics' `service` can share one by chance. Names compare in lower case,
+ * as a log row stores its keys; the label keeps its own spelling.
+ */
+export function pickNameLink(
+  logKey: string,
   logTops: string[],
   labelTops: Record<string, string[]>,
 ): string | null {
-  let best: string | null = null;
-  let bestN = 0;
+  const name = logKey.toLowerCase();
+  const alias = linkNameAliases[name];
+  let exact: { label: string; n: number } | null = null;
+  let aliased: { label: string; n: number } | null = null;
   for (const [label, values] of Object.entries(labelTops)) {
+    const lower = label.toLowerCase();
+    if (lower !== name && lower !== alias) {
+      continue;
+    }
     const set = new Set(values);
     const n = logTops.filter((v) => set.has(v)).length;
-    if (n > bestN) {
-      bestN = n;
-      best = label;
+    if (n === 0) {
+      continue;
+    }
+    if (lower === name) {
+      if (!exact || n > exact.n) exact = { label, n };
+    } else if (!aliased || n > aliased.n) {
+      aliased = { label, n };
     }
   }
-  return bestN > 0 ? best : null;
+  return exact?.label ?? aliased?.label ?? null;
 }
 
 export function graphMetricLabels(

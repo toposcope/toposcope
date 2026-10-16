@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Fields suggests a link from a log field to a metric label only when the label has the field’s name — or is `service.version`, for the `version` ingest copies onto a log row — and the two share a top value in the window. Any shared value was enough before, so a scheduler’s `kind` was offered as `service` and the logger’s `otel.scope.name` as `host` because one value happened to match, and the right links looked no different. A link between differently named keys is made with **Link…**, as before. [#110](https://github.com/toposcope/toposcope/issues/110)
+
 ## 0.5.3
 
 A long value in an event’s detail panel pushes the rows under it down. Every row was 28 pixels tall whatever it held, so a message that wrapped to three lines or more was drawn over the `e1` row under it, and a stack trace over every row under it. A row is now as tall as its value, with its key and icons beside the first line; a one-line row is laid out as before. [#105](https://github.com/toposcope/toposcope/issues/105)
