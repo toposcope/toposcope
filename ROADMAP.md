@@ -45,7 +45,6 @@ The bar stays copy-pasteable `key:value`. Fingerprints are queryable attrs, not 
 
 These need a drawing or an explicit choice before they are work:
 
-- Follow-window expand (today Follow is a fixed ±5m)
 - Histogram-chip catch-up
 - CSV / table export matching promoted columns
 - Bound the syslog UDP queue and expose dropped-event accounting
