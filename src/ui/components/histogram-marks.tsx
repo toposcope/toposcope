@@ -283,7 +283,7 @@ export function MarkInspectActions({
       {onFingerprints ? (
         <button
           type="button"
-          title="Which fingerprints are first seen, still here, or stopped on either side of this cut — same hunt, equal windows"
+          title="Which fingerprints are first seen, still here, or stopped on either side of this cut — same hunt; the before side is at least an hour"
           className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
           onClick={onFingerprints}
         >

@@ -6,15 +6,26 @@ export const fingerprintCutCap = 10;
 /** Distinct e1 values fetched per side before classifying. */
 export const fingerprintCutScanCap = 200;
 
-/** Panel note when both sides are this short. */
+/** Panel note when the after side is this short. */
 export const fingerprintCutShortMs = 5 * 60_000;
+
+/** Fingerprints compare a young mark with at least this much before it; Compare keeps equal sides. */
+export const fingerprintCutMinBeforeMs = 60 * 60_000;
+
+/** Other marks named inside a cut's sides: enough for a morning of five deploys. */
+export const fingerprintCutInsideCap = 4;
 
 export type FingerprintCutWindows = {
   afterFrom: number;
   afterTo: number;
   beforeFrom: number;
   beforeTo: number;
+  /** The after side's length. */
   sideMs: number;
+  /** The before side's length: sideMs, or the minimum while the after side is shorter. */
+  beforeMs: number;
+  /** Stopped is not called until the after side is as long as the before side. */
+  waiting: boolean;
   banded: boolean;
   dead: boolean;
   pastPlotFrom: boolean;
@@ -34,6 +45,8 @@ export function fingerprintCutWindows(input: {
   huntFrom: number;
   huntTo: number;
   openedAt: number;
+  /** A closed band keeps equal sides: it will not grow into the minimum. */
+  minBeforeMs?: number;
 }): FingerprintCutWindows {
   const openIncident =
     input.kind === "incident" &&
@@ -48,14 +61,19 @@ export function fingerprintCutWindows(input: {
     : Math.min(input.openedAt, input.huntTo);
   const sideMs = afterTo - afterFrom;
   const dead = sideMs <= 0;
+  const after = Math.max(0, sideMs);
+  const beforeMs =
+    dead || banded ? after : Math.max(after, input.minBeforeMs ?? 0);
   const beforeTo = afterFrom;
-  const beforeFrom = afterFrom - Math.max(0, sideMs);
+  const beforeFrom = afterFrom - beforeMs;
   return {
     afterFrom,
     afterTo,
     beforeFrom,
     beforeTo,
-    sideMs: Math.max(0, sideMs),
+    sideMs: after,
+    beforeMs,
+    waiting: !dead && after < beforeMs,
     banded,
     dead,
     pastPlotFrom: !dead && beforeFrom < input.huntFrom,
@@ -123,9 +141,20 @@ export function fingerprintCutNotes(
     notes.push("The window ends before this mark — there is no after side to cut.");
     return notes;
   }
-  if (!windows.banded && windows.sideMs < fingerprintCutShortMs) {
+  const after = formatFingerprintCutDuration(windows.sideMs);
+  const before = formatFingerprintCutDuration(windows.beforeMs);
+  const span = before === "1h" ? "hour" : before;
+  if (windows.waiting && windows.sideMs < fingerprintCutShortMs) {
     notes.push(
-      `Only ${formatFingerprintCutDuration(windows.sideMs)} since the cut — both sides are that short. Early to call anything stopped.`,
+      `Only ${after} since the cut. First seen is against the ${span} before; Stopped waits for the after side to have that ${span} too.`,
+    );
+  } else if (windows.waiting) {
+    notes.push(
+      `The sides differ until the after side has ${span === "hour" ? "an hour" : before}: counts read ${before} before → ${after} after.`,
+    );
+  } else if (!windows.banded && windows.sideMs < fingerprintCutShortMs) {
+    notes.push(
+      `Only ${after} since the cut — both sides are that short. Early to call anything stopped.`,
     );
   }
   if (windows.openIncident) {
@@ -152,6 +181,18 @@ export type FingerprintCutRow = {
   before: number;
   after: number;
   extra: string;
+  /** A first seen row after a later mark inside the after side: "after v0.9.3". */
+  follows: string;
+};
+
+/** Another mark inside a cut's sides, named so a cut over a burst of deploys says so. */
+export type FingerprintCutInsideMark = {
+  id: string;
+  kind: ChangeMarkKind;
+  ts: string;
+  label: string;
+  title: string;
+  side: "before" | "after";
 };
 
 export type FingerprintCutSet = {
@@ -161,6 +202,8 @@ export type FingerprintCutSet = {
   count: number;
   more: number;
   rows: FingerprintCutRow[];
+  /** Stopped while the after side is shorter than the before side: not called yet. */
+  waiting?: { haveMs: number; needMs: number };
 };
 
 export type FingerprintCutResult = {
@@ -171,8 +214,12 @@ export type FingerprintCutResult = {
     beforeFrom: string;
     beforeTo: string;
     sideMs: number;
+    beforeMs: number;
+    waiting: boolean;
     banded: boolean;
     dead: boolean;
+    inside: FingerprintCutInsideMark[];
+    insideMore: number;
   };
   notes: string[];
   sets: FingerprintCutSet[];
@@ -205,4 +252,64 @@ export function formatFingerprintCutDuration(ms: number): string {
     return `${Math.max(1, Math.round(abs / 1000))}s`;
   }
   return `${Math.max(1, abs)}ms`;
+}
+
+const countWords = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+/** "Two more deploys are inside the after side." — one sentence a side, kind when they share one. */
+export function fingerprintCutInsideNotes(inside: FingerprintCutInsideMark[]): string[] {
+  const notes: string[] = [];
+  for (const side of ["after", "before"] as const) {
+    const marks = inside.filter((m) => m.side === side);
+    if (marks.length === 0) {
+      continue;
+    }
+    const n = marks.length;
+    const kinds = new Set(marks.map((m) => m.kind));
+    const kind = kinds.size === 1 ? [...kinds][0]! : "mark";
+    const noun = `${kind}${n === 1 ? "" : "s"}`;
+    const count = n < countWords.length ? countWords[n]! : String(n);
+    const head = `${count[0]!.toUpperCase()}${count.slice(1)} more ${noun} ${n === 1 ? "is" : "are"} inside the ${side} side.`;
+    notes.push(
+      side === "after"
+        ? `${head} A first seen row's time says which one it follows.`
+        : head,
+    );
+  }
+  return notes;
+}
+
+/** The latest later mark inside the after side at or before a first seen row's first event. */
+export function fingerprintCutFollows(
+  inside: FingerprintCutInsideMark[],
+  firstAfterIso: string | null,
+): string {
+  if (!firstAfterIso) {
+    return "";
+  }
+  const at = Date.parse(firstAfterIso);
+  let best: FingerprintCutInsideMark | null = null;
+  for (const mark of inside) {
+    const ts = Date.parse(mark.ts);
+    if (mark.side === "after" && ts <= at && (!best || ts >= Date.parse(best.ts))) {
+      best = mark;
+    }
+  }
+  return best ? `after ${best.title}` : "";
+}
+
+/** Over the cap, name the marks nearest the cut, in time order. */
+export function nearestInsideMarks(
+  inside: FingerprintCutInsideMark[],
+  cutTs: number,
+  cap: number,
+): FingerprintCutInsideMark[] {
+  if (inside.length <= cap) {
+    return inside;
+  }
+  return inside
+    .slice()
+    .sort((a, b) => Math.abs(Date.parse(a.ts) - cutTs) - Math.abs(Date.parse(b.ts) - cutTs))
+    .slice(0, cap)
+    .sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
 }

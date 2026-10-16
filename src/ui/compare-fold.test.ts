@@ -33,6 +33,8 @@ describe("compareFoldWindows", () => {
       beforeFrom: exactFrom,
       beforeTo: Date.parse(mark.ts),
       sideMs: 30 * 60_000,
+      beforeMs: 30 * 60_000,
+      waiting: false,
       banded: false,
       dead: false,
       pastPlotFrom: false,
