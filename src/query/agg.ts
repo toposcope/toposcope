@@ -23,6 +23,8 @@ export type SearchAggResult = {
   /** For a histogram: which reading the bars are, and the histogram's own name. */
   reading?: HistogramReading;
   metric?: string;
+  /** For an ingested metric: the unit its bars are in, as the app sent it. None for a histogram's count. */
+  unit?: string;
 };
 
 export class InvalidAggError extends Error {
