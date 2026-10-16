@@ -2903,6 +2903,32 @@ async function main(): Promise<void> {
   if (followSearch.events.some((event) => event.service === undefined)) {
     throw new Error("follow events missing service");
   }
+  const followSpanParams = new URLSearchParams({
+    q: `request_id:${followHex}`,
+    at: new Date(followTs).toISOString(),
+  }).toString();
+  const followSpanAnon = await fetch(`${APP_URL}/api/search/follow-span?${followSpanParams}`);
+  if (followSpanAnon.status !== 401) {
+    throw new Error(`follow span without auth: expected 401, got ${followSpanAnon.status}`);
+  }
+  const followSpanRes = await fetch(`${APP_URL}/api/search/follow-span?${followSpanParams}`, {
+    headers: { authorization: basicAuth() },
+  });
+  if (!followSpanRes.ok) {
+    throw new Error(`follow span failed: ${followSpanRes.status} ${await followSpanRes.text()}`);
+  }
+  const followSpan = (await followSpanRes.json()) as {
+    n: number | null;
+    first: string | null;
+    last: string | null;
+  };
+  if (
+    followSpan.n !== 3 ||
+    followSpan.first !== new Date(followTs - 1000).toISOString() ||
+    followSpan.last !== new Date(followTs + 1000).toISOString()
+  ) {
+    throw new Error(`follow span must be the 3 hops' first and last row, got ${JSON.stringify(followSpan)}`);
+  }
 
   const traceId = Date.now().toString(16).padStart(32, "0").slice(-32);
   const nginxSpan = "a1".padEnd(16, "0");

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   canFollowField,
-  followScanRole,
   isIdShapedValue,
   isOtelTraceId,
   joinTraceRef,
@@ -60,8 +59,6 @@ describe("canFollowField", () => {
     expect(canFollowField("status", "500", undefined)).toBe(false);
     expect(canFollowField("service", "usr_8f3a1c", undefined)).toBe(false);
     expect(canFollowField("ts", "2026-01-01T00:00:00.000Z", "lookup")).toBe(false);
-    expect(followScanRole(undefined)).toBe("chart");
-    expect(followScanRole("ignore")).toBe("ignore");
   });
 });
 

@@ -1,6 +1,7 @@
 import { surroundingDefaultN } from "../query/surrounding";
 import type { HistogramChartKind, HistogramIntervalId, HistogramSplit } from "../query/histogram";
 import { formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../shared/change-mark";
+import type { FollowOpened } from "../shared/follow-span";
 import { defaultLayout, type WidgetDef } from "../shared/widgets";
 import type { FacetValue, Facets, HistogramBucket, LogEvent, SearchAggResult } from "./types";
 import type { ContextMode } from "./context-mode";
@@ -28,7 +29,8 @@ export function ordinalLabels(labels: string[]): string[] {
 
 export type WorkspaceKind = "search" | "follow" | "surroundings";
 
-export type WorkspaceFollow = { key: string; value: string };
+/** `opened`: the window the Follow tab opened on, kept so Reset can return to it. */
+export type WorkspaceFollow = { key: string; value: string; opened?: FollowOpened };
 
 export type HistogramExploreOrigin = {
   range: RangeMode;
@@ -203,6 +205,7 @@ export function followChildSnap(
     to: string;
     key: string;
     value: string;
+    opened?: FollowOpened;
   },
 ): WorkspaceSnap {
   return {
@@ -215,7 +218,9 @@ export function followChildSnap(
     live: false,
     savedId: null,
     bind: {},
-    follow: { key: follow.key, value: follow.value },
+    follow: follow.opened
+      ? { key: follow.key, value: follow.value, opened: follow.opened }
+      : { key: follow.key, value: follow.value },
     explore: null,
     inspectTabs: [],
     activeInspect: null,

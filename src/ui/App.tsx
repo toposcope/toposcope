@@ -87,6 +87,7 @@ import {
   ordinalLabels,
   type HistogramExploreOrigin,
   type Workspace,
+  type WorkspaceFollow,
   type WorkspaceKind,
   type WorkspacePaint,
   type WorkspaceSnap,
@@ -194,7 +195,14 @@ import { SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
 import { windowHead, windowMeta } from "./window-identity";
-import { followQuery, followWindow } from "./follow";
+import { followOnOpened, followQuery } from "./follow";
+import {
+  followOpened,
+  followSpanSearchParams,
+  type FollowOpened,
+  type FollowSpan,
+} from "../shared/follow-span";
+import { FollowOpenedChip } from "@/components/follow-opened-chip";
 import {
   deriveLiveSeries,
   extraQueryLiveFetch,
@@ -432,7 +440,10 @@ export function App() {
       snap: urlSearchSnap(boot),
     },
   ]);
-  const [follow, setFollow] = useState<{ key: string; value: string } | null>(null);
+  const [follow, setFollow] = useState<WorkspaceFollow | null>(null);
+  const followOpenRef = useRef<
+    ((field: string, value: string, opened: FollowOpened) => void) | null
+  >(null);
   const [surrAnchor, setSurrAnchor] = useState<LogEvent | null>(null);
   const [surrSel, setSurrSel] = useState<LogEvent | null>(null);
   const [focusMark, setFocusMark] = useState<ChangeMark | null>(null);
@@ -2842,15 +2853,15 @@ export function App() {
   function followSnap(
     key: string,
     value: string,
-    nextFrom: string,
-    nextTo: string,
+    opened: FollowOpened,
   ): WorkspaceSnap {
     return followChildSnap(currentSnap(), {
       q: followQuery(key, value),
-      from: nextFrom,
-      to: nextTo,
+      from: toLocalInput(new Date(opened.fromMs)),
+      to: toLocalInput(new Date(opened.toMs)),
       key,
       value,
+      opened,
     });
   }
 
@@ -3023,16 +3034,54 @@ export function App() {
     void runSearch("replace", { q: nextQ });
   }
 
-  function onFollowField(field: string, value: string, ts: string) {
-    const window = followWindow(ts);
-    if (!window) {
+  /** Latest render's opener: the read below awaits, and tabs may change meanwhile. */
+  followOpenRef.current = (field: string, value: string, opened: FollowOpened) => {
+    setView("search");
+    addWorkspace(followSnap(field, value, opened), false);
+  };
+
+  /** Reads the value's first and last row within a day, then opens the tab on them. */
+  async function onFollowField(field: string, value: string, ts: string) {
+    const atMs = Date.parse(ts);
+    if (Number.isNaN(atMs)) {
       return;
     }
-    setView("search");
-    addWorkspace(
-      followSnap(field, value, toLocalInput(window.from), toLocalInput(window.to)),
-      false,
-    );
+    let span: FollowSpan | null = null;
+    try {
+      const params = followSpanSearchParams(
+        followQuery(field, value),
+        new Date(atMs).toISOString(),
+      );
+      const res = await fetch(`/api/search/follow-span?${params.toString()}`);
+      if (res.ok) {
+        span = (await res.json()) as FollowSpan;
+      }
+    } catch {
+      span = null;
+    }
+    followOpenRef.current?.(field, value, followOpened(atMs, span));
+  }
+
+  function onResetFollow() {
+    const opened = follow?.opened;
+    if (!opened) {
+      return;
+    }
+    const nextFrom = toLocalInput(new Date(opened.fromMs));
+    const nextTo = toLocalInput(new Date(opened.toMs));
+    setExplore(null);
+    setRange("custom");
+    setFrom(nextFrom);
+    setTo(nextTo);
+    setLive(false);
+    setStep(null);
+    void runSearch("replace", {
+      range: "custom",
+      from: nextFrom,
+      to: nextTo,
+      live: false,
+      step: null,
+    });
   }
 
   function onToggleFacet(field: string, value: string) {
@@ -3658,7 +3707,6 @@ export function App() {
                       links={fieldLinks}
                       roles={fieldRoles}
                       onFollow={onFollowField}
-                      onOpenFields={() => setView("fields")}
                     />
                   ) : null}
                 </div>
@@ -3852,7 +3900,21 @@ export function App() {
                 </div>
               ) : null}
               {qErrOn && !chipInField ? <QueryErrorChip faults={qFaults} /> : null}
-              {explore ? (
+              {wsKind === "follow" && follow?.opened ? (
+                <FollowOpenedChip
+                  opened={follow.opened}
+                  moved={
+                    !followOnOpened(follow.opened, {
+                      range,
+                      from,
+                      to,
+                      live,
+                      explored: explore !== null,
+                    })
+                  }
+                  onReset={onResetFollow}
+                />
+              ) : explore ? (
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/16 bg-white/5 px-2.5 py-0.5 text-xs text-foreground">
                     <span
@@ -4207,7 +4269,6 @@ export function App() {
                         metricNames={metricNames}
                         onGraph={onGraphField}
                         onFollow={onFollowField}
-                        onOpenFields={() => setView("fields")}
                       />
                     </div>
                   ) : null}
@@ -4229,7 +4290,6 @@ export function App() {
                   metricNames={metricNames}
                   onGraph={onGraphField}
                   onFollow={onFollowField}
-                  onOpenFields={() => setView("fields")}
                 />
               ) : null}
             </div>
