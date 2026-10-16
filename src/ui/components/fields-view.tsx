@@ -474,7 +474,9 @@ function FieldRow({
                 title={
                   atCap
                     ? `${LINK_CAP} links is the cap — unlink one to add another`
-                    : `Top values of ${row.key} overlap ${suggestLink} in this window — click to link`
+                    : suggestLink.toLowerCase() === row.key
+                      ? `The metric label ${suggestLink} has this name and shares a value in this window — click to link`
+                      : `A log row's ${row.key} is the metric label ${suggestLink}, and they share a value in this window — click to link`
                 }
                 className="inline-flex h-[22px] items-center rounded-md border border-dashed border-amber-400/80 px-1.5 font-mono text-[11.5px] text-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => onLink(suggestLink)}

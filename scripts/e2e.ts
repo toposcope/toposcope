@@ -2606,6 +2606,8 @@ async function main(): Promise<void> {
   };
   const lookupKey = `e2e_uid_${marker.replaceAll("-", "_")}`;
   const systemKey = `e2e_sys_${marker.replaceAll("-", "_")}`;
+  // Shares the value under another name: not a link (#110).
+  const otherKey = `e2e_shelf_${marker.replaceAll("-", "_")}`;
   const hop = `e2e-hop-${marker}`;
   const putFields = async (
     roles: Record<string, string>,
@@ -2653,6 +2655,7 @@ async function main(): Promise<void> {
           [lookupKey]: `id-${marker}`,
           status: 500,
           [systemKey]: hop,
+          [otherKey]: hop,
         },
       }),
     });
@@ -2668,7 +2671,7 @@ async function main(): Promise<void> {
       body: JSON.stringify({
         name: "cpu_seconds",
         value: 0.5,
-        labels: { source: hop },
+        labels: { source: hop, [systemKey]: hop },
       }),
     });
     if (!metricLinkRes.ok) {
@@ -2691,7 +2694,7 @@ async function main(): Promise<void> {
         lookup &&
         status &&
         status.values !== null &&
-        catalog.suggestLinks[systemKey] === "source"
+        catalog.suggestLinks[systemKey] === systemKey
       ) {
         break;
       }
@@ -2711,13 +2714,18 @@ async function main(): Promise<void> {
     if (!statusRow || statusRow.values === null) {
       throw new Error("chart status must still roll up");
     }
-    if (catalog.suggestLinks[systemKey] !== "source") {
+    if (catalog.suggestLinks[systemKey] !== systemKey) {
       throw new Error(
-        `expected ${systemKey} → source suggestion, got ${JSON.stringify(catalog.suggestLinks)}`,
+        `expected ${systemKey} → ${systemKey} suggestion, got ${JSON.stringify(catalog.suggestLinks)}`,
+      );
+    }
+    if (catalog.suggestLinks[otherKey]) {
+      throw new Error(
+        `a shared value under another name must not be suggested, got ${otherKey} → ${catalog.suggestLinks[otherKey]}`,
       );
     }
     if (catalog.links[systemKey]) {
-      throw new Error("overlap suggestion must not write a link");
+      throw new Error("a suggestion must not write a link");
     }
 
     const keysWaveRes = await fetch(`${APP_URL}/api/fields?range=1h&wave=keys`, {
