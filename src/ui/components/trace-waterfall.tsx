@@ -19,10 +19,13 @@ type Props = {
   onFollow: (key: string, value: string, ts: string) => void;
   followDisabled?: boolean;
   followTitle?: string;
-  onViewProfiles: (span: Span) => void;
+  /** The selected span is read in the rail, so the rows keep their height. */
+  selected: string | null;
+  onSelect: (spanId: string | null) => void;
 };
 
-const grid = "grid grid-cols-[minmax(0,340px)_66px_minmax(0,1fr)] gap-2.5";
+/** Names take at most 40%, so a narrow waterfall beside the rail keeps its bars readable. */
+const grid = "grid grid-cols-[minmax(0,min(340px,40%))_66px_minmax(0,1fr)] gap-2.5";
 
 function servicesOf(spans: Span[]): string[] {
   const seen: string[] = [];
@@ -44,9 +47,9 @@ export function TraceWaterfall({
   onFollow,
   followDisabled = false,
   followTitle,
-  onViewProfiles,
+  selected,
+  onSelect,
 }: Props) {
-  const [selected, setSelected] = useState<string | null>(null);
   const [hover, setHover] = useState<{
     id: string;
     top: number;
@@ -56,7 +59,6 @@ export function TraceWaterfall({
   const total = result?.total ?? 0;
   const tree = useMemo(() => flattenTrace(spans), [spans]);
   const services = useMemo(() => servicesOf(spans), [spans]);
-  const selectedSpan = spans.find((span) => span.span_id === selected) ?? null;
   const hoverSpan = spans.find((span) => span.span_id === hover?.id) ?? null;
   const hoverRow = tree.rows.find((row) => row.span.span_id === hover?.id);
   const chain = selected ? ancestorIds(spans, selected) : new Set<string>();
@@ -94,7 +96,7 @@ export function TraceWaterfall({
   return (
     <div
       data-screen-label="Trace waterfall"
-      className="flex min-h-0 flex-1 flex-col px-3 pb-3"
+      className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-3"
     >
       <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-[6.4px] border border-b-0 border-white/10 bg-card px-2.5">
         <span className="truncate text-[13px] font-medium">{rootLabel}</span>
@@ -159,11 +161,15 @@ export function TraceWaterfall({
           >
             <span />
             <span />
-            <span className="relative h-full">
+            <span className="@container relative h-full">
               {ticks.map((tick) => (
                 <span
                   key={tick.frac}
-                  className="absolute top-[7px] font-mono text-[10px] text-muted-foreground"
+                  className={cn(
+                    "absolute top-[7px] font-mono text-[10px] text-muted-foreground",
+                    // Quarter ticks only where there is room for five labels.
+                    (tick.frac === 0.25 || tick.frac === 0.75) && "@max-[280px]:hidden",
+                  )}
                   style={{
                     left: `${tick.frac * 100}%`,
                     transform:
@@ -179,12 +185,7 @@ export function TraceWaterfall({
               ))}
             </span>
           </div>
-          <div
-            className={cn(
-              "min-h-0 flex-1 overflow-y-auto border border-white/10 bg-card",
-              selectedSpan ? "border-b-0" : "rounded-b-[6.4px]",
-            )}
-          >
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-b-[6.4px] border border-white/10 bg-card">
             {tree.missingParent ? (
               <div
                 className={cn(
@@ -219,11 +220,8 @@ export function TraceWaterfall({
                     "h-[26px] cursor-pointer items-center border-b border-white/5 px-2.5",
                     on ? "bg-accent/70" : inChain ? "bg-white/[0.03]" : "",
                   )}
-                  onClick={() =>
-                    setSelected((prev) =>
-                      prev === row.span.span_id ? null : row.span.span_id,
-                    )
-                  }
+                  aria-selected={on}
+                  onClick={() => onSelect(on ? null : row.span.span_id)}
                   onMouseEnter={(e) => {
                     const r = e.currentTarget.getBoundingClientRect();
                     setHover({
@@ -313,62 +311,6 @@ export function TraceWaterfall({
                   {hoverSpan.attrs["status.message"]}
                 </div>
               ) : null}
-            </div>
-          ) : null}
-          {selectedSpan ? (
-            <div className="flex shrink-0 items-start gap-3.5 rounded-b-[6.4px] border border-t-0 border-white/10 bg-background/55 px-2.5 py-2">
-              <div className="min-w-0 shrink">
-                <div className="truncate font-mono text-xs">
-                  {selectedSpan.service} · {selectedSpan.name}
-                </div>
-                <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                  +{formatTraceMs(tree.rows.find((row) => row.span.span_id === selected)?.startMs ?? 0)}{" "}
-                  · {formatTraceMs(selectedSpan.duration_ms)} total ·{" "}
-                  {formatTraceMs(tree.rows.find((row) => row.span.span_id === selected)?.selfMs ?? 0)}{" "}
-                  self
-                </div>
-              </div>
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3.5 gap-y-1">
-                {Object.entries(selectedSpan.attrs).map(([k, v]) => (
-                  <span
-                    key={k}
-                    // A long value, such as a recorded exception's stack, is cut: the whole of it is one hover away.
-                    title={v.length > 60 ? v : undefined}
-                    className="inline-flex max-w-[28rem] min-w-0 items-baseline gap-1.5 font-mono text-[11px]"
-                  >
-                    <span className="text-muted-foreground">{k}</span>
-                    <span className="min-w-0 truncate">{v}</span>
-                  </span>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="inline-flex h-[26px] shrink-0 items-center gap-1.5 rounded-[4.4px] border border-white/15 px-2.5 text-xs hover:bg-accent"
-                title={`Flamegraph of the profile samples linked to this span · span_id:${selectedSpan.span_id}`}
-                onClick={() => onViewProfiles(selectedSpan)}
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 12 12"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <rect x="0" y="0.5" width="12" height="3" rx="1" />
-                  <rect x="0" y="4.5" width="8" height="3" rx="1" />
-                  <rect x="2.5" y="8.5" width="4" height="3" rx="1" />
-                </svg>
-                View profiles
-              </button>
-              <button
-                type="button"
-                className="inline-flex size-[22px] shrink-0 items-center justify-center rounded-[4.4px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                title="Clear selection"
-                aria-label="Clear selection"
-                onClick={() => setSelected(null)}
-              >
-                ×
-              </button>
             </div>
           ) : null}
         </>

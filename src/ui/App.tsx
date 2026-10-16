@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft } from "@/components/alert-rule-dialog";
 import { AlertsView, type AlertSeriesView } from "@/components/alerts-view";
 import { FieldsView } from "@/components/fields-view";
+import { SpanDetail } from "@/components/span-detail";
 import { ContextTabs } from "@/components/context-tabs";
 import { ContextView, type ContextMode } from "@/components/context-view";
 import { EventDetail } from "@/components/event-detail";
@@ -194,6 +195,7 @@ import { SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
 import { windowHead, windowMeta } from "./window-identity";
+import { flattenTrace } from "./waterfall";
 import { followQuery, followWindow } from "./follow";
 import {
   deriveLiveSeries,
@@ -453,6 +455,9 @@ export function App() {
   const isSurr = wsKind === "surroundings";
   const isMarkFocus = isSurr && focusMark !== null;
   const traceView = activeInspect?.kind === "trace" ? activeInspect : null;
+  /** The span picked in a trace's waterfall, read in the rail; `spanRail` is which of it or the event the rail shows. */
+  const [spanSel, setSpanSel] = useState<{ trace: string; spanId: string } | null>(null);
+  const [spanRail, setSpanRail] = useState<"span" | "event">("span");
   const profileView = activeInspect?.kind === "profile" ? activeInspect : null;
   const [aroundN, setAroundN] = useState(surroundingDefaultN);
   const [aroundMode, setAroundMode] = useState<ContextMode>("all");
@@ -2699,6 +2704,7 @@ export function App() {
     setCols(snap.cols);
     setExplore(snap.explore);
     setFollow(snap.follow);
+    setSpanSel(null);
     setMarksOff(snap.marksOff);
     setMarksMuted(snap.marksMuted);
     setCut(snap.cut);
@@ -2939,6 +2945,14 @@ export function App() {
     if (!isReaderKind(wsKind)) {
       focusEvent(event);
     }
+  }
+
+  function onSelectSpan(spanId: string | null) {
+    if (!traceView) {
+      return;
+    }
+    setSpanSel(spanId ? { trace: traceView.value, spanId } : null);
+    setSpanRail("span");
   }
 
   function openProfile(span: Span) {
@@ -3284,6 +3298,37 @@ export function App() {
         },
       }
     : undefined;
+  const traceSpans =
+    traceView && traceLoad.value === traceView.value
+      ? (traceLoad.result?.spans ?? [])
+      : [];
+  const selectedSpanId =
+    traceView && spanSel?.trace === traceView.value ? spanSel.spanId : null;
+  const pickedSpan = selectedSpanId
+    ? (traceSpans.find((span) => span.span_id === selectedSpanId) ?? null)
+    : null;
+  const pickedSpanStartMs = pickedSpan
+    ? (flattenTrace(traceSpans).rows.find(
+        (row) => row.span.span_id === pickedSpan.span_id,
+      )?.startMs ?? 0)
+    : 0;
+  /** The span holds the rail until the operator steps back to the event it was opened from. */
+  const spanOnRail = Boolean(pickedSpan && (spanRail === "span" || !selectedEvent));
+  const spanBackCrumb = selectedEvent
+    ? {
+        label: `Event · ${selectedEvent.message} · ${selectedEvent.ts.slice(11, 23)}`,
+        title: "Back to the event — the span stays selected",
+        onBack: () => setSpanRail("event"),
+      }
+    : null;
+  const spanForwardCrumb = pickedSpan
+    ? {
+        label: `Span · ${pickedSpan.service} · ${pickedSpan.name} · still selected`,
+        title: "Back to the selected span",
+        forward: true,
+        onBack: () => setSpanRail("span"),
+      }
+    : undefined;
   const savedLayout =
     activeSaved?.widgets ??
     defaultLayout({ agg: activeSaved?.agg ?? null });
@@ -3572,6 +3617,7 @@ export function App() {
                       onBack={backFromProfile}
                     />
                   ) : traceView ? (
+                    <div className="flex min-h-0 min-w-0 flex-1">
                     <TraceWaterfall
                       joinKey={traceView.key}
                       joinValue={traceView.value}
@@ -3595,8 +3641,19 @@ export function App() {
                         setActiveInspect(null);
                         onFollowField(key, value, ts);
                       }}
-                      onViewProfiles={openProfile}
+                      selected={selectedSpanId}
+                      onSelect={onSelectSpan}
                     />
+                    {pickedSpan ? (
+                      <SpanDetail
+                        key={pickedSpan.span_id}
+                        span={pickedSpan}
+                        startMs={pickedSpanStartMs}
+                        onClose={() => setSpanSel(null)}
+                        onViewProfiles={openProfile}
+                      />
+                    ) : null}
+                    </div>
                   ) : null}
                 </>
               ) : (
@@ -4075,7 +4132,8 @@ export function App() {
                     setActiveInspect(null);
                     onFollowField(key, value, ts);
                   }}
-                  onViewProfiles={openProfile}
+                  selected={selectedSpanId}
+                  onSelect={onSelectSpan}
                 />
               ) : (
                 <div
@@ -4164,8 +4222,8 @@ export function App() {
                 <div className="relative flex h-full w-[398px] max-w-[36%] min-h-0 shrink-0 flex-col">
                   <div
                     className="flex min-h-0 min-w-0 flex-1 flex-col"
-                    inert={railSurface === "detail"}
-                    aria-hidden={railSurface === "detail"}
+                    inert={railSurface === "detail" || spanOnRail}
+                    aria-hidden={railSurface === "detail" || spanOnRail}
                   >
                     <FingerprintCutPanel
                       mark={cut.mark}
@@ -4186,12 +4244,26 @@ export function App() {
                       }
                     />
                   </div>
-                  {railSurface === "detail" && selectedEvent ? (
+                  {spanOnRail && pickedSpan ? (
+                    <div className="absolute inset-0 z-10">
+                      <SpanDetail
+                        key={pickedSpan.span_id}
+                        span={pickedSpan}
+                        startMs={pickedSpanStartMs}
+                        className="h-full w-full max-w-none"
+                        crumb={
+                          railSurface === "detail" ? spanBackCrumb : cutCrumb
+                        }
+                        onClose={() => setSpanSel(null)}
+                        onViewProfiles={openProfile}
+                      />
+                    </div>
+                  ) : railSurface === "detail" && selectedEvent ? (
                     <div className="absolute inset-0 z-10">
                       <EventDetail
                         event={selectedEvent}
                         className="h-full w-full max-w-none"
-                        crumb={cutCrumb}
+                        crumb={pickedSpan ? spanForwardCrumb : cutCrumb}
                         closeTitle="Close this line — back to the cut"
                         onClose={() => {
                           setDetailOpen(false);
@@ -4212,9 +4284,19 @@ export function App() {
                     </div>
                   ) : null}
                 </div>
+              ) : spanOnRail && pickedSpan ? (
+                <SpanDetail
+                  key={pickedSpan.span_id}
+                  span={pickedSpan}
+                  startMs={pickedSpanStartMs}
+                  crumb={spanBackCrumb}
+                  onClose={() => setSpanSel(null)}
+                  onViewProfiles={openProfile}
+                />
               ) : selectedEvent ? (
                 <EventDetail
                   event={selectedEvent}
+                  crumb={spanForwardCrumb}
                   onClose={() => {
                     setDetailOpen(false);
                     setPinnedEvent(null);
