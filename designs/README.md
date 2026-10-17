@@ -37,6 +37,13 @@ Locked — the operator cut (0.5.x, [#102](https://github.com/toposcope/toposcop
 - [Toposcope Fingerprints Alert.dc.html](Toposcope%20Fingerprints%20Alert.dc.html) — frames 15a–15l: the cut 18 minutes, 2 hours and 3 minutes after a deploy, and later deploys named inside the after side ([#111](https://github.com/toposcope/toposcope/issues/111)); the alert dialog's two kinds and the Alerts list with both ([#107](https://github.com/toposcope/toposcope/issues/107)); a webhook body as text or JSON with fill-ins, one that does not parse, a test call, Pushover, ntfy and a Slack URL ([#108](https://github.com/toposcope/toposcope/issues/108)); rejects
 - [fingerprints-alert/](fingerprints-alert/) — crops for issues (15a–15l)
 
+Locked — links (0.5.x, [#133](https://github.com/toposcope/toposcope/issues/133)–[#142](https://github.com/toposcope/toposcope/issues/142)), 2026-10-07. Two single-file exports: open them directly, they need nothing beside them.
+
+- [Toposcope Links.html](Toposcope%20Links.html) — frames 6a–10a: Links as a fourth view, empty and in both directions, removing a link, thirty links; offering rows and inviting a source, each key shown once; pasting a key, the preview before confirm, keys that will not work; the instance name in Settings; pasting before the instance has a name ([#136](https://github.com/toposcope/toposcope/issues/136), [#137](https://github.com/toposcope/toposcope/issues/137))
+- [links/](links/) — crops for issues (6a–10a)
+- [Toposcope Links Held.html](Toposcope%20Links%20Held.html) — frames 5a–5r: what Search says an instance holds once rows are pulled: no links, a source caught up, behind, not answering, a hole, an errors-only instance, thirty sources, Live, narrowed to one source, every count a short source could feed as a floor, mixed sources, a sidebar that already leads ([#139](https://github.com/toposcope/toposcope/issues/139)); Fingerprints and Compare refusing across a gap ([#140](https://github.com/toposcope/toposcope/issues/140)), then judging with floors ([#141](https://github.com/toposcope/toposcope/issues/141)); rejects
+- [links-held/](links-held/) — crops for issues (5a–5r)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
