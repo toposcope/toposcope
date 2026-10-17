@@ -22,7 +22,7 @@ The exception goes on the log record: `exception.type`, and either `exception.st
 
 ### Attributes
 
-A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is stored in lower case. `level`, `service`, `host`, `ts`, `message`, and `tenant_id` are taken. A row keeps 50 attributes. A key that breaks the rule, or one past the cap, is dropped with a 200; on the OTLP routes the reply says so. Nested values become JSON strings.
+A key starts with a letter or `_`, then letters, digits, `_`, or `.`, and is stored in lower case. `level`, `service`, `host`, `toposcope`, `ts`, `message`, and `tenant_id` are taken. `toposcope` is which instance a row entered at: rows ingested on an instance with a name are stamped with it, and an attribute a sender calls `toposcope` is dropped. A row keeps 50 attributes. A key that breaks the rule, or one past the cap, is dropped with a 200; on the OTLP routes the reply says so. Nested values become JSON strings.
 
 ### Three ways in
 

@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A row says which instance it entered at. `toposcope` is a field like `host`: rows ingested on an instance with a name are stamped with it, the bar takes `toposcope:<name>`, and a count by it stays on the minute rollups. An attribute a sender calls `toposcope` is dropped, as `level` and `service` are. Nothing draws it yet, so an instance that is not linked looks and behaves as before; renaming an instance starts a new value and rows already stored keep theirs. Boot adds the column to `logs` and to the end of each minute rollup's key, keeping every row and rollup it has. [#134](https://github.com/toposcope/toposcope/issues/134)
+
 Every log row now carries the order it arrived in. Load more pages by time and then by that order, so rows that share a millisecond no longer go missing at a page boundary: 600 rows stamped with one millisecond page through with none skipped and none repeated. A row that arrives late gets a higher number than every row before it, whatever its event time. The number is a per-instance counter kept ahead in a small new ClickHouse table, `arrival_seq`, so it never goes backwards across a restart. Boot adds the `seq` column and a minmax index on it to `logs`; rows stored before have none and page by time as before. This is the first step of links, which pull rows by it. [#133](https://github.com/toposcope/toposcope/issues/133)
 
 ## 0.5.4

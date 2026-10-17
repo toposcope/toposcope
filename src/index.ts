@@ -30,6 +30,7 @@ import {
 import { getFields, putFields, storedSkipKeys } from "./control/fields";
 import { getRetentionDays, getSettings, putSettings } from "./control/settings";
 import { instanceId, instanceName } from "./control/instance";
+import { setHereName } from "./shared/here";
 import { getHome, homeSaved, putHome } from "./control/home";
 import { savedSearchUrl } from "./ui/search-url";
 import { createSession, endSession, sessionExpiry, sessionMs } from "./control/sessions";
@@ -333,6 +334,7 @@ async function startBoot(): Promise<void> {
     await migrateStore();
     bootPhase = "repair";
     getDb();
+    setHereName(instanceName());
     await syncFieldRoleSkip(storedSkipKeys());
     await applyRetentionDays(getRetentionDays());
     startAlertCron();

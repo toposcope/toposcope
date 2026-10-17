@@ -23,6 +23,9 @@ export function eventMatchesQuery(event: LogEvent, q: string): boolean {
       if (key === "host") {
         return event.host ?? "";
       }
+      if (key === "toposcope") {
+        return event.toposcope ?? "";
+      }
       return event[key];
     }
     return attrValue(event, key);

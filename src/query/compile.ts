@@ -1,7 +1,8 @@
 import { isAttrIdent } from "../shared/attrs";
 import { messageMatchesText, messageTokens } from "./message-tokens";
 
-export const coreFields = ["level", "service", "host"] as const;
+/** `toposcope` (#134): which instance a row entered at, a column like `host`. */
+export const coreFields = ["level", "service", "host", "toposcope"] as const;
 export type CoreField = (typeof coreFields)[number];
 
 const core = new Set<string>(coreFields);

@@ -2018,11 +2018,14 @@ export function App() {
           }
           params.set("omit", "0");
           if (isCoreField(key)) {
+            if (key === "toposcope") {
+              params.set("fields", "toposcope");
+            }
             const res = await fetch(`/api/facets?${params.toString()}`);
             if (!res.ok) {
               return;
             }
-            const json = (await res.json()) as Facets;
+            const json = (await res.json()) as Facets & { toposcope?: FacetValue[] };
             next[key] = json[key] ?? [];
             return;
           }

@@ -165,6 +165,7 @@ export const logsCreateTableSql = `CREATE TABLE IF NOT EXISTS logs (
   attr_map Map(LowCardinality(String), String) DEFAULT map(),
   trace_id String DEFAULT '',
   seq UInt64 DEFAULT 0,
+  toposcope LowCardinality(String) DEFAULT '',
   INDEX idx_trace_id_bf trace_id TYPE bloom_filter(0.01) GRANULARITY 1,
   INDEX idx_attr_vals_bf mapValues(attr_map) TYPE bloom_filter(0.01) GRANULARITY 1,
   INDEX idx_message_text lowerUTF8(message) TYPE text(tokenizer = 'splitByNonAlpha') GRANULARITY 1,
@@ -190,6 +191,9 @@ export async function migrateStore(): Promise<void> {
     "ALTER TABLE logs ADD COLUMN IF NOT EXISTS trace_id String DEFAULT ''",
   );
   await ensureArrivalSeq();
+  await clickhouseCommand(
+    "ALTER TABLE logs ADD COLUMN IF NOT EXISTS toposcope LowCardinality(String) DEFAULT ''",
+  );
   await backfillAttrMap();
   await dropUnusedAttrColumns();
   await ensureFieldRoleSkip();
@@ -316,6 +320,22 @@ export async function syncFieldRoleSkip(keys: string[]): Promise<void> {
   await clickhouseCommand(`INSERT INTO field_role_skip (key) VALUES ${values}`);
 }
 
+/**
+ * `toposcope` (#134), which instance a row entered at, is a key of every minute rollup: an
+ * aggregate merges rows with the same key, so without it two instances' rows would merge. A
+ * rollup made before it gains the column at the end of its key and keeps every row it has.
+ */
+async function addToposcopeKey(table: string, order: string): Promise<void> {
+  if (await tableHasColumn(table, "toposcope")) {
+    return;
+  }
+  await clickhouseCommand(
+    // No DEFAULT: a column new to the key cannot have one. Existing rows read as empty, which is
+    // what a row stored before an instance had a name is.
+    `ALTER TABLE ${table} ADD COLUMN toposcope LowCardinality(String), MODIFY ORDER BY (${order}, toposcope)`,
+  );
+}
+
 async function ensureLogsByMinute(): Promise<void> {
   if (!(await tableHasColumn("logs_by_minute", "host"))) {
     await clickhouseCommand("DROP VIEW IF EXISTS logs_by_minute_mv");
@@ -327,14 +347,16 @@ async function ensureLogsByMinute(): Promise<void> {
         service LowCardinality(String),
         level LowCardinality(String),
         host LowCardinality(String),
+        toposcope LowCardinality(String) DEFAULT '',
         n AggregateFunction(count)
       )
       ENGINE = AggregatingMergeTree
       PARTITION BY toDate(minute)
-      ORDER BY (tenant_id, minute, service, level, host)
+      ORDER BY (tenant_id, minute, service, level, host, toposcope)
       TTL toDate(minute) + INTERVAL 30 DAY
     `);
   }
+  await addToposcopeKey("logs_by_minute", "tenant_id, minute, service, level, host");
   await clickhouseCommand("DROP VIEW IF EXISTS logs_by_minute_mv");
   await clickhouseCommand(`
     CREATE MATERIALIZED VIEW logs_by_minute_mv TO logs_by_minute AS
@@ -344,16 +366,20 @@ async function ensureLogsByMinute(): Promise<void> {
       service,
       level,
       host,
+      toposcope,
       countState() AS n
     FROM logs
-    GROUP BY tenant_id, minute, service, level, host
+    GROUP BY tenant_id, minute, service, level, host, toposcope
   `);
 }
 
 async function ensureAttrKeysByMinute(): Promise<void> {
-  const order = "tenant_id, minute, service, level, host, key";
+  const before = "tenant_id, minute, service, level, host, key";
+  const order = `${before}, toposcope`;
   const sorting = await tableSortingKey("logs_attr_keys_by_minute");
-  if (sorting !== order) {
+  if (sorting === before) {
+    await addToposcopeKey("logs_attr_keys_by_minute", before);
+  } else if (sorting !== order) {
     await clickhouseCommand("DROP VIEW IF EXISTS logs_attr_keys_by_minute_mv");
     await clickhouseCommand("DROP TABLE IF EXISTS logs_attr_keys_by_minute");
     await clickhouseCommand(`
@@ -364,11 +390,12 @@ async function ensureAttrKeysByMinute(): Promise<void> {
         level LowCardinality(String),
         host LowCardinality(String),
         key LowCardinality(String),
+        toposcope LowCardinality(String) DEFAULT '',
         n AggregateFunction(count)
       )
       ENGINE = AggregatingMergeTree
       PARTITION BY toDate(minute)
-      ORDER BY (tenant_id, minute, service, level, host, key)
+      ORDER BY (tenant_id, minute, service, level, host, key, toposcope)
       TTL toDate(minute) + INTERVAL 30 DAY
     `);
   }
@@ -382,10 +409,11 @@ async function ensureAttrKeysByMinute(): Promise<void> {
       level,
       host,
       key,
+      toposcope,
       countState() AS n
     FROM logs
     ARRAY JOIN mapKeys(attr_map) AS key
-    GROUP BY tenant_id, minute, service, level, host, key
+    GROUP BY tenant_id, minute, service, level, host, key, toposcope
   `);
 }
 
@@ -399,13 +427,18 @@ async function ensureAttrValuesByMinute(): Promise<void> {
       host LowCardinality(String),
       key LowCardinality(String),
       value String,
+      toposcope LowCardinality(String) DEFAULT '',
       n AggregateFunction(count)
     )
     ENGINE = AggregatingMergeTree
     PARTITION BY toDate(minute)
-    ORDER BY (tenant_id, minute, key, value, service, host, level)
+    ORDER BY (tenant_id, minute, key, value, service, host, level, toposcope)
     TTL toDate(minute) + INTERVAL 30 DAY
   `);
+  await addToposcopeKey(
+    "logs_attr_values_by_minute",
+    "tenant_id, minute, key, value, service, host, level",
+  );
   await clickhouseCommand("DROP VIEW IF EXISTS logs_attr_values_by_minute_mv");
   await clickhouseCommand(`
     CREATE MATERIALIZED VIEW logs_attr_values_by_minute_mv TO logs_attr_values_by_minute AS
@@ -417,18 +450,22 @@ async function ensureAttrValuesByMinute(): Promise<void> {
       host,
       key,
       value,
+      toposcope,
       countState() AS n
     FROM logs
     ARRAY JOIN mapKeys(attr_map) AS key, mapValues(attr_map) AS value
     WHERE ${attrValueMvWhereSql}
-    GROUP BY tenant_id, minute, service, level, host, key, value
+    GROUP BY tenant_id, minute, service, level, host, key, value, toposcope
   `);
 }
 
 async function ensureAttrNumericByMinute(): Promise<void> {
-  const order = "(tenant_id, key, minute, service, host, level)";
+  const before = "tenant_id, key, minute, service, host, level";
+  const order = `${before}, toposcope`;
   const sorting = await tableSortingKey("logs_attr_numeric_by_minute");
-  if (sorting !== "tenant_id, key, minute, service, host, level") {
+  if (sorting === before) {
+    await addToposcopeKey("logs_attr_numeric_by_minute", before);
+  } else if (sorting !== order) {
     await clickhouseCommand("DROP VIEW IF EXISTS logs_attr_numeric_by_minute_mv");
     await clickhouseCommand("DROP TABLE IF EXISTS logs_attr_numeric_by_minute");
   }
@@ -440,6 +477,7 @@ async function ensureAttrNumericByMinute(): Promise<void> {
       level LowCardinality(String),
       host LowCardinality(String),
       key LowCardinality(String),
+      toposcope LowCardinality(String) DEFAULT '',
       n AggregateFunction(count),
       v_sum AggregateFunction(sum, Float64),
       v_min AggregateFunction(min, Float64),
@@ -448,7 +486,7 @@ async function ensureAttrNumericByMinute(): Promise<void> {
     )
     ENGINE = AggregatingMergeTree
     PARTITION BY toDate(minute)
-    ORDER BY ${order}
+    ORDER BY (${order})
     TTL toDate(minute) + INTERVAL 30 DAY
   `);
   await clickhouseCommand("DROP VIEW IF EXISTS logs_attr_numeric_by_minute_mv");
@@ -461,6 +499,7 @@ async function ensureAttrNumericByMinute(): Promise<void> {
       level,
       host,
       key,
+      toposcope,
       countState() AS n,
       sumState(toFloat64(value)) AS v_sum,
       minState(toFloat64(value)) AS v_min,
@@ -469,7 +508,7 @@ async function ensureAttrNumericByMinute(): Promise<void> {
     FROM logs
     ARRAY JOIN mapKeys(attr_map) AS key, mapValues(attr_map) AS value
     WHERE ${attrNumericMvWhereSql}
-    GROUP BY tenant_id, minute, service, level, host, key
+    GROUP BY tenant_id, minute, service, level, host, key, toposcope
   `);
 }
 
@@ -726,17 +765,18 @@ async function backfillAttrMap(): Promise<void> {
 
 async function backfillHistogramIfEmpty(): Promise<void> {
   await backfillDays("logs_by_minute", "logs", "logs_by_minute", (day) => `
-    INSERT INTO logs_by_minute
+    INSERT INTO logs_by_minute (tenant_id, minute, service, level, host, toposcope, n)
     SELECT
       tenant_id,
       toStartOfMinute(ts) AS minute,
       service,
       level,
       host,
+      toposcope,
       countState()
     FROM logs
     WHERE toDate(ts) = toDate('${day}')
-    GROUP BY tenant_id, minute, service, level, host
+    GROUP BY tenant_id, minute, service, level, host, toposcope
     SETTINGS max_execution_time = 120
   `);
 }
@@ -747,7 +787,7 @@ async function backfillAttrKeysIfEmpty(): Promise<void> {
     "logs",
     "logs_attr_keys_by_minute",
     (day) => `
-    INSERT INTO logs_attr_keys_by_minute
+    INSERT INTO logs_attr_keys_by_minute (tenant_id, minute, service, level, host, key, toposcope, n)
     SELECT
       tenant_id,
       toStartOfMinute(ts) AS minute,
@@ -755,11 +795,12 @@ async function backfillAttrKeysIfEmpty(): Promise<void> {
       level,
       host,
       key,
+      toposcope,
       countState()
     FROM logs
     ARRAY JOIN mapKeys(attr_map) AS key
     WHERE toDate(ts) = toDate('${day}')
-    GROUP BY tenant_id, minute, service, level, host, key
+    GROUP BY tenant_id, minute, service, level, host, key, toposcope
     SETTINGS max_execution_time = 120
   `,
   );
@@ -771,7 +812,7 @@ async function backfillAttrValuesMissing(): Promise<void> {
     "logs",
     "logs_attr_values_by_minute",
     (day) => `
-    INSERT INTO logs_attr_values_by_minute
+    INSERT INTO logs_attr_values_by_minute (tenant_id, minute, service, level, host, key, value, toposcope, n)
     SELECT
       tenant_id,
       toStartOfMinute(ts) AS minute,
@@ -780,12 +821,13 @@ async function backfillAttrValuesMissing(): Promise<void> {
       host,
       key,
       value,
+      toposcope,
       countState()
     FROM logs
     ARRAY JOIN mapKeys(attr_map) AS key, mapValues(attr_map) AS value
     WHERE toDate(ts) = toDate('${day}')
       AND ${attrValueMvWhereSql}
-    GROUP BY tenant_id, minute, service, level, host, key, value
+    GROUP BY tenant_id, minute, service, level, host, key, value, toposcope
     SETTINGS max_execution_time = 120
   `,
   );
@@ -797,7 +839,7 @@ async function backfillAttrNumericMissing(): Promise<void> {
     "logs",
     "logs_attr_numeric_by_minute",
     (day) => `
-    INSERT INTO logs_attr_numeric_by_minute
+    INSERT INTO logs_attr_numeric_by_minute (tenant_id, minute, service, level, host, key, toposcope, n, v_sum, v_min, v_max, v_p99)
     SELECT
       tenant_id,
       toStartOfMinute(ts) AS minute,
@@ -805,6 +847,7 @@ async function backfillAttrNumericMissing(): Promise<void> {
       level,
       host,
       key,
+      toposcope,
       countState(),
       sumState(toFloat64(value)),
       minState(toFloat64(value)),
@@ -814,7 +857,7 @@ async function backfillAttrNumericMissing(): Promise<void> {
     ARRAY JOIN mapKeys(attr_map) AS key, mapValues(attr_map) AS value
     WHERE toDate(ts) = toDate('${day}')
       AND ${attrNumericMvWhereSql}
-    GROUP BY tenant_id, minute, service, level, host, key
+    GROUP BY tenant_id, minute, service, level, host, key, toposcope
     SETTINGS max_execution_time = 180
   `,
   );

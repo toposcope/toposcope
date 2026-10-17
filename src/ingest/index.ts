@@ -16,6 +16,7 @@ import {
   stampEvent,
   type LogEvent,
 } from "../shared/log-event";
+import { hereName } from "../shared/here";
 import { allocateArrivalSeq, releaseArrivalSeq } from "./arrival-seq";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import type { Losses } from "./otlp-reply";
@@ -57,6 +58,7 @@ export async function insertEvents(events: LogEvent[], losses?: Losses): Promise
             attr_map,
             trace_id: pickTraceId(attr_map),
             seq: seq.from + i,
+            toposcope: event.toposcope ?? hereName(),
           });
         })
         .join("\n");
