@@ -1,6 +1,6 @@
 import { parseAttrFacets, parsePromotedCols, formatPromotedCols } from "../shared/attrs";
 import { isBoardFieldKey } from "../shared/boards";
-import { isRelativeRange } from "../query/relative";
+import { isRelativeRange, parseRangeMs } from "../query/relative";
 import {
   formatSearchAgg,
   parseSearchAgg,
@@ -304,4 +304,40 @@ export function serializeSearchUrl(state: SearchUrlState): string {
   }
   const encoded = params.toString();
   return encoded.length > 0 ? `?${encoded}` : "";
+}
+
+/**
+ * The URL a saved search opens at — its `q`, window, series, panels, columns and `saved=` — the
+ * way the sidebar opens it. The bare address redirects here when it is Home (#109).
+ */
+export function savedSearchUrl(item: {
+  id: string;
+  query: string;
+  range: string | null;
+  from_ts: string | null;
+  to_ts: string | null;
+  agg?: string | null;
+  widgets?: { widgets: WidgetDef[]; logs: boolean } | null;
+  cols?: string[];
+}): string {
+  const base = defaultSearchUrlState();
+  const layout = item.widgets ?? defaultLayout({ agg: item.agg ?? null });
+  const primary = primaryTimeseries(layout.widgets);
+  const relative = Boolean(item.range && parseRangeMs(item.range) !== null);
+  return serializeSearchUrl({
+    ...base,
+    q: item.query,
+    saved: item.id,
+    range: relative ? item.range! : "custom",
+    from: item.from_ts ? toLocalInput(new Date(item.from_ts)) : base.from,
+    to: item.to_ts ? toLocalInput(new Date(item.to_ts)) : base.to,
+    widgets: layout.widgets,
+    logs: layout.logs,
+    agg: primary?.metric ? null : (item.agg ?? primary?.agg ?? null),
+    split: primary?.split ?? "level",
+    chart: primary?.chart ?? "stacked",
+    logScale: primary?.logScale ?? false,
+    replaceY: primary?.replaceY ?? false,
+    cols: parsePromotedCols(item.cols),
+  });
 }

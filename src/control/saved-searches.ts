@@ -314,6 +314,7 @@ export async function deleteSavedSearch(c: Context): Promise<Response> {
     return c.json({ error: "Saved search is used by an alert rule" }, 409);
   }
   getDb().query("DELETE FROM saved_searches WHERE id = ?").run(id);
+  getDb().query("DELETE FROM settings WHERE key = 'home_saved_id' AND value = ?").run(id);
   return c.json({ ok: true });
 }
 

@@ -63,6 +63,20 @@ export function getDb(): Database {
   addColumnIfMissing(db, "alert_rules", "consecutive_failures", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "alert_rules", "silenced_until", "INTEGER");
   ensureRealThreshold(db);
+  // After the threshold rebuild, which copies only the columns it knows.
+  addColumnIfMissing(db, "alert_rules", "kind", "TEXT NOT NULL DEFAULT 'threshold'");
+  addColumnIfMissing(db, "alert_rules", "last_mark", "TEXT");
+  addColumnIfMissing(db, "alert_rules", "body_kind", "TEXT NOT NULL DEFAULT 'default'");
+  addColumnIfMissing(db, "alert_rules", "body_template", "TEXT");
+  db.run(`
+    CREATE TABLE IF NOT EXISTS alert_sent_fingerprints (
+      rule_id TEXT NOT NULL,
+      mark_id TEXT NOT NULL,
+      e1 TEXT NOT NULL,
+      sent_at INTEGER NOT NULL,
+      PRIMARY KEY (rule_id, mark_id, e1)
+    );
+  `);
   db.run(`
     CREATE TABLE IF NOT EXISTS api_tokens (
       id TEXT PRIMARY KEY,
@@ -75,6 +89,13 @@ export function getDb(): Database {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
     );
   `);
   db.run(`

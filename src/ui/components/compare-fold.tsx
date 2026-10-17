@@ -157,7 +157,7 @@ async function searchSide(
   }
   const res = await fetch(`/api/search?${params.toString()}`, { signal });
   if (res.status === 401) {
-    throw new Error("Unauthorized. Sign in with basic auth.");
+    throw new Error("Unauthorized. Sign in again.");
   }
   const json = (await res.json()) as SearchResult & { error?: string };
   if (!res.ok) {

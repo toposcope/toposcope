@@ -808,9 +808,28 @@ async function main(): Promise<void> {
   if (!cutGet.ok) {
     throw new Error(`cut search failed: ${cutGet.status} ${await cutGet.text()}`);
   }
-  const cutBody = (await cutGet.json()) as { sets?: unknown; title?: string };
+  const cutBody = (await cutGet.json()) as {
+    sets?: Array<{ id: string; waiting?: { haveMs: number; needMs: number } }>;
+    title?: string;
+    windows?: { sideMs: number; beforeMs: number; waiting: boolean; inside: unknown[] };
+  };
   if (!Array.isArray(cutBody.sets) || typeof cutBody.title !== "string") {
     throw new Error("GET /api/search/cut missing sets or title");
+  }
+  // #111: a mark minutes old is compared with the hour before it, and Stopped waits.
+  if (
+    !cutBody.windows ||
+    cutBody.windows.beforeMs !== 3_600_000 ||
+    !cutBody.windows.waiting ||
+    !Array.isArray(cutBody.windows.inside)
+  ) {
+    throw new Error(
+      `GET /api/search/cut expected an hour before a young mark, got ${JSON.stringify(cutBody.windows)}`,
+    );
+  }
+  const stoppedSet = cutBody.sets.find((set) => set.id === "stopped");
+  if (cutBody.sets.length > 0 && stoppedSet?.waiting?.needMs !== 3_600_000) {
+    throw new Error(`GET /api/search/cut expected Stopped to wait, got ${JSON.stringify(stoppedSet)}`);
   }
   const incidentEnd = new Date(Date.parse(markTs) + 60_000).toISOString();
   const incidentId = `e2e-inc-${Date.now()}`;
@@ -2593,6 +2612,166 @@ async function main(): Promise<void> {
     throw new Error(`delete p99 search failed: ${p99SavedDel.status}`);
   }
 
+  // #107: an alert on a fingerprint first seen after a deploy.
+  {
+    const svc = `e2efs${marker}`;
+    const nowMs = Date.now();
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const post = (path: string, body: unknown) =>
+      fetch(`${APP_URL}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+        body: JSON.stringify(body),
+      });
+    const fsMarkId = `mk_${svc}`;
+    const otherMarkId = `mk_${svc}_other`;
+    for (const [id, service] of [[fsMarkId, svc], [otherMarkId, `${svc}-other`]] as const) {
+      const res = await post("/v1/marks", { id, kind: "deploy", title: "v0.9.3", service, ts: iso(nowMs - 2 * 60_000) });
+      if (!res.ok) throw new Error(`first-seen mark failed: ${res.status} ${await res.text()}`);
+    }
+    const oldMessage = `${svc} known error before the deploy`;
+    const newMessage = `${svc} TypeError after the deploy`;
+    const ev = (ts: number, message: string) => ({ ts: iso(ts), level: "error", service: svc, host: "e2e-1", message });
+    const ingest = await post("/api/ingest", [
+      ev(nowMs - 30 * 60_000, oldMessage),
+      ev(nowMs - 60_000, oldMessage),
+      ev(nowMs - 60_000, newMessage),
+    ]);
+    if (!ingest.ok) throw new Error(`first-seen ingest failed: ${ingest.status}`);
+    const newE1 = withFingerprint("error", newMessage, {})?.e1 as string | undefined;
+    const oldE1 = withFingerprint("error", oldMessage, {})?.e1 as string | undefined;
+    const fsSavedRes = await fetch(`${APP_URL}/api/saved-searches`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: basicAuth() },
+      body: JSON.stringify({ name: `e2e first seen ${marker}`, query: `service:${svc} level:error`, range: "1h" }),
+    });
+    if (!fsSavedRes.ok) throw new Error(`first-seen save failed: ${fsSavedRes.status}`);
+    const fsSaved = (await fsSavedRes.json()) as { id: string };
+    const fsReceived: Array<{ mark?: { id: string }; fingerprints?: Array<{ e1: string; events: number }>; link?: string }> = [];
+    const fsHook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        fsReceived.push((await req.json()) as (typeof fsReceived)[number]);
+        return new Response("ok");
+      },
+    });
+    try {
+      const badKind = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ name: "x", kind: "first_seen", saved_search_id: fsSaved.id, threshold: 0.5, webhook_url: `http://127.0.0.1:${fsHook.port}/hook` }),
+      });
+      if (badKind.status !== 400) throw new Error(`first-seen threshold 0.5 expected 400, got ${badKind.status}`);
+      const fsRuleRes = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ name: `e2e new bugs ${marker}`, kind: "first_seen", saved_search_id: fsSaved.id, threshold: 1, webhook_url: `http://127.0.0.1:${fsHook.port}/hook` }),
+      });
+      if (!fsRuleRes.ok) throw new Error(`first-seen alert failed: ${fsRuleRes.status} ${await fsRuleRes.text()}`);
+      const fsRule = (await fsRuleRes.json()) as { id: string; kind: string };
+      if (fsRule.kind !== "first_seen") throw new Error(`first-seen alert kind, got ${fsRule.kind}`);
+      let ours = fsReceived.filter((b) => b.mark?.id === fsMarkId);
+      for (let i = 0; i < 20 && ours.length === 0; i++) {
+        await evaluateAlerts();
+        ours = fsReceived.filter((b) => b.mark?.id === fsMarkId);
+        if (ours.length === 0) await Bun.sleep(250);
+      }
+      if (ours.length !== 1) throw new Error(`expected one first-seen call for the deploy, got ${JSON.stringify(fsReceived)}`);
+      const listed = ours[0]!.fingerprints?.map((f) => f.e1) ?? [];
+      if (!newE1 || !listed.includes(newE1)) throw new Error(`first-seen call should name ${newE1}, got ${JSON.stringify(ours[0])}`);
+      if (oldE1 && listed.includes(oldE1)) throw new Error("an e1 seen in the hour before the deploy must not page");
+      if (fsReceived.some((b) => b.mark?.id === otherMarkId)) throw new Error("a mark whose service the q rules out must not page");
+      await evaluateAlerts();
+      if (fsReceived.filter((b) => b.mark?.id === fsMarkId).length !== 1) throw new Error("the same e1 must not page again the next minute");
+      const listRes = await fetch(`${APP_URL}/api/alert-rules`, { headers: { authorization: basicAuth() } });
+      const listed2 = (await listRes.json()) as { rules: Array<{ id: string; last_mark: { id: string; count: number } | null }> };
+      const stored = listed2.rules.find((r) => r.id === fsRule.id);
+      if (stored?.last_mark?.id !== fsMarkId || stored.last_mark.count < 1) throw new Error(`first-seen alert should record the mark it paged on, got ${JSON.stringify(stored)}`);
+      const del = await fetch(`${APP_URL}/api/alert-rules/${fsRule.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+      if (!del.ok) throw new Error(`delete first-seen alert failed: ${del.status}`);
+    } finally {
+      fsHook.stop();
+    }
+    const fsSavedDel = await fetch(`${APP_URL}/api/saved-searches/${fsSaved.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+    if (!fsSavedDel.ok) throw new Error(`delete first-seen search failed: ${fsSavedDel.status}`);
+  }
+
+  // #108: an alert's body of its own, a test call, and a body that does not parse.
+  {
+    const bodyQuery = 'service:e2e -"no such row"';
+    const bodySavedRes = await fetch(`${APP_URL}/api/saved-searches`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: basicAuth() },
+      body: JSON.stringify({ name: `e2e body ${marker}`, query: bodyQuery, range: "1h" }),
+    });
+    if (!bodySavedRes.ok) throw new Error(`body save failed: ${bodySavedRes.status}`);
+    const bodySaved = (await bodySavedRes.json()) as { id: string };
+    const got: Array<{ path: string; type: string; body: string }> = [];
+    const stand = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        const path = new URL(req.url).pathname;
+        const body = await req.text();
+        got.push({ path, type: req.headers.get("content-type") ?? "", body });
+        if (path === "/1/messages.json") {
+          const json = JSON.parse(body) as Record<string, unknown>;
+          const ok = ["token", "user", "message"].every((k) => typeof json[k] === "string" && json[k]);
+          return ok ? Response.json({ status: 1, request: "e2e" }) : Response.json({ status: 0, errors: ["user is missing"] }, { status: 400 });
+        }
+        return new Response("ok");
+      },
+    });
+    try {
+      const pushover = {
+        name: `e2e pushover ${marker}`,
+        kind: "threshold",
+        saved_search_id: bodySaved.id,
+        threshold: 1,
+        webhook_url: `http://127.0.0.1:${stand.port}/1/messages.json`,
+        body_kind: "json",
+        body_template: '{"token": "app", "user": "me", "message": "{{alert.name}}: {{value}} for {{query}}"}',
+      };
+      const tc = await fetch(`${APP_URL}/api/alert-rules/test-call`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify(pushover),
+      });
+      const tcBody = (await tc.json()) as { ok?: boolean; status?: number; reply?: string; sent?: string; error?: string };
+      if (!tc.ok || !tcBody.ok || tcBody.status !== 200 || tcBody.reply !== '{"status":1,"request":"e2e"}') {
+        throw new Error(`test call to the Pushover stand-in should be accepted, got ${tc.status} ${JSON.stringify(tcBody)}`);
+      }
+      const sentMessage = (JSON.parse(tcBody.sent ?? "{}") as { message?: string }).message ?? "";
+      if (!sentMessage.endsWith(`for ${bodyQuery}`)) throw new Error(`a q with quotes should be escaped into the JSON body, got ${tcBody.sent}`);
+      const broken = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ ...pushover, body_template: '{\n  "token": "app",\n  "user": "me"\n  "message": "{{alert.name}}"\n}' }),
+      });
+      const brokenBody = (await broken.json()) as { error?: string };
+      if (broken.status !== 400 || !brokenBody.error?.startsWith('Not JSON yet: line 4, column 3 — a , is missing after "me".')) {
+        throw new Error(`a JSON body that does not parse should be refused with where, got ${broken.status} ${JSON.stringify(brokenBody)}`);
+      }
+      const textRuleRes = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ ...pushover, name: `e2e ntfy ${marker}`, webhook_url: `http://127.0.0.1:${stand.port}/e2e-topic`, body_kind: "text", body_template: "{{alert.name}} fired: {{series}} {{value}} ≥ {{threshold}}" }),
+      });
+      if (!textRuleRes.ok) throw new Error(`text body alert failed: ${textRuleRes.status} ${await textRuleRes.text()}`);
+      const textRule = (await textRuleRes.json()) as { id: string; body_kind: string };
+      await evaluateAlerts();
+      const toTopic = got.filter((g) => g.path === "/e2e-topic");
+      if (toTopic.length !== 1 || !toTopic[0]!.type.startsWith("text/plain") || !/^e2e ntfy \S+ fired: Count \d+ ≥ 1$/.test(toTopic[0]!.body)) {
+        throw new Error(`a text body should reach the topic as that text, got ${JSON.stringify(toTopic)}`);
+      }
+      await fetch(`${APP_URL}/api/alert-rules/${textRule.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+    } finally {
+      stand.stop();
+    }
+    await fetch(`${APP_URL}/api/saved-searches/${bodySaved.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+  }
+
   const blocked = await fetch(`${APP_URL}/api/saved-searches/${saved.id}`, {
     method: "DELETE",
     headers: { authorization: basicAuth() },
@@ -2902,6 +3081,32 @@ async function main(): Promise<void> {
   }
   if (followSearch.events.some((event) => event.service === undefined)) {
     throw new Error("follow events missing service");
+  }
+  const followSpanParams = new URLSearchParams({
+    q: `request_id:${followHex}`,
+    at: new Date(followTs).toISOString(),
+  }).toString();
+  const followSpanAnon = await fetch(`${APP_URL}/api/search/follow-span?${followSpanParams}`);
+  if (followSpanAnon.status !== 401) {
+    throw new Error(`follow span without auth: expected 401, got ${followSpanAnon.status}`);
+  }
+  const followSpanRes = await fetch(`${APP_URL}/api/search/follow-span?${followSpanParams}`, {
+    headers: { authorization: basicAuth() },
+  });
+  if (!followSpanRes.ok) {
+    throw new Error(`follow span failed: ${followSpanRes.status} ${await followSpanRes.text()}`);
+  }
+  const followSpan = (await followSpanRes.json()) as {
+    n: number | null;
+    first: string | null;
+    last: string | null;
+  };
+  if (
+    followSpan.n !== 3 ||
+    followSpan.first !== new Date(followTs - 1000).toISOString() ||
+    followSpan.last !== new Date(followTs + 1000).toISOString()
+  ) {
+    throw new Error(`follow span must be the 3 hops' first and last row, got ${JSON.stringify(followSpan)}`);
   }
 
   const traceId = Date.now().toString(16).padStart(32, "0").slice(-32);
@@ -3338,6 +3543,31 @@ async function main(): Promise<void> {
   const orphanJson = (await orphanGet.json()) as { spans: unknown[]; total: number };
   if (orphanJson.total !== 0) {
     throw new Error("live sampled-out id must be empty");
+  }
+
+  // #102: a browser with no Basic prompt signs in on a page; scripts keep Basic.
+  {
+    const page = await fetch(`${APP_URL}/`, { headers: { accept: "text/html" } });
+    const pageText = await page.text();
+    if (page.status !== 401 || page.headers.get("www-authenticate") || !pageText.includes("Signing in to")) {
+      throw new Error(`a page without the password should be the sign-in page, got ${page.status} ${page.headers.get("www-authenticate")}`);
+    }
+    const bare = await fetch(`${APP_URL}/api/saved-searches`);
+    if (bare.status !== 401 || !bare.headers.get("www-authenticate")?.startsWith('Basic realm="toposcope')) {
+      throw new Error(`an API call without credentials should keep the Basic challenge, got ${bare.status}`);
+    }
+    const wrong = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: `${PASSWORD}-not` }) });
+    if (wrong.status !== 401) throw new Error(`a wrong password should be refused, got ${wrong.status}`);
+    const right = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: PASSWORD }) });
+    const setCookie = right.headers.get("set-cookie") ?? "";
+    if (!right.ok || !/HttpOnly; SameSite=Strict/.test(setCookie)) throw new Error(`sign-in should set a cookie, got ${right.status} ${setCookie}`);
+    const cookie = setCookie.split(";")[0]!;
+    const withCookie = await fetch(`${APP_URL}/api/instance`, { headers: { cookie } });
+    const info = (await withCookie.json()) as { session?: { kind: string } };
+    if (!withCookie.ok || info.session?.kind !== "cookie") throw new Error(`the cookie should sign the browser in, got ${withCookie.status} ${JSON.stringify(info)}`);
+    await fetch(`${APP_URL}/api/sign-out`, { method: "POST", headers: { cookie } });
+    const after = await fetch(`${APP_URL}/api/saved-searches`, { headers: { cookie } });
+    if (after.status !== 401 || after.headers.get("www-authenticate")) throw new Error(`after Sign out the cookie should be refused without the challenge, got ${after.status}`);
   }
 
   console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live");

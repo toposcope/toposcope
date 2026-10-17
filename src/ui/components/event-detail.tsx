@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Popover,
-  PopoverClose,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
@@ -22,7 +21,7 @@ import { formatEventClock, useTimestampFormat } from "@/event-time";
 import { FollowIcon } from "@/components/follow-icon";
 import { levelVariant } from "@/level";
 import type { FieldRole } from "../../shared/fields";
-import { canFollowField, followScanRole, joinTraceRef } from "../../shared/ids";
+import { canFollowField, joinTraceRef } from "../../shared/ids";
 import { formatFieldToken } from "../query-tokens";
 import type { LogEvent } from "@/types";
 
@@ -38,8 +37,8 @@ type Props = {
   roles?: Record<string, FieldRole>;
   metricNames?: string[];
   onGraph?: (field: string, value: string, metric: string) => void;
-  onFollow?: (field: string, value: string, ts: string) => void;
-  onOpenFields?: () => void;
+  /** Resolves once the Follow tab has opened (its window is read first). */
+  onFollow?: (field: string, value: string, ts: string) => Promise<void> | void;
   aroundDisabled?: boolean;
   aroundTitle?: string;
   followDisabled?: boolean;
@@ -96,7 +95,6 @@ export function EventDetail({
   metricNames = [],
   onGraph,
   onFollow,
-  onOpenFields,
   aroundDisabled = false,
   aroundTitle,
   followDisabled = false,
@@ -257,13 +255,11 @@ export function EventDetail({
                     <FollowFieldButton
                       field={field.k}
                       value={field.v}
-                      role={roles[field.k]}
                       disabled={
                         followDisabled && !existingFollow?.(field.k, field.v)
                       }
                       disabledTitle={followCapTitle}
                       onFollow={() => onFollow(field.k, field.v, event.ts)}
-                      onOpenFields={onOpenFields}
                     />
                   ) : null}
                   {notFilterable.has(field.k) ? null : (
@@ -349,31 +345,41 @@ export function EventDetail({
 function FollowFieldButton({
   field,
   value,
-  role,
   disabled,
   disabledTitle,
   onFollow,
-  onOpenFields,
 }: {
   field: string;
   value: string;
-  role: FieldRole | undefined;
   disabled?: boolean;
   disabledTitle?: string;
-  onFollow: () => void;
-  onOpenFields?: () => void;
+  onFollow: () => Promise<void> | void;
 }) {
   const token = formatFieldToken(field, value);
-  const scanRole = followScanRole(role);
+  const [open, setOpen] = useState(false);
+  const [finding, setFinding] = useState(false);
+  async function follow() {
+    setFinding(true);
+    try {
+      await onFollow();
+    } finally {
+      setFinding(false);
+      setOpen(false);
+    }
+  }
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
           size="icon"
           variant="ghost"
           className="size-[22px]"
-          title={disabled ? disabledTitle : `Follow ${token} — every service, ±5m`}
+          title={
+            disabled
+              ? disabledTitle
+              : `Follow ${token} — every service, first to last seen within a day`
+          }
           aria-label="Follow this value"
           disabled={disabled}
         >
@@ -385,44 +391,22 @@ function FollowFieldButton({
           <div className="text-[12.5px] font-medium">Follow this value</div>
           <div className="mt-0.5 font-mono text-[12px] break-all">{token}</div>
           <div className="mt-1 text-[11.5px] text-muted-foreground">
-            ±5m around this event · every service
+            First to last seen, within a day of this event · every service
           </div>
-          <div className="text-[11.5px] text-muted-foreground">
+          <div className="mt-1 text-[11.5px] text-muted-foreground">
             Opens a new tab · this one stays as it is.
           </div>
-          {scanRole === "lookup" ? (
-            <div className="mt-1 text-[11.5px] text-muted-foreground">
-              Indexed — this key is set to lookup.
-            </div>
-          ) : (
-            <div className="mt-1 text-[11.5px] text-amber-200/90">
-              {field} is set to {scanRole}, so this is a scan.{" "}
-              {onOpenFields ? (
-                <PopoverClose asChild>
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={onOpenFields}
-                  >
-                    Set in Fields
-                  </button>
-                </PopoverClose>
-              ) : null}
-            </div>
-          )}
         </div>
-        <PopoverClose asChild>
-          <Button
-            type="button"
-            size="sm"
-            className="h-7 w-full text-[12.5px]"
-            disabled={disabled}
-            title={disabled ? disabledTitle : undefined}
-            onClick={onFollow}
-          >
-            Follow
-          </Button>
-        </PopoverClose>
+        <Button
+          type="button"
+          size="sm"
+          className="h-7 w-full text-[12.5px]"
+          disabled={disabled || finding}
+          title={disabled ? disabledTitle : undefined}
+          onClick={() => void follow()}
+        >
+          {finding ? "Finding first and last seen…" : "Follow"}
+        </Button>
       </PopoverContent>
     </Popover>
   );

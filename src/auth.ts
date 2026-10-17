@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { hashToken, tokenHashExists } from "./control/tokens";
 import { envValue } from "./shared/env";
+import { instanceId, instanceName } from "./control/instance";
 
 function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -69,6 +70,46 @@ export function checkBasic(header: string | undefined): boolean {
   return safeEqual(decoded.slice(colon + 1), password);
 }
 
+/** `toposcope · <name>`, so two instances on one machine ask in their own words (#102). */
+export function basicRealm(): string {
+  let name: string | null = null;
+  try {
+    name = instanceName();
+  } catch {
+    name = null;
+  }
+  // A header value is Latin-1, and the realm is quoted.
+  const safe = (name ?? "").replace(/[^\x20-\x7e\xa0-\xff]|["\\]/g, "").trim();
+  return safe ? `toposcope · ${safe}` : "toposcope";
+}
+
 export function unauthorizedHeaders(): Record<string, string> {
-  return { "WWW-Authenticate": 'Basic realm="toposcope"' };
+  return { "WWW-Authenticate": `Basic realm="${basicRealm()}"` };
+}
+
+export function passwordMatches(presented: string): boolean {
+  const password = basicPassword();
+  return Boolean(password) && safeEqual(presented, password!);
+}
+
+/** One cookie per instance: two on one host (different ports) do not sign each other out. */
+export function sessionCookieName(): string {
+  return `toposcope_session_${instanceId().replace(/-/g, "").slice(0, 8)}`;
+}
+
+export function readCookie(header: string | undefined, name: string): string | undefined {
+  if (!header) {
+    return undefined;
+  }
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq > 0 && part.slice(0, eq).trim() === name) {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    }
+  }
+  return undefined;
+}
+
+export function sessionCookieHeader(value: string, maxAgeSeconds: number, secure: boolean): string {
+  return `${sessionCookieName()}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; HttpOnly; SameSite=Strict${secure ? "; Secure" : ""}`;
 }

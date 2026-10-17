@@ -16,7 +16,7 @@ type Props = {
   result: TraceResponse | null;
   loading: boolean;
   failed: boolean;
-  onFollow: (key: string, value: string, ts: string) => void;
+  onFollow: (key: string, value: string, ts: string) => Promise<void> | void;
   followDisabled?: boolean;
   followTitle?: string;
   /** The selected span is read in the rail, so the rows keep their height. */
@@ -50,6 +50,7 @@ export function TraceWaterfall({
   selected,
   onSelect,
 }: Props) {
+  const [finding, setFinding] = useState(false);
   const [hover, setHover] = useState<{
     id: string;
     top: number;
@@ -141,10 +142,15 @@ export function TraceWaterfall({
               type="button"
               className="mt-2 h-7 rounded-[4.4px] border border-white/15 px-3 text-[12.5px] hover:bg-accent disabled:cursor-default disabled:opacity-35"
               title={followTitle}
-              disabled={followDisabled}
-              onClick={() => onFollow(joinKey, joinValue, ts)}
+              disabled={followDisabled || finding}
+              onClick={() => {
+                setFinding(true);
+                void Promise.resolve(onFollow(joinKey, joinValue, ts)).finally(() =>
+                  setFinding(false),
+                );
+              }}
             >
-              Follow this id instead
+              {finding ? "Finding first and last seen…" : "Follow this id instead"}
             </button>
           )}
         </div>

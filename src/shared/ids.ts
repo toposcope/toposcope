@@ -116,10 +116,6 @@ export function canFollowField(
   return isIdShapedValue(value);
 }
 
-export function followScanRole(role: FieldRole | undefined): FieldRole {
-  return role ?? "chart";
-}
-
 export function joinTraceRef(
   attrs: Record<string, unknown> | undefined,
 ): { key: string; value: string } | null {

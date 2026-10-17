@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Copy, KeyRound, Menu, Settings, Undo2 } from "lucide-react";
+import { ChevronDown, Copy, House, KeyRound, Menu, Settings, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft } from "@/components/alert-rule-dialog";
 import { AlertsView, type AlertSeriesView } from "@/components/alerts-view";
@@ -15,6 +15,7 @@ import { EventTable } from "@/components/event-table";
 import { WorkspaceStrip } from "@/components/workspace-strip";
 import { OperatorSidebar } from "@/components/operator-sidebar";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
+import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
 import { loadSavedCounts } from "./saved-counts";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
@@ -37,6 +38,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type {
+  AlertKind,
   AlertRule,
   FacetValue,
   Facets,
@@ -89,6 +91,7 @@ import {
   ordinalLabels,
   type HistogramExploreOrigin,
   type Workspace,
+  type WorkspaceFollow,
   type WorkspaceKind,
   type WorkspacePaint,
   type WorkspaceSnap,
@@ -196,9 +199,21 @@ import {
 import { SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./time-range";
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
-import { windowHead, windowMeta } from "./window-identity";
+import {
+  searchWindowMs,
+  windowHead,
+  windowMeta,
+  type SearchWindow,
+} from "./window-identity";
 import { flattenTrace } from "./waterfall";
-import { followQuery, followWindow } from "./follow";
+import { followOnOpened, followQuery } from "./follow";
+import {
+  followOpened,
+  followSpanSearchParams,
+  type FollowOpened,
+  type FollowSpan,
+} from "../shared/follow-span";
+import { FollowOpenedChip } from "@/components/follow-opened-chip";
 import {
   deriveLiveSeries,
   extraQueryLiveFetch,
@@ -436,7 +451,10 @@ export function App() {
       snap: urlSearchSnap(boot),
     },
   ]);
-  const [follow, setFollow] = useState<{ key: string; value: string } | null>(null);
+  const [follow, setFollow] = useState<WorkspaceFollow | null>(null);
+  const followOpenRef = useRef<
+    ((field: string, value: string, opened: FollowOpened) => void) | null
+  >(null);
   const [surrAnchor, setSurrAnchor] = useState<LogEvent | null>(null);
   const [surrSel, setSurrSel] = useState<LogEvent | null>(null);
   const [focusMark, setFocusMark] = useState<ChangeMark | null>(null);
@@ -468,7 +486,12 @@ export function App() {
   const [events, setEvents] = useState<LogEvent[]>([]);
   const [ingested, setIngested] = useState(false);
   const [histogram, setHistogram] = useState<HistogramBucket[]>([]);
+  const [searchWindow, setSearchWindow] = useState<SearchWindow | null>(null);
   const [windowMarks, setWindowMarks] = useState<ChangeMark[]>([]);
+  // A first-seen alert's link (`cut=<mark id>`) opens that mark's Fingerprints once, on arrival.
+  const pendingCutRef = useRef<string | null>(
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("cut"),
+  );
   const [markBefore, setMarkBefore] = useState<ChangeMark | null>(null);
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
@@ -512,9 +535,76 @@ export function App() {
   const [scanRefuse, setScanRefuse] = useState<SearchScan | null>(null);
   const [retentionDays, setRetentionDays] = useState(30);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [instance, setInstance] = useState<InstanceInfo | null>(null);
+  const [homeId, setHomeId] = useState<string | null>(null);
+
+  const loadHome = useCallback(async () => {
+    const res = await fetch("/api/home");
+    if (res.ok) {
+      setHomeId(((await res.json()) as { saved_id: string | null }).saved_id);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHome().catch(() => undefined);
+  }, [loadHome]);
+
+  async function setHome(id: string | null) {
+    const res = await fetch("/api/home", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ saved_id: id }),
+    });
+    const json = (await res.json().catch(() => null)) as { saved_id?: string | null; error?: string } | null;
+    if (!res.ok) {
+      toast.error(json?.error ?? `Home failed (${res.status})`);
+      return;
+    }
+    setHomeId(json?.saved_id ?? null);
+    toast.success(id ? "The bare address opens on this search" : "The bare address opens on All logs");
+  }
+
+  const loadInstance = useCallback(async () => {
+    const res = await fetch("/api/instance");
+    if (res.ok) {
+      setInstance((await res.json()) as InstanceInfo);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadInstance().catch(() => undefined);
+  }, [loadInstance]);
+
+  useEffect(() => {
+    document.title = instanceTitle(instance);
+  }, [instance]);
+
+  // A sign-in that ran out (or a password change) answers 401: the page itself then shows the
+  // sign-in page. Once a minute at most, so a 401 the page cannot fix does not loop.
+  useEffect(() => {
+    if (!unauthorized) {
+      return;
+    }
+    try {
+      const last = Number(sessionStorage.getItem("toposcope:signin-reload") ?? 0);
+      if (Date.now() - last < 60_000) {
+        return;
+      }
+      sessionStorage.setItem("toposcope:signin-reload", String(Date.now()));
+    } catch {
+      return;
+    }
+    window.location.reload();
+  }, [unauthorized]);
+
+  async function signOut() {
+    await fetch("/api/sign-out", { method: "POST" }).catch(() => undefined);
+    window.location.assign("/?signed_out=1");
+  }
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [alertSeries, setAlertSeries] = useState<Record<string, AlertSeriesView>>({});
   const [alerts, setAlerts] = useState<AlertRule[]>([]);
+  const [alertsCanLink, setAlertsCanLink] = useState(false);
   const [fields, setFields] = useState<FieldsResponse | null>(null);
   const [fieldLinks, setFieldLinks] = useState<Record<string, string>>({});
   const [fieldRoles, setFieldRoles] = useState<Record<string, FieldRole>>({});
@@ -572,13 +662,14 @@ export function App() {
     const res = await fetch("/api/alert-rules");
     if (res.status === 401) {
       setUnauthorized(true);
-      throw new Error("Unauthorized. Sign in with basic auth.");
+      throw new Error("Unauthorized. Sign in again.");
     }
     if (!res.ok) {
       throw new Error(`Alert rules failed (${res.status})`);
     }
-    const json = (await res.json()) as { rules: AlertRule[] };
+    const json = (await res.json()) as { rules: AlertRule[]; link?: boolean };
     setAlerts(json.rules);
+    setAlertsCanLink(Boolean(json.link));
   }, []);
 
   const fieldsQuery = useCallback(() => {
@@ -602,7 +693,7 @@ export function App() {
     const res = await fetch("/api/fields");
     if (res.status === 401) {
       setUnauthorized(true);
-      throw new Error("Unauthorized. Sign in with basic auth.");
+      throw new Error("Unauthorized. Sign in again.");
     }
     if (!res.ok) {
       throw new Error(`Fields failed (${res.status})`);
@@ -630,7 +721,7 @@ export function App() {
       const res = await fetch(path, { signal: ac.signal });
       if (res.status === 401) {
         setUnauthorized(true);
-        throw new Error("Unauthorized. Sign in with basic auth.");
+        throw new Error("Unauthorized. Sign in again.");
       }
       if (!res.ok) {
         throw new Error(`Fields failed (${res.status})`);
@@ -746,7 +837,7 @@ export function App() {
     const res = await fetch("/api/saved-searches");
     if (res.status === 401) {
       setUnauthorized(true);
-      throw new Error("Unauthorized. Sign in with basic auth.");
+      throw new Error("Unauthorized. Sign in again.");
     }
     if (!res.ok) {
       throw new Error(`Saved searches failed (${res.status})`);
@@ -1174,7 +1265,7 @@ export function App() {
         });
         if (res.status === 401) {
           setUnauthorized(true);
-          throw new Error("Unauthorized. Sign in with basic auth.");
+          throw new Error("Unauthorized. Sign in again.");
         }
         if (!res.ok) {
           throw new Error(`Search failed (${res.status})`);
@@ -1215,6 +1306,7 @@ export function App() {
               : mergedHist;
           windowTotal = histogramTotal(filled);
           setHistogram(filled);
+          setSearchWindow({ from: json.from, to: json.to });
           setTotal(windowTotal);
           const intervalMs = histogramIntervalMs(
             histFrom,
@@ -1589,7 +1681,7 @@ export function App() {
         const res = await fetch("/api/saved-searches");
         if (res.status === 401) {
           setUnauthorized(true);
-          throw new Error("Unauthorized. Sign in with basic auth.");
+          throw new Error("Unauthorized. Sign in again.");
         }
         if (!res.ok) {
           throw new Error(`Saved searches failed (${res.status})`);
@@ -1614,6 +1706,7 @@ export function App() {
             setSearching(false);
             setEvents([]);
             setHistogram([]);
+            setSearchWindow(null);
             setAggSeries(null);
             setTotal(0);
             setSeriesByKey({});
@@ -2168,9 +2261,12 @@ export function App() {
 
   async function createAlert(input: {
     name: string;
+    kind: AlertKind;
     saved_search_id: string;
     threshold: number;
     webhook_url: string;
+    body_kind?: "default" | "text" | "json";
+    body_template?: string;
   }) {
     const res = await fetch("/api/alert-rules", {
       method: "POST",
@@ -2190,9 +2286,12 @@ export function App() {
     id: string,
     input: {
       name: string;
+      kind?: AlertKind;
       saved_search_id: string;
       threshold: number;
       webhook_url: string;
+      body_kind?: "default" | "text" | "json";
+      body_template?: string;
       silence_for?: "1h" | "4h" | "24h";
       silenced_until?: number | null;
     },
@@ -2445,6 +2544,7 @@ export function App() {
       q,
       savedName: item?.name ?? null,
       savedDirty: board ? false : !item || item.query !== q,
+      home: Boolean(item && item.id === homeId),
       follow,
       surrAnchor,
       focusMark,
@@ -2467,6 +2567,7 @@ export function App() {
         q: snap.q,
         savedName: item?.name ?? null,
         savedDirty: board ? false : Boolean(item && item.query !== snap.q),
+        home: Boolean(item && item.id === homeId),
         follow: snap.follow,
         surrAnchor: snap.surrAnchor,
         focusMark: snap.focusMark,
@@ -2515,6 +2616,7 @@ export function App() {
             metricNames,
             attrKeyOptions,
             lastTo: lastToRef.current,
+            window: searchWindow,
             marks: windowMarks,
             markBefore,
             markAfter,
@@ -2576,6 +2678,7 @@ export function App() {
     setSearching(false);
     setEvents([]);
     setHistogram([]);
+    setSearchWindow(null);
     setWindowMarks([]);
     setMarkBefore(null);
     setMarkAfter(null);
@@ -2649,6 +2752,21 @@ export function App() {
     setPinnedEvent(null);
   }
 
+  useEffect(() => {
+    const id = pendingCutRef.current;
+    if (!id) {
+      return;
+    }
+    const mark = windowMarks.find((m) => m.id === id);
+    if (!mark) {
+      return;
+    }
+    pendingCutRef.current = null;
+    openFingerprints(mark);
+    // openFingerprints reads the clock it is called with; the link's window is already set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowMarks]);
+
   function openCompare(mark: ChangeMark) {
     const openedAt = live
       ? new Date().toISOString()
@@ -2662,6 +2780,7 @@ export function App() {
     lastPaintHuntRef.current = paint.hunt;
     setEvents(paint.events);
     setHistogram(paint.histogram);
+    setSearchWindow(paint.window);
     histogramRef.current = paint.histogram;
     setWindowMarks(paint.marks);
     setMarkBefore(paint.markBefore);
@@ -2759,6 +2878,7 @@ export function App() {
       }
       setEvents([]);
       setHistogram([]);
+      setSearchWindow(null);
       histogramRef.current = [];
       setWindowMarks([]);
       setMarkBefore(null);
@@ -2856,15 +2976,15 @@ export function App() {
   function followSnap(
     key: string,
     value: string,
-    nextFrom: string,
-    nextTo: string,
+    opened: FollowOpened,
   ): WorkspaceSnap {
     return followChildSnap(currentSnap(), {
       q: followQuery(key, value),
-      from: nextFrom,
-      to: nextTo,
+      from: toLocalInput(new Date(opened.fromMs)),
+      to: toLocalInput(new Date(opened.toMs)),
       key,
       value,
+      opened,
     });
   }
 
@@ -3045,16 +3165,54 @@ export function App() {
     void runSearch("replace", { q: nextQ });
   }
 
-  function onFollowField(field: string, value: string, ts: string) {
-    const window = followWindow(ts);
-    if (!window) {
+  /** Latest render's opener: the read below awaits, and tabs may change meanwhile. */
+  followOpenRef.current = (field: string, value: string, opened: FollowOpened) => {
+    setView("search");
+    addWorkspace(followSnap(field, value, opened), false);
+  };
+
+  /** Reads the value's first and last row within a day, then opens the tab on them. */
+  async function onFollowField(field: string, value: string, ts: string) {
+    const atMs = Date.parse(ts);
+    if (Number.isNaN(atMs)) {
       return;
     }
-    setView("search");
-    addWorkspace(
-      followSnap(field, value, toLocalInput(window.from), toLocalInput(window.to)),
-      false,
-    );
+    let span: FollowSpan | null = null;
+    try {
+      const params = followSpanSearchParams(
+        followQuery(field, value),
+        new Date(atMs).toISOString(),
+      );
+      const res = await fetch(`/api/search/follow-span?${params.toString()}`);
+      if (res.ok) {
+        span = (await res.json()) as FollowSpan;
+      }
+    } catch {
+      span = null;
+    }
+    followOpenRef.current?.(field, value, followOpened(atMs, span));
+  }
+
+  function onResetFollow() {
+    const opened = follow?.opened;
+    if (!opened) {
+      return;
+    }
+    const nextFrom = toLocalInput(new Date(opened.fromMs));
+    const nextTo = toLocalInput(new Date(opened.toMs));
+    setExplore(null);
+    setRange("custom");
+    setFrom(nextFrom);
+    setTo(nextTo);
+    setLive(false);
+    setStep(null);
+    void runSearch("replace", {
+      range: "custom",
+      from: nextFrom,
+      to: nextTo,
+      live: false,
+      step: null,
+    });
   }
 
   function onToggleFacet(field: string, value: string) {
@@ -3249,13 +3407,14 @@ export function App() {
     }),
     [numericKeys, metricCatalog, range, live, findMetrics, metricLabelKeys],
   );
-  const windowFromMs = histogram[0]
-    ? Date.parse(histogram[0].t)
-    : Date.parse(isoFromLocal(from) ?? "");
-  const windowToMs =
-    Number.isFinite(windowFromMs) && spanMs > 0
-      ? windowFromMs + spanMs
-      : Date.parse(isoFromLocal(to) ?? "");
+  const clockFromMs = Date.parse(isoFromLocal(from) ?? "");
+  const { fromMs: windowFromMs, toMs: windowToMs } = searchWindowMs(searchWindow, {
+    fromMs: clockFromMs,
+    toMs:
+      Number.isFinite(clockFromMs) && spanMs > 0
+        ? clockFromMs + spanMs
+        : Date.parse(isoFromLocal(to) ?? ""),
+  });
   const barInterval = displayedHistogramInterval(spanMs, step, chart);
   const searchSlow = searching && searchElapsedMs >= SEARCH_SLOW_AFTER_MS;
   const compiled = compileQuery(q);
@@ -3360,6 +3519,7 @@ export function App() {
     kind: tab.id === wsId ? wsKind : tab.kind,
     label: stripLabels[i] ?? tab.label,
     board: tab.id === wsId ? boardOn : labelForSnap(tab.snap).board,
+    home: homeId !== null && (tab.id === wsId ? savedId : tab.snap.savedId) === homeId,
   }));
   const elsewhere: Record<string, number> = {};
   for (const tab of wsList) {
@@ -3386,14 +3546,14 @@ export function App() {
           openedAt: cut.openedAt,
           range, from, to, spanMs,
           fromMs: windowFromMs,
-          toMs: windowFromMs + spanMs,
+          toMs: windowToMs,
           result: cut.result,
         })
       : null;
   const compareWindows =
     compare && Number.isFinite(windowFromMs) && spanMs > 0
       ? compareFoldWindows({ mark: compare.mark, openedAt: compare.openedAt,
-          from, to, live, huntFromMs: windowFromMs, huntToMs: windowFromMs + spanMs })
+          from, to, live, huntFromMs: windowFromMs, huntToMs: windowToMs })
       : null;
   const washWindows =
     cut && cutWindows && !cutWindows.dead
@@ -3444,6 +3604,8 @@ export function App() {
       alerts={alerts}
       counts={counts}
       activeSavedId={savedId}
+      homeId={homeId}
+      onSetHome={(id) => void setHome(id)}
       elsewhere={elsewhere}
       facets={facets}
       activeFacets={activeFacets}
@@ -3498,12 +3660,34 @@ export function App() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
-        <span className="flex items-center gap-1.5">
-          <BrandMark className="size-4 shrink-0 text-plate" />
-          <span className="text-[14px] font-semibold tracking-[-0.015em]">
-            toposcope
-          </span>
-        </span>
+        {(() => {
+          const home = homeId ? saved.find((item) => item.id === homeId && !item.board) : undefined;
+          const mark = (
+            <>
+              <BrandMark className="size-4 shrink-0 text-plate" />
+              <span className="text-[14px] font-semibold tracking-[-0.015em]">toposcope</span>
+            </>
+          );
+          return home ? (
+            <button
+              type="button"
+              title={`Home · ${home.name} · opens a new tab · this one stays as it is`}
+              className="flex items-center gap-1.5 rounded-md text-foreground"
+              onClick={() => openSavedTab(home)}
+            >
+              {mark}
+            </button>
+          ) : (
+            <span className="flex items-center gap-1.5">{mark}</span>
+          );
+        })()}
+        {instance ? (
+          <InstanceMenu
+            info={instance}
+            onRename={() => setSettingsOpen(true)}
+            onSignOut={() => void signOut()}
+          />
+        ) : null}
         <nav className="flex items-center gap-0.5">
           <Button
             type="button"
@@ -3724,7 +3908,6 @@ export function App() {
                       links={fieldLinks}
                       roles={fieldRoles}
                       onFollow={onFollowField}
-                      onOpenFields={() => setView("fields")}
                     />
                   ) : null}
                 </div>
@@ -3895,7 +4078,7 @@ export function App() {
             <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-[7px] border-b px-3 py-[9px]">
               {unauthorized ? (
                 <span className="text-xs text-destructive">
-                  Unauthorized. Sign in with basic auth.
+                  Unauthorized. Sign in again.
                 </span>
               ) : error ? (
                 <span className="text-xs text-destructive">{error}</span>
@@ -3918,7 +4101,21 @@ export function App() {
                 </div>
               ) : null}
               {qErrOn && !chipInField ? <QueryErrorChip faults={qFaults} /> : null}
-              {explore ? (
+              {wsKind === "follow" && follow?.opened ? (
+                <FollowOpenedChip
+                  opened={follow.opened}
+                  moved={
+                    !followOnOpened(follow.opened, {
+                      range,
+                      from,
+                      to,
+                      live,
+                      explored: explore !== null,
+                    })
+                  }
+                  onReset={onResetFollow}
+                />
+              ) : explore ? (
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/16 bg-white/5 px-2.5 py-0.5 text-xs text-foreground">
                     <span
@@ -3944,11 +4141,30 @@ export function App() {
                       ? "Board · its inputs are live, its template is locked"
                       : undefined
                   }
-                  className="inline-flex max-w-40 items-center gap-1 truncate rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground"
+                  className={cn(
+                    "inline-flex items-center gap-1 truncate rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground",
+                    activeSaved.id === homeId ? "max-w-60" : "max-w-40",
+                    activeSaved.id === homeId && dirty && "border-dashed",
+                  )}
                 >
+                  {activeSaved.id === homeId ? (
+                    <>
+                      <House className="size-3 shrink-0" />
+                      Home ·{" "}
+                    </>
+                  ) : null}
                   {activeSaved.name}
                   {dirty ? " · edited" : ""}
                 </span>
+              ) : null}
+              {activeSaved && activeSaved.id === homeId && dirty ? (
+                <button
+                  type="button"
+                  className="inline-flex h-6 items-center rounded-md bg-accent px-2 text-[12px] text-foreground hover:bg-accent/70"
+                  onClick={() => applySnap(snapFromSaved(activeSaved, {}), true)}
+                >
+                  Back to Home
+                </button>
               ) : null}
             </div>
             {boardUnbound && activeSaved?.board ? (
@@ -4288,7 +4504,6 @@ export function App() {
                         metricNames={metricNames}
                         onGraph={onGraphField}
                         onFollow={onFollowField}
-                        onOpenFields={() => setView("fields")}
                       />
                     </div>
                   ) : null}
@@ -4320,7 +4535,6 @@ export function App() {
                   metricNames={metricNames}
                   onGraph={onGraphField}
                   onFollow={onFollowField}
-                  onOpenFields={() => setView("fields")}
                 />
               ) : null}
             </div>
@@ -4356,6 +4570,7 @@ export function App() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         onRetentionDays={setRetentionDays}
+        onInstanceName={() => void loadInstance().catch(() => undefined)}
       />
       <TokensDialog open={tokensOpen} onOpenChange={setTokensOpen} />
       <SaveSearchDialog
@@ -4390,6 +4605,7 @@ export function App() {
         onCreate={createAlert}
         onUpdate={updateAlert}
         onDelete={deleteAlert}
+        canLink={alertsCanLink}
       />
     </div>
   );

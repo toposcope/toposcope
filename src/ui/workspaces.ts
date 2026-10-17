@@ -1,6 +1,7 @@
 import { surroundingDefaultN } from "../query/surrounding";
 import type { HistogramChartKind, HistogramIntervalId, HistogramSplit } from "../query/histogram";
 import { formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../shared/change-mark";
+import type { FollowOpened } from "../shared/follow-span";
 import { defaultLayout, type WidgetDef } from "../shared/widgets";
 import type { FacetValue, Facets, HistogramBucket, LogEvent, SearchAggResult } from "./types";
 import type { ContextMode } from "./context-mode";
@@ -9,6 +10,7 @@ import type { InspectTab } from "./inspect-tabs";
 import { defaultSearchUrlState, type RangeMode, type SearchUrlState } from "./search-url";
 import type { FingerprintCutSnap } from "./fingerprint-cut";
 import type { CompareFoldSnap } from "./compare-fold";
+import type { SearchWindow } from "./window-identity";
 
 export function ordinalLabels(labels: string[]): string[] {
   const counts = new Map<string, number>();
@@ -28,7 +30,8 @@ export function ordinalLabels(labels: string[]): string[] {
 
 export type WorkspaceKind = "search" | "follow" | "surroundings";
 
-export type WorkspaceFollow = { key: string; value: string };
+/** `opened`: the window the Follow tab opened on, kept so Reset can return to it. */
+export type WorkspaceFollow = { key: string; value: string; opened?: FollowOpened };
 
 export type HistogramExploreOrigin = {
   range: RangeMode;
@@ -63,6 +66,7 @@ export type WorkspacePaint = {
   metricNames: string[];
   attrKeyOptions: Array<{ k: string; n: number }>;
   lastTo: string | null;
+  window: SearchWindow | null;
   marks: ChangeMark[];
   markBefore: ChangeMark | null;
   markAfter: ChangeMark | null;
@@ -203,6 +207,7 @@ export function followChildSnap(
     to: string;
     key: string;
     value: string;
+    opened?: FollowOpened;
   },
 ): WorkspaceSnap {
   return {
@@ -215,7 +220,9 @@ export function followChildSnap(
     live: false,
     savedId: null,
     bind: {},
-    follow: { key: follow.key, value: follow.value },
+    follow: follow.opened
+      ? { key: follow.key, value: follow.value, opened: follow.opened }
+      : { key: follow.key, value: follow.value },
     explore: null,
     inspectTabs: [],
     activeInspect: null,
@@ -280,6 +287,8 @@ export type Workspace = {
   kind: WorkspaceKind;
   label: string;
   board?: boolean;
+  /** Its saved search is Home (#109). */
+  home?: boolean;
   snap: WorkspaceSnap;
 };
 
@@ -377,6 +386,8 @@ export function workspaceLiveLabel(input: {
   focusMark?: ChangeMark | null;
   board?: boolean;
   boardBinds?: string[];
+  /** A Home tab keeps its name, edited or not (frame 12j). */
+  home?: boolean;
 }): string {
   if (input.kind === "surroundings") {
     if (input.focusMark) {
@@ -397,6 +408,9 @@ export function workspaceLiveLabel(input: {
   }
   if (input.savedName && !input.savedDirty) {
     return input.savedName;
+  }
+  if (input.savedName && input.home) {
+    return `${input.savedName} · edited`;
   }
   const q = input.q.trim();
   return q.length > 0 ? q : "All logs";

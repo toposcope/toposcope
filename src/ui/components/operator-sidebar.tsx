@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, MoreHorizontal, Plus } from "lucide-react";
+import { Bell, House, MoreHorizontal, Plus } from "lucide-react";
 import { CountText } from "@/components/count-text";
 import { FacetGroup } from "@/components/facet-group";
 import { BoardInputs, type BoardFieldBind } from "@/components/board-inputs";
@@ -31,6 +31,9 @@ type Props = {
   alerts: AlertRule[];
   counts: Record<string, number>;
   activeSavedId: string | null;
+  /** The saved search the bare address opens on (#109). */
+  homeId: string | null;
+  onSetHome: (id: string | null) => void;
   elsewhere: Record<string, number>;
   facets: Facets;
   activeFacets: Partial<Record<string, string | string[]>>;
@@ -69,6 +72,8 @@ export function OperatorSidebar({
   alerts,
   counts,
   activeSavedId,
+  homeId,
+  onSetHome,
   elsewhere,
   facets,
   activeFacets,
@@ -193,6 +198,9 @@ export function OperatorSidebar({
                           <circle cx="9" cy="17" r="2" />
                         </svg>
                       ) : null}
+                      {homeId === item.id ? (
+                        <House aria-label="Home" className="size-3 shrink-0 text-plate" />
+                      ) : null}
                       <span className="min-w-0 flex-1 truncate text-[13px]">{item.name}</span>
                       {other > 0 ? (
                         <span
@@ -266,6 +274,20 @@ export function OperatorSidebar({
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => onAlert(item)}>
                             Alert on this
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="h-auto flex-col items-start gap-0.5 py-1.5"
+                            onSelect={() => onSetHome(homeId === item.id ? null : item.id)}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <House className="size-3.5 text-plate" />
+                              {homeId === item.id ? "Unset Home" : "Set as Home"}
+                            </span>
+                            <span className="pl-5 text-[11.5px] text-muted-foreground">
+                              {homeId === item.id
+                                ? "The bare address opens on All logs"
+                                : "The bare address opens on this search"}
+                            </span>
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => onDeleteSaved(item.id)}>
                             Delete

@@ -19,12 +19,16 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRetentionDays?: (days: number) => void;
+  /** The name changed: the header and the tab title follow. */
+  onInstanceName?: (name: string | null) => void;
 };
 
 const previewN = 1240;
 
-export function SettingsDialog({ open, onOpenChange, onRetentionDays }: Props) {
+export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstanceName }: Props) {
   const [days, setDays] = useState("30");
+  const [name, setName] = useState("");
+  const [savedName, setSavedName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const countFormat = useCountFormat();
   const timestampFormat = useTimestampFormat();
@@ -40,8 +44,10 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays }: Props) {
         toast.error("Failed to load settings");
         return;
       }
-      const json = (await res.json()) as { retention_days: number };
+      const json = (await res.json()) as { retention_days: number; instance_name?: string | null };
       setDays(String(json.retention_days));
+      setName(json.instance_name ?? "");
+      setSavedName(json.instance_name ?? null);
     });
   }, [open]);
 
@@ -57,15 +63,19 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays }: Props) {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ retention_days: retentionDays }),
+        body: JSON.stringify({ retention_days: retentionDays, instance_name: name }),
       });
       if (!res.ok) {
-        toast.error(`Save failed (${res.status})`);
+        const err = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(err?.error ?? `Save failed (${res.status})`);
         return;
       }
-      const json = (await res.json()) as { retention_days: number };
+      const json = (await res.json()) as { retention_days: number; instance_name?: string | null };
       setDays(String(json.retention_days));
       onRetentionDays?.(json.retention_days);
+      if ((json.instance_name ?? null) !== savedName) {
+        onInstanceName?.(json.instance_name ?? null);
+      }
       toast.success(`Retention set to ${json.retention_days} days`);
       onOpenChange(false);
     } finally {
@@ -109,6 +119,21 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays }: Props) {
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-3" onSubmit={(e) => void onSave(e)}>
+          <DialogField label="Instance name">
+            <DialogControl>
+              <input
+                id="instance-name"
+                value={name}
+                maxLength={64}
+                placeholder="unnamed"
+                onChange={(e) => setName(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground"
+              />
+              {savedName && name.trim() !== savedName ? (
+                <span className="shrink-0 text-[11px] text-muted-foreground">was {savedName}</span>
+              ) : null}
+            </DialogControl>
+          </DialogField>
           <DialogField label="Retention days" help="Applies ALTER TTL on save.">
             <DialogControl>
               <input
