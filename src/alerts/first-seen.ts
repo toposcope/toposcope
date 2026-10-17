@@ -116,12 +116,60 @@ function hm(isoTs: string): string {
   return isoTs.slice(11, 16);
 }
 
+type MarkCut = {
+  mark: ChangeMark;
+  cut: Awaited<ReturnType<FirstSeenDeps["cut"]>>;
+  /** First seen after this mark, with at least `threshold` events, not yet sent for it. */
+  fresh: FingerprintCutSideCount[];
+};
+
+/**
+ * A fingerprint new after several marks pages once: for the latest of them at or before its
+ * first event, the mark the Fingerprints panel names ("after v0.9.3"). Its first event is read
+ * after the earliest of them; when that read gives nothing, the latest mark it is new after.
+ */
+async function ownerMarks(
+  cuts: MarkCut[],
+  compiled: CompiledQuery,
+  deps: FirstSeenDeps,
+): Promise<{ owner: Map<string, MarkCut>; marksOf: Map<string, MarkCut[]> }> {
+  const marksOf = new Map<string, MarkCut[]>();
+  for (const item of cuts) {
+    for (const row of item.fresh) {
+      marksOf.set(row.hex, [...(marksOf.get(row.hex) ?? []), item]);
+    }
+  }
+  const owner = new Map<string, MarkCut>();
+  const byEarliest = new Map<MarkCut, string[]>();
+  for (const [hex, items] of marksOf) {
+    if (items.length === 1) {
+      owner.set(hex, items[0]!);
+    } else {
+      byEarliest.set(items[0]!, [...(byEarliest.get(items[0]!) ?? []), hex]);
+    }
+  }
+  for (const [earliest, hexes] of byEarliest) {
+    const details = await deps.details(earliest.cut.windows, compiled, hexes);
+    for (const hex of hexes) {
+      const items = marksOf.get(hex)!;
+      const firstTs = details.get(hex)?.firstTs;
+      const at = firstTs ? Date.parse(firstTs) : Number.NaN;
+      const atOrBefore = Number.isNaN(at)
+        ? []
+        : items.filter((item) => Date.parse(item.mark.ts) <= at);
+      owner.set(hex, atOrBefore.at(-1) ?? items.at(-1)!);
+    }
+  }
+  return { owner, marksOf };
+}
+
 /**
  * One minute of a first-seen alert: for every deploy or flag mark of the last 24 hours that the
  * saved search's `q` does not rule out, the First seen set the Fingerprints panel would show,
  * cut at now. Fingerprints with at least `threshold` events after the mark that this rule has not
- * sent for that mark go in one call per mark. Sent only on a 2xx, so a failed call is tried
- * again the next minute.
+ * sent go in one call per mark, each fingerprint under one mark only (`ownerMarks`). Sent only on
+ * a 2xx, and then for every mark it was new after, so a failed call is tried again the next
+ * minute and a sent one is never paged under another mark.
  */
 export async function evaluateFirstSeenRule(
   rule: AlertRule,
@@ -146,8 +194,10 @@ export async function evaluateFirstSeenRule(
     return;
   }
   const marks = watchedMarks(await deps.marks(iso(now - firstSeenWatchMs), iso(now)), compiled, now);
+  marks.sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts) || a.id.localeCompare(b.id));
   let refusal: string | null = null;
   let attempted = false;
+  const cuts: MarkCut[] = [];
   for (const mark of marks) {
     const cut = await deps.cut({ mark, compiled, now });
     if (cut.refused) {
@@ -155,8 +205,17 @@ export async function evaluateFirstSeenRule(
       continue;
     }
     const sent = deps.sent(rule.id, mark.id);
-    const fresh = cut.firstSeen
-      .filter((row) => row.after >= rule.threshold && !sent.has(row.hex))
+    const fresh = cut.firstSeen.filter(
+      (row) => row.after >= rule.threshold && !sent.has(row.hex),
+    );
+    if (fresh.length > 0) {
+      cuts.push({ mark, cut, fresh });
+    }
+  }
+  const { owner, marksOf } = await ownerMarks(cuts, compiled, deps);
+  for (const { mark, cut, fresh: candidates } of cuts) {
+    const fresh = candidates
+      .filter((row) => owner.get(row.hex)?.mark.id === mark.id)
       .sort((a, b) => b.after - a.after || a.hex.localeCompare(b.hex));
     if (fresh.length === 0) {
       continue;
@@ -175,12 +234,16 @@ export async function evaluateFirstSeenRule(
     const outcome = await deps.post(rule.webhook_url, payload);
     deps.recordWebhook(rule.id, { at: now, ...outcome });
     if (outcome.ok) {
-      deps.recordSent(
-        rule.id,
-        mark.id,
-        fresh.map((row) => row.hex),
-        now,
-      );
+      // Sent for every mark each fingerprint was new after, so no other mark pages it.
+      const sentFor = new Map<string, string[]>();
+      for (const row of fresh) {
+        for (const item of marksOf.get(row.hex) ?? []) {
+          sentFor.set(item.mark.id, [...(sentFor.get(item.mark.id) ?? []), row.hex]);
+        }
+      }
+      for (const [markId, e1s] of sentFor) {
+        deps.recordSent(rule.id, markId, e1s, now);
+      }
       deps.recordLastMark(rule.id, {
         id: mark.id,
         kind: mark.kind,

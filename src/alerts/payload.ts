@@ -130,7 +130,7 @@ export function firstSeenHeadline(count: number, mark: FirstSeenMark): string {
   return `${count} new fingerprint${count === 1 ? "" : "s"} after ${mark.kind} ${mark.title}`;
 }
 
-/** One call per mark and minute, listing every fingerprint new in it: ten, and a count of the rest. */
+/** One call per mark and minute, listing the fingerprints it pages for: ten, and a count of the rest. */
 export function firstSeenWebhookBody(args: {
   url: string;
   alert: { id: string; name: string; threshold: number };
