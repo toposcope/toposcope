@@ -64,7 +64,8 @@ describe("a metric panel split by one label (#104)", () => {
     const html = renderToStaticMarkup(
       createElement(MetricSpark, { times, result, readingWord: "avg", kindWord: "gauge", name: "agental.box.memory", window: "24h", live: false }),
     ).replace(/<!-- -->/g, "");
-    expect(html).toContain("83.2 GiBy");
+    // The axis reads the peak with room above the highest line, as 13a's 96 GiBy over 83.2.
+    expect(html).toContain("95.7 GiBy");
     expect(html).toContain("sellable 83.2");
     expect(html).toContain("used 35.2");
     expect(html).toContain("avg · gauge");
