@@ -1,4 +1,6 @@
 import type { Context } from "hono";
+import { activeLinks } from "../links/store";
+import { feeders, heldSources, shortIn, type HeldLink } from "../shared/held";
 import {
   formatChangeMarkLabel,
   type ChangeMark,
@@ -30,6 +32,7 @@ import {
   QueryCompileError,
   requireCompiled,
   type CompiledQuery,
+  type QueryNode,
 } from "./compile";
 import { changeMarksBetween, getChangeMarkById } from "./marks";
 import {
@@ -217,6 +220,37 @@ export const fingerprintCutScans = {
   samples: e1Samples,
 };
 
+/** Where each source this instance pulls from stands (#140); tests swap it. */
+export const fingerprintCutHeld = {
+  links: (): HeldLink[] => activeLinks(),
+};
+
+/**
+ * The sources that could feed this hunt and are short inside either side of a cut (#140), and
+ * which side. A hunt that names other sources is not short (5r). A hole never clears, so a cut
+ * whose window touches one keeps refusing.
+ */
+export function shortAcrossCut(
+  ast: QueryNode | null,
+  w: Pick<FingerprintCutWindows, "beforeFrom" | "beforeTo" | "afterFrom" | "afterTo">,
+  now: number,
+): FingerprintCutResult["held"] | null {
+  const sources = heldSources(fingerprintCutHeld.links(), now);
+  if (sources.length === 0) {
+    return null;
+  }
+  const before = feeders(shortIn(sources, { from: w.beforeFrom, to: w.beforeTo }, now), ast);
+  const after = feeders(shortIn(sources, { from: w.afterFrom, to: w.afterTo }, now), ast);
+  if (before.length === 0 && after.length === 0) {
+    return null;
+  }
+  const names = new Set([...before, ...after].map((s) => s.name));
+  return {
+    sides: before.length > 0 && after.length > 0 ? "both" : before.length > 0 ? "before" : "after",
+    sources: sources.filter((s) => names.has(s.name)),
+  };
+}
+
 function hms(isoStr: string): string {
   const t = isoStr.slice(11, 19);
   return t.length === 8 ? t : isoStr;
@@ -375,6 +409,11 @@ export async function searchFingerprintCut(input: {
     return emptyResult(input.mark, w, inside, notes);
   }
   const compiled = compiledOf(input.q);
+  // #140: across a gap any line can look first seen or stopped; until it can say which, it waits.
+  const held = shortAcrossCut(compiled.ast, w, now);
+  if (held) {
+    return emptyResult(input.mark, w, inside, notes, { held });
+  }
   try {
     const [before, after] = await Promise.all([
       fingerprintCutScans.counts(iso(w.beforeFrom), iso(w.beforeTo), compiled),
@@ -601,6 +640,11 @@ export async function fingerprintCutFirstSeen(input: {
   });
   if (w.dead) {
     return { windows: w, firstSeen: [], refused: null };
+  }
+  const held = shortAcrossCut(input.compiled.ast, w, input.now);
+  if (held) {
+    // A new fingerprint across a gap may only be one the gap hid: nothing pages until it has caught up.
+    return { windows: w, firstSeen: [], refused: `${held.sources.map((s) => s.name).join(", ")} short in this window` };
   }
   try {
     const [before, after] = await Promise.all([

@@ -25,6 +25,7 @@ import {
   formatCutWindowLines,
 } from "../fingerprint-cut";
 import { MarkGlyph } from "./histogram-marks";
+import { positionLines } from "../held-words";
 
 const foot =
   "A clock cut, not causation — first seen after is not caused by. The hunt is untouched: q and facets stay; only Filter writes the bar.";
@@ -206,6 +207,7 @@ export function FingerprintCutPanel({
             </div>
           ))}
         </div>
+        {result?.held ? <CutWaits held={result.held} /> : null}
         {sets.map((set) => (
           <CutSet
             key={set.id}
@@ -411,6 +413,44 @@ function CutRow({
           {filtered ? "Filtered" : "Filter"}
         </button>
       </div>
+    </div>
+  );
+}
+
+const WAITS_HATCH = "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 7px)";
+
+/**
+ * #140, 5m: while a source that could feed the hunt is short inside either window, the cut
+ * refuses. It names the source and says why, and files nothing: no sets, no counts.
+ */
+function CutWaits({ held }: { held: NonNullable<FingerprintCutResult["held"]> }) {
+  const now = Date.now();
+  const side =
+    held.sides === "both" ? "Both sides miss" : held.sides === "before" ? "The before side misses" : "The after side misses";
+  const onlyHoles = held.sources.every((s) => s.state.kind === "caught-up");
+  return (
+    <div className="m-2.5 rounded-md border border-white/12 px-3 py-2.5" style={{ backgroundImage: WAITS_HATCH }}>
+      <div className="text-[12.5px] font-semibold">Not cut — a source is short in this window</div>
+      <p className="mt-1 text-[11.5px] leading-snug text-pretty text-muted-foreground">
+        {side} rows from the {held.sources.length === 1 ? "source" : "sources"} below. Any line could look first seen or
+        stopped because of that, so nothing is filed.
+      </p>
+      <div className="mt-2 flex flex-col gap-1">
+        {held.sources.map((source) => (
+          <div key={source.name} className="flex gap-1.5 font-mono text-[11px] leading-snug">
+            <span className="shrink-0 text-amber-400">▲</span>
+            <span className="min-w-0">
+              <span className="text-foreground">{source.name}</span>{" "}
+              <span className="text-muted-foreground">{positionLines(source, now).join(" · ")}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[11.5px] leading-snug text-pretty text-muted-foreground">
+        {onlyHoles
+          ? "A hole does not close, so a cut across it keeps refusing. Nothing here is a count of what happened."
+          : "Reopen once it has caught up. Nothing here is a count of what happened."}
+      </p>
     </div>
   );
 }

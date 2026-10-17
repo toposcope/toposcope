@@ -1,3 +1,4 @@
+import type { HeldSource } from "./held";
 import type { ChangeMarkKind } from "./change-mark";
 
 /** Drawn rows per set — same grain as Top-N default. */
@@ -225,6 +226,11 @@ export type FingerprintCutResult = {
   sets: FingerprintCutSet[];
   empty: string;
   scan?: { source: "refused"; reason: string };
+  /**
+   * #140: sources that could feed the hunt and are short inside the cut's windows. While there is
+   * one, the cut refuses: no sets and no counts, only which side misses rows and from whom.
+   */
+  held?: { sides: "both" | "before" | "after"; sources: HeldSource[] };
 };
 
 export function formatFingerprintCutDuration(ms: number): string {
