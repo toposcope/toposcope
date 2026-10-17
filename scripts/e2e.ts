@@ -3000,6 +3000,62 @@ async function main(): Promise<void> {
     }
   }
 
+  // A feed (#135): defined with a q, read by arrival position after where the reader stood.
+  const feedService = `${marker}-feed`;
+  const badFeed = await fetch(`${APP_URL}/api/feeds`, {
+    method: "POST",
+    headers: { authorization: basicAuth(), "content-type": "application/json" },
+    body: JSON.stringify({ q: 'level:error message:"unclosed' }),
+  });
+  if (badFeed.status !== 400) {
+    throw new Error(`a feed with a bad q must be refused, got ${badFeed.status}`);
+  }
+  const feedRes = await fetch(`${APP_URL}/api/feeds`, {
+    method: "POST",
+    headers: { authorization: basicAuth(), "content-type": "application/json" },
+    body: JSON.stringify({ q: `service:${feedService} level:error` }),
+  });
+  if (feedRes.status !== 201) {
+    throw new Error(`feed create failed: ${feedRes.status} ${await feedRes.text()}`);
+  }
+  const feed = (await feedRes.json()) as { id: string };
+  type FeedReply = { through: number; settled: number; rows: Array<{ message: string; seq: number }>; arrived: string | null };
+  const readFeed = async (after: number): Promise<FeedReply> => {
+    const res = await fetch(`${APP_URL}/api/feeds/${feed.id}?after=${after}&limit=100`, {
+      headers: { authorization: basicAuth() },
+    });
+    if (!res.ok) {
+      throw new Error(`feed read failed: ${res.status} ${await res.text()}`);
+    }
+    return (await res.json()) as FeedReply;
+  };
+  const stood = (await readFeed(0)).settled;
+  const feedIngest = await fetch(`${APP_URL}/api/ingest`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+    body: JSON.stringify([
+      { service: feedService, level: "error", message: `${marker}-feed-1` },
+      { service: feedService, level: "info", message: `${marker}-feed-info` },
+      { service: feedService, level: "error", message: `${marker}-feed-2` },
+    ]),
+  });
+  if (!feedIngest.ok) {
+    throw new Error(`feed ingest failed: ${feedIngest.status} ${await feedIngest.text()}`);
+  }
+  const fed: string[] = [];
+  let feedAt = stood;
+  for (let i = 0; i < 50; i++) {
+    const reply = await readFeed(feedAt);
+    fed.push(...reply.rows.map((r) => r.message));
+    if (reply.through === feedAt && feedAt >= reply.settled) {
+      break;
+    }
+    feedAt = reply.through;
+  }
+  if (fed.join(",") !== `${marker}-feed-1,${marker}-feed-2`) {
+    throw new Error(`feed must return exactly its two error rows in arrival order, got ${JSON.stringify(fed)}`);
+  }
+
   const followHex = `${Date.now().toString(16).padStart(16, "0")}cafef00dcafef00d`.slice(0, 32);
   const followTs = Date.now();
   const followBatch = await fetch(`${APP_URL}/api/ingest`, {

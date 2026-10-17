@@ -104,6 +104,14 @@ export function getDb(): Database {
       role TEXT NOT NULL CHECK (role IN ('chart', 'lookup', 'ignore'))
     );
   `);
+  // A feed (#135): rows by arrival through one q, fixed when it is defined.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS feeds (
+      id TEXT PRIMARY KEY,
+      q TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+  `);
   db.run(`
     CREATE TABLE IF NOT EXISTS field_links (
       log_key TEXT PRIMARY KEY,
