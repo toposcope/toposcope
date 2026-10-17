@@ -94,7 +94,13 @@ type SeriesOpts = {
   labels: Record<string, string>;
   exact?: boolean;
   exclude?: { key: string; values: readonly string[] };
+  /** One line per value of this label (#104): the 8 with the most points, and `other`. */
+  split?: string;
 };
+
+/** Lines a split panel draws, before the rest are `other`. */
+export const metricSplitCap = 8;
+export const metricSplitOther = "other";
 
 /**
  * The bars asked for and the whole window, for its one number. Unlabeled bars
@@ -107,7 +113,8 @@ function seriesWindows(opts: SeriesOpts): { rolled: boolean; overlay: WhereClaus
     to: opts.to,
     exact: opts.exact,
   };
-  const labeled = Object.keys(opts.labels).length > 0;
+  // The minute rollup has no labels: a matcher or a split reads the stored points.
+  const labeled = Object.keys(opts.labels).length > 0 || Boolean(opts.split);
   if (!opts.exact && !opts.exclude && !labeled && histogramUsesMinuteRollup(opts.intervalMs)) {
     return {
       rolled: true,
@@ -223,7 +230,56 @@ function amountOf(name: string): ValueRead {
   };
 }
 
+/** The values of the split label with the most points in the window: 8 kept, and whether there are more. */
+async function splitKeys(
+  table: "metrics" | "metric_buckets",
+  stat: WhereClause,
+  names: string,
+  params: Record<string, string>,
+): Promise<{ keep: string[]; other: boolean }> {
+  const rows = await clickhouseQuery<{ k: string }>(
+    `
+    SELECT labels[{split_key:String}] AS k, count() AS n
+    FROM ${table}
+    WHERE ${stat.sql} AND ${names}
+    GROUP BY k
+    ORDER BY n DESC, k ASC
+    LIMIT ${metricSplitCap + 1}
+  `,
+    { ...stat.params, ...params },
+  );
+  return {
+    keep: rows.slice(0, metricSplitCap).map((row) => String(row.k)),
+    other: rows.length > metricSplitCap,
+  };
+}
+
+/** The split label's value, or `other` past the 8 kept. */
+const splitKeySql =
+  "if(labels[{split_key:String}] IN JSONExtract({split_keep:String}, 'Array(String)'), labels[{split_key:String}], {split_other:String})";
+
+function splitResult(
+  told: Told,
+  split: string,
+  keys: { keep: string[]; other: boolean },
+  rows: Array<{ bucket: string; k: string; v: number | null }>,
+  stats: Array<{ k: string; v: number | null }>,
+): SearchAggResult {
+  const order = keys.other ? [...keys.keep, metricSplitOther] : keys.keep;
+  const splits = order.map((key) => ({
+    key,
+    buckets: rows
+      .filter((row) => row.k === key && row.v !== null)
+      .map((row) => ({ t: toIsoTimestamp(String(row.bucket)), v: row.v as number })),
+    stat: stats.find((row) => row.k === key)?.v ?? null,
+  }));
+  return { ...told, source: "metric", buckets: [], stat: null, split, splits };
+}
+
 async function valueSeries(opts: SeriesOpts, told: Told, read: ValueRead): Promise<SearchAggResult> {
+  if (opts.split) {
+    return splitValueSeries(opts, opts.split, told, read);
+  }
   const { rolled, overlay, stat } = seriesWindows(opts);
   const table = rolled ? "metrics_by_minute" : "metrics";
   const clock = rolled ? "minute" : "ts";
@@ -257,6 +313,53 @@ async function valueSeries(opts: SeriesOpts, told: Told, read: ValueRead): Promi
   );
 }
 
+async function splitValueSeries(
+  opts: SeriesOpts,
+  split: string,
+  told: Told,
+  read: ValueRead,
+): Promise<SearchAggResult> {
+  const { overlay, stat } = seriesWindows(opts);
+  const keys = await splitKeys("metrics", stat, read.names, { ...read.params, split_key: split });
+  const params = {
+    ...read.params,
+    split_key: split,
+    split_keep: JSON.stringify(keys.keep),
+    split_other: metricSplitOther,
+  };
+  const [rows, stats] = await Promise.all([
+    clickhouseQuery<{ bucket: string; k: string; v: string | number | null }>(
+      `
+      SELECT
+        toStartOfInterval(ts, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
+        ${splitKeySql} AS k,
+        ${read.scanned} AS v
+      FROM metrics
+      WHERE ${overlay.sql} AND ${read.names}
+      GROUP BY bucket, k
+      ORDER BY bucket
+    `,
+      { ...overlay.params, ...params },
+    ),
+    clickhouseQuery<{ k: string; v: string | number | null }>(
+      `
+      SELECT ${splitKeySql} AS k, ${read.scanned} AS v
+      FROM metrics
+      WHERE ${stat.sql} AND ${read.names}
+      GROUP BY k
+    `,
+      { ...stat.params, ...params },
+    ),
+  ]);
+  return splitResult(
+    told,
+    split,
+    keys,
+    rows.map((row) => ({ bucket: row.bucket, k: String(row.k), v: finiteNum(row.v) })),
+    stats.map((row) => ({ k: String(row.k), v: finiteNum(row.v) })),
+  );
+}
+
 /**
  * A percentile of a histogram: its bucket counts summed by bound, across every
  * series that matches and every point in the bar, and the percentile read off
@@ -268,6 +371,9 @@ async function quantileSeries(
   q: number,
   told: Told,
 ): Promise<SearchAggResult> {
+  if (opts.split) {
+    return splitQuantileSeries(opts, opts.split, name, q, told);
+  }
   const { rolled, overlay, stat } = seriesWindows(opts);
   const clock = rolled ? "minute" : "ts";
   // One row for each bound: from the rollup as stored, from the points by unfolding their arrays.
@@ -312,6 +418,95 @@ async function quantileSeries(
     rows.map((row) => ({ bucket: row.bucket, v: bucketQuantile(q, bucketSums(row.les, row.ns)) })),
     bucketQuantile(q, bucketSums(statRows[0]?.les, statRows[0]?.ns)),
   );
+}
+
+/** A split percentile: each value's bucket counts summed by bound, the percentile read off each sum. */
+async function splitQuantileSeries(
+  opts: SeriesOpts,
+  split: string,
+  name: string,
+  q: number,
+  told: Told,
+): Promise<SearchAggResult> {
+  const { overlay, stat } = seriesWindows(opts);
+  const keys = await splitKeys("metric_buckets", stat, "name = {metric_name:String}", {
+    metric_name: name,
+    split_key: split,
+  });
+  const params = {
+    metric_name: name,
+    split_key: split,
+    split_keep: JSON.stringify(keys.keep),
+    split_other: metricSplitOther,
+  };
+  const source = "metric_buckets ARRAY JOIN arrayPushBack(le, inf) AS bound, n AS observed";
+  const [rows, stats] = await Promise.all([
+    clickhouseQuery<{ bucket: string; k: string; les: unknown; ns: unknown }>(
+      `
+      SELECT bucket, k, groupArray(upper) AS les, groupArray(c) AS ns
+      FROM (
+        SELECT
+          toStartOfInterval(ts, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
+          ${splitKeySql} AS k,
+          bound AS upper,
+          sum(observed) AS c
+        FROM ${source}
+        WHERE ${overlay.sql} AND name = {metric_name:String}
+        GROUP BY bucket, k, upper
+      )
+      GROUP BY bucket, k
+      ORDER BY bucket
+    `,
+      { ...overlay.params, ...params },
+    ),
+    clickhouseQuery<{ k: string; les: unknown; ns: unknown }>(
+      `
+      SELECT k, groupArray(upper) AS les, groupArray(c) AS ns
+      FROM (
+        SELECT ${splitKeySql} AS k, bound AS upper, sum(observed) AS c
+        FROM ${source}
+        WHERE ${stat.sql} AND name = {metric_name:String}
+        GROUP BY k, upper
+      )
+      GROUP BY k
+    `,
+      { ...stat.params, ...params },
+    ),
+  ]);
+  return splitResult(
+    told,
+    split,
+    keys,
+    rows.map((row) => ({ bucket: row.bucket, k: String(row.k), v: bucketQuantile(q, bucketSums(row.les, row.ns)) })),
+    stats.map((row) => ({ k: String(row.k), v: bucketQuantile(q, bucketSums(row.les, row.ns)) })),
+  );
+}
+
+/** The label keys a metric's points carry in the window, with how many values each: the split picker (13f). */
+export async function metricLabelKeys(opts: {
+  name: string;
+  from?: string;
+  to?: string;
+}): Promise<Array<{ key: string; values: number }>> {
+  const histogram = await asHistogram(opts.name, null);
+  const names = histogram ? [`${histogram.base}.count`, `${histogram.base}.sum`] : [opts.name];
+  const { sql, params } = metricTimeWhere("ts", { from: opts.from, to: opts.to });
+  const rows = await clickhouseQuery<{ key: string; values: string | number }>(
+    `
+    SELECT key, uniqExact(value) AS values
+    FROM (
+      SELECT tupleElement(kv, 1) AS key, tupleElement(kv, 2) AS value
+      FROM metrics
+      ARRAY JOIN CAST(labels, 'Array(Tuple(String, String))') AS kv
+      WHERE ${sql} AND name IN JSONExtract({names:String}, 'Array(String)')
+    )
+    GROUP BY key
+    ORDER BY key
+    LIMIT ${maxAttrKeys}
+  `,
+    { ...params, names: JSON.stringify(names) },
+  );
+  return rows.map((row) => ({ key: String(row.key), values: Number(row.values) }));
 }
 
 function metricResult(

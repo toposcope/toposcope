@@ -15,6 +15,7 @@ import {
   usedCanvasSeriesValues,
 } from "@/head-query";
 import { bucketStepLabel, TimeseriesSpark } from "@/components/timeseries-spark";
+import { printUnit } from "../metric-unit";
 import { seriesPickFromWidget } from "../agg-picker";
 import { metricReading, metricView, midCut } from "../series-list";
 import { WidgetUpdated } from "@/components/widget-updated";
@@ -510,6 +511,9 @@ export function WidgetCanvas({
               )
             }
             onMetric={(next) => onWidgets(patchWidget(widgets, widget.id, { metric: next }))}
+            metricSplit={widget.metricSplit ?? null}
+            onMetricSplit={(next) => onWidgets(patchWidget(widgets, widget.id, { metricSplit: next }))}
+            live={live}
             updated={updated}
           />
         );
@@ -603,14 +607,51 @@ export function WidgetCanvas({
         }
         const view = metricView(pick, null, data.agg);
         const step = bucketStepLabel(data.histogram);
-        const split = widget.split === "level" ? "" : ` · ${widget.split}`;
+        const unit = printUnit(data.agg?.unit);
+        const labels = Object.entries(widget.metricLabels);
+        // #104: the cut is in the name's middle; the unit and the labels, which tell two panels of
+        // one metric apart, are never cut (13c, 13d). The whole of both is one hover on the title.
         return (
-          <span
-            className="min-w-0 truncate font-mono text-[11.5px]"
-            title={`${metricReading(view.kind, step, false, view.reading)} · ${view.name} · ${view.kind}`}
-          >
-            {metricReading(view.kind, step, true, view.reading)} · {midCut(view.name, 18)}
-            {split}
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-[3px] font-mono text-[11.5px]">
+            <span
+              className="min-w-0 truncate"
+              title={[
+                `${metricReading(view.kind, step, false, view.reading)} · ${view.name}${unit ? ` · ${unit}` : ""} · ${view.kind}`,
+                labels.map(([k, v]) => `${k}:${v}`).join(" · "),
+              ]
+                .filter(Boolean)
+                .join("\n")}
+            >
+              {metricReading(view.kind, step, true, view.reading)} · {midCut(view.name, 18)}
+            </span>
+            {unit ? <span className="shrink-0 text-[11px] text-muted-foreground">{unit}</span> : null}
+            {widget.metricSplit ? (
+              <span className="inline-flex h-5 shrink-0 items-center rounded-[4px] border border-white/12 px-1.5 text-[10.5px] text-muted-foreground">
+                split {widget.metricSplit}
+              </span>
+            ) : null}
+            {labels.map(([k, v]) => (
+              <span
+                key={k}
+                className="inline-flex h-5 shrink-0 items-center gap-1 rounded-[4px] border border-violet-400/50 pl-1.5 text-[10.5px] text-violet-300"
+              >
+                {k}:{v}
+                <button
+                  type="button"
+                  aria-label={`Remove ${k}:${v}`}
+                  title={`Remove ${k}:${v}`}
+                  className="px-1 text-violet-300/80 hover:text-violet-200"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    const next = { ...widget.metricLabels };
+                    delete next[k];
+                    onWidgets(patchWidget(widgets, widget.id, { metricLabels: next }));
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
           </span>
         );
       }
@@ -804,10 +845,15 @@ export function WidgetCanvas({
                         agg: next.agg,
                         metric: next.metric,
                         metricLabels: {},
+                        metricSplit: null,
                       }),
                     )
                   }
                   onMetric={(next) => onWidgets(patchWidget(widgets, widget.id, { metric: next }))}
+                  metricSplit={widget.metricSplit ?? null}
+                  onMetricSplit={(next) =>
+                    onWidgets(patchWidget(widgets, widget.id, { metricSplit: next }))
+                  }
                   replaceY={widget.replaceY}
                   onReplaceY={(on) =>
                     onWidgets(patchWidget(widgets, widget.id, { replaceY: on }))

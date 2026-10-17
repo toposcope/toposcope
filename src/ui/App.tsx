@@ -15,6 +15,7 @@ import { EventTable } from "@/components/event-table";
 import { WorkspaceStrip } from "@/components/workspace-strip";
 import { OperatorSidebar } from "@/components/operator-sidebar";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
+import { loadSavedCounts } from "./saved-counts";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
@@ -112,6 +113,7 @@ import { compileQuery, isCoreField } from "../query/compile";
 import {
   logsScanBudgetRefuseReason,
   mergeAggBuckets,
+  mergeAggSplits,
   parseSearchAgg,
   refusedAgg,
   seriesLabel,
@@ -228,7 +230,7 @@ function metricEntry(item: MetricNameRow): MetricEntry {
 /** A metric list is asked for by window alone: the log query does not filter metrics. */
 function metricWindowParams(query: string): URLSearchParams {
   const params = new URLSearchParams(query);
-  for (const key of ["q", "agg", "metric", "ml"]) {
+  for (const key of ["q", "agg", "metric", "ml", "msplit"]) {
     params.delete(key);
   }
   return params;
@@ -735,32 +737,7 @@ export function App() {
   }
 
   const loadCounts = useCallback(async (searches: SavedSearch[]) => {
-    const entries = await Promise.all(
-      searches.map(async (item) => {
-        const res = await fetch(`/api/saved-searches/${item.id}/run`);
-        if (!res.ok) {
-          return [item.id, 0, { value: 0, refused: false }] as const;
-        }
-        const json = (await res.json()) as {
-          count: number;
-          value?: number;
-          refused?: boolean;
-        };
-        const count = json.count;
-        const value = typeof json.value === "number" ? json.value : count;
-        return [
-          item.id,
-          count,
-          { value, refused: Boolean(json.refused) },
-        ] as const;
-      }),
-    );
-    const next: Record<string, number> = {};
-    const nextSeries: Record<string, AlertSeriesView> = {};
-    for (const [id, n, point] of entries) {
-      next[id] = n;
-      nextSeries[id] = point;
-    }
+    const { counts: next, series: nextSeries } = await loadSavedCounts(searches);
     setCounts(next);
     setAlertSeries(nextSeries);
   }, []);
@@ -851,6 +828,21 @@ export function App() {
         return [];
       }
       return ((await res.json()) as MetricNamesReply).keys.map(metricEntry);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  /** A metric's label keys in this window, for a panel's split picker. */
+  const metricLabelKeys = useCallback(async (name: string) => {
+    try {
+      const params = new URLSearchParams(metricWindowRef.current);
+      params.set("name", name);
+      const res = await fetch(`/api/metric-labels?${params.toString()}`);
+      if (!res.ok) {
+        return [];
+      }
+      return ((await res.json()) as { labels: Array<{ key: string; values: number }> }).labels;
     } catch {
       return [];
     }
@@ -1098,6 +1090,11 @@ export function App() {
           : (primaryWidget?.metric ?? null);
       const activeMetricLabels =
         overrides?.metricLabels ?? primaryWidget?.metricLabels ?? {};
+      // The pinned plot's split (13a) goes with its own metric only.
+      const activeMetricSplit =
+        activeMetric && primaryWidget?.metric === activeMetric
+          ? (primaryWidget.metricSplit ?? null)
+          : null;
       const activeAgg = activeMetric
         ? null
         : overrides?.agg !== undefined
@@ -1138,6 +1135,9 @@ export function App() {
           const ml = formatMetricLabels(activeMetricLabels);
           if (ml) {
             params.set("ml", ml);
+          }
+          if (activeMetricSplit) {
+            params.set("msplit", activeMetricSplit);
           }
         } else if (activeAgg) {
           params.set("agg", activeAgg);
@@ -1234,6 +1234,12 @@ export function App() {
                     )
                   : json.agg.buckets;
               nextAgg = { ...json.agg, buckets };
+              if (json.agg.splits) {
+                nextAgg.splits =
+                  mode === "poll"
+                    ? mergeAggSplits(aggSeriesRef.current?.splits, json.agg.splits)
+                    : json.agg.splits;
+              }
             }
           } else if (!parsedAgg) {
             nextAgg = null;
@@ -1263,6 +1269,7 @@ export function App() {
             agg: activeAgg,
             metric: activeMetric,
             metricLabels: activeMetricLabels,
+            metricSplit: activeMetricSplit,
           });
           const primaryData: SeriesData = stampSeries({
             histogram: filled,
@@ -2319,6 +2326,7 @@ export function App() {
       agg: null,
       metric,
       metricLabels: labels,
+      metricSplit: null,
     });
     setWidgets(next);
     setAgg(null);
@@ -3237,8 +3245,9 @@ export function App() {
       window: range === "custom" ? "" : range,
       live,
       find: findMetrics,
+      labels: metricLabelKeys,
     }),
-    [numericKeys, metricCatalog, range, live, findMetrics],
+    [numericKeys, metricCatalog, range, live, findMetrics, metricLabelKeys],
   );
   const windowFromMs = histogram[0]
     ? Date.parse(histogram[0].t)

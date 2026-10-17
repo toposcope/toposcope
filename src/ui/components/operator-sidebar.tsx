@@ -19,6 +19,7 @@ import type {
   SavedSearch,
 } from "@/types";
 import { maxAttrFacets } from "../../shared/attrs";
+import { showsNoLogRows } from "../../shared/widgets";
 import { boardWatchRefuse } from "../boards";
 
 const facetFields: FacetField[] = ["level", "service", "host"];
@@ -215,9 +216,32 @@ export function OperatorSidebar({
                       {watched ? (
                         <Bell className="size-3 shrink-0 text-muted-foreground" />
                       ) : null}
-                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                        {count === undefined ? "—" : <CountText n={count} />}
-                      </span>
+                      {!isBoard && showsNoLogRows(item.widgets) ? (
+                        <svg
+                          viewBox="0 0 16 16"
+                          width="12"
+                          height="12"
+                          role="img"
+                          aria-label="Kept for its panels: no log rows to count"
+                          className="shrink-0 text-muted-foreground"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                        >
+                          <title>Kept for its panels. Its table is off and its plot draws a metric, so there are no log rows to count.</title>
+                          <rect x="2" y="2" width="5" height="5" rx="1" />
+                          <rect x="9" y="2" width="5" height="5" rx="1" />
+                          <rect x="2" y="9" width="5" height="5" rx="1" />
+                          <rect x="9" y="9" width="5" height="5" rx="1" />
+                        </svg>
+                      ) : (
+                        <span
+                          title={refuse ?? undefined}
+                          className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground"
+                        >
+                          {isBoard || count === undefined ? "—" : <CountText n={count} />}
+                        </span>
+                      )}
                     </button>
                     {isBoard ? (
                       <Button

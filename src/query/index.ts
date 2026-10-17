@@ -42,7 +42,7 @@ import {
   skipSearchHistogram,
 } from "./event-page";
 import { ingestedKind } from "./ingested";
-import { searchMetricSeries, metricNames } from "./metric-series";
+import { searchMetricSeries, metricLabelKeys, metricNames } from "./metric-series";
 import { clampSearchSpan, InvalidRangeError, resolveRange } from "./relative";
 import {
   canUseNumericAgg,
@@ -102,6 +102,8 @@ export type SearchFilters = {
   agg?: string;
   metric?: string;
   ml?: string;
+  /** Split the metric by this label (#104). */
+  msplit?: string;
   events?: string;
   keep?: readonly string[];
   exact?: boolean;
@@ -897,6 +899,7 @@ export async function search(filters: SearchFilters): Promise<SearchResult> {
             name: metricName,
             reading: metricRef?.reading,
             labels: metricLabels,
+            split: parseMetricSplit(timed.msplit) ?? undefined,
             exact: timed.exact,
             exclude: timed.other && timed.split && timed.split !== "none" && timed.keep
               ? { key: timed.split, values: timed.keep }
@@ -1287,6 +1290,30 @@ export async function metricNamesRoute(c: Context): Promise<Response> {
   }
 }
 
+/** A label key to split a metric by: what a label key can be, and not too long. */
+export function parseMetricSplit(raw: string | undefined | null): string | null {
+  const key = raw?.trim() ?? "";
+  return key.length > 0 && key.length <= 64 && /^[A-Za-z0-9_.:\-\/]+$/.test(key) ? key : null;
+}
+
+/** `GET /api/metric-labels?name=` — the label keys a metric's points carry in the window, with how many values. */
+export async function metricLabelsRoute(c: Context): Promise<Response> {
+  try {
+    const name = parseMetricName(c.req.query("name") ?? "");
+    if (!name) {
+      return c.json({ error: "name is required" }, 400);
+    }
+    const resolved = resolveFilters({
+      from: c.req.query("from") ?? undefined,
+      to: c.req.query("to") ?? undefined,
+      range: c.req.query("range") ?? undefined,
+    });
+    return c.json({ labels: await metricLabelKeys({ name, from: resolved.from, to: resolved.to }) });
+  } catch (err) {
+    return queryHttpError(c, err) ?? Promise.reject(err);
+  }
+}
+
 export async function searchRoute(c: Context): Promise<Response> {
   const from = c.req.query("from") ?? undefined;
   const to = c.req.query("to") ?? undefined;
@@ -1299,6 +1326,7 @@ export async function searchRoute(c: Context): Promise<Response> {
   const agg = c.req.query("agg") ?? undefined;
   const metric = c.req.query("metric") ?? undefined;
   const ml = c.req.query("ml") ?? undefined;
+  const msplit = c.req.query("msplit") ?? undefined;
   const events = c.req.query("events") ?? undefined;
   const keep = c.req.queries("keep")?.filter((key) => key && key !== "other").slice(0, histogramSeriesCap);
   const exact = c.req.query("exact") === "1";
@@ -1321,6 +1349,7 @@ export async function searchRoute(c: Context): Promise<Response> {
       agg,
       metric,
       ml,
+      msplit,
       events,
       keep,
       exact,
