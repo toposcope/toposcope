@@ -16,6 +16,8 @@ export type ChangeMark = {
   service: string;
   title: string;
   attrs: Record<string, string>;
+  /** The instance it was posted at (#138); a pulled mark's id ends with `@` and that name. */
+  toposcope?: string;
 };
 
 export class InvalidChangeMarkError extends Error {

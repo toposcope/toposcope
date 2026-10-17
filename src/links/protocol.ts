@@ -2,7 +2,8 @@ import type { Context } from "hono";
 import { instanceId, instanceName } from "../control/instance";
 import { getRetentionDays } from "../control/settings";
 import { readFeed, type FeedReply } from "../feed/feed";
-import { insertPulled } from "../ingest/pulled";
+import { insertPulled, insertPulledMarks } from "../ingest/pulled";
+import { hereName } from "../shared/here";
 import { hashSecret, newSecret } from "./key";
 import {
   getLinkKey,
@@ -185,7 +186,9 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
   if (reply.after !== link.position) {
     return c.json({ position: link.position, stale: true }, 409);
   }
-  const stored = await insertPulled(reply.rows, { name: reply.source?.name || link.peer_name }, instanceId());
+  const source = { name: reply.source?.name || link.peer_name };
+  const stored = await insertPulled(reply.rows, source, instanceId());
+  await insertPulledMarks(reply.marks ?? [], source, hereName());
   const gone =
     reply.gone && link.gone_from !== null && link.gone_to !== null
       ? { from: Math.min(link.gone_from, reply.gone.from), to: Math.max(link.gone_to, reply.gone.to) }

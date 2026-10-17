@@ -10,7 +10,7 @@ import {
 } from "../shared/change-mark";
 import { clampSearchSpan, InvalidRangeError, resolveRange } from "./relative";
 
-type MarkRow = {
+export type MarkRow = {
   ts: string;
   end_ts: string | null;
   kind: string;
@@ -18,6 +18,7 @@ type MarkRow = {
   title: string;
   attrs: Record<string, string> | string;
   id: string;
+  toposcope?: string;
 };
 
 function parseAttrs(raw: MarkRow["attrs"]): Record<string, string> {
@@ -52,7 +53,7 @@ function parseEndTs(raw: MarkRow["end_ts"]): string | null {
   }
 }
 
-function mapRow(row: MarkRow): ChangeMark {
+export function mapRow(row: MarkRow): ChangeMark {
   const kind = parseChangeMarkKind(row.kind) ?? "note";
   const ts = toIsoTimestamp(row.ts);
   const title = row.title;
@@ -68,6 +69,7 @@ function mapRow(row: MarkRow): ChangeMark {
     service,
     title,
     attrs: parseAttrs(row.attrs),
+    ...(row.toposcope ? { toposcope: row.toposcope } : {}),
   };
 }
 
@@ -91,7 +93,7 @@ function resolveWindow(
   return { from: clamped.from ?? from, to: clamped.to ?? to };
 }
 
-const markSelect = `ts, end_ts, kind, service, title, attrs, id`;
+export const markSelect = `ts, end_ts, kind, service, title, attrs, id, toposcope`;
 
 function extraWhere(
   filters: { kind?: ChangeMarkKind; service?: string },

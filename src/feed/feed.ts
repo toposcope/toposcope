@@ -10,6 +10,9 @@ import {
   toIsoTimestamp,
 } from "../shared/clickhouse";
 import { emitQuerySql, QueryCompileError, compileQuery, requireCompiled } from "../query/compile";
+import { mapRow, markSelect, type MarkRow } from "../query/marks";
+import { queryRulesOutService } from "../alerts/first-seen";
+import type { ChangeMark } from "../shared/change-mark";
 import {
   isNumericAggBudgetError,
   logsScanBudgetRefuseReason,
@@ -42,6 +45,9 @@ export type FeedRow = {
   origin: { id: string; seq: number };
 };
 
+/** A change mark in the feed's range (#138): marks move with a link, by the same positions. */
+export type FeedMark = ChangeMark & { seq: number };
+
 export type FeedReply = {
   feed: string;
   q: string;
@@ -49,6 +55,11 @@ export type FeedReply = {
   after: number;
   through: number;
   rows: FeedRow[];
+  /**
+   * Marks posted (or closed) in the range: every one whose `service` the feed's `q` does not
+   * rule out by a plain mismatch. A mark is not a log line, so `level:error` does not apply.
+   */
+  marks: FeedMark[];
   /** Every row at or below this can be read; nothing above it is promised yet. */
   settled: number;
   /** When the row at the end of the range arrived here; null for an empty range. */
@@ -143,7 +154,7 @@ export async function readFeed(input: {
   const oldest = await oldestPosition(now);
   const range = feedRange({ after: input.after, settled, oldest });
   const horizon = new Date(now - (input.retentionDays ?? 30) * 86_400_000).toISOString();
-  const base: Omit<FeedReply, "through" | "rows" | "arrived"> = {
+  const base: Omit<FeedReply, "through" | "rows" | "marks" | "arrived"> = {
     feed: input.id,
     q: input.q,
     after: input.after,
@@ -153,7 +164,7 @@ export async function readFeed(input: {
     gone: range.gone,
   };
   if (range.through <= input.after) {
-    return { ...base, through: input.after, rows: [], arrived: null };
+    return { ...base, through: input.after, rows: [], marks: [], arrived: null };
   }
   const params: Record<string, string> = {
     tenant_id: "default",
@@ -185,7 +196,7 @@ export async function readFeed(input: {
     );
   } catch (err) {
     if (isNumericAggBudgetError(err)) {
-      return { ...base, through: input.after, rows: [], arrived: null, refused: logsScanBudgetRefuseReason };
+      return { ...base, through: input.after, rows: [], marks: [], arrived: null, refused: logsScanBudgetRefuseReason };
     }
     throw err;
   }
@@ -211,7 +222,17 @@ export async function readFeed(input: {
   );
   const arrived =
     Number(arrivedRows[0]?.c ?? 0) > 0 ? toIsoTimestamp(String(arrivedRows[0]!.a)) : null;
-  return { ...base, through, rows: out, arrived };
+  const ast = requireCompiled(input.q).ast;
+  const markRows = await clickhouseQuery<MarkRow & { seq: string | number }>(
+    `SELECT ${markSelect}, seq FROM change_marks
+     WHERE tenant_id = 'default' AND seq > {after:UInt64} AND seq <= {through:UInt64}
+     ORDER BY seq`,
+    { after: String(input.after), through: String(through) },
+  );
+  const marks = markRows
+    .map((row) => ({ ...mapRow(row), seq: Number(row.seq) }))
+    .filter((mark) => !queryRulesOutService(ast, mark.service));
+  return { ...base, through, rows: out, marks, arrived };
 }
 
 /**

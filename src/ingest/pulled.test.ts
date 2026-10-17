@@ -51,3 +51,29 @@ describe("pulled rows (#136)", () => {
     expect(rows).toEqual([{ toposcope: "billing" }]);
   });
 });
+
+describe("pulled marks (#138)", () => {
+  test("stored under the instance they were posted at; a mark of ours that came back is not", async () => {
+    const { insertPulledMarks } = await import("./pulled");
+    const tag = Date.now().toString(36);
+    const mark = (id: string, toposcope: string, end_ts: string | null = null) => ({
+      id, ts: new Date(Date.now() - 60_000).toISOString(), end_ts, kind: "deploy" as const, service: "api", title: id, attrs: {}, toposcope, seq: 1,
+    });
+    const stored = await insertPulledMarks(
+      [mark(`deploy-api-${tag}`, "prod-eu"), mark(`deploy-api-${tag}`, "edge-fra"), mark(`mine-${tag}`, "here"), mark(`hop-${tag}@prod-eu`, "prod-eu")],
+      { name: "edge-fra" },
+      "here",
+    );
+    expect(stored).toBe(3);
+    const rows = await clickhouseQuery<{ id: string; toposcope: string }>(
+      "SELECT id, toposcope FROM change_marks WHERE id LIKE {like:String} ORDER BY id",
+      { like: `%${tag}%` },
+    );
+    expect(rows).toEqual([
+      { id: `deploy-api-${tag}@edge-fra`, toposcope: "edge-fra" },
+      { id: `deploy-api-${tag}@prod-eu`, toposcope: "prod-eu" },
+      // A mark that already came through another hop keeps its one suffix.
+      { id: `hop-${tag}@prod-eu`, toposcope: "prod-eu" },
+    ]);
+  });
+});

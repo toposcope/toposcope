@@ -140,3 +140,31 @@ describe("reading a feed (#135)", () => {
     expect(next.arrived).toBeNull();
   });
 });
+
+describe("marks in a feed (#138)", () => {
+  test("a mark posted in the range comes with it, unless the filter rules its service out", async () => {
+    const { clickhouseInsertJsonEachRow, toClickHouseDateTime } = await import("../shared/clickhouse");
+    const { allocateArrivalSeq, releaseArrivalSeq } = await import("../ingest/arrival-seq");
+    forgetOldestPosition();
+    const tag = Date.now().toString(36);
+    const before = arrivalSeqSettled();
+    const seq = await allocateArrivalSeq(3);
+    const ts = toClickHouseDateTime(new Date().toISOString());
+    await clickhouseInsertJsonEachRow(
+      [
+        { id: `deploy-api-${tag}`, service: "api", kind: "deploy", title: "v1" },
+        { id: `deploy-billing-${tag}`, service: "billing", kind: "deploy", title: "v2" },
+        { id: `note-${tag}`, service: "", kind: "note", title: "no service" },
+      ]
+        .map((m, i) => JSON.stringify({ tenant_id: "default", ts, attrs: {}, end_ts: null, toposcope: "here", seq: seq.from + i, ...m }))
+        .join("\n"),
+      "change_marks",
+    );
+    releaseArrivalSeq(seq);
+    const reply = await readFeed({ id: "f_test", q: "service:api level:error", after: before });
+    const ids = reply.marks.map((m) => m.id).filter((id) => id.endsWith(tag));
+    // billing is ruled out by a plain mismatch; a mark with no service never is; level:error does not apply.
+    expect(ids.sort()).toEqual([`deploy-api-${tag}`, `note-${tag}`].sort());
+    expect(reply.marks.find((m) => m.id === `deploy-api-${tag}`)?.toposcope).toBe("here");
+  });
+});
