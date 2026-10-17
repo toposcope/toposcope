@@ -15,6 +15,7 @@ import { formatMetricRef } from "../../shared/metric";
 import { metricReading, metricView } from "../series-list";
 import { formatSpanShort } from "../time-range";
 import { SeriesPicker, SeriesReading } from "./series-picker";
+import { MetricSpark, MetricSplitPicker, sparkTimes } from "./metric-spark";
 
 const LINE = "#a78bfa";
 
@@ -33,6 +34,10 @@ type Props = {
   onSeries: (next: { agg: string | null; metric: string | null }) => void;
   /** The same metric, read another way: its labels stay. */
   onMetric?: (next: string) => void;
+  /** A metric panel split by one label (#104). */
+  metricSplit?: string | null;
+  onMetricSplit?: (next: string | null) => void;
+  live?: boolean;
   updated?: ReactNode;
 };
 
@@ -56,6 +61,9 @@ export function TimeseriesSpark({
   onAgg,
   onSeries,
   onMetric,
+  metricSplit = null,
+  onMetricSplit,
+  live = false,
   updated = null,
 }: Props) {
   const numeric = Boolean(agg || metric);
@@ -97,8 +105,18 @@ export function TimeseriesSpark({
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2">
-        {loading && buckets.length === 0 ? (
+        {loading && buckets.length === 0 && !aggResult ? (
           <div className="h-full animate-pulse rounded bg-muted/40" />
+        ) : view && !refused ? (
+          <MetricSpark
+            times={sparkTimes(times, aggResult)}
+            result={aggResult}
+            readingWord={metricReading(view.kind, stepLabel, false, view.reading)}
+            kindWord={view.kind}
+            name={view.name}
+            window={catalog.window}
+            live={live}
+          />
         ) : numeric ? (
           <div className="relative min-h-0 flex-1">
             {refused ? (
@@ -175,18 +193,22 @@ export function TimeseriesSpark({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2 px-3 pb-2">
-        <select
-          className={cn(extraSelectClass, "flex-1")}
-          value={split}
-          aria-label="Group by"
-          onChange={(e) => onSplit(e.target.value as HistogramSplit)}
-        >
-          {histogramSplits.map((key) => (
-            <option key={key} value={key}>
-              {key === "none" ? "None" : key[0]!.toUpperCase() + key.slice(1)}
-            </option>
-          ))}
-        </select>
+        {view && onMetricSplit ? (
+          <MetricSplitPicker metric={view.name} value={metricSplit} onChange={onMetricSplit} />
+        ) : (
+          <select
+            className={cn(extraSelectClass, "flex-1")}
+            value={split}
+            aria-label="Group by"
+            onChange={(e) => onSplit(e.target.value as HistogramSplit)}
+          >
+            {histogramSplits.map((key) => (
+              <option key={key} value={key}>
+                {key === "none" ? "None" : key[0]!.toUpperCase() + key.slice(1)}
+              </option>
+            ))}
+          </select>
+        )}
         <SeriesPicker
           variant="footer"
           card
