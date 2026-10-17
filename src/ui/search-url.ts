@@ -17,6 +17,7 @@ import {
   defaultLayout,
   formatWidgetsParam,
   isSingleHistogram,
+  normalizeMetricSplit,
   parseWidgetsParam,
   primaryTimeseries,
   type WidgetDef,
@@ -129,6 +130,7 @@ export function parseSearchUrl(search: string): SearchUrlState {
   const logs = params.get("logs") !== "0";
   const metric = normalizeMetricRef(params.get("metric"));
   const metricLabels = metric ? parseMetricLabels(params.get("ml")) : {};
+  const metricSplit = metric ? normalizeMetricSplit(params.get("msplit")) : null;
   const widgets = parseWidgetsParam(params.get("w"), {
     split,
     chart,
@@ -137,6 +139,7 @@ export function parseSearchUrl(search: string): SearchUrlState {
     logScale,
     metric,
     metricLabels,
+    metricSplit,
   });
   const primary = primaryTimeseries(widgets);
   return {
@@ -182,6 +185,7 @@ const reservedSearchParams = new Set([
   "w",
   "metric",
   "ml",
+  "msplit",
 ]);
 
 function parseBindCandidates(params: URLSearchParams): Record<string, string> {
@@ -279,6 +283,9 @@ export function serializeSearchUrl(state: SearchUrlState): string {
     const ml = formatMetricLabels(primary.metricLabels);
     if (ml) {
       params.set("ml", ml);
+    }
+    if (primary.metricSplit) {
+      params.set("msplit", primary.metricSplit);
     }
     if (state.replaceY || primary.replaceY) {
       params.set("y", "agg");

@@ -68,6 +68,11 @@ export type SearchAggResult = {
   /** For a histogram: which reading the bars are, and the histogram's own name. */
   reading?: HistogramReading;
   metric?: string;
+  /** The unit the app sent the metric with, as sent (#104). */
+  unit?: string;
+  /** A metric split by one label: the label, and one line per value (8 and `other`). */
+  split?: string;
+  splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null }>;
 };
 
 export type FacetValue = { v: string; n: number };
