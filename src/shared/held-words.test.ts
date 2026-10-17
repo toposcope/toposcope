@@ -59,6 +59,9 @@ describe("held words (#139)", () => {
     expect(hatchLabel({ ...gap, kind: "quiet" }, [quiet("prod-eu", at("12:58:04"))], 1)).toBe(
       "no rows from prod-eu — not answering, not quiet",
     );
+    // 5g: with two short, a quiet span names only its source, like a behind one.
+    const two = [quiet("site-0417", at("14:20:31")), behind("prod-eu", at("14:56:02"))];
+    expect(hatchLabel({ ...gap, source: "site-0417", kind: "quiet" }, two, 2)).toBe("site-0417");
     expect(tableRowWords(gap, [behind("prod-eu", at("14:56:02"))], now)).toBe(
       "prod-eu read to 14:56:02 — its rows after this are not here yet",
     );

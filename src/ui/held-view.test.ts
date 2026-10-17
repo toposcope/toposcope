@@ -72,7 +72,8 @@ describe("what Search draws (#139)", () => {
       src({ name: "prod-us" }),
     ])!;
     expect(v.pill).toBe("2 short · site-0417 · prod-eu");
-    expect(v.hatches.map((h) => h.label)).toEqual(["no rows from site-0417 — not answering, not quiet", "prod-eu"]);
+    // Each span says only whose it is, the quiet one too: tagL(33.3, 'site-0417'), tagR('prod-eu').
+    expect(v.hatches.map((h) => h.label)).toEqual(["site-0417", "prod-eu"]);
     expect(v.rows).toHaveLength(2);
   });
 
