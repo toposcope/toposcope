@@ -105,6 +105,23 @@ describe("the pinned plot split by one label (13a)", () => {
     expect(pinned(vcpu(["sellable"]), null)).not.toContain("Split the series by");
   });
 
+  test("a metric by Replace hides the volume group-by; Overlay keeps it", () => {
+    const volumeGroupBy = />Service</;
+    expect(pinned(vcpu(["sellable"]), "basis")).not.toMatch(volumeGroupBy);
+    expect(pinned(vcpu(["sellable"]), null, false)).toMatch(volumeGroupBy);
+  });
+
+  test("a unit on the axis gets a 48px gutter, and the rows under the plot follow it", () => {
+    const withUnit = pinned(vcpu(["sellable", "sold", "used"]), "basis");
+    expect(withUnit).toContain("w-12 whitespace-nowrap");
+    expect(withUnit).toMatch(/vcpu<\/span>/);
+    expect(withUnit).toContain("padding-left:63px");
+    expect(withUnit).not.toContain("padding-left:47px");
+    const noUnit = pinned({ ...vcpu(["sellable", "sold", "used"]), unit: undefined }, "basis");
+    expect(noUnit).not.toContain("w-12 whitespace-nowrap");
+    expect(noUnit).toContain("padding-left:47px");
+  });
+
   test("hover reads each line's value with its unit", () => {
     const html = renderToStaticMarkup(
       createElement(HistogramHover, {

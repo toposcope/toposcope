@@ -983,6 +983,11 @@ export function HistogramChart({
     : [];
   const showVolume = !replaceY || !overlayOn;
   const overlayAsBars = overlayOn && replaceY && !asLine && !asArea && !splitDrawn;
+  const unitText = printUnit(aggResult?.unit);
+  // A unit on the left axis gets 13a's 48px gutter, so `16 vcpu` reads on one line.
+  const axisUnit = replaceY && overlayOn && unitText.length > 0;
+  /** Where the plot starts: padding, the axis column and the gap; rows under it line up there. */
+  const plotLeft = axisUnit ? 63 : 47;
 
   const brushStart = lo >= 0 ? buckets[lo] : undefined;
   const brushEnd = hi >= 0 ? buckets[hi] : undefined;
@@ -1012,7 +1017,6 @@ export function HistogramChart({
     aggResult?.source === "metric" &&
     aggResult.buckets.length === 0 &&
     !splitOn;
-  const unitText = printUnit(aggResult?.unit);
   // `avg · agental.box.vcpu{basis} · vcpu`: the split label inside the braces, after any matchers.
   const splitExpr = (() => {
     const by = aggResult?.split ?? metricSplit;
@@ -1096,19 +1100,24 @@ export function HistogramChart({
           lockChrome && "pointer-events-none opacity-50",
         )}
       >
-        <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
-          {histogramSplits.map((key) => (
-            <button
-              key={key}
-              type="button"
-              className={pill(split === key)}
-              onClick={() => onSplit(key)}
-            >
-              {key === "none" ? "None" : key[0]!.toUpperCase() + key.slice(1)}
-            </button>
-          ))}
-        </div>
-        <div className="h-4 w-px shrink-0 bg-border" />
+        {/* A metric drawn by Replace hides the log volume, so its group-by goes too: 13a has one Split. */}
+        {metric && replaceY ? null : (
+          <>
+            <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
+              {histogramSplits.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={pill(split === key)}
+                  onClick={() => onSplit(key)}
+                >
+                  {key === "none" ? "None" : key[0]!.toUpperCase() + key.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="h-4 w-px shrink-0 bg-border" />
+          </>
+        )}
         <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
           {histogramCharts.map((key) => (
             <button
@@ -1247,7 +1256,10 @@ export function HistogramChart({
       </div>
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
-          className="flex w-8 shrink-0 flex-col justify-between py-[3px] text-right font-mono text-[10px] text-muted-foreground/70"
+          className={cn(
+            "flex shrink-0 flex-col justify-between py-[3px] text-right font-mono text-[10px] text-muted-foreground/70",
+            axisUnit ? "w-12 whitespace-nowrap" : "w-8",
+          )}
           style={{
             marginTop: HEAD_H + HEAD_GAP,
             ...(marks
@@ -1694,15 +1706,15 @@ export function HistogramChart({
         ) : null}
       </div>
       <div
-        className="mt-1 flex shrink-0 justify-between pr-2.5 pl-[47px] font-mono text-[10px] text-muted-foreground/70"
-        style={{ paddingRight: underPlotPadRight }}
+        className="mt-1 flex shrink-0 justify-between pr-2.5 font-mono text-[10px] text-muted-foreground/70"
+        style={{ paddingLeft: plotLeft, paddingRight: underPlotPadRight }}
       >
         {axis.map((label, i) => (
           <span key={`${label}-${i}`}>{label}</span>
         ))}
       </div>
       {agg || metric || scanReason ? (
-        <div className="mt-1 pr-2.5 pl-[47px] text-[11px] text-muted-foreground">
+        <div className="mt-1 pr-2.5 text-[11px] text-muted-foreground" style={{ paddingLeft: plotLeft }}>
           {scanReason ? (
             <span>{scanReason}</span>
           ) : aggResult?.source === "refused" ? (
@@ -1726,11 +1738,14 @@ export function HistogramChart({
         </div>
       ) : null}
       {marks && compareFold ? (
-        <CompareFold {...compareFold} split={split} seriesKeys={keys} plotReady={!loading} onPaintLines={onCompareLines} />
+        <CompareFold {...compareFold} split={split} seriesKeys={keys} plotReady={!loading} onPaintLines={onCompareLines} plotLeft={plotLeft} />
       ) : null}
       {/* Split lines named at their ends need no legend; past three they get one (13g). */}
       {splitDrawn && (endLabels || !splitOn) ? null : (
-      <div className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2.5 border-t border-white/[0.08] pr-2.5 pb-1.5 pl-[47px] pt-1.5">
+      <div
+        className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2.5 border-t border-white/[0.08] pr-2.5 pb-1.5 pt-1.5"
+        style={{ paddingLeft: plotLeft }}
+      >
         {showVolume
           ? keys.map((key, i) => (
               <span
