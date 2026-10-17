@@ -166,6 +166,7 @@ export const logsCreateTableSql = `CREATE TABLE IF NOT EXISTS logs (
   trace_id String DEFAULT '',
   seq UInt64 DEFAULT 0,
   toposcope LowCardinality(String) DEFAULT '',
+  arrived DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC'),
   INDEX idx_trace_id_bf trace_id TYPE bloom_filter(0.01) GRANULARITY 1,
   INDEX idx_attr_vals_bf mapValues(attr_map) TYPE bloom_filter(0.01) GRANULARITY 1,
   INDEX idx_message_text lowerUTF8(message) TYPE text(tokenizer = 'splitByNonAlpha') GRANULARITY 1,
@@ -273,6 +274,10 @@ async function ensureLogsBloomIndexes(): Promise<void> {
  */
 async function ensureArrivalSeq(): Promise<void> {
   await clickhouseCommand("ALTER TABLE logs ADD COLUMN IF NOT EXISTS seq UInt64 DEFAULT 0");
+  // When a row arrived here (#135): a feed says how far it has read in time. 1970 on older rows.
+  await clickhouseCommand(
+    "ALTER TABLE logs ADD COLUMN IF NOT EXISTS arrived DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC')",
+  );
   await ensureSkipIndex("logs", "idx_seq_minmax", "seq TYPE minmax GRANULARITY 1");
   await clickhouseCommand(`
     CREATE TABLE IF NOT EXISTS arrival_seq (

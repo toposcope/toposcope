@@ -35,6 +35,7 @@ export async function insertEvents(events: LogEvent[], losses?: Losses): Promise
   return withInsertSlot(async () => {
     // Numbered in the order they arrived, before the insert: a batch is one run of numbers.
     const seq = await allocateArrivalSeq(events.length);
+    const arrived = toClickHouseDateTime(new Date().toISOString());
     try {
       const body = events
         .map((event, i) => {
@@ -59,6 +60,7 @@ export async function insertEvents(events: LogEvent[], losses?: Losses): Promise
             trace_id: pickTraceId(attr_map),
             seq: seq.from + i,
             toposcope: event.toposcope ?? hereName(),
+            arrived,
           });
         })
         .join("\n");
