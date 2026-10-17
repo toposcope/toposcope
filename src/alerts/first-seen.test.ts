@@ -49,6 +49,8 @@ function harness(opts: {
   cut: (mark: ChangeMark) => Partial<Cut>;
   status?: number;
   publicUrl?: string | null;
+  /** A fingerprint's first event; undefined leaves it unread. Default ten minutes ago. */
+  firstTs?: (hex: string) => string | undefined;
 }) {
   const sent = new Map<string, Set<string>>();
   const posts: Array<{ url: string; body: any }> = [];
@@ -71,7 +73,12 @@ function harness(opts: {
       return { windows, firstSeen: [], refused: null, ...opts.cut(mark) };
     },
     details: async (_w, _c, hexes) =>
-      new Map(hexes.map((hex) => [hex, { hex, type: "TypeError", message: `boom ${hex}`, firstTs: new Date(now - 10 * minute).toISOString() }])),
+      new Map(
+        hexes.flatMap((hex) => {
+          const firstTs = opts.firstTs ? opts.firstTs(hex) : new Date(now - 10 * minute).toISOString();
+          return firstTs ? [[hex, { hex, type: "TypeError", message: `boom ${hex}`, firstTs }] as const] : [];
+        }),
+      ),
     sent: (ruleId, markId) => sent.get(`${ruleId}/${markId}`) ?? new Set(),
     recordSent: (ruleId, markId, e1s) => {
       const key = `${ruleId}/${markId}`;
@@ -191,6 +198,58 @@ describe("evaluateFirstSeenRule (#107)", () => {
     });
     await evaluateFirstSeenRule(rule(), saved, now, h.deps);
     expect(h.posts.map((p) => p.body.mark.id)).toEqual(["mk_1", "mk_2"]);
+  });
+
+  describe("a fingerprint new after a burst of deploys pages once", () => {
+    const at = (min: number) => new Date(now - min * minute).toISOString();
+    const burst = [
+      mark("mk_1", { title: "v0.9.1", ts: at(40) }),
+      mark("mk_3", { title: "v0.9.3", ts: at(18) }),
+      mark("mk_2", { title: "v0.9.2", ts: at(30) }),
+    ];
+    const hex = "7777777777777777";
+
+    test("for the latest deploy at or before its first event, and never again", async () => {
+      const h = harness({ marks: burst, cut: () => ({ firstSeen: [row(hex, 4)] }), firstTs: () => at(10) });
+      await evaluateFirstSeenRule(rule(), saved, now, h.deps);
+      expect(h.posts.map((p) => p.body.mark.id)).toEqual(["mk_3"]);
+      for (const id of ["mk_1", "mk_2", "mk_3"]) {
+        expect(h.sent.get(`rule-1/${id}`)).toEqual(new Set([hex]));
+      }
+      await evaluateFirstSeenRule(rule(), saved, now + minute, h.deps);
+      expect(h.posts).toHaveLength(1);
+    });
+
+    test("first seen between two deploys: the earlier one", async () => {
+      const h = harness({ marks: burst, cut: () => ({ firstSeen: [row(hex, 4)] }), firstTs: () => at(35) });
+      await evaluateFirstSeenRule(rule(), saved, now, h.deps);
+      expect(h.posts.map((p) => p.body.mark.id)).toEqual(["mk_1"]);
+    });
+
+    test("its first event unread: the latest deploy it is new after", async () => {
+      const h = harness({ marks: burst, cut: () => ({ firstSeen: [row(hex, 4)] }), firstTs: () => undefined });
+      await evaluateFirstSeenRule(rule(), saved, now, h.deps);
+      expect(h.posts.map((p) => p.body.mark.id)).toEqual(["mk_3"]);
+    });
+
+    test("a fingerprint new after one deploy only still pages for it, beside the shared one", async () => {
+      const h = harness({
+        marks: burst,
+        cut: (m) => ({ firstSeen: m.id === "mk_1" ? [row(hex, 4), row("1111111111111111", 2)] : [row(hex, 4)] }),
+        firstTs: () => at(10),
+      });
+      await evaluateFirstSeenRule(rule(), saved, now, h.deps);
+      expect(h.posts.map((p) => [p.body.mark.id, p.body.fingerprints.map((f: { e1: string }) => f.e1)])).toEqual([
+        ["mk_1", ["1111111111111111"]],
+        ["mk_3", [hex]],
+      ]);
+    });
+
+    test("a failed call leaves it unsent for every deploy", async () => {
+      const h = harness({ marks: burst, cut: () => ({ firstSeen: [row(hex, 4)] }), firstTs: () => at(10), status: 500 });
+      await evaluateFirstSeenRule(rule(), saved, now, h.deps);
+      expect(h.sent.size).toBe(0);
+    });
   });
 
   test("a failed call is not marked sent, so the next minute tries again", async () => {

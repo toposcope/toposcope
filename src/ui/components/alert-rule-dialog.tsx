@@ -265,7 +265,7 @@ export function AlertRuleDialog({
                 <b className="text-foreground">flag</b> mark, with at least{" "}
                 <b className="text-foreground">{thresholdOk ? threshold : "N"}</b>{" "}
                 {thresholdN === 1 ? "event" : "events"} after it. Each mark is watched for 24 hours,
-                and each fingerprint is sent once a mark.
+                and each fingerprint is sent once, for the last mark before it first appeared.
               </>
             ) : selected ? (
               thresholdSentence(selected, thresholdOk ? threshold : "N")
