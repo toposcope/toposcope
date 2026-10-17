@@ -92,6 +92,13 @@ export function getDb(): Database {
     );
   `);
   db.run(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS field_roles (
       key TEXT PRIMARY KEY,
       role TEXT NOT NULL CHECK (role IN ('chart', 'lookup', 'ignore'))

@@ -1,9 +1,14 @@
 import type { Server } from "bun";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { serveStatic } from "hono/bun";
 import { startAlertCron } from "./alerts/cron";
 import {
   checkBasic,
+  passwordMatches,
+  readCookie,
+  sessionCookieHeader,
+  sessionCookieName,
+  basicPassword,
   checkBearer,
   unauthorizedHeaders,
 } from "./auth";
@@ -24,6 +29,9 @@ import {
 } from "./control/saved-searches";
 import { getFields, putFields, storedSkipKeys } from "./control/fields";
 import { getRetentionDays, getSettings, putSettings } from "./control/settings";
+import { instanceId, instanceName } from "./control/instance";
+import { createSession, endSession, sessionExpiry, sessionMs } from "./control/sessions";
+import { safeNext, signInPageHtml } from "./sign-in-page";
 import {
   createApiToken,
   deleteApiToken,
@@ -95,8 +103,73 @@ app.get("/api/metrics", (c) => {
   });
 });
 
+/** The address the browser opened: what the sign-in page and the tab title name when unnamed. */
+function openedAddress(c: Context): string {
+  return (c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "").split(",")[0]!.trim() || "toposcope";
+}
+
+function overHttps(c: Context): boolean {
+  return c.req.header("x-forwarded-proto")?.split(",")[0]?.trim() === "https" || c.req.url.startsWith("https:");
+}
+
+/** A browser asking for a page, not a script or the app's own API calls. */
+function wantsPage(c: Context): boolean {
+  const path = c.req.path;
+  return (
+    (c.req.method === "GET" || c.req.method === "HEAD") &&
+    !path.startsWith("/api/") &&
+    !path.startsWith("/v1/") &&
+    !path.startsWith("/v1development/") &&
+    (c.req.header("accept") ?? "").includes("text/html")
+  );
+}
+
+function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?: 200 | 401 }): Response {
+  const url = new URL(c.req.url);
+  const signedOut = url.searchParams.get("signed_out") === "1";
+  if (url.searchParams.has("signed_out")) {
+    url.searchParams.delete("signed_out");
+  }
+  return c.html(
+    signInPageHtml({
+      name: instanceName(),
+      address: openedAddress(c),
+      next: opts.next ?? `${url.pathname}${url.search}`,
+      wrong: opts.wrong,
+      signedOut,
+    }),
+    opts.status ?? 401,
+  );
+}
+
+// #102: a browser that does not show the Basic prompt signs in on a page instead.
+app.post("/api/sign-in", async (c) => {
+  const json = (c.req.header("content-type") ?? "").includes("application/json");
+  let password = "";
+  let nextPath = "/";
+  try {
+    const body = json ? ((await c.req.json()) as Record<string, unknown>) : await c.req.parseBody();
+    password = typeof body.password === "string" ? body.password : "";
+    nextPath = safeNext(typeof body.next === "string" ? body.next : "/");
+  } catch {
+    return c.json({ error: "Expected a password" }, 400);
+  }
+  if (!basicPassword() || !passwordMatches(password)) {
+    // A short pause, so guessing is slow.
+    await Bun.sleep(750);
+    return json ? c.json({ error: "Wrong password" }, 401) : signInPage(c, { wrong: true, next: nextPath });
+  }
+  const session = createSession(basicPassword()!);
+  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
+  return json ? c.json({ ok: true, expires_at: session.expiresAt }) : c.redirect(nextPath, 303);
+});
+
 app.use("/*", async (c, next) => {
-  if (c.req.path === "/api/health" || c.req.path === "/api/metrics") {
+  if (
+    c.req.path === "/api/health" ||
+    c.req.path === "/api/metrics" ||
+    (c.req.path === "/api/sign-in" && c.req.method === "POST")
+  ) {
     return next();
   }
   if (!bootAllowsRequest(bootPhase, c.req.path)) {
@@ -113,9 +186,10 @@ app.use("/*", async (c, next) => {
       c.req.path === "/v1/profiles" ||
       c.req.path === "/v1development/profiles") &&
     c.req.method === "POST";
+  const cookie = ingest ? undefined : readCookie(c.req.header("cookie"), sessionCookieName());
   const allowed = ingest
     ? checkBearer(header) || checkBasic(header)
-    : checkBasic(header);
+    : checkBasic(header) || sessionExpiry(cookie, basicPassword()) !== null;
   if (!allowed) {
     // A sender holds an ingest token and nothing else. On a wrong path under the
     // ingest prefixes its token is good and its path is not, so say that.
@@ -124,9 +198,33 @@ app.use("/*", async (c, next) => {
     if (sendsHere && checkBearer(header)) {
       return c.json({ error: "Not found" }, 404);
     }
+    if (wantsPage(c)) {
+      return signInPage(c, {});
+    }
+    // A request with a cookie came from a signed-in browser: never the Basic prompt on top.
+    if (cookie) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
     return c.json({ error: "Unauthorized" }, 401, unauthorizedHeaders());
   }
   return next();
+});
+
+app.post("/api/sign-out", (c) => {
+  endSession(readCookie(c.req.header("cookie"), sessionCookieName()));
+  c.header("Set-Cookie", sessionCookieHeader("", 0, overHttps(c)));
+  return c.json({ ok: true });
+});
+
+app.get("/api/instance", (c) => {
+  const cookie = readCookie(c.req.header("cookie"), sessionCookieName());
+  const expiresAt = checkBasic(c.req.header("authorization")) ? null : sessionExpiry(cookie, basicPassword());
+  return c.json({
+    id: instanceId(),
+    name: instanceName(),
+    address: openedAddress(c),
+    session: expiresAt === null ? { kind: "basic" } : { kind: "cookie", expires_at: expiresAt },
+  });
 });
 
 app.post("/api/ingest", ingestRoute);

@@ -14,6 +14,7 @@ import { EventTable } from "@/components/event-table";
 import { WorkspaceStrip } from "@/components/workspace-strip";
 import { OperatorSidebar } from "@/components/operator-sidebar";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
+import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
 import { loadSavedCounts } from "./saved-counts";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
@@ -518,6 +519,45 @@ export function App() {
   const [scanRefuse, setScanRefuse] = useState<SearchScan | null>(null);
   const [retentionDays, setRetentionDays] = useState(30);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [instance, setInstance] = useState<InstanceInfo | null>(null);
+
+  const loadInstance = useCallback(async () => {
+    const res = await fetch("/api/instance");
+    if (res.ok) {
+      setInstance((await res.json()) as InstanceInfo);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadInstance().catch(() => undefined);
+  }, [loadInstance]);
+
+  useEffect(() => {
+    document.title = instanceTitle(instance);
+  }, [instance]);
+
+  // A sign-in that ran out (or a password change) answers 401: the page itself then shows the
+  // sign-in page. Once a minute at most, so a 401 the page cannot fix does not loop.
+  useEffect(() => {
+    if (!unauthorized) {
+      return;
+    }
+    try {
+      const last = Number(sessionStorage.getItem("toposcope:signin-reload") ?? 0);
+      if (Date.now() - last < 60_000) {
+        return;
+      }
+      sessionStorage.setItem("toposcope:signin-reload", String(Date.now()));
+    } catch {
+      return;
+    }
+    window.location.reload();
+  }, [unauthorized]);
+
+  async function signOut() {
+    await fetch("/api/sign-out", { method: "POST" }).catch(() => undefined);
+    window.location.assign("/?signed_out=1");
+  }
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [alertSeries, setAlertSeries] = useState<Record<string, AlertSeriesView>>({});
   const [alerts, setAlerts] = useState<AlertRule[]>([]);
@@ -579,7 +619,7 @@ export function App() {
     const res = await fetch("/api/alert-rules");
     if (res.status === 401) {
       setUnauthorized(true);
-      throw new Error("Unauthorized. Sign in with basic auth.");
+      throw new Error("Unauthorized. Sign in again.");
     }
     if (!res.ok) {
       throw new Error(`Alert rules failed (${res.status})`);
@@ -610,7 +650,7 @@ export function App() {
     const res = await fetch("/api/fields");
     if (res.status === 401) {
       setUnauthorized(true);
-      throw new Error("Unauthorized. Sign in with basic auth.");
+      throw new Error("Unauthorized. Sign in again.");
     }
     if (!res.ok) {
       throw new Error(`Fields failed (${res.status})`);
@@ -638,7 +678,7 @@ export function App() {
       const res = await fetch(path, { signal: ac.signal });
       if (res.status === 401) {
         setUnauthorized(true);
-        throw new Error("Unauthorized. Sign in with basic auth.");
+        throw new Error("Unauthorized. Sign in again.");
       }
       if (!res.ok) {
         throw new Error(`Fields failed (${res.status})`);
@@ -754,7 +794,7 @@ export function App() {
     const res = await fetch("/api/saved-searches");
     if (res.status === 401) {
       setUnauthorized(true);
-      throw new Error("Unauthorized. Sign in with basic auth.");
+      throw new Error("Unauthorized. Sign in again.");
     }
     if (!res.ok) {
       throw new Error(`Saved searches failed (${res.status})`);
@@ -1182,7 +1222,7 @@ export function App() {
         });
         if (res.status === 401) {
           setUnauthorized(true);
-          throw new Error("Unauthorized. Sign in with basic auth.");
+          throw new Error("Unauthorized. Sign in again.");
         }
         if (!res.ok) {
           throw new Error(`Search failed (${res.status})`);
@@ -1598,7 +1638,7 @@ export function App() {
         const res = await fetch("/api/saved-searches");
         if (res.status === 401) {
           setUnauthorized(true);
-          throw new Error("Unauthorized. Sign in with basic auth.");
+          throw new Error("Unauthorized. Sign in again.");
         }
         if (!res.ok) {
           throw new Error(`Saved searches failed (${res.status})`);
@@ -3500,6 +3540,13 @@ export function App() {
             toposcope
           </span>
         </span>
+        {instance ? (
+          <InstanceMenu
+            info={instance}
+            onRename={() => setSettingsOpen(true)}
+            onSignOut={() => void signOut()}
+          />
+        ) : null}
         <nav className="flex items-center gap-0.5">
           <Button
             type="button"
@@ -3879,7 +3926,7 @@ export function App() {
             <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-[7px] border-b px-3 py-[9px]">
               {unauthorized ? (
                 <span className="text-xs text-destructive">
-                  Unauthorized. Sign in with basic auth.
+                  Unauthorized. Sign in again.
                 </span>
               ) : error ? (
                 <span className="text-xs text-destructive">{error}</span>
@@ -4315,6 +4362,7 @@ export function App() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         onRetentionDays={setRetentionDays}
+        onInstanceName={() => void loadInstance().catch(() => undefined)}
       />
       <TokensDialog open={tokensOpen} onOpenChange={setTokensOpen} />
       <SaveSearchDialog
