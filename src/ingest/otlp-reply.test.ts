@@ -85,6 +85,11 @@ beforeEach(() => {
       if (!table) {
         throw new Error(`Unexpected fetch: ${String(input)}`);
       }
+      if (table === "arrival_seq") {
+        // The counter reserving ahead, not a row anyone sent: it lands in whichever test first
+        // inserts after the counter was reset or loaded.
+        return new Response("");
+      }
       stored[table] = (stored[table] ?? 0) + String(init?.body ?? "").split("\n").length;
       return new Response("");
     },
