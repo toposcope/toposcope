@@ -54,7 +54,7 @@ import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsR
   metricLabelsRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
 import { fingerprintCutRoute } from "./query/fingerprint-cut";
 import { createFeedRoute, listFeedsRoute, readFeedRoute } from "./feed/feed";
-import { claimRoute, linkFeedRoute, linkRemoveRoute, lookupRoute } from "./links/protocol";
+import { claimRoute, linkAskRoute, linkFeedRoute, linkRemoveRoute, linkRowsRoute, lookupRoute } from "./links/protocol";
 import {
   confirmRoute,
   inviteRoute,
@@ -279,6 +279,8 @@ app.post("/link/v1/lookup", lookupRoute);
 app.post("/link/v1/claim", claimRoute);
 app.get("/link/v1/feed", linkFeedRoute);
 app.post("/link/v1/remove", linkRemoveRoute);
+app.post("/link/v1/ask", linkAskRoute);
+app.post("/link/v1/rows", linkRowsRoute);
 app.get("/api/search/follow-span", followSpanRoute);
 app.get("/api/facets", facetsRoute);
 app.get("/api/attr-keys", attrKeysRoute);

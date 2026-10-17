@@ -1,5 +1,10 @@
-import { instanceId } from "../control/instance";
-import type { FeedReply } from "../feed/feed";
+import { instanceId, instanceName } from "../control/instance";
+
+function instanceNameOrEmpty(): string {
+  return instanceName() ?? "";
+}
+import { readFeed, type FeedReply } from "../feed/feed";
+import { getRetentionDays } from "../control/settings";
 import { insertPulled } from "../ingest/pulled";
 import { activeLinks, getLink, noteContact, noteFailure, type LinkRecord } from "./store";
 
@@ -88,6 +93,70 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
   return { stored };
 }
 
+/**
+ * A link where we are the source and we call out (#137): ask the puller where it stands, read
+ * our feed from there, deliver the range, until it is caught up or a pass's pages are spent.
+ */
+export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps): Promise<{ delivered: number }> {
+  const base = link.peer_url.replace(/\/+$/, "");
+  const headers = { authorization: `Bearer ${link.secret ?? ""}`, "content-type": "application/json" };
+  let delivered = 0;
+  for (let page = 0; page < pullPagesPerPass; page++) {
+    let ask: { after: number; limit: number };
+    try {
+      const res = await deps.fetch(`${base}/link/v1/ask`, { method: "POST", headers, signal: AbortSignal.timeout(15_000) });
+      if (res.status === 401) {
+        noteFailure(link.id, "refused: the link was removed at the puller");
+        return { delivered };
+      }
+      if (!res.ok) {
+        noteFailure(link.id, `the puller answered ${res.status}`);
+        return { delivered };
+      }
+      ask = (await res.json()) as { after: number; limit: number };
+    } catch (err) {
+      noteFailure(link.id, failureWords(err));
+      return { delivered };
+    }
+    const reply = await readFeed({
+      id: link.id,
+      q: link.q,
+      after: ask.after,
+      limit: ask.limit,
+      retentionDays: getRetentionDays(),
+      hereId: deps.hereId(),
+    });
+    try {
+      const res = await deps.fetch(`${base}/link/v1/rows`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ...reply, source: { id: deps.hereId(), name: instanceNameOrEmpty() } }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!res.ok && res.status !== 409) {
+        noteFailure(link.id, `the puller answered ${res.status}`);
+        return { delivered };
+      }
+    } catch (err) {
+      noteFailure(link.id, failureWords(err));
+      return { delivered };
+    }
+    delivered += reply.rows.length;
+    noteContact(link.id, {
+      at: deps.now(),
+      position: reply.through,
+      settled: reply.settled,
+      ...(reply.arrived ? { arrived_at: reply.arrived } : {}),
+      behind_rows: link.q.trim() === "" ? Math.max(0, reply.settled - reply.through) : null,
+      last_error: null,
+    });
+    if (reply.refused || reply.through >= reply.settled) {
+      break;
+    }
+  }
+  return { delivered };
+}
+
 let running = false;
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -99,8 +168,13 @@ export async function pullPass(deps: PullDeps = defaultDeps): Promise<void> {
   running = true;
   try {
     for (const link of activeLinks()) {
-      if (link.role === "pull" && link.connects === "we") {
+      if (link.connects !== "we") {
+        continue;
+      }
+      if (link.role === "pull") {
         await pullLink(link, deps);
+      } else {
+        await serveLink(link, deps);
       }
     }
   } finally {
@@ -111,8 +185,9 @@ export async function pullPass(deps: PullDeps = defaultDeps): Promise<void> {
 /** Start pulling at once for a link just made, without waiting for the next pass. */
 export function pullSoon(id: string): void {
   const link = getLink(id);
-  if (link && link.role === "pull" && link.connects === "we") {
-    void pullLink(link).catch((err) => console.error("pull failed", err));
+  if (link && link.connects === "we") {
+    const run = link.role === "pull" ? pullLink(link) : serveLink(link);
+    void run.catch((err) => console.error("link pass failed", err));
   }
 }
 

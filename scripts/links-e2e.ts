@@ -128,6 +128,22 @@ await until("B's link says the source refused it", async () => {
   const link = list.body.links.find((l: any) => l.id === pullOnB.id);
   return typeof link?.last_error === "string" && link.last_error.includes("removed");
 });
+// 6. A invites a source (#137); B pastes and calls out, so B needs no inbound port.
+const invite = await call(A, "/api/links/invite", { method: "POST", json: { q: "level:warn" } });
+check(invite.status === 201 && invite.body.key.startsWith("tsl1_i."), "A mints an invite key", invite.body);
+const invited = await call(B, "/api/links/confirm", { method: "POST", json: { key: invite.body.key } });
+check(invited.status === 201 && invited.body.role === "serve" && invited.body.connects === "we", "B pastes it: rows leave B, B calls A", invited.body);
+const warnService = `called-${tag}`;
+await ingest(B, warnService, [
+  { level: "warn", message: `${tag} w1` },
+  { level: "info", message: `${tag} i1` },
+  { level: "warn", message: `${tag} w2` },
+]);
+await until("A holds B's two warnings, delivered down B's call", async () => (await count(A, `toposcope:${nameB} service:${warnService}`)) === 2);
+const pullOnA = (await call(A, "/api/links")).body.links.find((l: any) => l.role === "pull" && l.connects === "they" && l.peer_name === nameB);
+const serveOnB = (await call(B, "/api/links")).body.links.find((l: any) => l.id === invited.body.id);
+check(Boolean(pullOnA) && pullOnA.position > 0 && pullOnA.last_error === null, "A's list: pulling from edge-fra, they call us", pullOnA);
+check(Boolean(serveOnB) && serveOnB.position === pullOnA.position, "B's list: pulled by prod-eu, we call them, at the same position", serveOnB);
 console.log("links e2e ok");
 
 export {};
