@@ -39,7 +39,8 @@ import { otlpProfilesRoute } from "./ingest/otlp-profiles-route";
 import { startOtlpGrpc } from "./ingest/otlp-grpc";
 import { startSyslogUdp } from "./ingest/syslog";
 import { renderMetrics } from "./metrics";
-import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsRoute, metricNamesRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
+import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsRoute, metricNamesRoute,
+  metricLabelsRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
 import { fingerprintCutRoute } from "./query/fingerprint-cut";
 import { followSpanRoute } from "./query/follow-span";
 import { tracesRoute } from "./query/traces";
@@ -151,6 +152,7 @@ app.get("/api/attr-facets", attrFacetsRoute);
 app.get("/api/attr-values", attrValuesRoute);
 app.get("/api/numeric-keys", numericKeysRoute);
 app.get("/api/metric-names", metricNamesRoute);
+app.get("/api/metric-labels", metricLabelsRoute);
 app.get("/api/throughput", throughputRoute);
 app.get("/api/system", systemRoute);
 app.get("/api/saved-searches", listSavedSearches);
