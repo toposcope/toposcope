@@ -2,6 +2,17 @@ import type { HeldGap } from "../../shared/held";
 
 const HATCH = "repeating-linear-gradient(135deg, rgba(255,255,255,0.11) 0 1px, transparent 1px 7px)";
 
+/** As long as 5c's "not here yet": a narrow span's label may run past its edge by that much. */
+const NARROW_CHARS = 12;
+
+/**
+ * A narrow span keeps a label as short as 5c's; a longer one says only whose span it is, as each
+ * of several short spans does in 5g. The pill and the hatched row still say the rest.
+ */
+function narrowLabel(span: HeldGap & { label: string }): string {
+  return span.label.length <= NARROW_CHARS ? span.label : span.source;
+}
+
 /**
  * The spans of the plot a short source's rows are not here for (#139, 5c–5e, 5g, 5h): hatched and
  * labelled, so absent bars never read as zero. A behind or quiet span opens on a dashed edge and
@@ -25,7 +36,8 @@ export function HeldHatch({
           return null;
         }
         const hole = span.kind === "hole";
-        // A narrow span keeps its label inside the plot, ending at its right edge.
+        // A narrow span keeps its label inside the plot, ending at its right edge, and cuts a
+        // source name too long for it rather than drawing it over the bars.
         const narrow = hi - lo < 0.3;
         return (
           <div
@@ -40,13 +52,18 @@ export function HeldHatch({
               backgroundColor: "rgba(9,9,11,0.45)",
             }}
           >
-            <span
-              className={`absolute top-0.5 font-mono text-[10.5px] whitespace-nowrap text-muted-foreground ${
-                narrow ? "right-1" : "left-1.5"
-              }`}
-            >
-              {span.label}
-            </span>
+            {narrow ? (
+              <span
+                className="absolute top-0.5 right-1 truncate font-mono text-[10.5px] text-muted-foreground"
+                style={{ maxWidth: `max(calc(100% - 0.5rem), ${NARROW_CHARS + 1}ch)` }}
+              >
+                {narrowLabel(span)}
+              </span>
+            ) : (
+              <span className="absolute top-0.5 left-1.5 font-mono text-[10.5px] whitespace-nowrap text-muted-foreground">
+                {span.label}
+              </span>
+            )}
           </div>
         );
       })}

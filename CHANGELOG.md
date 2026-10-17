@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Three small fixes from the 0.5.5 screenshots. The Alerts list no longer reads “failed error” under the webhook of a rule that has not been attempted yet; a failed POST, an eval error or a refuse still says so. A firing threshold row wraps FIRING under its value instead of drawing it over Last fired when the column is at its floor. On Search, a hatched span under 30% of the plot keeps a label as short as “not here yet” at its edge; a longer one says only whose span it is, as several short spans do, cut with an ellipsis if even that does not fit, so it no longer runs over the bars. [#158](https://github.com/toposcope/toposcope/issues/158)
+
 ## 0.5.5
 
 A fingerprint says which rules made it. The rules behind an `e1` changed in 0.4.9 and 0.4.11, so two instances on different releases give one bug two ids, and a collecting instance read that as one bug stopped and another first seen. The key is now the revision: `e1` is today's rules, and when the hash inputs change again new rows carry `e2`. The bar takes either; a pulled row keeps the key its source gave it, and a sender's own `e1`, `e2`, … are dropped. When the hunt's rows in a cut's window were fingerprinted by more than one set of rules, Fingerprints waits — “Not cut — two sets of fingerprint rules in this window”, with each side's keys — and Compare on an id shows no delta. Stored rows are not rewritten. [#142](https://github.com/toposcope/toposcope/issues/142)
