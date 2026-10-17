@@ -39,7 +39,15 @@ export function isSlackIncomingUrl(url: string): boolean {
  */
 export function alertLink(
   base: string,
-  fired: { savedId: string; query: string; agg: string | null; from: string; to: string },
+  fired: {
+    savedId: string;
+    query: string;
+    agg: string | null;
+    from: string;
+    to: string;
+    /** A first-seen call opens that mark's Fingerprints, cut at `to`. */
+    cut?: string;
+  },
 ): string {
   const params = new URLSearchParams();
   if (fired.query.trim()) {
@@ -52,6 +60,9 @@ export function alertLink(
     params.set("agg", fired.agg);
   }
   params.set("saved", fired.savedId);
+  if (fired.cut) {
+    params.set("cut", fired.cut);
+  }
   return `${base}/?${params.toString()}`;
 }
 
@@ -88,6 +99,67 @@ export function alertWebhookBody(args: {
     value: args.value,
     agg: args.agg,
     query: args.query,
+    fired_at: args.firedAt,
+    ...(args.link ? { link: args.link } : {}),
+  };
+}
+
+export type FirstSeenFingerprint = {
+  e1: string;
+  type: string;
+  message: string;
+  first_seen: string | null;
+  events: number;
+};
+
+export type FirstSeenMark = {
+  id: string;
+  kind: string;
+  service: string;
+  title: string;
+  ts: string;
+};
+
+/** "2 new fingerprints after deploy v0.9.3". */
+export function firstSeenHeadline(count: number, mark: FirstSeenMark): string {
+  return `${count} new fingerprint${count === 1 ? "" : "s"} after ${mark.kind} ${mark.title}`;
+}
+
+/** One call per mark and minute, listing the fingerprints it pages for: ten, and a count of the rest. */
+export function firstSeenWebhookBody(args: {
+  url: string;
+  alert: { id: string; name: string; threshold: number };
+  query: string;
+  mark: FirstSeenMark;
+  fingerprints: FirstSeenFingerprint[];
+  more: number;
+  firedAt: string;
+  link?: string | null;
+}): unknown {
+  const count = args.fingerprints.length + args.more;
+  if (isSlackIncomingUrl(args.url)) {
+    const open = args.link ? `\n<${args.link}|Open in Toposcope>` : "";
+    const headline = firstSeenHeadline(count, args.mark);
+    return {
+      text: `Toposcope: ${args.alert.name} — ${headline}`,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${args.alert.name}* fired\n\`${args.query || "*"}\`\n${headline}${open}`,
+          },
+        },
+      ],
+    };
+  }
+  return {
+    alert: { ...args.alert, kind: "first_seen" },
+    query: args.query,
+    mark: args.mark,
+    count,
+    fingerprints: args.fingerprints,
+    more: args.more,
     fired_at: args.firedAt,
     ...(args.link ? { link: args.link } : {}),
   };

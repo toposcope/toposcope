@@ -1,4 +1,9 @@
-import { enabledAlertRules, recordEvalAttempt, recordWebhookAttempt } from "../control/alerts";
+import {
+  enabledAlertRules,
+  pruneSentFingerprints,
+  recordEvalAttempt,
+  recordWebhookAttempt,
+} from "../control/alerts";
 import { getSaved } from "../control/saved-searches";
 import { incMetric } from "../metrics";
 import { parseRangeMs } from "../query/relative";
@@ -7,6 +12,7 @@ import { shouldDeliver } from "./evaluate";
 import { publicUrl } from "../shared/public-url";
 import { alertLink, alertWebhookBody } from "./payload";
 import { evaluateAlertSeries } from "./series";
+import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
 
 const FALLBACK_COOLDOWN_MS = 5 * 60 * 1000;
 const WEBHOOK_TIMEOUT_MS = 5000;
@@ -36,12 +42,26 @@ async function postWebhook(
 
 export async function evaluateAlerts(now = Date.now()): Promise<void> {
   const rules = enabledAlertRules();
+  pruneSentFingerprints(now - 2 * firstSeenWatchMs);
   for (const rule of rules) {
     if (!rule.saved_search_id || !rule.webhook_url) {
       continue;
     }
     const saved = getSaved(rule.saved_search_id);
     if (!saved || saved.board) {
+      continue;
+    }
+    if (rule.kind === "first_seen") {
+      try {
+        await evaluateFirstSeenRule(rule, saved, now, firstSeenDeps(postWebhook));
+      } catch (err) {
+        console.error("alert evaluation failed", err);
+        recordEvalAttempt(rule.id, {
+          at: now,
+          status: "error",
+          error: clipError(err instanceof Error ? err.message : String(err)),
+        });
+      }
       continue;
     }
     const cooldownMs = saved.range

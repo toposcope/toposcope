@@ -81,9 +81,24 @@ export type FacetField = "level" | "service" | "host";
 
 export type Facets = Record<FacetField, FacetValue[]>;
 
+export type AlertKind = "threshold" | "first_seen";
+
+/** The mark a first-seen alert last paged on. */
+export type AlertLastMark = {
+  id: string;
+  kind: string;
+  title: string;
+  service: string;
+  ts: string;
+  count: number;
+  at: number;
+};
+
 export type AlertRule = {
   id: string;
   name: string;
+  kind: AlertKind;
+  last_mark: AlertLastMark | null;
   saved_search_id: string | null;
   threshold: number;
   webhook_url: string | null;

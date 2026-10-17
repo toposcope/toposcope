@@ -513,3 +513,129 @@ export async function fingerprintCutRoute(c: Context): Promise<Response> {
     throw err;
   }
 }
+
+export type FirstSeenDetail = {
+  hex: string;
+  type: string;
+  message: string;
+  firstTs: string | null;
+};
+
+/** The first event of each fingerprint after the cut: its exception type, message, and time. */
+async function e1FirstDetails(
+  fromIso: string,
+  toIso: string,
+  compiled: CompiledQuery,
+  hexes: string[],
+): Promise<Map<string, FirstSeenDetail>> {
+  if (hexes.length === 0) {
+    return new Map();
+  }
+  const { sql, params } = logsWhere(fromIso, toIso, compiled);
+  params.e1key = fingerprintAttr;
+  params.typekey = "exception.type";
+  const ors: string[] = [];
+  hexes.forEach((hex, i) => {
+    params[`h${i}`] = hex;
+    ors.push(`attr_map[{e1key:String}] = {h${i}:String}`);
+  });
+  const rows = await clickhouseQuery<{
+    hex: string;
+    first_message: string;
+    first_type: string;
+    first_ts: string | null;
+  }>(
+    `
+    SELECT
+      attr_map[{e1key:String}] AS hex,
+      argMin(message, ts) AS first_message,
+      argMin(attr_map[{typekey:String}], ts) AS first_type,
+      min(ts) AS first_ts
+    FROM logs
+    WHERE ${sql} AND (${ors.join(" OR ")})
+    GROUP BY hex
+    ${numericScanSettings}
+    `,
+    params,
+  );
+  const out = new Map<string, FirstSeenDetail>();
+  for (const row of rows) {
+    out.set(String(row.hex), {
+      hex: String(row.hex),
+      type: String(row.first_type ?? ""),
+      message: String(row.first_message ?? ""),
+      firstTs: row.first_ts ? toIsoTimestamp(String(row.first_ts)) : null,
+    });
+  }
+  return out;
+}
+
+/** Replaceable so a test can refuse or count without ClickHouse. */
+export const firstSeenScans = {
+  counts: e1Counts,
+  details: e1FirstDetails,
+};
+
+/**
+ * The First seen set a first-seen alert pages on: the panel's windows (#111's hour minimum),
+ * cut at `now`, every row, not the panel's ten.
+ */
+export async function fingerprintCutFirstSeen(input: {
+  mark: ChangeMark;
+  compiled: CompiledQuery;
+  now: number;
+}): Promise<{
+  windows: FingerprintCutWindows;
+  firstSeen: FingerprintCutSideCount[];
+  refused: string | null;
+}> {
+  const markTs = Date.parse(input.mark.ts);
+  const w = fingerprintCutWindows({
+    markTs,
+    markEndTs: input.mark.end_ts ? Date.parse(input.mark.end_ts) : null,
+    kind: input.mark.kind,
+    huntFrom: markTs - fingerprintCutMinBeforeMs,
+    huntTo: input.now,
+    openedAt: input.now,
+    minBeforeMs: fingerprintCutMinBeforeMs,
+  });
+  if (w.dead) {
+    return { windows: w, firstSeen: [], refused: null };
+  }
+  try {
+    const [before, after] = await Promise.all([
+      firstSeenScans.counts(iso(w.beforeFrom), iso(w.beforeTo), input.compiled),
+      firstSeenScans.counts(iso(w.afterFrom), iso(w.afterTo), input.compiled),
+    ]);
+    if (before.length > fingerprintCutScanCap || after.length > fingerprintCutScanCap) {
+      return {
+        windows: w,
+        firstSeen: [],
+        refused: `more than ${fingerprintCutScanCap} fingerprints on a side`,
+      };
+    }
+    const { firstSeen } = classifyFingerprintCut(mergeFingerprintCutSides(before, after));
+    return { windows: w, firstSeen, refused: null };
+  } catch (err) {
+    if (isNumericAggBudgetError(err)) {
+      return { windows: w, firstSeen: [], refused: logsScanBudgetRefuseReason };
+    }
+    throw err;
+  }
+}
+
+/** Details for the fingerprints a call lists; a refused read leaves them out, not the call. */
+export async function firstSeenDetails(
+  windows: FingerprintCutWindows,
+  compiled: CompiledQuery,
+  hexes: string[],
+): Promise<Map<string, FirstSeenDetail>> {
+  try {
+    return await firstSeenScans.details(iso(windows.afterFrom), iso(windows.afterTo), compiled, hexes);
+  } catch (err) {
+    if (isNumericAggBudgetError(err)) {
+      return new Map();
+    }
+    throw err;
+  }
+}

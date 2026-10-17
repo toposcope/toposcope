@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { clickhouseInsertJsonEachRow, pingClickHouse, toClickHouseDateTime } from "../shared/clickhouse";
 import { migrateStore } from "../shared/migrate";
 import { parseChangeMark, type ChangeMark } from "../shared/change-mark";
-import { searchFingerprintCut } from "./fingerprint-cut";
+import { fingerprintCutFirstSeen, searchFingerprintCut } from "./fingerprint-cut";
+import { requireCompiled } from "./compile";
 import { changeMarksBetween, getChangeMarkById } from "./marks";
 
 const minute = 60_000;
@@ -107,6 +108,13 @@ describe("a young deploy's cut ClickHouse (#111)", () => {
         ["v0.9.3", "after", `deployed: ${service} v0.9.3`],
       ]);
       expect(result.notes.some((n) => n.startsWith("The sides differ until the after side has an hour: counts read 1h before → 30m after."))).toBe(true);
+
+      // The first-seen alert (#107) reads the same windows, every row: the e1 seen in the hour
+      // before the mark is not new.
+      const forAlert = await fingerprintCutFirstSeen({ mark: stored!, compiled: requireCompiled(`service:${service}`), now });
+      expect(forAlert.refused).toBeNull();
+      expect(forAlert.windows.beforeMs).toBe(hour);
+      expect(forAlert.firstSeen.map((r) => r.hex).sort()).toEqual(["2222222222222222", "3333333333333333"]);
     },
     { timeout: 15_000 },
   );

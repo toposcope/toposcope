@@ -2612,6 +2612,91 @@ async function main(): Promise<void> {
     throw new Error(`delete p99 search failed: ${p99SavedDel.status}`);
   }
 
+  // #107: an alert on a fingerprint first seen after a deploy.
+  {
+    const svc = `e2efs${marker}`;
+    const nowMs = Date.now();
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const post = (path: string, body: unknown) =>
+      fetch(`${APP_URL}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+        body: JSON.stringify(body),
+      });
+    const fsMarkId = `mk_${svc}`;
+    const otherMarkId = `mk_${svc}_other`;
+    for (const [id, service] of [[fsMarkId, svc], [otherMarkId, `${svc}-other`]] as const) {
+      const res = await post("/v1/marks", { id, kind: "deploy", title: "v0.9.3", service, ts: iso(nowMs - 2 * 60_000) });
+      if (!res.ok) throw new Error(`first-seen mark failed: ${res.status} ${await res.text()}`);
+    }
+    const oldMessage = `${svc} known error before the deploy`;
+    const newMessage = `${svc} TypeError after the deploy`;
+    const ev = (ts: number, message: string) => ({ ts: iso(ts), level: "error", service: svc, host: "e2e-1", message });
+    const ingest = await post("/api/ingest", [
+      ev(nowMs - 30 * 60_000, oldMessage),
+      ev(nowMs - 60_000, oldMessage),
+      ev(nowMs - 60_000, newMessage),
+    ]);
+    if (!ingest.ok) throw new Error(`first-seen ingest failed: ${ingest.status}`);
+    const newE1 = withFingerprint("error", newMessage, {})?.e1 as string | undefined;
+    const oldE1 = withFingerprint("error", oldMessage, {})?.e1 as string | undefined;
+    const fsSavedRes = await fetch(`${APP_URL}/api/saved-searches`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: basicAuth() },
+      body: JSON.stringify({ name: `e2e first seen ${marker}`, query: `service:${svc} level:error`, range: "1h" }),
+    });
+    if (!fsSavedRes.ok) throw new Error(`first-seen save failed: ${fsSavedRes.status}`);
+    const fsSaved = (await fsSavedRes.json()) as { id: string };
+    const fsReceived: Array<{ mark?: { id: string }; fingerprints?: Array<{ e1: string; events: number }>; link?: string }> = [];
+    const fsHook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        fsReceived.push((await req.json()) as (typeof fsReceived)[number]);
+        return new Response("ok");
+      },
+    });
+    try {
+      const badKind = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ name: "x", kind: "first_seen", saved_search_id: fsSaved.id, threshold: 0.5, webhook_url: `http://127.0.0.1:${fsHook.port}/hook` }),
+      });
+      if (badKind.status !== 400) throw new Error(`first-seen threshold 0.5 expected 400, got ${badKind.status}`);
+      const fsRuleRes = await fetch(`${APP_URL}/api/alert-rules`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ name: `e2e new bugs ${marker}`, kind: "first_seen", saved_search_id: fsSaved.id, threshold: 1, webhook_url: `http://127.0.0.1:${fsHook.port}/hook` }),
+      });
+      if (!fsRuleRes.ok) throw new Error(`first-seen alert failed: ${fsRuleRes.status} ${await fsRuleRes.text()}`);
+      const fsRule = (await fsRuleRes.json()) as { id: string; kind: string };
+      if (fsRule.kind !== "first_seen") throw new Error(`first-seen alert kind, got ${fsRule.kind}`);
+      let ours = fsReceived.filter((b) => b.mark?.id === fsMarkId);
+      for (let i = 0; i < 20 && ours.length === 0; i++) {
+        await evaluateAlerts();
+        ours = fsReceived.filter((b) => b.mark?.id === fsMarkId);
+        if (ours.length === 0) await Bun.sleep(250);
+      }
+      if (ours.length !== 1) throw new Error(`expected one first-seen call for the deploy, got ${JSON.stringify(fsReceived)}`);
+      const listed = ours[0]!.fingerprints?.map((f) => f.e1) ?? [];
+      if (!newE1 || !listed.includes(newE1)) throw new Error(`first-seen call should name ${newE1}, got ${JSON.stringify(ours[0])}`);
+      if (oldE1 && listed.includes(oldE1)) throw new Error("an e1 seen in the hour before the deploy must not page");
+      if (fsReceived.some((b) => b.mark?.id === otherMarkId)) throw new Error("a mark whose service the q rules out must not page");
+      await evaluateAlerts();
+      if (fsReceived.filter((b) => b.mark?.id === fsMarkId).length !== 1) throw new Error("the same e1 must not page again the next minute");
+      const listRes = await fetch(`${APP_URL}/api/alert-rules`, { headers: { authorization: basicAuth() } });
+      const listed2 = (await listRes.json()) as { rules: Array<{ id: string; last_mark: { id: string; count: number } | null }> };
+      const stored = listed2.rules.find((r) => r.id === fsRule.id);
+      if (stored?.last_mark?.id !== fsMarkId || stored.last_mark.count < 1) throw new Error(`first-seen alert should record the mark it paged on, got ${JSON.stringify(stored)}`);
+      const del = await fetch(`${APP_URL}/api/alert-rules/${fsRule.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+      if (!del.ok) throw new Error(`delete first-seen alert failed: ${del.status}`);
+    } finally {
+      fsHook.stop();
+    }
+    const fsSavedDel = await fetch(`${APP_URL}/api/saved-searches/${fsSaved.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+    if (!fsSavedDel.ok) throw new Error(`delete first-seen search failed: ${fsSavedDel.status}`);
+  }
+
   const blocked = await fetch(`${APP_URL}/api/saved-searches/${saved.id}`, {
     method: "DELETE",
     headers: { authorization: basicAuth() },
