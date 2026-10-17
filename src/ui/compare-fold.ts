@@ -1,3 +1,4 @@
+import type { HeldGap } from "../shared/held";
 import { fingerprintCutFetchKey, fingerprintCutHuntWindows } from "./fingerprint-cut";
 import type { ChangeMark } from "../shared/change-mark";
 import { isoFromLocal } from "./search-url";
@@ -52,4 +53,16 @@ export function compareFoldFetchKey(input: {
   split: string;
 }): string {
   return `${fingerprintCutFetchKey(input)}\0${input.agg ?? ""}\0${input.metric ?? ""}\0${input.ml}\0${input.split}`;
+}
+
+const gapWord = { quiet: "silent", behind: "behind", hole: "hole" } as const;
+
+/** "prod-eu silent · no delta", "checkout-eu hole · before short · no delta". */
+export function compareHeldNote(before: HeldGap[], after: HeldGap[]): string {
+  const gaps = [...before, ...after];
+  const names = [...new Set(gaps.map((g) => g.source))];
+  const word = gaps.some((g) => g.kind === "quiet") ? gapWord.quiet : gaps.some((g) => g.kind === "behind") ? gapWord.behind : gapWord.hole;
+  const who = names.length === 1 ? `${names[0]} ${word}` : `${names.length} short`;
+  const side = before.length > 0 && after.length > 0 ? "" : before.length > 0 ? " · before short" : " · after short";
+  return `${who}${side} · no delta`;
 }

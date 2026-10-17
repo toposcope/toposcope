@@ -1,4 +1,4 @@
-import type { HeldGap, HeldSource } from "../shared/held";
+import type { HeldGap, HeldSource } from "./held";
 
 /**
  * The words Search uses for what this instance holds (#139), from the Held sheet: position told
@@ -38,7 +38,7 @@ function shortClock(ms: number, now: number): string {
 }
 
 /** `08-09 18:40`: a hole's ends always carry their day. */
-function holeClock(ms: number): string {
+export function holeClock(ms: number): string {
   return `${day(ms)} ${hm(ms)}`;
 }
 

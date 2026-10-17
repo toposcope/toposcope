@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, ChevronRight, Copy } from "lucide-react";
 import { CountText } from "@/components/count-text";
 import type { HeldSource } from "../../shared/held";
-import { groupHeadWords, positionLines } from "../held-words";
+import { groupHeadWords, positionLines } from "../../shared/held-words";
 
 /** Rows the group shows before the caught-up rest collapse into one line (5g). */
 export const groupRowsShown = 5;
