@@ -31,6 +31,18 @@ export function utcWindowStamp(
   return hhmmss;
 }
 
+export type SearchWindow = { from: string | null; to: string | null };
+
+/** The window the search used, as /api/search answered it; the clock until a reply. The first bar starts on the bar grid, not here. */
+export function searchWindowMs(
+  reply: SearchWindow | null,
+  clock: { fromMs: number; toMs: number },
+): { fromMs: number; toMs: number } {
+  const fromMs = Date.parse(reply?.from ?? "");
+  const toMs = Date.parse(reply?.to ?? "");
+  return Number.isFinite(fromMs) && Number.isFinite(toMs) ? { fromMs, toMs } : clock;
+}
+
 export function windowHead(
   fromMs: number,
   toMs: number,
