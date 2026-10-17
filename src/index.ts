@@ -52,7 +52,7 @@ import { startSyslogUdp } from "./ingest/syslog";
 import { renderMetrics } from "./metrics";
 import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsRoute, metricNamesRoute,
   metricLabelsRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
-import { fingerprintCutRoute } from "./query/fingerprint-cut";
+import { fingerprintCutRoute, fingerprintRevisionsRoute } from "./query/fingerprint-cut";
 import { createFeedRoute, listFeedsRoute, readFeedRoute } from "./feed/feed";
 import { claimRoute, linkAskRoute, linkFeedRoute, linkRemoveRoute, linkRowsRoute, lookupRoute } from "./links/protocol";
 import {
@@ -264,6 +264,7 @@ app.get("/api/profiles", profilesRoute);
 app.get("/api/search/context", surroundingRoute);
 app.get("/api/search/around", aroundTsRoute);
 app.get("/api/search/cut", fingerprintCutRoute);
+app.get("/api/search/revisions", fingerprintRevisionsRoute);
 app.get("/api/feeds", listFeedsRoute);
 app.post("/api/feeds", createFeedRoute);
 app.get("/api/feeds/:id", readFeedRoute);

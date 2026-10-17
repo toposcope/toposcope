@@ -1,4 +1,5 @@
 import { useHeldView } from "../held-context";
+import { isFingerprintKey } from "../../shared/fingerprint-attr";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
@@ -24,7 +25,7 @@ import { fingerprintAttr } from "../../shared/fingerprint-attr";
 import { formatAggStat } from "@/fill-histogram";
 import { formatFieldCount, useCountFormat } from "@/count-format";
 import { cn } from "@/lib/utils";
-import { facetValues, setFieldToken } from "../query-tokens";
+import { facetValues, queryFieldKeys, setFieldToken } from "../query-tokens";
 import { fingerprintCutHuntWindows } from "../fingerprint-cut";
 import { compareFoldFetchKey, compareFoldMetricLabels, compareFoldWindows, compareHeldNote } from "../compare-fold";
 import { seriesColor } from "../histogram-series";
@@ -72,6 +73,8 @@ type Sides = {
    * no delta and no percent; the note names the source.
    */
   held?: { before: boolean; after: boolean; note: string };
+  /** #142: the hunt is on a fingerprint id and its rows were made by more than one set of rules: no delta. */
+  revisions?: string;
 };
 
 
@@ -173,6 +176,37 @@ async function searchSide(
   return json;
 }
 
+/**
+ * #142: a hunt on one fingerprint id reads the same error's rows under another key as gone. When
+ * the hunt names an `e1:`/`e2:` id and its rows here carry more than one key, the fold says so.
+ */
+async function revisionsNote(
+  q: string,
+  windows: { beforeFrom: number; afterFrom: number; afterTo: number },
+  signal: AbortSignal,
+): Promise<string | null> {
+  if (!queryFieldKeys(q).some(isFingerprintKey)) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    q,
+    from: new Date(windows.beforeFrom).toISOString(),
+    after: new Date(windows.afterFrom).toISOString(),
+    to: new Date(windows.afterTo).toISOString(),
+  });
+  const res = await fetch(`/api/search/revisions?${params.toString()}`, { signal });
+  if (!res.ok) {
+    return null;
+  }
+  const json = (await res.json()) as { before: string[]; after: string[] };
+  const all = [...new Set([...json.before, ...json.after])];
+  if (all.length < 2) {
+    return null;
+  }
+  const side = (keys: string[]) => (keys.length > 0 ? keys.join("+") : "none");
+  return `${side(json.before)} before, ${side(json.after)} after · no delta`;
+}
+
 function emptySide(): CompareFoldSide {
   return { v: null, n: 0, empty: true, refused: false };
 }
@@ -248,6 +282,7 @@ export function CompareFold({
     void (async () => {
       try {
         const common = { q, agg, metric, ml, split };
+        const revisions = await revisionsNote(q, windows, ac.signal);
         const [beforeJson, afterJson] = await Promise.all([
           searchSide(windows.beforeFrom, windows.beforeTo, common, ac.signal, plotKeys),
           searchSide(windows.afterFrom, windows.afterTo, common, ac.signal, plotKeys),
@@ -324,7 +359,7 @@ export function CompareFold({
         }
         const before = rows[0]?.before ?? compareFoldSideFromSearch(beforeJson, kind);
         const after = rows[0]?.after ?? compareFoldSideFromSearch(afterJson, kind);
-        setSides({ before, after, refuse, rows, ...(held ? { held } : {}) });
+        setSides({ before, after, refuse, rows, ...(held ? { held } : {}), ...(revisions ? { revisions } : {}) });
       } catch (err) {
         if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) {
           return;
@@ -378,7 +413,7 @@ export function CompareFold({
       ? "—"
       : `${held?.after ? "≥" : ""}${formatSide(kind, after, formatCount)}`;
   const showDelta =
-    loaded && !held && compareFoldShowDelta(windows, kind, before, after);
+    loaded && !held && !sides?.revisions && compareFoldShowDelta(windows, kind, before, after);
   const delta = showDelta ? (after.v ?? 0) - (before.v ?? 0) : null;
   const pct =
     showDelta && !before.empty
@@ -386,6 +421,7 @@ export function CompareFold({
       : null;
   const note =
     error ??
+    sides?.revisions ??
     held?.note ??
     (windows.dead
       ? compareFoldNote({
@@ -475,7 +511,7 @@ export function CompareFold({
               before={row.before}
               after={row.after}
               formatCount={formatCount}
-              held={held}
+              held={held ?? (sides?.revisions ? { before: false, after: false } : undefined)}
             />
           ))}
         </>

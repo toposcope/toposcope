@@ -342,16 +342,16 @@ export function hasExcludedFieldToken(
   return tokenize(q).some((token) => token.toLowerCase() === wanted);
 }
 
-/** Cut Filter: one e1 value, or drop it if that is already the whole e1 set. */
-export function toggleFingerprintCutFilter(q: string, hex: string): string {
-  const current = facetValues(q, fingerprintAttr);
+/** Cut Filter: one e1 value, or drop it if that is already the whole e1 set. `key` is `e2` for lines made by newer rules (#142). */
+export function toggleFingerprintCutFilter(q: string, hex: string, key: string = fingerprintAttr): string {
+  const current = facetValues(q, key);
   if (
     current.length === 1 &&
     current[0]!.toLowerCase() === hex.toLowerCase()
   ) {
-    return removeFieldToken(q, fingerprintAttr);
+    return removeFieldToken(q, key);
   }
-  return setFieldToken(q, fingerprintAttr, hex);
+  return setFieldToken(q, key, hex);
 }
 
 /** Replace any existing `field:` set with one value, or append one. */
