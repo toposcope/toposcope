@@ -845,10 +845,15 @@ export function WidgetCanvas({
                         agg: next.agg,
                         metric: next.metric,
                         metricLabels: {},
+                        metricSplit: null,
                       }),
                     )
                   }
                   onMetric={(next) => onWidgets(patchWidget(widgets, widget.id, { metric: next }))}
+                  metricSplit={widget.metricSplit ?? null}
+                  onMetricSplit={(next) =>
+                    onWidgets(patchWidget(widgets, widget.id, { metricSplit: next }))
+                  }
                   replaceY={widget.replaceY}
                   onReplaceY={(on) =>
                     onWidgets(patchWidget(widgets, widget.id, { replaceY: on }))

@@ -246,6 +246,21 @@ export function mergeAggBuckets(
   return [...byT.values()].sort((a, b) => a.t.localeCompare(b.t));
 }
 
+/**
+ * A Live poll's split lines merged into the painted ones, value by value (#104). The poll
+ * names the lines and their window numbers; a value it no longer keeps is dropped.
+ */
+export function mergeAggSplits<S extends { key: string; buckets: AggBucket[] }>(
+  prev: readonly S[] | undefined,
+  incoming: readonly S[],
+): S[] {
+  const painted = new Map((prev ?? []).map((line) => [line.key, line.buckets]));
+  return incoming.map((line) => ({
+    ...line,
+    buckets: mergeAggBuckets(painted.get(line.key) ?? [], line.buckets),
+  }));
+}
+
 export function alignAggBuckets(
   times: readonly string[],
   points: readonly AggBucket[],

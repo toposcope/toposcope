@@ -111,6 +111,7 @@ import { compileQuery, isCoreField } from "../query/compile";
 import {
   logsScanBudgetRefuseReason,
   mergeAggBuckets,
+  mergeAggSplits,
   parseSearchAgg,
   refusedAgg,
   seriesLabel,
@@ -226,7 +227,7 @@ function metricEntry(item: MetricNameRow): MetricEntry {
 /** A metric list is asked for by window alone: the log query does not filter metrics. */
 function metricWindowParams(query: string): URLSearchParams {
   const params = new URLSearchParams(query);
-  for (const key of ["q", "agg", "metric", "ml"]) {
+  for (const key of ["q", "agg", "metric", "ml", "msplit"]) {
     params.delete(key);
   }
   return params;
@@ -1108,6 +1109,11 @@ export function App() {
           : (primaryWidget?.metric ?? null);
       const activeMetricLabels =
         overrides?.metricLabels ?? primaryWidget?.metricLabels ?? {};
+      // The pinned plot's split (13a) goes with its own metric only.
+      const activeMetricSplit =
+        activeMetric && primaryWidget?.metric === activeMetric
+          ? (primaryWidget.metricSplit ?? null)
+          : null;
       const activeAgg = activeMetric
         ? null
         : overrides?.agg !== undefined
@@ -1148,6 +1154,9 @@ export function App() {
           const ml = formatMetricLabels(activeMetricLabels);
           if (ml) {
             params.set("ml", ml);
+          }
+          if (activeMetricSplit) {
+            params.set("msplit", activeMetricSplit);
           }
         } else if (activeAgg) {
           params.set("agg", activeAgg);
@@ -1244,6 +1253,12 @@ export function App() {
                     )
                   : json.agg.buckets;
               nextAgg = { ...json.agg, buckets };
+              if (json.agg.splits) {
+                nextAgg.splits =
+                  mode === "poll"
+                    ? mergeAggSplits(aggSeriesRef.current?.splits, json.agg.splits)
+                    : json.agg.splits;
+              }
             }
           } else if (!parsedAgg) {
             nextAgg = null;
@@ -1273,6 +1288,7 @@ export function App() {
             agg: activeAgg,
             metric: activeMetric,
             metricLabels: activeMetricLabels,
+            metricSplit: activeMetricSplit,
           });
           const primaryData: SeriesData = stampSeries({
             histogram: filled,
@@ -2329,6 +2345,7 @@ export function App() {
       agg: null,
       metric,
       metricLabels: labels,
+      metricSplit: null,
     });
     setWidgets(next);
     setAgg(null);

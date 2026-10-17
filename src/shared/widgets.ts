@@ -287,7 +287,11 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
     n: widget.kind === "hbar" ? clampHbarN(widget.n) : defaultHbarN,
     metric,
     metricLabels,
-    metricSplit: metric && widget.kind === "timeseries" ? normalizeMetricSplit(widget.metricSplit) : null,
+    // The pinned plot splits only a metric it draws by Replace (13a); an extra panel always draws its own.
+    metricSplit:
+      metric && widget.kind === "timeseries" && (widget.id !== pinnedHistogramId || widget.replaceY)
+        ? normalizeMetricSplit(widget.metricSplit)
+        : null,
   };
 }
 
@@ -1221,6 +1225,7 @@ function parseSavedWidget(raw: unknown): WidgetDef | null {
     n: typeof rec.n === "number" ? rec.n : defaultHbarN,
     metric: typeof rec.metric === "string" || rec.metric === null ? rec.metric : null,
     metricLabels: savedMetricLabels(rec.metricLabels),
+    metricSplit: typeof rec.metricSplit === "string" ? rec.metricSplit : null,
   });
 }
 

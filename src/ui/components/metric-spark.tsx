@@ -43,7 +43,8 @@ export function sparkTimes(barTimes: readonly string[], result: SearchAggResult 
   return [...all].sort();
 }
 
-function lastValue(vals: ReadonlyArray<number | null>): number | null {
+/** A line's last value in the window: what its end label and legend say. */
+export function lastValue(vals: ReadonlyArray<number | null>): number | null {
   for (let i = vals.length - 1; i >= 0; i--) {
     const v = vals[i];
     if (v !== null && v !== undefined) return v;

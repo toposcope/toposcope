@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { withUnit } from "../metric-unit";
+import { printUnit, withUnit } from "../metric-unit";
 import {
   abbrevCount,
   bucketIndexAt,
@@ -63,6 +63,7 @@ import {
   type MarksOverlay,
 } from "./histogram-marks";
 import { CompareFold, type CompareFoldHunt } from "./compare-fold";
+import { endLabelMax, lastValue, sparkLines, spreadLabels } from "./metric-spark";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
@@ -71,6 +72,14 @@ const PLOT_INSET = 4;
 const HEAD_H = 12;
 const HEAD_GAP = 2;
 const AGG_COLOR = "#a78bfa";
+/** Room right of the plot for up to three split lines' end labels (13a). */
+const END_LABEL_W = 90;
+
+type MetricHoverLines = {
+  reading: string;
+  unit?: string;
+  lines: Array<{ key: string; color: string; dashed: boolean; v: number | null }>;
+};
 
 type Props = {
   buckets: HistogramBucket[];
@@ -95,6 +104,9 @@ type Props = {
   /** The same metric, read another way: its labels stay. */
   onMetric?: (next: string) => void;
   onClearMetricLabels?: () => void;
+  /** The metric split by one of its labels (13a): only while it is drawn by Replace. */
+  metricSplit?: string | null;
+  onMetricSplit?: (next: string | null) => void;
   replaceY: boolean;
   onReplaceY: (on: boolean) => void;
   aggResult: SearchAggResult | null;
@@ -208,7 +220,7 @@ function overlayAreaSegments(
   return segs;
 }
 
-function HistogramHover({
+export function HistogramHover({
   bucket,
   rangeLabel,
   keys,
@@ -216,6 +228,7 @@ function HistogramHover({
   left,
   side,
   overlay,
+  metricLines = null,
   hint,
   markLines = [],
 }: {
@@ -226,6 +239,8 @@ function HistogramHover({
   left: number | string;
   side: "left" | "right";
   overlay?: { label: string; v: number | null; reading?: string; words?: string; unit?: string } | null;
+  /** A split metric: each line's value in this bar, with its unit. */
+  metricLines?: MetricHoverLines | null;
   hint: string;
   markLines?: ReturnType<typeof markHoverLines>;
 }) {
@@ -242,8 +257,23 @@ function HistogramHover({
       }}
     >
       <div className="border-b border-border/80 pb-1 font-mono text-[10.5px] tabular-nums">
-        {rangeLabel} · {abbrevCount(bucket.n)}
+        {rangeLabel} · {metricLines ? metricLines.reading : abbrevCount(bucket.n)}
       </div>
+      {metricLines?.lines.map((row) => (
+        <div
+          key={row.key}
+          className="mt-0.5 flex items-center gap-1.5 text-muted-foreground"
+        >
+          <span
+            className="h-0 w-2.5 shrink-0 border-t-2"
+            style={{ borderColor: row.color, borderStyle: row.dashed ? "dashed" : "solid" }}
+          />
+          <span className="max-w-28 truncate font-mono text-[10.5px] text-foreground/85">{row.key}</span>
+          <span className="ml-auto pl-2 font-mono tabular-nums text-foreground">
+            {withUnit(formatAggStat(row.v), metricLines.unit)}
+          </span>
+        </div>
+      ))}
       {lines.map((row, i) => (
         <div
           key={row.key}
@@ -321,6 +351,8 @@ export function HistogramChart({
   onSeries,
   onMetric,
   onClearMetricLabels,
+  metricSplit = null,
+  onMetricSplit,
   replaceY,
   onReplaceY,
   aggResult,
@@ -395,7 +427,56 @@ export function HistogramChart({
         aggResult?.buckets ?? [],
       )
     : [];
-  const overlayPeak = finiteAggPeak(overlayValues);
+  // 13a: a metric drawn by Replace, split by one label, is one line per value (8 and `other`).
+  const splitDrawn = Boolean(metric && replaceY && overlayOn && aggResult?.splits);
+  const splitLines = splitDrawn
+    ? sparkLines(
+        buckets.map((bucket) => bucket.t),
+        aggResult,
+      )
+    : [];
+  const splitOn = splitLines.length > 0;
+  const endLabels = splitOn && splitLines.length <= endLabelMax;
+  const overlayPeak = finiteAggPeak(
+    splitOn ? splitLines.flatMap((line) => line.vals) : overlayValues,
+  );
+  // The Split control lists the metric's label keys in this window.
+  const splitName = metric && replaceY && view && onMetricSplit ? view.name : null;
+  const [labelKeys, setLabelKeys] = useState<{
+    name: string;
+    keys: Array<{ key: string; values: number }>;
+  } | null>(null);
+  useEffect(() => {
+    if (!splitName || !catalog.labels) {
+      return;
+    }
+    let current = true;
+    void catalog.labels(splitName).then((keys) => {
+      if (current) {
+        setLabelKeys({ name: splitName, keys });
+      }
+    });
+    return () => {
+      current = false;
+    };
+  }, [splitName, catalog.labels, catalog.window]);
+  const splitChoices: Array<{ key: string; values: number | null }> =
+    splitName && labelKeys?.name === splitName ? [...labelKeys.keys] : [];
+  if (metricSplit && !splitChoices.some((item) => item.key === metricSplit)) {
+    splitChoices.push({ key: metricSplit, values: null });
+  }
+  const endLabelRef = useRef<HTMLDivElement>(null);
+  const [endLabelH, setEndLabelH] = useState(PLOT_H);
+  useEffect(() => {
+    const el = endLabelRef.current;
+    if (!el) {
+      return;
+    }
+    const ro = new ResizeObserver(() => setEndLabelH(el.clientHeight));
+    ro.observe(el);
+    setEndLabelH(el.clientHeight);
+    return () => ro.disconnect();
+  }, [endLabels]);
   const totals = buckets.map((bucket) =>
     stacked || asArea || asLine
       ? bucket.n
@@ -901,7 +982,12 @@ export function HistogramChart({
     ? overlayAreaSegments(xs, overlayValues, overlayPeak, logScale)
     : [];
   const showVolume = !replaceY || !overlayOn;
-  const overlayAsBars = overlayOn && replaceY && !asLine && !asArea;
+  const overlayAsBars = overlayOn && replaceY && !asLine && !asArea && !splitDrawn;
+  const unitText = printUnit(aggResult?.unit);
+  // A unit on the left axis gets 13a's 48px gutter, so `16 vcpu` reads on one line.
+  const axisUnit = replaceY && overlayOn && unitText.length > 0;
+  /** Where the plot starts: padding, the axis column and the gap; rows under it line up there. */
+  const plotLeft = axisUnit ? 63 : 47;
 
   const brushStart = lo >= 0 ? buckets[lo] : undefined;
   const brushEnd = hi >= 0 ? buckets[hi] : undefined;
@@ -927,7 +1013,44 @@ export function HistogramChart({
         : { label: overlayLabel, v: overlayValues[hover] ?? null, unit: aggResult?.unit }
       : null;
   const metricQuiet =
-    Boolean(metric) && aggResult?.source === "metric" && aggResult.buckets.length === 0;
+    Boolean(metric) &&
+    aggResult?.source === "metric" &&
+    aggResult.buckets.length === 0 &&
+    !splitOn;
+  // `avg · agental.box.vcpu{basis} · vcpu`: the split label inside the braces, after any matchers.
+  const splitExpr = (() => {
+    const by = aggResult?.split ?? metricSplit;
+    if (!splitDrawn || !view || !by) {
+      return "";
+    }
+    const base = metricExpr(view.name, metricLabels);
+    return base.endsWith("}") ? `${base.slice(0, -1)},${by}}` : `${base}{${by}}`;
+  })();
+  const hoverMetricLines: MetricHoverLines | null =
+    splitOn && hover !== null
+      ? {
+          reading: metricReadingText,
+          unit: aggResult?.unit,
+          lines: splitLines.map((line) => ({
+            key: line.key,
+            color: line.color,
+            dashed: line.dashed,
+            v: line.vals[hover] ?? null,
+          })),
+        }
+      : null;
+  const endLabelYs = endLabels
+    ? spreadLabels(
+        splitLines.map((line) => {
+          const y = overlayY(lastValue(line.vals), overlayPeak, logScale);
+          return y === null ? 0 : (y / PLOT_H) * endLabelH - 7;
+        }),
+        13,
+        Math.max(0, endLabelH - 13),
+      )
+    : [];
+  /** The rows under the plot line up with it, past the end labels' room. */
+  const underPlotPadRight = endLabels ? 10 + 6 + END_LABEL_W : undefined;
   const headDrag = Boolean(brush && brushRef.current?.head);
   const sweepBins = headDrag && brush ? Math.abs(brush.end - brush.start) + 1 : 0;
   const knobBin = headDrag && brush ? brush.end : hover;
@@ -977,19 +1100,24 @@ export function HistogramChart({
           lockChrome && "pointer-events-none opacity-50",
         )}
       >
-        <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
-          {histogramSplits.map((key) => (
-            <button
-              key={key}
-              type="button"
-              className={pill(split === key)}
-              onClick={() => onSplit(key)}
-            >
-              {key === "none" ? "None" : key[0]!.toUpperCase() + key.slice(1)}
-            </button>
-          ))}
-        </div>
-        <div className="h-4 w-px shrink-0 bg-border" />
+        {/* A metric drawn by Replace hides the log volume, so its group-by goes too: 13a has one Split. */}
+        {metric && replaceY ? null : (
+          <>
+            <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
+              {histogramSplits.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={pill(split === key)}
+                  onClick={() => onSplit(key)}
+                >
+                  {key === "none" ? "None" : key[0]!.toUpperCase() + key.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="h-4 w-px shrink-0 bg-border" />
+          </>
+        )}
         <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
           {histogramCharts.map((key) => (
             <button
@@ -1060,6 +1188,43 @@ export function HistogramChart({
             <span aria-hidden>×</span>
           </button>
         ))}
+        {splitName && splitChoices.length > 0 ? (
+          <>
+            <span className="shrink-0 text-[11.5px] whitespace-nowrap text-muted-foreground">Split</span>
+            <div
+              role="radiogroup"
+              aria-label="Split the series by"
+              className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5"
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!metricSplit}
+                className={pill(!metricSplit)}
+                onClick={() => onMetricSplit?.(null)}
+              >
+                None
+              </button>
+              {splitChoices.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={metricSplit === item.key}
+                  className={cn(pill(metricSplit === item.key), "max-w-[10rem] truncate font-mono text-[11.5px]")}
+                  title={
+                    item.values === null
+                      ? undefined
+                      : `${item.values} value${item.values === 1 ? "" : "s"}${item.values > 8 ? " · 8 and other" : ""}`
+                  }
+                  onClick={() => onMetricSplit?.(item.key)}
+                >
+                  {item.key}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
         {agg || metric ? (
           <div className="flex h-[26px] shrink-0 items-center rounded-md border border-input p-0.5">
             <button
@@ -1091,7 +1256,10 @@ export function HistogramChart({
       </div>
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
-          className="flex w-8 shrink-0 flex-col justify-between py-[3px] text-right font-mono text-[10px] text-muted-foreground/70"
+          className={cn(
+            "flex shrink-0 flex-col justify-between py-[3px] text-right font-mono text-[10px] text-muted-foreground/70",
+            axisUnit ? "w-12 whitespace-nowrap" : "w-8",
+          )}
           style={{
             marginTop: HEAD_H + HEAD_GAP,
             ...(marks
@@ -1321,7 +1489,22 @@ export function HistogramChart({
                   preserveAspectRatio="none"
                   className="block h-full w-full"
                 >
-                  {asArea || replaceY ? (
+                  {splitDrawn ? (
+                    splitLines.flatMap((line) =>
+                      overlayLineSegments(xs, line.vals, overlayPeak, logScale).map((points) => (
+                        <polyline
+                          key={`${line.key}:${points}`}
+                          points={points}
+                          fill="none"
+                          stroke={line.color}
+                          strokeWidth="1.6"
+                          strokeDasharray={line.dashed ? "3 3" : undefined}
+                          strokeLinejoin="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      )),
+                    )
+                  ) : asArea || replaceY ? (
                     overlayAreaSegs.map((d) => (
                       <path
                         key={d}
@@ -1439,7 +1622,8 @@ export function HistogramChart({
               keys={replaceY && overlayOn ? [] : keys}
               split={split}
               side={hoverSide}
-              overlay={hoverOverlay}
+              overlay={splitDrawn ? null : hoverOverlay}
+              metricLines={hoverMetricLines}
               hint={hoverHint}
               markLines={
                 hoverBucket && marks
@@ -1493,18 +1677,52 @@ export function HistogramChart({
             ))}
           </div>
         ) : null}
+        {endLabels ? (
+          <div
+            ref={endLabelRef}
+            className="relative shrink-0 self-stretch font-mono text-[10.5px]"
+            // The plot's box, as the overlay axis has it: each line is named at its last value.
+            style={{
+              width: END_LABEL_W,
+              marginTop: HEAD_H + HEAD_GAP + PLOT_INSET,
+              marginBottom: PLOT_INSET,
+              ...(marks
+                ? {
+                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + 2 * PLOT_INSET}px)`,
+                  }
+                : {}),
+            }}
+          >
+            {splitLines.map((line, i) => (
+              <span
+                key={line.key}
+                className="absolute left-0 w-full truncate whitespace-nowrap"
+                style={{ top: `${endLabelYs[i] ?? 0}px`, color: line.color }}
+              >
+                {line.key} {formatAggStat(lastValue(line.vals))}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
-      <div className="mt-1 flex shrink-0 justify-between pr-2.5 pl-[47px] font-mono text-[10px] text-muted-foreground/70">
+      <div
+        className="mt-1 flex shrink-0 justify-between pr-2.5 font-mono text-[10px] text-muted-foreground/70"
+        style={{ paddingLeft: plotLeft, paddingRight: underPlotPadRight }}
+      >
         {axis.map((label, i) => (
           <span key={`${label}-${i}`}>{label}</span>
         ))}
       </div>
       {agg || metric || scanReason ? (
-        <div className="mt-1 pr-2.5 pl-[47px] text-[11px] text-muted-foreground">
+        <div className="mt-1 pr-2.5 text-[11px] text-muted-foreground" style={{ paddingLeft: plotLeft }}>
           {scanReason ? (
             <span>{scanReason}</span>
           ) : aggResult?.source === "refused" ? (
             <span>{aggResult.reason}</span>
+          ) : splitExpr && !metricQuiet ? (
+            <span className="font-mono">
+              {[metricReadingText, splitExpr, unitText].filter(Boolean).join(" · ")}
+            </span>
           ) : metricQuiet ? (
             <span className="text-amber-400">
               ▲ {view?.name ?? metric} has no points in {catalog.window ? `the last ${catalog.window}` : "this window"} — the line is
@@ -1520,9 +1738,14 @@ export function HistogramChart({
         </div>
       ) : null}
       {marks && compareFold ? (
-        <CompareFold {...compareFold} split={split} seriesKeys={keys} plotReady={!loading} onPaintLines={onCompareLines} />
+        <CompareFold {...compareFold} split={split} seriesKeys={keys} plotReady={!loading} onPaintLines={onCompareLines} plotLeft={plotLeft} />
       ) : null}
-      <div className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2.5 border-t border-white/[0.08] pr-2.5 pb-1.5 pl-[47px] pt-1.5">
+      {/* Split lines named at their ends need no legend; past three they get one (13g). */}
+      {splitDrawn && (endLabels || !splitOn) ? null : (
+      <div
+        className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2.5 border-t border-white/[0.08] pr-2.5 pb-1.5 pt-1.5"
+        style={{ paddingLeft: plotLeft }}
+      >
         {showVolume
           ? keys.map((key, i) => (
               <span
@@ -1540,7 +1763,21 @@ export function HistogramChart({
               </span>
             ))
           : null}
-        {overlayOn ? (
+        {splitOn
+          ? splitLines.map((line) => (
+              <span
+                key={line.key}
+                className="flex items-center gap-[5px] font-mono text-[11px] text-muted-foreground"
+              >
+                <span
+                  className="h-0 w-3 shrink-0 border-t-2"
+                  style={{ borderColor: line.color, borderStyle: line.dashed ? "dashed" : "solid" }}
+                />
+                {line.key}
+                <span className="text-muted-foreground/65">{formatAggStat(lastValue(line.vals))}</span>
+              </span>
+            ))
+          : overlayOn ? (
           <span className="flex items-center gap-[5px] text-[11px] text-muted-foreground">
             <span
               className="size-[7px] rounded-sm"
@@ -1554,6 +1791,7 @@ export function HistogramChart({
           </span>
         ) : null}
       </div>
+      )}
     </div>
   );
 }
