@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import { applyRetentionDays, clampRetentionDays } from "../shared/migrate";
 import { getDb } from "./index";
+import { setHereName } from "../shared/here";
 import { instanceName, parseInstanceName, writeInstanceName } from "./instance";
 
 export type Settings = {
@@ -61,6 +62,8 @@ export async function putSettings(c: Context): Promise<Response> {
     return c.json({ error: name.error }, 400);
   }
   const savedName = name === undefined ? instanceName() : writeInstanceName(name);
+  // Rows ingested from now on are stamped with the new name; rows stored keep the old one.
+  setHereName(savedName);
   if (typeof rec.retention_days !== "number") {
     return c.json({ retention_days: getRetentionDays(), instance_name: savedName });
   }

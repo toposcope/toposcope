@@ -29,6 +29,8 @@ export type LogEvent = {
   attrs?: Record<string, unknown>;
   /** Arrival sequence (#133); absent on rows stored before it. */
   seq?: number;
+  /** Which instance the row entered at (#134); absent while unnamed. */
+  toposcope?: string;
 };
 
 export type HistogramBucket = {

@@ -77,6 +77,7 @@ type LogRow = {
   message: string;
   attrs: string;
   seq?: string | number;
+  toposcope?: string;
 };
 
 type HistogramRow = {
@@ -145,11 +146,15 @@ export type FacetValue = {
   n: number;
 };
 
-export type FacetField = "level" | "service" | "host";
+export type FacetField = "level" | "service" | "host" | "toposcope";
 
-export type Facets = Record<FacetField, FacetValue[]>;
+/** `toposcope` (#134) is counted only when asked for (`fields=toposcope`): nothing draws it yet. */
+export type Facets = Record<"level" | "service" | "host", FacetValue[]> & {
+  toposcope?: FacetValue[];
+};
 
 const facetFields: FacetField[] = ["level", "service", "host"];
+const extraFacetFields: FacetField[] = ["toposcope"];
 const facetLimit = 10;
 const maxFacetLimit = maxHbarN;
 const attrQuerySettings = "SETTINGS max_execution_time = 5";
@@ -254,7 +259,7 @@ async function fetchLogPage(
     ? numericScanSettings
     : `SETTINGS max_execution_time = ${Number.isFinite(timeoutSec) ? Math.max(1, Math.trunc(timeoutSec)) : 30}`;
   const query = `
-    SELECT ts, service, host, level, message, attrs, seq
+    SELECT ts, service, host, level, message, attrs, seq, toposcope
     FROM logs
     WHERE ${sql}
     ORDER BY ts DESC, seq DESC
@@ -633,7 +638,7 @@ async function facetValues(
   const compiled = compiledFor(filters.q, omit);
   const source = sourceOf(compiled);
   const take = clampFacetLimit(limit);
-  if (field === "level" || field === "service" || field === "host") {
+  if (field === "level" || field === "service" || field === "host" || field === "toposcope") {
     if (source === "minute") {
       const { sql, params } = buildMvWhere(filters, omit);
       params.limit = String(take);
@@ -678,11 +683,13 @@ export async function facets(
   filters: SearchFilters,
   limit?: number,
   omitSelf = true,
+  extra: FacetField[] = [],
 ): Promise<Facets> {
   const resolved = resolveFilters(filters);
   const take = clampFacetLimit(limit);
+  const fields = [...facetFields, ...extra.filter((f) => extraFacetFields.includes(f))];
   const entries = await Promise.all(
-    facetFields.map(
+    fields.map(
       async (field) =>
         [field, await facetValues(resolved, field, take, omitSelf)] as const,
     ),
@@ -1196,7 +1203,8 @@ function rowToLogEvent(row: LogRow): LogEvent {
     attrs,
   });
   const seq = Number(row.seq ?? 0);
-  return Number.isSafeInteger(seq) && seq > 0 ? { ...event, seq } : event;
+  const stamped = Number.isSafeInteger(seq) && seq > 0 ? { ...event, seq } : event;
+  return row.toposcope ? { ...stamped, toposcope: row.toposcope } : stamped;
 }
 
 function queryHttpError(c: Context, err: unknown): Response | null {
@@ -1233,7 +1241,11 @@ export async function facetsRoute(c: Context): Promise<Response> {
     const limitRaw = c.req.query("limit");
     const limit = limitRaw ? Number(limitRaw) : undefined;
     const omitSelf = parseFacetOmitSelf(c.req.query("omit"));
-    return c.json(await facets(searchFiltersFrom(c), limit, omitSelf));
+    const extra = (c.req.query("fields") ?? "")
+      .split(",")
+      .map((f) => f.trim())
+      .filter((f): f is FacetField => f === "toposcope");
+    return c.json(await facets(searchFiltersFrom(c), limit, omitSelf, extra));
   } catch (err) {
     return queryHttpError(c, err) ?? Promise.reject(err);
   }

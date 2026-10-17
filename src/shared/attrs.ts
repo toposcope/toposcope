@@ -4,7 +4,7 @@ export const maxAttrFacets = 8;
 export const maxAttrKeys = 200;
 export const maxPromotedCols = 3;
 
-const reserved = new Set(["level", "service", "host", "ts", "message", "tenant_id"]);
+const reserved = new Set(["level", "service", "host", "toposcope", "ts", "message", "tenant_id"]);
 
 export function isAttrIdent(key: string): boolean {
   return attrIdent.test(key) && !reserved.has(key);

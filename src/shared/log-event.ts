@@ -12,6 +12,8 @@ export type LogEvent = {
   attrs?: Record<string, unknown>;
   /** Arrival sequence (#133): stamped at ingest, read back by search; absent on older rows. */
   seq?: number;
+  /** Which instance the row entered at (#134); absent while unnamed. Kept on a pulled row. */
+  toposcope?: string;
 };
 
 export const logEventSchema = v.object({
