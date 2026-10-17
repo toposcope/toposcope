@@ -4540,7 +4540,7 @@ export function App() {
                       onResult={onCutResult}
                       onClose={() => setCut(null)}
                       onFilter={(hex) =>
-                        applyQuery(toggleFingerprintCutFilter(q, hex))
+                        applyQuery(toggleFingerprintCutFilter(q, hex, cut.result?.key))
                       }
                     />
                   </div>

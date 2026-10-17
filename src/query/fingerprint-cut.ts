@@ -1,13 +1,13 @@
 import type { Context } from "hono";
 import { activeLinks } from "../links/store";
-import { feeders, heldSources, shortIn, sourceGaps, type HeldLink } from "../shared/held";
+import { feeders, heldSources, omitWhere, shortIn, sourceGaps, type HeldLink } from "../shared/held";
 import { heldClock, holeClock } from "../shared/held-words";
 import {
   formatChangeMarkLabel,
   type ChangeMark,
 } from "../shared/change-mark";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
-import { fingerprintAttr } from "../shared/fingerprint";
+import { fingerprintAttr, isFingerprintKey } from "../shared/fingerprint";
 import {
   capFingerprintCutSet,
   classifyFingerprintCut,
@@ -157,9 +157,11 @@ async function e1Counts(
   compiled: CompiledQuery,
   /** #141: each fingerprint's count by the instance its rows entered at. */
   bySource = false,
+  /** #142: the revision key the hunt's rows carry. */
+  key: string = fingerprintAttr,
 ): Promise<Array<{ hex: string; n: number; from?: Record<string, number> }>> {
   const { sql, params } = logsWhere(fromIso, toIso, compiled);
-  params.e1key = fingerprintAttr;
+  params.e1key = key;
   params.limit = String(fingerprintCutScanCap + 1);
   if (bySource) {
     const rows = await clickhouseQuery<{ v: string; n: string | number; src: Array<[string, string | number]> }>(
@@ -203,12 +205,13 @@ async function e1Samples(
   afterFromIso: string,
   compiled: CompiledQuery,
   hexes: string[],
+  key: string = fingerprintAttr,
 ): Promise<Map<string, Sample>> {
   if (hexes.length === 0) {
     return new Map();
   }
   const { sql, params } = logsWhere(fromIso, toIso, compiled);
-  params.e1key = fingerprintAttr;
+  params.e1key = key;
   params.after_from = afterFromIso;
   const ors: string[] = [];
   hexes.forEach((hex, i) => {
@@ -243,10 +246,59 @@ async function e1Samples(
 }
 
 /** Counts vs samples as replaceable scans so a refused sample cannot wipe the sets. */
+/**
+ * Which fingerprint keys the hunt's rows carry on each side of a cut (#142). Asked without the
+ * hunt's own `e1:`/`e2:` terms: the same error under the other key is what such a term misses.
+ */
+async function fingerprintKeysBySide(
+  fromIso: string,
+  afterFromIso: string,
+  toIso: string,
+  compiled: CompiledQuery,
+): Promise<{ before: string[]; after: string[] }> {
+  const { sql, params } = logsWhere(fromIso, toIso, compiled);
+  params.after_from = afterFromIso;
+  const rows = await clickhouseQuery<{ k: string; b: string | number; a: string | number }>(
+    `
+    SELECT k,
+      countIf(ts < parseDateTime64BestEffort({after_from:String})) AS b,
+      countIf(ts >= parseDateTime64BestEffort({after_from:String})) AS a
+    FROM logs
+    ARRAY JOIN arrayFilter(x -> match(x, '^e[1-9][0-9]*$'), mapKeys(attr_map)) AS k
+    WHERE ${sql}
+    GROUP BY k
+    ORDER BY k
+    ${numericScanSettings}
+    `,
+    params,
+  );
+  return {
+    before: rows.filter((r) => rowN(r.b) > 0).map((r) => String(r.k)),
+    after: rows.filter((r) => rowN(r.a) > 0).map((r) => String(r.k)),
+  };
+}
+
+/** The hunt without its fingerprint-key terms (#142), for asking which keys its rows carry. */
+export function withoutFingerprintTerms(compiled: CompiledQuery): CompiledQuery {
+  return { ...compiled, ast: omitWhere(compiled.ast, isFingerprintKey) };
+}
+
 export const fingerprintCutScans = {
   counts: e1Counts,
   samples: e1Samples,
+  keys: fingerprintKeysBySide,
 };
+
+/** One key for the cut, or the keys of each side when the hunt's rows were made by more than one set of rules. */
+export async function cutFingerprintKey(
+  w: Pick<FingerprintCutWindows, "beforeFrom" | "afterFrom" | "afterTo">,
+  compiled: CompiledQuery,
+  scans: { keys: typeof fingerprintKeysBySide } = fingerprintCutScans,
+): Promise<{ key: string } | { revisions: { before: string[]; after: string[] } }> {
+  const sides = await scans.keys(iso(w.beforeFrom), iso(w.afterFrom), iso(w.afterTo), withoutFingerprintTerms(compiled));
+  const all = [...new Set([...sides.before, ...sides.after])];
+  return all.length > 1 ? { revisions: sides } : { key: all[0] ?? fingerprintAttr };
+}
 
 /** Where each source this instance pulls from stands (#140); tests swap it. */
 export const fingerprintCutHeld = {
@@ -482,9 +534,15 @@ export async function searchFingerprintCut(input: {
     notes.unshift(...cutGapNotes(held, w, now));
   }
   try {
+    // #142: one error fingerprinted by two sets of rules has an id under each: the cut waits.
+    const which = await cutFingerprintKey(w, compiled);
+    if ("revisions" in which) {
+      return emptyResult(input.mark, w, inside, notes, { revisions: which.revisions, held });
+    }
+    const key = which.key;
     const [before, after] = await Promise.all([
-      fingerprintCutScans.counts(iso(w.beforeFrom), iso(w.beforeTo), compiled, Boolean(held)),
-      fingerprintCutScans.counts(iso(w.afterFrom), iso(w.afterTo), compiled, Boolean(held)),
+      fingerprintCutScans.counts(iso(w.beforeFrom), iso(w.beforeTo), compiled, Boolean(held), key),
+      fingerprintCutScans.counts(iso(w.afterFrom), iso(w.afterTo), compiled, Boolean(held), key),
     ]);
     if (
       before.length > fingerprintCutScanCap ||
@@ -523,6 +581,7 @@ export async function searchFingerprintCut(input: {
         iso(w.afterFrom),
         compiled,
         shown.map((row) => row.hex),
+        key,
       );
     } catch (err) {
       if (!isNumericAggBudgetError(err)) {
@@ -575,6 +634,7 @@ export async function searchFingerprintCut(input: {
       ],
       empty: "",
       ...(held ? { held } : {}),
+      ...(key !== fingerprintAttr ? { key } : {}),
     };
   } catch (err) {
     if (isNumericAggBudgetError(err)) {
@@ -583,6 +643,32 @@ export async function searchFingerprintCut(input: {
         scan: { source: "refused", reason: logsScanBudgetRefuseReason },
         held,
       });
+    }
+    throw err;
+  }
+}
+
+/**
+ * Which fingerprint keys the hunt's rows carry before and after a point (#142), for Compare: a
+ * hunt on one `e1:` id across a change of rules would read the other id's rows as gone.
+ * `GET /api/search/revisions?q=&from=&after=&to=` → `{ before, after }`.
+ */
+export async function fingerprintRevisionsRoute(c: Context): Promise<Response> {
+  const from = c.req.query("from") ?? "";
+  const after = c.req.query("after") ?? "";
+  const to = c.req.query("to") ?? "";
+  if ([from, after, to].some((v) => Number.isNaN(Date.parse(v)))) {
+    return c.json({ error: "from, after and to are required" }, 400);
+  }
+  try {
+    const compiled = withoutFingerprintTerms(compiledOf(c.req.query("q")));
+    return c.json(await fingerprintCutScans.keys(new Date(from).toISOString(), new Date(after).toISOString(), new Date(to).toISOString(), compiled));
+  } catch (err) {
+    if (err instanceof QueryCompileError) {
+      return c.json({ error: err.message, faults: err.faults }, 400);
+    }
+    if (isNumericAggBudgetError(err)) {
+      return c.json({ before: [], after: [], refused: logsScanBudgetRefuseReason });
     }
     throw err;
   }
@@ -686,6 +772,7 @@ async function e1FirstDetails(
 export const firstSeenScans = {
   counts: e1Counts,
   details: e1FirstDetails,
+  keys: fingerprintKeysBySide,
 };
 
 /**
@@ -717,6 +804,15 @@ export async function fingerprintCutFirstSeen(input: {
   // #141: a line only a short source fed is can't tell, never first seen, so it never pages.
   const held = shortAcrossCut(input.compiled.ast, w, input.now);
   try {
+    // #142: across two sets of rules one error has two ids; and a call names `e1:` ids only.
+    const which = await cutFingerprintKey(w, input.compiled, firstSeenScans);
+    if ("revisions" in which) {
+      const keys = [...new Set([...which.revisions.before, ...which.revisions.after])].join(", ");
+      return { windows: w, firstSeen: [], refused: `fingerprints here were made by more than one set of rules (${keys})` };
+    }
+    if (which.key !== fingerprintAttr) {
+      return { windows: w, firstSeen: [], refused: `fingerprints here are ${which.key}, made by rules newer than this instance` };
+    }
     const [before, after] = await Promise.all([
       firstSeenScans.counts(iso(w.beforeFrom), iso(w.beforeTo), input.compiled, Boolean(held)),
       firstSeenScans.counts(iso(w.afterFrom), iso(w.afterTo), input.compiled, Boolean(held)),

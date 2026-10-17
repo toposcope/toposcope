@@ -319,6 +319,13 @@ export type FingerprintCutResult = {
    * one, the cut refuses: no sets and no counts, only which side misses rows and from whom.
    */
   held?: { sides: "both" | "before" | "after"; sources: HeldSource[]; before: string[]; after: string[] };
+  /** #142: the key the lines are under, when it is not `e1`: rows made by newer rules, pulled. */
+  key?: string;
+  /**
+   * #142: the hunt's rows here were fingerprinted by more than one set of rules, so one error has
+   * an id under each and the cut waits: which keys each side holds.
+   */
+  revisions?: { before: string[]; after: string[] };
 };
 
 export function formatFingerprintCutDuration(ms: number): string {

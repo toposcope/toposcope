@@ -265,25 +265,30 @@ export function huntAst(q: string): QueryNode | null {
  * under OR or NOT takes its whole branch with it), as the facets read the store (`omit`).
  */
 export function omitKey(node: QueryNode | null, key: string): QueryNode | null {
+  return omitWhere(node, (k) => k === key);
+}
+
+/** The query with every term on a key `drop` names left out, as `omitKey` does for one. */
+export function omitWhere(node: QueryNode | null, drop: (key: string) => boolean): QueryNode | null {
   if (!node) {
     return null;
   }
   switch (node.op) {
     case "kv":
     case "cmp":
-      return node.key === key ? null : node;
+      return drop(node.key) ? null : node;
     case "and": {
-      const a = omitKey(node.a, key);
-      const b = omitKey(node.b, key);
+      const a = omitWhere(node.a, drop);
+      const b = omitWhere(node.b, drop);
       return a && b ? { op: "and", a, b } : (a ?? b);
     }
     case "or": {
-      const a = omitKey(node.a, key);
-      const b = omitKey(node.b, key);
+      const a = omitWhere(node.a, drop);
+      const b = omitWhere(node.b, drop);
       return a && b ? { op: "or", a, b } : null;
     }
     case "not": {
-      const a = omitKey(node.a, key);
+      const a = omitWhere(node.a, drop);
       return a ? { op: "not", a } : null;
     }
     default:

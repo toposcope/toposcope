@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { parseExceptionFrames, type ExceptionFrame } from "./exception";
 import type { LogLevel } from "./log-event";
-import { fingerprintAttr, fingerprintHexLength } from "./fingerprint-attr";
+import { fingerprintAttr, fingerprintHexLength, isFingerprintKey } from "./fingerprint-attr";
 
-export { fingerprintAttr, fingerprintHexLength };
+export { fingerprintAttr, fingerprintHexLength, isFingerprintKey };
 
 function hashParts(parts: string[]): string {
   return createHash("sha256")
@@ -92,15 +92,21 @@ export function computeFingerprint(
   return undefined;
 }
 
-/** Stamp `e1` first so the 50-key flatten cap cannot drop it. Replaces a sender `e1`. */
+/**
+ * Stamp `e1` first so the 50-key flatten cap cannot drop it. A sender's `e1`, `e2`, … are
+ * dropped: a fingerprint key says which rules made the id, and only the store's rules make one.
+ */
 export function withFingerprint(
   level: LogLevel,
   message: string,
   attrs: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
   const next: Record<string, unknown> = { ...(attrs ?? {}) };
-  delete next.e1;
-  delete next.E1;
+  for (const key of Object.keys(next)) {
+    if (isFingerprintKey(key.toLowerCase())) {
+      delete next[key];
+    }
+  }
   const hex = computeFingerprint(level, message, next);
   if (!hex) {
     return Object.keys(next).length > 0 ? next : undefined;

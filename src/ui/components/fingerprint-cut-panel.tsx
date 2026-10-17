@@ -209,12 +209,14 @@ export function FingerprintCutPanel({
             </div>
           ))}
         </div>
+        {result?.revisions ? <CutRevisions revisions={result.revisions} /> : null}
         {sets.map((set) => (
           <CutSet
             key={set.id}
             set={set}
             windows={windows}
             q={q}
+            fingerprintKey={result?.key ?? fingerprintAttr}
             onFilter={onFilter}
           />
         ))}
@@ -237,11 +239,13 @@ function CutSet({
   set,
   windows,
   q,
+  fingerprintKey,
   onFilter,
 }: {
   set: FingerprintCutSet;
   windows: FingerprintCutWindows;
   q: string;
+  fingerprintKey: string;
   onFilter: (hex: string) => void;
 }) {
   const countTitle = cutCountTitle(windows);
@@ -274,6 +278,7 @@ function CutSet({
           key={row.hex}
           row={row}
           q={q}
+          fingerprintKey={fingerprintKey}
           countTitle={countTitle}
           onFilter={onFilter}
         />
@@ -329,19 +334,21 @@ function CutWaiting({
 function CutRow({
   row,
   q,
+  fingerprintKey,
   countTitle,
   onFilter,
 }: {
   row: FingerprintCutRow;
   q: string;
+  fingerprintKey: string;
   countTitle: string;
   onFilter: (hex: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const values = facetValues(q, fingerprintAttr);
+  const values = facetValues(q, fingerprintKey);
   const filtered =
     values.length === 1 && values[0]!.toLowerCase() === row.hex.toLowerCase();
-  const token = `${fingerprintAttr}:${row.hex}`;
+  const token = `${fingerprintKey}:${row.hex}`;
 
   return (
     <div
@@ -421,6 +428,38 @@ function CutRow({
           <span className="text-pretty text-amber-200/90">{row.held}</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+const REVISIONS_HATCH = "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 7px)";
+
+/**
+ * #142: the hunt's rows here were fingerprinted by more than one set of rules, so one error has an
+ * id under each. The cut waits, as across a gap (5m), and files nothing.
+ */
+function CutRevisions({ revisions }: { revisions: NonNullable<FingerprintCutResult["revisions"]> }) {
+  const side = (keys: string[]) => (keys.length > 0 ? keys.join(" and ") : "none");
+  return (
+    <div className="m-2.5 rounded-md border border-white/12 px-3 py-2.5" style={{ backgroundImage: REVISIONS_HATCH }}>
+      <div className="text-[12.5px] font-semibold">Not cut — two sets of fingerprint rules in this window</div>
+      <p className="mt-1 text-[11.5px] leading-snug text-pretty text-muted-foreground">
+        One error has an id under each set of rules, so any line could look stopped under one and first seen under
+        the other. Nothing is filed.
+      </p>
+      <div className="mt-2 flex flex-col gap-0.5 font-mono text-[11px]">
+        <span>
+          <span className="text-muted-foreground">before </span>
+          {side(revisions.before)}
+        </span>
+        <span>
+          <span className="text-muted-foreground">after </span>
+          {side(revisions.after)}
+        </span>
+      </div>
+      <p className="mt-2 text-[11.5px] leading-snug text-pretty text-muted-foreground">
+        Each id still finds its rows in the bar. A cut whose sides were both made by one set of rules compares again.
+      </p>
     </div>
   );
 }
