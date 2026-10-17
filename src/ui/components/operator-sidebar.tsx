@@ -235,8 +235,11 @@ export function OperatorSidebar({
                           <rect x="9" y="9" width="5" height="5" rx="1" />
                         </svg>
                       ) : (
-                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
-                          {count === undefined ? "—" : <CountText n={count} />}
+                        <span
+                          title={refuse ?? undefined}
+                          className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground"
+                        >
+                          {isBoard || count === undefined ? "—" : <CountText n={count} />}
                         </span>
                       )}
                     </button>
