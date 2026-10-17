@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { House } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { stepIndex } from "@/keyboard";
 import type { Workspace, WorkspaceKind } from "../workspaces";
@@ -152,6 +153,7 @@ export function WorkspaceStrip({
               {tab.kind === "follow" ? <FollowGlyph /> : null}
               {tab.kind === "surroundings" ? <AroundGlyph /> : null}
               {tab.board ? <BoardGlyph /> : null}
+              {tab.home ? <House aria-label="Home" className="size-3 shrink-0" /> : null}
               <button
                 type="button"
                 ref={(node) => {

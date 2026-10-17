@@ -30,6 +30,8 @@ import {
 import { getFields, putFields, storedSkipKeys } from "./control/fields";
 import { getRetentionDays, getSettings, putSettings } from "./control/settings";
 import { instanceId, instanceName } from "./control/instance";
+import { getHome, homeSaved, putHome } from "./control/home";
+import { savedSearchUrl } from "./ui/search-url";
 import { createSession, endSession, sessionExpiry, sessionMs } from "./control/sessions";
 import { safeNext, signInPageHtml } from "./sign-in-page";
 import {
@@ -252,6 +254,8 @@ app.get("/api/metric-names", metricNamesRoute);
 app.get("/api/metric-labels", metricLabelsRoute);
 app.get("/api/throughput", throughputRoute);
 app.get("/api/system", systemRoute);
+app.get("/api/home", getHome);
+app.put("/api/home", putHome);
 app.get("/api/saved-searches", listSavedSearches);
 app.post("/api/saved-searches", createSavedSearch);
 app.put("/api/saved-searches/:id", updateSavedSearch);
@@ -275,6 +279,12 @@ app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
 // The ingest paths are an API too: a typo or a wrong method must not get the UI page.
 app.all("/v1/*", (c) => c.json({ error: "Not found" }, 404));
 app.all("/v1development/*", (c) => c.json({ error: "Not found" }, 404));
+
+// #109: the bare address opens on Home, at that saved search's own URL; any link keeps its own.
+app.get("/", (c, next) => {
+  const home = new URL(c.req.url).search === "" ? homeSaved() : null;
+  return home ? c.redirect(`/${savedSearchUrl(home)}`, 302) : next();
+});
 
 app.use("/*", serveStatic({ root: "./src/ui/dist" }));
 app.get("*", async (c) => {
