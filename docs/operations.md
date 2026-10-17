@@ -72,6 +72,8 @@ The address in a key is `TOPOSCOPE_PUBLIC_URL` when it is set, else the address 
 
 The puller asks every 5 seconds for what arrived after where it stands, stores the rows as they were (the source's `e1`, its `toposcope` name) and keeps its position, so a restart of either side picks up where it stopped. A row is never stored twice, across retries, links with overlapping filters, or a row that left and came back. Pulled rows follow this instance's retention. Removing a link stops it and deletes nothing.
 
+The side that pasted connects. An invite is pasted by the source, so a source behind NAT — a customer site, a laptop — feeds a reachable instance with no inbound port: it calls out every 5 seconds, asks where the puller stands, reads its own rows from there and hands them over. It is still a pull: the puller keeps the position and the source's own store is the buffer, so a dropped connection resumes where it stopped. The list says who connects — “we call them” or “they call us” — and a quiet link reads “not answering since” or “has not called since” to match.
+
 Both sides behind NAT is for the operator's VPN; Toposcope runs no relay.
 
 ## Runtime ports and network

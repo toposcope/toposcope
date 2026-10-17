@@ -1,7 +1,8 @@
 import type { Context } from "hono";
 import { instanceId, instanceName } from "../control/instance";
 import { getRetentionDays } from "../control/settings";
-import { readFeed } from "../feed/feed";
+import { readFeed, type FeedReply } from "../feed/feed";
+import { insertPulled } from "../ingest/pulled";
 import { hashSecret, newSecret } from "./key";
 import {
   getLinkKey,
@@ -154,6 +155,53 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
     last_error: null,
   });
   return c.json({ ...reply, source: { id: instanceId(), name: instanceName() ?? "" } });
+}
+
+/**
+ * A link where the source connects (#137): the source pasted the key and calls out. It asks
+ * where the puller stands, reads its own feed from there and delivers the range. The puller
+ * keeps the position; the source's own store is still the buffer.
+ */
+export async function linkAskRoute(c: Context): Promise<Response> {
+  const link = linkFor(c);
+  if (!link || link.role !== "pull" || link.connects !== "they") {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  noteContact(link.id, { at: Date.now(), last_error: null });
+  return c.json({ after: link.position, limit: 1_000 });
+}
+
+/** The range the source read for us: stored as it came, and the position moves to its end. */
+export async function linkRowsRoute(c: Context): Promise<Response> {
+  const link = linkFor(c);
+  if (!link || link.role !== "pull" || link.connects !== "they") {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const reply = (await jsonBody(c)) as (FeedReply & { source?: { id: string; name: string } }) | null;
+  if (!reply || !Array.isArray(reply.rows) || !Number.isSafeInteger(reply.after) || !Number.isSafeInteger(reply.through)) {
+    return c.json({ error: "Expected a feed reply" }, 400);
+  }
+  // A range that does not start where we stand is stale (a retry after we moved on): ask again.
+  if (reply.after !== link.position) {
+    return c.json({ position: link.position, stale: true }, 409);
+  }
+  const stored = await insertPulled(reply.rows, { name: reply.source?.name || link.peer_name }, instanceId());
+  const gone =
+    reply.gone && link.gone_from !== null && link.gone_to !== null
+      ? { from: Math.min(link.gone_from, reply.gone.from), to: Math.max(link.gone_to, reply.gone.to) }
+      : (reply.gone ?? (link.gone_from !== null && link.gone_to !== null ? { from: link.gone_from, to: link.gone_to } : null));
+  noteContact(link.id, {
+    at: Date.now(),
+    position: reply.through,
+    settled: reply.settled,
+    ...(reply.arrived ? { arrived_at: reply.arrived } : {}),
+    behind_rows: link.q.trim() === "" ? Math.max(0, reply.settled - reply.through) : null,
+    gone_from: gone?.from ?? null,
+    gone_to: gone?.to ?? null,
+    peer_name: reply.source?.name || link.peer_name,
+    last_error: null,
+  });
+  return c.json({ position: reply.through, stored: stored.stored });
 }
 
 /** The other side removed the link: stop here too. Rows already moved stay where they are. */
