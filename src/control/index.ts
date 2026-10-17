@@ -142,6 +142,9 @@ export function getDb(): Database {
       removed_at INTEGER
     );
   `);
+  // A hole's ends in time (#139): where reading stopped, and the start of the oldest day the source kept.
+  addColumnIfMissing(db, "links", "gone_from_at", "TEXT");
+  addColumnIfMissing(db, "links", "gone_to_at", "TEXT");
   // A feed (#135): rows by arrival through one q, fixed when it is defined.
   db.run(`
     CREATE TABLE IF NOT EXISTS feeds (

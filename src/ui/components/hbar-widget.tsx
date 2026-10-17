@@ -1,3 +1,4 @@
+import { useHeldView } from "../held-context";
 import { HeadPicker } from "@/components/head-picker";
 import { useState, type ReactNode } from "react";
 import { downloadWidgetSeries, hbarExport } from "@/export-series";
@@ -174,6 +175,22 @@ export function HbarWidget({
   const peak = Math.max(1, ...bars.map((bar) => bar.n));
   const shareTotal = bars.reduce((sum, bar) => sum + bar.n, 0);
   const colorSplit = attr ? "service" : split === "none" ? "level" : split;
+  const held = useHeldView();
+  const barField = attr ?? (split === "none" ? null : split);
+  // #139: every bar a short source could feed is a floor; the order may be wrong, so the panel
+  // says once that it ranks what is here.
+  const floors = held?.floor
+    ? bars.map((bar) => (barField && hbarRowIsValue(bar.key) ? held.facetFloor(barField, bar.key) : true))
+    : bars.map(() => false);
+  const floored = floors.filter(Boolean).length;
+  const heldNote =
+    held?.pill && floored > 0
+      ? floored === bars.length
+        ? `${held.pill} — ranks are of what is here`
+        : floored === 1
+          ? `${held.pill} — ${formatFieldToken(barField ?? "", bars[floors.indexOf(true)]!.key)} is a floor`
+          : `${held.pill} — ${floored} bars are floors`
+      : null;
 
   return (
     <>
@@ -204,6 +221,7 @@ export function HbarWidget({
                   />
                 </div>
                 <span className="min-w-11 shrink-0 text-right font-mono text-[11.5px] text-muted-foreground tabular-nums">
+                  {floors[i] ? "≥" : ""}
                   {formatSeriesTotal(bar.n)}
                 </span>
                 {pct ? (
@@ -268,6 +286,9 @@ export function HbarWidget({
           })
         )}
       </div>
+      {heldNote ? (
+        <div className="truncate px-3 pb-1 text-[10.5px] text-amber-400">▲ {heldNote}</div>
+      ) : null}
       {updated ? <div className="px-3 pb-2">{updated}</div> : null}
     </>
   );

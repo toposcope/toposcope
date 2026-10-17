@@ -41,6 +41,9 @@ import {
 
 const gridClass = "grid gap-2";
 
+/** The hatch a short source's read-position row is drawn with (#139). */
+const HELD_HATCH = "repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 1px, transparent 1px 7px)";
+
 type Props = {
   events: LogEvent[];
   selectedIndex: number;
@@ -63,6 +66,9 @@ type Props = {
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
   onLoadToward?: (ts: string) => void;
+  /** #139: hatched rows at each short source's read position, and whether the total is a floor. */
+  held?: ReadonlyArray<{ at: number; text: string; key: string }>;
+  floor?: boolean;
 };
 
 function useEventTableGrid(
@@ -244,6 +250,7 @@ function Footer({
   range,
   showLoadMore,
   onLoadMore,
+  floor = false,
 }: {
   events: LogEvent[];
   loaded: number;
@@ -252,6 +259,8 @@ function Footer({
   range: string;
   showLoadMore?: boolean;
   onLoadMore?: () => void;
+  /** #139: the total carries the strip's ≥; an export takes what is here and says "at least". */
+  floor?: boolean;
 }) {
   const partial = Boolean(showLoadMore) || loaded < total;
   return (
@@ -260,11 +269,11 @@ function Footer({
         <span className="shrink-0 font-mono text-[11px] whitespace-nowrap text-muted-foreground">
           {partial ? (
             <>
-              <CountText n={loaded} /> of <CountText n={total} /> events
+              <CountText n={loaded} /> of <CountText n={total} floor={floor} /> events
             </>
           ) : (
             <>
-              <CountText n={total} /> {total === 1 ? "event" : "events"}
+              <CountText n={total} floor={floor} /> {total === 1 && !floor ? "event" : "events"}
             </>
           )}
         </span>
@@ -299,7 +308,7 @@ function Footer({
               {exportScope(q, range)}
             </div>
             <div className="font-mono text-[10.5px] leading-normal text-muted-foreground">
-              <CountText n={total} /> matching · <CountText n={loaded} /> loaded
+              <CountText n={total} floor={floor} /> matching · <CountText n={loaded} /> loaded
             </div>
           </div>
           {(
@@ -391,6 +400,8 @@ export function EventTable({
   focusMarkId = null,
   onFocusMark,
   onLoadToward,
+  held = [],
+  floor = false,
 }: Props) {
   const promoted = parsePromotedCols(cols);
   const pick = promoPicker(events, promoted);
@@ -410,7 +421,10 @@ export function EventTable({
   const visibleMarks = marks
     ? visibleChangeMarks(marks.marks, marks.offKinds, marks.mutedIds)
     : [];
-  const layout = eventTableMarkLayout(events, visibleMarks, focusMarkId);
+  const layout = eventTableMarkLayout(events, visibleMarks, focusMarkId, {
+    rows: held,
+    complete: !showLoadMore,
+  });
   const inspectMark =
     inspectId != null
       ? (visibleMarks.find((mark) => mark.id === inspectId) ?? null)
@@ -515,6 +529,18 @@ export function EventTable({
 
   function renderMarkRow(row: EventTableMarkRow, at: number) {
     const onArrow = (dir: 1 | -1) => eventToward(at, dir);
+    if (row.type === "held") {
+      return (
+        <div
+          key={row.key}
+          className="flex h-[26px] min-w-0 items-center gap-1.5 border-b border-white/[0.06] px-3 font-mono text-[11.5px] text-foreground/85"
+          style={{ backgroundImage: HELD_HATCH }}
+        >
+          <span className="shrink-0 text-[10px] text-amber-400">▲</span>
+          <span className="min-w-0 truncate">{row.text}</span>
+        </div>
+      );
+    }
     if (row.type === "seam") {
       return (
         <div key={`seam:${row.mark.id}`} className="relative">
@@ -765,6 +791,7 @@ export function EventTable({
         range={range}
         showLoadMore={showLoadMore}
         onLoadMore={onLoadMore}
+        floor={floor}
       />
     </div>
   );

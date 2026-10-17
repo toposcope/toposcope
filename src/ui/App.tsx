@@ -216,6 +216,11 @@ import {
   type FollowSpan,
 } from "../shared/follow-span";
 import { FollowOpenedChip } from "@/components/follow-opened-chip";
+import { ToposcopeGroup } from "@/components/toposcope-group";
+import { HeldContext } from "./held-context";
+import { heldView, savedWindow } from "./held-view";
+import { HeldPill, ScopeChipView } from "@/components/held-tells";
+import { useHeld } from "./use-held";
 import {
   deriveLiveSeries,
   extraQueryLiveFetch,
@@ -506,6 +511,12 @@ export function App() {
   const [total, setTotal] = useState(0);
   const [facets, setFacets] = useState<Facets>(emptyFacets);
   const [facetsLoading, setFacetsLoading] = useState(true);
+  // What this instance holds (#139): where each source it pulls from stands.
+  const held = useHeld(view === "search", live);
+  const linked = held.sources.length > 0;
+  const linkedRef = useRef(linked);
+  linkedRef.current = linked;
+  const lastFacetQueryRef = useRef<string | null>(null);
   const [attrFacetValues, setAttrFacetValues] = useState<Record<string, FacetValue[]>>(
     {},
   );
@@ -851,9 +862,11 @@ export function App() {
 
   const loadFacets = useCallback(async (query: string) => {
     const gen = viewGenRef.current;
+    lastFacetQueryRef.current = query;
     setFacetsLoading(true);
     try {
-      const res = await fetch(`/api/facets?${query}`);
+      // Linked, the toposcope group counts each source in this hunt (#139).
+      const res = await fetch(`/api/facets?${query}${linkedRef.current ? "&fields=toposcope" : ""}`);
       if (viewGenRef.current !== gen) {
         return;
       }
@@ -877,6 +890,12 @@ export function App() {
       }
     }
   }, []);
+  // The first answer that something is linked: count the sources in the hunt already open.
+  useEffect(() => {
+    if (linked && lastFacetQueryRef.current !== null) {
+      void loadFacets(lastFacetQueryRef.current);
+    }
+  }, [linked, loadFacets]);
 
   const loadMetricNames = useCallback(async (query: string) => {
     const gen = viewGenRef.current;
@@ -3429,6 +3448,17 @@ export function App() {
     q,
     ["level", "service", "host", ...attrFacets],
   );
+  const heldCounts = new Map((facets.toposcope ?? []).map((item) => [item.v, item.n] as const));
+  const heldV = heldView({
+    sources: held.sources,
+    now: held.now,
+    live,
+    // A relative window runs to now: a source that went quiet since the last paint is short in it.
+    window: { from: windowFromMs, to: range === "custom" ? windowToMs : Math.max(windowToMs, held.now) },
+    q,
+    counts: heldCounts,
+    total,
+  });
   const displayAttrFacets: Record<string, FacetValue[]> = { ...attrFacetValues };
   for (const [key, prefix] of Object.entries(attrPrefixes)) {
     if (prefix.trim().length > 0) {
@@ -3639,6 +3669,30 @@ export function App() {
         setAlertDraft({ mode: "create", savedSearchId: item.id, lockSearch: true });
       }}
       onDeleteSaved={(id) => void onDelete(id)}
+      toposcope={
+        heldV ? (
+          <ToposcopeGroup
+            sources={held.sources}
+            counts={heldCounts}
+            floorFor={(name) => heldV.facetFloor("toposcope", name)}
+            checked={activeFacetValues(q, ["toposcope"]).toposcope ?? []}
+            now={held.now}
+            live={live}
+            mode={isSurr ? "frozen" : wsKind === "follow" ? "follow" : boardOn ? "board" : "search"}
+            onToggle={(name) => onToggleFacet("toposcope", name)}
+            onOpenLinks={() => setView("links")}
+          />
+        ) : null
+      }
+      facetFloor={heldV?.facetFloor}
+      savedFloor={
+        heldV
+          ? (item) => {
+              const win = savedWindow(item, held.now);
+              return win !== null && heldV.countGaps(item.query, win).length > 0;
+            }
+          : undefined
+      }
       frozen={isSurr}
       frozenNote="Carried in from the tab this was opened from. The facets below report it; Saved still opens a new Search tab."
       templateLocked={boardOn}
@@ -4105,7 +4159,7 @@ export function App() {
               ) : Number.isFinite(windowFromMs) && Number.isFinite(windowToMs) ? (
                 <div className="flex items-baseline gap-2.5">
                   <span className="font-mono text-base font-medium tracking-[-0.01em] whitespace-nowrap text-foreground tabular-nums">
-                    <CountText n={total} /> matching
+                    <CountText n={total} floor={heldV?.floor ?? false} /> matching
                   </span>
                   <span className="font-mono text-base font-medium tracking-[-0.01em] whitespace-nowrap tabular-nums text-muted-foreground">
                     {windowHead(windowFromMs, windowToMs, spanMs)}
@@ -4115,6 +4169,8 @@ export function App() {
                   </span>
                 </div>
               ) : null}
+              {!boardUnbound && heldV?.pill ? <HeldPill text={heldV.pill} /> : null}
+              {!boardUnbound && heldV?.chip ? <ScopeChipView chip={heldV.chip} /> : null}
               {qErrOn && !chipInField ? <QueryErrorChip faults={qFaults} /> : null}
               {wsKind === "follow" && follow?.opened ? (
                 <FollowOpenedChip
@@ -4207,6 +4263,7 @@ export function App() {
               )}
             >
               <SeriesCatalogContext.Provider value={seriesCatalog}>
+                <HeldContext.Provider value={heldV}>
                 <WidgetCanvas
                   widgets={widgets}
                   logs={logsOn}
@@ -4313,6 +4370,7 @@ export function App() {
                       : null
                   }
                 />
+                </HeldContext.Provider>
               </SeriesCatalogContext.Provider>
             </div>
             {logsOn ? (
@@ -4446,6 +4504,8 @@ export function App() {
                         setPinnedEvent(null);
                       }}
                       onLoadMore={() => void runSearch("append")}
+                      held={heldV?.rows}
+                      floor={heldV?.floor ?? false}
                       marks={marksOverlay}
                       live={live}
                       focusMarkId={focusMarkId}

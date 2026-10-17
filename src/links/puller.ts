@@ -7,7 +7,7 @@ import { readFeed, type FeedReply } from "../feed/feed";
 import { getRetentionDays } from "../control/settings";
 import { insertPulled, insertPulledMarks } from "../ingest/pulled";
 import { hereName } from "../shared/here";
-import { activeLinks, getLink, noteContact, noteFailure, type LinkRecord } from "./store";
+import { activeLinks, getLink, holeTimes, noteContact, noteFailure, type LinkRecord } from "./store";
 
 /**
  * The pull loop (#136), inside the app like the alert checker. For each link this instance pulls
@@ -41,6 +41,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
   let gone: { from: number; to: number } | null =
     link.gone_from !== null && link.gone_to !== null ? { from: link.gone_from, to: link.gone_to } : null;
   let arrived = link.arrived_at;
+  let holeAt = { gone_from_at: link.gone_from_at, gone_to_at: link.gone_to_at };
   for (let page = 0; page < pullPagesPerPass; page++) {
     let reply: FeedFromSource;
     try {
@@ -75,6 +76,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
       gone = gone
         ? { from: Math.min(gone.from, reply.gone.from), to: Math.max(gone.to, reply.gone.to) }
         : reply.gone;
+      holeAt = holeTimes({ ...link, ...holeAt }, reply);
     }
     arrived = reply.arrived ?? arrived;
     noteContact(link.id, {
@@ -86,6 +88,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
       behind_rows: link.q.trim() === "" ? Math.max(0, reply.settled - after) : null,
       gone_from: gone?.from ?? null,
       gone_to: gone?.to ?? null,
+      ...holeAt,
       peer_name: reply.source?.name || link.peer_name,
       last_error: null,
     });

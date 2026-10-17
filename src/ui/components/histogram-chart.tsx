@@ -1,3 +1,5 @@
+import { HeldHatch } from "@/components/held-hatch";
+import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { printUnit, withUnit } from "../metric-unit";
 import {
@@ -522,6 +524,7 @@ export function HistogramChart({
   const slideD = panning ? panD : (panLock?.d ?? 0);
   const slidePct =
     sliding && binCount > 0 ? (slideD / binCount) * 100 : null;
+  const held = useHeldView();
   const markFromMs = firstBucket ? Date.parse(firstBucket.t) : 0;
   const plotSpanMs = markPlotSpanMs(binCount, stepMs, spanMs);
   const axisFromMs = previewWin?.fromMs ?? (firstBucket ? Date.parse(firstBucket.t) : NaN);
@@ -1531,6 +1534,9 @@ export function HistogramChart({
                   )}
                 </svg>
                 </div>
+              ) : null}
+              {held && !metric && held.hatches.length > 0 && Number.isFinite(markFromMs) && plotSpanMs > 0 ? (
+                <HeldHatch spans={held.hatches} fromMs={markFromMs} plotSpanMs={plotSpanMs} />
               ) : null}
               {marks && Number.isFinite(markFromMs) && spanMs > 0 ? (
                 <HistogramMarkRules

@@ -192,7 +192,16 @@ export type EventTableMarkRow =
   | { type: "event"; index: number; wash: boolean }
   | { type: "seam"; mark: ChangeMark }
   | { type: "end"; mark: ChangeMark }
-  | { type: "fold"; members: ChangeMark[] };
+  | { type: "fold"; members: ChangeMark[] }
+  /** A short source's read position (#139): its rows after this are not here yet. */
+  | { type: "held"; key: string; text: string };
+
+/** Hatched rows to place by time: one per short source, at its read position. */
+export type HeldRowsIn = {
+  rows: ReadonlyArray<{ at: number; text: string; key: string }>;
+  /** Every row of the window is loaded, so a position older than the last row still sits below it. */
+  complete: boolean;
+};
 
 export type EventTableMarkLayout = {
   rows: EventTableMarkRow[];
@@ -234,9 +243,18 @@ export function eventTableMarkLayout(
   events: readonly { ts: string }[],
   marks: readonly ChangeMark[],
   pinId?: string | null,
+  held?: HeldRowsIn,
 ): EventTableMarkLayout {
   if (events.length === 0) {
     return { rows: [], above: [], below: [] };
+  }
+  const heldAt = new Map<number, Array<{ at: number; text: string; key: string }>>();
+  for (const row of held?.rows ?? []) {
+    const gap = gapBeforeEvent(events, row.at);
+    if (gap === events.length && !held?.complete) {
+      continue;
+    }
+    heldAt.set(gap, [...(heldAt.get(gap) ?? []), row].sort((a, b) => b.at - a.at));
   }
   const gaps = new Map<number, ChangeMark[]>();
   const ends = new Map<number, ChangeMark[]>();
@@ -278,6 +296,9 @@ export function eventTableMarkLayout(
   }
   const rows: EventTableMarkRow[] = [];
   for (let i = 0; i < events.length; i++) {
+    for (const row of heldAt.get(i) ?? []) {
+      rows.push({ type: "held", key: row.key, text: row.text });
+    }
     const gapMarks = newestFirst(gaps.get(i) ?? []);
     const gapEnds = newestFirst(ends.get(i) ?? []);
     for (const mark of gapEnds) {
@@ -295,6 +316,9 @@ export function eventTableMarkLayout(
       index: i,
       wash: eventInIncidentWash(events[i]!.ts, marks),
     });
+  }
+  for (const row of heldAt.get(events.length) ?? []) {
+    rows.push({ type: "held", key: row.key, text: row.text });
   }
   return { rows, above: newestFirst(above), below: newestFirst(below) };
 }

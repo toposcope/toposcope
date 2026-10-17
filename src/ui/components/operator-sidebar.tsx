@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Bell, House, MoreHorizontal, Plus } from "lucide-react";
 import { CountText } from "@/components/count-text";
 import { FacetGroup } from "@/components/facet-group";
@@ -58,6 +58,12 @@ type Props = {
   frozen?: boolean;
   frozenNote?: string;
   templateLocked?: boolean;
+  /** What this instance holds (#139): the toposcope group, second only to the view's own scope. */
+  toposcope?: ReactNode;
+  /** A facet value's count a short source could feed (#139). */
+  facetFloor?: (field: string, value: string) => boolean;
+  /** A saved search's badge over its own span a short source could feed (#139). */
+  savedFloor?: (item: SavedSearch) => boolean;
   board?: {
     capLabel: string;
     fields: BoardFieldBind[];
@@ -98,6 +104,9 @@ export function OperatorSidebar({
   frozen = false,
   frozenNote,
   templateLocked = false,
+  toposcope = null,
+  facetFloor,
+  savedFloor,
   board = null,
 }: Props) {
   const [keyFilter, setKeyFilter] = useState("");
@@ -135,6 +144,7 @@ export function OperatorSidebar({
             </span>
           </div>
         ) : null}
+        {toposcope}
         <div className="p-3">
           <div className="mb-1.5 flex items-center justify-between">
             <h2 className="text-[12px] font-semibold tracking-[0.04em] text-muted-foreground uppercase">
@@ -247,7 +257,7 @@ export function OperatorSidebar({
                           title={refuse ?? undefined}
                           className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground"
                         >
-                          {isBoard || count === undefined ? "—" : <CountText n={count} />}
+                          {isBoard || count === undefined ? "—" : <CountText n={count} floor={savedFloor?.(item) ?? false} />}
                         </span>
                       )}
                     </button>
@@ -313,6 +323,7 @@ export function OperatorSidebar({
               onToggle={onToggleFacet}
               onOnly={onOnlyFacet}
               onClear={onClearFacet}
+              floorFor={facetFloor ? (value) => facetFloor(field, value) : undefined}
             />
           </div>
         ))}
@@ -327,11 +338,17 @@ export function OperatorSidebar({
               onOnly={onOnlyFacet}
               onClear={onClearFacet}
               onRemove={() => onRemoveAttrFacet(field)}
+              floorFor={facetFloor ? (value) => facetFloor(field, value) : undefined}
               prefix={attrPrefixes[field] ?? ""}
               onPrefixChange={(value) => onAttrPrefix(field, value)}
             />
           </div>
         ))}
+        {floorNote(facetFloor, facets, attrPins, attrFacetValues) ? (
+          <p className="px-3 text-[11.5px] leading-snug text-muted-foreground/85">
+            ≥ on every value a short source could feed.
+          </p>
+        ) : null}
         <div className="p-3">
           <DropdownMenu
             onOpenChange={(open) => {
@@ -386,5 +403,20 @@ export function OperatorSidebar({
         </div>
         </div>
       </div>
+  );
+}
+
+function floorNote(
+  facetFloor: ((field: string, value: string) => boolean) | undefined,
+  facets: Facets,
+  attrPins: string[],
+  attrFacetValues: Record<string, FacetValue[]>,
+): boolean {
+  if (!facetFloor) {
+    return false;
+  }
+  return (
+    facetFields.some((field) => facets[field].some((item) => facetFloor(field, item.v))) ||
+    attrPins.some((field) => (attrFacetValues[field] ?? []).some((item) => facetFloor(field, item.v)))
   );
 }

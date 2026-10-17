@@ -7,6 +7,7 @@ import { hereName } from "../shared/here";
 import { hashSecret, newSecret } from "./key";
 import {
   getLinkKey,
+  holeTimes,
   keyState,
   linkBySecret,
   linkId,
@@ -201,6 +202,7 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
     behind_rows: link.q.trim() === "" ? Math.max(0, reply.settled - reply.through) : null,
     gone_from: gone?.from ?? null,
     gone_to: gone?.to ?? null,
+    ...holeTimes(link, { gone: reply.gone ?? null, horizon: reply.horizon }),
     peer_name: reply.source?.name || link.peer_name,
     last_error: null,
   });
