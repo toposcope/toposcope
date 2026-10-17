@@ -1,27 +1,39 @@
-import { enabledAlertRules, recordEvalAttempt, recordWebhookAttempt } from "../control/alerts";
+import {
+  enabledAlertRules,
+  pruneSentFingerprints,
+  recordEvalAttempt,
+  recordWebhookAttempt,
+} from "../control/alerts";
 import { getSaved } from "../control/saved-searches";
 import { incMetric } from "../metrics";
 import { parseRangeMs } from "../query/relative";
 import { clipError, outcomeFromError, outcomeFromHttp } from "./delivery";
 import { shouldDeliver } from "./evaluate";
 import { publicUrl } from "../shared/public-url";
-import { alertLink, alertWebhookBody } from "./payload";
+import {
+  alertLink,
+  alertWebhookBody,
+  renderWebhook,
+  thresholdFillValues,
+  type WebhookPayload,
+} from "./payload";
 import { evaluateAlertSeries } from "./series";
+import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
 
 const FALLBACK_COOLDOWN_MS = 5 * 60 * 1000;
 const WEBHOOK_TIMEOUT_MS = 5000;
 
-async function postWebhook(
+export async function postWebhook(
   url: string,
-  body: unknown,
+  payload: WebhookPayload,
 ): Promise<{ ok: boolean; status: string; error: string | null }> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), WEBHOOK_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { "content-type": payload.contentType },
+      body: payload.body,
       signal: ac.signal,
       redirect: "error",
     });
@@ -36,12 +48,26 @@ async function postWebhook(
 
 export async function evaluateAlerts(now = Date.now()): Promise<void> {
   const rules = enabledAlertRules();
+  pruneSentFingerprints(now - 2 * firstSeenWatchMs);
   for (const rule of rules) {
     if (!rule.saved_search_id || !rule.webhook_url) {
       continue;
     }
     const saved = getSaved(rule.saved_search_id);
     if (!saved || saved.board) {
+      continue;
+    }
+    if (rule.kind === "first_seen") {
+      try {
+        await evaluateFirstSeenRule(rule, saved, now, firstSeenDeps(postWebhook));
+      } catch (err) {
+        console.error("alert evaluation failed", err);
+        recordEvalAttempt(rule.id, {
+          at: now,
+          status: "error",
+          error: clipError(err instanceof Error ? err.message : String(err)),
+        });
+      }
       continue;
     }
     const cooldownMs = saved.range
@@ -86,20 +112,32 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
           : null;
       const outcome = await postWebhook(
         rule.webhook_url,
-        alertWebhookBody({
-          url: rule.webhook_url,
-          alert: {
-            id: rule.id,
+        renderWebhook(
+          rule,
+          alertWebhookBody({
+            url: rule.webhook_url,
+            alert: {
+              id: rule.id,
+              name: rule.name,
+              threshold: rule.threshold,
+            },
+            count: series.count,
+            value: series.value,
+            agg: series.expr,
+            query: saved.query,
+            firedAt,
+            link,
+          }),
+          thresholdFillValues({
             name: rule.name,
+            agg: series.expr,
+            value: series.value,
             threshold: rule.threshold,
-          },
-          count: series.count,
-          value: series.value,
-          agg: series.expr,
-          query: saved.query,
-          firedAt,
-          link,
-        }),
+            query: saved.query,
+            firedAt,
+            link,
+          }),
+        ),
       );
       recordWebhookAttempt(rule.id, { at: now, ...outcome });
       if (outcome.ok) {

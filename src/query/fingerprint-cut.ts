@@ -8,10 +8,17 @@ import { fingerprintAttr } from "../shared/fingerprint";
 import {
   capFingerprintCutSet,
   classifyFingerprintCut,
+  fingerprintCutFollows,
+  fingerprintCutInsideCap,
+  fingerprintCutInsideNotes,
+  fingerprintCutMinBeforeMs,
   fingerprintCutNotes,
   fingerprintCutScanCap,
   fingerprintCutWindows,
+  formatFingerprintCutDuration,
   mergeFingerprintCutSides,
+  nearestInsideMarks,
+  type FingerprintCutInsideMark,
   type FingerprintCutResult,
   type FingerprintCutRow,
   type FingerprintCutSet,
@@ -24,7 +31,7 @@ import {
   requireCompiled,
   type CompiledQuery,
 } from "./compile";
-import { getChangeMarkById } from "./marks";
+import { changeMarksBetween, getChangeMarkById } from "./marks";
 import {
   isNumericAggBudgetError,
   logsScanBudgetRefuseReason,
@@ -219,6 +226,7 @@ function toRow(
   side: FingerprintCutSideCount,
   sample: Sample | undefined,
   firstSeen: boolean,
+  inside: FingerprintCutInsideMark[],
 ): FingerprintCutRow {
   let extra = "";
   if (firstSeen && sample?.first_after) {
@@ -232,6 +240,7 @@ function toRow(
     before: side.before,
     after: side.after,
     extra,
+    follows: firstSeen ? fingerprintCutFollows(inside, sample?.first_after ?? null) : "",
   };
 }
 
@@ -243,6 +252,7 @@ function packSet(
   rank: (row: FingerprintCutSideCount) => number,
   samples: Map<string, Sample>,
   firstSeen: boolean,
+  inside: FingerprintCutInsideMark[],
 ): FingerprintCutSet {
   const capped = capFingerprintCutSet(sides, rank);
   return {
@@ -251,31 +261,82 @@ function packSet(
     def,
     count: capped.total,
     more: capped.more,
-    rows: capped.rows.map((row) => toRow(row, samples.get(row.hex), firstSeen)),
+    rows: capped.rows.map((row) =>
+      toRow(row, samples.get(row.hex), firstSeen, inside),
+    ),
   };
 }
 
-function windowPayload(w: FingerprintCutWindows) {
+/** Stopped is not called while the after side is shorter than the before side. */
+function waitingStopped(w: FingerprintCutWindows): FingerprintCutSet {
+  return {
+    id: "stopped",
+    name: "Stopped",
+    def: "before the cut, quiet after",
+    count: 0,
+    more: 0,
+    rows: [],
+    waiting: { haveMs: w.sideMs, needMs: w.beforeMs },
+  };
+}
+
+/** `marks` is what the panel names (capped); `all` counts the notes and decides which later mark a row follows. */
+type Inside = {
+  marks: FingerprintCutInsideMark[];
+  more: number;
+  all: FingerprintCutInsideMark[];
+};
+
+async function insideMarks(
+  mark: ChangeMark,
+  w: FingerprintCutWindows,
+): Promise<Inside> {
+  if (w.dead) {
+    return { marks: [], more: 0, all: [] };
+  }
+  const all = (await changeMarksBetween(iso(w.beforeFrom), iso(w.afterTo)))
+    .filter((m) => m.id !== mark.id)
+    .map((m): FingerprintCutInsideMark => ({
+      id: m.id,
+      kind: m.kind,
+      ts: m.ts,
+      label: formatChangeMarkLabel(m),
+      title: m.title,
+      side: Date.parse(m.ts) < w.afterFrom ? "before" : "after",
+    }));
+  return {
+    marks: nearestInsideMarks(all, w.afterFrom, fingerprintCutInsideCap),
+    more: Math.max(0, all.length - fingerprintCutInsideCap),
+    all,
+  };
+}
+
+function windowPayload(w: FingerprintCutWindows, inside: Inside) {
   return {
     afterFrom: iso(w.afterFrom),
     afterTo: iso(w.afterTo),
     beforeFrom: iso(w.beforeFrom),
     beforeTo: iso(w.beforeTo),
     sideMs: w.sideMs,
+    beforeMs: w.beforeMs,
+    waiting: w.waiting,
     banded: w.banded,
     dead: w.dead,
+    inside: inside.marks,
+    insideMore: inside.more,
   };
 }
 
 function emptyResult(
   mark: ChangeMark,
   w: FingerprintCutWindows,
+  inside: Inside,
   notes: string[],
   extra?: Partial<FingerprintCutResult>,
 ): FingerprintCutResult {
   return {
     title: formatChangeMarkLabel(mark),
-    windows: windowPayload(w),
+    windows: windowPayload(w, inside),
     notes,
     sets: [],
     empty: extra?.empty ?? "",
@@ -303,13 +364,15 @@ export async function searchFingerprintCut(input: {
     huntFrom: Date.parse(hunt.from),
     huntTo: Date.parse(hunt.to),
     openedAt,
+    minBeforeMs: fingerprintCutMinBeforeMs,
   });
-  const notes = fingerprintCutNotes(w, {
-    live: Boolean(input.live),
-    now,
-  });
+  const inside = await insideMarks(input.mark, w);
+  const notes = [
+    ...fingerprintCutNotes(w, { live: Boolean(input.live), now }),
+    ...fingerprintCutInsideNotes(inside.all),
+  ];
   if (w.dead) {
-    return emptyResult(input.mark, w, notes);
+    return emptyResult(input.mark, w, inside, notes);
   }
   const compiled = compiledOf(input.q);
   try {
@@ -322,14 +385,14 @@ export async function searchFingerprintCut(input: {
       after.length > fingerprintCutScanCap
     ) {
       const reason = `More than ${fingerprintCutScanCap} fingerprints match one side of this cut. Narrow the hunt to compare complete sets.`;
-      return emptyResult(input.mark, w, notes, {
+      return emptyResult(input.mark, w, inside, notes, {
         empty: reason,
         scan: { source: "refused", reason },
       });
     }
     const merged = mergeFingerprintCutSides(before, after);
     if (merged.length === 0) {
-      return emptyResult(input.mark, w, notes, {
+      return emptyResult(input.mark, w, inside, notes, {
         empty:
           "No fingerprints in this slice. Only events carrying e1 are counted here — errors that never fingerprinted are not this list.",
       });
@@ -338,7 +401,9 @@ export async function searchFingerprintCut(input: {
     const shown = [
       ...capFingerprintCutSet(classified.firstSeen, (r) => r.after).rows,
       ...capFingerprintCutSet(classified.stillHere, (r) => r.after).rows,
-      ...capFingerprintCutSet(classified.stopped, (r) => r.before).rows,
+      ...(w.waiting
+        ? []
+        : capFingerprintCutSet(classified.stopped, (r) => r.before).rows),
     ];
     let samples = new Map<string, Sample>();
     try {
@@ -357,19 +422,23 @@ export async function searchFingerprintCut(input: {
         "Counts only — sampling this slice exceeded the scan budget. Zoom in for row text.",
       );
     }
+    const beforeSpan = formatFingerprintCutDuration(w.beforeMs);
     return {
       title: formatChangeMarkLabel(input.mark),
-      windows: windowPayload(w),
+      windows: windowPayload(w, inside),
       notes,
       sets: [
         packSet(
           "first_seen",
           "First seen",
-          "after the cut, not in the equal window before",
+          w.waiting
+            ? `after the cut, not in the ${beforeSpan === "1h" ? "hour" : beforeSpan} before`
+            : "after the cut, not in the equal window before",
           classified.firstSeen,
           (r) => r.after,
           samples,
           true,
+          inside.all,
         ),
         packSet(
           "still_here",
@@ -379,22 +448,26 @@ export async function searchFingerprintCut(input: {
           (r) => r.after,
           samples,
           false,
+          inside.all,
         ),
-        packSet(
-          "stopped",
-          "Stopped",
-          "before the cut, quiet after",
-          classified.stopped,
-          (r) => r.before,
-          samples,
-          false,
-        ),
+        w.waiting
+          ? waitingStopped(w)
+          : packSet(
+              "stopped",
+              "Stopped",
+              "before the cut, quiet after",
+              classified.stopped,
+              (r) => r.before,
+              samples,
+              false,
+              inside.all,
+            ),
       ],
       empty: "",
     };
   } catch (err) {
     if (isNumericAggBudgetError(err)) {
-      return emptyResult(input.mark, w, notes, {
+      return emptyResult(input.mark, w, inside, notes, {
         empty: logsScanBudgetRefuseReason,
         scan: { source: "refused", reason: logsScanBudgetRefuseReason },
       });
@@ -436,6 +509,132 @@ export async function fingerprintCutRoute(c: Context): Promise<Response> {
     }
     if (err instanceof QueryCompileError) {
       return c.json({ error: err.message, faults: err.faults }, 400);
+    }
+    throw err;
+  }
+}
+
+export type FirstSeenDetail = {
+  hex: string;
+  type: string;
+  message: string;
+  firstTs: string | null;
+};
+
+/** The first event of each fingerprint after the cut: its exception type, message, and time. */
+async function e1FirstDetails(
+  fromIso: string,
+  toIso: string,
+  compiled: CompiledQuery,
+  hexes: string[],
+): Promise<Map<string, FirstSeenDetail>> {
+  if (hexes.length === 0) {
+    return new Map();
+  }
+  const { sql, params } = logsWhere(fromIso, toIso, compiled);
+  params.e1key = fingerprintAttr;
+  params.typekey = "exception.type";
+  const ors: string[] = [];
+  hexes.forEach((hex, i) => {
+    params[`h${i}`] = hex;
+    ors.push(`attr_map[{e1key:String}] = {h${i}:String}`);
+  });
+  const rows = await clickhouseQuery<{
+    hex: string;
+    first_message: string;
+    first_type: string;
+    first_ts: string | null;
+  }>(
+    `
+    SELECT
+      attr_map[{e1key:String}] AS hex,
+      argMin(message, ts) AS first_message,
+      argMin(attr_map[{typekey:String}], ts) AS first_type,
+      min(ts) AS first_ts
+    FROM logs
+    WHERE ${sql} AND (${ors.join(" OR ")})
+    GROUP BY hex
+    ${numericScanSettings}
+    `,
+    params,
+  );
+  const out = new Map<string, FirstSeenDetail>();
+  for (const row of rows) {
+    out.set(String(row.hex), {
+      hex: String(row.hex),
+      type: String(row.first_type ?? ""),
+      message: String(row.first_message ?? ""),
+      firstTs: row.first_ts ? toIsoTimestamp(String(row.first_ts)) : null,
+    });
+  }
+  return out;
+}
+
+/** Replaceable so a test can refuse or count without ClickHouse. */
+export const firstSeenScans = {
+  counts: e1Counts,
+  details: e1FirstDetails,
+};
+
+/**
+ * The First seen set a first-seen alert pages on: the panel's windows (#111's hour minimum),
+ * cut at `now`, every row, not the panel's ten.
+ */
+export async function fingerprintCutFirstSeen(input: {
+  mark: ChangeMark;
+  compiled: CompiledQuery;
+  now: number;
+}): Promise<{
+  windows: FingerprintCutWindows;
+  firstSeen: FingerprintCutSideCount[];
+  refused: string | null;
+}> {
+  const markTs = Date.parse(input.mark.ts);
+  const w = fingerprintCutWindows({
+    markTs,
+    markEndTs: input.mark.end_ts ? Date.parse(input.mark.end_ts) : null,
+    kind: input.mark.kind,
+    huntFrom: markTs - fingerprintCutMinBeforeMs,
+    huntTo: input.now,
+    openedAt: input.now,
+    minBeforeMs: fingerprintCutMinBeforeMs,
+  });
+  if (w.dead) {
+    return { windows: w, firstSeen: [], refused: null };
+  }
+  try {
+    const [before, after] = await Promise.all([
+      firstSeenScans.counts(iso(w.beforeFrom), iso(w.beforeTo), input.compiled),
+      firstSeenScans.counts(iso(w.afterFrom), iso(w.afterTo), input.compiled),
+    ]);
+    if (before.length > fingerprintCutScanCap || after.length > fingerprintCutScanCap) {
+      return {
+        windows: w,
+        firstSeen: [],
+        refused: `more than ${fingerprintCutScanCap} fingerprints on a side`,
+      };
+    }
+    const { firstSeen } = classifyFingerprintCut(mergeFingerprintCutSides(before, after));
+    return { windows: w, firstSeen, refused: null };
+  } catch (err) {
+    if (isNumericAggBudgetError(err)) {
+      return { windows: w, firstSeen: [], refused: logsScanBudgetRefuseReason };
+    }
+    throw err;
+  }
+}
+
+/** Details for the fingerprints a call lists; a refused read leaves them out, not the call. */
+export async function firstSeenDetails(
+  windows: FingerprintCutWindows,
+  compiled: CompiledQuery,
+  hexes: string[],
+): Promise<Map<string, FirstSeenDetail>> {
+  try {
+    return await firstSeenScans.details(iso(windows.afterFrom), iso(windows.afterTo), compiled, hexes);
+  } catch (err) {
+    if (isNumericAggBudgetError(err)) {
+      return new Map();
     }
     throw err;
   }

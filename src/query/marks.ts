@@ -157,6 +157,26 @@ export async function getChangeMarkById(id: string): Promise<ChangeMark | null> 
   return unlabeled.map(mapRow).find((mark) => mark.id === trimmed) ?? null;
 }
 
+/** Marks with from <= ts < to, oldest first; the cut names them inside its sides. */
+export async function changeMarksBetween(
+  fromIso: string,
+  toIso: string,
+): Promise<ChangeMark[]> {
+  const rows = await clickhouseQuery<MarkRow>(
+    `
+    SELECT ${markSelect}
+    FROM change_marks
+    WHERE tenant_id = 'default'
+      AND ts >= parseDateTime64BestEffort({from:String})
+      AND ts < parseDateTime64BestEffort({to:String})
+    ORDER BY ts
+    LIMIT ${maxChangeMarks}
+    `,
+    { from: fromIso, to: toIso },
+  );
+  return keepLatestChangeMarkPerId(rows.map(mapRow));
+}
+
 export async function searchChangeMarks(filters: {
   from?: string;
   to?: string;
