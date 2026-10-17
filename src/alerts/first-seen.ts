@@ -20,7 +20,15 @@ import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import type { FingerprintCutSideCount, FingerprintCutWindows } from "../shared/fingerprint-cut";
 import { publicUrl } from "../shared/public-url";
 import type { WebhookOutcome } from "./delivery";
-import { alertLink, firstSeenWebhookBody } from "./payload";
+import {
+  alertLink,
+  firstSeenFillValues,
+  firstSeenWebhookBody,
+  renderWebhook,
+  type FirstSeenFingerprint,
+  type FirstSeenMark,
+  type WebhookPayload,
+} from "./payload";
 
 /** Each deploy or flag mark is watched this long. */
 export const firstSeenWatchMs = 24 * 60 * 60_000;
@@ -98,7 +106,7 @@ export type FirstSeenDeps = {
     ruleId: string,
     stamp: { at: number; status: "refused" | "error" | "ok"; error: string | null },
   ) => void;
-  post: (url: string, body: unknown) => Promise<WebhookOutcome>;
+  post: (url: string, payload: WebhookPayload) => Promise<WebhookOutcome>;
   publicUrl: () => string | null;
 };
 
@@ -185,12 +193,7 @@ export async function evaluateFirstSeenRule(
     });
     return;
   }
-  const marks = (await deps.marks(iso(now - firstSeenWatchMs), iso(now))).filter(
-    (mark) =>
-      firstSeenMarkKinds.has(mark.kind) &&
-      Date.parse(mark.ts) <= now &&
-      !queryRulesOutService(compiled.ast, mark.service),
-  );
+  const marks = watchedMarks(await deps.marks(iso(now - firstSeenWatchMs), iso(now)), compiled, now);
   marks.sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts) || a.id.localeCompare(b.id));
   let refusal: string | null = null;
   let attempted = false;
@@ -217,53 +220,18 @@ export async function evaluateFirstSeenRule(
     if (fresh.length === 0) {
       continue;
     }
-    const listed = fresh.slice(0, firstSeenListCap);
-    const details = await deps.details(
-      cut.windows,
-      compiled,
-      listed.map((row) => row.hex),
-    );
-    const firedAt = iso(now);
-    const base = deps.publicUrl();
-    const link = base
-      ? alertLink(base, {
-          savedId: saved.id,
-          query: saved.query,
-          agg: null,
-          from: iso(cut.windows.beforeFrom),
-          to: firedAt,
-          cut: mark.id,
-        })
-      : null;
     attempted = true;
-    const outcome = await deps.post(
-      rule.webhook_url,
-      firstSeenWebhookBody({
-        url: rule.webhook_url,
-        alert: { id: rule.id, name: rule.name, threshold: rule.threshold },
-        query: saved.query,
-        mark: {
-          id: mark.id,
-          kind: mark.kind,
-          service: mark.service,
-          title: mark.title,
-          ts: mark.ts,
-        },
-        fingerprints: listed.map((row) => {
-          const detail = details.get(row.hex);
-          return {
-            e1: row.hex,
-            type: detail?.type ?? "",
-            message: detail?.message ?? "",
-            first_seen: detail?.firstTs ?? null,
-            events: row.after,
-          };
-        }),
-        more: fresh.length - listed.length,
-        firedAt,
-        link,
-      }),
-    );
+    const payload = await firstSeenPayload({
+      rule: { ...rule, webhook_url: rule.webhook_url },
+      saved,
+      mark,
+      windows: cut.windows,
+      fresh,
+      compiled,
+      now,
+      deps,
+    });
+    const outcome = await deps.post(rule.webhook_url, payload);
     deps.recordWebhook(rule.id, { at: now, ...outcome });
     if (outcome.ok) {
       // Sent for every mark each fingerprint was new after, so no other mark pages it.
@@ -293,6 +261,80 @@ export async function evaluateFirstSeenRule(
   } else if (!attempted) {
     deps.recordEval(rule.id, { at: now, status: "ok", error: null });
   }
+}
+
+/** Deploy and flag marks, up to now, whose service the q does not rule out. */
+export function watchedMarks(marks: ChangeMark[], compiled: CompiledQuery, now: number): ChangeMark[] {
+  return marks.filter(
+    (mark) =>
+      firstSeenMarkKinds.has(mark.kind) &&
+      Date.parse(mark.ts) <= now &&
+      !queryRulesOutService(compiled.ast, mark.service),
+  );
+}
+
+/** One mark's call: ten fingerprints listed, the rest counted, in the alert's body. */
+export async function firstSeenPayload(input: {
+  rule: Pick<AlertRule, "id" | "name" | "threshold" | "body_kind" | "body_template"> & { webhook_url: string };
+  saved: Pick<SavedSearch, "id" | "query">;
+  mark: ChangeMark;
+  windows: FingerprintCutWindows;
+  fresh: FingerprintCutSideCount[];
+  compiled: CompiledQuery;
+  now: number;
+  deps: Pick<FirstSeenDeps, "details" | "publicUrl">;
+}): Promise<WebhookPayload> {
+  const { rule, saved, mark, windows, fresh, now } = input;
+  const listed = fresh.slice(0, firstSeenListCap);
+  const details = await input.deps.details(
+    windows,
+    input.compiled,
+    listed.map((row) => row.hex),
+  );
+  const firedAt = iso(now);
+  const base = input.deps.publicUrl();
+  const link = base
+    ? alertLink(base, {
+        savedId: saved.id,
+        query: saved.query,
+        agg: null,
+        from: iso(windows.beforeFrom),
+        to: firedAt,
+        cut: mark.id,
+      })
+    : null;
+  const markOut: FirstSeenMark = {
+    id: mark.id,
+    kind: mark.kind,
+    service: mark.service,
+    title: mark.title,
+    ts: mark.ts,
+  };
+  const fingerprints: FirstSeenFingerprint[] = listed.map((row) => {
+    const detail = details.get(row.hex);
+    return {
+      e1: row.hex,
+      type: detail?.type ?? "",
+      message: detail?.message ?? "",
+      first_seen: detail?.firstTs ?? null,
+      events: row.after,
+    };
+  });
+  const more = fresh.length - listed.length;
+  return renderWebhook(
+    rule,
+    firstSeenWebhookBody({
+      url: rule.webhook_url,
+      alert: { id: rule.id, name: rule.name, threshold: rule.threshold },
+      query: saved.query,
+      mark: markOut,
+      fingerprints,
+      more,
+      firedAt,
+      link,
+    }),
+    firstSeenFillValues({ name: rule.name, query: saved.query, mark: markOut, fingerprints, more, link }),
+  );
 }
 
 export function firstSeenDeps(post: FirstSeenDeps["post"]): FirstSeenDeps {

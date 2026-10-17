@@ -7,6 +7,8 @@ import {
   thresholdSentence,
 } from "@/alert-condition";
 import { MarkGlyph } from "@/components/histogram-marks";
+import { AlertBodyField } from "@/components/alert-body-field";
+import { alertBodyProblem, type AlertBodyKind } from "../../shared/alert-body";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +48,8 @@ type Props = {
     saved_search_id: string;
     threshold: number;
     webhook_url: string;
+    body_kind: AlertBodyKind;
+    body_template: string;
   }) => Promise<void>;
   onUpdate: (
     id: string,
@@ -55,9 +59,13 @@ type Props = {
       saved_search_id: string;
       threshold: number;
       webhook_url: string;
+      body_kind: AlertBodyKind;
+      body_template: string;
     },
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** TOPOSCOPE_PUBLIC_URL is set: a call links back. */
+  canLink: boolean;
 };
 
 export function AlertRuleDialog({
@@ -68,11 +76,14 @@ export function AlertRuleDialog({
   onCreate,
   onUpdate,
   onDelete,
+  canLink,
 }: Props) {
   const editing = draft?.mode === "edit" ? draft.rule : null;
   const lockSearch = draft?.mode === "create" && draft.lockSearch;
   const [name, setName] = useState("");
   const [kind, setKind] = useState<AlertKind>("threshold");
+  const [bodyKind, setBodyKind] = useState<AlertBodyKind>("default");
+  const [bodyTemplate, setBodyTemplate] = useState("");
   const [savedSearchId, setSavedSearchId] = useState("");
   const [threshold, setThreshold] = useState("1");
   const [webhook, setWebhook] = useState("");
@@ -98,6 +109,8 @@ export function AlertRuleDialog({
     if (draft.mode === "edit") {
       setName(draft.rule.name);
       setKind(draft.rule.kind ?? "threshold");
+      setBodyKind(draft.rule.body_kind ?? "default");
+      setBodyTemplate(draft.rule.body_template ?? "");
       setSavedSearchId(draft.rule.saved_search_id ?? "");
       setThreshold(String(draft.rule.threshold));
       setWebhook(draft.rule.webhook_url ?? "");
@@ -106,6 +119,8 @@ export function AlertRuleDialog({
     const item = saved.find((row) => row.id === draft.savedSearchId);
     setName(item?.name ?? "");
     setKind("threshold");
+    setBodyKind("default");
+    setBodyTemplate("");
     setSavedSearchId(draft.savedSearchId);
     setThreshold("1");
     setWebhook("");
@@ -160,7 +175,7 @@ export function AlertRuleDialog({
   async function submit(e: FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed || !savedSearchId || !thresholdOk || (!fingerprints && probe?.refused)) {
+    if (!trimmed || !savedSearchId || !thresholdOk || bodyProblem || (!fingerprints && probe?.refused)) {
       return;
     }
     setBusy(true);
@@ -168,6 +183,8 @@ export function AlertRuleDialog({
       const body = {
         name: trimmed,
         kind,
+        body_kind: bodyKind,
+        body_template: bodyTemplate,
         saved_search_id: savedSearchId,
         threshold: thresholdN,
         webhook_url: webhook.trim(),
@@ -211,6 +228,24 @@ export function AlertRuleDialog({
       ? "Alert on this search"
       : "New alert";
 
+  const bodyProblem = alertBodyProblem(bodyKind, bodyTemplate, kind);
+
+  function testDraft(): Record<string, unknown> | null {
+    if (!savedSearchId || !thresholdOk || bodyProblem || !/^https?:\/\//.test(webhook.trim())) {
+      return null;
+    }
+    return {
+      id: editing?.id,
+      name: name.trim(),
+      kind,
+      saved_search_id: savedSearchId,
+      threshold: thresholdN,
+      webhook_url: webhook.trim(),
+      body_kind: bodyKind,
+      body_template: bodyTemplate,
+    };
+  }
+
   function onPickKind(next: AlertKind) {
     setKind(next);
     if (next === "first_seen" && !(Number.isInteger(thresholdN) && thresholdN >= 1)) {
@@ -226,7 +261,7 @@ export function AlertRuleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(680px,calc(100vw-32px))] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <div
@@ -397,6 +432,23 @@ export function AlertRuleDialog({
               />
             </DialogControl>
           </DialogField>
+          <AlertBodyField
+            alertKind={kind}
+            bodyKind={bodyKind}
+            onBodyKind={setBodyKind}
+            template={bodyTemplate}
+            onTemplate={setBodyTemplate}
+            webhook={webhook}
+            preview={{
+              name: name.trim(),
+              query: selected?.query ?? "",
+              series: seriesName,
+              value: probe && !probe.refused ? formatAggStat(probe.value) : null,
+              threshold,
+            }}
+            canLink={canLink}
+            testDraft={testDraft}
+          />
           {editing &&
           (editing.consecutive_failures > 0 ||
             editing.last_status === "refused" ||
@@ -419,6 +471,7 @@ export function AlertRuleDialog({
                 busy ||
                 saved.length === 0 ||
                 !thresholdOk ||
+                bodyProblem !== null ||
                 (!fingerprints && Boolean(probe?.refused))
               }
             >

@@ -42,6 +42,7 @@ import { renderMetrics } from "./metrics";
 import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsRoute, metricNamesRoute,
   metricLabelsRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
 import { fingerprintCutRoute } from "./query/fingerprint-cut";
+import { testAlertCallRoute } from "./alerts/test-call";
 import { tracesRoute } from "./query/traces";
 import { marksRoute } from "./query/marks";
 import { probesRoute } from "./query/probes";
@@ -160,6 +161,7 @@ app.delete("/api/saved-searches/:id", deleteSavedSearch);
 app.get("/api/saved-searches/:id/run", runSavedSearch);
 app.post("/api/saved-searches/:id/test", testSavedSearch);
 app.get("/api/alert-rules", listAlertRules);
+app.post("/api/alert-rules/test-call", testAlertCallRoute);
 app.post("/api/alert-rules", createAlertRule);
 app.put("/api/alert-rules/:id", updateAlertRule);
 app.delete("/api/alert-rules/:id", deleteAlertRule);

@@ -99,6 +99,8 @@ export type AlertRule = {
   name: string;
   kind: AlertKind;
   last_mark: AlertLastMark | null;
+  body_kind: "default" | "text" | "json";
+  body_template: string | null;
   saved_search_id: string | null;
   threshold: number;
   webhook_url: string | null;

@@ -1,4 +1,9 @@
 import { seriesLabel } from "../query/agg";
+import {
+  alertBodyContentType,
+  fillAlertBody,
+  type AlertBodyKind,
+} from "../shared/alert-body";
 
 export const silenceForIds = ["1h", "4h", "24h"] as const;
 export type SilenceForId = (typeof silenceForIds)[number];
@@ -162,5 +167,78 @@ export function firstSeenWebhookBody(args: {
     more: args.more,
     fired_at: args.firedAt,
     ...(args.link ? { link: args.link } : {}),
+  };
+}
+
+/** A call as it goes on the wire. */
+export type WebhookPayload = { body: string; contentType: string };
+
+function plainNumber(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Number(n.toPrecision(6)));
+}
+
+/** Frame 15e's fill-ins for a threshold alert. */
+export function thresholdFillValues(args: {
+  name: string;
+  agg: string | null;
+  value: number;
+  threshold: number;
+  query: string;
+  firedAt: string;
+  link: string | null;
+}): Record<string, string> {
+  return {
+    "alert.name": args.name,
+    series: seriesLabel(args.agg),
+    value: plainNumber(args.value),
+    threshold: plainNumber(args.threshold),
+    query: args.query,
+    fired_at: args.firedAt,
+    link: args.link ?? "",
+  };
+}
+
+/** Frame 15f's fill-ins for a new-fingerprints alert. */
+export function firstSeenFillValues(args: {
+  name: string;
+  query: string;
+  mark: FirstSeenMark;
+  fingerprints: FirstSeenFingerprint[];
+  more: number;
+  link: string | null;
+}): Record<string, string> {
+  const first = args.fingerprints[0];
+  const line = (f: FirstSeenFingerprint) =>
+    `${f.message || f.type} · e1:${f.e1} · ${f.events} event${f.events === 1 ? "" : "s"}`;
+  return {
+    "alert.name": args.name,
+    query: args.query,
+    "mark.kind": args.mark.kind,
+    "mark.version": args.mark.title,
+    "mark.at": args.mark.ts,
+    "fingerprints.count": String(args.fingerprints.length + args.more),
+    "fingerprints.first": first
+      ? first.type && !first.message.startsWith(first.type)
+        ? `${first.type}: ${first.message}`
+        : first.message || first.type
+      : "",
+    fingerprints: args.fingerprints.map(line).join("\n"),
+    more: args.more > 0 ? `and ${args.more} more` : "",
+    link: args.link ?? "",
+  };
+}
+
+/** Today's body as JSON, or the alert's own, filled in. */
+export function renderWebhook(
+  rule: { body_kind: AlertBodyKind; body_template: string | null },
+  defaultBody: unknown,
+  values: Record<string, string>,
+): WebhookPayload {
+  if (rule.body_kind === "default" || !rule.body_template) {
+    return { body: JSON.stringify(defaultBody), contentType: "application/json" };
+  }
+  return {
+    body: fillAlertBody(rule.body_template, values, rule.body_kind),
+    contentType: alertBodyContentType(rule.body_kind),
   };
 }

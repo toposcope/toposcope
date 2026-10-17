@@ -521,6 +521,7 @@ export function App() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [alertSeries, setAlertSeries] = useState<Record<string, AlertSeriesView>>({});
   const [alerts, setAlerts] = useState<AlertRule[]>([]);
+  const [alertsCanLink, setAlertsCanLink] = useState(false);
   const [fields, setFields] = useState<FieldsResponse | null>(null);
   const [fieldLinks, setFieldLinks] = useState<Record<string, string>>({});
   const [fieldRoles, setFieldRoles] = useState<Record<string, FieldRole>>({});
@@ -583,8 +584,9 @@ export function App() {
     if (!res.ok) {
       throw new Error(`Alert rules failed (${res.status})`);
     }
-    const json = (await res.json()) as { rules: AlertRule[] };
+    const json = (await res.json()) as { rules: AlertRule[]; link?: boolean };
     setAlerts(json.rules);
+    setAlertsCanLink(Boolean(json.link));
   }, []);
 
   const fieldsQuery = useCallback(() => {
@@ -2180,6 +2182,8 @@ export function App() {
     saved_search_id: string;
     threshold: number;
     webhook_url: string;
+    body_kind?: "default" | "text" | "json";
+    body_template?: string;
   }) {
     const res = await fetch("/api/alert-rules", {
       method: "POST",
@@ -2203,6 +2207,8 @@ export function App() {
       saved_search_id: string;
       threshold: number;
       webhook_url: string;
+      body_kind?: "default" | "text" | "json";
+      body_template?: string;
       silence_for?: "1h" | "4h" | "24h";
       silenced_until?: number | null;
     },
@@ -4343,6 +4349,7 @@ export function App() {
         onCreate={createAlert}
         onUpdate={updateAlert}
         onDelete={deleteAlert}
+        canLink={alertsCanLink}
       />
     </div>
   );

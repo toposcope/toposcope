@@ -39,7 +39,8 @@ export function thresholdSentence(
   const window = item.range ? `its ${item.range}` : "its window";
   // The cooldown is the saved range, or 5m when the window is custom.
   const wait = item.range ?? "5m";
-  return `Pages when ${item.name}’s ${seriesLabel(item.agg ?? null)} over ${window} is at or above ${threshold}, then waits ${wait} before it can page again.`;
+  const series = item.agg ? seriesLabel(item.agg) : "count";
+  return `Pages when ${item.name}’s ${series} over ${window} is at or above ${threshold}, then waits ${wait} before it can page again.`;
 }
 
 /** "on service api, or on no service": the marks a first-seen alert watches, as its q scopes them. */
