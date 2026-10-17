@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import type { LogEvent } from "../shared/log-event";
 import type { Span } from "../shared/span";
+import { resetArrivalSeqForTests } from "./arrival-seq";
 import { ingestRoute, MAX_BATCH, MAX_OTLP_BATCH } from "./index";
 import { toOtlpJson } from "./otlp";
 import { toOtlpProfilesJson, type ProfileDraft } from "./otlp-profiles";
@@ -79,6 +80,9 @@ const realFetch = globalThis.fetch;
 
 beforeEach(() => {
   stored = {};
+  // The counter is shared by every test file in this process: load it from this stub, not from
+  // whatever ClickHouse a file before this one loaded it from (#133).
+  resetArrivalSeqForTests();
   globalThis.fetch = Object.assign(
     async (input: string | URL | Request, init?: RequestInit) => {
       const query = new URL(String(input)).searchParams.get("query") ?? "";
@@ -103,6 +107,9 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = realFetch;
+  // Loaded here, the counter stands at 0 with a reservation the stub never stored. Kept, the next
+  // file would stamp real rows from 1 and a restart would hand those numbers out again.
+  resetArrivalSeqForTests();
 });
 
 describe("OTLP record cap", () => {

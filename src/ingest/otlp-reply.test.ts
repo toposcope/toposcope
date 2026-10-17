@@ -5,6 +5,7 @@ import { encodeOtlpProtobuf } from "./otlp-protobuf";
 import { otlpProfilesRoute } from "./otlp-profiles-route";
 import { toOtlpProfilesJson } from "./otlp-profiles";
 import { encodeOtlpProfilesProtobuf } from "./otlp-profiles-protobuf";
+import { resetArrivalSeqForTests } from "./arrival-seq";
 import { decodeOtlpReply, Losses } from "./otlp-reply";
 import { otlpLogsRoute } from "./otlp-route";
 import { encodeOtlpTracesProtobuf } from "./otlp-traces-protobuf";
@@ -74,6 +75,9 @@ const realFetch = globalThis.fetch;
 
 beforeEach(() => {
   stored = {};
+  // The counter is shared by every test file in this process: load it from this stub, not from
+  // whatever ClickHouse a file before this one loaded it from (#133).
+  resetArrivalSeqForTests();
   globalThis.fetch = Object.assign(
     async (input: string | URL | Request, init?: RequestInit) => {
       const query = new URL(String(input)).searchParams.get("query") ?? "";
@@ -86,8 +90,7 @@ beforeEach(() => {
         throw new Error(`Unexpected fetch: ${String(input)}`);
       }
       if (table === "arrival_seq") {
-        // The counter reserving ahead, not a row anyone sent: it lands in whichever test first
-        // inserts after the counter was reset or loaded.
+        // The counter reserving ahead, not a row anyone sent: each test that inserts loads it afresh.
         return new Response("");
       }
       stored[table] = (stored[table] ?? 0) + String(init?.body ?? "").split("\n").length;
@@ -99,6 +102,9 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = realFetch;
+  // Loaded here, the counter stands at 0 with a reservation the stub never stored. Kept, the next
+  // file would stamp real rows from 1 and a restart would hand those numbers out again.
+  resetArrivalSeqForTests();
 });
 
 describe("a batch with one bodiless log record", () => {
