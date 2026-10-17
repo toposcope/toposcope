@@ -8,15 +8,15 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 
 | | |
 | --- | --- |
-| **Today** | [0.5.4](https://github.com/toposcope/toposcope/releases/tag/v0.5.4) — hunt, fingerprints, change marks, compare per plotted series, OpenTelemetry logs, traces and metrics |
+| **Today** | [0.5.5](https://github.com/toposcope/toposcope/releases/tag/v0.5.5) — hunt, fingerprints, change marks, compare per plotted series, OpenTelemetry logs, traces and metrics, links between instances |
 | **v0.x** | What changed after a deploy, on one clock |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
-## Today — 0.5.4
+## Today — 0.5.5
 
-Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.5.4`.
+Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.5.5`.
 
-Hunt is a self-hosted log manager: `key:value`, saved searches, alerts, histogram, workspaces, boards, Fields, OTLP traces and profiles, Vector → `POST /v1/logs`. An app with an OpenTelemetry exporter sends its logs, traces, and metrics straight in over OTLP, by HTTP or gRPC: metrics are stored as gauges, counters, and histograms with no exporter setting, a histogram is read as an average or a percentile, a span keeps the exception recorded on it, and an OTLP reply says what was not stored. The packaged Vector config is an optional collector in between that buffers on disk. Ingest stores exception attrs, uses supplied frames or known `exception.stacktrace` formats for `e1` fingerprints, and stores change marks (`POST /v1/marks`). Search / Follow draw them on the pinned volume plot and as seams between event rows. Compare shows the before and after values for each plotted level, service, or host on exact equal windows around a mark. Fingerprints uses the same exact clock and refuses sets when either side exceeds 200 distinct ids. Ingest copies `service.version` to `version` and consumes attached or pulled status checks. Lockup is Fault. Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
+Hunt is a self-hosted log manager: `key:value`, saved searches, alerts, histogram, workspaces, boards, Fields, OTLP traces and profiles, Vector → `POST /v1/logs`. An app with an OpenTelemetry exporter sends its logs, traces, and metrics straight in over OTLP, by HTTP or gRPC: metrics are stored as gauges, counters, and histograms with no exporter setting, a histogram is read as an average or a percentile, a span keeps the exception recorded on it, and an OTLP reply says what was not stored. The packaged Vector config is an optional collector in between that buffers on disk. Ingest stores exception attrs, uses supplied frames or known `exception.stacktrace` formats for `e1` fingerprints, and stores change marks (`POST /v1/marks`). Search / Follow draw them on the pinned volume plot and as seams between event rows. Compare shows the before and after values for each plotted level, service, or host on exact equal windows around a mark. Fingerprints uses the same exact clock and refuses sets when either side exceeds 200 distinct ids. Ingest copies `service.version` to `version` and consumes attached or pulled status checks. An instance pulls rows and change marks from another over a link — any `q` as the filter, one key pasted once, either side connecting — and Search says what it holds: while a source is short, counts read as floors, the plot and table show the gap, and Fingerprints and Compare never file a line only that source fed as stopped or first seen. Lockup is Fault. Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
 
 0.3 hunt stays. Later v0.x work adds evidence on that hunt; it does not replace the bar.
 

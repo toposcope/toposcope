@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.5.4` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.5.5` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -142,6 +142,10 @@ Version 0.5.4 adds one ClickHouse table at boot, `metric_units`, which keeps the
 
 Rolling back to 0.5.3 leaves the new table and columns in place and unused: metric units are no longer shown, sign-in falls back to the browser's prompt, and the bare address opens a plain search instead of Home. 0.5.3 reads every alert rule as a threshold alert, so before rolling back, delete or silence new-fingerprints alerts. Otherwise each one pages whenever its saved search has at least its N events in the window. An alert with a body of its own goes back to the default body.
 
+Version 0.5.5 adds links. Boot adds to `logs` the columns `seq` and `src_seq` (each with a minmax index), `toposcope`, `arrived` and `src_id`, and adds `toposcope` to the end of each minute rollup's key; it adds `seq` and `toposcope` to `change_marks`, and one ClickHouse table, `arrival_seq`, the counter that orders rows by arrival. The first feed read adds a projection ordered by arrival to `logs`. SQLite gains `feeds`, `link_keys` and `links`. Every row and rollup already stored is kept; rows stored before have no arrival position, so a link does not carry them. A link needs `/link/v1/` reachable at the address in its key: see “Links” above.
+
+Rolling back to 0.5.4 leaves the new columns, table and projection in place and unused: links stop, Search draws no toposcope group, and rows already pulled stay as ordinary rows. 0.5.4 stores new rows without an arrival position or an instance name, so after rolling forward again a link does not carry rows stored in between.
+
 ## Backup and restore
 
 Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`.
@@ -173,7 +177,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 To roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin. Pin `0.5.3` to roll back application code from `0.5.4`.
+`0.3.14` is the first public pin. Pin `0.5.4` to roll back application code from `0.5.5`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe.
 
