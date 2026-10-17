@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setSystemTime, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FingerprintCutPanel } from "./components/fingerprint-cut-panel";
@@ -68,7 +68,10 @@ function render(): string {
 }
 
 describe("the Fingerprints panel near a deploy (#111)", () => {
+  // Stamps drop the date on the day they are read, so the panel is read on the frames' day.
+  setSystemTime(new Date(openedAt));
   const html = render();
+  setSystemTime();
   const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
   test("window lines: the cut, the after side's length, the before side's minimum", () => {
