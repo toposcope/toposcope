@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft } from "@/components/alert-rule-dialog";
 import { AlertsView, type AlertSeriesView } from "@/components/alerts-view";
 import { FieldsView } from "@/components/fields-view";
+import { LinksView } from "@/components/links-view";
 import { SpanDetail } from "@/components/span-detail";
 import { ContextTabs } from "@/components/context-tabs";
 import { ContextView, type ContextMode } from "@/components/context-view";
@@ -3720,6 +3721,14 @@ export function App() {
           >
             Fields
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "links" ? "secondary" : "ghost"}
+            onClick={() => setView("links")}
+          >
+            Links
+          </Button>
         </nav>
         <div className="ml-auto flex items-center gap-1">
           <Button type="button" size="icon" variant="outline" onClick={() => setTokensOpen(true)}>
@@ -3740,6 +3749,8 @@ export function App() {
           onCreate={openNewAlert}
           onSilence={(rule, forId) => void silenceAlert(rule, forId)}
         />
+      ) : view === "links" ? (
+        <LinksView onOpenSettings={() => setSettingsOpen(true)} />
       ) : view === "fields" ? (
         <FieldsView
           catalog={fields}

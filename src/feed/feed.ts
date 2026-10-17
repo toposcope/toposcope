@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import { getDb } from "../control/index";
+import { instanceId } from "../control/instance";
 import { getRetentionDays } from "../control/settings";
 import { arrivalSeqSettled } from "../ingest/arrival-seq";
 import {
@@ -37,6 +38,8 @@ export type FeedRow = {
   message: string;
   attrs: Record<string, string>;
   toposcope: string;
+  /** Where the row first entered and its position there: this instance's own, or a pulled row's. */
+  origin: { id: string; seq: number };
 };
 
 export type FeedReply = {
@@ -86,6 +89,8 @@ type FeedSqlRow = {
   message: string;
   attrs: string;
   toposcope: string;
+  src_id: string;
+  src_seq: string | number;
 };
 
 function parseAttrs(raw: string): Record<string, string> {
@@ -129,6 +134,8 @@ export async function readFeed(input: {
   settled?: number;
   retentionDays?: number;
   now?: number;
+  /** This instance's id: the origin of its own rows. */
+  hereId?: string;
 }): Promise<FeedReply> {
   const now = input.now ?? Date.now();
   const limit = Math.min(feedMaxLimit, Math.max(1, Math.floor(input.limit ?? feedDefaultLimit)));
@@ -167,7 +174,7 @@ export async function readFeed(input: {
   try {
     rows = await clickhouseQuery<FeedSqlRow>(
       `
-      SELECT seq, ts, service, host, level, message, attrs, toposcope
+      SELECT seq, ts, service, host, level, message, attrs, toposcope, src_id, src_seq
       FROM logs
       WHERE ${where.join(" AND ")}
       ORDER BY seq
@@ -191,6 +198,9 @@ export async function readFeed(input: {
     message: row.message,
     attrs: parseAttrs(row.attrs),
     toposcope: row.toposcope,
+    origin: row.src_id
+      ? { id: row.src_id, seq: Number(row.src_seq) }
+      : { id: input.hereId ?? "", seq: Number(row.seq) },
   }));
   // A full page ends at its last row; otherwise the whole range was read.
   const through = out.length === limit ? out[out.length - 1]!.seq : range.through;
@@ -284,7 +294,7 @@ export async function readFeedRoute(c: Context): Promise<Response> {
   const limit = limitRaw ? Number(limitRaw) : undefined;
   try {
     return c.json(
-      await readFeed({ id: feed.id, q: feed.q, after, limit, retentionDays: getRetentionDays() }),
+      await readFeed({ id: feed.id, q: feed.q, after, limit, retentionDays: getRetentionDays(), hereId: instanceId() }),
     );
   } catch (err) {
     if (err instanceof QueryCompileError) {

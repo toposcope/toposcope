@@ -36,6 +36,8 @@ export async function pingClickHouse(): Promise<boolean> {
   try {
     const url = clickhouseUrl();
     url.pathname = "/ping";
+    // `/ping` answers only bare: a `?database=` in CLICKHOUSE_URL would make it a 404.
+    url.search = "";
     const res = await fetch(url, { headers: { Authorization: authHeader() } });
     if (!res.ok) {
       return false;

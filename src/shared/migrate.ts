@@ -167,10 +167,13 @@ export const logsCreateTableSql = `CREATE TABLE IF NOT EXISTS logs (
   seq UInt64 DEFAULT 0,
   toposcope LowCardinality(String) DEFAULT '',
   arrived DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC'),
+  src_id String DEFAULT '',
+  src_seq UInt64 DEFAULT 0,
   INDEX idx_trace_id_bf trace_id TYPE bloom_filter(0.01) GRANULARITY 1,
   INDEX idx_attr_vals_bf mapValues(attr_map) TYPE bloom_filter(0.01) GRANULARITY 1,
   INDEX idx_message_text lowerUTF8(message) TYPE text(tokenizer = 'splitByNonAlpha') GRANULARITY 1,
-  INDEX idx_seq_minmax seq TYPE minmax GRANULARITY 1
+  INDEX idx_seq_minmax seq TYPE minmax GRANULARITY 1,
+  INDEX idx_src_seq_minmax src_seq TYPE minmax GRANULARITY 1
 )
 ENGINE = MergeTree
 PARTITION BY toDate(ts)
@@ -278,6 +281,11 @@ async function ensureArrivalSeq(): Promise<void> {
   await clickhouseCommand(
     "ALTER TABLE logs ADD COLUMN IF NOT EXISTS arrived DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC')",
   );
+  // A pulled row's origin (#136): the instance it entered at and its position there, so the same
+  // row is never stored twice across retries, overlapping links or a re-pull. Empty on own rows.
+  await clickhouseCommand("ALTER TABLE logs ADD COLUMN IF NOT EXISTS src_id String DEFAULT ''");
+  await clickhouseCommand("ALTER TABLE logs ADD COLUMN IF NOT EXISTS src_seq UInt64 DEFAULT 0");
+  await ensureSkipIndex("logs", "idx_src_seq_minmax", "src_seq TYPE minmax GRANULARITY 1");
   await ensureSkipIndex("logs", "idx_seq_minmax", "seq TYPE minmax GRANULARITY 1");
   await clickhouseCommand(`
     CREATE TABLE IF NOT EXISTS arrival_seq (

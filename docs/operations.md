@@ -64,6 +64,16 @@ ntfy takes the body as the notification, at `https://ntfy.sh/<topic>`, so a text
 {{link}}
 ```
 
+## Links
+
+A link is one instance pulling rows from another, made from **Links** in the header. The instance the other can reach mints a key; the other pastes it, and the side that pasted connects. **Offer rows from here** mints a single-use key for one filter: whoever pastes it pulls the rows that match. **Invite a source here** mints a key that lets this instance pull from whoever pastes it, once or for many until a date (30 days at most). A key carries this instance's address, its name, a short id, the filter and a secret; it is shown once and stored hashed. On the first paste the two instances swap it for a secret of their own, and that secret reads the link's feed and nothing else.
+
+The address in a key is `TOPOSCOPE_PUBLIC_URL` when it is set, else the address the browser opened. The other instance has to reach `/link/v1/` there: behind a reverse proxy, forward it like the rest of the app. Those routes do not take the operator password; each proves a key's or a link's secret. The operator password never travels between instances.
+
+The puller asks every 5 seconds for what arrived after where it stands, stores the rows as they were (the source's `e1`, its `toposcope` name) and keeps its position, so a restart of either side picks up where it stopped. A row is never stored twice, across retries, links with overlapping filters, or a row that left and came back. Pulled rows follow this instance's retention. Removing a link stops it and deletes nothing.
+
+Both sides behind NAT is for the operator's VPN; Toposcope runs no relay.
+
 ## Runtime ports and network
 
 - App: `127.0.0.1:8080`

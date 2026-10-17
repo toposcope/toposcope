@@ -104,6 +104,44 @@ export function getDb(): Database {
       role TEXT NOT NULL CHECK (role IN ('chart', 'lookup', 'ignore'))
     );
   `);
+  // Link keys this instance minted, and links (#136): see src/links/store.ts.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS link_keys (
+      kid TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK (kind IN ('offer', 'invite')),
+      q TEXT NOT NULL,
+      secret_hash TEXT NOT NULL,
+      until INTEGER,
+      uses INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      spent_at INTEGER,
+      revoked_at INTEGER
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS links (
+      id TEXT PRIMARY KEY,
+      role TEXT NOT NULL CHECK (role IN ('pull', 'serve')),
+      connects TEXT NOT NULL CHECK (connects IN ('we', 'they')),
+      peer_id TEXT NOT NULL,
+      peer_name TEXT NOT NULL,
+      peer_url TEXT NOT NULL DEFAULT '',
+      q TEXT NOT NULL,
+      kid TEXT NOT NULL,
+      secret TEXT,
+      secret_hash TEXT,
+      position INTEGER NOT NULL DEFAULT 0,
+      settled INTEGER NOT NULL DEFAULT 0,
+      arrived_at TEXT,
+      behind_rows INTEGER,
+      gone_from INTEGER,
+      gone_to INTEGER,
+      last_contact_at INTEGER,
+      last_error TEXT,
+      created_at INTEGER NOT NULL,
+      removed_at INTEGER
+    );
+  `);
   // A feed (#135): rows by arrival through one q, fixed when it is defined.
   db.run(`
     CREATE TABLE IF NOT EXISTS feeds (
