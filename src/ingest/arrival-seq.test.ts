@@ -6,6 +6,7 @@ import { insertEvents } from "./index";
 import {
   allocateArrivalSeq,
   arrivalSeqSettled,
+  loadArrivalSeq,
   releaseArrivalSeq,
   resetArrivalSeqForTests,
 } from "./arrival-seq";
@@ -80,5 +81,16 @@ describe("arrival sequence (#133)", () => {
     expect(arrivalSeqSettled()).toBe(a.from - 1);
     releaseArrivalSeq(a);
     expect(arrivalSeqSettled()).toBe(b.to);
+  });
+});
+
+describe("settled after a restart (#136)", () => {
+  test("loading the counter says how far it is before anything new arrives", async () => {
+    const before = await allocateArrivalSeq(1);
+    releaseArrivalSeq(before);
+    resetArrivalSeqForTests();
+    expect(arrivalSeqSettled()).toBe(0);
+    await loadArrivalSeq();
+    expect(arrivalSeqSettled()).toBeGreaterThanOrEqual(before.to);
   });
 });

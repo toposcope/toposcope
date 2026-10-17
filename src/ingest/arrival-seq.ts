@@ -38,8 +38,11 @@ async function reserve(upTo: number): Promise<void> {
   reservedTo = Math.max(reservedTo, to);
 }
 
-/** Numbers for `n` rows about to be inserted, in arrival order. Release them when the insert ends. */
-export async function allocateArrivalSeq(n: number): Promise<ArrivalSeqRange> {
+/**
+ * Where the counter stands, read once. Boot calls it, so "settled" is true from the first
+ * request: a source restarted with nothing new to ingest still tells a puller how far it is.
+ */
+export async function loadArrivalSeq(): Promise<void> {
   if (next === 0) {
     loading ??= load().catch((err) => {
       loading = null;
@@ -47,6 +50,11 @@ export async function allocateArrivalSeq(n: number): Promise<ArrivalSeqRange> {
     });
     await loading;
   }
+}
+
+/** Numbers for `n` rows about to be inserted, in arrival order. Release them when the insert ends. */
+export async function allocateArrivalSeq(n: number): Promise<ArrivalSeqRange> {
+  await loadArrivalSeq();
   while (next + n - 1 > reservedTo) {
     reserving ??= reserve(next + n - 1).finally(() => {
       reserving = null;

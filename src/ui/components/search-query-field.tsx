@@ -19,7 +19,7 @@ import {
 
 const CORE = ["level", "service", "host"] as const;
 const MAX_ROWS = 10;
-const TOKEN_COLOR: Record<HighlightToken["t"], string> = {
+export const TOKEN_COLOR: Record<HighlightToken["t"], string> = {
   key: "oklch(0.705 0.015 286.067)",
   val: "oklch(0.985 0 0)",
   op: "#a78bfa",

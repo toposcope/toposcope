@@ -54,6 +54,18 @@ import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsR
   metricLabelsRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
 import { fingerprintCutRoute } from "./query/fingerprint-cut";
 import { createFeedRoute, listFeedsRoute, readFeedRoute } from "./feed/feed";
+import { claimRoute, linkFeedRoute, linkRemoveRoute, lookupRoute } from "./links/protocol";
+import {
+  confirmRoute,
+  inviteRoute,
+  listLinksRoute,
+  offerRoute,
+  previewRoute,
+  removeLinkRoute,
+  revokeKeyRoute,
+} from "./links/operator";
+import { startLinkPuller } from "./links/puller";
+import { loadArrivalSeq } from "./ingest/arrival-seq";
 import { followSpanRoute } from "./query/follow-span";
 import { testAlertCallRoute } from "./alerts/test-call";
 import { tracesRoute } from "./query/traces";
@@ -180,6 +192,10 @@ app.use("/*", async (c, next) => {
   if (!bootAllowsRequest(bootPhase, c.req.path)) {
     return c.json({ error: "not ready", phase: bootPhase }, 503);
   }
+  // A link proves its own secret (#136); the operator password never travels between instances.
+  if (c.req.path.startsWith("/link/v1/")) {
+    return next();
+  }
   const header = c.req.header("authorization");
   const ingest =
     (c.req.path === "/api/ingest" ||
@@ -251,6 +267,18 @@ app.get("/api/search/cut", fingerprintCutRoute);
 app.get("/api/feeds", listFeedsRoute);
 app.post("/api/feeds", createFeedRoute);
 app.get("/api/feeds/:id", readFeedRoute);
+app.get("/api/links", listLinksRoute);
+app.post("/api/links/offer", offerRoute);
+app.post("/api/links/invite", inviteRoute);
+app.post("/api/links/preview", previewRoute);
+app.post("/api/links/confirm", confirmRoute);
+app.delete("/api/links/keys/:kid", revokeKeyRoute);
+app.delete("/api/links/:id", removeLinkRoute);
+// Instance to instance (#136): each proves a key's or a link's secret, not the operator password.
+app.post("/link/v1/lookup", lookupRoute);
+app.post("/link/v1/claim", claimRoute);
+app.get("/link/v1/feed", linkFeedRoute);
+app.post("/link/v1/remove", linkRemoveRoute);
 app.get("/api/search/follow-span", followSpanRoute);
 app.get("/api/facets", facetsRoute);
 app.get("/api/attr-keys", attrKeysRoute);
@@ -336,12 +364,15 @@ async function startBoot(): Promise<void> {
   try {
     bootPhase = "schema";
     await migrateStore();
+    // Not fatal: the first insert loads it again. Until then a feed says it has settled nothing.
+    await loadArrivalSeq().catch((err) => console.error("arrival sequence not loaded yet", err));
     bootPhase = "repair";
     getDb();
     setHereName(instanceName());
     await syncFieldRoleSkip(storedSkipKeys());
     await applyRetentionDays(getRetentionDays());
     startAlertCron();
+    startLinkPuller();
     // A stubbed listener in tests returns nothing.
     stopSyslog = (await startSyslogUdp()) ?? stopSyslog;
     // OTLP over gRPC: each call goes through the same routes, and the same checks, as HTTP.
