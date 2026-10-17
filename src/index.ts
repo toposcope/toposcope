@@ -52,6 +52,7 @@ import { renderMetrics } from "./metrics";
 import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsRoute, metricNamesRoute,
   metricLabelsRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
 import { fingerprintCutRoute } from "./query/fingerprint-cut";
+import { followSpanRoute } from "./query/follow-span";
 import { testAlertCallRoute } from "./alerts/test-call";
 import { tracesRoute } from "./query/traces";
 import { marksRoute } from "./query/marks";
@@ -245,6 +246,7 @@ app.get("/api/profiles", profilesRoute);
 app.get("/api/search/context", surroundingRoute);
 app.get("/api/search/around", aroundTsRoute);
 app.get("/api/search/cut", fingerprintCutRoute);
+app.get("/api/search/follow-span", followSpanRoute);
 app.get("/api/facets", facetsRoute);
 app.get("/api/attr-keys", attrKeysRoute);
 app.get("/api/attr-facets", attrFacetsRoute);

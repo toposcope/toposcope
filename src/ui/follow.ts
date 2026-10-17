@@ -1,5 +1,6 @@
 import { formatFieldToken } from "./query-tokens";
 import { FOLLOW_MS } from "../shared/ids";
+import type { FollowOpened } from "../shared/follow-span";
 import type { RangeMode } from "./search-url";
 
 export { FOLLOW_MS };
@@ -23,17 +24,23 @@ export function followQuery(key: string, value: string): string {
   return formatFieldToken(key, value);
 }
 
-export function followWindow(ts: string): { from: Date; to: Date } | null {
-  const ms = Date.parse(ts);
-  if (Number.isNaN(ms)) {
-    return null;
-  }
-  return { from: new Date(ms - FOLLOW_MS), to: new Date(ms + FOLLOW_MS) };
-}
-
 export function truncateFollowToken(token: string, max = 28): string {
   if (token.length <= max) {
     return token;
   }
   return `${token.slice(0, max - 1)}…`;
+}
+
+/** True while the tab's clock is still the window Follow opened on. */
+export function followOnOpened(
+  opened: FollowOpened,
+  clock: { range: string; from: string; to: string; live: boolean; explored: boolean },
+): boolean {
+  return (
+    clock.range === "custom" &&
+    !clock.live &&
+    !clock.explored &&
+    Date.parse(clock.from) === opened.fromMs &&
+    Date.parse(clock.to) === opened.toMs
+  );
 }
