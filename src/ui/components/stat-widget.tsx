@@ -1,5 +1,5 @@
 import { useHeldView } from "../held-context";
-import { overWhatIsHereWords } from "../held-words";
+import { overWhatIsHereWords } from "../../shared/held-words";
 import { type ReactNode } from "react";
 import { HeadPicker } from "@/components/head-picker";
 import { downloadWidgetSeries, statExport } from "@/export-series";

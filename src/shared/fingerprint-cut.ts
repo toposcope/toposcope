@@ -37,6 +37,9 @@ export type FingerprintCutSideCount = {
   hex: string;
   before: number;
   after: number;
+  /** #141: each side's count by the instance its rows entered at, read only while a source is short. */
+  beforeFrom?: Record<string, number>;
+  afterFrom?: Record<string, number>;
 };
 
 export function fingerprintCutWindows(input: {
@@ -114,20 +117,89 @@ export function capFingerprintCutSet<T>(
   return { rows: capped, total, more: Math.max(0, total - capped.length) };
 }
 
+/** Sources short inside each side of a cut (#141). */
+export type CutShort = { before: ReadonlySet<string>; after: ReadonlySet<string> };
+
+function sideShortWords(before: boolean, after: boolean): string {
+  return before && after ? "both sides short" : before ? "before side short" : "after side short";
+}
+
+/**
+ * The three sets across a gap (#141, 5j, 5n). A line no short source fed is judged as ever. A
+ * line also fed by a caught-up source is filed as its counts read and says it is partly from the
+ * short one, with the short side's count a floor. A line whose every row came from a short source reads `131 → ?` or `? → 64` and
+ * is filed as can't tell — never stopped, never first seen. No guess at the missing rows.
+ */
+export function judgeAcrossGap(
+  rows: FingerprintCutSideCount[],
+  short: CutShort,
+): {
+  firstSeen: Array<FingerprintCutSideCount & GapMarks>;
+  stillHere: Array<FingerprintCutSideCount & GapMarks>;
+  stopped: Array<FingerprintCutSideCount & GapMarks>;
+} {
+  const out = {
+    firstSeen: [] as Array<FingerprintCutSideCount & GapMarks>,
+    stillHere: [] as Array<FingerprintCutSideCount & GapMarks>,
+    stopped: [] as Array<FingerprintCutSideCount & GapMarks>,
+  };
+  const file = (row: FingerprintCutSideCount & GapMarks, before: number, after: number) => {
+    if (before === 0 && after > 0) out.firstSeen.push(row);
+    else if (before > 0 && after > 0) out.stillHere.push(row);
+    else if (before > 0 && after === 0) out.stopped.push(row);
+  };
+  for (const row of rows) {
+    const fed = new Set([...Object.keys(row.beforeFrom ?? {}), ...Object.keys(row.afterFrom ?? {})]);
+    const shortFed = [...fed].filter((s) => short.before.has(s) || short.after.has(s));
+    if (shortFed.length === 0) {
+      file(row, row.before, row.after);
+      continue;
+    }
+    const sb = shortFed.some((s) => short.before.has(s));
+    const sa = shortFed.some((s) => short.after.has(s));
+    const names = shortFed.join(", ");
+    const marks: GapMarks = {
+      floorBefore: sb && row.before > 0,
+      floorAfter: sa && row.after > 0,
+    };
+    if (shortFed.length === fed.size) {
+      const unknownAfter = sa && row.before > 0 && row.after === 0;
+      const unknownBefore = sb && row.before === 0 && row.after > 0;
+      const cantTell = unknownAfter || unknownBefore;
+      // A can't-tell line reads `131 → ?`: the side we have is what came, the other is unknown.
+      file(
+        {
+          ...row,
+          ...(cantTell ? { cantTell, unknownBefore, unknownAfter } : marks),
+          held: `only from ${names} — ${sideShortWords(sb, sa)}${cantTell ? ", can't tell" : ""}`,
+        },
+        row.before,
+        row.after,
+      );
+      continue;
+    }
+    // Partly from a short source: a row that is here proves the line was there, and a whole source
+    // that sent nothing on a side says so for itself, so the line is filed as its counts read.
+    file({ ...row, ...marks, held: `partly from ${names} — ${sideShortWords(sb, sa)}` }, row.before, row.after);
+  }
+  return out;
+}
+
 export function mergeFingerprintCutSides(
-  before: Array<{ hex: string; n: number }>,
-  after: Array<{ hex: string; n: number }>,
+  before: Array<{ hex: string; n: number; from?: Record<string, number> }>,
+  after: Array<{ hex: string; n: number; from?: Record<string, number> }>,
 ): FingerprintCutSideCount[] {
   const map = new Map<string, FingerprintCutSideCount>();
   for (const row of before) {
-    map.set(row.hex, { hex: row.hex, before: row.n, after: 0 });
+    map.set(row.hex, { hex: row.hex, before: row.n, after: 0, ...(row.from ? { beforeFrom: row.from } : {}) });
   }
   for (const row of after) {
     const prev = map.get(row.hex);
     if (prev) {
       prev.after = row.n;
+      if (row.from) prev.afterFrom = row.from;
     } else {
-      map.set(row.hex, { hex: row.hex, before: 0, after: row.n });
+      map.set(row.hex, { hex: row.hex, before: 0, after: row.n, ...(row.from ? { afterFrom: row.from } : {}) });
     }
   }
   return [...map.values()].filter((row) => row.before + row.after > 0);
@@ -184,6 +256,20 @@ export type FingerprintCutRow = {
   extra: string;
   /** A first seen row after a later mark inside the after side: "after v0.9.3". */
   follows: string;
+} & GapMarks;
+
+/** #141: how a line reads across a gap. */
+export type GapMarks = {
+  /** Every row came from a short source and a side reads ?: filed in its set, not counted as sure. */
+  cantTell?: boolean;
+  /** A short source fed this side: at least this many. */
+  floorBefore?: boolean;
+  floorAfter?: boolean;
+  /** Nothing here from it on a side it is short on: ?, not 0. */
+  unknownBefore?: boolean;
+  unknownAfter?: boolean;
+  /** The amber note under the line: "partly from prod-eu — after side short". */
+  held?: string;
 };
 
 /** Another mark inside a cut's sides, named so a cut over a burst of deploys says so. */
@@ -205,6 +291,8 @@ export type FingerprintCutSet = {
   rows: FingerprintCutRow[];
   /** Stopped while the after side is shorter than the before side: not called yet. */
   waiting?: { haveMs: number; needMs: number };
+  /** #141: lines filed here that only a short source fed: `count` leaves them out. */
+  cantTell?: number;
 };
 
 export type FingerprintCutResult = {
@@ -230,7 +318,7 @@ export type FingerprintCutResult = {
    * #140: sources that could feed the hunt and are short inside the cut's windows. While there is
    * one, the cut refuses: no sets and no counts, only which side misses rows and from whom.
    */
-  held?: { sides: "both" | "before" | "after"; sources: HeldSource[] };
+  held?: { sides: "both" | "before" | "after"; sources: HeldSource[]; before: string[]; after: string[] };
 };
 
 export function formatFingerprintCutDuration(ms: number): string {

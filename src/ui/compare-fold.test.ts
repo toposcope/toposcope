@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { compareFoldFetchKey } from "./compare-fold";
+import { compareFoldFetchKey, compareHeldNote } from "./compare-fold";
 import * as compareFold from "./compare-fold";
 import { parseChangeMark } from "../shared/change-mark";
 import { parseMetricLabels } from "../shared/metric";
@@ -225,5 +225,15 @@ describe("compare fold chrome", () => {
     );
     expect(open).not.toMatch(/setCut\(null\)/);
     expect(open).not.toMatch(/setQ\(/);
+  });
+});
+
+describe("the fold across a gap (#141)", () => {
+  const gap = (source: string, kind: "behind" | "quiet" | "hole") => ({ source, kind, from: 0, to: 1 });
+  test("names the source and the short side, and says there is no delta", () => {
+    expect(compareHeldNote([gap("prod-eu", "quiet")], [gap("prod-eu", "quiet")])).toBe("prod-eu silent · no delta");
+    expect(compareHeldNote([gap("checkout-eu", "hole")], [])).toBe("checkout-eu hole · before short · no delta");
+    expect(compareHeldNote([], [gap("prod-eu", "behind")])).toBe("prod-eu behind · after short · no delta");
+    expect(compareHeldNote([gap("a", "quiet")], [gap("b", "behind")])).toBe("2 short · no delta");
   });
 });

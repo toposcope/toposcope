@@ -26,7 +26,7 @@ import { formatFieldCount, useCountFormat } from "@/count-format";
 import { cn } from "@/lib/utils";
 import { facetValues, setFieldToken } from "../query-tokens";
 import { fingerprintCutHuntWindows } from "../fingerprint-cut";
-import { compareFoldFetchKey, compareFoldMetricLabels, compareFoldWindows } from "../compare-fold";
+import { compareFoldFetchKey, compareFoldMetricLabels, compareFoldWindows, compareHeldNote } from "../compare-fold";
 import { seriesColor } from "../histogram-series";
 import type { SearchResult } from "../types";
 import type { HistogramSplit } from "../../query/histogram";
@@ -67,9 +67,13 @@ type Sides = {
   after: CompareFoldSide;
   refuse: string;
   rows: FoldRow[];
-  /** #140: sources short inside either window when the fold opened; it shows no counts and no delta. */
-  waits?: string[];
+  /**
+   * #141: a source short inside a window when the fold opened. That side is a floor, and there is
+   * no delta and no percent; the note names the source.
+   */
+  held?: { before: boolean; after: boolean; note: string };
 };
+
 
 function hms(ms: number): string {
   return new Date(ms).toISOString().slice(11, 19);
@@ -233,14 +237,14 @@ export function CompareFold({
     setError(null);
     setSides(null);
     const plotKeys = [...plotKeysRef.current];
-    // #140: across a gap any delta can look like a fix. A metric is not pulled, so it never waits.
-    const short = metric
-      ? []
-      : (heldRef.current?.countGaps(q, { from: windows.beforeFrom, to: windows.afterTo }) ?? []);
-    if (short.length > 0) {
-      setSides({ before: emptySide(), after: emptySide(), refuse: "", rows: [], waits: [...new Set(short.map((g) => g.source))] });
-      return;
-    }
+    // #141: across a gap any delta can look like a fix, so a short side is a floor and there is no
+    // delta. A metric is not pulled, so it is never short.
+    const gapBefore = metric ? [] : (heldRef.current?.countGaps(q, { from: windows.beforeFrom, to: windows.beforeTo }) ?? []);
+    const gapAfter = metric ? [] : (heldRef.current?.countGaps(q, { from: windows.afterFrom, to: windows.afterTo }) ?? []);
+    const held =
+      gapBefore.length > 0 || gapAfter.length > 0
+        ? { before: gapBefore.length > 0, after: gapAfter.length > 0, note: compareHeldNote(gapBefore, gapAfter) }
+        : undefined;
     void (async () => {
       try {
         const common = { q, agg, metric, ml, split };
@@ -320,7 +324,7 @@ export function CompareFold({
         }
         const before = rows[0]?.before ?? compareFoldSideFromSearch(beforeJson, kind);
         const after = rows[0]?.after ?? compareFoldSideFromSearch(afterJson, kind);
-        setSides({ before, after, refuse, rows });
+        setSides({ before, after, refuse, rows, ...(held ? { held } : {}) });
       } catch (err) {
         if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) {
           return;
@@ -364,16 +368,17 @@ export function CompareFold({
   const showStack = stacked && loaded && !windows.dead && !bothEmpty;
   const paintLines = showStack ? 1 + rows.length : 1;
   useEffect(() => { onPaintLines?.(paintLines); }, [onPaintLines, paintLines]);
+  const held = sides?.held;
   const beforeTxt =
     windows.dead || bothEmpty || !loaded
       ? "—"
-      : formatSide(kind, before, formatCount);
+      : `${held?.before ? "≥" : ""}${formatSide(kind, before, formatCount)}`;
   const afterTxt =
     windows.dead || bothEmpty || !loaded
       ? "—"
-      : formatSide(kind, after, formatCount);
+      : `${held?.after ? "≥" : ""}${formatSide(kind, after, formatCount)}`;
   const showDelta =
-    loaded && compareFoldShowDelta(windows, kind, before, after);
+    loaded && !held && compareFoldShowDelta(windows, kind, before, after);
   const delta = showDelta ? (after.v ?? 0) - (before.v ?? 0) : null;
   const pct =
     showDelta && !before.empty
@@ -381,6 +386,7 @@ export function CompareFold({
       : null;
   const note =
     error ??
+    held?.note ??
     (windows.dead
       ? compareFoldNote({
           windows,
@@ -410,30 +416,6 @@ export function CompareFold({
   const title = windows.dead
     ? "No after side in this window"
     : `after ${hms(windows.afterFrom)} → ${hms(windows.afterTo)} · before ${hms(windows.beforeFrom)} → ${hms(windows.beforeTo)} — equal windows on the hunt's own slice`;
-
-  if (sides?.waits) {
-    const names = sides.waits;
-    return (
-      <div
-        data-compare-fold=""
-        title={title}
-        className="mt-1.5 mr-2.5 flex h-[30px] min-w-0 shrink-0 items-center gap-[7px] overflow-hidden rounded-[4.4px] border bg-[#0f0f11] pr-1 pl-2.5"
-        style={{ borderColor: "oklch(0.906 0.014 84 / 28%)", marginLeft: plotLeft }}
-      >
-        <MarkGlyph kind={mark.kind} size={11} />
-        <span className="min-w-[56px] truncate text-[12px] font-semibold whitespace-nowrap">
-          vs {formatChangeMarkLabel(mark)}
-        </span>
-        <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
-        <span className="shrink-0 text-[10.5px] text-amber-400">▲</span>
-        <span className="min-w-0 truncate text-[10.5px] whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
-          waits · {names.length === 1 ? `${names[0]} short` : `${names.length} short · ${names.join(" · ")}`}
-        </span>
-        <span className="min-w-2 flex-1" />
-        <DismissFold onClose={onClose} />
-      </div>
-    );
-  }
 
   return (
     <div
@@ -493,6 +475,7 @@ export function CompareFold({
               before={row.before}
               after={row.after}
               formatCount={formatCount}
+              held={held}
             />
           ))}
         </>
@@ -598,6 +581,7 @@ function StackRow({
   before,
   after,
   formatCount,
+  held,
 }: {
   rowKey: string;
   color: string;
@@ -607,8 +591,9 @@ function StackRow({
   before: CompareFoldSide;
   after: CompareFoldSide;
   formatCount: (n: number) => string;
+  held?: { before: boolean; after: boolean };
 }) {
-  const showDelta = loaded && compareFoldShowDelta(windows, kind, before, after);
+  const showDelta = loaded && !held && compareFoldShowDelta(windows, kind, before, after);
   const delta = showDelta ? (after.v ?? 0) - (before.v ?? 0) : null;
   const pct =
     showDelta && !before.empty
@@ -634,13 +619,13 @@ function StackRow({
         {rowKey}
       </span>
       <span className="w-[52px] shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap tabular-nums">
-        {loaded ? formatSide(kind, before, formatCount) : "—"}
+        {loaded ? `${held?.before ? "≥" : ""}${formatSide(kind, before, formatCount)}` : "—"}
       </span>
       <span className="text-[10.5px] text-muted-foreground whitespace-nowrap">
         →
       </span>
       <span className="w-[52px] shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap tabular-nums">
-        {loaded ? formatSide(kind, after, formatCount) : "—"}
+        {loaded ? `${held?.after ? "≥" : ""}${formatSide(kind, after, formatCount)}` : "—"}
       </span>
       <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
       <span className="w-[58px] shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap tabular-nums">

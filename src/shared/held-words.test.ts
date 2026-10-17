@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { HeldGap, HeldSource } from "../shared/held";
+import type { HeldGap, HeldSource } from "./held";
 import { groupHeadWords, hatchLabel, heldLag, pillWords, positionLines, tableRowWords } from "./held-words";
 
 const now = Date.parse("2026-08-14T15:00:00Z");

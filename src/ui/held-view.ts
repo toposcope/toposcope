@@ -10,7 +10,7 @@ import {
   type HeldSource,
   type Window,
 } from "../shared/held";
-import { hatchLabel, pillWords, tableRowAt, tableRowWords } from "./held-words";
+import { hatchLabel, pillWords, tableRowAt, tableRowWords } from "../shared/held-words";
 
 /**
  * What Search draws for what this instance holds (#139), for one hunt over one window. Nothing
