@@ -4,7 +4,7 @@ import { migrateStore } from "../shared/migrate";
 import { parseChangeMark, type ChangeMark } from "../shared/change-mark";
 import { fingerprintCutFirstSeen, searchFingerprintCut } from "./fingerprint-cut";
 import { requireCompiled } from "./compile";
-import { getChangeMarkById } from "./marks";
+import { changeMarksBetween, getChangeMarkById } from "./marks";
 
 const minute = 60_000;
 const hour = 60 * minute;
@@ -38,9 +38,17 @@ describe("a young deploy's cut ClickHouse (#111)", () => {
     "compares 30 minutes with the hour before, holds Stopped, and names the later deploys",
     async () => {
       const service = `cutyoung${Date.now()}`;
-      // The cut names every mark inside its sides, so stand clear of the marks other tests write near now:
-      // a stretch of its own two to four days back, well inside any retention.
-      const now = Math.floor(Date.now() / minute) * minute - 48 * hour - Math.floor(Math.random() * 400) * 7 * minute;
+      // The cut names at most four marks inside its sides, the nearest first, whatever their service.
+      // So stand clear of every other mark, including earlier runs' on a reused ClickHouse: a stretch
+      // two to fourteen days back (inside the 30-day TTL) with no mark from 3 hours before to 1 after.
+      let now = 0;
+      for (let tries = 0; tries < 50 && now === 0; tries++) {
+        const at = Math.floor(Date.now() / minute) * minute - 48 * hour - Math.floor(Math.random() * 2400) * 7 * minute;
+        if ((await changeMarksBetween(iso(at - 3 * hour), iso(at + hour))).length === 0) {
+          now = at;
+        }
+      }
+      expect(now).toBeGreaterThan(0);
       const markTs = now - 30 * minute;
       const mark = parseChangeMark({ id: `mk_${service}_a`, kind: "deploy", service, title: "v0.9.1", ts: iso(markTs) });
       const second = parseChangeMark({ id: `mk_${service}_b`, kind: "deploy", service, title: "v0.9.2", ts: iso(now - 20 * minute) });

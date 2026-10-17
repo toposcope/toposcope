@@ -42,8 +42,9 @@ export function isCountOrRateQuery(query: SeriesQuery): boolean {
   return query.agg === null || query.agg === "count" || query.agg === "rate";
 }
 
+/** Labelled or split metrics read the stored points, not the rollup: the 30s pass, not the 2s merge. */
 function labeledMetric(query: SeriesQuery): boolean {
-  return Boolean(query.metric) && Object.keys(query.metricLabels).length > 0;
+  return Boolean(query.metric) && (Object.keys(query.metricLabels).length > 0 || Boolean(query.metricSplit));
 }
 
 function nonAssociativeAgg(query: SeriesQuery): boolean {
