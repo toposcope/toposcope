@@ -704,6 +704,13 @@ async function ensureChangeMarks(): Promise<void> {
   await clickhouseCommand(
     "ALTER TABLE change_marks ADD COLUMN IF NOT EXISTS end_ts Nullable(DateTime64(3, 'UTC'))",
   );
+  // A mark's place in the arrival order, so a link carries it with the rows (#138), and the
+  // instance it was posted at. Rows posted before have neither.
+  await clickhouseCommand("ALTER TABLE change_marks ADD COLUMN IF NOT EXISTS seq UInt64 DEFAULT 0");
+  await clickhouseCommand(
+    "ALTER TABLE change_marks ADD COLUMN IF NOT EXISTS toposcope LowCardinality(String) DEFAULT ''",
+  );
+  await ensureSkipIndex("change_marks", "idx_seq_minmax", "seq TYPE minmax GRANULARITY 1");
 }
 
 async function tableSortingKey(table: string): Promise<string | null> {

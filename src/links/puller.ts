@@ -5,7 +5,8 @@ function instanceNameOrEmpty(): string {
 }
 import { readFeed, type FeedReply } from "../feed/feed";
 import { getRetentionDays } from "../control/settings";
-import { insertPulled } from "../ingest/pulled";
+import { insertPulled, insertPulledMarks } from "../ingest/pulled";
+import { hereName } from "../shared/here";
 import { activeLinks, getLink, noteContact, noteFailure, type LinkRecord } from "./store";
 
 /**
@@ -64,7 +65,9 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
       noteFailure(link.id, reply.refused);
       return { stored };
     }
-    const result = await insertPulled(reply.rows, { name: reply.source?.name || link.peer_name }, deps.hereId());
+    const source = { name: reply.source?.name || link.peer_name };
+    const result = await insertPulled(reply.rows, source, deps.hereId());
+    await insertPulledMarks(reply.marks ?? [], source, hereName());
     stored += result.stored;
     after = reply.through;
     if (reply.gone) {

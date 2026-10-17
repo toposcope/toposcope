@@ -1,4 +1,4 @@
-import type { FeedRow } from "../feed/feed";
+import type { FeedMark, FeedRow } from "../feed/feed";
 import {
   clickhouseInsertJsonEachRow,
   clickhouseQuery,
@@ -80,6 +80,46 @@ export async function insertPulled(
         .join("\n");
       await clickhouseInsertJsonEachRow(body);
       return { stored: fresh.length, skipped: rows.length - fresh.length };
+    } finally {
+      releaseArrivalSeq(seq);
+    }
+  });
+}
+
+/**
+ * Marks that came with a link (#138), stored under the instance they were posted at: their id
+ * gains `@<instance>`, so two sources that both post `deploy-api-v1.4` stay two marks, each
+ * cutting its own window. A mark posted here that came back is not stored again; a mark the
+ * source closed later arrives again closed, and the closed one is the one read.
+ */
+export async function insertPulledMarks(marks: FeedMark[], source: { name: string }, here: string): Promise<number> {
+  const keep = marks
+    .map((mark) => ({ mark, origin: mark.toposcope || source.name }))
+    .filter(({ origin }) => origin && origin !== here);
+  if (keep.length === 0) {
+    return 0;
+  }
+  return withInsertSlot(async () => {
+    const seq = await allocateArrivalSeq(keep.length);
+    try {
+      const body = keep
+        .map(({ mark, origin }, i) =>
+          JSON.stringify({
+            tenant_id: "default",
+            ts: toClickHouseDateTime(mark.ts),
+            kind: mark.kind,
+            service: mark.service,
+            title: mark.title,
+            attrs: mark.attrs,
+            id: mark.id.endsWith(`@${origin}`) ? mark.id : `${mark.id}@${origin}`,
+            end_ts: mark.end_ts ? toClickHouseDateTime(mark.end_ts) : null,
+            seq: seq.from + i,
+            toposcope: origin,
+          }),
+        )
+        .join("\n");
+      await clickhouseInsertJsonEachRow(body, "change_marks");
+      return keep.length;
     } finally {
       releaseArrivalSeq(seq);
     }

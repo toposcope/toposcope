@@ -141,9 +141,39 @@ await ingest(B, warnService, [
 ]);
 await until("A holds B's two warnings, delivered down B's call", async () => (await count(A, `toposcope:${nameB} service:${warnService}`)) === 2);
 const pullOnA = (await call(A, "/api/links")).body.links.find((l: any) => l.role === "pull" && l.connects === "they" && l.peer_name === nameB);
-const serveOnB = (await call(B, "/api/links")).body.links.find((l: any) => l.id === invited.body.id);
 check(Boolean(pullOnA) && pullOnA.position > 0 && pullOnA.last_error === null, "A's list: pulling from edge-fra, they call us", pullOnA);
-check(Boolean(serveOnB) && serveOnB.position === pullOnA.position, "B's list: pulled by prod-eu, we call them, at the same position", serveOnB);
+// Each side moves its position after the other answers, so the two agree once a call settles.
+await until("B's list: pulled by prod-eu, we call them, at A's position", async () => {
+  const a = (await call(A, "/api/links")).body.links.find((l: any) => l.id === pullOnA.id);
+  const b = (await call(B, "/api/links")).body.links.find((l: any) => l.id === invited.body.id);
+  return Boolean(a && b) && a.position === b.position;
+});
+// 7. Marks come with a link (#138): B's marks reach A over A's every-row link from B.
+async function mark(base: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${base}/v1/marks`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${ingestToken}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  check(res.ok, `post mark ${String(body.id)} on ${base}`);
+}
+const now = Date.now();
+const deployId = `deploy-api-${tag}`;
+await mark(B, { id: deployId, kind: "deploy", service: "api", title: `v1.4-${tag}`, ts: new Date(now - 3 * 60_000).toISOString() });
+await mark(A, { id: deployId, kind: "deploy", service: "api", title: `v1.4-${tag}`, ts: new Date(now - 5 * 60_000).toISOString() });
+const incidentId = `inc-${tag}`;
+await mark(B, { id: incidentId, kind: "incident", service: "api", title: `checkout down ${tag}`, ts: new Date(now - 2 * 60_000).toISOString() });
+const marksOn = async (base: string) =>
+  ((await call(base, "/api/marks?range=15m")).body?.marks ?? []) as Array<{ id: string; ts: string; end_ts: string | null; toposcope?: string }>;
+await until("B's deploy is on A's lane, under edge-fra", async () => (await marksOn(A)).some((m) => m.id === `${deployId}@${nameB}`));
+await mark(B, { id: incidentId, kind: "incident", service: "api", title: `checkout down ${tag}`, ts: new Date(now - 2 * 60_000).toISOString(), end_ts: new Date(now - 60_000).toISOString() });
+await until("the incident closed on B closes on A", async () => (await marksOn(A)).some((m) => m.id === `${incidentId}@${nameB}` && m.end_ts !== null));
+const both = (await marksOn(A)).filter((m) => m.id === deployId || m.id === `${deployId}@${nameB}`);
+check(both.length === 2 && both.find((m) => m.id === `${deployId}@${nameB}`)?.toposcope === nameB, "the same id from two instances stays two marks on A, the pulled one named edge-fra", both);
+for (const m of both) {
+  const cut = await call(A, `/api/search/cut?mark=${encodeURIComponent(m.id)}&range=15m`);
+  check(cut.status === 200 && Date.parse(cut.body.windows.afterFrom) === Date.parse(m.ts), `Fingerprints opens on ${m.id}, cutting at its own time`, cut.body);
+}
 console.log("links e2e ok");
 
 export {};

@@ -1,3 +1,5 @@
+import { allocateArrivalSeq, releaseArrivalSeq } from "./arrival-seq";
+import { hereName } from "../shared/here";
 import type { Context } from "hono";
 import {
   clickhouseInsertJsonEachRow,
@@ -54,24 +56,32 @@ async function insertChangeMarks(marks: ChangeMark[]): Promise<number> {
     return 0;
   }
   return withInsertSlot(async () => {
-    const body = marks
-      .map((mark) =>
-        JSON.stringify({
-          tenant_id: "default",
-          ts: toClickHouseDateTime(mark.ts),
-          kind: mark.kind,
-          service: mark.service,
-          title: mark.title,
-          attrs: mark.attrs,
-          id: mark.id,
-          ...(mark.end_ts
-            ? { end_ts: toClickHouseDateTime(mark.end_ts) }
-            : { end_ts: null }),
-        }),
-      )
-      .join("\n");
-    await clickhouseInsertJsonEachRow(body, "change_marks");
-    return marks.length;
+    // A mark takes a position in the arrival order, so a link carries it with the rows (#138).
+    const seq = await allocateArrivalSeq(marks.length);
+    try {
+      const body = marks
+        .map((mark, i) =>
+          JSON.stringify({
+            tenant_id: "default",
+            ts: toClickHouseDateTime(mark.ts),
+            kind: mark.kind,
+            service: mark.service,
+            title: mark.title,
+            attrs: mark.attrs,
+            id: mark.id,
+            ...(mark.end_ts
+              ? { end_ts: toClickHouseDateTime(mark.end_ts) }
+              : { end_ts: null }),
+            seq: seq.from + i,
+            toposcope: hereName(),
+          }),
+        )
+        .join("\n");
+      await clickhouseInsertJsonEachRow(body, "change_marks");
+      return marks.length;
+    } finally {
+      releaseArrivalSeq(seq);
+    }
   });
 }
 
