@@ -190,11 +190,14 @@ describe("compare fold chrome", () => {
     expect(marks).toMatch(/Compare/);
     expect(marks).toMatch(/onCompare/);
     expect(fold).toMatch(/h-\[30px\]/);
-    expect(fold).toMatch(/ml-\[47px\]/);
+    // Under the plot: 47px in, or past a unit's wider axis gutter.
+    expect(fold).toMatch(/plotLeft = 47/);
+    expect(fold).toMatch(/marginLeft: plotLeft/);
     expect(fold).toMatch(/>\s*split\s*</);
     expect(fold).not.toMatch(/<select/);
     expect(chart).toMatch(/CompareFold/);
     expect(chart).toMatch(/seriesKeys=\{keys\}/);
+    expect(chart).toMatch(/plotLeft=\{plotLeft\}/);
   });
 
   test("fold follows the hunt histogram split; × dismisses only the stack", () => {

@@ -29,6 +29,11 @@ function seriesKeyUnion(buckets: HistogramBucket[]): string[] {
   return [...keys].sort();
 }
 
+function splitColumn(expr: string, split: string, key: string): string {
+  const matcher = `${split}=${key}`;
+  return expr.endsWith("}") ? `${expr.slice(0, -1)},${matcher}}` : `${expr}{${matcher}}`;
+}
+
 export function histogramExport(
   buckets: HistogramBucket[],
   agg?: SearchAggResult | null,
@@ -36,9 +41,17 @@ export function histogramExport(
   const keys = seriesKeyUnion(buckets);
   const times = buckets.map((bucket) => bucket.t);
   const includeAgg = Boolean(agg && agg.source !== "refused");
-  const aggVals = includeAgg && agg ? alignAggBuckets(times, agg.buckets) : [];
-  const aggHeader = includeAgg && agg ? agg.expr : null;
-  const header = ["t", "n", ...keys, ...(aggHeader ? [aggHeader] : [])];
+  // A split metric is a column per line (`name{basis=sold}`), as it is painted.
+  const aggCols =
+    !includeAgg || !agg
+      ? []
+      : agg.splits
+        ? agg.splits.map((line) => ({
+            header: splitColumn(agg.expr, agg.split ?? "", line.key),
+            vals: alignAggBuckets(times, line.buckets),
+          }))
+        : [{ header: agg.expr, vals: alignAggBuckets(times, agg.buckets) }];
+  const header = ["t", "n", ...keys, ...aggCols.map((col) => col.header)];
   const lines = [header.map(csvCell).join(",")];
   const rows: Array<Record<string, string | number>> = [];
   for (let i = 0; i < buckets.length; i++) {
@@ -53,13 +66,13 @@ export function histogramExport(
       row[key] = n;
       cells.push(String(n));
     }
-    if (aggHeader) {
-      const v = aggVals[i];
+    for (const col of aggCols) {
+      const v = col.vals[i];
       if (v === null || v === undefined) {
-        row[aggHeader] = "";
+        row[col.header] = "";
         cells.push("");
       } else {
-        row[aggHeader] = v;
+        row[col.header] = v;
         cells.push(String(v));
       }
     }

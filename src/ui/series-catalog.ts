@@ -16,6 +16,8 @@ export type SeriesCatalog = {
   live: boolean;
   /** Asks the server for names beyond the ones loaded. */
   find: (q: string) => Promise<MetricEntry[]>;
+  /** The label keys a metric's points carry in the window, with how many values (#104 split). */
+  labels?: (name: string) => Promise<Array<{ key: string; values: number }>>;
 };
 
 export const emptySeriesCatalog: SeriesCatalog = {
