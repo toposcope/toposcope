@@ -1,3 +1,4 @@
+import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
@@ -66,6 +67,8 @@ type Sides = {
   after: CompareFoldSide;
   refuse: string;
   rows: FoldRow[];
+  /** #140: sources short inside either window when the fold opened; it shows no counts and no delta. */
+  waits?: string[];
 };
 
 function hms(ms: number): string {
@@ -215,6 +218,10 @@ export function CompareFold({
   const [error, setError] = useState<string | null>(null);
   const plotKeysRef = useRef(seriesKeys);
   plotKeysRef.current = seriesKeys;
+  // Read when the fold fetches, not on every poll: it waits until × and reopen, as with Live.
+  const heldNow = useHeldView();
+  const heldRef = useRef(heldNow);
+  heldRef.current = heldNow;
 
   useEffect(() => {
     if (windows.dead || !plotReady) {
@@ -226,6 +233,14 @@ export function CompareFold({
     setError(null);
     setSides(null);
     const plotKeys = [...plotKeysRef.current];
+    // #140: across a gap any delta can look like a fix. A metric is not pulled, so it never waits.
+    const short = metric
+      ? []
+      : (heldRef.current?.countGaps(q, { from: windows.beforeFrom, to: windows.afterTo }) ?? []);
+    if (short.length > 0) {
+      setSides({ before: emptySide(), after: emptySide(), refuse: "", rows: [], waits: [...new Set(short.map((g) => g.source))] });
+      return;
+    }
     void (async () => {
       try {
         const common = { q, agg, metric, ml, split };
@@ -395,6 +410,30 @@ export function CompareFold({
   const title = windows.dead
     ? "No after side in this window"
     : `after ${hms(windows.afterFrom)} → ${hms(windows.afterTo)} · before ${hms(windows.beforeFrom)} → ${hms(windows.beforeTo)} — equal windows on the hunt's own slice`;
+
+  if (sides?.waits) {
+    const names = sides.waits;
+    return (
+      <div
+        data-compare-fold=""
+        title={title}
+        className="mt-1.5 mr-2.5 flex h-[30px] min-w-0 shrink-0 items-center gap-[7px] overflow-hidden rounded-[4.4px] border bg-[#0f0f11] pr-1 pl-2.5"
+        style={{ borderColor: "oklch(0.906 0.014 84 / 28%)", marginLeft: plotLeft }}
+      >
+        <MarkGlyph kind={mark.kind} size={11} />
+        <span className="min-w-[56px] truncate text-[12px] font-semibold whitespace-nowrap">
+          vs {formatChangeMarkLabel(mark)}
+        </span>
+        <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
+        <span className="shrink-0 text-[10.5px] text-amber-400">▲</span>
+        <span className="min-w-0 truncate text-[10.5px] whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
+          waits · {names.length === 1 ? `${names[0]} short` : `${names.length} short · ${names.join(" · ")}`}
+        </span>
+        <span className="min-w-2 flex-1" />
+        <DismissFold onClose={onClose} />
+      </div>
+    );
+  }
 
   return (
     <div
