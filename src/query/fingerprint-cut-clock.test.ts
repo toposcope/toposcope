@@ -17,19 +17,25 @@ describe("fingerprint cut exact boundaries ClickHouse", () => {
     const service=`cutclock${Date.now()}`;
     const iso=(ms:number)=>new Date(ms).toISOString();
     const mark=parseChangeMark({id:`mk_${service}`,kind:"deploy",service,title:service,ts:iso(markMs)});
+    // A 20s after side is compared with the hour before the mark (#111).
+    const hour=3_600_000;
     const rows=[
       [markMs-1_000,"aaaaaaaaaaaaaaaa"],
       [markMs+1_000,"bbbbbbbbbbbbbbbb"],
       [markMs,"cccccccccccccccc"],
-      [markMs-sideMs-1,"dddddddddddddddd"],
+      [markMs-hour-1,"dddddddddddddddd"],
+      [markMs+2_000,"dddddddddddddddd"],
+      [markMs-hour,"9999999999999999"],
+      [markMs+3_000,"9999999999999999"],
       [markMs+sideMs,"eeeeeeeeeeeeeeee"],
     ] as const;
     await clickhouseInsertJsonEachRow(rows.map(([ts,hex])=>JSON.stringify({tenant_id:"default",ts:toClickHouseDateTime(iso(ts)),service,host:"billing-1",level:"error",message:service,attrs:JSON.stringify({e1:hex}),attr_map:{e1:hex},trace_id:""})).join("\n"));
     const result=await searchFingerprintCut({mark,q:`service:${service}`,from:iso(markMs-sideMs),to:iso(markMs+sideMs),opened:iso(markMs+sideMs)});
     const rowsFor=(id:string)=>result.sets.find(set=>set.id===id)?.rows.map(row=>({hex:row.hex,before:row.before,after:row.after})).sort((a,b)=>a.hex.localeCompare(b.hex));
-    expect(rowsFor("stopped")).toEqual([{hex:"aaaaaaaaaaaaaaaa",before:1,after:0}]);
-    expect(rowsFor("first_seen")).toEqual([{hex:"bbbbbbbbbbbbbbbb",before:0,after:1},{hex:"cccccccccccccccc",before:0,after:1}]);
-    expect(rowsFor("still_here")).toEqual([]);
+    expect(rowsFor("first_seen")).toEqual([{hex:"bbbbbbbbbbbbbbbb",before:0,after:1},{hex:"cccccccccccccccc",before:0,after:1},{hex:"dddddddddddddddd",before:0,after:1}]);
+    expect(rowsFor("still_here")).toEqual([{hex:"9999999999999999",before:1,after:1}]);
+    expect(rowsFor("stopped")).toEqual([]);
+    expect(result.sets.find(set=>set.id==="stopped")?.waiting).toEqual({haveMs:sideMs,needMs:hour});
   });
   test("an event exactly at the mark belongs only to after on the raw path", async () => {
     const markMs=Date.now()-120_000, service=`cutraw${Date.now()}`;

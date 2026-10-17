@@ -53,6 +53,15 @@ function firedLabel(at: number | null): string {
   return new Date(at).toISOString().slice(0, 16).replace("T", " ") + "Z";
 }
 
+/** "deploy v0.9.3 · 10:42 · 2 fingerprints" — the mark a first-seen alert last paged on. */
+function lastMarkLabel(rule: AlertRule): string | null {
+  const m = rule.last_mark;
+  if (!m) {
+    return null;
+  }
+  return `${m.kind} ${m.title} · ${m.ts.slice(11, 16)} · ${m.count} fingerprint${m.count === 1 ? "" : "s"}`;
+}
+
 function webhookFail(rule: AlertRule): { label: string; title: string } | null {
   const status = rule.last_status ?? "error";
   const when = rule.last_attempt_at ? firedLabel(rule.last_attempt_at) : null;
@@ -141,7 +150,12 @@ export function AlertsView({
               point !== undefined && !point.refused && rule.threshold > 0
                 ? Math.min(100, (point.value / rule.threshold) * 100)
                 : 0;
+            const fingerprints = rule.kind === "first_seen";
             const fail = webhookFail(rule);
+            // A refused cut is said under Last fired; the webhook column keeps webhook failures.
+            const webhookFailure = fingerprints && fail?.label === "refused" ? null : fail;
+            const refusedCut =
+              fingerprints && rule.last_status === "refused" ? (rule.last_error ?? "refused") : null;
             const silenced =
               typeof rule.silenced_until === "number" &&
               rule.silenced_until > Date.now();
@@ -155,9 +169,10 @@ export function AlertsView({
                     firing ? "bg-red-500/80" : "bg-transparent"
                   }`}
                 />
+                <span className="flex min-w-0 flex-col items-start gap-1">
                 <button
                   type="button"
-                  className="truncate text-left hover:underline disabled:no-underline"
+                  className="max-w-full truncate text-left hover:underline disabled:no-underline"
                   title={
                     item
                       ? `Open ${item.name} · opens a new tab · this one stays as it is`
@@ -172,9 +187,34 @@ export function AlertsView({
                 >
                   {rule.name}
                 </button>
+                <span className="flex gap-1.5">
+                  <span
+                    className={
+                      fingerprints
+                        ? "inline-flex h-[18px] items-center rounded-[4px] border border-plate/45 px-1.5 text-[10.5px] text-plate"
+                        : "inline-flex h-[18px] items-center rounded-[4px] border border-white/[0.18] px-1.5 text-[10.5px] text-muted-foreground"
+                    }
+                  >
+                    {fingerprints ? "new fingerprints" : "threshold"}
+                  </span>
+                  {refusedCut ? (
+                    <span className="inline-flex h-[18px] items-center rounded-[4px] bg-amber-400/15 px-1.5 text-[10.5px] text-amber-400">
+                      refused
+                    </span>
+                  ) : null}
+                </span>
+                </span>
                 <span className="truncate text-muted-foreground">
                   {item?.name ?? "—"}
                 </span>
+                {fingerprints ? (
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 font-mono leading-snug text-pretty">
+                      ≥ {formatThreshold(rule.threshold)} {rule.threshold === 1 ? "event" : "events"} after a deploy or flag · 24h
+                    </span>
+                    {silenced ? <Badge variant="secondary">silenced</Badge> : null}
+                  </span>
+                ) : (
                 <span className="flex items-center gap-2">
                   <span className="relative h-1 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
                     <span
@@ -206,19 +246,35 @@ export function AlertsView({
                   {firing ? <Badge variant="error">firing</Badge> : null}
                   {silenced ? <Badge variant="secondary">silenced</Badge> : null}
                 </span>
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  {firedLabel(rule.last_fired_at)}
-                </span>
+                )}
+                {fingerprints ? (
+                  <span className="flex min-w-0 flex-col gap-0.5 text-[11px]">
+                    <span className="truncate">{lastMarkLabel(rule) ?? "never"}</span>
+                    {refusedCut ? (
+                      <span className="truncate text-amber-400" title={refusedCut}>
+                        refused: {refusedCut}
+                      </span>
+                    ) : rule.last_fired_at ? (
+                      <span className="truncate font-mono text-muted-foreground">
+                        paged {firedLabel(rule.last_fired_at)}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {firedLabel(rule.last_fired_at)}
+                  </span>
+                )}
                 <span className="min-w-0">
                   <span className="block truncate text-[11px] text-muted-foreground">
                     {webhookHost(rule.webhook_url)}
                   </span>
-                  {fail ? (
+                  {webhookFailure ? (
                     <span
                       className="mt-0.5 block truncate text-[11px] text-destructive"
-                      title={fail.title || undefined}
+                      title={webhookFailure.title || undefined}
                     >
-                      {fail.label}
+                      {webhookFailure.label}
                     </span>
                   ) : null}
                 </span>

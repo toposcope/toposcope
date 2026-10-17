@@ -1,4 +1,5 @@
 import {
+  fingerprintCutMinBeforeMs,
   fingerprintCutWindows,
   formatFingerprintCutDuration,
   type FingerprintCutResult,
@@ -54,7 +55,10 @@ export function cutCrumbLabel(
   if (!sets?.length) {
     return `Cut — ${fallbackTitle}`;
   }
-  return `Cut — ${sets.map((s) => `${s.name.toLowerCase()} ${s.count}`).join(" · ")}`;
+  return `Cut — ${sets
+    .filter((s) => !s.waiting)
+    .map((s) => `${s.name.toLowerCase()} ${s.count}`)
+    .join(" · ")}`;
 }
 
 /** Live polls slide from/to; the cut stays frozen until q or span changes. */
@@ -70,11 +74,13 @@ export function fingerprintCutFetchKey(input: {
     : `${input.q}\0${input.from}\0${input.to}`;
 }
 
+/** Compare passes no minimum and keeps equal sides; Fingerprints passes fingerprintCutMinBeforeMs. */
 export function fingerprintCutHuntWindows(
   mark: ChangeMark,
   openedAt: string,
   huntFromMs: number,
   huntToMs: number,
+  minBeforeMs = 0,
 ): FingerprintCutWindows {
   return fingerprintCutWindows({
     markTs: Date.parse(mark.ts),
@@ -83,6 +89,7 @@ export function fingerprintCutHuntWindows(
     huntFrom: huntFromMs,
     huntTo: huntToMs,
     openedAt: Date.parse(openedAt),
+    minBeforeMs,
   });
 }
 
@@ -104,7 +111,13 @@ export function fingerprintCutViewWindows(input: {
   const toMs = custom ? Date.parse(isoFromLocal(input.to) ?? "") : openedMs;
   const huntFrom = Number.isFinite(fromMs) ? fromMs : input.fromMs;
   const huntTo = Number.isFinite(toMs) ? toMs : input.toMs;
-  const fallback = fingerprintCutHuntWindows(input.mark, input.openedAt, huntFrom, huntTo);
+  const fallback = fingerprintCutHuntWindows(
+    input.mark,
+    input.openedAt,
+    huntFrom,
+    huntTo,
+    fingerprintCutMinBeforeMs,
+  );
   if (!input.result) return fallback;
   const returned = input.result.windows;
   const beforeFrom = Date.parse(returned.beforeFrom);
@@ -115,6 +128,8 @@ export function fingerprintCutViewWindows(input: {
     beforeFrom,
     beforeTo: Date.parse(returned.beforeTo),
     sideMs: returned.sideMs,
+    beforeMs: returned.beforeMs ?? returned.sideMs,
+    waiting: returned.waiting ?? false,
     banded: returned.banded,
     dead: returned.dead,
     pastPlotFrom: beforeFrom < huntFrom,
@@ -139,15 +154,42 @@ export function formatCutWindowLines(
       nowMs,
       precision: "s",
     });
-  const equal = `equal ${formatFingerprintCutDuration(windows.sideMs)}`;
+  const after = formatFingerprintCutDuration(windows.sideMs);
+  const before = windows.waiting
+    ? `${formatFingerprintCutDuration(windows.beforeMs)}, at least`
+    : `equal ${after}`;
+  const cutAt = formatEventClock(new Date(windows.afterFrom).toISOString(), {
+    format: "full",
+    fromMs,
+    spanMs,
+  }).slice(5);
   return [
+    { k: "cut at", v: cutAt },
     {
       k: windows.banded ? "band" : "after",
-      v: `${stamp(windows.afterFrom)} → ${stamp(windows.afterTo)}`,
+      v: `${stamp(windows.afterFrom)} → ${stamp(windows.afterTo)} · ${after}`,
     },
     {
       k: "before",
-      v: `${stamp(windows.beforeFrom)} → ${stamp(windows.beforeTo)} · ${equal}`,
+      v: `${stamp(windows.beforeFrom)} → ${stamp(windows.beforeTo)} · ${before}`,
     },
   ];
+}
+
+/** A row's count tooltip says each side's length when they differ. */
+export function cutCountTitle(windows: FingerprintCutWindows): string {
+  if (!windows.waiting) {
+    return "events before → after, equal windows";
+  }
+  return `events ${formatFingerprintCutDuration(windows.beforeMs)} before → ${formatFingerprintCutDuration(windows.sideMs)} after`;
+}
+
+/** "An error quiet for 18 minutes has not stopped." — the waiting Stopped in words. */
+export function cutWaitingWords(ms: number): string {
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes >= 1) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  }
+  const seconds = Math.max(1, Math.floor(ms / 1000));
+  return `${seconds} second${seconds === 1 ? "" : "s"}`;
 }
