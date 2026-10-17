@@ -16,6 +16,8 @@ export type LinkItem = {
   behind_rows: number | null;
   gone_from: number | null;
   gone_to: number | null;
+  gone_from_at: string | null;
+  gone_to_at: string | null;
   last_contact_at: number | null;
   last_error: string | null;
   created_at: number;

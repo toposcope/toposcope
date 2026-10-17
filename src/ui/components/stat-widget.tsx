@@ -1,3 +1,5 @@
+import { useHeldView } from "../held-context";
+import { overWhatIsHereWords } from "../held-words";
 import { type ReactNode } from "react";
 import { HeadPicker } from "@/components/head-picker";
 import { downloadWidgetSeries, statExport } from "@/export-series";
@@ -124,7 +126,11 @@ export function StatWidget({
   updated = null,
 }: Props) {
   const catalog = useSeriesCatalog();
+  const held = useHeldView();
   const isCount = !metric && (!agg || agg === "count");
+  // #139: a count a short source could feed is a floor; a percentile, rate or average keeps its
+  // number and says it is over what is here.
+  const heldNote = !metric && held?.floor ? (isCount ? held.pill : overWhatIsHereWords(held.gaps)) : null;
   const label = metric
     ? (aggResult?.expr ?? metric)
     : isCount
@@ -142,7 +148,7 @@ export function StatWidget({
       : statWords(view.kind, catalog.window, view.reading)
     : `window ${label}`;
   const value = isCount
-    ? abbrevCount(total)
+    ? `${heldNote ? "≥" : ""}${abbrevCount(total)}`
     : aggResult?.source === "refused"
       ? "—"
       : formatAggStat(aggResult?.stat);
@@ -167,10 +173,10 @@ export function StatWidget({
             </div>
             <div
               className={`mt-[3px] truncate text-[10.5px] ${
-                aggResult?.source === "refused" || quiet ? "text-amber-400" : "text-muted-foreground"
+                aggResult?.source === "refused" || quiet || heldNote ? "text-amber-400" : "text-muted-foreground"
               }`}
             >
-              {aggResult?.source === "refused" ? aggResult.reason : note}
+              {aggResult?.source === "refused" ? aggResult.reason : heldNote ? `▲ ${heldNote}` : note}
               {updated}
             </div>
           </>

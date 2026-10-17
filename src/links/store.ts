@@ -43,6 +43,9 @@ export type LinkRecord = {
   /** A hole: positions retention passed at the source before they were read. */
   gone_from: number | null;
   gone_to: number | null;
+  /** The hole in time (#139): where reading had reached, and the start of the oldest day the source kept. */
+  gone_from_at: string | null;
+  gone_to_at: string | null;
   last_contact_at: number | null;
   last_error: string | null;
   created_at: number;
@@ -108,7 +111,7 @@ export function linkId(): string {
 export function saveLink(
   link: Omit<
     LinkRecord,
-    "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "last_contact_at" | "last_error" | "removed_at"
+    "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_contact_at" | "last_error" | "removed_at"
   >,
   db: Database = getDb(),
 ): LinkRecord {
@@ -155,13 +158,19 @@ export function removeLink(id: string, now = Date.now(), db: Database = getDb())
 export function noteContact(
   id: string,
   fields: Partial<
-    Pick<LinkRecord, "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "last_error" | "peer_name">
+    Pick<
+      LinkRecord,
+      "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_error" | "peer_name"
+    >
   > & { at: number },
   db: Database = getDb(),
 ): void {
   const sets: string[] = ["last_contact_at = ?"];
   const values: (string | number | null)[] = [fields.at];
-  for (const key of ["position", "settled", "arrived_at", "behind_rows", "gone_from", "gone_to", "last_error", "peer_name"] as const) {
+  const keys = [
+    "position", "settled", "arrived_at", "behind_rows", "gone_from", "gone_to", "gone_from_at", "gone_to_at", "last_error", "peer_name",
+  ] as const;
+  for (const key of keys) {
     if (key in fields) {
       sets.push(`${key} = ?`);
       values.push((fields[key] ?? null) as string | number | null);
@@ -174,4 +183,30 @@ export function noteContact(
 /** A failed call: last contact stays where it was, so the list can say since when. */
 export function noteFailure(id: string, error: string, db: Database = getDb()): void {
   db.query("UPDATE links SET last_error = ? WHERE id = ?").run(error.slice(0, 300), id);
+}
+
+/**
+ * A hole's ends in time (#139), when a reply says retention passed positions before they were
+ * read. The near end is where this link's rows were known to: its last contact if it was caught
+ * up then, else the arrival time it had read to. The far end is the start of the oldest day the
+ * source keeps, from its horizon. A hole only grows.
+ */
+export function holeTimes(
+  link: Pick<LinkRecord, "position" | "settled" | "arrived_at" | "last_contact_at" | "created_at" | "gone_from_at" | "gone_to_at">,
+  reply: { gone: { from: number; to: number } | null; horizon: string },
+): Pick<LinkRecord, "gone_from_at" | "gone_to_at"> {
+  if (!reply.gone) {
+    return { gone_from_at: link.gone_from_at, gone_to_at: link.gone_to_at };
+  }
+  const known =
+    link.last_contact_at !== null && link.position >= link.settled
+      ? new Date(link.last_contact_at).toISOString()
+      : (link.arrived_at ?? new Date(link.created_at).toISOString());
+  const horizon = new Date(reply.horizon);
+  const day = new Date(Date.UTC(horizon.getUTCFullYear(), horizon.getUTCMonth(), horizon.getUTCDate())).toISOString();
+  const from = link.gone_from_at && link.gone_from_at < known ? link.gone_from_at : known;
+  const kept = link.gone_to_at && link.gone_to_at > day ? link.gone_to_at : day;
+  // Never closed before it opens: positions can go before their day is past retention.
+  const to = kept < from ? from : kept;
+  return { gone_from_at: from, gone_to_at: to };
 }

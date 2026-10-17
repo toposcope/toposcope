@@ -4,7 +4,7 @@ import { filterWords, keyPositionWords, linkClock, linkPositionWords, type LinkI
 const now = Date.parse("2026-10-17T14:02:30Z");
 const link = (over: Partial<LinkItem> = {}): LinkItem => ({
   id: "l_1", role: "pull", connects: "we", peer_id: "p", peer_name: "prod-eu", peer_url: "http://x", q: "service:checkout level:error",
-  kid: "k7f3a", position: 100, settled: 100, arrived_at: "2026-10-17T14:02:11Z", behind_rows: null, gone_from: null, gone_to: null,
+  kid: "k7f3a", position: 100, settled: 100, arrived_at: "2026-10-17T14:02:11Z", behind_rows: null, gone_from: null, gone_to: null, gone_from_at: null, gone_to_at: null,
   last_contact_at: now - 3_000, last_error: null, created_at: now - 86_400_000, ...over,
 });
 

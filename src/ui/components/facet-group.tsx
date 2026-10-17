@@ -18,6 +18,8 @@ type Props = {
   onRemove?: () => void;
   prefix?: string;
   onPrefixChange?: (value: string) => void;
+  /** A value's count a short source could still feed (#139). */
+  floorFor?: (value: string) => boolean;
 };
 
 function barClass(field: string, value: string): string {
@@ -45,6 +47,7 @@ export function FacetGroup({
   onRemove,
   prefix,
   onPrefixChange,
+  floorFor,
 }: Props) {
   const max = Math.max(1, ...values.map((item) => item.n));
   const selected = activeList(active);
@@ -167,7 +170,7 @@ export function FacetGroup({
                     />
                   </span>
                   <span className="shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
-                    <CountText n={item.n} />
+                    <CountText n={item.n} floor={floorFor?.(item.v) ?? false} />
                   </span>
                 </button>
                 {selected.length >= 1 ? (
