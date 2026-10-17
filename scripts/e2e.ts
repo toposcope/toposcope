@@ -808,9 +808,28 @@ async function main(): Promise<void> {
   if (!cutGet.ok) {
     throw new Error(`cut search failed: ${cutGet.status} ${await cutGet.text()}`);
   }
-  const cutBody = (await cutGet.json()) as { sets?: unknown; title?: string };
+  const cutBody = (await cutGet.json()) as {
+    sets?: Array<{ id: string; waiting?: { haveMs: number; needMs: number } }>;
+    title?: string;
+    windows?: { sideMs: number; beforeMs: number; waiting: boolean; inside: unknown[] };
+  };
   if (!Array.isArray(cutBody.sets) || typeof cutBody.title !== "string") {
     throw new Error("GET /api/search/cut missing sets or title");
+  }
+  // #111: a mark minutes old is compared with the hour before it, and Stopped waits.
+  if (
+    !cutBody.windows ||
+    cutBody.windows.beforeMs !== 3_600_000 ||
+    !cutBody.windows.waiting ||
+    !Array.isArray(cutBody.windows.inside)
+  ) {
+    throw new Error(
+      `GET /api/search/cut expected an hour before a young mark, got ${JSON.stringify(cutBody.windows)}`,
+    );
+  }
+  const stoppedSet = cutBody.sets.find((set) => set.id === "stopped");
+  if (cutBody.sets.length > 0 && stoppedSet?.waiting?.needMs !== 3_600_000) {
+    throw new Error(`GET /api/search/cut expected Stopped to wait, got ${JSON.stringify(stoppedSet)}`);
   }
   const incidentEnd = new Date(Date.parse(markTs) + 60_000).toISOString();
   const incidentId = `e2e-inc-${Date.now()}`;

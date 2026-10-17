@@ -40,7 +40,8 @@ describe("searchFingerprintCut ClickHouse", () => {
       const token = `cut${Date.now()}`;
       // Stay inside change_marks / logs TTL (toDate(ts) + 30 DAY).
       const openedAt = Date.now();
-      const markTs = openedAt - 5 * 60_000;
+      // Past the hour minimum, so the sides are equal and Stopped is called.
+      const markTs = openedAt - 70 * 60_000;
       const iso = (ms: number) => new Date(ms).toISOString();
       const mark = parseChangeMark({
         kind: "deploy",
@@ -94,7 +95,7 @@ describe("searchFingerprintCut ClickHouse", () => {
       expect(stored?.id).toBe(mark.id);
       let result = await searchFingerprintCut({
         mark: stored!,
-        from: iso(openedAt - 60 * 60_000),
+        from: iso(openedAt - 2 * 60 * 60_000),
         to: iso(openedAt),
         opened: iso(openedAt),
         q: token,
@@ -109,7 +110,7 @@ describe("searchFingerprintCut ClickHouse", () => {
         await Bun.sleep(50);
         result = await searchFingerprintCut({
           mark: stored!,
-          from: iso(openedAt - 60 * 60_000),
+          from: iso(openedAt - 2 * 60 * 60_000),
           to: iso(openedAt),
           opened: iso(openedAt),
           q: token,
@@ -198,7 +199,8 @@ describe("searchFingerprintCut ClickHouse", () => {
       await clickhouseCommand(logsCreateTableSql);
       const token = `cutbudget${Date.now()}`;
       const openedAt = Date.now();
-      const markTs = openedAt - 5 * 60_000;
+      // Past the hour minimum, so the sides are equal and Stopped is called.
+      const markTs = openedAt - 70 * 60_000;
       const iso = (ms: number) => new Date(ms).toISOString();
       const mark = parseChangeMark({
         kind: "deploy",
@@ -247,7 +249,7 @@ describe("searchFingerprintCut ClickHouse", () => {
       try {
         let result = await searchFingerprintCut({
           mark,
-          from: iso(openedAt - 60 * 60_000),
+          from: iso(openedAt - 2 * 60 * 60_000),
           to: iso(openedAt),
           opened: iso(openedAt),
           q: token,
@@ -256,7 +258,7 @@ describe("searchFingerprintCut ClickHouse", () => {
           await Bun.sleep(50);
           result = await searchFingerprintCut({
             mark,
-            from: iso(openedAt - 60 * 60_000),
+            from: iso(openedAt - 2 * 60 * 60_000),
             to: iso(openedAt),
             opened: iso(openedAt),
             q: token,

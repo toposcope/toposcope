@@ -25,7 +25,7 @@ function scenario(from: string, to: string, markTs: string, plotFrom: string, pl
   const sideMs = Date.parse(to) - Date.parse(markTs);
   const result: FingerprintCutResult = {
     title:"deployed: billing v0.9", notes:[], sets:[], empty:"",
-    windows:{afterFrom:markTs,afterTo:to,beforeFrom:new Date(Date.parse(markTs)-sideMs).toISOString(),beforeTo:markTs,sideMs,banded:false,dead:false},
+    windows:{afterFrom:markTs,afterTo:to,beforeFrom:new Date(Date.parse(markTs)-sideMs).toISOString(),beforeTo:markTs,sideMs,beforeMs:sideMs,waiting:false,banded:false,dead:false,inside:[],insideMore:0},
   };
   const fromMs=Date.parse(plotFrom), toMs=Date.parse(plotTo);
   return { mark, openedAt:to, from:toLocalInput(new Date(from)), to:toLocalInput(new Date(to)), range:"custom",live,spanMs,fromMs,toMs,huntToMs:toMs,windowFromMs:fromMs,windowToMs:toMs,result,cut:{mark,openedAt:to,result} };

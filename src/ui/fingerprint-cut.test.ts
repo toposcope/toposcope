@@ -60,10 +60,12 @@ describe("formatCutWindowLines", () => {
     const huntTo = Date.parse(openedAt);
     const point = fingerprintCutHuntWindows(mark, openedAt, huntFrom, huntTo);
     const lines = formatCutWindowLines(point, huntTo);
-    expect(lines[0]?.k).toBe("after");
-    expect(lines[0]?.v).toContain("14:11:00");
-    expect(lines[1]?.k).toBe("before");
-    expect(lines[1]?.v).toContain("equal 49m");
+    expect(lines[0]).toEqual({ k: "cut at", v: "08-14 14:11:00.000" });
+    expect(lines[1]?.k).toBe("after");
+    expect(lines[1]?.v).toContain("14:11:00");
+    expect(lines[1]?.v).toEndWith(" · 49m");
+    expect(lines[2]?.k).toBe("before");
+    expect(lines[2]?.v).toContain("equal 49m");
     const incident: ChangeMark = {
       ...mark,
       kind: "incident",
@@ -76,7 +78,7 @@ describe("formatCutWindowLines", () => {
       Date.parse("2026-08-14T00:00:00.000Z"),
       huntTo,
     );
-    expect(formatCutWindowLines(band, huntTo)[0]?.k).toBe("band");
+    expect(formatCutWindowLines(band, huntTo)[1]?.k).toBe("band");
   });
 });
 
@@ -147,8 +149,12 @@ describe("cutCrumbLabel", () => {
             beforeFrom: "",
             beforeTo: "",
             sideMs: 0,
+            beforeMs: 0,
+            waiting: false,
             banded: false,
             dead: false,
+            inside: [],
+            insideMore: 0,
           },
           notes: [],
           empty: "",
