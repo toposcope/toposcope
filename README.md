@@ -42,7 +42,7 @@ set +a
 VECTOR_DATA_DIR=vector-data vector -c vector.yaml
 ```
 
-Open [http://127.0.0.1:8080](http://127.0.0.1:8080). HTTP Basic Auth accepts any username; use `TOPOSCOPE_PASSWORD` from `.env` as the password. This shared operator password also permits writes, including retention changes. Search for `service:smoke`, save the search, then use **Alerts → Test** to verify the full path.
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and sign in with `TOPOSCOPE_PASSWORD` from `.env`; a browser stays signed in for 30 days. Scripts and `curl -u` keep HTTP Basic Auth, with any username. Name the instance in Settings so two of them can be told apart. This shared operator password also permits writes, including retention changes. Search for `service:smoke`, save the search, then use **Alerts → Test** to verify the full path.
 
 The deployment pins `ghcr.io/toposcope/toposcope:0.5.3`; it never uses `:latest`. Anonymous image pulls need no registry login.
 

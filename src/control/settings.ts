@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import { applyRetentionDays, clampRetentionDays } from "../shared/migrate";
 import { getDb } from "./index";
+import { instanceName, parseInstanceName, writeInstanceName } from "./instance";
 
 export type Settings = {
   retention_days: number;
@@ -27,7 +28,7 @@ export function writeRetentionDays(
 }
 
 export async function getSettings(c: Context): Promise<Response> {
-  return c.json({ retention_days: getRetentionDays() });
+  return c.json({ retention_days: getRetentionDays(), instance_name: instanceName() });
 }
 
 export async function putSettings(c: Context): Promise<Response> {
@@ -41,11 +42,27 @@ export async function putSettings(c: Context): Promise<Response> {
     return c.json({ error: "Expected an object" }, 400);
   }
   const rec = body as Record<string, unknown>;
-  if (typeof rec.retention_days !== "number") {
+  const hasName = "instance_name" in rec;
+  if (rec.retention_days === undefined && !hasName) {
     return c.json({ error: "retention_days is required" }, 400);
   }
-  if (!Number.isInteger(rec.retention_days) || rec.retention_days < 1 || rec.retention_days > 365) {
+  if (rec.retention_days !== undefined && typeof rec.retention_days !== "number") {
+    return c.json({ error: "retention_days is required" }, 400);
+  }
+  if (
+    typeof rec.retention_days === "number" &&
+    (!Number.isInteger(rec.retention_days) || rec.retention_days < 1 || rec.retention_days > 365)
+  ) {
     return c.json({ error: "Retention must be 1–365 whole days" }, 400);
+  }
+  // The name is checked before anything is written, so a bad name changes nothing.
+  const name = hasName ? parseInstanceName(rec.instance_name) : undefined;
+  if (name && typeof name === "object") {
+    return c.json({ error: name.error }, 400);
+  }
+  const savedName = name === undefined ? instanceName() : writeInstanceName(name);
+  if (typeof rec.retention_days !== "number") {
+    return c.json({ retention_days: getRetentionDays(), instance_name: savedName });
   }
   const days = writeRetentionDays(rec.retention_days);
   try {
@@ -53,7 +70,7 @@ export async function putSettings(c: Context): Promise<Response> {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "ClickHouse command failed";
-    return c.json({ error: message.slice(0, 500), retention_days: days }, 500);
+    return c.json({ error: message.slice(0, 500), retention_days: days, instance_name: savedName }, 500);
   }
-  return c.json({ retention_days: days });
+  return c.json({ retention_days: days, instance_name: savedName });
 }

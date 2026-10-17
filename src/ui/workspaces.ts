@@ -10,6 +10,7 @@ import type { InspectTab } from "./inspect-tabs";
 import { defaultSearchUrlState, type RangeMode, type SearchUrlState } from "./search-url";
 import type { FingerprintCutSnap } from "./fingerprint-cut";
 import type { CompareFoldSnap } from "./compare-fold";
+import type { SearchWindow } from "./window-identity";
 
 export function ordinalLabels(labels: string[]): string[] {
   const counts = new Map<string, number>();
@@ -65,6 +66,7 @@ export type WorkspacePaint = {
   metricNames: string[];
   attrKeyOptions: Array<{ k: string; n: number }>;
   lastTo: string | null;
+  window: SearchWindow | null;
   marks: ChangeMark[];
   markBefore: ChangeMark | null;
   markAfter: ChangeMark | null;
@@ -285,6 +287,8 @@ export type Workspace = {
   kind: WorkspaceKind;
   label: string;
   board?: boolean;
+  /** Its saved search is Home (#109). */
+  home?: boolean;
   snap: WorkspaceSnap;
 };
 
@@ -382,6 +386,8 @@ export function workspaceLiveLabel(input: {
   focusMark?: ChangeMark | null;
   board?: boolean;
   boardBinds?: string[];
+  /** A Home tab keeps its name, edited or not (frame 12j). */
+  home?: boolean;
 }): string {
   if (input.kind === "surroundings") {
     if (input.focusMark) {
@@ -402,6 +408,9 @@ export function workspaceLiveLabel(input: {
   }
   if (input.savedName && !input.savedDirty) {
     return input.savedName;
+  }
+  if (input.savedName && input.home) {
+    return `${input.savedName} · edited`;
   }
   const q = input.q.trim();
   return q.length > 0 ? q : "All logs";
