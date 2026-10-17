@@ -48,10 +48,12 @@ type Props = {
   filterTitle?: string;
   hideClose?: boolean;
   closeTitle?: string;
+  /** Back to the cut (with its mark's glyph), or `forward` to a span still selected. */
   crumb?: {
-    kind: ChangeMarkKind;
+    kind?: ChangeMarkKind;
     label: string;
     title?: string;
+    forward?: boolean;
     onBack: () => void;
   } | null;
   className?: string;
@@ -129,11 +131,21 @@ export function EventDetail({
           className="flex w-full shrink-0 items-center gap-1.5 border-b bg-[oklch(0.141_0.005_285.823/60%)] px-2.5 py-[5px] text-left hover:bg-[oklch(0.274_0.006_286.033/60%)]"
           onClick={crumb.onBack}
         >
-          <span className="text-[12px] text-[oklch(0.906_0.014_84)]">‹</span>
-          <MarkGlyph kind={crumb.kind} size={10} />
-          <span className="min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground">
+          {crumb.forward ? null : (
+            <span className="text-[12px] text-[oklch(0.906_0.014_84)]">‹</span>
+          )}
+          {crumb.kind ? <MarkGlyph kind={crumb.kind} size={10} /> : null}
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground",
+              crumb.forward && "text-right",
+            )}
+          >
             {crumb.label}
           </span>
+          {crumb.forward ? (
+            <span className="text-[12px] text-[oklch(0.906_0.014_84)]">›</span>
+          ) : null}
         </button>
       ) : null}
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5">
