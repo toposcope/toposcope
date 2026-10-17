@@ -207,6 +207,7 @@ import {
 } from "./window-identity";
 import { flattenTrace } from "./waterfall";
 import { followOnOpened, followQuery } from "./follow";
+import { eventCursor } from "../shared/event-cursor";
 import {
   followOpened,
   followSpanSearchParams,
@@ -1239,8 +1240,8 @@ export function App() {
       }
       const facetQuery = params.toString();
       if (mode === "append") {
-        const cursor =
-          selectionRef.current.events.at(-1)?.ts ?? nextCursor;
+        const oldest = selectionRef.current.events.at(-1);
+        const cursor = oldest ? eventCursor(oldest) : nextCursor;
         if (cursor) {
           params.set("cursor", cursor);
         }

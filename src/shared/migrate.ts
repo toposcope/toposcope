@@ -164,9 +164,11 @@ export const logsCreateTableSql = `CREATE TABLE IF NOT EXISTS logs (
   attrs String DEFAULT '{}',
   attr_map Map(LowCardinality(String), String) DEFAULT map(),
   trace_id String DEFAULT '',
+  seq UInt64 DEFAULT 0,
   INDEX idx_trace_id_bf trace_id TYPE bloom_filter(0.01) GRANULARITY 1,
   INDEX idx_attr_vals_bf mapValues(attr_map) TYPE bloom_filter(0.01) GRANULARITY 1,
-  INDEX idx_message_text lowerUTF8(message) TYPE text(tokenizer = 'splitByNonAlpha') GRANULARITY 1
+  INDEX idx_message_text lowerUTF8(message) TYPE text(tokenizer = 'splitByNonAlpha') GRANULARITY 1,
+  INDEX idx_seq_minmax seq TYPE minmax GRANULARITY 1
 )
 ENGINE = MergeTree
 PARTITION BY toDate(ts)
@@ -187,6 +189,7 @@ export async function migrateStore(): Promise<void> {
   await clickhouseCommand(
     "ALTER TABLE logs ADD COLUMN IF NOT EXISTS trace_id String DEFAULT ''",
   );
+  await ensureArrivalSeq();
   await backfillAttrMap();
   await dropUnusedAttrColumns();
   await ensureFieldRoleSkip();
@@ -258,6 +261,23 @@ async function ensureLogsBloomIndexes(): Promise<void> {
     "idx_attr_vals_bf",
     "mapValues(attr_map) TYPE bloom_filter(0.01) GRANULARITY 1",
   );
+}
+
+/**
+ * The arrival sequence (#133): a column on log rows (0 on rows stored before it), a minmax index
+ * that reads the newest numbers exactly, and the table the counter reserves ahead in.
+ */
+async function ensureArrivalSeq(): Promise<void> {
+  await clickhouseCommand("ALTER TABLE logs ADD COLUMN IF NOT EXISTS seq UInt64 DEFAULT 0");
+  await ensureSkipIndex("logs", "idx_seq_minmax", "seq TYPE minmax GRANULARITY 1");
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS arrival_seq (
+      reserved UInt64,
+      at DateTime64(3, 'UTC')
+    )
+    ENGINE = MergeTree
+    ORDER BY reserved
+  `);
 }
 
 async function ensureLogsMessageTextIndex(): Promise<void> {

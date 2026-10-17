@@ -10,6 +10,8 @@ export type LogEvent = {
   level: LogLevel;
   message: string;
   attrs?: Record<string, unknown>;
+  /** Arrival sequence (#133): stamped at ingest, read back by search; absent on older rows. */
+  seq?: number;
 };
 
 export const logEventSchema = v.object({

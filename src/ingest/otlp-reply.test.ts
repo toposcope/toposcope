@@ -77,6 +77,10 @@ beforeEach(() => {
   globalThis.fetch = Object.assign(
     async (input: string | URL | Request, init?: RequestInit) => {
       const query = new URL(String(input)).searchParams.get("query") ?? "";
+      if (/^\s*SELECT/i.test(String(init?.body ?? ""))) {
+        // Where the arrival sequence stands (#133): nothing is stored here yet.
+        return new Response(JSON.stringify({ data: [{ n: 0 }] }));
+      }
       const table = query.match(/^INSERT INTO (\w+) /)?.[1];
       if (!table) {
         throw new Error(`Unexpected fetch: ${String(input)}`);

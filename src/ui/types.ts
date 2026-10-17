@@ -27,6 +27,8 @@ export type LogEvent = {
   level: LogLevel;
   message: string;
   attrs?: Record<string, unknown>;
+  /** Arrival sequence (#133); absent on rows stored before it. */
+  seq?: number;
 };
 
 export type HistogramBucket = {
