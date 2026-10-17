@@ -9,6 +9,7 @@ import type { InspectTab } from "./inspect-tabs";
 import { defaultSearchUrlState, type RangeMode, type SearchUrlState } from "./search-url";
 import type { FingerprintCutSnap } from "./fingerprint-cut";
 import type { CompareFoldSnap } from "./compare-fold";
+import type { SearchWindow } from "./window-identity";
 
 export function ordinalLabels(labels: string[]): string[] {
   const counts = new Map<string, number>();
@@ -63,6 +64,7 @@ export type WorkspacePaint = {
   metricNames: string[];
   attrKeyOptions: Array<{ k: string; n: number }>;
   lastTo: string | null;
+  window: SearchWindow | null;
   marks: ChangeMark[];
   markBefore: ChangeMark | null;
   markAfter: ChangeMark | null;

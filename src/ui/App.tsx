@@ -195,7 +195,12 @@ import {
 import { SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./time-range";
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
-import { windowHead, windowMeta } from "./window-identity";
+import {
+  searchWindowMs,
+  windowHead,
+  windowMeta,
+  type SearchWindow,
+} from "./window-identity";
 import { followQuery, followWindow } from "./follow";
 import {
   deriveLiveSeries,
@@ -463,6 +468,7 @@ export function App() {
   const [events, setEvents] = useState<LogEvent[]>([]);
   const [ingested, setIngested] = useState(false);
   const [histogram, setHistogram] = useState<HistogramBucket[]>([]);
+  const [searchWindow, setSearchWindow] = useState<SearchWindow | null>(null);
   const [windowMarks, setWindowMarks] = useState<ChangeMark[]>([]);
   const [markBefore, setMarkBefore] = useState<ChangeMark | null>(null);
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
@@ -1210,6 +1216,7 @@ export function App() {
               : mergedHist;
           windowTotal = histogramTotal(filled);
           setHistogram(filled);
+          setSearchWindow({ from: json.from, to: json.to });
           setTotal(windowTotal);
           const intervalMs = histogramIntervalMs(
             histFrom,
@@ -1609,6 +1616,7 @@ export function App() {
             setSearching(false);
             setEvents([]);
             setHistogram([]);
+            setSearchWindow(null);
             setAggSeries(null);
             setTotal(0);
             setSeriesByKey({});
@@ -2510,6 +2518,7 @@ export function App() {
             metricNames,
             attrKeyOptions,
             lastTo: lastToRef.current,
+            window: searchWindow,
             marks: windowMarks,
             markBefore,
             markAfter,
@@ -2571,6 +2580,7 @@ export function App() {
     setSearching(false);
     setEvents([]);
     setHistogram([]);
+    setSearchWindow(null);
     setWindowMarks([]);
     setMarkBefore(null);
     setMarkAfter(null);
@@ -2657,6 +2667,7 @@ export function App() {
     lastPaintHuntRef.current = paint.hunt;
     setEvents(paint.events);
     setHistogram(paint.histogram);
+    setSearchWindow(paint.window);
     histogramRef.current = paint.histogram;
     setWindowMarks(paint.marks);
     setMarkBefore(paint.markBefore);
@@ -2753,6 +2764,7 @@ export function App() {
       }
       setEvents([]);
       setHistogram([]);
+      setSearchWindow(null);
       histogramRef.current = [];
       setWindowMarks([]);
       setMarkBefore(null);
@@ -3235,13 +3247,14 @@ export function App() {
     }),
     [numericKeys, metricCatalog, range, live, findMetrics, metricLabelKeys],
   );
-  const windowFromMs = histogram[0]
-    ? Date.parse(histogram[0].t)
-    : Date.parse(isoFromLocal(from) ?? "");
-  const windowToMs =
-    Number.isFinite(windowFromMs) && spanMs > 0
-      ? windowFromMs + spanMs
-      : Date.parse(isoFromLocal(to) ?? "");
+  const clockFromMs = Date.parse(isoFromLocal(from) ?? "");
+  const { fromMs: windowFromMs, toMs: windowToMs } = searchWindowMs(searchWindow, {
+    fromMs: clockFromMs,
+    toMs:
+      Number.isFinite(clockFromMs) && spanMs > 0
+        ? clockFromMs + spanMs
+        : Date.parse(isoFromLocal(to) ?? ""),
+  });
   const barInterval = displayedHistogramInterval(spanMs, step, chart);
   const searchSlow = searching && searchElapsedMs >= SEARCH_SLOW_AFTER_MS;
   const compiled = compileQuery(q);
@@ -3341,14 +3354,14 @@ export function App() {
           openedAt: cut.openedAt,
           range, from, to, spanMs,
           fromMs: windowFromMs,
-          toMs: windowFromMs + spanMs,
+          toMs: windowToMs,
           result: cut.result,
         })
       : null;
   const compareWindows =
     compare && Number.isFinite(windowFromMs) && spanMs > 0
       ? compareFoldWindows({ mark: compare.mark, openedAt: compare.openedAt,
-          from, to, live, huntFromMs: windowFromMs, huntToMs: windowFromMs + spanMs })
+          from, to, live, huntFromMs: windowFromMs, huntToMs: windowToMs })
       : null;
   const washWindows =
     cut && cutWindows && !cutWindows.dead
