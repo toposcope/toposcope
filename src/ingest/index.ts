@@ -16,6 +16,7 @@ import {
   stampEvent,
   type LogEvent,
 } from "../shared/log-event";
+import { allocateArrivalSeq, releaseArrivalSeq } from "./arrival-seq";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import type { Losses } from "./otlp-reply";
 
@@ -31,33 +32,40 @@ export async function insertEvents(events: LogEvent[], losses?: Losses): Promise
     return 0;
   }
   return withInsertSlot(async () => {
-    const body = events
-      .map((event) => {
-        const flat = flattenAttrsCounted(
-          withFingerprint(
-            event.level,
-            event.message,
-            liftIdentities(liftException(event.attrs)),
-          ),
-        );
-        const attr_map = flat.attrs;
-        losses?.attrsCut(flat);
-        return JSON.stringify({
-          tenant_id: "default",
-          ts: toClickHouseDateTime(event.ts),
-          service: event.service,
-          host: event.host ?? "",
-          level: event.level,
-          message: event.message,
-          attrs: JSON.stringify(attr_map),
-          attr_map,
-          trace_id: pickTraceId(attr_map),
-        });
-      })
-      .join("\n");
-    await clickhouseInsertJsonEachRow(body);
-    recordReceived(events.length);
-    return events.length;
+    // Numbered in the order they arrived, before the insert: a batch is one run of numbers.
+    const seq = await allocateArrivalSeq(events.length);
+    try {
+      const body = events
+        .map((event, i) => {
+          const flat = flattenAttrsCounted(
+            withFingerprint(
+              event.level,
+              event.message,
+              liftIdentities(liftException(event.attrs)),
+            ),
+          );
+          const attr_map = flat.attrs;
+          losses?.attrsCut(flat);
+          return JSON.stringify({
+            tenant_id: "default",
+            ts: toClickHouseDateTime(event.ts),
+            service: event.service,
+            host: event.host ?? "",
+            level: event.level,
+            message: event.message,
+            attrs: JSON.stringify(attr_map),
+            attr_map,
+            trace_id: pickTraceId(attr_map),
+            seq: seq.from + i,
+          });
+        })
+        .join("\n");
+      await clickhouseInsertJsonEachRow(body);
+      recordReceived(events.length);
+      return events.length;
+    } finally {
+      releaseArrivalSeq(seq);
+    }
   });
 }
 

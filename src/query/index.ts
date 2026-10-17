@@ -1,3 +1,4 @@
+import { eventCursor, parseEventCursor } from "../shared/event-cursor";
 import type { Context } from "hono";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { parseLogEvent, type LogEvent, type LogLevel } from "../shared/log-event";
@@ -75,6 +76,7 @@ type LogRow = {
   level: string;
   message: string;
   attrs: string;
+  seq?: string | number;
 };
 
 type HistogramRow = {
@@ -220,8 +222,17 @@ function buildWhere(
     params.to = filters.to;
   }
   if (withCursor && filters.cursor) {
-    where.push("ts < parseDateTime64BestEffort({cursor:String})");
-    params.cursor = filters.cursor;
+    // Time, then arrival sequence: rows that share the cursor's millisecond page on by `seq`.
+    const cursor = parseEventCursor(filters.cursor);
+    params.cursor = cursor.ts;
+    if (cursor.seq === null) {
+      where.push("ts < parseDateTime64BestEffort({cursor:String})");
+    } else {
+      where.push(
+        "(ts < parseDateTime64BestEffort({cursor:String}) OR (ts = parseDateTime64BestEffort({cursor:String}) AND seq < {cursor_seq:UInt64}))",
+      );
+      params.cursor_seq = String(cursor.seq);
+    }
   }
   if (filters.since) {
     where.push("ts >= parseDateTime64BestEffort({since:String})");
@@ -243,10 +254,10 @@ async function fetchLogPage(
     ? numericScanSettings
     : `SETTINGS max_execution_time = ${Number.isFinite(timeoutSec) ? Math.max(1, Math.trunc(timeoutSec)) : 30}`;
   const query = `
-    SELECT ts, service, host, level, message, attrs
+    SELECT ts, service, host, level, message, attrs, seq
     FROM logs
     WHERE ${sql}
-    ORDER BY ts DESC
+    ORDER BY ts DESC, seq DESC
     LIMIT {limit:UInt32}
     ${settings}
   `;
@@ -274,7 +285,7 @@ async function searchLogPage(filters: SearchFilters): Promise<EventPage> {
     if (resolved.since) {
       return { events: await fetchLogPage(resolved, limit, 30) };
     }
-    const upper = resolved.cursor ?? resolved.to;
+    const upper = resolved.cursor ? parseEventCursor(resolved.cursor).ts : resolved.to;
     if (!upper) {
       return { events: await fetchLogPage(resolved, limit, 110, true) };
     }
@@ -915,7 +926,7 @@ export async function search(filters: SearchFilters): Promise<SearchResult> {
     ? 0
     : histogram.reduce((sum, bucket) => sum + bucket.n, 0);
   const oldest = events[events.length - 1];
-  const nextCursor = events.length === limit && oldest ? oldest.ts : null;
+  const nextCursor = events.length === limit && oldest ? eventCursor(oldest) : null;
   const kind = ingestedKind({
     eventsOnly,
     isDelta: Boolean(timed.since),
@@ -1176,7 +1187,7 @@ function rowToLogEvent(row: LogRow): LogEvent {
   }
 
   const host = row.host.trim() === "" ? undefined : row.host;
-  return parseLogEvent({
+  const event = parseLogEvent({
     ts: toIsoTimestamp(String(row.ts)),
     service: row.service,
     host,
@@ -1184,6 +1195,8 @@ function rowToLogEvent(row: LogRow): LogEvent {
     message: row.message,
     attrs,
   });
+  const seq = Number(row.seq ?? 0);
+  return Number.isSafeInteger(seq) && seq > 0 ? { ...event, seq } : event;
 }
 
 function queryHttpError(c: Context, err: unknown): Response | null {
