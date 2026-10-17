@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { HeadPicker } from "@/components/head-picker";
 import { downloadWidgetSeries, statExport } from "@/export-series";
 import { abbrevCount, formatAggStat } from "@/fill-histogram";
+import { printUnit } from "../metric-unit";
 import type { SearchAggResult } from "@/types";
 import { seriesLabel } from "../../query/agg";
 import {
@@ -159,6 +160,9 @@ export function StatWidget({
               </span>
               {agg === "rate" ? (
                 <span className="font-mono text-[15px] text-muted-foreground">/s</span>
+              ) : metric && !quiet && printUnit(aggResult?.unit) ? (
+                // #104: the unit as the app sent it (13h); a histogram's count has none.
+                <span className="font-mono text-[15px] text-muted-foreground">{printUnit(aggResult?.unit)}</span>
               ) : null}
             </div>
             <div

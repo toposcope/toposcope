@@ -25,6 +25,9 @@ export type SearchAggResult = {
   metric?: string;
   /** For an ingested metric: the unit its bars are in, as the app sent it. None for a histogram's count. */
   unit?: string;
+  /** A metric split by one label (#104): the label, and one line per value (8 and `other`). */
+  split?: string;
+  splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null }>;
 };
 
 export class InvalidAggError extends Error {
@@ -241,6 +244,21 @@ export function mergeAggBuckets(
     byT.set(bucket.t, bucket);
   }
   return [...byT.values()].sort((a, b) => a.t.localeCompare(b.t));
+}
+
+/**
+ * A Live poll's split lines merged into the painted ones, value by value (#104). The poll
+ * names the lines and their window numbers; a value it no longer keeps is dropped.
+ */
+export function mergeAggSplits<S extends { key: string; buckets: AggBucket[] }>(
+  prev: readonly S[] | undefined,
+  incoming: readonly S[],
+): S[] {
+  const painted = new Map((prev ?? []).map((line) => [line.key, line.buckets]));
+  return incoming.map((line) => ({
+    ...line,
+    buckets: mergeAggBuckets(painted.get(line.key) ?? [], line.buckets),
+  }));
 }
 
 export function alignAggBuckets(

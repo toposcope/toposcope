@@ -216,7 +216,7 @@ export function ExtraPanel({
     >
       <div
         className={cn(
-          "flex h-[30px] shrink-0 touch-none items-center gap-2 overflow-hidden rounded-t-[5.4px] border-b border-white/[0.08] pr-1 pl-3",
+          "flex min-h-[30px] shrink-0 touch-none items-center gap-2 overflow-hidden rounded-t-[5.4px] border-b border-white/[0.08] pr-1 pl-3",
           armed ? "bg-destructive/14" : "bg-background/45",
           moving ? "cursor-grabbing" : "cursor-grab",
           lockChrome && "pointer-events-none opacity-50",

@@ -49,9 +49,11 @@ export type CompareFoldProps = {
   plotReady?: boolean;
   onPaintLines?: (lines: number) => void;
   onClose: () => void;
+  /** Where the pinned plot starts, so the fold lines up under it. */
+  plotLeft?: number;
 };
 
-export type CompareFoldHunt = Omit<CompareFoldProps, "split" | "seriesKeys">;
+export type CompareFoldHunt = Omit<CompareFoldProps, "split" | "seriesKeys" | "plotLeft">;
 
 type FoldRow = {
   key: string;
@@ -186,6 +188,7 @@ export function CompareFold({
   plotReady = true,
   onPaintLines,
   onClose,
+  plotLeft = 47,
 }: CompareFoldProps) {
   const countFormat = useCountFormat();
   const formatCount = (n: number) => formatFieldCount(n, countFormat);
@@ -398,10 +401,10 @@ export function CompareFold({
       data-compare-fold=""
       title={title}
       className={cn(
-        "mt-1.5 mr-2.5 ml-[47px] min-w-0 shrink-0 overflow-hidden rounded-[4.4px] border bg-[#0f0f11]",
+        "mt-1.5 mr-2.5 min-w-0 shrink-0 overflow-hidden rounded-[4.4px] border bg-[#0f0f11]",
         showStack ? "flex flex-col" : "flex h-[30px] items-center gap-[7px] pr-1 pl-2.5",
       )}
-      style={{ borderColor: "oklch(0.906 0.014 84 / 28%)" }}
+      style={{ borderColor: "oklch(0.906 0.014 84 / 28%)", marginLeft: plotLeft }}
     >
       {showStack ? (
         <>
