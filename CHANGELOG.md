@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A quiet source's hatched span says only whose it is when two or more sources are short, as 5g draws it (“site-0417”, not “no rows from site-0417 — not answering, not quiet”). A lone quiet source keeps the whole sentence. [#160](https://github.com/toposcope/toposcope/issues/160)
+
 ## 0.5.5
 
 A fingerprint says which rules made it. The rules behind an `e1` changed in 0.4.9 and 0.4.11, so two instances on different releases give one bug two ids, and a collecting instance read that as one bug stopped and another first seen. The key is now the revision: `e1` is today's rules, and when the hash inputs change again new rows carry `e2`. The bar takes either; a pulled row keeps the key its source gave it, and a sender's own `e1`, `e2`, … are dropped. When the hunt's rows in a cut's window were fingerprinted by more than one set of rules, Fingerprints waits — “Not cut — two sets of fingerprint rules in this window”, with each side's keys — and Compare on an id shows no delta. Stored rows are not rewritten. [#142](https://github.com/toposcope/toposcope/issues/142)

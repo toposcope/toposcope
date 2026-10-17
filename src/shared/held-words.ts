@@ -116,12 +116,12 @@ export function hatchLabel(gap: HeldGap, sources: HeldSource[], shortCount: numb
   if (gap.kind === "hole") {
     return sources.length > 1 ? `${gap.source} · hole · gone at source` : "hole · gone at source";
   }
+  if (shortCount > 1) {
+    return gap.source;
+  }
   if (gap.kind === "quiet") {
     const verb = source?.state.kind === "quiet" ? quietVerb(source.state.connects) : "not answering";
     return `no rows from ${gap.source} — ${verb}, not quiet`;
-  }
-  if (shortCount > 1) {
-    return gap.source;
   }
   return sources.length > 1 ? `${gap.source} · not here yet` : "not here yet";
 }
