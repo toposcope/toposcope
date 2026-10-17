@@ -26,6 +26,22 @@ describe("pulled rows (#136)", () => {
     origin: { id: origin, seq },
   });
 
+  test("two pulls that overlap store a row once (a link just pasted beside the pass)", async () => {
+    const origin = `race-${tag}`;
+    const raced = (seq: number): FeedRow => ({ ...row(seq, origin), service: `race${tag}` });
+    const results = await Promise.all([
+      insertPulled([raced(1), raced(2)], { name: "prod-eu" }, "here-id"),
+      insertPulled([raced(2), raced(1)], { name: "prod-eu" }, "here-id"),
+      insertPulled([raced(1)], { name: "prod-eu" }, "here-id"),
+    ]);
+    expect(results.reduce((n, r) => n + r.stored, 0)).toBe(2);
+    const held = await clickhouseQuery<{ n: string | number }>(
+      "SELECT count() AS n FROM logs WHERE src_id = {id:String}",
+      { id: origin },
+    );
+    expect(Number(held[0]?.n)).toBe(2);
+  });
+
   test("stored as it came, once: a retry, an overlap and a row of our own are not stored again", async () => {
     const first = await insertPulled([row(1), row(2), row(3)], { name: "prod-eu" }, "here-id");
     expect(first).toEqual({ stored: 3, skipped: 0 });

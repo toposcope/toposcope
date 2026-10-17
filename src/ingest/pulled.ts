@@ -9,13 +9,34 @@ import { allocateArrivalSeq, releaseArrivalSeq } from "./arrival-seq";
 import { withInsertSlot } from "./backpressure";
 
 /**
+ * Pulled inserts run one at a time. Two pulls of one source can overlap — a link just pasted
+ * starts at once beside the 5-second pass, and a source that calls out delivers on its own
+ * request — and each checks which origins are already here before it inserts, so overlapping
+ * ones would both find a row missing and both store it.
+ */
+let pulledChain: Promise<unknown> = Promise.resolve();
+function onePulledAtATime<T>(work: () => Promise<T>): Promise<T> {
+  const run = pulledChain.then(work, work);
+  pulledChain = run.catch(() => undefined);
+  return run;
+}
+
+/**
  * Rows pulled over a link (#136), stored as they were at the source: its `e1` and attributes as
  * they are, its `toposcope` (the source's name for a row that entered there unnamed), and its
  * origin beside them. A row whose origin is already here — a retry, two links whose filters
  * overlap, a re-pull, or a row that left here and came back — is not stored again. Each stored
  * row takes a position here, so it can be fed on.
  */
-export async function insertPulled(
+export function insertPulled(
+  rows: FeedRow[],
+  source: { name: string },
+  hereId: string,
+): Promise<{ stored: number; skipped: number }> {
+  return onePulledAtATime(() => insertPulledNow(rows, source, hereId));
+}
+
+async function insertPulledNow(
   rows: FeedRow[],
   source: { name: string },
   hereId: string,
