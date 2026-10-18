@@ -24,6 +24,7 @@ message ScopeMetrics {
 
 message Metric {
   string name = 1;
+  string description = 2;
   string unit = 3;
   oneof data {
     Gauge gauge = 5;

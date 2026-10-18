@@ -6,9 +6,11 @@ import {
 import {
   InvalidMetricError,
   parseMetricPoint,
+  parseMetricPointDescription,
   parseMetricPointUnit,
   type MetricBuckets,
 } from "../shared/metric";
+import { rememberMetricDescriptions } from "../shared/metric-descriptions";
 import { rememberMetricKinds } from "../shared/metric-kinds";
 import { rememberMetricUnits } from "../shared/metric-units";
 import { incMetric } from "../metrics";
@@ -134,6 +136,7 @@ async function otlpMetrics(c: Context, payload: unknown): Promise<Response> {
     // Kinds and units first: writing one twice is harmless, and a retry after a failure here stores no point twice.
     await rememberMetricKinds(mapped.kinds);
     await rememberMetricUnits(mapped.units);
+    await rememberMetricDescriptions(mapped.descriptions);
     // Buckets before the counts: a retry after a failure in between repeats a bar's
     // buckets, which leaves its percentiles where they were, and no count twice.
     await insertMetricBuckets(mapped.buckets);
@@ -187,13 +190,18 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
 
   const points = [];
   const units = new Map<string, string>();
+  const descriptions = new Map<string, string>();
   for (const row of raw) {
     try {
       const point = parseMetricPoint(row);
       const unit = parseMetricPointUnit(row);
+      const description = parseMetricPointDescription(row);
       points.push(point);
       if (unit) {
         units.set(point.name, unit);
+      }
+      if (description) {
+        descriptions.set(point.name, description);
       }
     } catch (err) {
       const message =
@@ -208,6 +216,7 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
 
   try {
     await rememberMetricUnits(units);
+    await rememberMetricDescriptions(descriptions);
     const ingested = await insertMetricPoints(points);
     incMetric("ingest_metrics", ingested);
     return c.json({ ingested });

@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+A metric keeps the description it was sent with. An OTLP metric carries one beside its unit, the sentence its author wrote about it (“Free disk nobody can be sold because vCPUs or memory ran out first”), and ingest dropped it. It is now kept per name, as the unit is: the last one sent wins, a histogram's goes on its name and its sum, and it is cut to 300 characters. A JSON point takes an optional `description` of up to 300 characters. `/api/metric-names` rows and a metric series carry it beside `unit`. Boot adds one ClickHouse table, `metric_descriptions`. [#167](https://github.com/toposcope/toposcope/issues/167)
+
 ## 0.5.6
 
 A quiet source's hatched span says only whose it is when two or more sources are short, as 5g draws it (“site-0417”, not “no rows from site-0417 — not answering, not quiet”). A lone quiet source keeps the whole sentence. [#160](https://github.com/toposcope/toposcope/issues/160)

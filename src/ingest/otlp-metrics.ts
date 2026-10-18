@@ -1,5 +1,5 @@
 import { maxAttrKeysPerEvent } from "../shared/attrs";
-import { isMetricIdent, metricUnitOf, type MetricBuckets, type MetricPoint } from "../shared/metric";
+import { isMetricIdent, metricDescriptionOf, metricUnitOf, type MetricBuckets, type MetricPoint } from "../shared/metric";
 import type { MetricKind } from "../shared/metric-kinds";
 import type { Losses } from "./otlp-reply";
 import type { RunningTotals } from "./running-totals";
@@ -269,6 +269,8 @@ export type MappedMetrics = {
    * `<name>.sum`, not on `<name>.count`, which counts observations.
    */
   units: Map<string, string>;
+  /** The description each stored name came with (#167): on the same names as its unit. */
+  descriptions: Map<string, string>;
 };
 
 /**
@@ -295,6 +297,7 @@ export function mapOtlpMetrics(
   const buckets: MetricBuckets[] = [];
   const kinds = new Map<string, MetricKind>();
   const units = new Map<string, string>();
+  const descriptions = new Map<string, string>();
 
   for (const rm of root.resourceMetrics) {
     const resourceAttrs = asRecord(asRecord(rm)?.resource)?.attributes as Attr[] | undefined;
@@ -306,6 +309,7 @@ export function mapOtlpMetrics(
         }
         const name = metricName(metric.name);
         const unit = metricUnitOf(metric.unit);
+        const description = metricDescriptionOf(metric.description);
         const gauge = asRecord(metric.gauge);
         const sum = asRecord(metric.sum);
         const histogram = asRecord(metric.histogram);
@@ -376,10 +380,12 @@ export function mapOtlpMetrics(
             if (hasSum) {
               kinds.set(`${name}.sum`, "counter");
               if (unit) units.set(`${name}.sum`, unit);
+              if (description) descriptions.set(`${name}.sum`, description);
             }
             if (kept) {
               kinds.set(name, "histogram");
               if (unit) units.set(name, unit);
+              if (description) descriptions.set(name, description);
             }
             // A running total that did not move is what a delta exporter would not have sent.
             if (running && since[0] === 0) {
@@ -407,6 +413,7 @@ export function mapOtlpMetrics(
           }
           kinds.set(name, kind);
           if (unit) units.set(name, unit);
+          if (description) descriptions.set(name, description);
           if (running && since[0] === 0) {
             continue;
           }
@@ -415,5 +422,5 @@ export function mapOtlpMetrics(
       }
     }
   }
-  return { points, buckets, kinds, units };
+  return { points, buckets, kinds, units, descriptions };
 }

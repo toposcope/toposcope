@@ -62,6 +62,16 @@ describe("searchProbes ClickHouse", () => {
       ENGINE = ReplacingMergeTree(seen)
       ORDER BY (tenant_id, name)
     `);
+    await clickhouseCommand(`
+      CREATE TABLE IF NOT EXISTS metric_descriptions (
+        tenant_id LowCardinality(String),
+        name LowCardinality(String),
+        description String,
+        seen DateTime64(3, 'UTC')
+      )
+      ENGINE = ReplacingMergeTree(seen)
+      ORDER BY (tenant_id, name)
+    `);
     const token = `probe${Date.now()}`;
     const toMs = Math.floor(Date.now() / 60_000) * 60_000;
     const fromMs = toMs - 3_600_000;
