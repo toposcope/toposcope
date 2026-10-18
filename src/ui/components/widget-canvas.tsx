@@ -19,6 +19,8 @@ import { printUnit } from "../metric-unit";
 import { seriesPickFromWidget } from "../agg-picker";
 import { metricReading, metricView } from "../series-list";
 import { FitName } from "@/components/fit-name";
+import { PanelNote, PanelTitle } from "@/components/panel-words";
+import { panelLines, panelNote, type PanelLines } from "../panel-lines";
 import { WidgetUpdated } from "@/components/widget-updated";
 import { Button } from "@/components/ui/button";
 import {
@@ -300,15 +302,23 @@ export function WidgetCanvas({
         : ghost
       : null;
 
+  /** A metric panel's lines put together (#169): merged metrics and named values, drawn as a split is. */
+  function linesOf(widget: WidgetDef): PanelLines | null {
+    if (widget.kind !== "timeseries" || !widget.metric) {
+      return null;
+    }
+    return panelLines(widget, (query) => series[seriesQueryKey(query)]?.agg ?? null);
+  }
+
   function lookup(widget: WidgetDef): SeriesData {
-    return (
-      series[lookupKey(widget)] ?? {
-        histogram: [],
-        agg: null,
-        total: 0,
-        values: [],
-      }
-    );
+    const base = series[lookupKey(widget)] ?? {
+      histogram: [],
+      agg: null,
+      total: 0,
+      values: [],
+    };
+    const lines = linesOf(widget);
+    return lines ? { ...base, agg: lines.agg } : base;
   }
 
   function reveal(id: string, bottomRow: number) {
@@ -485,8 +495,10 @@ export function WidgetCanvas({
 
   function extraBody(widget: WidgetDef, data: SeriesData, updated: ReactNode) {
     switch (widget.kind) {
-      case "timeseries":
-        return (
+      case "timeseries": {
+        const lines = linesOf(widget);
+        const note = lines ? panelNote(widget, lines) : null;
+        const spark = (
           <TimeseriesSpark
             buckets={data.histogram}
             split={widget.split}
@@ -522,6 +534,16 @@ export function WidgetCanvas({
             updated={updated}
           />
         );
+        if (!note && !lines?.leftOff.length) {
+          return spark;
+        }
+        return (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <PanelNote note={note} leftOff={lines?.leftOff ?? []} />
+            {spark}
+          </div>
+        );
+      }
       case "stat":
         return (
           <StatWidget
@@ -614,6 +636,19 @@ export function WidgetCanvas({
         const step = bucketStepLabel(data.histogram);
         const unit = printUnit(data.agg?.unit);
         const labels = Object.entries(widget.metricLabels);
+        const more = widget.lines?.length ?? 0;
+        if (widget.title) {
+          // #169: the title it was given; what the lines are is one hover away, and in its legend.
+          return (
+            <span
+              className="flex min-w-0 items-baseline gap-2 py-[3px]"
+              title={[widget.metric, ...(widget.lines ?? []).map((line) => line.metric)].join("\n")}
+            >
+              <span className="min-w-0 truncate text-[13px] font-semibold">{widget.title}</span>
+              {unit ? <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{unit}</span> : null}
+            </span>
+          );
+        }
         // #104: the cut is in the name's middle; the unit and the labels, which tell two panels of
         // one metric apart, are never cut (13c, 13d). The whole of both is one hover on the title.
         // #164: the name is cut to the room the panel gives it, and never reads as another metric.
@@ -622,6 +657,7 @@ export function WidgetCanvas({
             <FitName
               lead={`${metricReading(view.kind, step, true, view.reading)} · `}
               name={view.name}
+              trail={more > 0 ? ` + ${more}` : ""}
               others={canvasMetricNames}
               title={[
                 `${metricReading(view.kind, step, false, view.reading)} · ${view.name}${unit ? ` · ${unit}` : ""} · ${view.kind}`,
@@ -807,6 +843,17 @@ export function WidgetCanvas({
               }}
             >
               {pinned ? (
+                <div className="flex h-full min-h-0 flex-col">
+                {(() => {
+                  const lines = linesOf(widget);
+                  const note = lines ? panelNote(widget, lines) : null;
+                  return (
+                    <>
+                      <PanelTitle widget={widget} unit={printUnit(data.agg?.unit)} />
+                      <PanelNote note={note} leftOff={lines?.leftOff ?? []} />
+                    </>
+                  );
+                })()}
                 <HistogramChart
                   buckets={data.histogram}
                   loading={loading}
@@ -877,8 +924,9 @@ export function WidgetCanvas({
                   onFocusMark={onFocusMark}
                   compareFold={locked ? undefined : compareFold}
                   onCompareLines={setCompareLines}
-                  className="h-full"
+                  className="min-h-0 flex-1"
                 />
+                </div>
               ) : (
                 <ExtraPanel
                   widget={widget}

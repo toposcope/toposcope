@@ -299,10 +299,18 @@ export function SavedList({
         <button
           type="button"
           className="flex min-w-0 flex-1 items-start gap-1.5 py-[5px] pr-1 pl-1.5 text-left outline-none"
-          onClick={() => onApplySaved(item)}
+          onClick={() => {
+            hideCard();
+            onApplySaved(item);
+          }}
           onMouseEnter={showCard(item)}
           onMouseLeave={hideCard}
-          onFocus={showCard(item)}
+          onFocus={(event) => {
+            // Keyboard focus shows the card; the focus a click leaves behind does not.
+            if (event.currentTarget.matches(":focus-visible")) {
+              showCard(item)(event);
+            }
+          }}
           onBlur={hideCard}
           onKeyDown={onRowKey}
         >

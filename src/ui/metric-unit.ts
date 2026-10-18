@@ -7,8 +7,13 @@ export function printUnit(unit: string | null | undefined): string {
   if (!raw || raw === "1") {
     return "";
   }
-  return raw.replace(/[{}]/g, "");
+  // #169: the byte units read as people write them; every other unit as it was sent.
+  const written = readableUnits[raw];
+  return written ?? raw.replace(/[{}]/g, "");
 }
+
+/** UCUM's byte units as people write them (#169); `s` and `ms` already read that way. */
+const readableUnits: Record<string, string> = { By: "B", KiBy: "KiB", MiBy: "MiB", GiBy: "GiB" };
 
 /** "320 GiBy", or the number alone when there is no unit. */
 export function withUnit(value: string, unit: string | null | undefined): string {

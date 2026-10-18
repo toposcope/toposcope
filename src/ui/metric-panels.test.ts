@@ -64,8 +64,8 @@ describe("a metric panel split by one label (#104)", () => {
     const html = renderToStaticMarkup(
       createElement(MetricSpark, { times, result, readingWord: "avg", kindWord: "gauge", name: "agental.box.memory", window: "24h", live: false }),
     ).replace(/<!-- -->/g, "");
-    // The axis reads the peak with room above the highest line, as 13a's 96 GiBy over 83.2.
-    expect(html).toContain("95.7 GiBy");
+    // The axis reads the peak with room above the highest line, as 13a's 96 GiBy over 83.2; GiBy prints GiB (#169).
+    expect(html).toContain("95.7 GiB");
     expect(html).toContain("sellable 83.2");
     expect(html).toContain("used 35.2");
     expect(html).toContain("avg · gauge");
@@ -74,7 +74,7 @@ describe("a metric panel split by one label (#104)", () => {
   test("a single gauge says what it reads now; no points says the line is missing", () => {
     const one: SearchAggResult = { expr: "x", source: "metric", buckets: times.map((tt, i) => ({ t: tt, v: 40 + i })), stat: 41, kind: "gauge", unit: "GiBy" };
     const html = renderToStaticMarkup(createElement(MetricSpark, { times, result: one, readingWord: "avg", kindWord: "gauge", name: "m", window: "1h", live: false })).replace(/<!-- -->/g, "");
-    expect(html).toContain("avg · gauge · now 42 GiBy");
+    expect(html).toContain("avg · gauge · now 42 GiB");
     const none: SearchAggResult = { expr: "x", source: "metric", buckets: [], stat: null, kind: "gauge", split: "basis", splits: [] };
     const empty = renderToStaticMarkup(createElement(MetricSpark, { times, result: none, readingWord: "avg", kindWord: "gauge", name: "agental.box.disk", window: "24h", live: false })).replace(/<!-- -->/g, "");
     expect(empty).toContain("No points for agental.box.disk in this window (last 24h). The line is missing, not zero.");
@@ -82,12 +82,18 @@ describe("a metric panel split by one label (#104)", () => {
   });
 });
 
-describe("units as sent (#104)", () => {
+describe("units as sent (#104), the byte units as people write them (#169)", () => {
   test("no braces, nothing for 1, no conversion", () => {
     expect(printUnit("{request}")).toBe("request");
     expect(printUnit("1")).toBe("");
     expect(printUnit(undefined)).toBe("");
-    expect(withUnit("28.8G", "By")).toBe("28.8G By");
+    expect(withUnit("28.8G", "By")).toBe("28.8G B");
+    expect(printUnit("KiBy")).toBe("KiB");
+    expect(printUnit("MiBy")).toBe("MiB");
+    expect(printUnit("GiBy")).toBe("GiB");
+    expect(printUnit("s")).toBe("s");
+    expect(printUnit("ms")).toBe("ms");
+    expect(printUnit("GBy")).toBe("GBy");
     expect(withUnit("4", null)).toBe("4");
   });
 });
