@@ -116,6 +116,10 @@ type Props = {
   numericKeys: string[];
   metricNames: string[];
   updated?: ReactNode;
+  /** The panel's own editor (#169): its lines, their names, its title and note. */
+  editor?: ReactNode;
+  /** What each drawn line is (#169, 17f): its metric, its labels, what its sender said. */
+  lineInfo?: Record<string, { metric: string; labels: string; description: string | null }>;
   className?: string;
   compactToolbar?: boolean;
   lockChrome?: boolean;
@@ -391,6 +395,8 @@ export function HistogramChart({
   onReplaceY,
   aggResult,
   updated = null,
+  editor = null,
+  lineInfo,
   className,
   compactToolbar = false,
   lockChrome = false,
@@ -439,6 +445,8 @@ export function HistogramChart({
   const [hover, setHover] = useState<number | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
   const [headArmed, setHeadArmed] = useState(false);
+  /** The legend name pointed at (17f): its line comes forward, the others dim. */
+  const [legendLine, setLegendLine] = useState<string | null>(null);
   hoverRef.current = hover;
   headArmedRef.current = headArmed;
 
@@ -470,7 +478,8 @@ export function HistogramChart({
       )
     : [];
   const splitOn = splitLines.length > 0;
-  const endLabels = splitOn && splitLines.length <= endLabelMax;
+  // 17b: named lines (merged, or a split's values named) are said in the legend, where pointing at one tells what it is.
+  const endLabels = splitOn && splitLines.length <= endLabelMax && !lineInfo;
   const overlayPeak = finiteAggPeak(
     splitOn ? splitLines.flatMap((line) => line.vals) : overlayValues,
   );
@@ -1282,6 +1291,7 @@ export function HistogramChart({
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           {updated}
+          {metric && replaceY ? editor : null}
           <WidgetExportMenu
             disabled={buckets.length === 0}
             onExport={(format) =>
@@ -1533,7 +1543,9 @@ export function HistogramChart({
                           points={points}
                           fill="none"
                           stroke={line.color}
-                          strokeWidth="1.6"
+                          // 17f: pointing at a name in the legend brings its line forward and dims the others.
+                          opacity={legendLine && legendLine !== line.key ? 0.3 : 1}
+                          strokeWidth={legendLine === line.key ? "2.4" : "1.6"}
                           strokeDasharray={line.dashed ? "3 3" : undefined}
                           strokeLinejoin="round"
                           vectorEffect="non-scaling-stroke"
@@ -1758,7 +1770,7 @@ export function HistogramChart({
             <span>{scanReason}</span>
           ) : aggResult?.source === "refused" ? (
             <span>{aggResult.reason}</span>
-          ) : splitExpr && !metricQuiet ? (
+          ) : lineInfo && splitOn && !metricQuiet ? null : splitExpr && !metricQuiet ? (
             <span className="font-mono">
               {[metricReadingText, splitExpr, unitText].filter(Boolean).join(" · ")}
             </span>
@@ -1806,14 +1818,44 @@ export function HistogramChart({
           ? splitLines.map((line) => (
               <span
                 key={line.key}
-                className="flex items-center gap-[5px] font-mono text-[11px] text-muted-foreground"
+                tabIndex={lineInfo?.[line.key] ? 0 : undefined}
+                onMouseEnter={() => setLegendLine(line.key)}
+                onMouseLeave={() => setLegendLine(null)}
+                onFocus={() => setLegendLine(line.key)}
+                onBlur={() => setLegendLine(null)}
+                className={cn(
+                  "relative flex items-center gap-[5px] rounded px-1 text-muted-foreground outline-none",
+                  lineInfo ? "text-[12px]" : "font-mono text-[11px]",
+                  legendLine === line.key && lineInfo?.[line.key] && "bg-accent text-foreground",
+                )}
               >
+                {legendLine === line.key && lineInfo?.[line.key] ? (
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute bottom-full left-0 z-30 mb-1.5 flex w-[320px] flex-col gap-1.5 rounded-lg border border-white/14 bg-[#18181b] px-3 py-2.5 font-sans shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
+                  >
+                    <span className="text-[13px] font-semibold text-foreground">{line.key}</span>
+                    <span className="font-mono text-[11.5px] text-foreground/80">
+                      {[metricReadingText, lineInfo[line.key]!.metric, lineInfo[line.key]!.labels, unitText]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                    {lineInfo[line.key]!.description ? (
+                      <span className="flex items-baseline gap-1.5 text-[12px] leading-snug">
+                        <span className="shrink-0 rounded-[4px] border border-white/16 px-1 font-mono text-[10px]">sender</span>
+                        {lineInfo[line.key]!.description}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
                 <span
                   className="h-0 w-3 shrink-0 border-t-2"
                   style={{ borderColor: line.color, borderStyle: line.dashed ? "dashed" : "solid" }}
                 />
                 {line.key}
-                <span className="text-muted-foreground/65">{formatAggStat(lastValue(line.vals))}</span>
+                <span className="font-mono text-[11px] text-muted-foreground/65">
+                  {lineInfo ? withUnit(formatAggStat(lastValue(line.vals)), aggResult?.unit) : formatAggStat(lastValue(line.vals))}
+                </span>
               </span>
             ))
           : overlayOn ? (

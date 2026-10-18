@@ -1,5 +1,7 @@
-import type { WidgetDef } from "../../shared/widgets";
+import { cn } from "@/lib/utils";
+import { maxPanelNote, maxPanelTitle, type WidgetDef } from "../../shared/widgets";
 import type { PanelLines } from "../panel-lines";
+import { useDraft } from "../use-draft";
 
 /** How a panel's lines are made, beside its title (17b): merged, split, or one metric. */
 export function panelKindTag(widget: WidgetDef): string {
@@ -66,5 +68,68 @@ export function PanelNote({
         </p>
       ))}
     </div>
+  );
+}
+
+const panelFieldClass =
+  "rounded-md border border-white/14 bg-[#0a0a0c] px-2 outline-none placeholder:text-muted-foreground/60 focus:border-plate/55";
+
+/**
+ * The title while the panel is edited, where it shows (17d): its placeholder is
+ * the title the panel makes for itself, and left blank it makes that one again.
+ */
+export function PanelTitleField({
+  widget,
+  madeTitle,
+  onTitle,
+  compact = false,
+}: {
+  widget: WidgetDef;
+  madeTitle: string;
+  onTitle: (title: string) => void;
+  /** In an extra panel's head, where the title shares a row with its buttons. */
+  compact?: boolean;
+}) {
+  const [title, setTitle] = useDraft(widget.title ?? "", onTitle);
+  return (
+    <input
+      type="text"
+      aria-label="Panel title"
+      value={title}
+      maxLength={maxPanelTitle}
+      placeholder={madeTitle}
+      onChange={(e) => setTitle(e.target.value)}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        panelFieldClass,
+        "min-w-0 font-semibold",
+        compact ? "my-[2px] h-[24px] flex-1 text-[12.5px]" : "h-[30px] w-full text-[14px]",
+      )}
+    />
+  );
+}
+
+/** The note while the panel is edited, where it shows (17d): plain text, 160 characters, and the count. */
+export function PanelNoteField({ widget, onNote }: { widget: WidgetDef; onNote: (note: string) => void }) {
+  const [note, setNote] = useDraft(widget.note ?? "", onNote);
+  const length = note.length;
+  const full = length >= maxPanelNote;
+  return (
+    <label className="flex min-w-0 items-start gap-2 px-3 pt-1.5">
+      <textarea
+        aria-label="Panel note"
+        value={note}
+        maxLength={maxPanelNote}
+        rows={2}
+        placeholder="Note: what the panel is for, and what normal looks like. Plain text; two lines show."
+        onChange={(e) => setNote(e.target.value)}
+        onPointerDown={(e) => e.stopPropagation()}
+        className={cn(panelFieldClass, "min-w-0 flex-1 resize-none py-1 text-[12px] leading-snug", full && "border-amber-400/80")}
+      />
+      <span className={cn("shrink-0 pt-1 font-mono text-[11px] text-muted-foreground", full && "text-amber-400")}>
+        {length} / {maxPanelNote}
+        {full ? <span className="block">the note is full</span> : null}
+      </span>
+    </label>
   );
 }

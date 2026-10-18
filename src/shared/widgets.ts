@@ -586,6 +586,9 @@ function metricTitle(metric: string): string {
 }
 
 export function widgetTitle(widget: WidgetDef): string {
+  if (widget.title) {
+    return widget.title;
+  }
   switch (widget.kind) {
     case "stat":
       if (widget.metric) {

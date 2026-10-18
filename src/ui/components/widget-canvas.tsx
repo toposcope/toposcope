@@ -19,7 +19,8 @@ import { printUnit } from "../metric-unit";
 import { seriesPickFromWidget } from "../agg-picker";
 import { metricReading, metricView } from "../series-list";
 import { FitName } from "@/components/fit-name";
-import { PanelNote, PanelTitle } from "@/components/panel-words";
+import { PanelNote, PanelNoteField, PanelTitle, PanelTitleField } from "@/components/panel-words";
+import { PanelEditor } from "@/components/panel-editor";
 import { panelLines, panelNote, type PanelLines } from "../panel-lines";
 import { WidgetUpdated } from "@/components/widget-updated";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ import { histogramRetentionMs } from "../histogram-zoom";
 import {
   addHbar,
   addHistogram,
+  widgetTitle,
   addStat,
   attrSeriesKey,
   duplicateWidget,
@@ -214,6 +216,8 @@ export function WidgetCanvas({
   const [ghost, setGhost] = useState<Cell | null>(null);
   const [lift, setLift] = useState<{ dx: number; dy: number } | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
+  /** The panel being edited (#169, 17c–17d): its title and note are fields, its lines open under it. */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
   widgetsRef.current = widgets;
   dragRef.current = drag;
@@ -302,12 +306,58 @@ export function WidgetCanvas({
         : ghost
       : null;
 
+  /** Each named line's metric, labels and sender's words, for the legend's card (17f). */
+  function legendInfo(lines: PanelLines | null): Record<string, { metric: string; labels: string; description: string | null }> | undefined {
+    if (!lines?.legend.length) {
+      return undefined;
+    }
+    return Object.fromEntries(lines.legend.map(({ key, ...info }) => [key, info]));
+  }
+
   /** A metric panel's lines put together (#169): merged metrics and named values, drawn as a split is. */
   function linesOf(widget: WidgetDef): PanelLines | null {
     if (widget.kind !== "timeseries" || !widget.metric) {
       return null;
     }
     return panelLines(widget, (query) => series[seriesQueryKey(query)]?.agg ?? null);
+  }
+
+  /** The panel's editor (#169): its lines, names, title and note; a refused metric goes on a panel of its own. */
+  function editorFor(widget: WidgetDef): ReactNode {
+    if (widget.kind !== "timeseries" || !widget.metric || locked) {
+      return null;
+    }
+    const own = series[seriesQueryKey(widgetSeriesQuery(widget))]?.agg ?? null;
+    return (
+      <PanelEditor
+        widget={widget}
+        unit={own?.unit ?? null}
+        splitValues={(own?.splits ?? []).map((line) => line.key)}
+        editing={editingId === widget.id}
+        onEditing={(on) => setEditingId(on ? widget.id : null)}
+        onPatch={(patch) => onWidgets(patchWidget(widgets, widget.id, patch))}
+        onNewPanel={
+          atCap
+            ? undefined
+            : (metric) => {
+                const placed = addHistogram(widgets);
+                const added = placed.find((w) => !widgets.some((old) => old.id === w.id));
+                onWidgets(added ? patchWidget(placed, added.id, { metric, metricLabels: {}, agg: null, replaceY: true }) : placed);
+              }
+        }
+      />
+    );
+  }
+
+  /** The title a panel makes for itself: the title field's placeholder (17d). */
+  function madeTitleOf(widget: WidgetDef): string {
+    const more = widget.lines?.length ? ` + ${widget.lines.length}` : "";
+    const pick = widget.metric ? seriesPickFromWidget(null, widget.metric) : null;
+    if (pick?.kind !== "metric") {
+      return widgetTitle({ ...widget, title: undefined }) + more;
+    }
+    const view = metricView(pick, null, series[seriesQueryKey(widgetSeriesQuery(widget))]?.agg ?? null);
+    return `${metricReading(view.kind, "", true, view.reading)} · ${view.name}${more}`;
   }
 
   function lookup(widget: WidgetDef): SeriesData {
@@ -532,14 +582,21 @@ export function WidgetCanvas({
             onMetricSplit={(next) => onWidgets(patchWidget(widgets, widget.id, { metricSplit: next }))}
             live={live}
             updated={updated}
+            editor={editorFor(widget)}
+            namedLines={Boolean(lines?.legend.length)}
           />
         );
-        if (!note && !lines?.leftOff.length) {
+        const editing = editingId === widget.id;
+        if (!editing && !note && !lines?.leftOff.length) {
           return spark;
         }
         return (
           <div className="flex min-h-0 flex-1 flex-col">
-            <PanelNote note={note} leftOff={lines?.leftOff ?? []} />
+            {editing ? (
+              <PanelNoteField widget={widget} onNote={(next) => onWidgets(patchWidget(widgets, widget.id, { note: next }))} />
+            ) : (
+              <PanelNote note={note} leftOff={lines?.leftOff ?? []} />
+            )}
             {spark}
           </div>
         );
@@ -637,6 +694,19 @@ export function WidgetCanvas({
         const unit = printUnit(data.agg?.unit);
         const labels = Object.entries(widget.metricLabels);
         const more = widget.lines?.length ?? 0;
+        if (editingId === widget.id) {
+          return (
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <PanelTitleField
+                compact
+                widget={widget}
+                madeTitle={madeTitleOf(widget)}
+                onTitle={(next) => onWidgets(patchWidget(widgets, widget.id, { title: next }))}
+              />
+              {unit ? <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{unit}</span> : null}
+            </span>
+          );
+        }
         if (widget.title) {
           // #169: the title it was given; what the lines are is one hover away, and in its legend.
           return (
@@ -825,6 +895,7 @@ export function WidgetCanvas({
           return (
             <div
               key={widget.id}
+              data-panel={widget.id}
               className={cn(
                 "relative min-h-0 min-w-0",
                 "transition-[box-shadow] duration-500",
@@ -847,6 +918,20 @@ export function WidgetCanvas({
                 {(() => {
                   const lines = linesOf(widget);
                   const note = lines ? panelNote(widget, lines) : null;
+                  if (editingId === widget.id) {
+                    const patch = (next: Partial<WidgetDef>) => onWidgets(patchWidget(widgets, widget.id, next));
+                    return (
+                      <>
+                        <div className="flex min-w-0 items-center gap-2 px-3 pt-2">
+                          <PanelTitleField widget={widget} madeTitle={madeTitleOf(widget)} onTitle={(title) => patch({ title })} />
+                          {data.agg?.unit ? (
+                            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{printUnit(data.agg.unit)}</span>
+                          ) : null}
+                        </div>
+                        <PanelNoteField widget={widget} onNote={(next) => patch({ note: next })} />
+                      </>
+                    );
+                  }
                   return (
                     <>
                       <PanelTitle widget={widget} unit={printUnit(data.agg?.unit)} />
@@ -915,6 +1000,8 @@ export function WidgetCanvas({
                   numericKeys={numericKeys}
                   metricNames={metricNames}
                   updated={updated}
+                  editor={editorFor(widget)}
+                  lineInfo={legendInfo(linesOf(widget))}
                   compactToolbar={widget.w < 8}
                   lockChrome={locked}
                   retentionMs={retentionMs}

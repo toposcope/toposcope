@@ -238,6 +238,8 @@ type MetricNameRow = {
   kind?: MetricEntry["kind"];
   of?: string;
   reading?: MetricEntry["reading"];
+  unit?: string;
+  description?: string;
 };
 
 type MetricNamesReply = {
@@ -247,7 +249,15 @@ type MetricNamesReply = {
 };
 
 function metricEntry(item: MetricNameRow): MetricEntry {
-  return { name: item.k, kind: item.kind ?? "gauge", points: item.n, of: item.of, reading: item.reading };
+  return {
+    name: item.k,
+    kind: item.kind ?? "gauge",
+    points: item.n,
+    of: item.of,
+    reading: item.reading,
+    ...(item.unit ? { unit: item.unit } : {}),
+    ...(item.description ? { description: item.description } : {}),
+  };
 }
 
 /** A metric list is asked for by window alone: the log query does not filter metrics. */

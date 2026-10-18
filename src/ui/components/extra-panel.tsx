@@ -210,7 +210,7 @@ export function ExtraPanel({
     <div
       ref={rootRef}
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card transition-[box-shadow,border-color] duration-500",
+        "group/panel flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card transition-[box-shadow,border-color] duration-500",
         moving || highlight ? "border-ring" : "border-white/10",
       )}
     >

@@ -15,6 +15,9 @@ export type MetricEntry = {
   /** For the `.count` or `.sum` an older link carries: the histogram it is a reading of. */
   of?: string;
   reading?: HistogramReading;
+  /** The unit it was last sent with (#116) and what its sender said it is (#167): the line picker groups by the one and shows the other (#169). */
+  unit?: string;
+  description?: string;
 };
 
 /** A picked metric as it is shown: under which name, of what kind, read how. */

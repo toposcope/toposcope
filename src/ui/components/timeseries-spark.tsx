@@ -39,6 +39,10 @@ type Props = {
   onMetricSplit?: (next: string | null) => void;
   live?: boolean;
   updated?: ReactNode;
+  /** The panel's own editor (#169): its lines, their names, its title and note. */
+  editor?: ReactNode;
+  /** The panel's lines were given names (#169): a legend says them, not the line ends (17b). */
+  namedLines?: boolean;
 };
 
 /** The bar width of a card's series, as the plot would label it. Empty when there are not two bars to tell. */
@@ -65,6 +69,8 @@ export function TimeseriesSpark({
   onMetricSplit,
   live = false,
   updated = null,
+  editor = null,
+  namedLines = false,
 }: Props) {
   const numeric = Boolean(agg || metric);
   const refused = aggResult?.source === "refused";
@@ -116,6 +122,7 @@ export function TimeseriesSpark({
             name={view.name}
             window={catalog.window}
             live={live}
+            namedLines={namedLines}
           />
         ) : numeric ? (
           <div className="relative min-h-0 flex-1">
@@ -192,7 +199,15 @@ export function TimeseriesSpark({
           </>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2 px-3 pb-2">
+      {/* #169: the edit row shows on hover and while editing, not at rest (17b). */}
+      <div
+        className={cn(
+          "flex shrink-0 items-center gap-2 px-3 pb-2",
+          metric
+            ? "opacity-0 transition-opacity group-focus-within/panel:opacity-100 group-hover/panel:opacity-100 has-[[data-state=open]]:opacity-100"
+            : "",
+        )}
+      >
         {view && onMetricSplit ? (
           <MetricSplitPicker metric={view.name} value={metricSplit} onChange={onMetricSplit} />
         ) : (
@@ -229,6 +244,7 @@ export function TimeseriesSpark({
             }
           }}
         />
+        {editor}
         {updated}
       </div>
     </>
