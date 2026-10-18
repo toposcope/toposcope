@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+The Saved list can be read with many items. Twenty-two saved searches named by one script, `agental alert: …` and `agental stranded: box …`, all read alike at 240 px. Three or more names that share the words before a colon now fold into a group named by them, and each row shows only the rest; groups start closed past 20. A column left of the name says what each is: a bell when an alert watches it, sliders for a board, squares for one kept for its panels. A name takes two lines before it is cut, and `⋯` waits for hover. Past 8 saved searches a filter finds one by any word in its name, and a button per kind narrows the list to it. Hovering or focusing a row shows a card with the whole name, its query and range, and the alerts that watch it. The sidebar's edge drags from 240 to 400 px. [#168](https://github.com/toposcope/toposcope/issues/168)
+
 A metric keeps the description it was sent with. An OTLP metric carries one beside its unit, the sentence its author wrote about it (“Free disk nobody can be sold because vCPUs or memory ran out first”), and ingest dropped it. It is now kept per name, as the unit is: the last one sent wins, a histogram's goes on its name and its sum, and it is cut to 300 characters. A JSON point takes an optional `description` of up to 300 characters. `/api/metric-names` rows and a metric series carry it beside `unit`. Boot adds one ClickHouse table, `metric_descriptions`. [#167](https://github.com/toposcope/toposcope/issues/167)
 
 ## 0.5.6

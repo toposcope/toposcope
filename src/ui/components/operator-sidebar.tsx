@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Bell, House, MoreHorizontal, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CountText } from "@/components/count-text";
 import { FacetGroup } from "@/components/facet-group";
+import { SavedList } from "@/components/saved-list";
 import { BoardInputs, type BoardFieldBind } from "@/components/board-inputs";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +20,6 @@ import type {
   SavedSearch,
 } from "@/types";
 import { maxAttrFacets } from "../../shared/attrs";
-import { showsNoLogRows } from "../../shared/widgets";
-import { boardWatchRefuse } from "../boards";
 
 const facetFields: FacetField[] = ["level", "service", "host"];
 
@@ -145,172 +144,20 @@ export function OperatorSidebar({
           </div>
         ) : null}
         {toposcope}
-        <div className="p-3">
-          <div className="mb-1.5 flex items-center justify-between">
-            <h2 className="text-[12px] font-semibold tracking-[0.04em] text-muted-foreground uppercase">
-              Saved
-            </h2>
-            <span className="font-mono text-[11px] text-muted-foreground/60">
-              {saved.length}
-            </span>
-          </div>
-          {saved.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Save a search from the bar.</p>
-          ) : (
-            <ul className="flex flex-col gap-0.5">
-              {saved.map((item) => {
-                const watched = alerts.some((rule) => rule.saved_search_id === item.id);
-                const count = counts[item.id];
-                const isBoard = Boolean(item.board);
-                const other = elsewhere[item.id] ?? 0;
-                const slots = item.board
-                  ? `${item.board.keys.join(", ")}${item.board.win ? " + window" : ""}`
-                  : "";
-                const rowTitle = isBoard
-                  ? `Board · ${slots} — opens locked, only its inputs change. Opens a new tab · this one stays as it is.`
-                  : `${item.query || "all logs"} · ${item.range ?? "custom"} — opens a new tab · this one stays as it is.`;
-                const refuse = isBoard
-                  ? boardWatchRefuse({
-                      query: item.query,
-                      range: item.range,
-                      board: item.board ?? null,
-                    })
-                  : null;
-                return (
-                  <li
-                    key={item.id}
-                    className={`flex min-w-0 items-center gap-0.5 rounded-md ${
-                      activeSavedId === item.id ? "bg-accent" : "hover:bg-accent/60"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      title={rowTitle}
-                      className="flex min-w-0 flex-1 items-center gap-1.5 py-[5px] pr-0 pl-1.5 text-left"
-                      onClick={() => onApplySaved(item)}
-                    >
-                      {isBoard ? (
-                        <svg
-                          width="11"
-                          height="11"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          className="shrink-0 text-muted-foreground"
-                        >
-                          <path d="M4 7h9" />
-                          <path d="M17 7h3" />
-                          <path d="M4 17h3" />
-                          <path d="M11 17h9" />
-                          <circle cx="15" cy="7" r="2" />
-                          <circle cx="9" cy="17" r="2" />
-                        </svg>
-                      ) : null}
-                      {homeId === item.id ? (
-                        <House aria-label="Home" className="size-3 shrink-0 text-plate" />
-                      ) : null}
-                      <span className="min-w-0 flex-1 truncate text-[13px]">{item.name}</span>
-                      {other > 0 ? (
-                        <span
-                          title={`Also open in ${other} other tab${other === 1 ? "" : "s"}`}
-                          className="flex shrink-0 items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70"
-                        >
-                          <svg
-                            width="9"
-                            height="9"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.4"
-                          >
-                            <rect x="9" y="9" width="12" height="12" rx="2" />
-                            <path d="M5 15V5a2 2 0 0 1 2-2h8" />
-                          </svg>
-                          {other}
-                        </span>
-                      ) : null}
-                      {watched ? (
-                        <Bell className="size-3 shrink-0 text-muted-foreground" />
-                      ) : null}
-                      {!isBoard && showsNoLogRows(item.widgets) ? (
-                        <svg
-                          viewBox="0 0 16 16"
-                          width="12"
-                          height="12"
-                          role="img"
-                          aria-label="Kept for its panels: no log rows to count"
-                          className="shrink-0 text-muted-foreground"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                        >
-                          <title>Kept for its panels. Its table is off and its plot draws a metric, so there are no log rows to count.</title>
-                          <rect x="2" y="2" width="5" height="5" rx="1" />
-                          <rect x="9" y="2" width="5" height="5" rx="1" />
-                          <rect x="2" y="9" width="5" height="5" rx="1" />
-                          <rect x="9" y="9" width="5" height="5" rx="1" />
-                        </svg>
-                      ) : (
-                        <span
-                          title={refuse ?? undefined}
-                          className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground"
-                        >
-                          {isBoard || count === undefined ? "—" : <CountText n={count} floor={savedFloor?.(item) ?? false} />}
-                        </span>
-                      )}
-                    </button>
-                    {isBoard ? (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        title={refuse ?? undefined}
-                        className="mr-0.5 size-6 cursor-default opacity-35"
-                      >
-                        <MoreHorizontal />
-                      </Button>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button type="button" size="icon" variant="ghost" className="mr-0.5 size-6">
-                            <MoreHorizontal />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => onTest(item.id)}>
-                            Test
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => onAlert(item)}>
-                            Alert on this
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="h-auto flex-col items-start gap-0.5 py-1.5"
-                            onSelect={() => onSetHome(homeId === item.id ? null : item.id)}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <House className="size-3.5 text-plate" />
-                              {homeId === item.id ? "Unset Home" : "Set as Home"}
-                            </span>
-                            <span className="pl-5 text-[11.5px] text-muted-foreground">
-                              {homeId === item.id
-                                ? "The bare address opens on All logs"
-                                : "The bare address opens on this search"}
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => onDeleteSaved(item.id)}>
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <SavedList
+          saved={saved}
+          alerts={alerts}
+          counts={counts}
+          activeSavedId={activeSavedId}
+          homeId={homeId}
+          elsewhere={elsewhere}
+          savedFloor={savedFloor}
+          onApplySaved={onApplySaved}
+          onTest={onTest}
+          onAlert={onAlert}
+          onSetHome={onSetHome}
+          onDeleteSaved={onDeleteSaved}
+        />
         <div className={`mx-3 h-px bg-border ${facetsLocked ? "pointer-events-none opacity-50" : ""}`} />
         <div className={facetsLocked ? "pointer-events-none opacity-50" : ""}>
         {facetFields.map((field) => (

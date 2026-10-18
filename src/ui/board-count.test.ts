@@ -64,9 +64,13 @@ describe("a board's sidebar count", () => {
     expect("b1" in counts).toBe(false);
   });
 
-  test("shows — with the reason as its title, not 0", () => {
+  test("shows no count: the sliders say it is a board, and its ⋯ says why it cannot be watched (#168, 16j)", () => {
     const html = sidebar({ p1: 14 });
-    // The count badge itself, not the row's ⋯ (which already says it).
-    expect(html).toMatch(/title="Boards cannot be watched[^"]*"[^>]*>—<\/span>/);
+    const boardRow = html.slice(html.indexOf("fleet · box"), html.indexOf("box commands"));
+    expect(boardRow).not.toMatch(/>0<\/span>/);
+    expect(boardRow).not.toMatch(/>—<\/span>/);
+    expect(html).toMatch(/aria-label="A board"/);
+    expect(html).toMatch(/title="Boards cannot be watched[^"]*"[^>]*aria-label="More for fleet · box"/);
+    expect(html).toMatch(/>14<\/span>/);
   });
 });
