@@ -63,16 +63,18 @@ function lastMarkLabel(rule: AlertRule): string | null {
 }
 
 function webhookFail(rule: AlertRule): { label: string; title: string } | null {
-  const status = rule.last_status ?? "error";
   const when = rule.last_attempt_at ? firedLabel(rule.last_attempt_at) : null;
   const title = [rule.last_error, when].filter(Boolean).join(" · ");
   if ((rule.consecutive_failures ?? 0) >= 1) {
+    const status = rule.last_status ?? "error";
     const label =
       rule.consecutive_failures === 1
         ? `failed ${status}`
         : `failed ${status} ×${rule.consecutive_failures}`;
     return { label, title };
   }
+  // A rule that has not been attempted, or whose last attempt went through, has no failure.
+  const status = rule.last_status;
   if (status === "refused") {
     return { label: "refused", title };
   }
@@ -215,7 +217,8 @@ export function AlertsView({
                     {silenced ? <Badge variant="secondary">silenced</Badge> : null}
                   </span>
                 ) : (
-                <span className="flex items-center gap-2">
+                // Wraps rather than drawing FIRING over Last fired when the column is at its floor.
+                <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="relative h-1 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
                     <span
                       className={`absolute inset-y-0 left-0 ${
@@ -224,7 +227,7 @@ export function AlertsView({
                       style={{ width: `${pct}%` }}
                     />
                   </span>
-                  <span className="font-mono whitespace-nowrap tabular-nums">
+                  <span className="min-w-0 font-mono tabular-nums">
                     {point?.refused ? (
                       "—"
                     ) : typeof point?.value === "number" ? (

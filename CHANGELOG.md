@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Three small fixes from the 0.5.5 screenshots. The Alerts list no longer reads “failed error” under the webhook of a rule that has not been attempted yet; a failed POST, an eval error or a refuse still says so. A firing threshold row wraps FIRING under its value instead of drawing it over Last fired when the column is at its floor. On Search, a hatched span under 30% of the plot keeps a label as short as “not here yet” at its edge; a longer one says only whose span it is, as several short spans do, cut with an ellipsis if even that does not fit, so it no longer runs over the bars. [#158](https://github.com/toposcope/toposcope/issues/158)
+
 A metric panel's title is cut to the room its panel gives it, not to 18 characters. On an 880px panel `agental.box.stranded.disk` read `agental.box…disk`, the disk metric itself: the word that told the panel apart was the word cut. A name is now whole when it fits and cut in the middle only as far as the width needs, and a cut never reads as another metric on the canvas or in the window: `…stranded.disk`, not `agental.box…disk`, while `agental.box.disk` is a name. The picked name on the Series control and the metric in the pinned plot's hover are cut to their room the same way, and the hover never cuts a metric's labels. [#164](https://github.com/toposcope/toposcope/issues/164)
 
 ## 0.5.5
