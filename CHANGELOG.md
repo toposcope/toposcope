@@ -4,6 +4,8 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+## 0.5.6
+
 A quiet source's hatched span says only whose it is when two or more sources are short, as 5g draws it (“site-0417”, not “no rows from site-0417 — not answering, not quiet”). A lone quiet source keeps the whole sentence. [#160](https://github.com/toposcope/toposcope/issues/160)
 
 Three small fixes from the 0.5.5 screenshots. The Alerts list no longer reads “failed error” under the webhook of a rule that has not been attempted yet; a failed POST, an eval error or a refuse still says so. A firing threshold row wraps FIRING under its value instead of drawing it over Last fired when the column is at its floor. On Search, a hatched span under 30% of the plot keeps a label as short as “not here yet” at its edge; a longer one says only whose span it is, as several short spans do, cut with an ellipsis if even that does not fit, so it no longer runs over the bars. [#158](https://github.com/toposcope/toposcope/issues/158)
