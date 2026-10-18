@@ -44,6 +44,11 @@ Locked — links (0.5.x, [#133](https://github.com/toposcope/toposcope/issues/13
 - [Toposcope Links Held.html](Toposcope%20Links%20Held.html) — frames 5a–5r: what Search says an instance holds once rows are pulled: no links, a source caught up, behind, not answering, a hole, an errors-only instance, thirty sources, Live, narrowed to one source, every count a short source could feed as a floor, mixed sources, a sidebar that already leads ([#139](https://github.com/toposcope/toposcope/issues/139)); Fingerprints and Compare refusing across a gap ([#140](https://github.com/toposcope/toposcope/issues/140)), then judging with floors ([#141](https://github.com/toposcope/toposcope/issues/141)); rejects
 - [links-held/](links-held/) — crops for issues (5a–5r)
 
+Approved — the Saved list, 2026-10-18. Not in a cut yet; no issue yet.
+
+- [Toposcope Saved.dc.html](Toposcope%20Saved.dc.html) — frames 16a–16n: the sidebar's Saved list with 22 names that share their first words, as it reads today and grouped by the words before a colon; groups closed; a filter by name, one with no match, and buttons for one kind; the card on hover or focus with the whole name; a long name; the busiest row; a board, a search kept for its panels and a plain one; three saved searches; widened to 360 px; 50 on a board at 1280 × 800; rejects
+- [saved/](saved/) — crops for issues (16a–16n)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
