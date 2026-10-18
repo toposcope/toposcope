@@ -17,7 +17,8 @@ import {
 import { bucketStepLabel, TimeseriesSpark } from "@/components/timeseries-spark";
 import { printUnit } from "../metric-unit";
 import { seriesPickFromWidget } from "../agg-picker";
-import { metricReading, metricView, midCut } from "../series-list";
+import { metricReading, metricView } from "../series-list";
+import { FitName } from "@/components/fit-name";
 import { WidgetUpdated } from "@/components/widget-updated";
 import { Button } from "@/components/ui/button";
 import {
@@ -283,6 +284,10 @@ export function WidgetCanvas({
     return widget;
   });
   const pinnedWidget = displayWidgets.find(isPinnedHistogram);
+  /** Every metric a title could be read as: the canvas's own and the window's busiest. */
+  const canvasMetricNames = [
+    ...new Set([...widgets.flatMap((widget) => (widget.metric ? [widget.metric] : [])), ...metricNames]),
+  ];
   const extraRows = compareFold && !locked ? compareFoldExtraRows(compareLines) : 0;
   const rows = gridRows(displayWidgets) + extraRows;
   function canvasY(y: number): number {
@@ -611,19 +616,20 @@ export function WidgetCanvas({
         const labels = Object.entries(widget.metricLabels);
         // #104: the cut is in the name's middle; the unit and the labels, which tell two panels of
         // one metric apart, are never cut (13c, 13d). The whole of both is one hover on the title.
+        // #164: the name is cut to the room the panel gives it, and never reads as another metric.
         return (
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-[3px] font-mono text-[11.5px]">
-            <span
-              className="min-w-0 truncate"
+            <FitName
+              lead={`${metricReading(view.kind, step, true, view.reading)} · `}
+              name={view.name}
+              others={canvasMetricNames}
               title={[
                 `${metricReading(view.kind, step, false, view.reading)} · ${view.name}${unit ? ` · ${unit}` : ""} · ${view.kind}`,
                 labels.map(([k, v]) => `${k}:${v}`).join(" · "),
               ]
                 .filter(Boolean)
                 .join("\n")}
-            >
-              {metricReading(view.kind, step, true, view.reading)} · {midCut(view.name, 18)}
-            </span>
+            />
             {unit ? <span className="shrink-0 text-[11px] text-muted-foreground">{unit}</span> : null}
             {widget.metricSplit ? (
               <span className="inline-flex h-5 shrink-0 items-center rounded-[4px] border border-white/12 px-1.5 text-[10.5px] text-muted-foreground">

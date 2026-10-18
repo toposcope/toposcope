@@ -10,11 +10,11 @@ import {
   type SeriesSelectResult,
 } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog, type SeriesCatalog } from "../series-catalog";
+import { FitName } from "@/components/fit-name";
 import type { HistogramReading } from "../../shared/metric";
 import {
   buildSeriesList,
   metricReading,
-  midCut,
   readingMenu,
   splitHit,
   type MetricEntry,
@@ -164,9 +164,9 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
     pick.kind === "metric" ? (picked?.of ?? pick.name) : pick.kind === "key" ? pick.key : "";
   const kindWord = pick.kind === "key" ? "field" : pick.kind === "metric" ? (picked?.kind ?? "gauge") : "";
   const plainLabel = pick.kind === "rate" ? "Rate" : card ? "Count" : "Off";
-  const cutAt = variant === "toolbar" ? 29 : variant === "footer" ? 13 : 17;
-  const label = named ? midCut(fullName, cutAt) : plainLabel;
   const title = named ? `${fullName} · ${kindWord}` : plainLabel;
+  /** A picked name is cut to the control's room (#164), never into another listed name. */
+  const rivals = [...live.numericKeys, ...live.metrics.map((metric) => metric.name), ...Object.keys(live.picked)];
 
   let row = -1;
   return (
@@ -186,7 +186,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
               borderRadius: 2,
             }}
           >
-            <span className="truncate">{label}</span>
+            {named ? <FitName name={fullName} others={rivals} /> : <span className="truncate">{plainLabel}</span>}
           </button>
         ) : (
           <button
@@ -212,9 +212,11 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
                 {kindWord}
               </span>
             ) : null}
-            <span className={cn("min-w-0 flex-1 overflow-hidden text-left", named && "font-mono")}>
-              {label}
-            </span>
+            {named ? (
+              <FitName name={fullName} others={rivals} className="flex-1 text-left font-mono" />
+            ) : (
+              <span className="min-w-0 flex-1 overflow-hidden text-left">{plainLabel}</span>
+            )}
             <span className="shrink-0 text-[8px]" style={{ color: DIM }}>
               ▾
             </span>
