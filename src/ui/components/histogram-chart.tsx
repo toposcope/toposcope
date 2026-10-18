@@ -41,7 +41,8 @@ import {
 import { seriesPickFromWidget } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog } from "../series-catalog";
 import { formatMetricRef, metricExpr } from "../../shared/metric";
-import { metricReading, metricView, midCut, readingWords } from "../series-list";
+import { metricReading, metricView, readingWords, type MetricView } from "../series-list";
+import { FitName } from "@/components/fit-name";
 import { formatSpanShort } from "../time-range";
 import { SeriesPicker, SeriesReading } from "./series-picker";
 import { markPlotSpanMs } from "../change-marks";
@@ -222,6 +223,17 @@ function overlayAreaSegments(
   return segs;
 }
 
+/**
+ * The hover's metric row, named whole: the metric and its matchers. The card
+ * cuts the name to its room and never the matchers (#164).
+ */
+export function metricHoverLabel(
+  view: MetricView,
+  labels: Record<string, string>,
+): { name: string; label: string } {
+  return { name: view.name, label: metricExpr(view.name, labels) };
+}
+
 export function HistogramHover({
   bucket,
   rangeLabel,
@@ -240,7 +252,16 @@ export function HistogramHover({
   split: HistogramSplit;
   left: number | string;
   side: "left" | "right";
-  overlay?: { label: string; v: number | null; reading?: string; words?: string; unit?: string } | null;
+  overlay?: {
+    label: string;
+    /** A metric's name, which `label` starts with; only the name is cut, to the card's room. */
+    name?: string;
+    others?: readonly string[];
+    v: number | null;
+    reading?: string;
+    words?: string;
+    unit?: string;
+  } | null;
   /** A split metric: each line's value in this bar, with its unit. */
   metricLines?: MetricHoverLines | null;
   hint: string;
@@ -297,10 +318,21 @@ export function HistogramHover({
             className="size-1.5 rounded-[2px]"
             style={{ background: AGG_COLOR }}
           />
-          <span className="min-w-0 truncate font-mono text-[10.5px] text-foreground/85">
-            {overlay.reading ? <span style={{ color: AGG_COLOR }}>{overlay.reading} </span> : null}
-            {overlay.label}
-          </span>
+          {overlay.name && overlay.label.startsWith(overlay.name) ? (
+            <FitName
+              lead={overlay.reading ? `${overlay.reading} ` : ""}
+              leadStyle={{ color: AGG_COLOR }}
+              name={overlay.name}
+              trail={overlay.label.slice(overlay.name.length)}
+              others={overlay.others}
+              className="font-mono text-[10.5px] text-foreground/85"
+            />
+          ) : (
+            <span className="min-w-0 truncate font-mono text-[10.5px] text-foreground/85">
+              {overlay.reading ? <span style={{ color: AGG_COLOR }}>{overlay.reading} </span> : null}
+              {overlay.label}
+            </span>
+          )}
           <span className="ml-auto font-mono tabular-nums text-foreground">
             {withUnit(formatAggStat(overlay.v), overlay.unit)}
           </span>
@@ -1005,9 +1037,10 @@ export function HistogramChart({
   const metricReadingText = view ? metricReading(view.kind, stepLabel, false, view.reading) : "";
   const hoverOverlay =
     overlayOn && hover !== null
-      ? metric
+      ? metric && view
         ? {
-            label: midCut(overlayLabel, 26),
+            ...metricHoverLabel(view, metricLabels),
+            others: catalog.metrics.map((entry) => entry.name),
             v: overlayValues[hover] ?? null,
             unit: aggResult?.unit,
             reading: metricReadingText,
