@@ -86,6 +86,7 @@ export function MetricSpark({
   name,
   window,
   live,
+  namedLines = false,
 }: {
   times: string[];
   result: SearchAggResult | null;
@@ -95,6 +96,8 @@ export function MetricSpark({
   name: string;
   window: string;
   live: boolean;
+  /** Lines given names (#169): said in a legend under the plot, with their values (17b). */
+  namedLines?: boolean;
 }) {
   const lines = useMemo(() => sparkLines(times, result), [times, result]);
   const unit = result?.unit;
@@ -106,8 +109,8 @@ export function MetricSpark({
   const step = n > 1 ? Date.parse(times[1]!) - Date.parse(times[0]!) : 60_000;
   const seconds = step < 60_000;
   const split = Boolean(result?.splits);
-  const named = split && lines.length <= endLabelMax;
-  const legend = split && lines.length > endLabelMax;
+  const named = split && lines.length <= endLabelMax && !namedLines;
+  const legend = split && (lines.length > endLabelMax || namedLines);
 
   // Live keeps a resting pointer on its bar: held by time, not by position (13i).
   const [hoverT, setHoverT] = useState<string | null>(null);
@@ -248,7 +251,17 @@ export function MetricSpark({
           ) : null}
         </div>
       </div>
-      {legend ? (
+      {legend && namedLines ? (
+        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 pl-12 text-[11.5px]">
+          {lines.map((l) => (
+            <span key={l.key} className="flex min-w-0 items-center gap-1.5">
+              <span className="h-0 w-3 shrink-0 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />
+              <span className="min-w-0 truncate">{l.key}</span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{withUnit(formatAggStat(lastValue(l.vals)), unit)}</span>
+            </span>
+          ))}
+        </div>
+      ) : legend ? (
         <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-0.5 pl-12 font-mono text-[10.5px]">
           {lines.map((l) => (
             <span key={l.key} className="flex min-w-0 items-center gap-1.5">
