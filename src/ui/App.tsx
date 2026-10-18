@@ -55,6 +55,7 @@ import { eventKey, indexOfEventKey } from "./event-key";
 import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
 import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
+import { clampSidebar, sidebarDefault } from "./saved-list";
 import { joinTraceRef } from "../shared/ids";
 import {
   formatChangeMarkLabel,
@@ -418,6 +419,58 @@ export function App() {
     () => parseSearchUrl(typeof window === "undefined" ? "" : window.location.search),
     [],
   );
+  // The sidebar's width (#168, 16l): dragged between 240 and 400, remembered in this browser.
+  const [sideW, setSideW] = useState(() => {
+    try {
+      const stored = Number(localStorage.getItem("toposcope.sidebarWidth"));
+      return Number.isFinite(stored) && stored >= sidebarDefault ? stored : sidebarDefault;
+    } catch {
+      return sidebarDefault;
+    }
+  });
+  const plotRef = useRef<HTMLDivElement>(null);
+  const keepSideW = (width: number) => {
+    setSideW(width);
+    try {
+      localStorage.setItem("toposcope.sidebarWidth", String(width));
+    } catch {
+      // A browser that keeps nothing starts at 240 next time.
+    }
+  };
+  const sideWFor = (wanted: number, from: number, plotNow: number) => clampSidebar(wanted, from, plotNow);
+  const onSideEdgeDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    const edge = event.currentTarget;
+    edge.setPointerCapture(event.pointerId);
+    const startX = event.clientX;
+    const startW = sideW;
+    const startPlot = plotRef.current?.getBoundingClientRect().width ?? Infinity;
+    let width = startW;
+    const move = (e: PointerEvent) => {
+      width = sideWFor(startW + (e.clientX - startX), startW, startPlot);
+      setSideW(width);
+    };
+    const up = () => {
+      edge.removeEventListener("pointermove", move);
+      edge.removeEventListener("pointerup", up);
+      edge.removeEventListener("pointercancel", up);
+      keepSideW(width);
+    };
+    edge.addEventListener("pointermove", move);
+    edge.addEventListener("pointerup", up);
+    edge.addEventListener("pointercancel", up);
+  };
+  const onSideEdgeKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === "ArrowRight" ? 16 : event.key === "ArrowLeft" ? -16 : 0;
+    if (step === 0) {
+      return;
+    }
+    event.preventDefault();
+    keepSideW(sideWFor(sideW + step, sideW, plotRef.current?.getBoundingClientRect().width ?? Infinity));
+  };
   const [from, setFrom] = useState(boot.from);
   const [to, setTo] = useState(boot.to);
   const [range, setRange] = useState<RangeMode>(boot.range);
@@ -3831,10 +3884,27 @@ export function App() {
             onDuplicate={onDuplicateWorkspace}
           />
           <div className="flex min-h-0 min-w-0 flex-1">
-          <aside className="hidden min-h-0 min-w-0 w-60 max-w-[26%] shrink-0 overflow-x-hidden overflow-y-auto border-r bg-[#0f0f11] md:block">
+          <aside
+            className="hidden min-h-0 min-w-0 max-w-[34%] shrink-0 overflow-x-hidden overflow-y-auto border-r bg-[#0f0f11] md:block"
+            style={{ width: sideW }}
+          >
             {sidebar}
           </aside>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Sidebar width"
+            aria-valuemin={sidebarDefault}
+            aria-valuemax={400}
+            aria-valuenow={sideW}
+            tabIndex={0}
+            title={`${sideW} px · drag · double-click for ${sidebarDefault}`}
+            onPointerDown={onSideEdgeDown}
+            onDoubleClick={() => keepSideW(sidebarDefault)}
+            onKeyDown={onSideEdgeKey}
+            className="relative z-10 -ml-[3px] hidden w-[5px] shrink-0 cursor-col-resize outline-none hover:bg-plate/70 focus-visible:bg-plate/70 md:block"
+          />
+          <div ref={plotRef} className="-ml-[2px] flex min-h-0 min-w-0 flex-1 flex-col">
             {isSurr ? (
               activeInspect ? (
                 <>
