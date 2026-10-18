@@ -25,6 +25,8 @@ export type SearchAggResult = {
   metric?: string;
   /** For an ingested metric: the unit its bars are in, as the app sent it. None for a histogram's count. */
   unit?: string;
+  /** For an ingested metric: the description its sender gave it (#167). A histogram's for every reading. */
+  description?: string;
   /** A metric split by one label (#104): the label, and one line per value (8 and `other`). */
   split?: string;
   splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null }>;

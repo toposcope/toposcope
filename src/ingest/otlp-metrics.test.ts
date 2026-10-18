@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { forgetMetricKinds } from "../shared/metric-kinds";
+import { forgetMetricDescriptions } from "../shared/metric-descriptions";
 import { forgetMetricUnits } from "../shared/metric-units";
 import { MAX_BATCH } from "./index";
 import { ingestMetricsRoute } from "./metrics";
@@ -352,6 +353,66 @@ describe("a metric's unit", () => {
   });
 });
 
+// #167: agental said what each metric is, and the description was dropped at ingest.
+describe("a metric's description", () => {
+  const descriptions = (metrics: object[]) =>
+    Object.fromEntries(mapOtlpMetrics(request(metrics), new Losses(), upAnHour()).descriptions);
+  const stranded = "Free disk nobody can be sold because vCPUs or memory ran out first, by basis, in GiB.";
+
+  test("a gauge keeps the description it was sent with, beside its unit", () => {
+    expect(
+      descriptions([
+        { name: "agental.box.stranded.disk", unit: "GiBy", description: stranded, gauge: { dataPoints: [num(17.2)] } },
+      ]),
+    ).toEqual({ "agental.box.stranded.disk": stranded });
+  });
+
+  test("a histogram's description goes on its name and its sum, as its unit does, and not on its count", () => {
+    expect(
+      descriptions([
+        {
+          name: "http.server.request.duration",
+          unit: "s",
+          description: "How long a request took.",
+          histogram: {
+            aggregationTemporality: DELTA,
+            dataPoints: [{ timeUnixNano: T, count: "40", sum: 3.2, bucketCounts: ["30", "10"], explicitBounds: [0.1] }],
+          },
+        },
+      ]),
+    ).toEqual({
+      "http.server.request.duration": "How long a request took.",
+      "http.server.request.duration.sum": "How long a request took.",
+    });
+  });
+
+  test("no description, or a blank one, is not a description", () => {
+    expect(
+      descriptions([
+        { name: "queue.depth", gauge: { dataPoints: [num(4)] } },
+        { name: "queue.age", description: "   ", gauge: { dataPoints: [num(4)] } },
+      ]),
+    ).toEqual({});
+  });
+
+  test("a description longer than 300 characters is cut to 300, and the points still count", () => {
+    const out = mapOtlpMetrics(
+      request([{ name: "queue.depth", description: "a".repeat(400), gauge: { dataPoints: [num(4)] } }]),
+      new Losses(),
+      upAnHour(),
+    );
+    expect(out.descriptions.get("queue.depth")).toBe("a".repeat(300));
+    expect(out.points).toHaveLength(1);
+  });
+
+  test("protobuf carries the description too", () => {
+    const body = request([{ name: "agental.box.disk", unit: "GiBy", description: "Disk.", gauge: { dataPoints: [num(416)] } }]);
+    const decoded = decodeOtlpMetricsProtobuf(encodeOtlpMetricsProtobuf(body));
+    const out = mapOtlpMetrics(decoded, new Losses(), upAnHour());
+    expect(Object.fromEntries(out.descriptions)).toEqual({ "agental.box.disk": "Disk." });
+  });
+});
+
 describe("a counter or a histogram sent as a running total", () => {
   /** One export of a counter and a histogram that both started `startedAgoMs` before the first export. */
   const exportAt = (minute: number, counter: number, count: number, sum: number, startedAgoMs = 30_000) => {
@@ -553,6 +614,7 @@ describe("POST /v1/metrics", () => {
     stored = {};
     forgetMetricKinds();
     forgetMetricUnits();
+    forgetMetricDescriptions();
     globalThis.fetch = Object.assign(
       async (input: string | URL | Request, init?: RequestInit) => {
         const query = new URL(String(input)).searchParams.get("query") ?? "";
@@ -618,6 +680,37 @@ describe("POST /v1/metrics", () => {
     expect(res.status).toBe(200);
     expect(stored.metric_units!.map((row) => [row.name, row.unit])).toEqual([["agental.box.memory", "GiBy"]]);
     expect(stored.metrics).toHaveLength(2);
+  });
+
+  test("each name's description is stored, when it came with one", async () => {
+    const res = await postJson(
+      request([
+        { name: "process.memory.usage", unit: "By", description: "Memory the process holds.", gauge: { dataPoints: [num(1024)] } },
+        { name: "queue.depth", gauge: { dataPoints: [num(4)] } },
+      ]),
+    );
+    expect(res.status).toBe(200);
+    expect(stored.metric_descriptions!.map((row) => [row.name, row.description])).toEqual([
+      ["process.memory.usage", "Memory the process holds."],
+    ]);
+  });
+
+  test("a JSON point's description is stored with its name", async () => {
+    const res = await postJson([{ name: "agental.box.memory", value: 26.8, description: "Memory sold on a box." }]);
+    expect(res.status).toBe(200);
+    expect(stored.metric_descriptions!.map((row) => [row.name, row.description])).toEqual([
+      ["agental.box.memory", "Memory sold on a box."],
+    ]);
+  });
+
+  test("a JSON point whose description is too long or not a string is refused, and nothing is stored", async () => {
+    const long = await postJson({ name: "agental.box.memory", value: 1, description: "x".repeat(301) });
+    expect(long.status).toBe(400);
+    expect(await long.json()).toEqual({ error: "Metric description is longer than 300 characters" });
+    const wrong = await postJson({ name: "agental.box.memory", value: 1, description: 7 });
+    expect(wrong.status).toBe(400);
+    expect(await wrong.json()).toEqual({ error: "Metric description must be a string" });
+    expect(stored).toEqual({});
   });
 
   test("a JSON point whose unit is too long is refused, and nothing is stored", async () => {

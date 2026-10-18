@@ -176,6 +176,45 @@ export function parseMetricPointUnit(input: unknown): string | null {
   return metricUnitOf(raw);
 }
 
+/** Longer than this is cut when it comes over OTLP, and refused on a JSON point. */
+export const maxMetricDescriptionLength = 300;
+
+/**
+ * A metric's description as its sender wrote it, or null when it sent none.
+ * Blank is none. Over OTLP a longer one is cut, not refused: the points are
+ * still good.
+ */
+export function metricDescriptionOf(raw: unknown): string | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const description = raw.trim();
+  if (description.length === 0) {
+    return null;
+  }
+  return description.length <= maxMetricDescriptionLength
+    ? description
+    : description.slice(0, maxMetricDescriptionLength).trimEnd();
+}
+
+/** A JSON point's optional `description`. Not a string, or too long, is refused; blank is none. */
+export function parseMetricPointDescription(input: unknown): string | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return null;
+  }
+  const raw = (input as Record<string, unknown>).description;
+  if (raw === undefined || raw === null) {
+    return null;
+  }
+  if (typeof raw !== "string") {
+    throw new InvalidMetricError("Metric description must be a string");
+  }
+  if (raw.trim().length > maxMetricDescriptionLength) {
+    throw new InvalidMetricError(`Metric description is longer than ${maxMetricDescriptionLength} characters`);
+  }
+  return metricDescriptionOf(raw);
+}
+
 export function parseMetricPoint(input: unknown): MetricPoint {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new InvalidMetricError("Invalid metric point");

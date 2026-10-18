@@ -576,6 +576,17 @@ async function ensureMetrics(): Promise<void> {
     ENGINE = ReplacingMergeTree(seen)
     ORDER BY (tenant_id, name)
   `);
+  // A name remembers the description it was last sent with (#167), apart from its unit so neither overwrites the other.
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS metric_descriptions (
+      tenant_id LowCardinality(String),
+      name LowCardinality(String),
+      description String,
+      seen DateTime64(3, 'UTC')
+    )
+    ENGINE = ReplacingMergeTree(seen)
+    ORDER BY (tenant_id, name)
+  `);
   // A histogram's buckets, one row for each interval of each series. `n` has one
   // more count than `le` has bounds: the last is what was observed above them all.
   await clickhouseCommand(`

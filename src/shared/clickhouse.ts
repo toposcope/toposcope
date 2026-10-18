@@ -80,6 +80,7 @@ const insertTables = new Set([
   "change_marks",
   "metric_kinds",
   "metric_units",
+  "metric_descriptions",
   "metric_buckets",
   "arrival_seq",
 ]);
