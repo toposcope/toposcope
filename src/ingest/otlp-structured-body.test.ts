@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { flattenAttrs, flattenAttrsCounted, maxAttrKeysPerEvent } from "../shared/attrs";
+import { resetArrivalSeqForTests } from "./arrival-seq";
 import { mapOtlpJson } from "./otlp";
 import { decodeOtlpProtobuf, encodeOtlpProtobuf } from "./otlp-protobuf";
 import { Losses } from "./otlp-reply";
@@ -169,9 +170,20 @@ describe("POST /v1/logs with bodies of every kind", () => {
 
   beforeEach(() => {
     stored = [];
+    // The counter is shared by every test file in this process: load it from this stub, not from
+    // whatever ClickHouse a file before this one loaded it from (#133).
+    resetArrivalSeqForTests();
     globalThis.fetch = Object.assign(
-      async (_input: string | URL | Request, init?: RequestInit) => {
-        stored.push(...String(init?.body ?? "").split("\n"));
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const body = String(init?.body ?? "");
+        if (/^\s*SELECT/i.test(body)) {
+          // Where the arrival sequence stands (#133): nothing is stored here yet.
+          return new Response(JSON.stringify({ data: [{ n: 0 }] }));
+        }
+        // The counter reserving ahead lands in `arrival_seq`; only the rows sent are kept.
+        if (new URL(String(input)).searchParams.get("query")?.startsWith("INSERT INTO logs ")) {
+          stored.push(...body.split("\n"));
+        }
         return new Response("");
       },
       { preconnect: realFetch.preconnect },
@@ -179,6 +191,9 @@ describe("POST /v1/logs with bodies of every kind", () => {
   });
   afterEach(() => {
     globalThis.fetch = realFetch;
+    // Loaded here, the counter stands at 0 with a reservation the stub never stored. Kept, the next
+    // file would stamp real rows from 1 and a restart would hand those numbers out again.
+    resetArrivalSeqForTests();
   });
 
   test("stores the map, the number and the named event, and counts the one with nothing", async () => {

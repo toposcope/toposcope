@@ -44,6 +44,16 @@ Locked — links (0.5.x, [#133](https://github.com/toposcope/toposcope/issues/13
 - [Toposcope Links Held.html](Toposcope%20Links%20Held.html) — frames 5a–5r: what Search says an instance holds once rows are pulled: no links, a source caught up, behind, not answering, a hole, an errors-only instance, thirty sources, Live, narrowed to one source, every count a short source could feed as a floor, mixed sources, a sidebar that already leads ([#139](https://github.com/toposcope/toposcope/issues/139)); Fingerprints and Compare refusing across a gap ([#140](https://github.com/toposcope/toposcope/issues/140)), then judging with floors ([#141](https://github.com/toposcope/toposcope/issues/141)); rejects
 - [links-held/](links-held/) — crops for issues (5a–5r)
 
+Approved — the Saved list, 2026-10-18. Not in a cut yet; no issue yet.
+
+- [Toposcope Saved.dc.html](Toposcope%20Saved.dc.html) — frames 16a–16n: the sidebar's Saved list with 22 names that share their first words, as it reads today and grouped by the words before a colon; groups closed; a filter by name, one with no match, and buttons for one kind; the card on hover or focus with the whole name; a long name; the busiest row; a board, a search kept for its panels and a plain one; three saved searches; widened to 360 px; 50 on a board at 1280 × 800; rejects
+- [saved/](saved/) — crops for issues (16a–16n)
+
+Approved — panel lines, 2026-10-18. Not in a cut yet; no issue yet.
+
+- [Toposcope Panel Lines.dc.html](Toposcope%20Panel%20Lines.dc.html) — frames 17a–17j: a board of six one-metric panels as it reads today, then the same as three panels: up to four metrics of one unit merged onto one axis, each line named, a title and a note on each panel; adding a line, with only the panel's unit offered; naming lines, a title, a note, a full note; another unit refused, and a unit that changes later; the sender's OTLP descriptions in the picker, on a line's hover and in place of a missing note; the readout with names; at 4 columns; a split whose values are named; rejects
+- [panel-lines/](panel-lines/) — crops for issues (17a–17j)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.

@@ -60,14 +60,63 @@ export const readingMenu: ReadonlyArray<{ reading: HistogramReading; words: stri
 export const untypedMetrics = 8;
 
 /**
+ * A cut `head…tail` reads as another name when that name starts with its head
+ * and ends with its tail: `agental.box…disk` reads as `agental.box.disk`. A
+ * whole name reads only as itself.
+ */
+function cutReadsAs(cut: string, other: string): boolean {
+  const at = cut.indexOf("…");
+  if (at < 0) {
+    return cut === other;
+  }
+  const head = cut.slice(0, at);
+  const tail = cut.slice(at + 1);
+  return other.length >= head.length + tail.length && other.startsWith(head) && other.endsWith(tail);
+}
+
+/**
  * A dotted name cut in the middle, at dots: the first and last segments, then
  * segments added back from the front and the end in turn while they fit. The
- * end is what tells two names apart, so it is what survives.
+ * end is what tells two names apart, so it is what survives. A cut never
+ * reads as one of `others` (#164): when it would, the segment that tells them
+ * apart is kept, from the end, at dots when it fits, else in characters.
  */
-export function midCut(name: string, max: number): string {
+export function midCut(name: string, max: number, others: readonly string[] = []): string {
   if (name.length <= max) {
     return name;
   }
+  if (max <= 1) {
+    return "…";
+  }
+  const plain = plainMidCut(name, max);
+  const rivals = others.filter((other) => other !== name);
+  const clear = (cut: string) => cut.length <= max && !rivals.some((other) => cutReadsAs(cut, other));
+  if (clear(plain)) {
+    return plain;
+  }
+  const parts = name.split(".");
+  let best: string | null = null;
+  for (let head = 0; head < parts.length - 1; head += 1) {
+    for (let tail = 1; head + tail < parts.length; tail += 1) {
+      const cut = `${parts.slice(0, head).join(".")}…${parts.slice(parts.length - tail).join(".")}`;
+      if (clear(cut) && (best === null || cut.length > best.length)) {
+        best = cut;
+      }
+    }
+  }
+  if (best !== null) {
+    return best;
+  }
+  for (let head = 0; head <= max - 2; head += 1) {
+    const cut = `${name.slice(0, head)}…${name.slice(name.length - (max - 1 - head))}`;
+    if (clear(cut)) {
+      return cut;
+    }
+  }
+  return plain;
+}
+
+function plainMidCut(name: string, max: number): string {
   const parts = name.split(".");
   if (parts.length < 2) {
     return `${name.slice(0, Math.max(1, max - 1))}…`;
@@ -96,6 +145,25 @@ export function midCut(name: string, max: number): string {
     turn += 1;
   }
   return cut();
+}
+
+/**
+ * A name cut to the room it is given: `roomPx` at `charPx` a character, in a
+ * monospace face, less what is printed before it (`avg · `) and after it
+ * (`{box=host-03}`), which are never cut. Whole when it fits.
+ */
+export function cutToRoom(
+  name: string,
+  roomPx: number,
+  charPx: number,
+  { lead = "", trail = "", others = [] }: { lead?: string; trail?: string; others?: readonly string[] } = {},
+): string {
+  if (!(charPx > 0) || !Number.isFinite(roomPx)) {
+    return name;
+  }
+  // Not a hair over: a character that does not fit is clipped, or ellipsised over the cut.
+  const chars = Math.floor(roomPx / charPx + 1e-6) - lead.length - trail.length;
+  return midCut(name, Math.max(1, chars), others);
 }
 
 /** The name around the first place `q` is found, in any case: before, the hit, after. */
