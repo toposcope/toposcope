@@ -10,6 +10,7 @@ import {
   parseSavedLayout,
   type WidgetLayout,
 } from "../shared/widgets";
+import { metricRefUnit } from "../query/metric-series";
 import {
   boardWatchRefuse,
   formatBoard,
@@ -198,6 +199,31 @@ function parseSavedCols(
   return parsePromotedCols(rec.cols);
 }
 
+/**
+ * A panel draws one unit on one axis (#169): merging a metric whose unit is
+ * known and differs from the panel's own is refused, naming the line and both
+ * units. A metric not sent yet has no unit to compare and is let through.
+ */
+async function mixedUnits(layout: WidgetLayout | null): Promise<string | null> {
+  try {
+    for (const [i, widget] of (layout?.widgets ?? []).entries()) {
+      if (!widget.metric || !widget.lines?.length) {
+        continue;
+      }
+      const own = await metricRefUnit(widget.metric);
+      for (const [j, line] of widget.lines.entries()) {
+        const unit = await metricRefUnit(line.metric);
+        if (own && unit && unit !== own) {
+          return `widgets[${i}].lines[${j}]: ${line.metric} is ${unit}, the panel is ${own}`;
+        }
+      }
+    }
+  } catch {
+    // The store did not answer: the panel is saved, and its lines are checked again as they draw (17e).
+  }
+  return null;
+}
+
 async function readJsonObject(
   c: Context,
 ): Promise<Record<string, unknown> | Response> {
@@ -232,6 +258,10 @@ export async function createSavedSearch(c: Context): Promise<Response> {
   const fields = parseSavedFields(rec);
   if ("error" in fields) {
     return c.json({ error: fields.error }, 400);
+  }
+  const mixed = await mixedUnits(fields.widgets);
+  if (mixed) {
+    return c.json({ error: mixed }, 400);
   }
   const search: SavedSearch = {
     id: crypto.randomUUID(),
@@ -274,6 +304,10 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
   const fields = parseSavedFields(rec, existing);
   if ("error" in fields) {
     return c.json({ error: fields.error }, 400);
+  }
+  const mixed = await mixedUnits(fields.widgets);
+  if (mixed) {
+    return c.json({ error: mixed }, 400);
   }
   getDb()
     .query(

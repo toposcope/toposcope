@@ -3,6 +3,7 @@ import { bucketQuantile, bucketSums } from "../shared/histogram-quantile";
 import {
   defaultHistogramReading,
   metricExpr,
+  parseMetricRef,
   readingQuantile,
   type HistogramReading,
 } from "../shared/metric";
@@ -157,6 +158,17 @@ async function readingUnit(name: string, reading: HistogramReading | null): Prom
     return null;
   }
   return (await metricUnit(name)) ?? (await metricUnit(`${name}.sum`));
+}
+
+/**
+ * The unit a panel's metric reads in (#169), its histogram reading included:
+ * what one axis must share when metrics are merged. Null when none was sent.
+ */
+export async function metricRefUnit(ref: string): Promise<string | null> {
+  const parsed = parseMetricRef(ref);
+  const name = parsed?.name ?? ref;
+  const histogram = await asHistogram(name, parsed?.reading ?? null);
+  return histogram ? readingUnit(histogram.base, histogram.reading) : metricUnit(name);
 }
 
 /** `{ unit }` when there is one, so a reply without a unit does not carry the key. */

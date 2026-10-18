@@ -94,7 +94,92 @@ export type WidgetDef = {
   metricLabels: Record<string, string>;
   /** A metric timeseries split by one of its labels (#104): one line per value. */
   metricSplit?: string | null;
+  /** More metrics of the panel's unit, merged onto its one axis (#169): three at most beside its own. Never with a split. */
+  lines?: MetricLine[];
+  /** A name for each line (#169): `"0"`–`"3"` for merged lines (`"0"` is the panel's own metric), a label value for a split's. */
+  names?: Record<string, string>;
+  /** A title the panel was given (#169), in place of the one it makes for itself. */
+  title?: string;
+  /** What the panel is for (#169): plain text, two lines on the panel. */
+  note?: string;
 };
+
+/** One more metric on a panel's axis, with the labels that pick its series (#169). */
+export type MetricLine = { metric: string; labels: Record<string, string> };
+
+/** A panel's own metric and three more (#169). */
+export const maxPanelLines = 4;
+export const maxLineName = 24;
+export const maxPanelTitle = 80;
+export const maxPanelNote = 160;
+
+/** Plain text, spaces run together, cut to `most`; blank is none. */
+export function normalizePanelText(raw: unknown, most: number): string | undefined {
+  if (typeof raw !== "string") {
+    return undefined;
+  }
+  const text = raw.replace(/\s+/g, " ").trim();
+  return text ? text.slice(0, most).trimEnd() : undefined;
+}
+
+/** The merged lines a panel can keep: real metric names, each once, not the panel's own, three at most. */
+export function normalizeMergedLines(
+  raw: unknown,
+  own: string | null,
+  ownLabels: Record<string, string>,
+): MetricLine[] {
+  if (!own || !Array.isArray(raw)) {
+    return [];
+  }
+  const seen = new Set([`${own}|${formatMetricLabels(ownLabels)}`]);
+  const out: MetricLine[] = [];
+  for (const item of raw) {
+    if (out.length >= maxPanelLines - 1) {
+      break;
+    }
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const rec = item as { metric?: unknown; labels?: unknown };
+    const metric = normalizeMetricRef(typeof rec.metric === "string" ? rec.metric : null);
+    if (!metric) {
+      continue;
+    }
+    const labels = parseMetricLabels(formatMetricLabels(stringRecord(rec.labels)));
+    const key = `${metric}|${formatMetricLabels(labels)}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push({ metric, labels });
+  }
+  return out;
+}
+
+/** Names of up to 24 characters, keyed by line; blank names are dropped. */
+export function normalizeLineNames(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(stringRecord(raw))) {
+    const name = normalizePanelText(value, maxLineName);
+    if (name && key.length > 0 && key.length <= 64) {
+      out[key] = name;
+    }
+  }
+  return out;
+}
+
+function stringRecord(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string") {
+      out[key] = value;
+    }
+  }
+  return out;
+}
 
 /** A label key in a `.`-separated widget token: its own dots are written `%2E`. */
 function encodeSplitToken(key: string): string {
@@ -107,6 +192,34 @@ function decodeSplitToken(raw: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Words in a `.`- and `~`-separated widget token (#169): a title, a note, a line's name. */
+function encodeTextToken(text: string): string {
+  return encodeURIComponent(text).replaceAll(".", "%2E").replaceAll("~", "%7E");
+}
+
+function decodeTextToken(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return "";
+  }
+}
+
+/** A token that starts one of a timeseries' later parts, after its metric name (#169). */
+function startsPanelPart(part: string | undefined): boolean {
+  return Boolean(
+    part &&
+      (part.startsWith("l:") ||
+        part.startsWith("s:") ||
+        part.startsWith("+m:") ||
+        part.startsWith("+l:") ||
+        part.startsWith("n:") ||
+        part.startsWith("t:") ||
+        part.startsWith("o:") ||
+        isFlagToken(part)),
+  );
 }
 
 /** What a label key can be, to split a metric by (#104). */
@@ -270,8 +383,23 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
     ? parseMetricLabels(formatMetricLabels(widget.metricLabels ?? {}))
     : {};
   const agg = metric ? null : normalizeWidgetAgg(widget.kind, widget.agg);
+  const metricSplit =
+    metric && widget.kind === "timeseries" && (widget.id !== pinnedHistogramId || widget.replaceY)
+      ? normalizeMetricSplit(widget.metricSplit)
+      : null;
+  // #169: merged lines, names, a title and a note are kept only where a panel draws them.
+  const lines =
+    widget.kind === "timeseries" && metric && !metricSplit ? normalizeMergedLines(widget.lines, metric, metricLabels) : [];
+  const names = widget.kind === "timeseries" && metric ? normalizeLineNames(widget.names) : {};
+  const title = widget.kind === "timeseries" ? normalizePanelText(widget.title, maxPanelTitle) : undefined;
+  const note = widget.kind === "timeseries" ? normalizePanelText(widget.note, maxPanelNote) : undefined;
+  const { lines: _lines, names: _names, title: _title, note: _note, ...rest } = widget;
   return {
-    ...widget,
+    ...rest,
+    ...(lines.length > 0 ? { lines } : {}),
+    ...(Object.keys(names).length > 0 ? { names } : {}),
+    ...(title ? { title } : {}),
+    ...(note ? { note } : {}),
     id: sanitizeId(widget.id),
     x,
     y,
@@ -288,10 +416,7 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
     metric,
     metricLabels,
     // The pinned plot splits only a metric it draws by Replace (13a); an extra panel always draws its own.
-    metricSplit:
-      metric && widget.kind === "timeseries" && (widget.id !== pinnedHistogramId || widget.replaceY)
-        ? normalizeMetricSplit(widget.metricSplit)
-        : null,
+    metricSplit,
   };
 }
 
@@ -695,6 +820,26 @@ export function widgetSeriesQuery(widget: WidgetDef): SeriesQuery {
   }
 }
 
+/**
+ * Every line a panel draws, its own metric first (#169): one query a line, so
+ * each merged metric is read the way it is read on a panel of its own.
+ */
+export function widgetLineQueries(widget: WidgetDef): SeriesQuery[] {
+  const own = widgetSeriesQuery(widget);
+  if (widget.kind !== "timeseries" || !widget.metric || !widget.lines?.length) {
+    return [own];
+  }
+  return [
+    own,
+    ...widget.lines.map((line): SeriesQuery => ({
+      split: widget.split,
+      agg: null,
+      metric: line.metric,
+      metricLabels: line.labels,
+    })),
+  ];
+}
+
 export function widgetSeriesQueries(widgets: WidgetDef[]): SeriesQuery[] {
   const out: SeriesQuery[] = [];
   const seen = new Set<string>();
@@ -713,7 +858,9 @@ export function widgetSeriesQueries(widgets: WidgetDef[]): SeriesQuery[] {
   for (const widget of widgets) {
     switch (widget.kind) {
       case "timeseries":
-        add(widgetSeriesQuery(widget));
+        for (const query of widgetLineQueries(widget)) {
+          add(query);
+        }
         break;
       case "stat":
         add(widgetSeriesQuery(widget));
@@ -987,6 +1134,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
   let metric: string | null = null;
   let metricLabels: Record<string, string> = {};
   let metricSplit: string | null = null;
+  let words: Pick<WidgetDef, "lines" | "names" | "title" | "note"> = {};
   const rest = parts.slice(6);
   if (kind === "timeseries") {
     if (rest[0] && (histogramSplits as readonly string[]).includes(rest[0])) {
@@ -1002,6 +1150,9 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     metricLabels = source.metricLabels;
     if (metric && rest[0]?.startsWith("s:")) {
       metricSplit = decodeSplitToken(rest.shift()!.slice(2));
+    }
+    if (metric) {
+      words = consumePanelWords(rest);
     }
     if (!metric && rest[0] && !isFlagToken(rest[0])) {
       agg = normalizeWidgetAgg("timeseries", rest[0] ?? null);
@@ -1052,6 +1203,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     metric,
     metricLabels,
     metricSplit,
+    ...words,
   });
 }
 
@@ -1067,7 +1219,7 @@ function consumeMetricSource(rest: string[]): {
     return { metric: null, metricLabels: {} };
   }
   const chunks = [rest.shift()!.slice(2)];
-  while (rest[0] && !rest[0].startsWith("l:") && !rest[0].startsWith("s:") && !isFlagToken(rest[0])) {
+  while (rest[0] && !startsPanelPart(rest[0])) {
     chunks.push(rest.shift()!);
   }
   const metric = normalizeMetricRef(chunks.join("."));
@@ -1077,6 +1229,45 @@ function consumeMetricSource(rest: string[]): {
     metricLabels = metric ? parseMetricLabels(raw) : {};
   }
   return { metric, metricLabels };
+}
+
+/** A timeseries' merged lines, names, title and note (#169), in any order, up to its flags. */
+function consumePanelWords(rest: string[]): Pick<WidgetDef, "lines" | "names" | "title" | "note"> {
+  const lines: MetricLine[] = [];
+  let names: Record<string, string> = {};
+  let title: string | undefined;
+  let note: string | undefined;
+  while (rest[0] && !isFlagToken(rest[0])) {
+    const part = rest.shift()!;
+    if (part.startsWith("+m:")) {
+      const chunks = [part.slice(3)];
+      while (rest[0] && !startsPanelPart(rest[0])) {
+        chunks.push(rest.shift()!);
+      }
+      const metric = normalizeMetricRef(chunks.join("."));
+      let labels: Record<string, string> = {};
+      if (rest[0]?.startsWith("+l:")) {
+        labels = parseMetricLabels(rest.shift()!.slice(3));
+      }
+      if (metric) {
+        lines.push({ metric, labels });
+      }
+    } else if (part.startsWith("n:")) {
+      names = Object.fromEntries(
+        part
+          .slice(2)
+          .split(",")
+          .map((pair) => pair.split("="))
+          .filter((pair): pair is [string, string] => pair.length === 2)
+          .map(([k, v]) => [decodeTextToken(k), decodeTextToken(v)]),
+      );
+    } else if (part.startsWith("t:")) {
+      title = decodeTextToken(part.slice(2));
+    } else if (part.startsWith("o:")) {
+      note = decodeTextToken(part.slice(2));
+    }
+  }
+  return { lines, names, title, note };
 }
 
 export function formatWidgetsParam(widgets: WidgetDef[]): string {
@@ -1100,6 +1291,24 @@ function formatWidgetToken(widget: WidgetDef): string {
         }
         if (widget.metricSplit) {
           parts.push(`s:${encodeSplitToken(widget.metricSplit)}`);
+        }
+        // #169: merged lines, then names, a title and a note.
+        for (const line of widget.lines ?? []) {
+          parts.push(`+m:${line.metric}`);
+          const labels = formatMetricLabels(line.labels);
+          if (labels) {
+            parts.push(`+l:${labels}`);
+          }
+        }
+        const names = Object.entries(widget.names ?? {});
+        if (names.length > 0) {
+          parts.push(`n:${names.map(([k, v]) => `${encodeTextToken(k)}=${encodeTextToken(v)}`).join(",")}`);
+        }
+        if (widget.title) {
+          parts.push(`t:${encodeTextToken(widget.title)}`);
+        }
+        if (widget.note) {
+          parts.push(`o:${encodeTextToken(widget.note)}`);
         }
       } else if (widget.agg) {
         parts.push(widget.agg);
@@ -1226,6 +1435,11 @@ function parseSavedWidget(raw: unknown): WidgetDef | null {
     metric: typeof rec.metric === "string" || rec.metric === null ? rec.metric : null,
     metricLabels: savedMetricLabels(rec.metricLabels),
     metricSplit: typeof rec.metricSplit === "string" ? rec.metricSplit : null,
+    // #169: a script sets these through the saved search's JSON, as agental sets its panels.
+    lines: Array.isArray(rec.lines) ? (rec.lines as MetricLine[]) : undefined,
+    names: rec.names && typeof rec.names === "object" ? (rec.names as Record<string, string>) : undefined,
+    title: typeof rec.title === "string" ? rec.title : undefined,
+    note: typeof rec.note === "string" ? rec.note : undefined,
   });
 }
 

@@ -13,6 +13,7 @@ import { levels, type LogLevel } from "../shared/log-event";
 import {
   facetSeriesKey,
   seriesQueryKey,
+  widgetLineQueries,
   widgetSeriesQuery,
   type SeriesQuery,
   type WidgetDef,
@@ -64,9 +65,8 @@ function widgetsUsingQuery(
   query: SeriesQuery,
 ): WidgetDef[] {
   const key = seriesQueryKey(query);
-  return widgets.filter(
-    (widget) => seriesQueryKey(widgetSeriesQuery(widget)) === key,
-  );
+  // A merged line is used by its panel too (#169).
+  return widgets.filter((widget) => widgetLineQueries(widget).some((line) => seriesQueryKey(line) === key));
 }
 
 export function queryLiveMergeable(
