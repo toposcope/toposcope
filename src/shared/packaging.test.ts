@@ -34,6 +34,8 @@ describe("packaged compose", () => {
     expect(yaml).toContain("TOPOSCOPE_PUBLIC_URL: ${TOPOSCOPE_PUBLIC_URL:-}");
     // Optional: who watches Toposcope (#179).
     expect(yaml).toContain("TOPOSCOPE_WATCHDOG_URL: ${TOPOSCOPE_WATCHDOG_URL:-}");
+    // #196: on by default, so an empty value passes through and means on.
+    expect(yaml).toContain("TOPOSCOPE_UPDATE_CHECK: ${TOPOSCOPE_UPDATE_CHECK:-}");
     expect(yaml).toContain("memory: 4G");
   });
 
@@ -74,6 +76,7 @@ describe("env example", () => {
     expect(env).not.toContain("CLICKHOUSE_PASSWORD=toposcope");
     // Optional, and off until set (#179).
     expect(env).toContain("# TOPOSCOPE_WATCHDOG_URL=");
+    expect(env).toContain("# TOPOSCOPE_UPDATE_CHECK=off");
   });
 });
 
