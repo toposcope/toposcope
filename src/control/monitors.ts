@@ -25,7 +25,10 @@ import {
   type AlertRule,
 } from "./alerts";
 import { getHttp } from "../alerts/http-store";
+import { getNet } from "../alerts/net-store";
+import { isNetSource, type NetSource } from "../shared/net-check";
 import { applyHttpFields, existingHttp, httpView, insertHttpMonitor, readHttpFields, type HttpView } from "./http-monitors";
+import { applyNetFields, existingNet, insertNetMonitor, netView, readNetFields, type NetView } from "./net-monitors";
 import {
   applyPushFields,
   insertPushMonitor,
@@ -52,6 +55,8 @@ export type MonitorView = AlertRule & {
   last_line_at?: number | null;
   /** What an HTTP(S) monitor calls (#178): its headers by name only. */
   http: HttpView | null;
+  /** Where a TCP or certificate monitor connects (#180). */
+  net: NetView | null;
 };
 
 async function view(rule: AlertRule): Promise<MonitorView> {
@@ -61,9 +66,11 @@ async function view(rule: AlertRule): Promise<MonitorView> {
   const lastLine =
     saved && rule.kind === "threshold" && rule.opens_when === "fewer_than" ? await lastLineAt(saved.query) : undefined;
   const http = rule.source === "http" ? getHttp(rule.id) : null;
+  const net = isNetSource(rule.source) ? getNet(rule.id) : null;
   return {
     ...rule,
     http: http ? httpView(http) : null,
+    net: net ? netView(net) : null,
     saved: saved
       ? { id: saved.id, name: saved.name, query: saved.query, range: saved.range, agg: saved.agg }
       : null,
@@ -158,14 +165,17 @@ export async function getMonitor(c: Context): Promise<Response> {
   return c.json({ ...(await page(rule)), stretches: monitorHistory(rule.id) });
 }
 
-/** "a push", "an HTTP(S)", "a search": a source as a sentence names it. */
+/** "a push", "an HTTP(S)", "a TCP", "a certificate", "a search": a source as a sentence names it. */
 function aSource(source: unknown): string {
-  return source === "http" ? "an HTTP(S)" : `a ${String(source)}`;
+  return source === "http" ? "an HTTP(S)" : source === "tcp" ? "a TCP" : source === "cert" ? "a certificate" : `a ${String(source)}`;
 }
 
-/** A source a monitor keeps: a push or HTTP(S) monitor stays one, and nothing else becomes one. */
+/**
+ * A source a monitor keeps: a push, HTTP(S), TCP or certificate monitor stays one, and nothing
+ * else becomes one.
+ */
 function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
-  const keeps = (source: unknown) => source === "push" || source === "http";
+  const keeps = (source: unknown) => source === "push" || source === "http" || isNetSource(source);
   if (!existing || rec.source === undefined || rec.source === existing.source) {
     return null;
   }
@@ -234,6 +244,33 @@ async function putHttpMonitor(
 }
 
 /**
+ * `PUT /api/monitors/<name>` with `source: "tcp" | "cert"`: create or replace a TCP or
+ * certificate monitor (#180). What is left out takes its default.
+ */
+async function putNetMonitor(
+  c: Context,
+  name: string,
+  source: NetSource,
+  existing: AlertRule | null,
+  rec: Record<string, unknown>,
+): Promise<Response> {
+  const kept = existing ? existingNet(existing) : null;
+  const fields = readNetFields({ ...rec, name }, source, null);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
+  }
+  const now = Date.now();
+  if (!kept) {
+    const created = insertNetMonitor(fields, now);
+    applyMonitorHold(created, rec, now);
+    return c.json(await page(getAlert(created.id)!), 201);
+  }
+  applyNetFields(kept.rule, kept.net, fields, now);
+  applyMonitorHold(getAlert(kept.rule.id)!, rec, now);
+  return c.json(await page(getAlert(kept.rule.id)!));
+}
+
+/**
  * `PUT /api/alert-rules/<id>`: what it did, and for a push monitor its own fields, a field left
  * out keeping its value.
  */
@@ -278,8 +315,9 @@ export async function putMonitor(c: Context): Promise<Response> {
   if (rec instanceof Response) {
     return rec;
   }
-  if (rec.source === undefined && rec.kind === undefined && existing?.source !== "push" && existing?.source !== "http") {
-    return c.json({ error: "source is required: search, fingerprints, push or http" }, 400);
+  const keeps = existing?.source === "push" || existing?.source === "http" || isNetSource(existing?.source);
+  if (rec.source === undefined && rec.kind === undefined && !keeps) {
+    return c.json({ error: "source is required: search, fingerprints, push, http, tcp or cert" }, 400);
   }
   const change = sourceChange(existing, rec);
   if (change) {
@@ -290,6 +328,10 @@ export async function putMonitor(c: Context): Promise<Response> {
   }
   if (rec.source === "http" || existing?.source === "http") {
     return putHttpMonitor(c, name, existing, rec);
+  }
+  const net = isNetSource(rec.source) ? rec.source : isNetSource(existing?.source) ? existing.source : null;
+  if (net) {
+    return putNetMonitor(c, name, net, existing, rec);
   }
   const fields = readMonitorFields({ ...rec, name }, null);
   if ("error" in fields) {

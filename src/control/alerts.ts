@@ -9,6 +9,8 @@ import {
 } from "../alerts/payload";
 import { parseThreshold } from "../alerts/threshold";
 import { applyHttpFields, existingHttp, insertHttpMonitor, readHttpFields } from "./http-monitors";
+import { applyNetFields, existingNet, forgetNet, insertNetMonitor, readNetFields } from "./net-monitors";
+import { isNetSource } from "../shared/net-check";
 import { getSaved } from "./saved-searches";
 import { boardWatchRefuse } from "../shared/boards";
 import { getDb } from "./index";
@@ -441,7 +443,7 @@ export function readMonitorFields(
   if (rec.source !== undefined) {
     kind = rec.source === "search" ? "threshold" : rec.source === "fingerprints" ? "first_seen" : null;
     if (!kind) {
-      return { error: "source must be search, fingerprints, push or http", status: 400 };
+      return { error: "source must be search, fingerprints, push, http, tcp or cert", status: 400 };
     }
   }
   if (rec.kind !== undefined) {
@@ -659,6 +661,7 @@ export function removeMonitor(id: string): void {
   forgetSentFingerprints(id);
   forgetMonitor(id);
   forgetHttp(id);
+  forgetNet(id);
 }
 
 export async function createAlertRule(c: Context): Promise<Response> {
@@ -672,6 +675,13 @@ export async function createAlertRule(c: Context): Promise<Response> {
       return c.json({ error: fields.error }, fields.status);
     }
     return c.json(insertHttpMonitor(fields), 201);
+  }
+  if (isNetSource(rec.source)) {
+    const fields = readNetFields(rec, rec.source, null);
+    if ("error" in fields) {
+      return c.json({ error: fields.error }, fields.status);
+    }
+    return c.json(insertNetMonitor(fields), 201);
   }
   if (typeof rec.name !== "string" || rec.name.trim().length === 0) {
     return c.json({ error: "name is required" }, 400);
@@ -707,6 +717,16 @@ export async function updateAlertRule(c: Context): Promise<Response> {
       return c.json({ error: fields.error }, fields.status);
     }
     applyHttpFields(existing, http.http, fields, now);
+    applyMonitorHold(getAlert(id)!, rec, now);
+    return c.json(getAlert(id));
+  }
+  const net = existingNet(existing);
+  if (net) {
+    const fields = readNetFields(rec, net.rule.source === "cert" ? "cert" : "tcp", net);
+    if ("error" in fields) {
+      return c.json({ error: fields.error }, fields.status);
+    }
+    applyNetFields(existing, net.net, fields, now);
     applyMonitorHold(getAlert(id)!, rec, now);
     return c.json(getAlert(id));
   }

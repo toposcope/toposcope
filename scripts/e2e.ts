@@ -12,6 +12,7 @@ import { encodeOtlpTracesProtobuf } from "../src/ingest/otlp-traces-protobuf";
 import { formatSyslog3164 } from "../src/ingest/syslog-parse";
 import { evaluateAlerts, monitorTick } from "../src/alerts/cron";
 import { makeCerts, readCerts, startStands } from "./http-stands";
+import { startNetStands } from "./net-stands";
 import { cantTellHeld } from "../src/alerts/cant-tell";
 import { getAlert } from "../src/control/alerts";
 import { runLiveLoad } from "./load-live";
@@ -4247,7 +4248,111 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved → http monitor open, warn, resolved");
+  // #180, after #178: TCP and certificate monitors run on the same loop, against stand-ins on
+  // spare ports: a closed port opens after two runs, cert > 30d fails on a 20-day certificate,
+  // STARTTLS on a stand-in SMTP server reads its certificate, and each failing row says why. As
+  // for #178, the app trusts the stand-ins' CA only when started with NODE_EXTRA_CA_CERTS and this
+  // run is given TOPOSCOPE_E2E_CERTS; without them a certificate reads as not trusted, still read.
+  {
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const certDir = envValue("TOPOSCOPE_E2E_CERTS");
+    const certs = certDir ? readCerts(certDir) : makeCerts(20);
+    const stands = await startNetStands(certs);
+    const names = {
+      closed: `e2e tcp closed ${marker}`,
+      cert: `e2e cert ${marker}`,
+      mail: `e2e smtp cert ${marker}`,
+    };
+    type Net = {
+      state: string;
+      net: { fails_in_row: number; last_run: { result: string; connected: boolean; line: string | null; why: string | null; cert_subject: string | null } | null } | null;
+      stretches?: Array<{ opened_at: number; resolved_at: number | null }>;
+    };
+    const read = async (n: string) =>
+      (await (await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { headers: auth })).json()) as Net;
+    const until = async (what: string, n: string, ok: (m: Net) => boolean, ms = 75_000) => {
+      const end = Date.now() + ms;
+      let last: Net | null = null;
+      while (Date.now() < end) {
+        last = await read(n);
+        if (ok(last)) return last;
+        await Bun.sleep(1000);
+      }
+      throw new Error(`${what}: waited ${ms / 1000}s, got ${JSON.stringify(last)}`);
+    };
+    const declare = async (n: string, body: Record<string, unknown>) => {
+      const res = await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ every: "30s", ...body }),
+      });
+      if (res.status !== 201) throw new Error(`PUT a ${String(body.source)} monitor should create, got ${res.status} ${await res.text()}`);
+    };
+    try {
+      // The editor's Send: one connect from the node, each line's result, nothing stored.
+      const sent = (await (
+        await fetch(`${APP_URL}/api/monitors/send`, {
+          method: "POST",
+          headers: auth,
+          body: JSON.stringify({ source: "tcp", target: stands.open, conditions: "connected\ntime < 5000ms" }),
+        })
+      ).json()) as { connected: boolean; verdict: { result: string; lines: Array<{ text: string; pass: boolean | null }> } };
+      if (!sent.connected || sent.verdict.result !== "ok" || sent.verdict.lines.map((l) => l.pass).join() !== "true,true") {
+        throw new Error(`Send on an open port should connect and pass, got ${JSON.stringify(sent)}`);
+      }
+
+      await declare(names.closed, { source: "tcp", target: stands.closed, conditions: ["connected"], fail_after: 2 });
+      await declare(names.cert, { source: "cert", target: stands.tls, conditions: ["cert > 30d"], fail_after: 1 });
+      await declare(names.mail, { source: "cert", target: stands.smtp, starttls: "smtp", conditions: ["cert > 14d", "cert name == localhost"] });
+
+      // One refused connect does not open it; the second, 30s later, does.
+      const first = await until("the first refused connect", names.closed, (m) => (m.net?.fails_in_row ?? 0) >= 1, 15_000);
+      if (first.state !== "ok") throw new Error(`one refused connect should not open it, got ${JSON.stringify(first)}`);
+      const opened = await until("two refused connects in a row open it", names.closed, (m) => m.state === "open");
+      if (opened.net?.last_run?.why !== "connect ECONNREFUSED" || opened.net.last_run.line !== "connected") {
+        throw new Error(`a closed port should open on its second run, saying why, got ${JSON.stringify(opened)}`);
+      }
+
+      const cert = await read(names.cert);
+      const certWhy = cert.net?.last_run?.why ?? "";
+      if (cert.state !== "open" || !(certDir ? /^certificate expires in (19|20) days$/.test(certWhy) : certWhy === "certificate is not trusted")) {
+        throw new Error(`cert > 30d should fail on a certificate with 20 days left, got ${JSON.stringify(cert)}`);
+      }
+      const mail = await read(names.mail);
+      if (mail.net?.last_run?.cert_subject !== "localhost" || (certDir ? mail.net.last_run.result !== "ok" : mail.net.last_run.why !== "certificate is not trusted")) {
+        throw new Error(`STARTTLS on a stand-in SMTP server should read its certificate, got ${JSON.stringify(mail)}`);
+      }
+
+      // Every run is a row, and a failing one says why.
+      const from = new Date(Date.now() - 15 * 60_000).toISOString();
+      const to = new Date(Date.now() + 60_000).toISOString();
+      const rowsFor = async (q: string) =>
+        (await (await fetch(`${APP_URL}/api/search?${new URLSearchParams({ from, to, q }).toString()}`, { headers: auth })).json()) as {
+          events: Array<{ level: string; message: string; attrs?: Record<string, string> }>;
+          total: number;
+        };
+      const closedRows = await rowsFor(`monitor:"${names.closed}" source:tcp status:fail`);
+      if (closedRows.total < 2 || closedRows.events.some((e) => e.attrs?.error !== "connect ECONNREFUSED" || e.level !== "error")) {
+        throw new Error(`each failing tcp run should be a row saying why, got ${JSON.stringify(closedRows.events)}`);
+      }
+      const certRows = await rowsFor(`monitor:"${names.cert}" source:cert`);
+      if (certRows.total < 1 || certRows.events[0]?.attrs?.error !== certWhy) {
+        throw new Error(`a failing certificate run's row should say why, got ${JSON.stringify(certRows.events[0])}`);
+      }
+      const mailRows = await rowsFor(`monitor:"${names.mail}" starttls:smtp`);
+      if (mailRows.total < 1 || mailRows.events[0]?.attrs?.["cert.subject"] !== "localhost") {
+        throw new Error(`a STARTTLS run's row should name its certificate, got ${JSON.stringify(mailRows.events[0])}`);
+      }
+    } finally {
+      for (const n of Object.values(names)) {
+        await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { method: "DELETE", headers: auth });
+      }
+      stands.stop();
+      if (!certDir) certs.cleanup();
+    }
+  }
+
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved → http monitor open, warn, resolved → tcp monitor open, certificate fail, starttls");
 }
 
 await main();

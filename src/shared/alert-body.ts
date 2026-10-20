@@ -57,11 +57,31 @@ export const httpFillIns: AlertFillIn[] = [
   { name: "link", about: "back to Toposcope" },
 ];
 
+/** A TCP or certificate monitor's (#180): where it connects and what the run that opened it said. */
+export const netFillIns: AlertFillIn[] = [
+  { name: "alert.name", about: "the monitor" },
+  { name: "target", about: "host:port" },
+  { name: "duration_ms", about: "how long the run took" },
+  { name: "message", about: "the result that opened it" },
+  { name: "state", about: "open, reminder, resolved" },
+  { name: "opened_at", about: "ISO time" },
+  { name: "resolved_at", about: "ISO time" },
+  { name: "duration", about: "how long it has been open" },
+  { name: "fired_at", about: "ISO time" },
+  { name: "link", about: "back to Toposcope" },
+];
+
 /** Whose fill-ins a body may use. */
-export type FillInKind = "threshold" | "first_seen" | "http";
+export type FillInKind = "threshold" | "first_seen" | "http" | "net";
 
 export function alertFillIns(kind: FillInKind): AlertFillIn[] {
-  return kind === "first_seen" ? firstSeenFillIns : kind === "http" ? httpFillIns : thresholdFillIns;
+  return kind === "first_seen"
+    ? firstSeenFillIns
+    : kind === "http"
+      ? httpFillIns
+      : kind === "net"
+        ? netFillIns
+        : thresholdFillIns;
 }
 
 const fillInRe = /\{\{\s*([A-Za-z_][\w.]*)\s*\}\}/g;
@@ -299,6 +319,11 @@ export function alertBodyContentType(kind: AlertBodyKind): string {
 
 /** Prefilled when a resolved body is added. */
 export function starterResolvedBody(bodyKind: "text" | "json", alertKind: FillInKind = "threshold"): string {
+  if (alertKind === "net") {
+    return bodyKind === "text"
+      ? "{{alert.name}} resolved after {{duration}}: {{target}}\n{{link}}"
+      : '{\n  "title": "{{alert.name}} resolved",\n  "message": "after {{duration}}: {{target}}",\n  "url": "{{link}}"\n}';
+  }
   if (alertKind === "http") {
     return bodyKind === "text"
       ? "{{alert.name}} resolved after {{duration}}: {{status}} in {{duration_ms}}ms\n{{link}}"
@@ -311,6 +336,11 @@ export function starterResolvedBody(bodyKind: "text" | "json", alertKind: FillIn
 
 /** Prefilled when Text or JSON is picked, so there is something to change. */
 export function starterAlertBody(bodyKind: "text" | "json", alertKind: FillInKind): string {
+  if (alertKind === "net") {
+    return bodyKind === "text"
+      ? "{{alert.name}} {{state}}: {{message}}\n{{target}}\n{{link}}"
+      : '{\n  "title": "{{alert.name}} {{state}}",\n  "message": "{{message}}",\n  "url": "{{link}}"\n}';
+  }
   if (alertKind === "http") {
     return bodyKind === "text"
       ? "{{alert.name}} {{state}}: {{message}}\n{{url}}\n{{link}}"

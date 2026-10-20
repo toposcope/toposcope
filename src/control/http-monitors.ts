@@ -30,8 +30,10 @@ import {
 import type { AlertBodyKind } from "../shared/alert-body";
 import type { RemindId } from "../shared/monitor";
 import { monitorQuery } from "../shared/push";
+import { isNetSource } from "../shared/net-check";
 import { getAlert, parseWebhook, readBody, readJsonObject, readRemind, type AlertRule } from "./alerts";
 import { getDb } from "./index";
+import { sendNetRoute } from "./net-monitors";
 
 /** An HTTP(S) monitor as the API shows it: its headers by name only, never their values. */
 export type HttpView = {
@@ -342,11 +344,16 @@ const shownBody = 256 * 1024;
  * `POST /api/monitors/send` — the editor's Send (18r): the request run once from this node, and
  * what came back: status, headers, body, where the time went, the certificate, and what each
  * line makes of it. Nothing is stored. With `id`, a header given as null is that monitor's own.
+ * With `source: "tcp" | "cert"`, a TCP or certificate run instead (#180).
  */
 export async function sendHttpRoute(c: Context): Promise<Response> {
   const rec = await readJsonObject(c);
   if (rec instanceof Response) {
     return rec;
+  }
+  // A TCP or certificate monitor's Send (#180) has its own run and its own answer.
+  if (isNetSource(rec.source)) {
+    return sendNetRoute(c, rec, rec.source);
   }
   const rule = typeof rec.id === "string" ? getAlert(rec.id) : null;
   const stored = rule?.source === "http" ? getHttp(rule.id) : null;
