@@ -28,6 +28,12 @@ export function getDb(): Database {
     }
   }
   db = new Database(path);
+  migrateControlDb(db);
+  return db;
+}
+
+/** The control plane's tables, created or brought up to date in place. */
+export function migrateControlDb(db: Database): void {
   db.run("PRAGMA journal_mode = WAL;");
   db.run(`
     CREATE TABLE IF NOT EXISTS saved_searches (
@@ -68,6 +74,53 @@ export function getDb(): Database {
   addColumnIfMissing(db, "alert_rules", "last_mark", "TEXT");
   addColumnIfMissing(db, "alert_rules", "body_kind", "TEXT NOT NULL DEFAULT 'default'");
   addColumnIfMissing(db, "alert_rules", "body_template", "TEXT");
+  // A monitor (#175): where its results come from, ok or open, how often it reminds, and its
+  // resolved body. Rules that exist at the upgrade remind every window, as they called before.
+  addColumnIfMissing(db, "alert_rules", "source", "TEXT");
+  db.run(
+    "UPDATE alert_rules SET source = CASE kind WHEN 'first_seen' THEN 'fingerprints' ELSE 'search' END WHERE source IS NULL",
+  );
+  addColumnIfMissing(db, "alert_rules", "state", "TEXT NOT NULL DEFAULT 'ok'");
+  addColumnIfMissing(db, "alert_rules", "remind_every", "TEXT NOT NULL DEFAULT 'window'");
+  addColumnIfMissing(db, "alert_rules", "resolved_body", "TEXT");
+  addColumnIfMissing(db, "alert_rules", "last_result", "TEXT");
+  addColumnIfMissing(db, "alert_rules", "last_value", "REAL");
+  addColumnIfMissing(db, "alert_rules", "last_result_at", "INTEGER");
+  // Each open-to-resolved stretch, and the calls sent for it (#175).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS monitor_stretches (
+      id TEXT PRIMARY KEY,
+      monitor_id TEXT NOT NULL,
+      opened_at INTEGER NOT NULL,
+      resolved_at INTEGER,
+      closed_by TEXT,
+      open_value REAL,
+      open_count REAL,
+      open_message TEXT NOT NULL DEFAULT '',
+      last_value REAL,
+      last_count REAL,
+      last_at INTEGER NOT NULL,
+      called_at INTEGER,
+      open_call TEXT,
+      resolved_call TEXT
+    );
+  `);
+  db.run(
+    "CREATE INDEX IF NOT EXISTS monitor_stretches_by_monitor ON monitor_stretches (monitor_id, opened_at)",
+  );
+  db.run(`
+    CREATE TABLE IF NOT EXISTS monitor_calls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      monitor_id TEXT NOT NULL,
+      stretch_id TEXT,
+      at INTEGER NOT NULL,
+      what TEXT NOT NULL,
+      status TEXT NOT NULL,
+      ok INTEGER NOT NULL DEFAULT 0,
+      error TEXT
+    );
+  `);
+  db.run("CREATE INDEX IF NOT EXISTS monitor_calls_by_monitor ON monitor_calls (monitor_id, at)");
   db.run(`
     CREATE TABLE IF NOT EXISTS alert_sent_fingerprints (
       rule_id TEXT NOT NULL,
@@ -165,7 +218,6 @@ export function getDb(): Database {
   if (!retention) {
     db.run("INSERT INTO settings (key, value) VALUES ('retention_days', '30')");
   }
-  return db;
 }
 
 type SqliteColumn = { name: string };

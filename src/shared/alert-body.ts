@@ -20,6 +20,11 @@ export const thresholdFillIns: AlertFillIn[] = [
   { name: "query", about: "the search" },
   { name: "fired_at", about: "ISO time" },
   { name: "link", about: "back to Toposcope" },
+  { name: "state", about: "open, reminder, resolved" },
+  { name: "opened_at", about: "ISO time" },
+  { name: "resolved_at", about: "ISO time, once resolved" },
+  { name: "duration", about: "open so far, or how long" },
+  { name: "message", about: "the result that opened it" },
 ];
 
 /** Frame 15f's list, for a new-fingerprints alert. */
@@ -224,6 +229,22 @@ export function jsonBodyFaultText(f: JsonBodyFault): string {
   return `Not JSON yet: line ${f.line}, column ${f.column} — ${f.what}${f.after ? ` after ${f.after}` : ""}.`;
 }
 
+/** Why a resolved body cannot be saved, or null. Empty is fine: then it sends no resolved call. */
+export function resolvedBodyProblem(
+  bodyKind: AlertBodyKind,
+  template: string,
+  alertKind: "threshold" | "first_seen",
+): string | null {
+  if (!template.trim() || bodyKind === "default") {
+    return null;
+  }
+  if (alertKind === "first_seen") {
+    return "a new-fingerprints monitor does not resolve, so it has no resolved body";
+  }
+  const problem = alertBodyProblem(bodyKind, template, alertKind);
+  return problem ? `the resolved body: ${problem}` : null;
+}
+
 /** Why a body cannot be saved, or null. */
 export function alertBodyProblem(
   bodyKind: AlertBodyKind,
@@ -255,6 +276,13 @@ export function alertBodyProblem(
 /** What a body is sent as. */
 export function alertBodyContentType(kind: AlertBodyKind): string {
   return kind === "text" ? "text/plain; charset=utf-8" : "application/json";
+}
+
+/** Prefilled when a resolved body is added. */
+export function starterResolvedBody(bodyKind: "text" | "json"): string {
+  return bodyKind === "text"
+    ? "{{alert.name}} resolved after {{duration}}: {{series}} {{value}} < {{threshold}}\n{{link}}"
+    : '{\n  "title": "{{alert.name}} resolved",\n  "message": "after {{duration}}: {{series}} {{value}} < {{threshold}}",\n  "url": "{{link}}"\n}';
 }
 
 /** Prefilled when Text or JSON is picked, so there is something to change. */

@@ -18,6 +18,7 @@ import { firstSeenPayload, firstSeenWatchMs, watchedMarks } from "./first-seen";
 import {
   alertLink,
   alertWebhookBody,
+  readingMessage,
   renderWebhook,
   thresholdFillValues,
   type WebhookPayload,
@@ -170,6 +171,8 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
       base && from && to
         ? alertLink(base, { savedId: saved.id, query: saved.query, agg: saved.agg, from, to })
         : null;
+    // Sent as the call that opens it would be.
+    const call = { state: "open" as const, openedAt: firedAt, resolvedAt: null, duration: "0s" };
     payload = renderWebhook(
       rule,
       alertWebhookBody({
@@ -181,6 +184,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
         query: saved.query,
         firedAt,
         link,
+        call,
       }),
       thresholdFillValues({
         name,
@@ -190,6 +194,8 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
         query: saved.query,
         firedAt,
         link,
+        call,
+        message: readingMessage(series.expr, series.value, threshold),
       }),
     );
   }

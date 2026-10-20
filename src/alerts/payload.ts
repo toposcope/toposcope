@@ -71,6 +71,18 @@ export function alertLink(
   return `${base}/?${params.toString()}`;
 }
 
+/** Which call this is (#175): it opened, it is still open, or it resolved. */
+export type CallState = "open" | "reminder" | "resolved";
+
+/** A call's place in its stretch: when it opened, when it resolved, and how long that is. */
+export type StretchCall = {
+  state: CallState;
+  openedAt: string;
+  resolvedAt: string | null;
+  /** "22m", "7h 59m": open so far, or how long it lasted. */
+  duration: string;
+};
+
 export function alertWebhookBody(args: {
   url: string;
   alert: { id: string; name: string; threshold: number };
@@ -81,18 +93,33 @@ export function alertWebhookBody(args: {
   firedAt: string;
   /** Back to Toposcope, when it knows its address (`TOPOSCOPE_PUBLIC_URL`). */
   link?: string | null;
+  /** A monitor's call; without one the body is 0.5's. */
+  call?: StretchCall | null;
 }): unknown {
   const series = seriesLabel(args.agg);
+  const call = args.call ?? null;
   if (isSlackIncomingUrl(args.url)) {
     const open = args.link ? `\n<${args.link}|Open in Toposcope>` : "";
+    const sign = call?.state === "resolved" ? "<" : "≥";
+    const reading = `${series} ${args.value} ${sign} ${args.alert.threshold}`;
+    const headline =
+      call?.state === "resolved"
+        ? `resolved after ${call.duration}`
+        : call?.state === "reminder"
+          ? `still open · ${call.duration}`
+          : "fired";
+    const text =
+      call?.state === "resolved" || call?.state === "reminder"
+        ? `Toposcope: ${args.alert.name} ${headline} — ${reading}`
+        : `Toposcope: ${args.alert.name} — ${reading}`;
     return {
-      text: `Toposcope: ${args.alert.name} — ${series} ${args.value} ≥ ${args.alert.threshold}`,
+      text,
       blocks: [
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*${args.alert.name}* fired\n\`${args.query || "*"}\`\n*${series}* ${args.value} ≥ ${args.alert.threshold}${open}`,
+            text: `*${args.alert.name}* ${headline}\n\`${args.query || "*"}\`\n*${series}* ${args.value} ${sign} ${args.alert.threshold}${open}`,
           },
         },
       ],
@@ -105,6 +132,7 @@ export function alertWebhookBody(args: {
     agg: args.agg,
     query: args.query,
     fired_at: args.firedAt,
+    ...(call ? { state: call.state, opened_at: call.openedAt, resolved_at: call.resolvedAt } : {}),
     ...(args.link ? { link: args.link } : {}),
   };
 }
@@ -177,7 +205,7 @@ function plainNumber(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Number(n.toPrecision(6)));
 }
 
-/** Frame 15e's fill-ins for a threshold alert. */
+/** Frame 15e's fill-ins for a threshold alert, and a monitor's `state` and stretch (#175). */
 export function thresholdFillValues(args: {
   name: string;
   agg: string | null;
@@ -186,6 +214,9 @@ export function thresholdFillValues(args: {
   query: string;
   firedAt: string;
   link: string | null;
+  call?: StretchCall | null;
+  /** The result that opened it. */
+  message?: string;
 }): Record<string, string> {
   return {
     "alert.name": args.name,
@@ -195,7 +226,17 @@ export function thresholdFillValues(args: {
     query: args.query,
     fired_at: args.firedAt,
     link: args.link ?? "",
+    state: args.call?.state ?? "open",
+    opened_at: args.call?.openedAt ?? args.firedAt,
+    resolved_at: args.call?.resolvedAt ?? "",
+    duration: args.call?.duration ?? "0s",
+    message: args.message ?? "",
   };
+}
+
+/** "Count 57 ≥ 50", "p99(duration_ms) 412 < 800": a search monitor's result in words. */
+export function readingMessage(agg: string | null, value: number, threshold: number): string {
+  return `${seriesLabel(agg)} ${plainNumber(value)} ${value >= threshold ? "≥" : "<"} ${plainNumber(threshold)}`;
 }
 
 /** Frame 15f's fill-ins for a new-fingerprints alert. */
@@ -241,4 +282,31 @@ export function renderWebhook(
     body: fillAlertBody(rule.body_template, values, rule.body_kind),
     contentType: alertBodyContentType(rule.body_kind),
   };
+}
+
+/**
+ * Whether a monitor sends a resolved call: the default body (and Slack's) always does; a text or
+ * JSON body of its own only with a resolved body, so a message written for "it fired" never
+ * arrives when it ended.
+ */
+export function sendsResolved(rule: { body_kind: AlertBodyKind; body_template: string | null; resolved_body: string | null }): boolean {
+  if (rule.body_kind === "default" || !rule.body_template) {
+    return true;
+  }
+  return Boolean(rule.resolved_body && rule.resolved_body.trim());
+}
+
+/** The resolved call: the default body, or the resolved body in the body's kind. */
+export function renderResolved(
+  rule: { body_kind: AlertBodyKind; body_template: string | null; resolved_body: string | null },
+  defaultBody: unknown,
+  values: Record<string, string>,
+): WebhookPayload | null {
+  if (!sendsResolved(rule)) {
+    return null;
+  }
+  if (rule.body_kind === "default" || !rule.body_template) {
+    return renderWebhook(rule, defaultBody, values);
+  }
+  return renderWebhook({ body_kind: rule.body_kind, body_template: rule.resolved_body }, defaultBody, values);
 }

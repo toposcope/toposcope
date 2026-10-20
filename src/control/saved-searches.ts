@@ -18,6 +18,7 @@ import {
   type BoardSlots,
 } from "../shared/boards";
 import { formatPromotedCols, parsePromotedCols } from "../shared/attrs";
+import { closeByEdit } from "../alerts/monitor-store";
 import { getDb } from "./index";
 
 export type SavedSearch = {
@@ -328,6 +329,21 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
   getDb()
     .query("UPDATE alert_rules SET query = ? WHERE saved_search_id = ?")
     .run(fields.query, id);
+  // A monitor open on this search now reads something else: it closes without a call (#175).
+  if (
+    fields.query !== existing.query ||
+    fields.range !== existing.range ||
+    fields.from_ts !== existing.from_ts ||
+    fields.to_ts !== existing.to_ts ||
+    fields.agg !== existing.agg
+  ) {
+    const open = getDb()
+      .query("SELECT id FROM alert_rules WHERE saved_search_id = ? AND state = 'open'")
+      .all(id) as Array<{ id: string }>;
+    for (const row of open) {
+      closeByEdit(row.id, Date.now());
+    }
+  }
   const updated = getSaved(id);
   return c.json(updated);
 }

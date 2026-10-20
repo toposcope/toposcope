@@ -39,6 +39,13 @@ const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
   consecutive_failures: 0,
   silenced_until: null,
   created_at: 0,
+  source: "fingerprints",
+  state: "ok",
+  remind_every: "window",
+  resolved_body: null,
+  last_result: null,
+  last_value: null,
+  last_result_at: null,
   ...over,
 });
 
