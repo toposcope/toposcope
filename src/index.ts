@@ -83,6 +83,7 @@ import { requirePublicUrl } from "./shared/public-url";
 import { requireWatchdogUrl } from "./alerts/watchdog";
 import { startReleaseCheck, versionReply } from "./control/release-check";
 import { announceNewRelease } from "./control/update-event";
+import { storeSize } from "./control/store-size";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 
 requirePackagedSecrets();
@@ -310,7 +311,11 @@ app.get("/api/metric-labels", metricLabelsRoute);
 app.get("/api/throughput", throughputRoute);
 app.get("/api/system", systemRoute);
 // Signed in, unlike /api/health: how far behind an instance is stays with its operators (#196).
-app.get("/api/version", (c) => c.json(versionReply()));
+app.get("/api/version", async (c) => {
+  const reply = versionReply();
+  // The stores are sized only when an upgrade is on offer: the panel says how big its backup is (#201).
+  return c.json(reply.releases.length > 0 ? { ...reply, store: await storeSize() } : reply);
+});
 app.get("/api/home", getHome);
 app.put("/api/home", putHome);
 app.get("/api/saved-searches", listSavedSearches);

@@ -28,6 +28,7 @@ import { monitorQuery } from "../shared/push";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
+import { VersionFooter } from "@/components/version-footer";
 import { TimeRangePicker } from "@/components/time-range-picker";
 import { TokensDialog } from "@/components/tokens-dialog";
 import { ThroughputMeter } from "@/components/throughput-meter";
@@ -4916,6 +4917,7 @@ export function App() {
         />
         <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />
         <SystemMeters />
+        <VersionFooter />
       </StatusFooter>
       <SettingsDialog
         open={settingsOpen}

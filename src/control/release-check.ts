@@ -1,6 +1,9 @@
 import type { Database } from "bun:sqlite";
+import { compareVersions as compare, parseVersion, releaseStep, type Release, type VersionReply } from "../shared/releases";
 import { version as runningVersion } from "../shared/version";
 import { getDb } from "./index";
+
+export { parseVersion, releaseStep, type Release, type Step, type VersionReply } from "../shared/releases";
 
 /**
  * Toposcope knows when a newer release is out (#196). Once a day, and a few minutes after boot,
@@ -16,16 +19,6 @@ type Env = Record<string, string | undefined>;
 
 export const releasesUrl = "https://api.github.com/repos/toposcope/toposcope/releases?per_page=30";
 
-export type Release = {
-  version: string;
-  published_at: string | null;
-  url: string | null;
-  /** The release body, without its Before you upgrade paragraph. */
-  notes: string;
-  /** The paragraph that starts `**Before you upgrade:**`, without that lead; null when it has none. */
-  before_you_upgrade: string | null;
-};
-
 /** What the last check found, kept in SQLite `settings` under `update_check`. */
 export type StoredCheck = {
   /** The last check that got an answer. */
@@ -37,49 +30,13 @@ export type StoredCheck = {
   releases: Release[];
 };
 
-export type Step = "patch" | "minor" | "major";
-
-export type VersionReply = {
-  running: string;
-  /** The newest release known, or the running version when none is newer. */
-  latest: string;
-  /** How far `latest` is from `running`; null when nothing newer is known. */
-  step: Step | null;
-  check: "on" | "off";
-  checked_at: string | null;
-  error: string | null;
-  releases: Release[];
-};
-
 const offWords = new Set(["off", "false", "0", "no"]);
 
 export function updateCheckOn(env: Env = process.env): boolean {
   return !offWords.has((env.TOPOSCOPE_UPDATE_CHECK ?? "").trim().toLowerCase());
 }
 
-type Semver = [number, number, number];
-
-export function parseVersion(raw: string): Semver | null {
-  const m = /^v?(\d{1,6})\.(\d{1,6})\.(\d{1,6})$/.exec(raw.trim());
-  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-}
-
-function compare(a: Semver, b: Semver): number {
-  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-}
-
-/** Before 1.0 the middle number is the minor step (0.6 → 0.7); 0.x → 1.0 is major. */
-export function releaseStep(running: string, latest: string): Step | null {
-  const a = parseVersion(running);
-  const b = parseVersion(latest);
-  if (!a || !b || compare(b, a) <= 0) {
-    return null;
-  }
-  if (b[0] !== a[0]) {
-    return "major";
-  }
-  return b[1] !== a[1] ? "minor" : "patch";
-}
+type Semver = NonNullable<ReturnType<typeof parseVersion>>;
 
 const lead = /^\*\*Before you upgrade:\*\*\s*/;
 
