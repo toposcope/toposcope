@@ -36,7 +36,7 @@ let state: string;
 let server: ReturnType<typeof Bun.serve>;
 let fakeBin: string;
 
-const releaseList = () => [
+let releaseList = () => [
   { tag_name: "v0.6.2", body: "A patch.\n\n**Before you upgrade:** Monitors remind every 4h by default.\n\nMore." },
   { tag_name: "v0.6.1", body: "The release check." },
 ];
@@ -169,6 +169,25 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     expect(log.indexOf(" stop")).toBeLessThan(log.indexOf("--entrypoint tar"));
     expect(r.all).not.toContain(token);
     expect(r.all).toContain("New settings in env.example that .env does not have: TOPOSCOPE_UPDATE_CHECK");
+  });
+
+  test("Before you upgrade is the paragraph that starts with it, not a mention of it in another", async () => {
+    // 0.6.1's own notes mention the lead mid-sentence, in the paragraph that brought the convention.
+    const before = releaseList;
+    releaseList = () => [
+      {
+        tag_name: "v0.6.2",
+        body: "A version section may now carry one paragraph that starts **Before you upgrade:**, which the release body carries apart.\n\n**Before you upgrade:** Monitors remind every 4h by default.",
+      },
+    ];
+    try {
+      const r = await run(["0.6.2"]);
+      expect(r.code).toBe(0);
+      expect(r.all).toContain("Before you upgrade to 0.6.2: Monitors remind every 4h by default.");
+      expect(r.all).not.toContain("which the release body carries apart");
+    } finally {
+      releaseList = before;
+    }
   });
 
   test("a 0.6.2 that never comes up ends back on 0.6.1, said and marked", async () => {

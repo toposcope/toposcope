@@ -158,8 +158,12 @@ print_before() {
         v = parts[i]; sub(/".*/, "", v)
         if (!(newer(v, ENVIRON["FROM"]) && !newer(v, ENVIRON["TO"]))) continue
         body = parts[i]
-        if (match(body, /\*\*Before you upgrade:\*\*[^"]*/)) {
-          text = substr(body, RSTART + 24, RLENGTH - 24); gsub(/\\n.*/, "", text); gsub(/^ +/, "", text)
+        # The paragraph that starts with the lead: at the start of the body, or after a blank line.
+        # A mention of the lead inside another paragraph is not it (#210).
+        if (match(body, /("body": *"|\\n\\n)\*\*Before you upgrade:\*\*([^"\\]|\\.)*/)) {
+          text = substr(body, RSTART, RLENGTH)
+          sub(/^("body": *"|\\n\\n)\*\*Before you upgrade:\*\* */, "", text)
+          sub(/\\n.*/, "", text); gsub(/\\"/, "\"", text)
           printf "Before you upgrade to %s: %s\n", v, text
         }
       }
