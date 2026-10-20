@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { guideSection } from "../../scripts/ingest-guide-examples";
@@ -77,6 +77,8 @@ let server: ReturnType<typeof Bun.serve>;
 let reply: unknown = {};
 let seen: Array<{ authorization: string | null; q: string | null; range: string | null }> = [];
 let checks: Array<{ authorization: string | null; agent: string | null; body: Record<string, unknown> }> = [];
+/** A stand-in release on loopback, for `up` (#195): file name → body; absent names answer 404. */
+let releaseFiles: Record<string, string> = {};
 
 beforeAll(() => {
   home = mkdtempSync(join(tmpdir(), "toposcope-skill-"));
@@ -90,6 +92,10 @@ beforeAll(() => {
     port: 0,
     async fetch(request) {
       const url = new URL(request.url);
+      if (url.pathname.startsWith("/release/")) {
+        const body = releaseFiles[url.pathname.slice("/release/".length)];
+        return body === undefined ? new Response("not found", { status: 404 }) : new Response(body);
+      }
       // Stands in for `POST /v1/checks` too, for `check <monitor> -- <command>`.
       if (url.pathname === "/v1/checks" && request.method === "POST") {
         checks.push({
@@ -335,5 +341,75 @@ describe("check <monitor> -- <command> (#177)", () => {
     const { code, err } = await run("check", "rotate", "--");
     expect(code).not.toBe(0);
     expect(err).toContain("check <monitor> -- <command>");
+  });
+});
+
+describe("up checks the release's files against its SHA256SUMS (#195)", () => {
+  const sha = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
+  const files: Record<string, string> = {
+    "compose.yml": "services: {}\n",
+    "env.example": "CLICKHOUSE_PASSWORD=\nTOPOSCOPE_PASSWORD=\nTOPOSCOPE_INGEST_TOKEN=\n",
+    "vector.yaml": "sources: {}\n",
+    LICENSE: "MIT\n",
+    "toposcope.sh": "#!/usr/bin/env bash\n",
+  };
+  const sums = (from: Record<string, string>) =>
+    Object.entries(from).map(([name, body]) => `${sha(body)}  ${name}`).join("\n") + "\n";
+
+  // Docker stands in too, so nothing starts: it says no volume and no manifest, and refuses `up`.
+  function fakeDocker(): string {
+    const bin = mkdtempSync(join(tmpdir(), "toposcope-fake-docker-"));
+    writeFileSync(
+      join(bin, "docker"),
+      '#!/usr/bin/env bash\ncase "$1 $2" in\n  "compose version") exit 0 ;;\n  "volume inspect" | "manifest inspect") exit 1 ;;\n  *) echo "fake docker refused: $*" >&2; exit 1 ;;\nesac\n',
+    );
+    chmodSync(join(bin, "docker"), 0o755);
+    return bin;
+  }
+
+  async function up(): Promise<{ code: number; err: string; dir: string }> {
+    const dir = join(mkdtempSync(join(tmpdir(), "toposcope-up-")), "instance");
+    const { code, err } = await runWith(
+      { TOPOSCOPE_DIR: dir, TOPOSCOPE_RELEASE_URL: `http://127.0.0.1:${server.port}/release`, PATH: `${fakeDocker()}:${process.env.PATH}` },
+      "up",
+    );
+    return { code, err, dir };
+  }
+
+  test("files that match go in place, and only then does it try to start", async () => {
+    releaseFiles = { ...files, SHA256SUMS: sums(files) };
+    const { code, err, dir } = await up();
+    expect(code).not.toBe(0);
+    expect(err).toContain("docker compose could not start the instance");
+    for (const name of Object.keys(files)) {
+      expect(readFileSync(join(dir, name), "utf8")).toBe(files[name]!);
+      expect(existsSync(join(dir, `${name}.part`))).toBe(false);
+    }
+  });
+
+  test("a file changed after it was summed starts nothing, and says which", async () => {
+    releaseFiles = { ...files, SHA256SUMS: sums(files), "compose.yml": "services: { evil: {} }\n" };
+    const { code, err, dir } = await up();
+    expect(code).toBe(1);
+    expect(err).toContain("compose.yml from the");
+    expect(err).toContain("does not match its SHA256SUMS");
+    expect(existsSync(join(dir, "compose.yml"))).toBe(false);
+    expect(existsSync(join(dir, ".env"))).toBe(false);
+  });
+
+  test("a release with no SHA256SUMS starts nothing", async () => {
+    releaseFiles = { ...files };
+    const { code, err, dir } = await up();
+    expect(code).toBe(1);
+    expect(err).toContain("Could not download SHA256SUMS");
+    expect(existsSync(join(dir, "compose.yml"))).toBe(false);
+  });
+
+  test("a file the sums do not list starts nothing", async () => {
+    const { LICENSE: _license, ...rest } = files;
+    releaseFiles = { ...files, SHA256SUMS: sums(rest) };
+    const { code, err } = await up();
+    expect(code).toBe(1);
+    expect(err).toContain("does not list LICENSE");
   });
 });

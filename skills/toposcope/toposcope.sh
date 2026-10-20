@@ -7,7 +7,8 @@ set -euo pipefail
 
 VERSION="0.6.0"
 IMAGE="ghcr.io/toposcope/toposcope:$VERSION"
-RELEASE="https://github.com/toposcope/toposcope/releases/download/v$VERSION"
+# The release files, checked against its SHA256SUMS. Tests point this at a stand-in on loopback.
+RELEASE="${TOPOSCOPE_RELEASE_URL:-https://github.com/toposcope/toposcope/releases/download/v$VERSION}"
 ROOT="${TOPOSCOPE_DIR:-$HOME/.toposcope}"
 # The packaged install publishes 8080. Tests point this at a stub on loopback.
 PORT="${TOPOSCOPE_PORT:-8080}"
@@ -61,6 +62,32 @@ report_version() {
 
 compose() {
   (cd "$ROOT" && docker compose "$@")
+}
+
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
+
+# Downloads the release's files into $ROOT, each checked against the release's SHA256SUMS first:
+# a file goes in place only when it matches, and a mismatch starts nothing and names the file.
+fetch_release() {
+  curl -fsSL "$RELEASE/SHA256SUMS" -o "$ROOT/SHA256SUMS" ||
+    die "Could not download SHA256SUMS for $VERSION from the release, so its files cannot be checked. Nothing was started."
+  local file expected got
+  for file in compose.yml env.example vector.yaml LICENSE toposcope.sh; do
+    curl -fsSL "$RELEASE/$file" -o "$ROOT/$file.part" ||
+      die "Could not download $file for $VERSION from the release. Nothing was started."
+    expected="$(awk -v f="$file" '$2 == f || $2 == "*" f { print $1; exit }' "$ROOT/SHA256SUMS")"
+    [ -n "$expected" ] || die "The release's SHA256SUMS does not list $file. Nothing was started."
+    got="$(sha256_of "$ROOT/$file.part")"
+    [ "$got" = "$expected" ] ||
+      die "$file from the $VERSION release does not match its SHA256SUMS: it is kept as $ROOT/$file.part. Nothing was started."
+    mv -f "$ROOT/$file.part" "$ROOT/$file"
+  done
 }
 
 machine_arch() {
@@ -119,11 +146,7 @@ cmd_up() {
     fi
     mkdir -p "$ROOT"
     chmod 700 "$ROOT"
-    local file
-    for file in compose.yml env.example vector.yaml LICENSE; do
-      curl -fsSL "$RELEASE/$file" -o "$ROOT/$file" ||
-        die "Could not download $file for $VERSION from the release. Nothing was started."
-    done
+    fetch_release
     (
       umask 077
       while IFS= read -r line || [ -n "$line" ]; do
