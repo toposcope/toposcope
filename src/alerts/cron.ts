@@ -10,6 +10,7 @@ import { incMetric } from "../metrics";
 import { clipError, outcomeFromError, outcomeFromHttp } from "./delivery";
 import { publicUrl } from "../shared/public-url";
 import type { WebhookPayload } from "./payload";
+import { cantTellNow, markStarted } from "./cant-tell";
 import { passSearchMonitor } from "./monitor";
 import { recordCall } from "./monitor-store";
 import { evaluateAlertSeries } from "./series";
@@ -89,6 +90,7 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
       recordEval: (id, stamp, database) =>
         recordEvalAttempt(id, { ...stamp, error: stamp.error ? clipError(stamp.error) : null }, database),
       onSent: () => incMetric("alert_fires"),
+      cantTell: (s, windowMs, at) => cantTellNow(s.query, windowMs, at),
     });
   }
 }
@@ -99,6 +101,8 @@ export function startAlertCron(): void {
   if (!Number.isFinite(ms) || ms <= 0) {
     return;
   }
+  // Ingest is answered from here: a fewer-than window that reaches back before it may miss lines.
+  markStarted();
   setInterval(() => {
     void evaluateAlerts();
   }, ms);

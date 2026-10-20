@@ -4,6 +4,7 @@ import {
   fillAlertBody,
   type AlertBodyKind,
 } from "../shared/alert-body";
+import type { OpensWhen } from "../shared/monitor";
 
 export const silenceForIds = ["1h", "4h", "24h"] as const;
 export type SilenceForId = (typeof silenceForIds)[number];
@@ -85,7 +86,8 @@ export type StretchCall = {
 
 export function alertWebhookBody(args: {
   url: string;
-  alert: { id: string; name: string; threshold: number };
+  /** `opens_when` only for a monitor that opens on fewer than its threshold (#176). */
+  alert: { id: string; name: string; threshold: number; opens_when?: OpensWhen };
   count: number;
   value: number;
   agg: string | null;
@@ -100,7 +102,9 @@ export function alertWebhookBody(args: {
   const call = args.call ?? null;
   if (isSlackIncomingUrl(args.url)) {
     const open = args.link ? `\n<${args.link}|Open in Toposcope>` : "";
-    const sign = call?.state === "resolved" ? "<" : "≥";
+    // At least opens at ≥ and resolves at <; fewer than the other way round.
+    const fewer = args.alert.opens_when === "fewer_than";
+    const sign = (call?.state === "resolved") !== fewer ? "<" : "≥";
     const reading = `${series} ${args.value} ${sign} ${args.alert.threshold}`;
     const headline =
       call?.state === "resolved"
@@ -234,8 +238,20 @@ export function thresholdFillValues(args: {
   };
 }
 
-/** "Count 57 ≥ 50", "p99(duration_ms) 412 < 800": a search monitor's result in words. */
-export function readingMessage(agg: string | null, value: number, threshold: number): string {
+/**
+ * "Count 57 ≥ 50", "p99(duration_ms) 412 < 800": a search monitor's result in words; "no line
+ * for 15m" when a fewer-than count read none (#176, 18o).
+ */
+export function readingMessage(
+  agg: string | null,
+  value: number,
+  threshold: number,
+  opensWhen: OpensWhen = "at_least",
+  range: string | null = null,
+): string {
+  if (opensWhen === "fewer_than" && !agg && value === 0 && range) {
+    return `no line for ${range}`;
+  }
   return `${seriesLabel(agg)} ${plainNumber(value)} ${value >= threshold ? "≥" : "<"} ${plainNumber(threshold)}`;
 }
 

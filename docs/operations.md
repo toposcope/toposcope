@@ -38,12 +38,17 @@ Set `TOPOSCOPE_PUBLIC_URL` in `.env` to the address people open, such as `https:
 
 A monitor (**Watch → New monitor**, or **Watch this** on a saved search) reads its saved search every minute. At or above its threshold it **opens**: it calls its webhook once, then reminds while it stays open (every 4h by default; off, once per window, 1h or 24h), and when the search falls back it **resolves** and calls once more. A reading that is refused or fails changes nothing. Each open-to-resolved stretch is kept with the calls sent during it, and Watch draws them on one clock. Silence stops the calls, not the record. Alerts made before 0.6 are monitors that remind once per window, so they call as often as they did.
 
+A monitor can also open on **fewer than** its threshold, for a stream that must keep talking: `host:ci-box` over 15m, fewer than 1, opens when no line has come from the box for 15 minutes, and the next line resolves it. Fewer than reads a count or a rate (no lines is a rate of 0); a p99 or an average over no lines has no value, so those are refused, and so is a saved search with a fixed from/to. Too few lines can also mean the lines are not here yet, so it **stays shut while it can't tell**, and Watch says which: a refused or failed reading; the first window after Toposcope starts (it may have missed lines while it was down); or a linked source that could feed the search is behind or quiet, so the count is a floor. Watch and the editor show when the search last matched a line ("last line 10:26:41, 37m ago").
+
 A script or an agent can declare one without the UI, by name; the same name replaces it:
 
 ```bash
 curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-errors \
   -H 'content-type: application/json' \
   -d '{"source": "search", "saved_search": "api errors", "threshold": 50, "webhook_url": "https://ntfy.sh/my-topic", "remind_every": "4h"}'
+curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/ci-box-went-quiet \
+  -H 'content-type: application/json' \
+  -d '{"source": "search", "saved_search": "ci-box lines", "opens_when": "fewer_than", "threshold": 1, "webhook_url": "https://ntfy.sh/my-topic"}'
 ```
 
 ## Monitor bodies

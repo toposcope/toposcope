@@ -10,7 +10,17 @@ import { formatOpenFor } from "../../shared/monitor";
 import { formatCompactCount } from "@/count-format";
 import { formatAggStat } from "@/fill-histogram";
 import type { MonitorView } from "@/types";
-import { callHost, clockAt, laneReadout, opensWhen, remindLabel, sourceOf } from "@/watch";
+import {
+  callHost,
+  cantTellNow,
+  clockAt,
+  lastLineWords,
+  laneReadout,
+  opensWhen,
+  readsQuiet,
+  remindLabel,
+  sourceOf,
+} from "@/watch";
 
 const btn2 = "flex h-7 items-center rounded-md border px-3 text-[13px] hover:bg-accent";
 
@@ -66,6 +76,8 @@ export function MonitorRail({
   const silenced = typeof monitor.silenced_until === "number" && monitor.silenced_until > nowMs;
   const paused = monitor.enabled === 0;
   const failure = callFailure(monitor);
+  const quiet = readsQuiet(monitor);
+  const cantTell = cantTellNow(monitor, nowMs);
   return (
     <aside className="flex w-[330px] max-w-[34%] shrink-0 flex-col gap-3 overflow-y-auto border-l bg-[#0c0c0e] p-3">
       <div className="flex items-center gap-2">
@@ -111,6 +123,16 @@ export function MonitorRail({
             </span>
           </Row>
         )}
+        {quiet ? (
+          <Row k="last line">
+            <span className="font-mono">{lastLineWords(monitor.last_line_at, nowMs)}</span>
+          </Row>
+        ) : null}
+        {cantTell ? (
+          <Row k="can't tell">
+            <span className="font-mono">{cantTell}</span>
+          </Row>
+        ) : null}
         {!fingerprints && monitor.last_result_at ? (
           <Row k="last read">
             <span className="font-mono">

@@ -153,7 +153,9 @@ function Lane({
       <span className="flex min-w-0 items-center gap-1.5">
         <Badge tone={readout.tone}>{readout.badge}</Badge>
         {readout.text ? (
-          <span className="truncate font-mono text-[10.5px] text-muted-foreground">{readout.text}</span>
+          <span className="truncate font-mono text-[10.5px] text-muted-foreground" title={readout.title}>
+            {readout.text}
+          </span>
         ) : null}
       </span>
     </div>
@@ -232,7 +234,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                     {m.name}{" "}
                     <span className="text-muted-foreground">· open {formatOpenFor(nowMs - m.open!.opened_at)}</span>
                   </span>
-                  <span className="truncate font-mono text-[11px] text-muted-foreground">{openCardLine(m)}</span>
+                  <span className="truncate font-mono text-[11px] text-muted-foreground">{openCardLine(m, nowMs)}</span>
                 </span>
                 <Button
                   type="button"
@@ -253,7 +255,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {canCreate
-                ? "A monitor opens when its search is at or above its threshold, reminds while open, and says when it resolved."
+                ? "A monitor opens when its search has at least, or fewer than, N lines in its window, reminds while open, and says when it resolved."
                 : "Save a search, then Watch this from the sidebar."}
             </p>
             {canCreate ? (

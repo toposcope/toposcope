@@ -13,6 +13,7 @@ import { changeMarksBetween } from "../query/marks";
 import { parseRangeMs } from "../query/relative";
 import { publicUrl } from "../shared/public-url";
 import { boardWatchRefuse } from "../shared/boards";
+import { fewerThanProblem, parseOpensWhen } from "../shared/monitor";
 import { parseThreshold } from "./threshold";
 import { firstSeenPayload, firstSeenWatchMs, watchedMarks } from "./first-seen";
 import {
@@ -116,6 +117,10 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
   if ("error" in body) {
     return c.json({ error: body.error }, 400);
   }
+  const opensWhen = rec.opens_when === undefined || kind === "first_seen" ? "at_least" : parseOpensWhen(rec.opens_when);
+  if (!opensWhen) {
+    return c.json({ error: "opens_when must be at_least or fewer_than" }, 400);
+  }
   const savedId = typeof rec.saved_search_id === "string" ? rec.saved_search_id : "";
   const saved = savedId ? getSaved(savedId) : null;
   if (!saved) {
@@ -163,6 +168,10 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
       deps: { details: firstSeenDetails, publicUrl },
     });
   } else {
+    const problem = opensWhen === "fewer_than" ? fewerThanProblem(saved) : null;
+    if (problem) {
+      return c.json({ error: problem }, 400);
+    }
     const series = await evaluateAlertSeries(saved);
     if (series.refused) {
       return c.json({ error: series.reason ?? "This series cannot be evaluated." }, 400);
@@ -177,7 +186,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
         : null;
     // Sent as the call that opens it would be.
     const call = { state: "open" as const, openedAt: firedAt, resolvedAt: null, duration: "0s" };
-    const message = readingMessage(series.expr, series.value, threshold);
+    const message = readingMessage(series.expr, series.value, threshold, opensWhen, saved.range);
     // A resolved body of its own is tried too, as the call that resolves it would read.
     if (body.body_kind !== "default" && body.resolved_body) {
       resolvedPayload = renderResolved(
@@ -200,7 +209,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
       rule,
       alertWebhookBody({
         url: webhook,
-        alert: { id: rule.id, name, threshold },
+        alert: { id: rule.id, name, threshold, ...(opensWhen === "fewer_than" ? { opens_when: opensWhen } : {}) },
         count: series.count,
         value: series.value,
         agg: series.expr,

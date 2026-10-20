@@ -11,6 +11,8 @@ import { toOtlpTracesJson } from "../src/ingest/otlp-traces";
 import { encodeOtlpTracesProtobuf } from "../src/ingest/otlp-traces-protobuf";
 import { formatSyslog3164 } from "../src/ingest/syslog-parse";
 import { evaluateAlerts } from "../src/alerts/cron";
+import { cantTellHeld } from "../src/alerts/cant-tell";
+import { getAlert } from "../src/control/alerts";
 import { runLiveLoad } from "./load-live";
 import { parseLiveArgs } from "./load-rates";
 import { envValue } from "../src/shared/env";
@@ -3746,7 +3748,146 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → monitor open, remind, resolved");
+  // #176, after #175's block: a saved search that goes quiet. Fewer than 1 line in 15m opens
+  // once the last line has left the window and resolves on the next; it stays shut while it can't
+  // tell (Toposcope not up one whole window, a short linked source); p99 fewer than is refused.
+  {
+    const host = `e2equiet${marker}`;
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const ingestLine = async (ts: string, n: number) => {
+      const res = await fetch(`${APP_URL}/api/ingest`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+        body: JSON.stringify([{ ts, level: "info", service: "ci-runner", host, message: `${host} line ${n}` }]),
+      });
+      if (!res.ok) throw new Error(`quiet ingest failed: ${res.status}`);
+    };
+    // The last line from the box, 14m45s old: in the 15m window now, out of it within seconds.
+    const lastTs = new Date(Date.now() - (14 * 60 + 45) * 1000).toISOString();
+    await ingestLine(lastTs, 1);
+    const save = async (body: Record<string, unknown>) => {
+      const res = await fetch(`${APP_URL}/api/saved-searches`, { method: "POST", headers: auth, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`quiet search save failed: ${res.status}`);
+      return (await res.json()) as { id: string };
+    };
+    const lines = await save({ name: `e2e ci-box lines ${marker}`, query: `host:${host}`, range: "15m" });
+    const never = await save({ name: `e2e never ${marker}`, query: `host:${host}-never`, range: "24h" });
+    const slow = await save({ name: `e2e p99 ${marker}`, query: `host:${host}`, range: "15m", agg: "p99:duration_ms" });
+    const reading = async (): Promise<{ count: number; last_line_at?: number | null }> => {
+      const res = await fetch(`${APP_URL}/api/saved-searches/${lines.id}/test`, { method: "POST", headers: auth });
+      return (await res.json()) as { count: number; last_line_at?: number | null };
+    };
+    for (let i = 0; i < 30 && (await reading()).count < 1; i++) await Bun.sleep(250);
+    if ((await reading()).count !== 1) throw new Error("the box's line is not searchable");
+
+    const calls: Array<{ path: string; body: Record<string, unknown> }> = [];
+    const hook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        calls.push({ path: new URL(req.url).pathname, body: (await req.json()) as Record<string, unknown> });
+        return new Response("ok");
+      },
+    });
+    const name = `e2e ci-box went quiet ${marker}`;
+    const graceName = `e2e never talked ${marker}`;
+    const heldBefore = cantTellHeld.links;
+    try {
+      const declare = (n: string, savedId: string, path: string, extra: Record<string, unknown> = {}) =>
+        fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, {
+          method: "PUT",
+          headers: auth,
+          body: JSON.stringify({ source: "search", saved_search_id: savedId, opens_when: "fewer_than", threshold: 1, webhook_url: `http://127.0.0.1:${hook.port}${path}`, ...extra }),
+        });
+      const made = await declare(name, lines.id, "/quiet");
+      if (made.status !== 201) throw new Error(`a fewer-than monitor should be declared, got ${made.status} ${await made.text()}`);
+      const quiet = (await made.json()) as { id: string; opens_when: string };
+      if (quiet.opens_when !== "fewer_than") throw new Error(`PUT should keep fewer_than, got ${JSON.stringify(quiet)}`);
+      const p99 = await declare(`e2e p99 quiet ${marker}`, slow.id, "/p99", { threshold: 100 });
+      const p99Body = (await p99.json()) as { error?: string };
+      if (p99.status !== 400 || p99Body.error !== "fewer than reads a count or a rate; p99(duration_ms) over no lines has no value") {
+        throw new Error(`p99 fewer than 100 should be refused with a reason, got ${p99.status} ${JSON.stringify(p99Body)}`);
+      }
+
+      const ours = () => calls.filter((c) => c.path === "/quiet").map((c) => c.body.state);
+      const t0 = Date.now();
+      // A clock this process is handed, an uptime of more than one window: the line is still in it.
+      await evaluateAlerts(t0 + 16 * 60_000);
+      if (getAlert(quiet.id)?.state !== "ok" || ours().length !== 0) throw new Error("a line in the window should keep it shut");
+      for (let i = 0; i < 60 && (await reading()).count > 0; i++) await Bun.sleep(1000);
+      if ((await reading()).count !== 0) throw new Error("the box's line did not leave the 15m window");
+
+      // Linked source prod-us is behind and could feed host:<box>: the count is a floor.
+      cantTellHeld.links = () => [
+        {
+          role: "pull",
+          connects: "we",
+          peer_name: "prod-us",
+          q: "",
+          position: 80,
+          settled: 100,
+          arrived_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+          last_contact_at: Date.now() + 17 * 60_000,
+          last_error: null,
+          created_at: t0 - 86_400_000,
+          gone_from: null,
+          gone_to: null,
+          gone_from_at: null,
+          gone_to_at: null,
+        },
+      ];
+      await evaluateAlerts(t0 + 17 * 60_000);
+      const held = getAlert(quiet.id);
+      // The app's own pass may have opened it a moment before, with its own clock and no links.
+      if (ours().length === 0 && (held?.state !== "ok" || held.cant_tell?.kind !== "held" || held.cant_tell.sources[0]?.name !== "prod-us")) {
+        throw new Error(`a short linked source should keep it shut and say so, got ${JSON.stringify(held)}`);
+      }
+      cantTellHeld.links = heldBefore;
+
+      await evaluateAlerts(t0 + 18 * 60_000);
+      if (JSON.stringify(ours()) !== '["open"]') throw new Error(`it should open once the last line is 15m old, got ${JSON.stringify(ours())}`);
+      const opened = calls.find((c) => c.path === "/quiet")!.body as { value: number; alert: { opens_when?: string } };
+      if (opened.value !== 0 || opened.alert.opens_when !== "fewer_than") throw new Error(`the open call should read 0, fewer than, got ${JSON.stringify(opened)}`);
+      const listed = (await (await fetch(`${APP_URL}/api/monitors`, { headers: auth })).json()) as {
+        monitors: Array<{ name: string; state: string; last_line_at?: number | null; open: { open_message: string } | null }>;
+      };
+      const watched = listed.monitors.find((m) => m.name === name);
+      if (watched?.state !== "open" || watched.open?.open_message !== "no line for 15m" || watched.last_line_at !== Date.parse(lastTs)) {
+        throw new Error(`Watch should read it open, no line for 15m, last line at ${lastTs}; got ${JSON.stringify(watched)}`);
+      }
+
+      // The next line resolves it.
+      await ingestLine(new Date().toISOString(), 2);
+      for (let i = 0; i < 30 && (await reading()).count < 1; i++) await Bun.sleep(250);
+      await evaluateAlerts(t0 + 19 * 60_000);
+      if (JSON.stringify(ours()) !== '["open","resolved"]') throw new Error(`the next line should resolve it once, got ${JSON.stringify(ours())}`);
+
+      // Toposcope has not been up 24h: a search that never talked stays shut, and says why.
+      const grace = (await (await declare(graceName, never.id, "/never")).json()) as { id: string };
+      await evaluateAlerts(Date.now());
+      const graceOne = (await (await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(graceName)}`, { headers: auth })).json()) as {
+        state: string;
+        cant_tell: { kind: string } | null;
+        last_line_at?: number | null;
+      };
+      if (graceOne.state !== "ok" || graceOne.cant_tell?.kind !== "starting" || calls.some((c) => c.path === "/never")) {
+        throw new Error(`a monitor should not open before one whole window of uptime, got ${JSON.stringify(graceOne)}`);
+      }
+      if (graceOne.last_line_at !== null) throw new Error(`a search that never matched reads no last line, got ${graceOne.last_line_at}`);
+      void grace;
+    } finally {
+      cantTellHeld.links = heldBefore;
+      hook.stop();
+      for (const n of [name, graceName]) {
+        await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { method: "DELETE", headers: auth });
+      }
+      for (const id of [lines.id, never.id, slow.id]) {
+        await fetch(`${APP_URL}/api/saved-searches/${id}`, { method: "DELETE", headers: auth });
+      }
+    }
+  }
+
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved");
 }
 
 await main();
