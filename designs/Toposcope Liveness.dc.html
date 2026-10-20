@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  [data-crop="18c"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18c"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18c"] .mut{color:#a1a1aa}
+  [data-crop="18c"] .hdr{height:40px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+  [data-crop="18c"] .nb{height:28px;padding:0 10px;border-radius:6px;border:0;background:transparent;color:#fafafa;font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  [data-crop="18c"] .nb.on{background:#27272a}
+  [data-crop="18c"] .ib{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  [data-crop="18c"] .btn{height:28px;padding:0 12px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
+  [data-crop="18c"] .btn2{height:28px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18c"] .card{background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6.4px}
+  [data-crop="18c"] .bd{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;white-space:nowrap}
+  [data-crop="18c"] .b-red{background:rgba(239,68,68,.16);color:#fca5a5}
+  [data-crop="18c"] .b-amber{background:rgba(251,191,36,.14);color:#fcd34d}
+  [data-crop="18c"] .b-sec{background:#27272a;color:#d4d4d8}
+  [data-crop="18c"] .kind{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:#a1a1aa}
+  [data-crop="18c"] .seg{height:24px;padding:0 9px;border:0;background:transparent;color:#a1a1aa;font:inherit;font-size:12px;border-radius:5px;display:inline-flex;align-items:center;gap:5px}
+  [data-crop="18c"] .seg.on{background:#27272a;color:#fafafa}
+  [data-crop="18c"] .lane{position:relative;height:18px;background:#0f0f11;border-radius:3px;overflow:hidden}
+  [data-crop="18c"] .lrow{display:grid;grid-template-columns:210px minmax(0,1fr) 118px;gap:12px;align-items:center;padding:4px 12px}
+  [data-crop="18f"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18f"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18f"] .mut{color:#a1a1aa}
+  [data-crop="18f"] .hdr{height:40px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+  [data-crop="18f"] .nb{height:28px;padding:0 10px;border-radius:6px;border:0;background:transparent;color:#fafafa;font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  [data-crop="18f"] .nb.on{background:#27272a}
+  [data-crop="18f"] .ib{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  [data-crop="18f"] .btn2{height:28px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18f"] .card{background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6.4px}
+  [data-crop="18f"] .bd{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;white-space:nowrap}
+  [data-crop="18f"] .b-red{background:rgba(239,68,68,.16);color:#fca5a5}
+  [data-crop="18f"] .b-amber{background:rgba(251,191,36,.14);color:#fcd34d}
+  [data-crop="18f"] .b-sec{background:#27272a;color:#d4d4d8}
+  [data-crop="18f"] .b-out{border:1px solid rgba(255,255,255,.18);color:#a1a1aa}
+  [data-crop="18f"] .seg{height:24px;padding:0 9px;border:0;background:transparent;color:#a1a1aa;font:inherit;font-size:12px;border-radius:5px}
+  [data-crop="18f"] .seg.on{background:#27272a;color:#fafafa}
+  [data-crop="18f"] .lane{position:relative;height:30px;background:#0f0f11;border-radius:3px}
+  [data-crop="18f"] .lrow{display:grid;grid-template-columns:190px minmax(0,1fr) 128px;gap:12px;align-items:center;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
+  [data-crop="18i"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18i"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18i"] .mut{color:#a1a1aa}
+  [data-crop="18i"] .hdr{height:40px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+  [data-crop="18i"] .nb{height:28px;padding:0 10px;border-radius:6px;border:0;background:transparent;color:#fafafa;font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  [data-crop="18i"] .nb.on{background:#27272a}
+  [data-crop="18i"] .ib{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  [data-crop="18i"] .btn2{height:28px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18i"] .card{background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6.4px}
+  [data-crop="18i"] .bd{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;white-space:nowrap}
+  [data-crop="18i"] .b-red{background:rgba(239,68,68,.16);color:#fca5a5}
+  [data-crop="18i"] .b-sec{background:#27272a;color:#d4d4d8}
+  [data-crop="18i"] .b-out{border:1px solid rgba(255,255,255,.18);color:#a1a1aa}
+  [data-crop="18i"] .wtab{height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a1a1aa;border-right:1px solid rgba(255,255,255,.08)}
+  [data-crop="18i"] .wtab.on{color:#fafafa;background:#09090b}
+  [data-crop="18i"] .fc{display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
+  [data-crop="18i"] .tr{display:grid;grid-template-columns:150px 54px 70px 74px minmax(0,1fr);gap:10px;padding:5px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center}
+  [data-crop="18i"] .kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 10px;font-size:12px}
+  [data-crop="18o"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18o"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18o"] .mut{color:#a1a1aa}
+  [data-crop="18o"] .hdr{height:40px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+  [data-crop="18o"] .nb{height:28px;padding:0 10px;border-radius:6px;border:0;background:transparent;color:#fafafa;font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+  [data-crop="18o"] .nb.on{background:#27272a}
+  [data-crop="18o"] .ib{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  [data-crop="18o"] .btn2{height:28px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18o"] .card{background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6.4px}
+  [data-crop="18o"] .bd{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;white-space:nowrap}
+  [data-crop="18o"] .b-red{background:rgba(239,68,68,.16);color:#fca5a5}
+  [data-crop="18o"] .b-out{border:1px solid rgba(255,255,255,.18);color:#a1a1aa}
+  [data-crop="18o"] .wtab{height:30px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#a1a1aa;border-right:1px solid rgba(255,255,255,.08)}
+  [data-crop="18o"] .wtab.on{color:#fafafa;background:#09090b}
+  [data-crop="18o"] .fc{display:flex;justify-content:space-between;font-size:12px;padding:2px 0}
+  [data-crop="18o"] .tr{display:grid;grid-template-columns:150px 54px 70px minmax(0,1fr);gap:10px;padding:5px 12px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center}
+  [data-crop="18o"] .seam{display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11.5px;border-bottom:1px solid rgba(255,255,255,.06)}
+  [data-crop="18p"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18p"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18p"] .mut{color:#a1a1aa}
+  [data-crop="18p"] .btn2{height:30px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18p"] .src{display:flex;flex-direction:column;gap:8px;text-align:left;padding:14px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#141417;color:#fafafa;font:inherit;min-height:170px;box-sizing:border-box}
+  [data-crop="18p"] .src h3{margin:0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  [data-crop="18p"] .ex{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;background:#0f0f11;border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:auto}
+  [data-crop="18p"] .ico{width:26px;height:26px;border-radius:6px;background:#27272a;display:inline-flex;align-items:center;justify-content:center;color:#e7e1d3;flex:none}
+  [data-crop="18j"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18j"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18j"] .mut{color:#a1a1aa}
+  [data-crop="18j"] .btn{height:30px;padding:0 14px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
+  [data-crop="18j"] .btn2{height:30px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18j"] .bd{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;white-space:nowrap}
+  [data-crop="18j"] .b-red{background:rgba(239,68,68,.16);color:#fca5a5}
+  [data-crop="18j"] .fld{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:start}
+  [data-crop="18j"] .lab{font-size:12px;color:#a1a1aa;padding-top:6px}
+  [data-crop="18j"] .box{min-height:30px;box-sizing:border-box;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;font-size:13px;display:flex;align-items:center;gap:8px}
+  [data-crop="18j"] .seg{height:26px;padding:0 10px;border:0;background:transparent;color:#a1a1aa;font:inherit;font-size:12px;border-radius:5px}
+  [data-crop="18j"] .seg.on{background:#27272a;color:#fafafa}
+  [data-crop="18j"] .sw{display:inline-flex;padding:2px;border-radius:7px;background:#0f0f11;border:1px solid rgba(255,255,255,.1);width:max-content}
+  [data-crop="18r"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18r"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18r"] .mut{color:#a1a1aa}
+  [data-crop="18r"] .btn{height:30px;padding:0 14px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
+  [data-crop="18r"] .btn2{height:30px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18r"] .box{min-height:30px;box-sizing:border-box;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);font-size:13px;display:flex;align-items:center;gap:8px}
+  [data-crop="18r"] .add{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:4px;border:1px dashed rgba(231,225,211,.6);background:transparent;color:#e7e1d3;font:inherit;font-size:11px}
+  [data-crop="18r"] .jl{display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  [data-crop="18r"] .k{color:#7dd3fc}
+  [data-crop="18r"] .v{color:#e4e4e7}
+  [data-crop="18r"] .cond{display:grid;grid-template-columns:minmax(0,1fr) auto 22px;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:#0f0f11;border:1px solid rgba(255,255,255,.08);font-size:12.5px}
+  [data-crop="18r"] .lvl{display:inline-flex;padding:1px;border-radius:5px;border:1px solid rgba(255,255,255,.12)}
+  [data-crop="18r"] .lvl span{font-size:10.5px;padding:1px 6px;border-radius:4px;color:#a1a1aa}
+  [data-crop="18r"] .lvl .on{background:#27272a;color:#fafafa}
+  [data-crop="18s"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18s"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18s"] .mut{color:#a1a1aa}
+  [data-crop="18s"] .btn{height:30px;padding:0 14px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
+  [data-crop="18s"] .btn2{height:30px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18s"] .bd{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;white-space:nowrap}
+  [data-crop="18s"] .b-amber{background:rgba(251,191,36,.14);color:#fcd34d}
+  [data-crop="18s"] .fld{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:start}
+  [data-crop="18s"] .lab{font-size:12px;color:#a1a1aa;padding-top:6px}
+  [data-crop="18s"] .box{min-height:30px;box-sizing:border-box;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);font-size:13px;display:flex;align-items:center;gap:8px}
+  [data-crop="18s"] .way{display:flex;flex-direction:column;gap:6px}
+  [data-crop="18s"] .way h3{margin:0;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+  [data-crop="18s"] .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#e4e4e7;background:#0f0f11;border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:8px 10px;white-space:pre;line-height:1.55;overflow:hidden}
+  [data-crop="18s"] .num{width:18px;height:18px;border-radius:999px;background:#27272a;color:#e7e1d3;font-size:10.5px;display:inline-flex;align-items:center;justify-content:center}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Liveness</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 18c–18s · monitors (0.6): Watch, one monitor, writing a monitor</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Watch</h2>
+
+    <div id="18c" data-frame="18c" data-screen-label="18c Watch: every monitor on one clock, open ones first" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Watch: every monitor on one clock, open ones first</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×560</span>
+      </div>
+      <div data-crop="18c" style="position:relative; width:1280px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:560px;display:flex;flex-direction:column">
+  <header class="hdr">
+    <span style="display:flex;align-items:center;gap:6px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-size:14px;font-weight:600;letter-spacing:-0.015em">toposcope</span>
+    </span>
+    <button class="nb" type="button" style="color:#a1a1aa">agental-logs<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    <nav style="display:flex;align-items:center;gap:2px">
+      <button class="nb" type="button">Search</button>
+      <button class="nb on" type="button">Watch</button>
+      <button class="nb" type="button">Fields</button>
+      <button class="nb" type="button">Links</button>
+    </nav>
+    <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button class="btn2" type="button" style="height:26px;display:inline-flex;align-items:center;gap:6px;font-size:12px;border-color:rgba(239,68,68,.5)"><span style="width:7px;height:7px;border-radius:999px;background:#ef4444"></span>2 open<span class="mut">· 1 late · 1 warn</span></button>
+      <button class="ib" type="button" aria-label="Tokens"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5"></circle></svg></button>
+      <button class="ib" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"></path></svg></button>
+    </span>
+  </header>
+
+  <main style="flex:1;padding:12px 16px;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h1 style="margin:0;font-size:14px;font-weight:600">Watch</h1>
+      <span style="display:inline-flex;padding:2px;border-radius:7px;background:#18181b;border:1px solid rgba(255,255,255,.1)">
+        <button class="seg on" type="button">All <span class="mono mut">13</span></button>
+        <button class="seg" type="button">Search <span class="mono mut">2</span></button>
+        <button class="seg" type="button">HTTP <span class="mono mut">2</span></button>
+        <button class="seg" type="button">Push <span class="mono mut">8</span></button>
+        <button class="seg" type="button">Fingerprints <span class="mono mut">1</span></button>
+      </span>
+      <span style="margin-left:auto;display:inline-flex;padding:2px;border-radius:7px;background:#18181b;border:1px solid rgba(255,255,255,.1)"><button class="seg on" type="button">24h</button><button class="seg" type="button">7d</button><button class="seg" type="button">30d</button></span>
+      <button class="btn" type="button">New monitor</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+      <div class="card" style="padding:8px 12px;display:flex;align-items:center;gap:12px">
+        <span style="width:10px;height:10px;border-radius:999px;background:#ef4444;flex:none"></span>
+        <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:13px">ci-box went quiet <span class="mut">· open 22m</span></span><span class="mono mut" style="font-size:11px">search · host:ci-box · fewer than 1 line in 15m · last line 10:26</span></span>
+        <button class="btn2" type="button" style="height:26px;font-size:12px">Open in Search</button>
+      </div>
+      <div class="card" style="padding:8px 12px;display:flex;align-items:center;gap:12px">
+        <span style="width:10px;height:10px;border-radius:999px;background:#ef4444;flex:none"></span>
+        <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1"><span style="font-size:13px">nightly-backup <span class="mut">· open 7h 59m</span></span><span class="mono mut" style="font-size:11px">push · every 1d, grace 1h · last result 10-19 02:04 ok</span></span>
+        <button class="btn2" type="button" style="height:26px;font-size:12px">Open in Search</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:4px 0">
+      <div class="lrow" style="padding-top:3px;padding-bottom:3px">
+        <span></span>
+        <span style="position:relative;height:14px">
+          <sc-for list="{{f18c_axis}}" as="a" hint-placeholder-count="8"><span class="mono mut" style="position:absolute;top:0;font-size:10.5px;transform:translateX(-50%);left:{{a.left}}">{{a.label}}</span></sc-for>
+        </span>
+        <span class="mono mut" style="font-size:10.5px">now 11:03</span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">ci-box went quiet</span><span class="kind">search · fewer than 1 · 15m</span></span>
+        <span class="lane">
+          <sc-for list="{{f18c_grid}}" as="g" hint-placeholder-count="8"><span style="position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07);left:{{g.left}}"></span></sc-for>
+          <span style="position:absolute;top:3px;bottom:3px;left:46.32%;width:1.74%;background:rgba(239,68,68,.45);border-radius:2px"></span>
+          <span style="position:absolute;top:3px;bottom:3px;left:98.47%;width:1.53%;background:#ef4444"></span>
+        </span>
+        <span><span class="bd b-red">open 22m</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">nightly-backup</span><span class="kind">push · every 1d · grace 1h</span></span>
+        <span class="lane">
+          <sc-for list="{{f18c_grid}}" as="g" hint-placeholder-count="8"><span style="position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07);left:{{g.left}}"></span></sc-for>
+          <span style="position:absolute;top:3px;bottom:3px;left:62.57%;width:4.17%;background:rgba(251,191,36,.7)"></span>
+          <span style="position:absolute;top:3px;bottom:3px;left:66.74%;width:33.26%;background:#ef4444"></span>
+          <span style="position:absolute;top:0;bottom:0;left:62.57%;width:0;border-left:1px dashed #e7e1d3"></span>
+        </span>
+        <span><span class="bd b-red">open 7h 59m</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">api /health</span><span class="kind">http · 30s · 3 conditions</span></span>
+        <span class="lane" style="background-image:repeating-linear-gradient(to right,rgba(231,225,211,.35) 0 1px,transparent 1px 3px);background-color:#0f0f11">
+          <span style="position:absolute;top:3px;bottom:3px;left:20.69%;width:4px;background:rgba(239,68,68,.6);border-radius:1px"></span>
+          <span style="position:absolute;top:3px;bottom:3px;left:92.15%;width:2.08%;background:#fbbf24"></span>
+        </span>
+        <span><span class="bd b-sec">ok</span> <span class="mono mut" style="font-size:10.5px">182ms</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">disk /var · log-vm</span><span class="kind">push · check_disk · 5m</span></span>
+        <span class="lane">
+          <span style="position:absolute;top:0;bottom:0;left:88.68%;right:0;background:rgba(251,191,36,.22)"></span>
+          <svg viewBox="0 0 100 18" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%"><polyline points="{{f18c_spark}}" fill="none" stroke="#e7e1d3" stroke-width="1.2" vector-effect="non-scaling-stroke"></polyline></svg>
+        </span>
+        <span><span class="bd b-amber">warn</span> <span class="mono mut" style="font-size:10.5px">87%</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">zfs-snapshot</span><span class="kind">push · every 1h · grace 15m</span></span>
+        <span class="lane">
+          <sc-for list="{{f18c_zfs}}" as="p" hint-placeholder-count="23"><span style="position:absolute;top:4px;bottom:4px;width:2px;background:#e7e1d3;left:{{p.left}}"></span></sc-for>
+          <span style="position:absolute;top:3px;bottom:3px;left:99.58%;width:0.42%;background:#fbbf24"></span>
+        </span>
+        <span><span class="bd b-amber">late 6m</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">agental.dev certificate</span><span class="kind">http · 1h · cert &gt; 14d</span></span>
+        <span class="lane">
+          <sc-for list="{{f18c_hourly}}" as="p" hint-placeholder-count="24"><span style="position:absolute;top:5px;bottom:5px;width:2px;background:rgba(231,225,211,.7);left:{{p.left}}"></span></sc-for>
+        </span>
+        <span><span class="bd b-sec">ok</span> <span class="mono mut" style="font-size:10.5px">61d left</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">api errors</span><span class="kind">search · at least 50 · 15m</span></span>
+        <span class="lane">
+          <sc-for list="{{f18c_grid}}" as="g" hint-placeholder-count="8"><span style="position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07);left:{{g.left}}"></span></sc-for>
+          <span style="position:absolute;top:3px;bottom:3px;left:20.76%;width:1.74%;background:rgba(239,68,68,.45);border-radius:2px"></span>
+        </span>
+        <span><span class="bd b-sec">ok</span> <span class="mono mut" style="font-size:10.5px">12</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">after a deploy</span><span class="kind">fingerprints · 24h</span></span>
+        <span class="lane">
+          <sc-for list="{{f18c_grid}}" as="g" hint-placeholder-count="8"><span style="position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07);left:{{g.left}}"></span></sc-for>
+          <span style="position:absolute;top:5px;width:8px;height:8px;border-radius:999px;background:#e7e1d3;left:calc(13.9% - 4px)"></span>
+          <span style="position:absolute;top:5px;width:8px;height:8px;border-radius:999px;background:#e7e1d3;left:calc(98.6% - 4px)"></span>
+        </span>
+        <span><span class="bd b-sec">ok</span> <span class="mono mut" style="font-size:10.5px">2 sent</span></span>
+      </div>
+
+      <div class="lrow">
+        <span style="display:flex;flex-direction:column"><span style="font-size:12px">marks</span><span class="kind">deploys and flags</span></span>
+        <span class="lane" style="overflow:visible;background:transparent">
+          <svg viewBox="0 0 10 9" width="10" height="9" aria-hidden="true" style="position:absolute;top:5px;left:calc(13.68% - 5px);color:#e7e1d3"><path fill="currentColor" d="M5 0 10 9H0Z"></path></svg>
+          <span class="mono mut" style="position:absolute;top:2px;left:calc(13.68% + 8px);font-size:10.5px">api v0.9.2</span>
+          <svg viewBox="0 0 10 9" width="10" height="9" aria-hidden="true" style="position:absolute;top:5px;left:calc(97.29% - 5px);color:#e7e1d3"><path fill="currentColor" d="M5 0 10 9H0Z"></path></svg>
+          <svg viewBox="0 0 10 9" width="10" height="9" aria-hidden="true" style="position:absolute;top:5px;left:calc(98.54% - 5px);color:#e7e1d3"><path fill="currentColor" d="M5 0 10 9H0Z"></path></svg>
+          <span class="mono mut" style="position:absolute;top:2px;right:calc(2.71% + 10px);font-size:10.5px">ci-runner v1.8.0 · api v0.9.3</span>
+        </span>
+        <span class="mut" style="font-size:11px">3 marks</span>
+      </div>
+    </div>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <div id="18f" data-frame="18f" data-screen-label="18f Push monitors on the clock over 7 days: each result a tick, each run a bar, when the next is due" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18f" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18f</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Push monitors on the clock over 7 days: each result a tick, each run a bar, when the next is due</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×760</span>
+      </div>
+      <div data-crop="18f" style="position:relative; width:1280px; height:760px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:760px;display:flex;flex-direction:column">
+  <header class="hdr">
+    <span style="display:flex;align-items:center;gap:6px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-size:14px;font-weight:600;letter-spacing:-0.015em">toposcope</span>
+    </span>
+    <button class="nb" type="button" style="color:#a1a1aa">agental-logs<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    <nav style="display:flex;align-items:center;gap:2px">
+      <button class="nb" type="button">Search</button>
+      <button class="nb on" type="button">Watch</button>
+      <button class="nb" type="button">Fields</button>
+      <button class="nb" type="button">Links</button>
+    </nav>
+    <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button class="btn2" type="button" style="height:26px;display:inline-flex;align-items:center;gap:6px;font-size:12px;border-color:rgba(239,68,68,.5)"><span style="width:7px;height:7px;border-radius:999px;background:#ef4444"></span>2 open<span class="mut">· 1 late · 1 warn</span></button>
+      <button class="ib" type="button" aria-label="Tokens"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5"></circle></svg></button>
+      <button class="ib" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"></path></svg></button>
+    </span>
+  </header>
+
+  <main style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h1 style="margin:0;font-size:14px;font-weight:600">Watch</h1>
+      <span style="display:inline-flex;padding:2px;border-radius:7px;background:#18181b;border:1px solid rgba(255,255,255,.1)"><button class="seg" type="button">All <span class="mono mut">13</span></button><button class="seg" type="button">Search <span class="mono mut">2</span></button><button class="seg" type="button">HTTP <span class="mono mut">2</span></button><button class="seg on" type="button">Push <span class="mono mut">8</span></button><button class="seg" type="button">Fingerprints <span class="mono mut">1</span></button></span>
+      <span class="mut" style="font-size:12px">Each tick is a result. A bar is a run, from its /start to its end. The dashed line is when the next one is due.</span>
+      <span style="margin-left:auto;display:inline-flex;padding:2px;border-radius:7px;background:#18181b;border:1px solid rgba(255,255,255,.1)"><button class="seg" type="button">24h</button><button class="seg on" type="button">7d</button><button class="seg" type="button">30d</button></span>
+      <button class="btn" type="button" style="height:28px;padding:0 12px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500">New monitor</button>
+    </div>
+
+    <div class="card" style="padding:4px 0;position:relative">
+      <div class="lrow" style="padding-top:4px;padding-bottom:4px">
+        <span></span>
+        <span style="position:relative;height:14px">
+          <sc-for list="{{f18f_axis}}" as="a" hint-placeholder-count="7"><span class="mono mut" style="position:absolute;top:0;font-size:10.5px;transform:translateX(-50%);left:{{a.left}}">{{a.label}}</span></sc-for>
+        </span>
+        <span class="mono mut" style="font-size:10.5px">now 10-20 11:03</span>
+      </div>
+
+      <sc-for list="{{f18f_lanes}}" as="l" hint-placeholder-count="7">
+        <div class="lrow">
+          <span style="display:flex;flex-direction:column"><span style="font-size:12px;{{l.nameStyle}}">{{l.name}}</span><span class="mono mut" style="font-size:11px">{{l.every}}</span></span>
+          <span class="lane" style="{{l.laneStyle}}">
+            <sc-for list="{{f18f_grid}}" as="g" hint-placeholder-count="7"><span style="position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.07);left:{{g.left}}"></span></sc-for>
+            <sc-for list="{{l.bands}}" as="b" hint-placeholder-count="1"><span style="position:absolute;top:4px;bottom:4px;{{b.style}}"></span></sc-for>
+            <sc-for list="{{l.ticks}}" as="t" hint-placeholder-count="7"><span style="position:absolute;top:7px;bottom:7px;min-width:2px;border-radius:1px;{{t.style}}"></span></sc-for>
+            <sc-if value="{{l.hasDue}}" hint-placeholder-val="{{true}}"><span style="position:absolute;top:0;bottom:0;width:0;border-left:1px dashed #e7e1d3;left:{{l.due}}"></span></sc-if>
+          </span>
+          <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-start"><span class="bd {{l.badge}}">{{l.state}}</span><span class="mono mut" style="font-size:10.5px">{{l.next}}</span></span>
+        </div>
+      </sc-for>
+
+      <div class="card" style="position:absolute;left:calc(190px + 24px + 0.37 * (100% - 190px - 128px - 48px));top:52px;width:300px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:#1f1f23;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+        <span style="display:flex;align-items:center;gap:8px"><span class="bd b-red">fail · exit 1</span><span class="mono" style="font-size:12px">10-16 02:00:41</span></span>
+        <span class="mono mut" style="font-size:11px">started 01:57:29 · ran 3m 12s · from 10.0.4.12</span>
+        <code class="mono" style="font-size:11px;color:#e4e4e7;background:#0f0f11;border-radius:4px;padding:6px 8px;white-space:pre-wrap">unable to create lock in backend: repository is already locked by PID 2211 on log-vm</code>
+        <span style="display:flex;gap:6px"><button class="btn2" type="button" style="height:24px;font-size:11px;padding:0 8px;white-space:nowrap">Open in Search</button><span class="mut" style="font-size:11px;align-self:center">opened · resolved 10-17 02:03 · 24h 2m</span></span>
+      </div>
+    </div>
+  </main>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">One monitor</h2>
+
+    <div id="18i" data-frame="18i" data-screen-label="18i A monitor opens as a hunt: its results are rows, its open stretches under the plot" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18i" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18i</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">A monitor opens as a hunt: its results are rows, its open stretches under the plot</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×900</span>
+      </div>
+      <div data-crop="18i" style="position:relative; width:1280px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:900px;display:flex;flex-direction:column">
+  <header class="hdr">
+    <span style="display:flex;align-items:center;gap:6px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-size:14px;font-weight:600;letter-spacing:-0.015em">toposcope</span>
+    </span>
+    <button class="nb" type="button" style="color:#a1a1aa">agental-logs<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    <nav style="display:flex;align-items:center;gap:2px">
+      <button class="nb on" type="button">Search</button>
+      <button class="nb" type="button">Watch</button>
+      <button class="nb" type="button">Fields</button>
+      <button class="nb" type="button">Links</button>
+    </nav>
+    <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button class="btn2" type="button" style="height:26px;display:inline-flex;align-items:center;gap:6px;font-size:12px;border-color:rgba(239,68,68,.5)"><span style="width:7px;height:7px;border-radius:999px;background:#ef4444"></span>2 open<span class="mut">· 1 late · 1 warn</span></button>
+      <button class="ib" type="button" aria-label="Tokens"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5"></circle></svg></button>
+      <button class="ib" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"></path></svg></button>
+    </span>
+  </header>
+  <div style="display:flex;background:#0f0f11;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span class="wtab">Search</span>
+    <span class="wtab on">monitor · nightly-backup</span>
+    <span class="wtab" style="border:0">+</span>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <aside style="width:210px;flex:none;background:#0f0f11;border-right:1px solid rgba(255,255,255,.08);padding:10px 12px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:4px"><span class="mut" style="font-size:11px">Saved</span><span style="font-size:12px">api errors</span><span style="font-size:12px">ci-box lines</span><span style="font-size:12px">billing p99</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="mut" style="font-size:11px">status</span><span class="fc"><span>ok</span><span class="mono mut">5</span></span><span class="fc"><span style="color:#fca5a5">fail</span><span class="mono mut">1</span></span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="mut" style="font-size:11px">signal</span><span class="fc"><span>start</span><span class="mono mut">6</span></span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="mut" style="font-size:11px">host</span><span class="fc"><span>log-vm</span><span class="mono mut">12</span></span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="mut" style="font-size:11px">level</span><span class="fc"><span>info</span><span class="mono mut">11</span></span><span class="fc"><span>error</span><span class="mono mut">1</span></span></div>
+    </aside>
+
+    <section style="flex:1;min-width:0;padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="mono" style="flex:1;height:32px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;border:1px solid rgba(255,255,255,.15);border-radius:6px;font-size:13px"><span style="color:#7dd3fc">monitor</span><span class="mut">:</span>nightly-backup</span>
+        <button class="btn2" type="button" style="height:32px">Last 7d</button>
+        <button class="btn2" type="button" style="height:32px">Live</button>
+      </div>
+      <div class="mut mono" style="font-size:11.5px">12 matching · 10-13 11:03 → 10-20 11:03 · UTC · 7d · 1h bars</div>
+
+      <div class="card" style="padding:10px 12px 8px;display:flex;flex-direction:column;gap:4px">
+        <div style="height:120px;display:flex;align-items:flex-end;gap:1px;border-bottom:1px solid rgba(255,255,255,.12)">
+          <sc-for list="{{f18i_bars}}" as="b" hint-placeholder-count="168"><span style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%"><span style="{{b.err}}"></span><span style="{{b.ok}}"></span></span></sc-for>
+        </div>
+        <div style="position:relative;height:22px;margin-top:2px">
+          <sc-for list="{{f18i_due}}" as="d" hint-placeholder-count="7"><span style="position:absolute;top:0;bottom:0;width:0;border-left:1px dashed rgba(231,225,211,.5);left:{{d.left}}"></span></sc-for>
+          <span title="nightly-backup down 10-16 02:00 → 10-17 02:03" style="position:absolute;top:5px;height:12px;left:37.5%;width:14.4%;background:rgba(239,68,68,.35);border-radius:2px"></span>
+          <span style="position:absolute;top:5px;height:12px;left:95.2%;right:0;background:#ef4444;border-radius:2px 0 0 2px;outline:2px solid #e7e1d3;outline-offset:1px"></span>
+          <span class="mono" style="position:absolute;top:4px;left:calc(37.5% + 6px);font-size:10.5px;color:#fca5a5">open 24h 2m</span>
+        </div>
+        <div style="position:relative;height:14px">
+          <sc-for list="{{f18i_axis}}" as="a" hint-placeholder-count="7"><span class="mono mut" style="position:absolute;font-size:10.5px;transform:translateX(-50%);left:{{a.left}}">{{a.label}}</span></sc-for>
+        </div>
+      </div>
+
+      <div class="card" style="overflow:hidden">
+        <div class="tr mut" style="font-size:10.5px"><span>time</span><span>level</span><span>status</span><span>ran</span><span>message</span></div>
+        <sc-for list="{{f18i_rows}}" as="r" hint-placeholder-count="9">
+          <div class="tr"><span class="mono">{{r.t}}</span><span style="{{r.lvlStyle}}">{{r.lvl}}</span><span class="mono">{{r.sig}}</span><span class="mono mut">{{r.ran}}</span><span class="mono" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{r.msg}}</span></div>
+        </sc-for>
+      </div>
+    </section>
+
+    <aside style="width:330px;flex:none;border-left:1px solid rgba(255,255,255,.08);padding:12px;display:flex;flex-direction:column;gap:12px;background:#0c0c0e">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:600">nightly-backup</span><span class="bd b-out">push</span><button type="button" aria-label="Close" style="margin-left:auto;border:0;background:transparent;color:#a1a1aa;font-size:15px">×</button></div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="bd b-red">open 7h 59m</span><span class="mono mut" style="font-size:11.5px">since 03:04 · reminded 07:04</span></div>
+      <div class="kv">
+        <span class="mut">keyed URL</span><span style="display:flex;gap:6px;align-items:center"><span class="mono" style="font-size:11px">/ping/9f2c…e41a</span><a href="#" style="font-size:11.5px">Copy</a></span>
+        <span class="mut">every</span><span class="mono">1d, grace 1h</span>
+        <span class="mut">last ok</span><span class="mono">10-19 02:04</span>
+        <span class="mut">calls</span><span class="mono">ntfy.sh · remind 4h</span>
+      </div>
+      <div style="display:flex;gap:6px"><button class="btn2" type="button">Edit</button><button class="btn2" type="button">Pause</button></div>
+    </aside>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="18o" data-frame="18o" data-screen-label="18o An open stretch is a band on the hunt clock, beside the deploy before it" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18o" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18o</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">An open stretch is a band on the hunt clock, beside the deploy before it</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×820</span>
+      </div>
+      <div data-crop="18o" style="position:relative; width:1280px; height:820px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:820px;display:flex;flex-direction:column">
+  <header class="hdr">
+    <span style="display:flex;align-items:center;gap:6px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-size:14px;font-weight:600;letter-spacing:-0.015em">toposcope</span>
+    </span>
+    <button class="nb" type="button" style="color:#a1a1aa">agental-logs<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+    <nav style="display:flex;align-items:center;gap:2px">
+      <button class="nb on" type="button">Search</button>
+      <button class="nb" type="button">Watch</button>
+      <button class="nb" type="button">Fields</button>
+      <button class="nb" type="button">Links</button>
+    </nav>
+    <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+      <button class="btn2" type="button" style="height:26px;display:inline-flex;align-items:center;gap:6px;font-size:12px;border-color:rgba(239,68,68,.5)"><span style="width:7px;height:7px;border-radius:999px;background:#ef4444"></span>2 open<span class="mut">· 1 late · 1 warn</span></button>
+      <button class="ib" type="button" aria-label="Tokens"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"></path><circle cx="16.5" cy="7.5" r=".5"></circle></svg></button>
+      <button class="ib" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"></path></svg></button>
+    </span>
+  </header>
+  <div style="display:flex;background:#0f0f11;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span class="wtab">Search</span>
+    <span class="wtab on">ci-box lines</span>
+    <span class="wtab" style="border:0">+</span>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <aside style="width:210px;flex:none;background:#0f0f11;border-right:1px solid rgba(255,255,255,.08);padding:10px 12px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:4px"><span class="mut" style="font-size:11px">Saved</span><span style="font-size:12px;display:flex;align-items:center;gap:6px">ci-box lines<span style="width:6px;height:6px;border-radius:999px;background:#ef4444"></span></span><span style="font-size:12px">api errors</span><span style="font-size:12px">billing p99</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="mut" style="font-size:11px">service</span><span class="fc"><span>ci-runner</span><span class="mono mut">4.1K</span></span><span class="fc"><span>box-agent</span><span class="mono mut">702</span></span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span class="mut" style="font-size:11px">level</span><span class="fc"><span>info</span><span class="mono mut">4.7K</span></span><span class="fc"><span>warn</span><span class="mono mut">88</span></span><span class="fc"><span style="color:#fca5a5">error</span><span class="mono mut">14</span></span></div>
+    </aside>
+
+    <section style="flex:1;min-width:0;padding:10px 12px;display:flex;flex-direction:column;gap:8px;position:relative">
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="mono" style="flex:1;height:32px;box-sizing:border-box;display:flex;align-items:center;padding:0 10px;border:1px solid rgba(255,255,255,.15);border-radius:6px;font-size:13px"><span style="color:#7dd3fc">host</span><span class="mut">:</span>ci-box</span>
+        <button class="btn2" type="button" style="height:32px">Last 24h</button>
+        <button class="btn2" type="button" style="height:32px">Live</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="mut mono" style="font-size:11.5px">4,812 matching · 10-19 11:03 → 10-20 11:03 · UTC · 24h · 15m bars</span>
+        <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:999px;border:1px solid rgba(255,255,255,.15);font-size:11.5px">Marks <span class="mono mut">2</span> · Monitors <span class="mono mut">2</span></span>
+      </div>
+
+      <div class="card" style="padding:10px 12px 8px;display:flex;flex-direction:column;gap:4px">
+        <div style="height:150px;display:flex;align-items:flex-end;gap:1px;border-bottom:1px solid rgba(255,255,255,.12)">
+          <sc-for list="{{f18o_bars}}" as="b" hint-placeholder-count="96"><span style="flex:1;height:100%;display:flex;align-items:flex-end"><span style="display:block;width:100%;{{b.bar}}"></span></span></sc-for>
+        </div>
+        <div style="position:relative;height:30px">
+          <svg viewBox="0 0 10 9" width="10" height="9" aria-hidden="true" style="position:absolute;top:2px;left:calc(97.29% - 5px);color:#e7e1d3"><path fill="currentColor" d="M5 0 10 9H0Z"></path></svg>
+          <svg viewBox="0 0 10 9" width="10" height="9" aria-hidden="true" style="position:absolute;top:2px;left:calc(27.4% - 5px);color:#e7e1d3"><path fill="currentColor" d="M5 0 10 9H0Z"></path></svg>
+          <span style="position:absolute;top:15px;height:10px;left:46.32%;width:1.74%;background:rgba(239,68,68,.45);border-radius:2px"></span>
+          <span style="position:absolute;top:15px;height:10px;left:98.47%;right:0;background:#ef4444;border-radius:2px 0 0 2px;outline:2px solid #e7e1d3;outline-offset:1px"></span>
+        </div>
+        <div style="position:relative;height:14px">
+          <sc-for list="{{f18o_axis}}" as="a" hint-placeholder-count="8"><span class="mono mut" style="position:absolute;font-size:10.5px;transform:translateX(-50%);left:{{a.left}}">{{a.label}}</span></sc-for>
+        </div>
+      </div>
+
+      <div class="card" style="position:absolute;right:16px;top:388px;width:340px;padding:12px;display:flex;flex-direction:column;gap:8px;background:#1f1f23;box-shadow:0 10px 30px rgba(0,0,0,.55);z-index:2">
+        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:600">ci-box went quiet</span><span class="bd b-red">open 22m</span><button type="button" aria-label="Close" style="margin-left:auto;border:0;background:transparent;color:#a1a1aa;font-size:15px">×</button></span>
+        <span class="mono mut" style="font-size:11.5px">opened 10:41 · fewer than 1 line in 15m</span>
+        <span style="display:flex;flex-direction:column;gap:3px;padding:8px;border-radius:6px;background:#0f0f11;font-size:12px">
+          <span class="mono"><span class="mut">last line</span> 10:26:41</span>
+          <span class="mono"><span class="mut">before it</span> ▲ deploy ci-runner v1.8.0 · 10:24:03</span>
+        </span>
+        <span style="display:flex;flex-direction:column;gap:3px;font-size:12px">
+          <span class="mono"><span class="mut">10:41</span> open · ntfy 200</span>
+          <span class="mono mut">14:41 reminder, if still open</span>
+        </span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn2" type="button" style="height:26px;font-size:12px">Fingerprints</button><button class="btn2" type="button" style="height:26px;font-size:12px">Compare</button><button class="btn2" type="button" style="height:26px;font-size:12px">Silence</button><button class="btn2" type="button" style="height:26px;font-size:12px">Monitor</button></span>
+      </div>
+
+      <div class="card" style="overflow:hidden">
+        <div class="tr mut" style="font-size:10.5px"><span>time</span><span>level</span><span>service</span><span>message</span></div>
+        <div class="seam" style="background:rgba(239,68,68,.08)"><span style="width:8px;height:8px;border-radius:2px;background:#ef4444"></span><span class="mono">10:41:00</span><span style="color:#fca5a5">ci-box went quiet opened</span><span class="mut">· no line for 15m</span></div>
+        <sc-for list="{{f18o_rows}}" as="r" hint-placeholder-count="3">
+          <div class="tr"><span class="mono">{{r.t}}</span><span style="{{r.lvlStyle}}">{{r.lvl}}</span><span class="mono mut">{{r.svc}}</span><span class="mono" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{r.msg}}</span></div>
+        </sc-for>
+        <div class="seam"><svg viewBox="0 0 10 9" width="9" height="8" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M5 0 10 9H0Z"></path></svg><span class="mono">10:24:03</span><span>deploy ci-runner v1.8.0</span></div>
+        <sc-for list="{{f18o_rows2}}" as="r" hint-placeholder-count="3">
+          <div class="tr"><span class="mono">{{r.t}}</span><span style="{{r.lvlStyle}}">{{r.lvl}}</span><span class="mono mut">{{r.svc}}</span><span class="mono" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{r.msg}}</span></div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Writing a monitor</h2>
+
+    <div id="18p" data-frame="18p" data-screen-label="18p New monitor: where its results come from" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18p" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18p</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">New monitor: where its results come from</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×820</span>
+      </div>
+      <div data-crop="18p" style="position:relative; width:1280px; height:820px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:820px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:40px;box-sizing:border-box;background:#050506">
+  <div aria-hidden="true" style="position:absolute;inset:0;opacity:.22;padding:56px 32px;display:flex;flex-direction:column;gap:8px">
+    <div style="height:14px;width:90px;background:#27272a;border-radius:3px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div style="height:48px;background:#18181b;border-radius:6px"></div><div style="height:48px;background:#18181b;border-radius:6px"></div></div>
+    <div style="height:300px;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6px"></div>
+  </div>
+
+  <section role="dialog" aria-label="New monitor" style="position:relative;width:900px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <h2 style="margin:0;font-size:15px;font-weight:600">New monitor</h2>
+      <span class="mut" style="font-size:12.5px">Where do its results come from?</span>
+      <button type="button" aria-label="Close" style="margin-left:auto;width:26px;height:26px;border:0;background:transparent;color:#a1a1aa;font-size:16px">×</button>
+    </div>
+
+    <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+      <button class="src" type="button">
+        <h3><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg></span>Saved search</h3>
+        <span class="mut" style="font-size:12.5px">A search that goes quiet or loud: at least, or fewer than, N lines in its window.</span>
+        <span class="ex">host:ci-box · fewer than 1 · 15m</span>
+      </button>
+
+      <button class="src" type="button" style="border-color:#e7e1d3;box-shadow:0 0 0 1px #e7e1d3 inset">
+        <h3><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"></path></svg></span>HTTP(S)</h3>
+        <span class="mut" style="font-size:12.5px">Toposcope calls a URL from this node, every 30s to 1h. Conditions on the status, the time, the body, a JSON value, the certificate.</span>
+        <span class="ex">GET https://api.agental.dev/health</span>
+      </button>
+
+      <button class="src" type="button">
+        <h3><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span>Push</h3>
+        <span class="mut" style="font-size:12.5px">Any script, cron job or Nagios plugin sends its result: ok, warn or fail, a message, a value. Its first result can create it.</span>
+        <span class="ex">check_disk -w 20% /var; curl …/ping/&lt;key&gt;/$?</span>
+      </button>
+
+      <button class="src" type="button">
+        <h3><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h12l-2.5 4H5.5Z"></path><path d="M9 13h12l-2.5 4h-7Z"></path></svg></span>New fingerprints</h3>
+        <span class="mut" style="font-size:12.5px">An error first seen after a deploy or a flag, for 24 hours after the mark.</span>
+        <span class="ex">service:api level:error · after a deploy</span>
+      </button>
+
+      <button class="src" type="button">
+        <h3><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span>TCP · certificate</h3>
+        <span class="mut" style="font-size:12.5px">A port answers in time; a certificate has enough days left, with STARTTLS for mail.</span>
+        <span class="ex">smtp.agental.dev:587 · cert &gt; 14d</span>
+      </button>
+
+      <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:8px;border:1px dashed rgba(255,255,255,.18);min-height:170px;box-sizing:border-box">
+        <span style="font-size:13px;font-weight:600">From a script or an agent</span>
+        <span class="mut" style="font-size:12.5px">Declare any of these without this dialog. The same name replaces it.</span>
+        <span class="ex" style="white-space:pre;line-height:1.5;overflow:hidden">PUT /api/monitors/api-health
+{ "source": "http", "every": "30s",
+  "url": "https://api.agental.dev/health" }</span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <span class="mut" style="font-size:12px">Every result becomes a log row: <span class="mono" style="color:#fafafa">monitor:&lt;name&gt;</span> in Search.</span>
+      <span style="margin-left:auto"><button class="btn2" type="button">Cancel</button></span>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="18j" data-frame="18j" data-screen-label="18j A saved-search monitor: at least or fewer than, shut while it can't tell" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18j" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18j</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">A saved-search monitor: at least or fewer than, shut while it can't tell</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×820</span>
+      </div>
+      <div data-crop="18j" style="position:relative; width:1280px; height:820px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:820px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:36px;box-sizing:border-box;background:#050506">
+  <div aria-hidden="true" style="position:absolute;inset:0;opacity:.25;padding:56px 120px;display:flex;flex-direction:column;gap:10px">
+    <div style="height:14px;width:120px;background:#27272a;border-radius:3px"></div>
+    <div style="height:280px;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6px"></div>
+  </div>
+
+  <section role="dialog" aria-label="New monitor" style="position:relative;width:640px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <a href="#" style="font-size:12.5px;color:#a1a1aa">New monitor</a><span class="mut">/</span><h2 style="margin:0;font-size:15px;font-weight:600">Saved search</h2>
+      <button type="button" aria-label="Close" style="margin-left:auto;width:26px;height:26px;border:0;background:transparent;color:#a1a1aa;font-size:16px">×</button>
+    </div>
+
+    <div style="padding:14px 18px;display:flex;flex-direction:column;gap:12px">
+      <div class="fld"><span class="lab">Search</span>
+        <span style="display:flex;flex-direction:column;gap:4px">
+          <span class="box" style="justify-content:space-between">ci-box lines · Count<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#a1a1aa" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span>
+          <span class="mono mut" style="font-size:11.5px">host:ci-box · last 15m · Count</span>
+        </span>
+      </div>
+      <div class="fld"><span class="lab">Opens when</span>
+        <span style="display:flex;flex-direction:column;gap:8px">
+          <span style="display:flex;align-items:center;gap:8px;font-size:13px"><span class="mono">count</span><span class="sw"><button class="seg" type="button">at least</button><button class="seg on" type="button">fewer than</button></span><span class="box mono" style="width:72px">1</span><span class="mut">in 15m</span></span>
+          <span style="display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:6px;background:#0f0f11;border:1px solid rgba(255,255,255,.08)">
+            <span style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span class="mono">now 0</span><span class="mut">·</span><span class="mono">last line 10:26:41, 37m ago</span><span class="bd b-red" style="margin-left:auto">would open</span></span>
+            <span class="mut" style="font-size:11.5px">Stays shut while it can't tell: the first 15m after Toposcope starts, a refused reading, or a linked source that is behind.</span>
+          </span>
+        </span>
+      </div>
+      <div class="fld"><span class="lab">Remind</span><span class="sw"><button class="seg" type="button">off</button><button class="seg" type="button">every 15m</button><button class="seg" type="button">1h</button><button class="seg on" type="button">4h</button><button class="seg" type="button">24h</button></span></div>
+      <div class="fld"><span class="lab">Name</span><span class="box">ci-box went quiet</span></div>
+      <div class="fld"><span class="lab">Calls</span><span style="display:flex;gap:8px;align-items:center;font-size:12.5px"><span class="box mono" style="flex:1;font-size:12px">default · https://ntfy.sh/agental-ops</span><a href="#">Its own…</a></span></div>
+      <div class="fld"><span class="lab">Body</span>
+        <span style="display:flex;flex-direction:column;gap:8px">
+          <span class="sw"><button class="seg on" type="button">Default</button><button class="seg" type="button">Text</button><button class="seg" type="button">JSON</button></span>
+          <span class="mut" style="font-size:11.5px">Sends <span class="mono">state</span> as open, reminder or resolved, with <span class="mono">opened_at</span> and <span class="mono">resolved_at</span>.</span>
+        </span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <button class="btn2" type="button">Send a test call</button>
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn2" type="button">Cancel</button><button class="btn" type="button">Create</button></span>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="18r" data-frame="18r" data-screen-label="18r HTTP(S): conditions picked from the live response, stored as lines" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18r" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18r</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">HTTP(S): conditions picked from the live response, stored as lines</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×820</span>
+      </div>
+      <div data-crop="18r" style="position:relative; width:1280px; height:820px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:820px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:28px;box-sizing:border-box;background:#050506">
+  <div aria-hidden="true" style="position:absolute;inset:0;opacity:.22;padding:56px 32px;display:flex;flex-direction:column;gap:8px">
+    <div style="height:14px;width:90px;background:#27272a;border-radius:3px"></div>
+    <div style="height:340px;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6px"></div>
+  </div>
+
+  <section role="dialog" aria-label="New HTTP(S) monitor" style="position:relative;width:1080px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <a href="#" style="font-size:12.5px;color:#a1a1aa">New monitor</a><span class="mut">/</span>
+      <h2 style="margin:0;font-size:15px;font-weight:600">HTTP(S)</h2>
+      <span class="box mono" style="width:60px;margin-left:12px">GET</span>
+      <span class="box mono" style="flex:1;font-size:12.5px">https://api.agental.dev/health</span>
+      <button class="btn2" type="button">Send</button>
+      <button type="button" aria-label="Close" style="width:26px;height:26px;border:0;background:transparent;color:#a1a1aa;font-size:16px">×</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);min-height:520px">
+      <div style="border-right:1px solid rgba(255,255,255,.08);padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:600">Response</span><span class="mono mut" style="font-size:11.5px">from this node · 11:03:12</span></div>
+
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="mono" style="font-size:13px">200 OK</span><span class="mono mut">HTTP/2 · 61 B</span><span class="add" style="margin-left:auto">+ status == 200</span></div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mono">412ms</span><span class="mut">dns 4 · connect 18 · tls 41 · wait 340 · body 9</span></span>
+          <span style="position:relative;height:30px;display:block">
+            <span style="position:absolute;left:0;right:0;top:10px;height:10px;display:flex;border-radius:3px;overflow:hidden">
+              <span style="width:1%;background:#52525b"></span><span style="width:4.4%;background:#71717a"></span><span style="width:10%;background:#a1a1aa"></span><span style="width:82.5%;background:#38bdf8"></span><span style="width:2.1%;background:#e7e1d3"></span>
+            </span>
+            <span style="position:absolute;top:2px;bottom:0;left:72.8%;width:0;border-left:2px solid #fcd34d"></span>
+            <span class="mono" style="position:absolute;top:-4px;left:calc(72.8% + 6px);font-size:10.5px;color:#fcd34d">300ms, drag</span>
+          </span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="mut">certificate</span><span class="mono">api.agental.dev · expires 12-20 · 61d</span><span class="add" style="margin-left:auto">+ cert &gt; 14d</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="mut">headers</span><span class="mono mut">content-type: application/json · 6 more</span></div>
+
+        <div style="border:1px solid rgba(255,255,255,.1);border-radius:6px;background:#0f0f11;padding:6px 0;position:relative">
+          <div class="jl"><span class="mut">{</span></div>
+          <div class="jl" style="padding-left:26px;background:rgba(231,225,211,.08);outline:1px solid rgba(231,225,211,.35);outline-offset:-1px"><span class="k">"db"</span><span class="mut">:</span><span class="v">"ok"</span><span class="mut">,</span><span class="add" style="margin-left:auto">+ $.db == "ok"</span></div>
+          <div class="jl" style="padding-left:26px"><span class="k">"queue"</span><span class="mut">: {</span></div>
+          <div class="jl" style="padding-left:44px"><span class="k">"depth"</span><span class="mut">:</span><span class="v">3</span></div>
+          <div class="jl" style="padding-left:26px"><span class="mut">},</span></div>
+          <div class="jl" style="padding-left:26px"><span class="k">"version"</span><span class="mut">:</span><span class="v">"0.9.3"</span></div>
+          <div class="jl"><span class="mut">}</span></div>
+        </div>
+        <span class="mut" style="font-size:11.5px">Click a value to make it a condition. A number offers == , &lt; and &gt;.</span>
+      </div>
+
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600">Conditions</span><span class="mono mut" style="font-size:11.5px">4 · all must pass</span></div>
+        <sc-for list="{{f18r_conds}}" as="c" hint-placeholder-count="4">
+          <div class="cond"><span class="mono">{{c.text}} <span style="{{c.gotStyle}}">{{c.got}}</span></span><span class="lvl"><span class="{{c.failOn}}">fail</span><span class="{{c.warnOn}}">warn</span></span><button type="button" aria-label="Remove" style="border:0;background:transparent;color:#a1a1aa;font-size:14px">×</button></div>
+        </sc-for>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+          <span class="mut" style="font-size:11px">Stored as lines</span>
+          <span class="mono" style="font-size:11.5px;white-space:pre;color:#d4d4d8;background:#0f0f11;border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:8px 10px;line-height:1.55">{{f18r_linesText}}</span>
+        </div>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)">
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mut" style="width:56px">name</span><span class="box" style="flex:1;min-height:28px">api /health</span></span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mut" style="width:56px">run</span><span class="mono">every 30s · open after 2 failed runs</span><a href="#" style="margin-left:auto">Change</a></span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mut" style="width:56px">calls</span><span class="mono">default · ntfy.sh/agental-ops · remind 4h</span><a href="#" style="margin-left:auto">Change</a></span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <span class="mut" style="font-size:12px">With these, the last response would <span style="color:#fcd34d">warn</span>: 412ms is over 300ms.</span>
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn2" type="button">Cancel</button><button class="btn" type="button">Create</button></span>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="18s" data-frame="18s" data-screen-label="18s Push: any script, cron line or Nagios plugin tells Toposcope how it went" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18s" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18s</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Push: any script, cron line or Nagios plugin tells Toposcope how it went</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×820</span>
+      </div>
+      <div data-crop="18s" style="position:relative; width:1280px; height:820px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:820px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:22px;box-sizing:border-box;background:#050506">
+  <div aria-hidden="true" style="position:absolute;inset:0;opacity:.22;padding:56px 32px;display:flex;flex-direction:column;gap:8px">
+    <div style="height:14px;width:90px;background:#27272a;border-radius:3px"></div>
+    <div style="height:340px;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6px"></div>
+  </div>
+
+  <section role="dialog" aria-label="New push monitor" style="position:relative;width:980px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <a href="#" style="font-size:12.5px;color:#a1a1aa">New monitor</a><span class="mut">/</span>
+      <h2 style="margin:0;font-size:15px;font-weight:600">Push</h2>
+      <span class="mut" style="font-size:12.5px">a script tells Toposcope how it went</span>
+      <button type="button" aria-label="Close" style="margin-left:auto;width:26px;height:26px;border:0;background:transparent;color:#a1a1aa;font-size:16px">×</button>
+    </div>
+
+    <div style="padding:14px 18px;display:flex;flex-direction:column;gap:12px">
+      <div class="fld"><span class="lab">Name</span><span class="box mono">disk-var</span></div>
+      <div class="fld"><span class="lab">Expect a result</span>
+        <span style="display:flex;gap:8px;align-items:center;font-size:13px"><span class="mut">every</span><span class="box mono" style="width:64px">5m</span><span class="mut">then wait</span><span class="box mono" style="width:64px">2m</span><span class="mut">before it opens · leave empty if it only reports when something happens</span></span>
+      </div>
+
+      <div class="fld"><span class="lab">Send results</span>
+        <span style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+          <span class="way">
+            <h3><span class="num">1</span>From a cron line</h3>
+            <span class="code">curl -fsS -m 10 \
+  https://logs.agental.dev/ping/
+  6b1e…a02c/$?</span>
+            <span class="mut" style="font-size:11.5px">No token: the key is in the URL. <span class="mono">/start</span>, <span class="mono">/fail</span>, <span class="mono">/&lt;exit code&gt;</span>; a POST body is the message.</span>
+          </span>
+          <span class="way">
+            <h3><span class="num">2</span>Any Nagios plugin</h3>
+            <span class="code">toposcope.sh check disk-var -- \
+  /usr/lib/nagios/plugins/\
+  check_disk -w 20% -c 10% -p /var</span>
+            <span class="mut" style="font-size:11.5px">Exit 0 ok, 1 warn, 2 fail, 3 unknown; the plugin's first line is the message, its perfdata the value.</span>
+          </span>
+          <span class="way">
+            <h3><span class="num">3</span>From your own code</h3>
+            <span class="code">POST /v1/checks
+Authorization: Bearer $TOKEN
+[{ "monitor": "disk-var",
+   "status": "warn", "value": 87.2,
+   "unit": "%", "every": "5m",
+   "message": "/var 87% used" }]</span>
+            <span class="mut" style="font-size:11.5px">Up to 500 a request. A name not seen before creates its monitor; skip this dialog.</span>
+          </span>
+        </span>
+      </div>
+
+      <div class="fld"><span class="lab">First result</span>
+        <span style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:6px;background:#0f0f11;border:1px solid rgba(255,255,255,.08)">
+          <span style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span style="width:8px;height:8px;border-radius:999px;background:#38bdf8"></span><span class="mono">11:03:04</span><span class="bd b-amber">warn</span><span class="mono">87.2 %</span><span class="mono mut">from log-vm · via toposcope.sh check · exit 1</span></span>
+          <span class="mono" style="font-size:12px">DISK WARNING - free space: /var 6.4 GiB (13% inode=91%);</span>
+          <span class="mut" style="font-size:11.5px">Kept as a row: <span class="mono" style="color:#fafafa">monitor:disk-var status:warn host:log-vm</span>. The value is on the Series overlay as <span class="mono" style="color:#fafafa">monitor_value</span>.</span>
+        </span>
+      </div>
+
+      <div class="fld"><span class="lab">Calls</span>
+        <span style="display:flex;gap:8px;align-items:center;font-size:12.5px"><span class="box mono" style="flex:1;font-size:12px">default · https://ntfy.sh/agental-ops</span><span class="mut">set in Settings, for any monitor without its own</span><a href="#">Its own…</a></span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <span class="mut" style="font-size:12px">A warn shows on Watch and calls nobody. A fail opens it.</span>
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn2" type="button">Cancel</button><button class="btn" type="button">Create</button></span>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f18c', new (class {
+  renderVals() {
+    const start = 11 + 3 / 60;
+    const pos = (h) => (((h - start + 24) % 24) / 24) * 100;
+    const hours = [12, 15, 18, 21, 0, 3, 6, 9];
+    const axis = hours.map((h) => ({ left: pos(h).toFixed(2) + '%', label: h === 0 ? '10-20' : String(h).padStart(2, '0') + ':00' }));
+    const grid = hours.map((h) => ({ left: pos(h).toFixed(2) + '%' }));
+    const zfs = [];
+    for (let k = 0; k < 23; k++) zfs.push({ left: (3.75 + k * (100 / 24)).toFixed(2) + '%' });
+    const hourly = [];
+    for (let k = 0; k < 24; k++) hourly.push({ left: (0.8 + k * (100 / 24)).toFixed(2) + '%' });
+    const pts = [];
+    for (let i = 0; i <= 48; i++) {
+      const x = i / 48 * 100;
+      const pct = 71 + 16 * Math.pow(i / 48, 2.2) + 0.8 * Math.sin(i * 1.3);
+      const y = 18 - (pct - 60) / 40 * 18;
+      pts.push(x.toFixed(1) + ',' + y.toFixed(2));
+    }
+    return { axis, grid, zfs, hourly, spark: pts.join(' ') };
+  }
+})().renderVals()),
+      ...pre('f18f', new (class {
+  renderVals() {
+    const dayW = 100 / 7;
+    const day0 = 12.95 / 168 * 100;
+    const at = (d, h) => day0 + d * dayW + (h / 24) * dayW;
+    const pct = (x) => x.toFixed(2) + '%';
+    const days = ['10-14', '10-15', '10-16', '10-17', '10-18', '10-19', '10-20'];
+    const axis = days.map((label, i) => ({ left: pct(at(i, 0)), label }));
+    const grid = days.map((_, i) => ({ left: pct(at(i, 0)) }));
+    const plate = 'background:#e7e1d3';
+    const tick = (d, h, w, style) => ({ style: 'left:' + pct(at(d, h)) + ';width:' + (w ? pct(w / 24 * dayW) : '2px') + ';' + (style || plate) });
+    const band = (from, to, color) => ({ style: 'left:' + pct(from) + ';width:' + pct(to - from) + ';background:' + color });
+    const nightly = [-1, 0, 1, 3, 4, 5].map((d) => tick(d, 1.95, 0.07));
+    nightly.push(tick(2, 1.96, 0.054, 'background:#ef4444'));
+    const zfs = [];
+    for (let k = 0; k < 167; k++) zfs.push({ style: 'left:' + pct((0.9 + k) / 168 * 100) + ';width:1px;background:rgba(231,225,211,.8)' });
+    const restic = [-1, 0, 1, 2, 3, 5].map((d) => tick(d, 4.5, 0.68));
+    restic.push(tick(4, 7.1, 0.7));
+    restic.push({ style: 'left:' + pct(at(6, 10.85)) + ';right:0;border:1px solid #e7e1d3;box-sizing:border-box;background:transparent' });
+    const rotate = [-1, 0, 1, 2, 3, 4, 5, 6].map((d) => tick(d, 3, 0));
+    const cert = [tick(1, 5, 0)];
+    const weekly = [];
+    const lanes = [
+      { name: 'nightly-backup', every: 'push · 1d · grace 1h', nameStyle: '', laneStyle: '', bands: [band(at(2, 1.96), at(3, 2.05), 'rgba(239,68,68,.35)'), band(at(6, 2.07), at(6, 3.07), 'rgba(251,191,36,.7)'), band(at(6, 3.07), 100, '#ef4444')], ticks: nightly.filter((t) => true), hasDue: true, due: pct(at(6, 2.07)), state: 'open 7h 59m', badge: 'b-red', next: 'due 02:04 · missed' },
+      { name: 'zfs-snapshot', every: 'push · 1h · grace 15m', nameStyle: '', laneStyle: '', bands: [band(at(6, 10.95), 100, 'rgba(251,191,36,.8)')], ticks: zfs, hasDue: false, due: '0%', state: 'late 6m', badge: 'b-amber', next: 'down 11:12' },
+      { name: 'restic-offsite', every: 'push · 1d · grace 3h', nameStyle: '', laneStyle: '', bands: [band(at(4, 4.5), at(4, 7.1), 'rgba(251,191,36,.45)')], ticks: restic, hasDue: false, due: '0%', state: 'running 12m', badge: 'b-sec', next: 'started 10:51' },
+      { name: 'ci-runner check', every: 'push · 5m · grace 2m', nameStyle: '', laneStyle: 'background-image:repeating-linear-gradient(to right,rgba(231,225,211,.55) 0 1px,transparent 1px 3px);background-color:#0f0f11', bands: [band(at(5, 18.67), at(5, 18.87), '#fbbf24')], ticks: [], hasDue: false, due: '0%', state: 'ok', badge: 'b-sec', next: 'next 11:06' },
+      { name: 'log-vm rotate', every: 'push · 1d · grace 2h', nameStyle: '', laneStyle: '', bands: [], ticks: rotate.filter((t, i) => i > 0), hasDue: false, due: '0%', state: 'ok', badge: 'b-sec', next: 'next 10-21 03:00' },
+      { name: 'cert-renew', every: 'push · 7d · grace 1d', nameStyle: '', laneStyle: '', bands: [], ticks: cert, hasDue: false, due: '0%', state: 'ok', badge: 'b-sec', next: 'next 10-22 05:00' },
+      { name: 'weekly-report', every: 'push · 7d · paused', nameStyle: 'color:#a1a1aa', laneStyle: 'background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 4px,transparent 4px 8px);background-color:#0f0f11', bands: [], ticks: weekly, hasDue: false, due: '0%', state: 'paused', badge: 'b-out', next: 'since 10-08' }
+    ];
+    lanes[0].ticks = nightly.filter((t) => !t.style.startsWith('left:-'));
+    lanes[2].ticks = restic.filter((t) => !t.style.startsWith('left:-'));
+    return { axis, grid, lanes };
+  }
+})().renderVals()),
+      ...pre('f18i', new (class {
+  renderVals() {
+    const day0 = 12.95 / 168 * 100, dayW = 100 / 7;
+    const at = (d, h) => day0 + d * dayW + (h / 24) * dayW;
+    const pct = (x) => x.toFixed(2) + '%';
+    const bars = [];
+    for (let k = 0; k < 168; k++) {
+      const hourOfDay = (11 + k) % 24;
+      const day = Math.floor((11 + k) / 24);
+      let ok = 0, err = 0;
+      if (hourOfDay === 1 && day >= 1 && day <= 6) ok = 1;
+      if (hourOfDay === 2 && day >= 1 && day <= 6) ok = 1;
+      if (day === 3 && hourOfDay === 2) { ok = 0; err = 1; }
+      bars.push({ ok: 'display:block;height:' + (ok * 46) + 'px;background:#38bdf8', err: 'display:block;height:' + (err * 46) + 'px;background:#ef4444' });
+    }
+    const days = ['10-14', '10-15', '10-16', '10-17', '10-18', '10-19', '10-20'];
+    const axis = days.map((label, i) => ({ left: pct(at(i, 0)), label }));
+    const due = [0, 1, 2, 3, 4, 5, 6].map((d) => ({ left: pct(at(d, 2.07)) }));
+    const row = (t, sig, ran, msg, err) => ({ t, sig, ran, msg, lvl: err ? 'error' : 'info', lvlStyle: err ? 'color:#fca5a5' : 'color:#a1a1aa' });
+    const rows = [
+      row('10-19 02:04:11.302', 'ok', '4m 12s', 'snapshot 4f1c2a saved · 1.92 GiB added, 214 files changed'),
+      row('10-19 01:59:59.020', 'start', '', ''),
+      row('10-18 02:03:40.118', 'ok', '3m 58s', 'snapshot 9b07d1 saved · 1.88 GiB added, 198 files changed'),
+      row('10-18 01:59:42.551', 'start', '', ''),
+      row('10-17 02:03:12.906', 'ok', '3m 31s', 'snapshot 1e44a0 saved · 1.61 GiB added, 187 files changed'),
+      row('10-17 01:59:41.733', 'start', '', ''),
+      row('10-16 02:00:41.004', 'fail', '3m 12s', 'unable to create lock in backend: repository is already locked by PID 2211', true),
+      row('10-16 01:57:29.410', 'start', '', ''),
+      row('10-15 02:03:55.271', 'ok', '3m 49s', 'snapshot 7c3e19 saved · 1.70 GiB added, 201 files changed')
+    ];
+    return { bars, axis, due, rows };
+  }
+})().renderVals()),
+      ...pre('f18o', new (class {
+  renderVals() {
+    const bars = [];
+    for (let k = 0; k < 96; k++) {
+      const v = 38 + Math.round(22 * Math.sin(k / 7) + 9 * Math.sin(k / 2.3) + 6 * Math.cos(k * 1.7));
+      const quiet = (k === 44 || k === 45) || k >= 94;
+      const low = k === 43 ? 6 : (k === 93 ? 9 : null);
+      const val = quiet ? 0 : (low !== null ? low : Math.max(4, v));
+      bars.push({ bar: 'height:' + (val / 80 * 100).toFixed(1) + '%;background:#38bdf8' });
+    }
+    const start = 11 + 3 / 60;
+    const pos = (h) => (((h - start + 24) % 24) / 24) * 100;
+    const hours = [12, 15, 18, 21, 0, 3, 6, 9];
+    const axis = hours.map((h) => ({ left: pos(h).toFixed(2) + '%', label: h === 0 ? '10-20' : String(h).padStart(2, '0') + ':00' }));
+    const r = (t, lvl, svc, msg) => ({ t, lvl, svc, msg, lvlStyle: lvl === 'error' ? 'color:#fca5a5' : (lvl === 'warn' ? 'color:#fcd34d' : 'color:#a1a1aa') });
+    return {
+      bars, axis,
+      rows: [
+        r('10:26:41.208', 'info', 'ci-runner', 'runner ci-03 picked job 88412'),
+        r('10:26:40.977', 'warn', 'ci-runner', 'heartbeat to queue took 4.8s, retrying on 127.0.0.1:7233'),
+        r('10:24:31.004', 'error', 'ci-runner', "TypeError: Cannot read properties of undefined (reading 'lease')")
+      ],
+      rows2: [
+        r('10:23:58.112', 'info', 'box-agent', 'restarting ci-runner.service'),
+        r('10:23:55.430', 'info', 'ci-runner', 'runner ci-03 finished job 88409 in 41s')
+      ]
+    };
+  }
+})().renderVals()),
+      ...pre('f18r', new (class {
+  renderVals() {
+    const C = (text, got, pass, warn) => ({ text, got: (pass ? '✓ ' : '✗ ') + got, gotStyle: pass ? 'color:#7dd3fc' : 'color:#fcd34d', failOn: warn ? '' : 'on', warnOn: warn ? 'on' : '' });
+    const conds = [
+      C('status == 200', '200', true, false),
+      C('$.db == "ok"', '"ok"', true, false),
+      C('time < 300ms', '412ms', false, true),
+      C('cert > 14d', '61d', true, false)
+    ];
+    const linesText = 'status == 200\n$.db == "ok"\ntime < 300ms   warn\ncert > 14d';
+    return { conds, linesText };
+  }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>

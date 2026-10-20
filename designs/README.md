@@ -54,6 +54,11 @@ Approved — panel lines, 2026-10-18. Not in a cut yet; no issue yet.
 - [Toposcope Panel Lines.dc.html](Toposcope%20Panel%20Lines.dc.html) — frames 17a–17j: a board of six one-metric panels as it reads today, then the same as three panels: up to four metrics of one unit merged onto one axis, each line named, a title and a note on each panel; adding a line, with only the panel's unit offered; naming lines, a title, a note, a full note; another unit refused, and a unit that changes later; the sender's OTLP descriptions in the picker, on a line's hover and in place of a missing note; the readout with names; at 4 columns; a split whose values are named; rejects
 - [panel-lines/](panel-lines/) — crops for issues (17a–17j)
 
+Locked — monitors (0.6), 2026-10-20. Each frame was one artboard of a Design canvas; the sheet stacks the picked ones:
+
+- [Toposcope Liveness.dc.html](Toposcope%20Liveness.dc.html) — frames 18c–18s: Watch, every monitor on one clock with open ones first; push monitors over 7 days, each result a tick and each run a bar; a monitor opened as a hunt; an open stretch as a band on the hunt clock beside the deploy before it; a new monitor choosing where its results come from; a saved-search monitor, at least or fewer than; HTTP(S) conditions picked from the live response and stored as lines; a push monitor and the three ways a script reports to it
+- [liveness/](liveness/) — crops for issues (18c 18f 18i 18o 18p 18j 18r 18s)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
