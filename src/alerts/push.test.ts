@@ -98,7 +98,8 @@ describe("a push monitor's results (#177)", () => {
     r.push("fail", t0 + 2 * minute, { exit_code: 2 });
     r.push("unknown", t0 + 3 * minute, { exit_code: 3 });
     expect(r.rule()).toMatchObject({ state: "open", last_result: "fail" });
-    expect(lastPushResult(r.id, r.db)).toMatchObject({ status: "unknown", exit_code: 3 });
+    // Nor is it a tick on Watch: its log row is its record.
+    expect(lastPushResult(r.id, r.db)).toMatchObject({ result: "fail", exit_code: 2 });
   });
 
   test("a result with no message opens with its status and exit code in words", () => {
@@ -112,7 +113,7 @@ describe("a push monitor's results (#177)", () => {
     r.db.query("UPDATE alert_rules SET enabled = 0 WHERE id = ?").run(r.id);
     r.push("fail", t0 + minute);
     expect(r.rule()).toMatchObject({ state: "ok", last_result: "fail" });
-    expect(lastPushResult(r.id, r.db)?.status).toBe("fail");
+    expect(lastPushResult(r.id, r.db)?.result).toBe("fail");
   });
 
   test("a result can set every and grace; left out, they stay", () => {
@@ -134,22 +135,25 @@ describe("a push monitor's results (#177)", () => {
 });
 
 describe("Watch's ticks (#177): one a monitor a minute, the worst winning, for 30 days", () => {
+  const rows = (db: Database) =>
+    db.query("SELECT result, exit_code FROM monitor_results ORDER BY at").all() as Array<{ result: string; exit_code: number | null }>;
+
   test("a fail and then an ok in one minute keep the fail; an equal later one replaces it", () => {
     const r = rig();
     r.push("fail", t0 + 10_000, { exit_code: 2 });
     r.push("ok", t0 + 20_000);
-    expect(resultsBetween(t0, t0 + minute, r.db).results.map((x) => [x.status, x.exit_code])).toEqual([["fail", 2]]);
+    expect(rows(r.db)).toEqual([{ result: "fail", exit_code: 2 }]);
     r.push("fail", t0 + 30_000, { exit_code: 1 });
-    expect(resultsBetween(t0, t0 + minute, r.db).results.map((x) => [x.status, x.exit_code])).toEqual([["fail", 1]]);
+    expect(rows(r.db)).toEqual([{ result: "fail", exit_code: 1 }]);
   });
 
-  test("a warn replaces an ok and an unknown; the next minute is a row of its own", () => {
+  test("a warn replaces an ok, an unknown is not kept, and the next minute is a row of its own", () => {
     const r = rig();
     r.push("ok", t0 + 1000);
-    r.push("unknown", t0 + 2000);
-    r.push("warn", t0 + 3000);
-    r.push("ok", t0 + minute + 1000);
-    expect(resultsBetween(t0, t0 + 2 * minute, r.db).results.map((x) => x.status)).toEqual(["warn", "ok"]);
+    r.push("warn", t0 + 2000);
+    r.push("unknown", t0 + minute + 1000);
+    r.push("ok", t0 + 2 * minute + 1000);
+    expect(rows(r.db).map((x) => x.result)).toEqual(["warn", "ok"]);
   });
 
   test("results older than 30 days go", () => {
@@ -157,7 +161,23 @@ describe("Watch's ticks (#177): one a monitor a minute, the worst winning, for 3
     r.push("ok", t0);
     r.push("ok", t0 + 2 * minute);
     pruneResults(t0 + 30 * 24 * hour + minute, r.db);
-    expect(resultsBetween(0, t0 + 31 * 24 * hour, r.db).results.map((x) => x.at)).toEqual([t0 + 2 * minute]);
+    expect(resultsBetween(0, t0 + 31 * 24 * hour, r.db).map((x) => x.at)).toEqual([t0 + 2 * minute]);
+  });
+
+  test("Watch reads them in at most 240 columns a lane, each the worst of its column, the later of equals", () => {
+    const r = rig({ every: 5 * minute });
+    // A day of results every 5 minutes: 288, in 240 columns of 6 minutes.
+    for (let k = 0; k < 288; k++) {
+      r.push(k === 6 ? "warn" : "ok", t0 + k * 5 * minute, { exit_code: k });
+    }
+    const read = resultsBetween(t0, t0 + 24 * hour, r.db);
+    expect(read.length).toBeLessThanOrEqual(240);
+    expect(read.length).toBeGreaterThan(200);
+    // 30m and 35m share the column from 30m to 36m: the warn wins over the later ok.
+    expect(read.filter((x) => x.result === "warn").map((x) => x.exit_code)).toEqual([6]);
+    expect(read.some((x) => x.exit_code === 7)).toBe(false);
+    // 0m and 5m share the first column, both ok: the later.
+    expect(read[0]!.exit_code).toBe(1);
   });
 });
 

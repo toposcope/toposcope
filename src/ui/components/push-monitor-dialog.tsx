@@ -100,7 +100,7 @@ function FirstResult({ name, result }: { name: string; result: PushResultRow | n
     viaLabel(result.via),
     result.exit_code !== null ? `exit ${result.exit_code}` : "",
   ].filter(Boolean);
-  const row = [monitorQuery(name), `status:${result.status}`, result.host && result.via !== "ping" ? `host:${result.host}` : ""]
+  const row = [monitorQuery(name), `status:${result.result}`, result.host && result.via !== "ping" ? `host:${result.host}` : ""]
     .filter(Boolean)
     .join(" ");
   return (
@@ -108,7 +108,7 @@ function FirstResult({ name, result }: { name: string; result: PushResultRow | n
       <span className="flex min-w-0 items-center gap-2 font-mono text-[12.5px]">
         <span className="size-2 shrink-0 rounded-full bg-sky-400" />
         <span>{hhmmss(result.at)}</span>
-        <Badge tone={result.status === "fail" ? "red" : result.status === "warn" ? "amber" : "sec"}>{result.status}</Badge>
+        <Badge tone={result.result === "fail" ? "red" : result.result === "warn" ? "amber" : "sec"}>{result.result}</Badge>
         {value ? <span>{value}</span> : null}
         {head.length > 0 ? <span className="truncate text-muted-foreground">{head.join(" · ")}</span> : null}
       </span>

@@ -98,14 +98,15 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "paused_at", "INTEGER");
   db.run("CREATE UNIQUE INDEX IF NOT EXISTS alert_rules_ping_key ON alert_rules (ping_key) WHERE ping_key IS NOT NULL");
   // A monitor's results for Watch's ticks (#177), shared by the sources that have results: one row
-  // a monitor a minute, the worst of the minute winning, for 30 days. Each result is also a log row.
+  // a monitor a minute, the worst of the minute winning (fail > warn > ok, of equals the later), for
+  // 30 days. Each result is also a log row. Exit code, unit, host and via are push's, for 18f / 18s.
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_results (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       monitor_id TEXT NOT NULL,
       minute INTEGER NOT NULL,
       at INTEGER NOT NULL,
-      status TEXT NOT NULL,
+      result TEXT NOT NULL,
       exit_code INTEGER,
       duration_ms INTEGER,
       value REAL,

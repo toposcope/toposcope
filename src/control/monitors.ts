@@ -93,8 +93,8 @@ export async function listMonitors(c: Context): Promise<Response> {
     monitors: allAlertRules().map(view),
     stretches: stretchesBetween(win.fromMs, win.toMs),
     sent: sentCallsBetween(win.fromMs, win.toMs),
-    // A push monitor's results on the clock (#177), each a tick; a lane with too many is dense.
-    ...resultsBetween(win.fromMs, win.toMs),
+    // Results on the clock (#177): each a tick, at most 240 columns a lane.
+    results: resultsBetween(win.fromMs, win.toMs),
     link: publicUrl() !== null,
   });
 }

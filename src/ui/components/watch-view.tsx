@@ -3,10 +3,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
 import { formatOpenFor } from "../../shared/monitor";
-import type { DenseLane, MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "@/types";
+import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "@/types";
 import {
   clockAt,
-  denseSpan,
   laneKind,
   laneReadout,
   pushBands,
@@ -179,11 +178,10 @@ function Lane({
 
 const pct = (n: number) => `${(n * 100).toFixed(3)}%`;
 
-const tickTone: Record<PushResultRow["status"], string> = {
+const tickTone: Record<PushResultRow["result"], string> = {
   ok: "bg-plate",
   warn: "bg-amber-400",
   fail: "bg-red-500",
-  unknown: "bg-zinc-500",
 };
 
 const bandTone: Record<"late" | "open" | "resolved" | "running", string> = {
@@ -247,14 +245,14 @@ function ResultCard({
 }
 
 /**
- * A push monitor's lane (18f; on 18c's clock too): each result a tick, a run a bar back to its
- * /start, its stretches red, late amber, and a dashed line at the due time it waits for.
+ * A push monitor's lane (18f; on 18c's clock too): each result a tick (the worst of its column of
+ * the clock), a run a bar back to its /start, its stretches red, late amber, and a dashed line at
+ * the due time it waits for.
  */
 function PushLane({
   monitor,
   stretches,
   results,
-  dense,
   fromMs,
   toMs,
   nowMs,
@@ -267,7 +265,6 @@ function PushLane({
   monitor: MonitorView;
   stretches: MonitorStretch[];
   results: PushResultRow[];
-  dense: DenseLane | undefined;
   fromMs: number;
   toMs: number;
   nowMs: number;
@@ -283,7 +280,6 @@ function PushLane({
   const marks = pushTicks(results, fromMs, toMs);
   const bands = pushBands(monitor, stretches, nowMs, fromMs, toMs);
   const due = pushDueLine(monitor, nowMs, fromMs, toMs);
-  const texture = denseSpan(dense, fromMs, toMs);
   const unit = results.at(-1)?.unit ?? null;
   const value = pushValue(monitor.last_value, unit);
   const shown = card !== null ? marks.find((t) => t.id === card) : undefined;
@@ -341,16 +337,6 @@ function PushLane({
           onClick={onLane}
         >
           <Grid ticks={ticks} />
-          {texture ? (
-            <span
-              className={cn("absolute", bandInset)}
-              style={{
-                left: pct(texture.left),
-                width: pct(texture.width),
-                backgroundImage: "repeating-linear-gradient(to right,rgba(231,225,211,.55) 0 1px,transparent 1px 3px)",
-              }}
-            />
-          ) : null}
           {bands.map((b) => (
             <span
               key={b.key}
@@ -436,7 +422,6 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
   for (const r of data?.results ?? []) {
     resultsBy.set(r.monitor_id, [...(resultsBy.get(r.monitor_id) ?? []), r]);
   }
-  const denseBy = new Map((data?.dense ?? []).map((d) => [d.monitor_id, d] as const));
   // 18f: the Push segment draws push lanes taller, with when each is next due.
   const tall = filter === "push";
   const [card, setCard] = useState<{ monitor: string; result: number } | null>(null);
@@ -560,7 +545,6 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                   monitor={m}
                   stretches={byMonitor.get(m.id) ?? []}
                   results={resultsBy.get(m.id) ?? []}
-                  dense={denseBy.get(m.id)}
                   fromMs={fromMs}
                   toMs={toMs}
                   nowMs={nowMs}

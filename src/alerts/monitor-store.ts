@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
 import { keptStretches, type MonitorResult } from "../shared/monitor";
-import { keptResultsMs, type CheckStatus } from "../shared/push";
+import { keptResultsMs } from "../shared/push";
 
 /** What became of a stretch's open or resolved call. Null while it is still to be sent. */
 export type CallState = "sent" | "failed" | "silenced" | "none";
@@ -256,12 +256,12 @@ export function forgetMonitor(monitorId: string, db: Database = getDb()): void {
   db.query("DELETE FROM monitor_results WHERE monitor_id = ?").run(monitorId);
 }
 
-/** One pushed result as Watch draws it (#177): a tick at its time, a bar back to its `/start`. */
+/** One result as Watch draws it (#177): a tick at its time, a bar back to its `/start`. */
 export type PushResultRow = {
   id: number;
   monitor_id: string;
   at: number;
-  status: CheckStatus;
+  result: "ok" | "warn" | "fail";
   exit_code: number | null;
   duration_ms: number | null;
   value: number | null;
@@ -271,26 +271,26 @@ export type PushResultRow = {
   via: string;
 };
 
-const RESULT_COLS = "id, monitor_id, at, status, exit_code, duration_ms, value, unit, message, host, via";
+const RESULT_COLS = "id, monitor_id, at, result, exit_code, duration_ms, value, unit, message, host, via";
 
 /** How bad a result is: within a minute the worst is kept, and of equals the later. */
-const STATUS_RANK = "CASE {s} WHEN 'fail' THEN 3 WHEN 'warn' THEN 2 WHEN 'unknown' THEN 1 ELSE 0 END";
+const STATUS_RANK = "CASE {s} WHEN 'fail' THEN 2 WHEN 'warn' THEN 1 ELSE 0 END";
 const rank = (col: string) => STATUS_RANK.replace("{s}", col);
 
 /** A result for Watch's ticks: one row a monitor a minute, the worst of the minute winning. */
 export function recordPushResult(row: Omit<PushResultRow, "id">, db: Database = getDb()): void {
   db.query(
-    `INSERT INTO monitor_results (monitor_id, minute, at, status, exit_code, duration_ms, value, unit, message, host, via)
+    `INSERT INTO monitor_results (monitor_id, minute, at, result, exit_code, duration_ms, value, unit, message, host, via)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (monitor_id, minute) DO UPDATE SET
-       at = excluded.at, status = excluded.status, exit_code = excluded.exit_code, duration_ms = excluded.duration_ms,
+       at = excluded.at, result = excluded.result, exit_code = excluded.exit_code, duration_ms = excluded.duration_ms,
        value = excluded.value, unit = excluded.unit, message = excluded.message, host = excluded.host, via = excluded.via
-     WHERE ${rank("excluded.status")} >= ${rank("monitor_results.status")}`,
+     WHERE ${rank("excluded.result")} >= ${rank("monitor_results.result")}`,
   ).run(
     row.monitor_id,
     Math.floor(row.at / 60_000),
     row.at,
-    row.status,
+    row.result,
     row.exit_code,
     row.duration_ms,
     row.value,
@@ -309,45 +309,31 @@ export function lastPushResult(monitorId: string, db: Database = getDb()): PushR
   return row ?? null;
 }
 
-/** Most ticks a lane is sent; past that it is drawn dense, with only what was not ok as ticks. */
-export const laneTicks = 300;
+/** Columns a lane's results are read in: within each, the worst result, and of equals the later. */
+export const laneColumns = 240;
 /** A message as a lane's tick carries it; the whole one is its log row. */
 const tickMessage = 300;
 
 /**
- * Push results in [from, to], by monitor, for Watch's lanes. A lane with more than 300 is sent
- * as dense (the span its results cover and how many) with only its warns, fails and unknowns.
+ * Results in [from, to] for Watch's lanes, cut into 240 columns a monitor: each column that has
+ * any is the worst result in it, the later of equals.
  */
-export function resultsBetween(
-  fromMs: number,
-  toMs: number,
-  db: Database = getDb(),
-): { results: PushResultRow[]; dense: Array<{ monitor_id: string; from: number; to: number; n: number }> } {
-  const counts = db
+export function resultsBetween(fromMs: number, toMs: number, db: Database = getDb()): PushResultRow[] {
+  const span = Math.max(1, toMs - fromMs);
+  const rows = db
     .query(
-      `SELECT monitor_id, count(*) AS n, min(at) AS first, max(at) AS last FROM monitor_results
-       WHERE at >= ? AND at <= ? GROUP BY monitor_id`,
+      `SELECT ${RESULT_COLS} FROM (
+         SELECT ${RESULT_COLS}, ROW_NUMBER() OVER (
+           PARTITION BY monitor_id, MIN(${laneColumns - 1}, (at - ?) * ${laneColumns} / ?)
+           ORDER BY ${rank("result")} DESC, at DESC, id DESC
+         ) AS n
+         FROM monitor_results WHERE at >= ? AND at <= ?
+       ) WHERE n = 1 ORDER BY monitor_id, at`,
     )
-    .all(fromMs, toMs) as Array<{ monitor_id: string; n: number; first: number; last: number }>;
-  const results: PushResultRow[] = [];
-  const dense: Array<{ monitor_id: string; from: number; to: number; n: number }> = [];
-  const clip = (row: PushResultRow): PushResultRow =>
-    row.message.length > tickMessage ? { ...row, message: `${row.message.slice(0, tickMessage)}…` } : row;
-  for (const c of counts) {
-    const many = c.n > laneTicks;
-    if (many) {
-      dense.push({ monitor_id: c.monitor_id, from: c.first, to: c.last, n: c.n });
-    }
-    const rows = db
-      .query(
-        `SELECT ${RESULT_COLS} FROM monitor_results
-         WHERE monitor_id = ? AND at >= ? AND at <= ? ${many ? "AND status != 'ok'" : ""}
-         ORDER BY at DESC, id DESC LIMIT ?`,
-      )
-      .all(c.monitor_id, fromMs, toMs, laneTicks) as PushResultRow[];
-    results.push(...rows.reverse().map(clip));
-  }
-  return { results, dense };
+    .all(fromMs, span, fromMs, toMs) as PushResultRow[];
+  return rows.map((row) =>
+    row.message.length > tickMessage ? { ...row, message: `${row.message.slice(0, tickMessage)}…` } : row,
+  );
 }
 
 /** Results older than 30 days go. */

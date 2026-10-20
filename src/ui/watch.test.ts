@@ -314,7 +314,7 @@ const result = (over: Partial<PushResultRow> = {}): PushResultRow => ({
   id: 1,
   monitor_id: "m-push",
   at: now - 4 * 24 * hour,
-  status: "fail",
+  result: "fail",
   exit_code: 1,
   duration_ms: 192_000,
   value: null,
@@ -398,8 +398,7 @@ describe("push monitors on Watch (#177, frames 18c and 18f)", () => {
       monitors: [push(), errors],
       stretches: [],
       sent: [],
-      results: [result({ id: 2, status: "ok", at: now - 9 * hour })],
-      dense: [],
+      results: [result({ id: 2, result: "ok", at: now - 9 * hour })],
       link: false,
     };
     const html = renderToStaticMarkup(

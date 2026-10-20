@@ -5,7 +5,7 @@ import { formatOpenFor, type MonitorSource } from "../shared/monitor";
 import { formatSpan, isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../shared/push";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
-import type { DenseLane, MonitorCall, MonitorStretch, MonitorView, PushResultRow } from "./types";
+import type { MonitorCall, MonitorStretch, MonitorView, PushResultRow } from "./types";
 
 /**
  * Watch (#175, frame 18c): every monitor a lane on one clock, open ones first. The clock is
@@ -453,7 +453,7 @@ export type PushTick = {
   left: number;
   /** A run's bar, from its /start to its end; 0 draws a 2px tick. */
   width: number;
-  tone: "ok" | "warn" | "fail" | "unknown";
+  tone: "ok" | "warn" | "fail";
   result: PushResultRow;
 };
 
@@ -466,7 +466,7 @@ export function pushTicks(results: readonly PushResultRow[], fromMs: number, toM
       continue;
     }
     const start = r.duration_ms ? Math.max(0, clockFrac(r.at - r.duration_ms, fromMs, toMs)) : end;
-    out.push({ id: r.id, left: start, width: end - start, tone: r.status, result: r });
+    out.push({ id: r.id, left: start, width: end - start, tone: r.result, result: r });
   }
   return out;
 }
@@ -534,11 +534,6 @@ export function pushDueLine(m: MonitorView, nowMs: number, fromMs: number, toMs:
   return at >= 0 && at <= 1 ? at : null;
 }
 
-/** A lane with more results than its ticks: where its texture runs. */
-export function denseSpan(dense: DenseLane | undefined, fromMs: number, toMs: number): { left: number; width: number } | null {
-  return dense ? span(dense.from, dense.to, fromMs, toMs) : null;
-}
-
 /** "3m 12s", "45s", "1h 4m": how long a run took. */
 export function formatRun(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -563,8 +558,8 @@ export function resultCard(
   stretches: readonly MonitorStretch[],
   nowMs: number,
 ): { badge: string; tone: LaneReadout["tone"]; at: string; ran: string; message: string; stretch: MonitorStretch | null; opened: string } {
-  const badge = r.exit_code !== null ? `${r.status} · exit ${r.exit_code}` : r.status;
-  const tone = r.status === "fail" ? "red" : r.status === "warn" ? "amber" : "sec";
+  const badge = r.exit_code !== null ? `${r.result} · exit ${r.exit_code}` : r.result;
+  const tone = r.result === "fail" ? "red" : r.result === "warn" ? "amber" : "sec";
   const ran = [
     r.duration_ms ? `started ${hhmmss(r.at - r.duration_ms)}` : "",
     r.duration_ms ? `ran ${formatRun(r.duration_ms)}` : "",

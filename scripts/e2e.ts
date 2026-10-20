@@ -1073,7 +1073,8 @@ async function main(): Promise<void> {
       service: probeService,
       up: 0,
       ts: probeTs,
-      check: "github",
+      // An attached check is also a push monitor's result (#177): a name of this run's, deleted below.
+      check: `github_${marker}`,
     }),
   });
   if (!probeAttach.ok) {
@@ -1083,6 +1084,10 @@ async function main(): Promise<void> {
   if (probeAttached.ingested !== 1 || probeAttached.up !== 0) {
     throw new Error(`expected attach up=0, got ${JSON.stringify(probeAttached)}`);
   }
+  await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(`github_${marker}`)}`, {
+    method: "DELETE",
+    headers: { authorization: basicAuth() },
+  });
 
   const downServer = Bun.serve({
     hostname: "127.0.0.1",

@@ -248,7 +248,7 @@ describe("the keyed /ping/<key> URL (#177)", () => {
     const ok = logsOf("nightly-backup").find((row) => JSON.parse(row.attrs).exit_code === "0");
     expect(ok!.message.length).toBe(10 * 1024);
     expect(r.afterExit1!.body).toMatchObject({ state: "open", last_result: "fail" });
-    expect(r.afterExit1!.body.last).toMatchObject({ status: "fail", exit_code: 1, via: "ping" });
+    expect(r.afterExit1!.body.last).toMatchObject({ result: "fail", exit_code: 1, via: "ping" });
   });
 
   test("a new key replaces the old one, which then gets 404", () => {

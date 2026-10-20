@@ -167,12 +167,12 @@ export type MonitorStretch = {
   calls: MonitorCall[];
 };
 
-/** A pushed result, as a push lane draws it (#177). */
+/** A result, as a lane draws it (#177): the worst of its column of the clock. */
 export type PushResultRow = {
   id: number;
   monitor_id: string;
   at: number;
-  status: "ok" | "warn" | "fail" | "unknown";
+  result: "ok" | "warn" | "fail";
   exit_code: number | null;
   duration_ms: number | null;
   value: number | null;
@@ -182,8 +182,6 @@ export type PushResultRow = {
   via: string;
 };
 
-/** A lane with more results than it is sent: the span they cover, and how many. */
-export type DenseLane = { monitor_id: string; from: number; to: number; n: number };
 
 /** A monitor as `GET /api/monitors` lists it. */
 export type MonitorView = AlertRule & {
@@ -198,9 +196,8 @@ export type MonitorsResponse = {
   monitors: MonitorView[];
   stretches: MonitorStretch[];
   sent: MonitorCall[];
-  /** Push results in the window; older servers and fixtures leave them out. */
+  /** Results in the window, at most 240 columns a lane; older servers and fixtures leave them out. */
   results?: PushResultRow[];
-  dense?: DenseLane[];
   link: boolean;
 };
 

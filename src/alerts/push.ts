@@ -68,21 +68,24 @@ export function resultWords(result: Pick<PushResult, "status" | "message" | "exi
  */
 export function applyPushResult(rule: AlertRule, result: PushResult, now: number, db: Database): void {
   db.transaction(() => {
-    recordPushResult(
-      {
-        monitor_id: rule.id,
-        at: Date.parse(result.ts),
-        status: result.status,
-        exit_code: result.exit_code,
-        duration_ms: result.duration_ms,
-        value: result.value,
-        unit: result.unit,
-        message: result.message,
-        host: result.from,
-        via: result.via,
-      },
-      db,
-    );
+    // Unknown changes nothing, Watch's ticks included; its log row is its record.
+    if (result.status !== "unknown") {
+      recordPushResult(
+        {
+          monitor_id: rule.id,
+          at: Date.parse(result.ts),
+          result: result.status,
+          exit_code: result.exit_code,
+          duration_ms: result.duration_ms,
+          value: result.value,
+          unit: result.unit,
+          message: result.message,
+          host: result.from,
+          via: result.via,
+        },
+        db,
+      );
+    }
     db.query(
       `UPDATE alert_rules SET due_from = ?, started_at = NULL,
          every_ms = CASE WHEN ? THEN ? ELSE every_ms END,
