@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { ChangeMark } from "../shared/change-mark";
+import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import { MonitorRail } from "./components/monitor-rail";
-import { WatchView } from "./components/watch-view";
+import { MarksLane, WatchView } from "./components/watch-view";
 import { eventTableMarkLayout } from "./change-marks";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "./types";
 import {
@@ -17,6 +17,12 @@ import {
   laneKind,
   laneReadout,
   markBefore,
+  markHover,
+  markPeek,
+  markRowTime,
+  markSpanLabel,
+  marksHuntWindow,
+  watchMarks,
   monitorHuntRange,
   nextReminder,
   openCardLine,
@@ -420,5 +426,138 @@ describe("push monitors on Watch (#177, frames 18c and 18f)", () => {
     expect(text).toContain("nightly-backup push · 1d · grace 1h ok next 10-21 02:03");
     expect(text).not.toContain("api errors");
     expect(text).not.toContain("marks deploys and flags");
+  });
+});
+
+describe("the marks row when deploys crowd (#212, frames 20b, 20c, 20f)", () => {
+  // agental's day (20a): 43 deploys, a morning train of ten and an evening one of thirteen.
+  const clock = ["00:30","01:10","02:40","03:50","04:30","05:20","06:10","07:21","07:27","07:40","07:52","08:05","08:13","08:30","08:41","08:55","09:02","10:15","11:00","11:45","12:30","13:20","14:05","15:10","16:00","16:50","17:40","18:25","19:05","19:40","20:09","20:14","20:20","20:41","20:58","21:12","21:30","21:36","21:42","21:55","22:05","22:14","22:20"];
+  const hm = (c: string) => Number(c.slice(0, 2)) * 60 + Number(c.slice(3));
+  // The day drawn ends at 22:31; here it ends at the tests' now.
+  const day = clock.map((c, i) => mark(`d${i}`, now - (hm("22:31") - hm(c)) * minute, { title: `sha${i}` }));
+
+  test("at 24h a train folds into a counted chip, the way Search's lane folds it (20b)", () => {
+    const lane = watchMarks(day, dayAgo, now, "24h");
+    expect(lane.count).toBe(43);
+    expect(lane.washes).toBe(true);
+    expect(lane.groups.filter((g) => g.members.length > 1).map((g) => g.members.length)).toEqual([10, 13]);
+    expect(lane.groups.filter((g) => g.members.length === 1)).toHaveLength(20);
+    // Nothing is named on a busy day: no lone mark has 12% of the clock to itself.
+    expect(lane.groups.filter((g) => g.label)).toHaveLength(0);
+    const train = lane.groups.find((g) => g.members.length === 10)!;
+    expect(train.members[0]!.id).toBe("d16");
+    expect(train.from).toBeLessThan(train.at);
+    expect(train.at).toBeLessThan(train.to);
+  });
+
+  test("a lone mark keeps its name only with room, and the name stops short of the next mark", () => {
+    const quiet = [
+      mark("ci", now - 12 * hour, { service: "ci-runner", title: "v1.8.0" }),
+      mark("api", now - 12 * hour + 19 * minute, { title: "v0.9.3" }),
+      mark("flag", now - 5 * hour, { kind: "flag", service: "", title: "new-checkout on" }),
+    ];
+    const lane = watchMarks(quiet, dayAgo, now, "24h");
+    expect(lane.groups.map((g) => g.members.length)).toEqual([2, 1]);
+    const flag = lane.groups[1]!;
+    expect(flag.label?.text).toBe(formatChangeMarkLabel(quiet[2]!));
+    // Past 70% of the clock it is written to the left, kept to the room back to the chip.
+    expect(flag.label?.end).toBe(true);
+    expect(flag.label?.room).toBeCloseTo(flag.at - lane.groups[0]!.at, 6);
+    expect(flag.label?.reservePx).toBe(38);
+    // The two marks 18c drew far apart are both named.
+    const apart = watchMarks([mark("v0.9.2", now - 19 * hour), mark("v0.9.3", now - 20 * minute)], dayAgo, now, "24h");
+    expect(apart.groups.map((g) => g.label?.text)).toEqual(["api v0.9.2", "api v0.9.3"]);
+    expect(apart.groups[0]!.label).toMatchObject({ end: false, reservePx: 18 });
+  });
+
+  test("past 24h a chip is a tick's worth of marks: a day at 7d, five days at 30d (20f)", () => {
+    // Every 40 minutes for three days: a chain would fuse them all.
+    const steady = Array.from({ length: 108 }, (_, i) => mark(`s${i}`, now - 3 * 24 * hour + i * 40 * minute));
+    const week = watchMarks(steady, now - 7 * 24 * hour, now, "7d");
+    expect(week.washes).toBe(false);
+    expect(week.groups.length).toBe(4);
+    for (const g of week.groups) {
+      expect(new Date(g.fromMs).toISOString().slice(0, 10)).toBe(new Date(g.toMs).toISOString().slice(0, 10));
+    }
+    expect(week.groups.reduce((n, g) => n + g.members.length, 0)).toBe(108);
+
+    const daily = Array.from({ length: 30 }, (_, i) => mark(`n${i}`, now - i * 24 * hour - hour));
+    const month = watchMarks(daily, now - 30 * 24 * hour, now, "30d");
+    const slots = new Set(daily.map((m) => Math.floor(Date.parse(m.ts) / (5 * 24 * hour))));
+    expect(month.groups.length).toBe(slots.size);
+    expect(month.washes).toBe(false);
+  });
+
+  test("a chip's peek, its list and the Search window it opens say what it holds (20c)", () => {
+    const lane = watchMarks(day, dayAgo, now, "24h");
+    const morning = lane.groups.find((g) => g.members.length === 10)!;
+    expect(markPeek(morning, now)).toEqual({
+      head: "10 marks · 10-19 19:53 – 21:34",
+      names: ["api sha16", "api sha15"],
+      more: "+8 more — click opens the list",
+    });
+    const evening = lane.groups.find((g) => g.members.length === 13)!;
+    expect(markPeek(evening, now).head).toBe("13 marks · 08:41 – 10:52");
+    expect(markSpanLabel(Date.parse("2026-10-19T23:50:00Z"), Date.parse("2026-10-20T00:10:00Z"), now)).toBe("10-19 23:50 – 00:10");
+    expect(markSpanLabel(now - hour, now - hour, now)).toBe("10:03");
+    expect(markRowTime(now - hour + 7_000, now)).toBe("10:03:07");
+    expect(markRowTime(now - 24 * hour, now)).toBe("10-19 11:03");
+    expect(markHover(mark("v0.9.3", now - 20 * minute), now)).toBe("api v0.9.3 · 10:43");
+    expect(marksHuntWindow(now, now - 3 * hour, now - 2 * hour)).toEqual({ fromMs: now - 3 * hour - 30 * minute, toMs: now - 90 * minute });
+    expect(marksHuntWindow(now, now - 20 * minute, now - 18 * minute)).toEqual({ fromMs: now - 35 * minute, toMs: now - 3 * minute });
+  });
+
+  test("Watch draws the chips and their washes, and no name at rest, on agental's day", () => {
+    const data: MonitorsResponse = {
+      now,
+      from: new Date(dayAgo).toISOString(),
+      to: new Date(now).toISOString(),
+      monitors: [errors],
+      stretches: [],
+      sent: [],
+      link: false,
+    };
+    const props = { data, canCreate: true, onRange: () => {}, filter: "all" as const, onFilter: () => {}, marks: day, onNew: () => {}, onOpen: () => {} };
+    const html = renderToStaticMarkup(createElement(WatchView, { ...props, range: "24h" }));
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(html).toContain('aria-label="10 marks, 10-19 19:53 – 21:34"');
+    expect(html).toContain('aria-label="13 marks, 08:41 – 10:52"');
+    expect(html.match(/data-mark-wash=/g)?.length).toBe(2);
+    expect(html.match(/data-mark=/g)?.length).toBe(20);
+    expect(text).toContain("43 marks");
+    expect(text).not.toContain("sha");
+    // At 7d there is no wash.
+    const week = renderToStaticMarkup(createElement(WatchView, { ...props, range: "7d" }));
+    expect(week).not.toContain("data-mark-wash=");
+  });
+
+  test("a hovered chip peeks, a pinned one lists its marks newest first with a way into Search (20c)", () => {
+    const { groups } = watchMarks(day, dayAgo, now, "24h");
+    const [morning, evening] = groups.filter((g) => g.members.length > 1);
+    const html = renderToStaticMarkup(
+      createElement(MarksLane, {
+        groups,
+        nowMs: now,
+        hot: morning!.key,
+        open: evening!.key,
+        onHot: () => {},
+        onOpenGroup: () => {},
+        onOpenMarks: () => {},
+      }),
+    );
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(text).toContain("10 marks · 10-19 19:53 – 21:34 api sha16 api sha15 +8 more — click opens the list");
+    expect(text).toContain("13 marks 08:41 – 10:52 ×");
+    expect(text.indexOf("api sha42")).toBeLessThan(text.indexOf("api sha30"));
+    expect(text).toContain("Open 08:41 – 10:52 in Search ↗ Every service, this stretch, in a new tab.");
+    expect(html).toContain('aria-expanded="true"');
+    // The list ends at its chip, past 60% of the clock.
+    expect(html).toContain("translateX(-100%)");
+    // A lone triangle's hover names it.
+    const lone = groups.find((g) => g.members.length === 1)!;
+    const one = renderToStaticMarkup(
+      createElement(MarksLane, { groups, nowMs: now, hot: lone.key, open: null, onHot: () => {}, onOpenGroup: () => {} }),
+    );
+    expect(one.replace(/<[^>]+>/g, " ")).toContain("api sha0 · 10-19 13:02");
   });
 });

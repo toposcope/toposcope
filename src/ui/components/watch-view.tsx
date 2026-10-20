@@ -3,12 +3,19 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
 import { formatOpenFor } from "../../shared/monitor";
+import { markKindColor } from "./histogram-marks";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "@/types";
 import {
   clockAt,
   httpLane,
   laneKind,
   laneReadout,
+  markHover,
+  markPeek,
+  markRowTime,
+  markSpanLabel,
+  watchMarkText,
+  type WatchMarkGroup,
   pushBands,
   pushDueLine,
   pushReadout,
@@ -42,6 +49,8 @@ type Props = {
   onNew: () => void;
   /** Open a monitor as a hunt: its search, with the monitor beside it (18i); at a stretch or a result when one is given. */
   onOpen: (monitor: MonitorView, stretch?: Pick<MonitorStretch, "opened_at" | "resolved_at">) => void;
+  /** Open a chip's stretch in Search, every service (#212, 20c). */
+  onOpenMarks?: (fromMs: number, toMs: number) => void;
 };
 
 const lrow = "grid grid-cols-[210px_minmax(0,1fr)_118px] items-center gap-3 px-3 py-1";
@@ -420,23 +429,188 @@ function PushLane({
   );
 }
 
-function Triangle({ left }: { left: number }) {
+function Glyph({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 10 9"
-      width="10"
-      height="9"
-      aria-hidden
-      className="absolute top-[5px] text-plate"
-      style={{ left: `calc(${(left * 100).toFixed(3)}% - 5px)` }}
-    >
+    <svg viewBox="0 0 10 9" width="10" height="9" aria-hidden className={cn("shrink-0 text-plate", className)}>
       <path fill="currentColor" d="M5 0 10 9H0Z" />
     </svg>
   );
 }
 
+/** Where a chip's peek or list opens, below the lane: right of it, or ending at it past 60% (as on Search). */
+function popAnchor(at: number): React.CSSProperties {
+  return { left: pct(at), transform: at > 0.6 ? "translateX(-100%)" : "translateX(8px)" };
+}
+
+/** The marks row's lane (#212): lone triangles, chips for trains, a chip's peek and its pinned list (20b, 20c). */
+export function MarksLane({
+  groups,
+  nowMs,
+  hot,
+  open,
+  onHot,
+  onOpenGroup,
+  onOpenMarks,
+}: {
+  groups: WatchMarkGroup[];
+  nowMs: number;
+  hot: string | null;
+  open: string | null;
+  onHot: (key: string | null) => void;
+  onOpenGroup: (key: string | null) => void;
+  onOpenMarks?: (fromMs: number, toMs: number) => void;
+}) {
+  const peek = hot && hot !== open ? groups.find((g) => g.key === hot) : undefined;
+  const list = open ? groups.find((g) => g.key === open) : undefined;
+  return (
+    <span className="relative h-[18px]">
+      {groups.map((g) =>
+        g.members.length === 1 ? (
+          <span key={g.key}>
+            <span
+              data-mark={g.key}
+              className="absolute inset-y-0 z-[3] flex w-[14px] items-center justify-center"
+              style={{ left: `calc(${pct(g.at)} - 7px)` }}
+              onPointerEnter={() => onHot(g.key)}
+              onPointerLeave={() => onHot(null)}
+            >
+              <Glyph className={hot === g.key ? "text-foreground" : undefined} />
+            </span>
+            {g.label ? (
+              <span
+                className="absolute top-0.5 truncate font-mono text-[10.5px] whitespace-nowrap text-muted-foreground"
+                style={{
+                  ...(g.label.end
+                    ? { right: `calc(${pct(1 - g.at)} + 10px)` }
+                    : { left: `calc(${pct(g.at)} + 8px)` }),
+                  maxWidth: `calc(${pct(g.label.room)} - ${g.label.reservePx}px)`,
+                }}
+              >
+                {g.label.text}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          <button
+            key={g.key}
+            type="button"
+            data-mark-chip={g.key}
+            aria-label={`${g.members.length} marks, ${markSpanLabel(g.fromMs, g.toMs, nowMs)}`}
+            aria-expanded={open === g.key}
+            className={cn(
+              "absolute top-1/2 z-[3] flex h-[18px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-sm border border-white/18 bg-accent/70 px-1 whitespace-nowrap text-[11px] text-foreground/80",
+              hot === g.key ? "border-white/30 bg-accent text-foreground" : "",
+              open === g.key ? "shadow-[0_0_0_1px_color-mix(in_oklab,var(--ring)_50%,transparent)]" : "",
+            )}
+            style={{ left: pct(g.at) }}
+            onPointerEnter={() => onHot(g.key)}
+            onPointerLeave={() => onHot(null)}
+            onFocus={() => onHot(g.key)}
+            onBlur={() => onHot(null)}
+            onClick={() => onOpenGroup(open === g.key ? null : g.key)}
+          >
+            {g.kinds.length > 1 ? (
+              <>
+                <span className="font-mono text-[10.5px]">{g.members.length}</span>
+                {g.kinds.map((kind) => (
+                  <span key={kind} className="size-[5px] rounded-full" style={{ background: markKindColor(kind) }} />
+                ))}
+              </>
+            ) : (
+              <>
+                <Glyph />
+                <span className="font-mono text-[10.5px]">{g.members.length}</span>
+              </>
+            )}
+          </button>
+        ),
+      )}
+
+      {peek ? (
+        peek.members.length === 1 ? (
+          <span
+            role="tooltip"
+            className="absolute top-[24px] z-20 flex items-center gap-1.5 rounded-md border bg-popover px-2 py-1 whitespace-nowrap shadow-lg"
+            style={popAnchor(peek.at)}
+          >
+            <Glyph />
+            <span className="font-mono text-[10.5px] text-foreground/90">{markHover(peek.members[0]!, nowMs)}</span>
+          </span>
+        ) : (
+          <MarkPeek group={peek} nowMs={nowMs} />
+        )
+      ) : null}
+
+      {list ? (
+        <div
+          role="dialog"
+          aria-label={`${list.members.length} marks`}
+          data-mark-list={list.key}
+          className="absolute top-[24px] z-30 w-[266px] rounded-md border bg-popover shadow-lg"
+          style={popAnchor(list.at)}
+        >
+          <div className="flex items-center gap-2 border-b px-2.5 py-1.5 text-[12px] font-semibold">
+            {list.members.length} marks
+            <span className="font-mono text-[10.5px] font-normal text-muted-foreground">
+              {markSpanLabel(list.fromMs, list.toMs, nowMs)}
+            </span>
+            <button
+              type="button"
+              aria-label="Close"
+              className="ml-auto flex size-[18px] items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+              onClick={() => onOpenGroup(null)}
+            >
+              ×
+            </button>
+          </div>
+          <div className="flex max-h-[176px] flex-col overflow-y-auto p-1">
+            {list.members.map((m) => (
+              <div key={m.id} className="flex h-6 shrink-0 items-center gap-1.5 rounded-sm px-1.5">
+                <Glyph />
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/85">{watchMarkText(m)}</span>
+                <span className="font-mono text-[10.5px] text-muted-foreground">{markRowTime(Date.parse(m.ts), nowMs)}</span>
+              </div>
+            ))}
+          </div>
+          {onOpenMarks ? (
+            <button
+              type="button"
+              className="flex w-full flex-col items-start gap-0.5 border-t px-2.5 py-1.5 text-left text-[10.5px] text-muted-foreground hover:bg-accent/50"
+              onClick={() => onOpenMarks(list.fromMs, list.toMs)}
+            >
+              <span className="text-foreground/85">Open {markSpanLabel(list.fromMs, list.toMs, nowMs)} in Search ↗</span>
+              <span>Every service, this stretch, in a new tab.</span>
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
+/** 20c: a chip's hover. */
+function MarkPeek({ group, nowMs }: { group: WatchMarkGroup; nowMs: number }) {
+  const peek = markPeek(group, nowMs);
+  return (
+    <span
+      role="tooltip"
+      className="absolute top-[24px] z-20 flex w-max max-w-[260px] flex-col gap-1 rounded-md border bg-popover px-2.5 py-1.5 shadow-lg"
+      style={popAnchor(group.at)}
+    >
+      <span className="font-mono text-[11px] whitespace-nowrap">{peek.head}</span>
+      {peek.names.map((name, i) => (
+        <span key={`${i}-${name}`} className="flex min-w-0 items-center gap-1.5">
+          <Glyph />
+          <span className="truncate font-mono text-[10.5px] text-foreground/85">{name}</span>
+        </span>
+      ))}
+      <span className="text-[10.5px] whitespace-nowrap text-muted-foreground">{peek.more}</span>
+    </span>
+  );
+}
+
 /** Frame 18c: Watch, every monitor on one clock, open ones first. */
-export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen }: Props) {
+export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen, onOpenMarks }: Props) {
   const monitors = data?.monitors ?? [];
   const nowMs = data?.now ?? Date.now();
   const fromMs = data ? Date.parse(data.from) : nowMs;
@@ -445,7 +619,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
   const shown = sortForWatch(monitors).filter((m) => filter === "all" || sourceOf(m) === filter);
   const open = sortForWatch(monitors).filter((m) => m.state === "open" && m.open);
   const ticks = watchTicks(fromMs, toMs, range);
-  const onClock = watchMarks(marks, fromMs, toMs);
+  const onClock = watchMarks(marks, fromMs, toMs, range);
   const byMonitor = new Map<string, MonitorStretch[]>();
   for (const s of data?.stretches ?? []) {
     byMonitor.set(s.monitor_id, [...(byMonitor.get(s.monitor_id) ?? []), s]);
@@ -461,6 +635,25 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
   // 18f: the Push segment draws push lanes taller, with when each is next due.
   const tall = filter === "push";
   const [card, setCard] = useState<{ monitor: string; result: number } | null>(null);
+  // #212, 20c: the mark or chip under the pointer, and the chip whose list is pinned.
+  const [markHot, setMarkHot] = useState<string | null>(null);
+  const [markOpen, setMarkOpen] = useState<string | null>(null);
+  useEffect(() => {
+    setMarkHot(null);
+    setMarkOpen(null);
+  }, [range]);
+  useEffect(() => {
+    if (!markOpen) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMarkOpen(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [markOpen]);
   useEffect(() => {
     if (!card) {
       return;
@@ -558,7 +751,26 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             ) : null}
           </div>
         ) : (
-          <div className="rounded-[6.4px] border bg-card py-1">
+          <div className="relative rounded-[6.4px] border bg-card py-1">
+            {tall || !onClock.washes ? null : (
+              // 20b: a train's wash runs up through the monitor rows, as Search's runs up through its plot.
+              <span aria-hidden className="pointer-events-none absolute top-6 right-[142px] bottom-1 left-[234px] z-[1]">
+                {onClock.groups
+                  .filter((g) => g.members.length > 1)
+                  .map((g) => (
+                    <span
+                      key={g.key}
+                      data-mark-wash={g.key}
+                      className="absolute inset-y-0"
+                      style={{
+                        left: pct(g.from),
+                        width: pct(Math.max(0.003, g.to - g.from)),
+                        background: markHot === g.key || markOpen === g.key ? "oklch(1 0 0 / 13%)" : "oklch(1 0 0 / 9%)",
+                      }}
+                    />
+                  ))}
+              </span>
+            )}
             <div className={cn(tall ? prow : lrow, "border-b-0 py-[3px]")}>
               <span />
               <span className="relative h-3.5">
@@ -611,24 +823,15 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 <span className="text-[12px]">marks</span>
                 <span className="font-mono text-[10.5px] text-muted-foreground">deploys and flags</span>
               </span>
-              <span className="relative h-[18px]">
-                {onClock.glyphs.map((g) => (
-                  <Triangle key={g.id} left={g.left} />
-                ))}
-                {onClock.labels.map((l) => (
-                  <span
-                    key={`${l.left}-${l.text}`}
-                    className="absolute top-0.5 font-mono text-[10.5px] whitespace-nowrap text-muted-foreground"
-                    style={
-                      l.end
-                        ? { right: `calc(${((1 - l.left) * 100).toFixed(3)}% + 10px)` }
-                        : { left: `calc(${(l.left * 100).toFixed(3)}% + 8px)` }
-                    }
-                  >
-                    {l.text}
-                  </span>
-                ))}
-              </span>
+              <MarksLane
+                groups={onClock.groups}
+                nowMs={nowMs}
+                hot={markHot}
+                open={markOpen}
+                onHot={setMarkHot}
+                onOpenGroup={setMarkOpen}
+                onOpenMarks={onOpenMarks}
+              />
               <span className="text-[11px] text-muted-foreground">
                 {onClock.count} mark{onClock.count === 1 ? "" : "s"}
               </span>

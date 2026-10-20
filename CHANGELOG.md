@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Watch's marks row can be read on a busy day. It joined marks closer than 3% of the clock into one label and kept labels only off each other, so with 43 deploys in a day it wrote four names, each across the marks after it, and named neither train. At 24h it now folds marks the way Search's lane does: marks less than 1.6% of the clock apart chain into a chip, "▲ 10" (or the count and a dot per kind when deploys and flags mix), whose wash runs up through the monitor rows. A lone mark keeps its triangle, and its name only with nothing else within 12% of the clock, cut short before the next mark at any width. At 7d and 30d a chip is the marks between two ticks, one a day or one per five days, with no wash, since a chain would fuse days. Hovering a chip gives its span, the newest two names and how many more; clicking it pins its list below the lane, newest first, with a way to open that stretch in a new Search tab, every service. Hovering a lone triangle names it. As frames 20b, 20c and 20f draw it. [#212](https://github.com/toposcope/toposcope/issues/212)
+
 ## 0.7.2
 
 After an upgrade, the footer's version popover says how it went for an hour, not a day, and keeps **Check now** on its Up to date line meanwhile; it had no button while the note showed, so a release out the next day could not be found by hand.
