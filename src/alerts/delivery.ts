@@ -1,3 +1,5 @@
+import type { WebhookPayload } from "./payload";
+
 const ERROR_MAX = 200;
 
 export type WebhookOutcome = {
@@ -103,4 +105,27 @@ function isAbort(err: unknown): boolean {
     return false;
   }
   return true;
+}
+
+const WEBHOOK_TIMEOUT_MS = 5000;
+
+/** A call, POSTed once with a 5s timeout; a redirect is an error, never followed. */
+export async function postWebhook(url: string, payload: WebhookPayload): Promise<WebhookOutcome> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), WEBHOOK_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": payload.contentType },
+      body: payload.body,
+      signal: ac.signal,
+      redirect: "error",
+    });
+    return outcomeFromHttp(res.status, res.statusText);
+  } catch (err) {
+    console.error("alert webhook failed", err);
+    return outcomeFromError(err);
+  } finally {
+    clearTimeout(timer);
+  }
 }

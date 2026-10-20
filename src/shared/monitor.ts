@@ -5,8 +5,11 @@ import { seriesLabel } from "../query/agg";
  * which keeps the state, and Watch, which draws it.
  */
 
-/** Where a monitor's results come from: a saved search, new fingerprints, or pushed results (#177). */
-export const monitorSources = ["search", "fingerprints", "push"] as const;
+/**
+ * Where a monitor's results come from: a saved search, new fingerprints, pushed results (#177),
+ * or a URL it calls (#178).
+ */
+export const monitorSources = ["search", "fingerprints", "push", "http"] as const;
 export type MonitorSource = (typeof monitorSources)[number];
 
 export function parseSource(value: unknown): MonitorSource | null {
@@ -106,7 +109,7 @@ export function cantTellWords(
 /** A result: a fail opens a monitor, the first ok after it resolves it, a warn shows and changes nothing. */
 export type MonitorResult = "ok" | "warn" | "fail";
 
-/** How often an open monitor reminds: never, once per its search's window, or every 1h, 4h or 24h. */
+/** How often an open monitor reminds: never, once per its search's window, or every 1h, 4h or 24h. An HTTP(S) monitor has no window. */
 export const remindIds = ["off", "window", "1h", "4h", "24h"] as const;
 export type RemindId = (typeof remindIds)[number];
 
@@ -141,6 +144,9 @@ export const callRetryMs = 60 * 60_000;
 
 /** Stretches kept a monitor; older ones and their calls are dropped. */
 export const keptStretches = 200;
+
+/** Columns a lane's results are read in (`monitor_results`), whatever the clock: 6 minutes a column over 24h. */
+export const laneColumns = 240;
 
 /** "fewer than 1", "rate fewer than 0.5", "p99(duration_ms) at least 800": what opens it, in words. */
 export function opensWhenWords(opensWhen: OpensWhen, series: string | null, threshold: number): string {

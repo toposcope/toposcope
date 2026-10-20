@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
-import { keptStretches, type CantTell, type MonitorResult } from "../shared/monitor";
+import { keptStretches, laneColumns, type CantTell, type MonitorResult } from "../shared/monitor";
 import { keptResultsMs } from "../shared/push";
 
 /** What became of a stretch's open or resolved call. Null while it is still to be sent. */
@@ -315,7 +315,7 @@ export function lastPushResult(monitorId: string, db: Database = getDb()): PushR
 }
 
 /** Columns a lane's results are read in: within each, the worst result, and of equals the later. */
-export const laneColumns = 240;
+export { laneColumns };
 /** A message as a lane's tick carries it; the whole one is its log row. */
 const tickMessage = 300;
 

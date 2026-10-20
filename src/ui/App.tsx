@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
 import { NewMonitorDialog } from "@/components/new-monitor-dialog";
 import { PushMonitorDialog, type PushDraft, type PushInput } from "@/components/push-monitor-dialog";
+import { HttpMonitorDialog, type HttpDraft, type HttpMonitorInput } from "@/components/http-monitor-dialog";
 import { WatchView } from "@/components/watch-view";
 import { MonitorRail } from "@/components/monitor-rail";
 import type { MonitorBand } from "@/components/monitor-band";
@@ -698,6 +699,8 @@ export function App() {
   const [newMonitor, setNewMonitor] = useState<{ savedSearchId: string | null; lockSearch: boolean } | null>(null);
   /** 18s: a push monitor's editor (#177). */
   const [pushDraft, setPushDraft] = useState<PushDraft | null>(null);
+  /** 18r: an HTTP(S) monitor's editor. */
+  const [httpDraft, setHttpDraft] = useState<HttpDraft | null>(null);
   /** The monitor read beside a Search tab (18i), by tab. */
   const [monitorRail, setMonitorRail] = useState<Record<number, string>>({});
   /** Stretches of the monitors on this tab's saved search, on its clock (18o). */
@@ -2197,7 +2200,7 @@ export function App() {
   }, [attrPrefixes, windowParams, wsKind]);
 
   const dialogOpen =
-    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null;
+    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2380,7 +2383,7 @@ export function App() {
     toast.message(`${json.count} match${json.count === 1 ? "" : "es"}`);
   }
 
-  async function createAlert(input: MonitorInput) {
+  async function createAlert(input: MonitorInput | HttpMonitorInput) {
     const res = await fetch("/api/alert-rules", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -2399,6 +2402,7 @@ export function App() {
     id: string,
     input:
       | MonitorInput
+      | HttpMonitorInput
       | { silence_for: "1h" | "4h" | "24h" }
       | { silenced_until: null }
       | { enabled: boolean },
@@ -2487,6 +2491,18 @@ export function App() {
         true,
       );
       setMonitorRail((prev) => ({ ...prev, [id]: monitor.id }));
+      return;
+    }
+    if (sourceOf(monitor) === "http") {
+      // Its results are its rows (#178).
+      setSheetOpen(false);
+      setView("search");
+      const tab = wsSeq + 1;
+      addWorkspace(
+        { ...blankSearchSnap(), q: monitor.query || monitorQuery(monitor.name), range: "1h", live: false, ...monitorHuntWindow(stretch ?? monitor.open) },
+        true,
+      );
+      setMonitorRail((prev) => ({ ...prev, [tab]: monitor.id }));
       return;
     }
     const item = monitor.saved_search_id ? saved.find((row) => row.id === monitor.saved_search_id) : undefined;
@@ -3537,7 +3553,7 @@ export function App() {
   }, [attrKeyOptions]);
 
   function openNewAlert() {
-    // A push monitor needs no saved search (#177); the others pick one.
+    // A push or HTTP(S) monitor needs no saved search (#177, #178); the others pick one.
     const watchable = saved.filter((item) => !item.board);
     const current = saved.find((item) => item.id === savedId);
     const id =
@@ -3584,11 +3600,11 @@ export function App() {
         : Date.parse(isoFromLocal(to) ?? ""),
   });
   // Monitors on this tab's saved search: their stretches on this clock (#175, 18o).
-  // A push monitor's stretches sit on a hunt of its own `monitor:<name>` (18i).
+  // A push or HTTP(S) monitor's stretches sit on a hunt of its own `monitor:<name>` (18i).
   const bandMonitors = alerts.filter(
     (m) =>
       (savedId && m.saved_search_id === savedId) ||
-      (sourceOf(m) === "push" && Boolean(q.trim()) && m.query === q.trim()),
+      ((sourceOf(m) === "push" || sourceOf(m) === "http") && Boolean(q.trim()) && m.query === q.trim()),
   );
   const bandKey = bandMonitors.map((m) => m.id).join(",");
   // Read again when the search's reply moves the window off the clock guessed before it.
@@ -4872,7 +4888,9 @@ export function App() {
               onEdit={() =>
                 sourceOf(railMonitor) === "push"
                   ? setPushDraft({ mode: "edit", rule: railMonitor })
-                  : setAlertDraft({ mode: "edit", rule: railMonitor })
+                  : sourceOf(railMonitor) === "http"
+                    ? setHttpDraft({ mode: "edit", monitor: railMonitor })
+                    : setAlertDraft({ mode: "edit", rule: railMonitor })
               }
               onPause={(paused) => void updateAlert(railMonitor.id, { enabled: !paused })}
               onSilence={(forId) => void silenceAlert(railMonitor, forId)}
@@ -4937,12 +4955,18 @@ export function App() {
           const item = saved.find((row) => row.id === newMonitor?.savedSearchId);
           return item ? { name: item.name, query: item.query, range: item.range } : null;
         })()}
+        canSearch={saved.some((item) => !item.board)}
         onPick={(source) => {
           if (!newMonitor) {
             return;
           }
           if (source === "push") {
             setPushDraft({ mode: "create" });
+            setNewMonitor(null);
+            return;
+          }
+          if (source === "http") {
+            setHttpDraft({ mode: "create" });
             setNewMonitor(null);
             return;
           }
@@ -4965,6 +4989,23 @@ export function App() {
         onCreate={createPush}
         onUpdate={updatePush}
         onDelete={deleteAlert}
+      />
+      <HttpMonitorDialog
+        open={httpDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setHttpDraft(null);
+          }
+        }}
+        draft={httpDraft}
+        onBack={() => {
+          setHttpDraft(null);
+          openNewAlert();
+        }}
+        onCreate={createAlert}
+        onUpdate={updateAlert}
+        onDelete={deleteAlert}
+        canLink={alertsCanLink}
       />
       <AlertRuleDialog
         open={alertDraft !== null}

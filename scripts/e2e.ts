@@ -11,6 +11,7 @@ import { toOtlpTracesJson } from "../src/ingest/otlp-traces";
 import { encodeOtlpTracesProtobuf } from "../src/ingest/otlp-traces-protobuf";
 import { formatSyslog3164 } from "../src/ingest/syslog-parse";
 import { evaluateAlerts, monitorTick } from "../src/alerts/cron";
+import { makeCerts, readCerts, startStands } from "./http-stands";
 import { cantTellHeld } from "../src/alerts/cant-tell";
 import { getAlert } from "../src/control/alerts";
 import { runLiveLoad } from "./load-live";
@@ -4061,7 +4062,192 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved");
+  // #178, last (after #175's and #176's slow blocks): the app runs HTTP(S) monitors on its own
+  // clock (every 30s at the least), so this waits about a minute for real runs against stand-ins
+  // on spare ports. The
+  // certificate check needs the app to trust the stand's CA: start it with
+  // NODE_EXTRA_CA_CERTS=<dir>/ca.crt after `bun run scripts/http-stands.ts certs <dir>`, and
+  // give this run TOPOSCOPE_E2E_CERTS=<dir>. Without them that one check reads the certificate
+  // as not trusted, which must fail too.
+  {
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const certDir = envValue("TOPOSCOPE_E2E_CERTS");
+    const certs = certDir ? readCerts(certDir) : makeCerts(20);
+    const stands = startStands(certs, { slowMs: 600 });
+    const calls: Array<{ path: string; state: unknown }> = [];
+    const hook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        calls.push({ path: new URL(req.url).pathname, state: ((await req.json()) as { state?: unknown }).state });
+        return new Response("ok");
+      },
+    });
+    const hookUrl = (path: string) => `http://127.0.0.1:${hook.port}${path}`;
+    const names = {
+      flip: `e2e http flip ${marker}`,
+      db: `e2e-http-db-${marker}`,
+      slow: `e2e http slow ${marker}`,
+      cert: `e2e http cert ${marker}`,
+      redirect: `e2e http redirect ${marker}`,
+    };
+    type Http = {
+      state: string;
+      last_result: string | null;
+      http: { fails_in_row: number; headers: string[]; last_run: { at: number; result: string; status: number | null; why: string | null; line: string | null } | null } | null;
+      stretches?: Array<{ opened_at: number; resolved_at: number | null; closed_by: string | null }>;
+    };
+    const read = async (n: string) =>
+      (await (await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { headers: auth })).json()) as Http;
+    const until = async (what: string, n: string, ok: (m: Http) => boolean, ms = 75_000) => {
+      const end = Date.now() + ms;
+      let last: Http | null = null;
+      while (Date.now() < end) {
+        last = await read(n);
+        if (ok(last)) return last;
+        await Bun.sleep(1000);
+      }
+      throw new Error(`${what}: waited ${ms / 1000}s, got ${JSON.stringify(last)}`);
+    };
+    const declare = async (n: string, body: Record<string, unknown>) => {
+      const res = await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ source: "http", every: "30s", webhook_url: hookUrl(`/${n.split(" ").join("-")}`), ...body }),
+      });
+      if (res.status !== 201) throw new Error(`PUT an http monitor should create, got ${res.status} ${await res.text()}`);
+    };
+    try {
+      // The editor's Send: one request from the node, each line's result, nothing stored.
+      const sentRes = await fetch(`${APP_URL}/api/monitors/send`, {
+        method: "POST",
+        headers: auth,
+        body: JSON.stringify({ url: `${stands.http}/health`, method: "GET", conditions: 'status == 200\n$.db == "ok"\n$.queue.depth < 2\ntime < 5000ms   warn' }),
+      });
+      const sent = (await sentRes.json()) as {
+        response: { status: number } | null;
+        timings: Record<string, number | null>;
+        verdict: { result: string; line: string | null; lines: Array<{ text: string; level: string; pass: boolean | null; got: string }> };
+      };
+      // Each line: its text, whether it held, and what it read (the time is whatever it took).
+      const want: Array<[string, boolean, string | null]> = [
+        ["status == 200", true, "200"],
+        ['$.db == "ok"', true, '"ok"'],
+        ["$.queue.depth < 2", false, "3"],
+        ["time < 5000ms", true, null],
+      ];
+      const lineWrong = want.some(([text, pass, value], i) => {
+        const l = sent.verdict?.lines[i];
+        return l?.text !== text || l.pass !== pass || (value !== null && l.got !== value);
+      });
+      if (
+        sent.response?.status !== 200 ||
+        sent.verdict.result !== "fail" ||
+        sent.verdict.line !== "$.queue.depth < 2" ||
+        lineWrong ||
+        sent.verdict.lines[3]?.level !== "warn" ||
+        typeof sent.timings.wait !== "number"
+      ) {
+        throw new Error(`Send should show each line's result, got ${JSON.stringify(sent)}`);
+      }
+      const redirectSend = (await (
+        await fetch(`${APP_URL}/api/monitors/send`, { method: "POST", headers: auth, body: JSON.stringify({ url: `${stands.http}/redirect` }) })
+      ).json()) as { response: { status: number } | null; verdict: { result: string; why: string } };
+      if (redirectSend.response?.status !== 302 || redirectSend.verdict.result !== "fail" || !redirectSend.verdict.why.startsWith("redirects to https://example.com/elsewhere")) {
+        throw new Error(`a redirect off its host should fail, not be followed, got ${JSON.stringify(redirectSend)}`);
+      }
+
+      stands.flip(503);
+      await declare(names.flip, { url: `${stands.http}/flip`, fail_after: 2, headers: { Authorization: "Bearer e2e-secret" } });
+      await declare(names.db, { url: `${stands.http}/db-down`, conditions: ["status == 200", '$.db == "ok"'], fail_after: 1 });
+      await declare(names.slow, { url: `${stands.http}/slow`, conditions: ["status == 200", "time < 300ms warn"], fail_after: 1 });
+      await declare(names.cert, { url: `${stands.https}/health`, conditions: ["cert > 30d"], fail_after: 1 });
+      await declare(names.redirect, { url: `${stands.http}/redirect`, fail_after: 1 });
+
+      // One 503 does not open it; the second, 30s later, does.
+      const first = await until("the first 503", names.flip, (m) => (m.http?.fails_in_row ?? 0) >= 1, 15_000);
+      if (first.state !== "ok") throw new Error(`one 503 should not open it, got ${JSON.stringify(first)}`);
+      if (stands.last.get("/flip")?.headers.authorization !== "Bearer e2e-secret") throw new Error("an http monitor should send its headers");
+      if (JSON.stringify(first.http?.headers) !== '["Authorization"]' || JSON.stringify(first).includes("e2e-secret")) {
+        throw new Error(`a header's value should never be shown back, got ${JSON.stringify(first.http)}`);
+      }
+      const opened = await until("two 503s in a row open it", names.flip, (m) => m.state === "open");
+      if (opened.http?.last_run?.status !== 503 || (opened.http?.fails_in_row ?? 0) < 2) {
+        throw new Error(`it should open on its second 503, got ${JSON.stringify(opened)}`);
+      }
+
+      const db = await read(names.db);
+      if (db.state !== "open" || db.http?.last_run?.line !== '$.db == "ok"' || db.http.last_run.why !== '$.db is "down", not "ok"') {
+        throw new Error(`$.db == "ok" should fail on {"db":"down"} and name the line, got ${JSON.stringify(db)}`);
+      }
+      const slow = await read(names.slow);
+      if (slow.state !== "ok" || slow.last_result !== "warn" || slow.http?.last_run?.line !== "time < 300ms") {
+        throw new Error(`a warn line over its time should warn, not open, got ${JSON.stringify(slow)}`);
+      }
+      const cert = await read(names.cert);
+      const certWhy = cert.http?.last_run?.why ?? "";
+      if (cert.state !== "open" || !(certDir ? /^certificate expires in (19|20) days$/.test(certWhy) : certWhy === "certificate is not trusted")) {
+        throw new Error(`cert > 30d should fail on a certificate with 20 days left, got ${JSON.stringify(cert)}`);
+      }
+      const redirect = await read(names.redirect);
+      if (redirect.state !== "open" || !redirect.http?.last_run?.why?.startsWith("redirects to https://example.com/elsewhere")) {
+        throw new Error(`a monitor whose URL redirects off its host should fail, got ${JSON.stringify(redirect)}`);
+      }
+
+      stands.flip(200);
+      const resolved = await until("a 200 resolves it", names.flip, (m) => m.state === "ok", 45_000);
+      const stretch = resolved.stretches?.[0];
+      if (!stretch?.resolved_at || stretch.closed_by !== "ok") throw new Error(`it should resolve on the 200, got ${JSON.stringify(resolved)}`);
+      const flipCalls = calls.filter((c) => c.path === `/${names.flip.split(" ").join("-")}`).map((c) => c.state);
+      if (JSON.stringify(flipCalls) !== '["open","resolved"]') throw new Error(`it should call once open and once resolved, got ${JSON.stringify(flipCalls)}`);
+
+      // Watch's ticks: each run is a result, the worst of its minute, for the lanes.
+      const lanes = (await (await fetch(`${APP_URL}/api/monitors`, { headers: auth })).json()) as {
+        monitors: Array<{ id: string; name: string }>;
+        results: Array<{ monitor_id: string; result: string; via: string }>;
+      };
+      const laneOf = (n: string) => {
+        const id = lanes.monitors.find((m) => m.name === n)?.id;
+        return lanes.results.filter((r) => r.monitor_id === id && r.via === "http").map((r) => r.result);
+      };
+      if (!laneOf(names.flip).includes("fail") || !laneOf(names.slow).includes("warn")) {
+        throw new Error(`each run should be a result on its lane, got ${JSON.stringify({ flip: laneOf(names.flip), slow: laneOf(names.slow) })}`);
+      }
+
+      // Every run is a row, found by its monitor, and its time is the metric monitor_duration_ms.
+      const from = new Date(Date.now() - 15 * 60_000).toISOString();
+      const to = new Date(Date.now() + 60_000).toISOString();
+      const rowsFor = async (q: string) =>
+        (await (await fetch(`${APP_URL}/api/search?${new URLSearchParams({ from, to, q }).toString()}`, { headers: auth })).json()) as {
+          events: Array<{ level: string; message: string; attrs?: Record<string, string> }>;
+          total: number;
+        };
+      const flipRows = await rowsFor(`monitor:"${names.flip}" source:http`);
+      const statuses = flipRows.events.map((e) => e.attrs?.["http.status"]).reverse();
+      if (statuses.slice(0, 2).join(",") !== "503,503" || statuses.at(-1) !== "200" || flipRows.events.some((e) => !e.attrs?.duration_ms)) {
+        throw new Error(`each run should be a row with http.status and duration_ms, got ${JSON.stringify(flipRows.events)}`);
+      }
+      const failRows = await rowsFor(`monitor:${names.db} status:fail`);
+      if (failRows.total < 1 || failRows.events[0]?.attrs?.line !== '$.db == "ok"' || failRows.events[0]?.level !== "error") {
+        throw new Error(`a failing run's row should name its line, got ${JSON.stringify(failRows.events[0])}`);
+      }
+      const metricNames = (await (
+        await fetch(`${APP_URL}/api/metric-names?${new URLSearchParams({ range: "15m", find: "monitor_duration" }).toString()}`, { headers: auth })
+      ).json()) as { keys: Array<{ k: string }> };
+      if (!metricNames.keys.some((k) => k.k === "monitor_duration_ms")) {
+        throw new Error(`duration_ms should also be the metric monitor_duration_ms, got ${JSON.stringify(metricNames)}`);
+      }
+    } finally {
+      for (const n of Object.values(names)) {
+        await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { method: "DELETE", headers: auth });
+      }
+      hook.stop(true);
+      stands.stop();
+      if (!certDir) certs.cleanup();
+    }
+  }
+
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved → http monitor open, warn, resolved");
 }
 
 await main();

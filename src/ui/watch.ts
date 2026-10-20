@@ -1,7 +1,8 @@
 import { seriesLabel } from "../query/agg";
 import { parseRangeMs } from "../query/relative";
 import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
-import { cantTellWords, formatOpenFor, opensWhenWords, type MonitorSource } from "../shared/monitor";
+import { formatCertShort, parseConditions } from "../shared/http-check";
+import { cantTellWords, formatOpenFor, laneColumns, opensWhenWords, type MonitorSource } from "../shared/monitor";
 import { formatSpan, isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../shared/push";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
@@ -27,6 +28,7 @@ export type WatchFilter = "all" | MonitorSource;
 export function watchFilters(monitors: readonly MonitorView[]): Array<{ id: WatchFilter; label: string; n: number }> {
   const order: Array<[MonitorSource, string]> = [
     ["search", "Search"],
+    ["http", "HTTP"],
     ["push", "Push"],
     ["fingerprints", "Fingerprints"],
   ];
@@ -114,10 +116,40 @@ export function cantTellNow(m: MonitorView, nowMs: number): string | null {
   return cantTellWords({ cant_tell: m.cant_tell ?? null, last_status: m.last_status }, windowMs, nowMs);
 }
 
-/** Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h", "push · 1d · grace 1h". */
+/** An HTTP(S) monitor's lines, read. */
+function httpLines(m: MonitorView) {
+  const read = parseConditions(m.http?.conditions ?? "");
+  return "error" in read ? [] : read;
+}
+
+/** An HTTP(S) monitor whose only line is `cert > …`: it reads days left, not time (18c). */
+function certOnly(m: MonitorView): boolean {
+  const lines = httpLines(m);
+  return lines.length === 1 && lines[0]!.cond.what === "cert";
+}
+
+/** "3 conditions", "cert > 14d", "any 2xx". */
+export function httpConditionsLabel(m: MonitorView): string {
+  const lines = httpLines(m);
+  if (lines.length === 0) {
+    return "any 2xx";
+  }
+  if (lines.length === 1) {
+    return lines[0]!.text;
+  }
+  return `${lines.length} conditions`;
+}
+
+/**
+ * Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h", "push · 1d · grace 1h",
+ * "http · 30s · 3 conditions".
+ */
 export function laneKind(m: MonitorView): string {
   if (sourceOf(m) === "fingerprints") {
     return "fingerprints · 24h";
+  }
+  if (sourceOf(m) === "http") {
+    return `http · ${m.http?.every ?? "30s"} · ${httpConditionsLabel(m)}`;
   }
   if (sourceOf(m) === "push") {
     const every = m.every_ms ?? null;
@@ -151,10 +183,15 @@ export function openCardLine(m: MonitorView, nowMs = Date.now()): string {
   if (sourceOf(m) === "push") {
     return pushCardLine(m, nowMs);
   }
+  if (sourceOf(m) === "http") {
+    const why = m.http?.last_run?.why ?? m.open?.open_message ?? "";
+    return `http · ${m.http?.method ?? "GET"} ${m.http?.url ?? ""}${why ? ` · ${why}` : ""}`;
+  }
   const last = readsQuiet(m) && typeof m.last_line_at === "number" ? ` · last line ${clockAt(m.last_line_at, nowMs)}` : "";
   return `search · ${q} · ${opensWhenLine(m)}${last}`;
 }
 
+/** Red is open; amber a warn, late, or an HTTP(S) run that failed before it opens (18c). */
 export type LaneReadout = { badge: string; tone: "red" | "amber" | "sec" | "out"; text: string; title?: string };
 
 /** Right of a lane: its state, and what it last read. */
@@ -172,6 +209,17 @@ export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number)
     return { badge: `open ${formatOpenFor(nowMs - m.open.opened_at)}`, tone: "red", text: silenced };
   }
   let reading = "";
+  if (sourceOf(m) === "http") {
+    const run = m.http?.last_run;
+    const left = run?.cert_valid_to ? Date.parse(run.cert_valid_to) - nowMs : null;
+    if (run && certOnly(m)) {
+      reading = left !== null ? `${formatCertShort(left)} left` : (run.why ?? "");
+    } else if (run) {
+      reading = run.status === null ? "no response" : `${run.duration_ms}ms`;
+    }
+    const badge = run?.result === "warn" ? "warn" : run?.result === "fail" ? "fail" : "ok";
+    return { badge, tone: badge === "ok" ? "sec" : "amber", text: [reading, silenced].filter(Boolean).join(" · ") };
+  }
   // A quiet search that could not tell stays shut, and says so (#176).
   const why = cantTellNow(m, nowMs);
   if (why) {
@@ -220,6 +268,36 @@ export function stretchSpans(
     out.push({ id: s.id, left, width, open: s.resolved_at === null, stretch: s });
   }
   return out;
+}
+
+export type HttpTick = { id: number; left: number; width: number; tone: "ok" | "warn" | "fail"; result: PushResultRow };
+
+/**
+ * An HTTP(S) lane (18c). Runs closer together than a column (every 30s over 24h) read as a
+ * texture, with each column that warned or failed drawn on it; sparser runs (every 1h) are each
+ * a tick. The results are already the worst of each column.
+ */
+export function httpLane(
+  results: readonly PushResultRow[],
+  everyMs: number,
+  fromMs: number,
+  toMs: number,
+): { dense: boolean; ticks: HttpTick[] } {
+  const column = 1 / laneColumns;
+  const dense = everyMs < (toMs - fromMs) * column;
+  const ticks: HttpTick[] = [];
+  for (const r of results) {
+    const at = clockFrac(r.at, fromMs, toMs);
+    if (at < 0 || at > 1 || (dense && r.result === "ok")) {
+      continue;
+    }
+    ticks.push(
+      dense
+        ? { id: r.id, left: Math.min(laneColumns - 1, Math.floor(at * laneColumns)) * column, width: column, tone: r.result, result: r }
+        : { id: r.id, left: at, width: 0, tone: r.result, result: r },
+    );
+  }
+  return { dense, ticks };
 }
 
 /** Each new-fingerprints call a dot on its lane. */
@@ -353,7 +431,7 @@ export function nextReminder(m: MonitorView, nowMs: number): number | null {
   if (remind === "off") {
     return null;
   }
-  const windowMs = (m.saved?.range ? parseRangeMs(m.saved.range) : null) ?? 5 * 60_000;
+  const windowMs = m.http?.every_ms ?? (m.saved?.range ? parseRangeMs(m.saved.range) : null) ?? 5 * 60_000;
   const every = remind === "window" ? windowMs : remind === "1h" ? hourMs : remind === "4h" ? 4 * hourMs : dayMs;
   const at = (s.called_at ?? s.opened_at) + every;
   return at > nowMs ? at : nowMs;

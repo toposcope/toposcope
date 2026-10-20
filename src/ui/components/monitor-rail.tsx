@@ -152,6 +152,27 @@ export function MonitorRail({
 }) {
   const fingerprints = sourceOf(monitor) === "fingerprints";
   const push = sourceOf(monitor) === "push";
+  const http = sourceOf(monitor) === "http" ? (monitor.http ?? null) : null;
+  // An HTTP(S) monitor without a webhook of its own calls the default in Settings (#177).
+  const [fallback, setFallback] = useState<string | null>(null);
+  const wantsDefault = http !== null && !monitor.webhook_url;
+  useEffect(() => {
+    if (!wantsDefault) {
+      return;
+    }
+    let stop = false;
+    void fetch("/api/settings")
+      .then((res) => (res.ok ? (res.json() as Promise<{ default_webhook_url?: string | null }>) : null))
+      .then((json) => {
+        if (!stop) {
+          setFallback(json?.default_webhook_url ?? null);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      stop = true;
+    };
+  }, [wantsDefault]);
   const readout = laneReadout(monitor, nowMs, 0);
   const open = monitor.state === "open" ? monitor.open : null;
   const reminded = open?.calls.filter((c) => c.what === "reminder" && c.ok).at(-1);
@@ -189,8 +210,34 @@ export function MonitorRail({
       </div>
       <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 text-[12px]">
         {push ? <PushRows monitor={monitor} nowMs={nowMs} /> : null}
-        {push ? null : <Row k="search">{monitor.saved?.name ?? "—"}</Row>}
-        {push ? null : fingerprints ? (
+        {http ? (
+          <>
+            <Row k="checks">
+              <span className="font-mono">
+                {http.method} {http.url}
+              </span>
+            </Row>
+            <Row k="conditions">
+              <span className="block font-mono whitespace-pre-wrap">{http.conditions || "any 2xx"}</span>
+            </Row>
+            <Row k="runs">
+              <span className="font-mono">
+                every {http.every} · opens after {http.fail_after} failed run{http.fail_after === 1 ? "" : "s"}
+              </span>
+            </Row>
+            {http.last_run ? (
+              <Row k="last run">
+                <span className="font-mono">
+                  {clockAt(http.last_run.at, nowMs)} · {http.last_run.result}
+                  {http.last_run.status !== null ? ` · ${http.last_run.status} in ${http.last_run.duration_ms}ms` : ""}
+                  {http.last_run.why ? ` · ${http.last_run.why}` : ""}
+                </span>
+              </Row>
+            ) : null}
+          </>
+        ) : null}
+        {push || http ? null : <Row k="search">{monitor.saved?.name ?? "—"}</Row>}
+        {push || http ? null : fingerprints ? (
           <Row k="opens on">
             <span className="font-mono">≥ {monitor.threshold} after a deploy or flag · 24h</span>
           </Row>
@@ -211,7 +258,7 @@ export function MonitorRail({
             <span className="font-mono">{cantTell}</span>
           </Row>
         ) : null}
-        {!fingerprints && !push && monitor.last_result_at ? (
+        {!fingerprints && !push && !http && monitor.last_result_at ? (
           <Row k="last read">
             <span className="font-mono">
               {clockAt(monitor.last_result_at, nowMs)} · {lastReading(monitor)}
@@ -221,7 +268,7 @@ export function MonitorRail({
         {push ? null : (
         <Row k="calls">
           <span className="font-mono">
-            {callHost(monitor.webhook_url)}
+            {wantsDefault ? (fallback ? `default · ${callHost(fallback)}` : "nobody") : callHost(monitor.webhook_url)}
             {fingerprints ? "" : ` · ${remindLabel(monitor)}`}
           </span>
           {failure ? (

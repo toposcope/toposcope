@@ -24,6 +24,8 @@ import {
   updateAlertRule,
   type AlertRule,
 } from "./alerts";
+import { getHttp } from "../alerts/http-store";
+import { applyHttpFields, existingHttp, httpView, insertHttpMonitor, readHttpFields, type HttpView } from "./http-monitors";
 import {
   applyPushFields,
   insertPushMonitor,
@@ -48,6 +50,8 @@ export type MonitorView = AlertRule & {
    * it could not be read.
    */
   last_line_at?: number | null;
+  /** What an HTTP(S) monitor calls (#178): its headers by name only. */
+  http: HttpView | null;
 };
 
 async function view(rule: AlertRule): Promise<MonitorView> {
@@ -56,8 +60,10 @@ async function view(rule: AlertRule): Promise<MonitorView> {
   // One row a monitor, read with Watch's refresh; only a monitor on a quiet stream says it.
   const lastLine =
     saved && rule.kind === "threshold" && rule.opens_when === "fewer_than" ? await lastLineAt(saved.query) : undefined;
+  const http = rule.source === "http" ? getHttp(rule.id) : null;
   return {
     ...rule,
+    http: http ? httpView(http) : null,
     saved: saved
       ? { id: saved.id, name: saved.name, query: saved.query, range: saved.range, agg: saved.agg }
       : null,
@@ -87,8 +93,9 @@ function windowOf(c: Context, now: number): { fromMs: number; toMs: number } | {
 
 /**
  * `GET /api/monitors` — every monitor with its state, the stretches open at any time in the
- * window (24h by default; `range=7d|30d`, or a hunt's `from`/`to`), each with its calls, and the
- * new-fingerprints calls sent in it.
+ * window (24h by default; `range=7d|30d`, or a hunt's `from`/`to`), each with its calls, the
+ * new-fingerprints calls sent in it, and the results in it for the lanes' ticks, in 240 columns a
+ * monitor, the worst of each.
  */
 export async function listMonitors(c: Context): Promise<Response> {
   const now = Date.now();
@@ -103,7 +110,7 @@ export async function listMonitors(c: Context): Promise<Response> {
     monitors: await Promise.all(allAlertRules().map(view)),
     stretches: stretchesBetween(win.fromMs, win.toMs),
     sent: sentCallsBetween(win.fromMs, win.toMs),
-    // Results on the clock (#177): each a tick, at most 240 columns a lane.
+    // Results on the clock (#177, #178): each a tick, at most 240 columns a lane.
     results: resultsBetween(win.fromMs, win.toMs),
     link: publicUrl() !== null,
   });
@@ -151,14 +158,19 @@ export async function getMonitor(c: Context): Promise<Response> {
   return c.json({ ...(await page(rule)), stretches: monitorHistory(rule.id) });
 }
 
-/** A source a monitor keeps: a push monitor stays one, and nothing else becomes one. */
+/** "a push", "an HTTP(S)", "a search": a source as a sentence names it. */
+function aSource(source: unknown): string {
+  return source === "http" ? "an HTTP(S)" : `a ${String(source)}`;
+}
+
+/** A source a monitor keeps: a push or HTTP(S) monitor stays one, and nothing else becomes one. */
 function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
-  const wantsPush = rec.source === "push";
-  if (existing && existing.source === "push" && rec.source !== undefined && !wantsPush) {
-    return `${existing.name} is a push monitor; delete it to make a ${String(rec.source)} monitor of that name`;
+  const keeps = (source: unknown) => source === "push" || source === "http";
+  if (!existing || rec.source === undefined || rec.source === existing.source) {
+    return null;
   }
-  if (existing && existing.source !== "push" && wantsPush) {
-    return `${existing.name} is a ${existing.source} monitor; delete it to make a push monitor of that name`;
+  if (keeps(existing.source) || keeps(rec.source)) {
+    return `${existing.name} is ${aSource(existing.source)} monitor; delete it to make ${aSource(rec.source)} monitor of that name`;
   }
   return null;
 }
@@ -193,6 +205,32 @@ async function putPushMonitor(
   }
   applyMonitorHold(getAlert(existing.id)!, rec, now);
   return c.json(await page(getAlert(existing.id)!));
+}
+
+/**
+ * `PUT /api/monitors/<name>` with `source: "http"`: create or replace an HTTP(S) monitor (#178).
+ * What is left out takes its default, and a header given as null keeps its stored value.
+ */
+async function putHttpMonitor(
+  c: Context,
+  name: string,
+  existing: AlertRule | null,
+  rec: Record<string, unknown>,
+): Promise<Response> {
+  const kept = existing ? existingHttp(existing) : null;
+  const fields = readHttpFields({ ...rec, name }, null, kept?.http.headers ?? []);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
+  }
+  const now = Date.now();
+  if (!kept) {
+    const created = insertHttpMonitor(fields, now);
+    applyMonitorHold(created, rec, now);
+    return c.json(await page(getAlert(created.id)!), 201);
+  }
+  applyHttpFields(kept.rule, kept.http, fields, now);
+  applyMonitorHold(getAlert(kept.rule.id)!, rec, now);
+  return c.json(await page(getAlert(kept.rule.id)!));
 }
 
 /**
@@ -240,8 +278,8 @@ export async function putMonitor(c: Context): Promise<Response> {
   if (rec instanceof Response) {
     return rec;
   }
-  if (rec.source === undefined && rec.kind === undefined && existing?.source !== "push") {
-    return c.json({ error: "source is required: search, fingerprints or push" }, 400);
+  if (rec.source === undefined && rec.kind === undefined && existing?.source !== "push" && existing?.source !== "http") {
+    return c.json({ error: "source is required: search, fingerprints, push or http" }, 400);
   }
   const change = sourceChange(existing, rec);
   if (change) {
@@ -249,6 +287,9 @@ export async function putMonitor(c: Context): Promise<Response> {
   }
   if (rec.source === "push" || existing?.source === "push") {
     return putPushMonitor(c, name, existing, rec);
+  }
+  if (rec.source === "http" || existing?.source === "http") {
+    return putHttpMonitor(c, name, existing, rec);
   }
   const fields = readMonitorFields({ ...rec, name }, null);
   if ("error" in fields) {

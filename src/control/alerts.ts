@@ -1,12 +1,14 @@
 import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import { nextDelivery, nextEvalAttempt } from "../alerts/delivery";
+import { forgetHttp } from "../alerts/http-store";
 import { closeByEdit, forgetMonitor } from "../alerts/monitor-store";
 import {
   parseSilenceFor,
   silencedUntilFrom,
 } from "../alerts/payload";
 import { parseThreshold } from "../alerts/threshold";
+import { applyHttpFields, existingHttp, insertHttpMonitor, readHttpFields } from "./http-monitors";
 import { getSaved } from "./saved-searches";
 import { boardWatchRefuse } from "../shared/boards";
 import { getDb } from "./index";
@@ -16,6 +18,7 @@ import {
   alertBodyProblem,
   resolvedBodyProblem,
   type AlertBodyKind,
+  type FillInKind,
 } from "../shared/alert-body";
 import {
   defaultRemind,
@@ -121,7 +124,7 @@ function parseBodyKind(value: unknown): AlertBodyKind | null {
 /** The body fields of a create or update, checked for the alert's kind. */
 export function readBody(
   rec: Record<string, unknown>,
-  kind: AlertKind,
+  kind: FillInKind,
   existing: { body_kind: AlertBodyKind; body_template: string | null; resolved_body?: string | null } | null,
 ):
   | { body_kind: AlertBodyKind; body_template: string | null; resolved_body: string | null }
@@ -438,7 +441,7 @@ export function readMonitorFields(
   if (rec.source !== undefined) {
     kind = rec.source === "search" ? "threshold" : rec.source === "fingerprints" ? "first_seen" : null;
     if (!kind) {
-      return { error: "source must be search, fingerprints or push", status: 400 };
+      return { error: "source must be search, fingerprints, push or http", status: 400 };
     }
   }
   if (rec.kind !== undefined) {
@@ -655,12 +658,20 @@ export function removeMonitor(id: string): void {
   getDb().query("DELETE FROM alert_rules WHERE id = ?").run(id);
   forgetSentFingerprints(id);
   forgetMonitor(id);
+  forgetHttp(id);
 }
 
 export async function createAlertRule(c: Context): Promise<Response> {
   const rec = await readJsonObject(c);
   if (rec instanceof Response) {
     return rec;
+  }
+  if (rec.source === "http") {
+    const fields = readHttpFields(rec, null);
+    if ("error" in fields) {
+      return c.json({ error: fields.error }, fields.status);
+    }
+    return c.json(insertHttpMonitor(fields), 201);
   }
   if (typeof rec.name !== "string" || rec.name.trim().length === 0) {
     return c.json({ error: "name is required" }, 400);
@@ -688,11 +699,21 @@ export async function updateAlertRule(c: Context): Promise<Response> {
   if (rec instanceof Response) {
     return rec;
   }
+  const now = Date.now();
+  const http = existingHttp(existing);
+  if (http) {
+    const fields = readHttpFields(rec, http);
+    if ("error" in fields) {
+      return c.json({ error: fields.error }, fields.status);
+    }
+    applyHttpFields(existing, http.http, fields, now);
+    applyMonitorHold(getAlert(id)!, rec, now);
+    return c.json(getAlert(id));
+  }
   const fields = readMonitorFields(rec, existing);
   if ("error" in fields) {
     return c.json({ error: fields.error }, fields.status);
   }
-  const now = Date.now();
   applyMonitorFields(existing, fields, now);
   applyMonitorHold(getAlert(id)!, rec, now);
   return c.json(getAlert(id));

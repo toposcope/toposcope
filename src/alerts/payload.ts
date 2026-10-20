@@ -220,6 +220,77 @@ export function pushFillValues(args: {
   };
 }
 
+/** What an HTTP(S) monitor's call says about its check and the run it reads (#178). */
+export type HttpCallFacts = {
+  alert: { id: string; name: string };
+  method: string;
+  /** What it calls. Its headers are never in a call. */
+  url: string;
+  /** The run's HTTP status; null when nothing answered. */
+  status: number | null;
+  durationMs: number;
+  /** The run that opened it, in words: `$.db is "down", not "ok"`, `connect ECONNREFUSED`. */
+  message: string;
+  firedAt: string;
+  link: string | null;
+  call: StretchCall;
+};
+
+/** An HTTP(S) monitor's call: Slack's shape for a Slack URL, otherwise JSON a receiver can read. */
+export function httpCallBody(webhookUrl: string, f: HttpCallFacts): unknown {
+  const headline =
+    f.call.state === "resolved"
+      ? `resolved after ${f.call.duration}`
+      : f.call.state === "reminder"
+        ? `still open · ${f.call.duration}`
+        : "opened";
+  if (isSlackIncomingUrl(webhookUrl)) {
+    const open = f.link ? `\n<${f.link}|Open in Toposcope>` : "";
+    return {
+      text: `Toposcope: ${f.alert.name} ${headline} — ${f.message}`,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${f.alert.name}* ${headline}\n\`${f.method} ${f.url}\`\n${f.message}${open}`,
+          },
+        },
+      ],
+    };
+  }
+  return {
+    alert: { ...f.alert, source: "http" },
+    method: f.method,
+    url: f.url,
+    status: f.status,
+    duration_ms: Math.round(f.durationMs),
+    message: f.message,
+    state: f.call.state,
+    opened_at: f.call.openedAt,
+    resolved_at: f.call.resolvedAt,
+    fired_at: f.firedAt,
+    ...(f.link ? { link: f.link } : {}),
+  };
+}
+
+/** An HTTP(S) monitor's fill-ins, for a text or JSON body of its own. */
+export function httpFillValues(f: HttpCallFacts): Record<string, string> {
+  return {
+    "alert.name": f.alert.name,
+    url: f.url,
+    status: f.status === null ? "" : String(f.status),
+    duration_ms: String(Math.round(f.durationMs)),
+    message: f.message,
+    state: f.call.state,
+    opened_at: f.call.openedAt,
+    resolved_at: f.call.resolvedAt ?? "",
+    duration: f.call.duration,
+    fired_at: f.firedAt,
+    link: f.link ?? "",
+  };
+}
+
 export type FirstSeenFingerprint = {
   e1: string;
   type: string;

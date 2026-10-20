@@ -6,6 +6,7 @@ import { formatOpenFor } from "../../shared/monitor";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "@/types";
 import {
   clockAt,
+  httpLane,
   laneKind,
   laneReadout,
   pushBands,
@@ -104,10 +105,18 @@ function Grid({ ticks }: { ticks: Array<{ left: number }> }) {
   );
 }
 
+/** An HTTP(S) run's tick (18c): an ok is a faint hairline, a warn or a fail taller and in colour. */
+const runTone: Record<"ok" | "warn" | "fail", string> = {
+  ok: "top-[5px] bottom-[5px] bg-[rgba(231,225,211,.7)]",
+  warn: "top-[3px] bottom-[3px] bg-amber-400",
+  fail: "top-[3px] bottom-[3px] bg-red-500/60",
+};
+
 function Lane({
   monitor,
   stretches,
   sent,
+  results,
   fromMs,
   toMs,
   nowMs,
@@ -117,6 +126,7 @@ function Lane({
   monitor: MonitorView;
   stretches: MonitorStretch[];
   sent: MonitorCall[];
+  results: PushResultRow[];
   fromMs: number;
   toMs: number;
   nowMs: number;
@@ -126,6 +136,8 @@ function Lane({
   const fingerprints = sourceOf(monitor) === "fingerprints";
   const dots = fingerprints ? sentDots(sent.filter((c) => c.ok), fromMs, toMs) : [];
   const readout = laneReadout(monitor, nowMs, dots.length);
+  // An HTTP(S) lane draws its runs (18c): a texture when they are dense, else a tick each.
+  const runs = sourceOf(monitor) === "http" ? httpLane(results, monitor.http?.every_ms ?? 30_000, fromMs, toMs) : null;
   return (
     <div className={lrow} data-monitor={monitor.id}>
       <button
@@ -137,8 +149,26 @@ function Lane({
         <span className="max-w-full truncate text-[12px] hover:underline">{monitor.name}</span>
         <span className="max-w-full truncate font-mono text-[10.5px] text-muted-foreground">{laneKind(monitor)}</span>
       </button>
-      <span className="relative h-[18px] overflow-hidden rounded-[3px] bg-[#0f0f11]">
-        <Grid ticks={ticks} />
+      <span
+        className="relative h-[18px] overflow-hidden rounded-[3px] bg-[#0f0f11]"
+        style={
+          runs?.dense && results.length > 0
+            ? { backgroundImage: "repeating-linear-gradient(to right,rgba(231,225,211,.35) 0 1px,transparent 1px 3px)" }
+            : undefined
+        }
+      >
+        {runs?.dense && results.length > 0 ? null : <Grid ticks={ticks} />}
+        {runs?.ticks.map((t) => (
+          <span
+            key={t.id}
+            title={`${clockAt(t.result.at, nowMs)} ${t.result.result} · ${t.result.message}`}
+            className={cn("absolute", runTone[t.tone], t.width > 0 ? "rounded-[1px]" : "")}
+            style={{
+              left: `${(t.left * 100).toFixed(3)}%`,
+              width: t.width > 0 ? `max(2px, ${(t.width * 100).toFixed(3)}%)` : "2px",
+            }}
+          />
+        ))}
         {stretchSpans(stretches, fromMs, toMs, nowMs).map((span) => {
           const end = span.stretch.resolved_at ?? nowMs;
           return (
@@ -514,7 +544,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {canCreate
-                ? "A monitor opens when its search has at least, or fewer than, N lines in its window, reminds while open, and says when it resolved."
+                ? "A monitor opens when its search has at least, or fewer than, N lines in its window, or a URL it calls fails its conditions; it reminds while open, and says when it resolved."
                 : "Save a search, then Watch this from the sidebar."}
             </p>
             {canCreate ? (
@@ -562,6 +592,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                   monitor={m}
                   stretches={byMonitor.get(m.id) ?? []}
                   sent={sentBy.get(m.id) ?? []}
+                  results={resultsBy.get(m.id) ?? []}
                   fromMs={fromMs}
                   toMs={toMs}
                   nowMs={nowMs}
