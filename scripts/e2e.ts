@@ -3885,6 +3885,19 @@ async function main(): Promise<void> {
       const flipCalls = calls.filter((c) => c.path === `/${names.flip.split(" ").join("-")}`).map((c) => c.state);
       if (JSON.stringify(flipCalls) !== '["open","resolved"]') throw new Error(`it should call once open and once resolved, got ${JSON.stringify(flipCalls)}`);
 
+      // Watch's ticks: each run is a result, the worst of its minute, for the lanes.
+      const lanes = (await (await fetch(`${APP_URL}/api/monitors`, { headers: auth })).json()) as {
+        monitors: Array<{ id: string; name: string }>;
+        results: Array<{ monitor_id: string; result: string; via: string }>;
+      };
+      const laneOf = (n: string) => {
+        const id = lanes.monitors.find((m) => m.name === n)?.id;
+        return lanes.results.filter((r) => r.monitor_id === id && r.via === "http").map((r) => r.result);
+      };
+      if (!laneOf(names.flip).includes("fail") || !laneOf(names.slow).includes("warn")) {
+        throw new Error(`each run should be a result on its lane, got ${JSON.stringify({ flip: laneOf(names.flip), slow: laneOf(names.slow) })}`);
+      }
+
       // Every run is a row, found by its monitor, and its time is the metric monitor_duration_ms.
       const from = new Date(Date.now() - 15 * 60_000).toISOString();
       const to = new Date(Date.now() + 60_000).toISOString();

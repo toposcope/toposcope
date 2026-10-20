@@ -68,6 +68,12 @@ export const callRetryMs = 60 * 60_000;
 /** Stretches kept a monitor; older ones and their calls are dropped. */
 export const keptStretches = 200;
 
+/** Watch's ticks (`monitor_results`) are kept 30 days; the log rows are the full record. */
+export const keptResultsMs = 30 * 24 * 60 * 60_000;
+
+/** Columns a lane's results are read in, whatever the clock: 6 minutes a column over 24h. */
+export const laneColumns = 240;
+
 /** "45s", "22m", "7h 59m", "24h 2m", "3d 4h": how long a stretch has been open, or lasted. */
 export function formatOpenFor(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));

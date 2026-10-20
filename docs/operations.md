@@ -218,7 +218,7 @@ To roll back a packaged install, pin a previous published image tag in `compose.
 
 `0.3.14` is the first public pin. Pin `0.5.6` to roll back application code from `0.5.7`.
 
-SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe.
+SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe. 0.6.0 also adds tables (`monitor_stretches`, `monitor_calls`, `monitor_http` and `monitor_results`); 0.5.7 ignores them, and an HTTP(S) monitor's rule, which has no saved search, does not run there. Pinning 0.6.0 again picks them up where they were.
 
 If a ClickHouse data directory from an older release refuses to start after the migration, use a restore rather than a tag pin.
 

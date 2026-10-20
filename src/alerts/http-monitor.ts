@@ -21,6 +21,7 @@ import {
   noteReading,
   openStretch,
   recordCall,
+  recordMonitorResult,
   recordResult,
   resolveStretch,
   type CallWhat,
@@ -201,6 +202,22 @@ export async function runHttpMonitor(
     db,
   );
   recordResult(rule.id, result, run.durationMs, at, db);
+  // Watch's tick for it: the worst run of its minute.
+  recordMonitorResult(
+    {
+      monitor_id: rule.id,
+      at,
+      result,
+      exit_code: null,
+      duration_ms: run.durationMs,
+      value: null,
+      unit: null,
+      message: runSummary(run),
+      host: hostOf(http.url),
+      via: "http",
+    },
+    db,
+  );
   const reading: Reading = {
     value: run.durationMs,
     count: run.exchange.ok ? run.exchange.status : 0,

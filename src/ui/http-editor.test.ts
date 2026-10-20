@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MonitorRail } from "./components/monitor-rail";
+import { WatchView } from "./components/watch-view";
 import {
   addLine,
   editorLines,
@@ -22,7 +23,7 @@ import {
   webhookShort,
 } from "./http-editor";
 import type { MonitorView } from "./types";
-import { laneKind, laneReadout, openCardLine, watchFilters } from "./watch";
+import { httpLane, laneKind, laneReadout, openCardLine, watchFilters } from "./watch";
 
 const lines18r = 'status == 200\n$.db == "ok"\ntime < 300ms   warn\ncert > 14d';
 
@@ -178,6 +179,54 @@ describe("an HTTP(S) monitor on Watch (18c)", () => {
     });
     expect(laneReadout(fail, now, 0)).toEqual({ badge: "fail", tone: "amber", text: "no response" });
     expect(openCardLine(fail)).toBe("http · GET https://api.agental.dev/health · connect ECONNREFUSED");
+  });
+
+  test("its runs: a texture when dense with warns and fails drawn on it, else a tick each", () => {
+    const day = 24 * 60 * 60_000;
+    const from = now - day;
+    const row = (i: number, at: number, result: "ok" | "warn" | "fail") => ({
+      id: i, monitor_id: "m-health", at, result, exit_code: null, duration_ms: 12, value: null, unit: null, message: result, host: "h", via: "http",
+    });
+    const rows = [row(1, from + 60_000, "ok"), row(2, from + day / 2 + 1_000, "warn"), row(3, from + day - 60_000, "fail")];
+    const dense = httpLane(rows, 30_000, from, now);
+    expect(dense.dense).toBe(true);
+    expect(dense.ticks.map((t) => [t.tone, t.left, t.width])).toEqual([
+      ["warn", 120 / 240, 1 / 240],
+      ["fail", 239 / 240, 1 / 240],
+    ]);
+    const hourly = httpLane(rows, 60 * 60_000, from, now);
+    expect(hourly.dense).toBe(false);
+    expect(hourly.ticks.map((t) => [t.tone, t.width])).toEqual([
+      ["ok", 0],
+      ["warn", 0],
+      ["fail", 0],
+    ]);
+  });
+
+  test("Watch draws the texture and the warn and fail columns from the results", () => {
+    const from = now - 24 * 60 * 60_000;
+    const rows = [
+      { id: 7, monitor_id: "m-health", at: now - 3 * 60 * 60_000, result: "warn" as const, exit_code: null, duration_ms: 412, value: null, unit: null, message: "412ms is over 300ms", host: "h", via: "http" },
+      { id: 8, monitor_id: "m-health", at: now - 60_000, result: "ok" as const, exit_code: null, duration_ms: 182, value: null, unit: null, message: "200 in 182ms", host: "h", via: "http" },
+    ];
+    const html = renderToStaticMarkup(
+      createElement(WatchView, {
+        data: { now, from: new Date(from).toISOString(), to: new Date(now).toISOString(), monitors: [httpMonitor()], stretches: [], sent: [], results: rows, link: false },
+        canCreate: true,
+        range: "24h",
+        onRange: () => {},
+        filter: "all",
+        onFilter: () => {},
+        marks: [],
+        onNew: () => {},
+        onOpen: () => {},
+      }),
+    );
+    expect(html).toContain("repeating-linear-gradient(to right,rgba(231,225,211,.35) 0 1px,transparent 1px 3px)");
+    expect(html).toContain('title="08:03 warn · 412ms is over 300ms"');
+    // An ok run is the texture, not a tick of its own.
+    expect(html).not.toContain("200 in 182ms");
+    expect(html).toContain("http · 30s · 3 conditions");
   });
 
   test("the rail beside its hunt says what it checks and how it last ran", () => {

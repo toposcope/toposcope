@@ -210,6 +210,21 @@ export type HttpSendResult = {
   duration_ms: number;
 };
 
+/** A result on a lane: the worst of its column (`GET /api/monitors` `results`). */
+export type MonitorResultRow = {
+  id: number;
+  monitor_id: string;
+  at: number;
+  result: "ok" | "warn" | "fail";
+  exit_code: number | null;
+  duration_ms: number | null;
+  value: number | null;
+  unit: string | null;
+  message: string;
+  host: string;
+  via: string;
+};
+
 export type MonitorsResponse = {
   now: number;
   from: string;
@@ -217,5 +232,7 @@ export type MonitorsResponse = {
   monitors: MonitorView[];
   stretches: MonitorStretch[];
   sent: MonitorCall[];
+  /** Results for the lanes' ticks, the worst of each of 240 columns a monitor. Older servers leave it out. */
+  results?: MonitorResultRow[];
   link: boolean;
 };

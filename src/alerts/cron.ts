@@ -10,7 +10,7 @@ import { incMetric } from "../metrics";
 import { clipError, postWebhook } from "./delivery";
 import { publicUrl } from "../shared/public-url";
 import { passSearchMonitor } from "./monitor";
-import { recordCall } from "./monitor-store";
+import { pruneResults, recordCall } from "./monitor-store";
 import { evaluateAlertSeries } from "./series";
 import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
 
@@ -18,6 +18,7 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
   const db = getDb();
   const rules = enabledAlertRules(db);
   pruneSentFingerprints(now - 2 * firstSeenWatchMs);
+  pruneResults(now, db);
   for (const rule of rules) {
     if (!rule.saved_search_id || !rule.webhook_url) {
       continue;

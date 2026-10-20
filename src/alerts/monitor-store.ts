@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
-import { keptStretches, type MonitorResult } from "../shared/monitor";
+import { keptResultsMs, keptStretches, laneColumns, type MonitorResult } from "../shared/monitor";
+
+export { laneColumns };
 
 /** What became of a stretch's open or resolved call. Null while it is still to be sent. */
 export type CallState = "sent" | "failed" | "silenced" | "none";
@@ -248,4 +250,80 @@ export function pruneStretches(monitorId: string, db: Database = getDb()): void 
 export function forgetMonitor(monitorId: string, db: Database = getDb()): void {
   db.query("DELETE FROM monitor_calls WHERE monitor_id = ?").run(monitorId);
   db.query("DELETE FROM monitor_stretches WHERE monitor_id = ?").run(monitorId);
+  db.query("DELETE FROM monitor_results WHERE monitor_id = ?").run(monitorId);
+}
+
+/** One result as Watch draws it: an HTTP(S) run (#178) or a pushed result (#177), at its time. */
+export type MonitorResultRow = {
+  id: number;
+  monitor_id: string;
+  at: number;
+  result: MonitorResult;
+  exit_code: number | null;
+  duration_ms: number | null;
+  value: number | null;
+  unit: string | null;
+  message: string;
+  host: string;
+  via: string;
+};
+
+const RESULT_COLS = "id, monitor_id, at, result, exit_code, duration_ms, value, unit, message, host, via";
+
+/** How bad a result is: within a minute the worst is kept, and of equals the later. */
+const STATUS_RANK = "CASE {s} WHEN 'fail' THEN 2 WHEN 'warn' THEN 1 ELSE 0 END";
+const rank = (col: string) => STATUS_RANK.replace("{s}", col);
+
+/** A result for Watch's ticks: one row a monitor a minute, the worst of the minute winning. */
+export function recordMonitorResult(row: Omit<MonitorResultRow, "id">, db: Database = getDb()): void {
+  db.query(
+    `INSERT INTO monitor_results (monitor_id, minute, at, result, exit_code, duration_ms, value, unit, message, host, via)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (monitor_id, minute) DO UPDATE SET
+       at = excluded.at, result = excluded.result, exit_code = excluded.exit_code, duration_ms = excluded.duration_ms,
+       value = excluded.value, unit = excluded.unit, message = excluded.message, host = excluded.host, via = excluded.via
+     WHERE ${rank("excluded.result")} >= ${rank("monitor_results.result")}`,
+  ).run(
+    row.monitor_id,
+    Math.floor(row.at / 60_000),
+    row.at,
+    row.result,
+    row.exit_code,
+    row.duration_ms,
+    row.value,
+    row.unit,
+    row.message,
+    row.host,
+    row.via,
+  );
+}
+
+/** A message as a lane's tick carries it; the whole one is its log row. */
+const tickMessage = 300;
+
+/**
+ * Results in [from, to] for Watch's lanes, cut into 240 columns a monitor: each column that has
+ * any is the worst result in it, the later of equals.
+ */
+export function resultsBetween(fromMs: number, toMs: number, db: Database = getDb()): MonitorResultRow[] {
+  const span = Math.max(1, toMs - fromMs);
+  const rows = db
+    .query(
+      `SELECT ${RESULT_COLS} FROM (
+         SELECT ${RESULT_COLS}, ROW_NUMBER() OVER (
+           PARTITION BY monitor_id, MIN(${laneColumns - 1}, (at - ?) * ${laneColumns} / ?)
+           ORDER BY ${rank("result")} DESC, at DESC, id DESC
+         ) AS n
+         FROM monitor_results WHERE at >= ? AND at <= ?
+       ) WHERE n = 1 ORDER BY monitor_id, at`,
+    )
+    .all(fromMs, span, fromMs, toMs) as MonitorResultRow[];
+  return rows.map((row) =>
+    row.message.length > tickMessage ? { ...row, message: `${row.message.slice(0, tickMessage)}…` } : row,
+  );
+}
+
+/** Results older than 30 days go. */
+export function pruneResults(now: number, db: Database = getDb()): void {
+  db.query("DELETE FROM monitor_results WHERE at < ?").run(now - keptResultsMs);
 }

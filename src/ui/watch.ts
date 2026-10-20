@@ -2,10 +2,10 @@ import { seriesLabel } from "../query/agg";
 import { parseRangeMs } from "../query/relative";
 import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import { formatCertShort, parseConditions } from "../shared/http-check";
-import { formatOpenFor, type MonitorSource } from "../shared/monitor";
+import { formatOpenFor, laneColumns, type MonitorSource } from "../shared/monitor";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
-import type { MonitorCall, MonitorStretch, MonitorView } from "./types";
+import type { MonitorCall, MonitorResultRow, MonitorStretch, MonitorView } from "./types";
 
 /**
  * Watch (#175, frame 18c): every monitor a lane on one clock, open ones first. The clock is
@@ -187,6 +187,36 @@ export function stretchSpans(
     out.push({ id: s.id, left, width, open: s.resolved_at === null, stretch: s });
   }
   return out;
+}
+
+export type HttpTick = { id: number; left: number; width: number; tone: "ok" | "warn" | "fail"; result: MonitorResultRow };
+
+/**
+ * An HTTP(S) lane (18c). Runs closer together than a column (every 30s over 24h) read as a
+ * texture, with each column that warned or failed drawn on it; sparser runs (every 1h) are each
+ * a tick. The results are already the worst of each column.
+ */
+export function httpLane(
+  results: readonly MonitorResultRow[],
+  everyMs: number,
+  fromMs: number,
+  toMs: number,
+): { dense: boolean; ticks: HttpTick[] } {
+  const column = 1 / laneColumns;
+  const dense = everyMs < (toMs - fromMs) * column;
+  const ticks: HttpTick[] = [];
+  for (const r of results) {
+    const at = clockFrac(r.at, fromMs, toMs);
+    if (at < 0 || at > 1 || (dense && r.result === "ok")) {
+      continue;
+    }
+    ticks.push(
+      dense
+        ? { id: r.id, left: Math.min(laneColumns - 1, Math.floor(at * laneColumns)) * column, width: column, tone: r.result, result: r }
+        : { id: r.id, left: at, width: 0, tone: r.result, result: r },
+    );
+  }
+  return { dense, ticks };
 }
 
 /** Each new-fingerprints call a dot on its lane. */

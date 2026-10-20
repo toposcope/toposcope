@@ -9,7 +9,7 @@ import { nextRunAt, tickHttpMonitors } from "./http-cron";
 import { runHttpMonitor, type HttpMonitorDeps } from "./http-monitor";
 import { runHttpRequest } from "./http-request";
 import { getHttp, insertHttp, type HttpWrite } from "./http-store";
-import { monitorHistory, openStretch } from "./monitor-store";
+import { monitorHistory, openStretch, pruneResults, recordMonitorResult, resultsBetween } from "./monitor-store";
 import type { WebhookPayload } from "./payload";
 
 let certs: Certs;
@@ -268,5 +268,57 @@ describe("its own clock", () => {
     expect(stands.hits.get("/health")! - before).toBe(1);
     await tickHttpMonitors(t0 + 30_000, r.deps);
     expect(stands.hits.get("/health")! - before).toBe(2);
+  });
+});
+
+describe("Watch's ticks (monitor_results)", () => {
+  test("each run is a result row: the worst of its minute wins, of equals the later", async () => {
+    const db = freshDb();
+    const id = addHttp(db, { url: `${stands.http}/flip`, fail_after: 5 });
+    const r = rig(db);
+    const minute = Math.floor(t0 / 60_000) * 60_000;
+    stands.flip(200);
+    await r.run(id, minute + 1_000);
+    stands.flip(503);
+    await r.run(id, minute + 31_000);
+    stands.flip(200);
+    // A later ok in the same minute does not hide the fail.
+    await r.run(id, minute + 50_000);
+    await r.run(id, minute + 61_000);
+    await r.run(id, minute + 91_000);
+    const rows = resultsBetween(minute, minute + 120_000, db);
+    expect(rows.map((row) => [row.at - minute, row.result, row.via, row.host])).toEqual([
+      [31_000, "fail", "http", new URL(stands.http).host],
+      [91_000, "ok", "http", new URL(stands.http).host],
+    ]);
+    expect(rows[0]!.message).toBe("status is 503, not 2xx");
+    expect(typeof rows[1]!.duration_ms).toBe("number");
+    const all = db.query("SELECT count(*) AS n FROM monitor_results WHERE monitor_id = ?").get(id) as { n: number };
+    expect(all.n).toBe(2);
+  });
+
+  test("a lane is read in 240 columns, the worst of each; 30 days are kept", () => {
+    const db = freshDb();
+    const id = addHttp(db, { url: `${stands.http}/health` });
+    const day = 24 * 60 * 60_000;
+    const from = t0 - day;
+    for (let i = 0; i < 24 * 60; i++) {
+      // One run a minute for a day; one warn and one fail in the same 6-minute column.
+      const result = i === 600 ? "warn" : i === 602 ? "fail" : "ok";
+      recordMonitorResult(
+        { monitor_id: id, at: from + i * 60_000 + 5_000, result, exit_code: null, duration_ms: 10, value: null, unit: null, message: result, host: "h", via: "http" },
+        db,
+      );
+    }
+    const lane = resultsBetween(from, t0, db);
+    expect(lane).toHaveLength(240);
+    expect(lane.filter((row) => row.result !== "ok").map((row) => row.result)).toEqual(["fail"]);
+    recordMonitorResult(
+      { monitor_id: id, at: t0 - 31 * day, result: "fail", exit_code: null, duration_ms: 1, value: null, unit: null, message: "old", host: "h", via: "http" },
+      db,
+    );
+    pruneResults(t0, db);
+    expect(resultsBetween(t0 - 40 * day, t0, db).some((row) => row.message === "old")).toBe(false);
+    expect(resultsBetween(from, t0, db)).toHaveLength(240);
   });
 });

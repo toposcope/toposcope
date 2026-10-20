@@ -86,6 +86,28 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "last_result", "TEXT");
   addColumnIfMissing(db, "alert_rules", "last_value", "REAL");
   addColumnIfMissing(db, "alert_rules", "last_result_at", "INTEGER");
+  // A monitor's results for Watch's ticks (#177, #178), shared by the sources that have results: one row
+  // a monitor a minute, the worst of the minute winning (fail > warn > ok, of equals the later), for
+  // 30 days. Each result is also a log row. Exit code, unit, host and via are push's, for 18f / 18s.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS monitor_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      monitor_id TEXT NOT NULL,
+      minute INTEGER NOT NULL,
+      at INTEGER NOT NULL,
+      result TEXT NOT NULL,
+      exit_code INTEGER,
+      duration_ms INTEGER,
+      value REAL,
+      unit TEXT,
+      message TEXT NOT NULL DEFAULT '',
+      host TEXT NOT NULL DEFAULT '',
+      via TEXT NOT NULL DEFAULT '',
+      UNIQUE (monitor_id, minute)
+    );
+  `);
+  db.run("CREATE INDEX IF NOT EXISTS monitor_results_by_monitor ON monitor_results (monitor_id, at)");
+  db.run("CREATE INDEX IF NOT EXISTS monitor_results_by_at ON monitor_results (at)");
   // Each open-to-resolved stretch, and the calls sent for it (#175).
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_stretches (

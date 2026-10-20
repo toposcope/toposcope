@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import {
   monitorHistory,
   openStretch,
+  resultsBetween,
   sentCallsBetween,
   stretchesBetween,
   type StretchWithCalls,
@@ -72,8 +73,9 @@ function windowOf(c: Context, now: number): { fromMs: number; toMs: number } | {
 
 /**
  * `GET /api/monitors` — every monitor with its state, the stretches open at any time in the
- * window (24h by default; `range=7d|30d`, or a hunt's `from`/`to`), each with its calls, and the
- * new-fingerprints calls sent in it.
+ * window (24h by default; `range=7d|30d`, or a hunt's `from`/`to`), each with its calls, the
+ * new-fingerprints calls sent in it, and the results in it for the lanes' ticks, in 240 columns a
+ * monitor, the worst of each.
  */
 export async function listMonitors(c: Context): Promise<Response> {
   const now = Date.now();
@@ -88,6 +90,7 @@ export async function listMonitors(c: Context): Promise<Response> {
     monitors: allAlertRules().map(view),
     stretches: stretchesBetween(win.fromMs, win.toMs),
     sent: sentCallsBetween(win.fromMs, win.toMs),
+    results: resultsBetween(win.fromMs, win.toMs),
     link: publicUrl() !== null,
   });
 }
