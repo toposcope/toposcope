@@ -2,9 +2,10 @@ import { seriesLabel } from "../query/agg";
 import { parseRangeMs } from "../query/relative";
 import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import { cantTellWords, formatOpenFor, opensWhenWords, type MonitorSource } from "../shared/monitor";
+import { formatSpan, isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../shared/push";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
-import type { MonitorCall, MonitorStretch, MonitorView } from "./types";
+import type { MonitorCall, MonitorStretch, MonitorView, PushResultRow } from "./types";
 
 /**
  * Watch (#175, frame 18c): every monitor a lane on one clock, open ones first. The clock is
@@ -26,6 +27,7 @@ export type WatchFilter = "all" | MonitorSource;
 export function watchFilters(monitors: readonly MonitorView[]): Array<{ id: WatchFilter; label: string; n: number }> {
   const order: Array<[MonitorSource, string]> = [
     ["search", "Search"],
+    ["push", "Push"],
     ["fingerprints", "Fingerprints"],
   ];
   const out: Array<{ id: WatchFilter; label: string; n: number }> = [{ id: "all", label: "All", n: monitors.length }];
@@ -50,11 +52,28 @@ export function sortForWatch(monitors: readonly MonitorView[]): MonitorView[] {
   return [...open, ...monitors.filter((m) => m.state !== "open")];
 }
 
-/** The header's tell (18c): how many are open, and how many last said warn. */
-export function watchCounts(monitors: readonly MonitorView[]): { open: number; warn: number } {
+/** The header's tell (18c): how many are open, how many push monitors are late, and how many last said warn. */
+export function watchCounts(
+  monitors: readonly MonitorView[],
+  nowMs = Date.now(),
+): { open: number; late: number; warn: number } {
   return {
     open: monitors.filter((m) => m.state === "open").length,
+    late: monitors.filter((m) => sourceOf(m) === "push" && isLate(pushClock(m), nowMs)).length,
     warn: monitors.filter((m) => m.state !== "open" && m.last_result === "warn").length,
+  };
+}
+
+/** A push monitor's clock, as the server keeps it (#177). */
+export function pushClock(m: MonitorView): PushClock {
+  return {
+    enabled: m.enabled ?? 1,
+    state: m.state ?? "ok",
+    every_ms: m.every_ms ?? null,
+    grace_ms: m.grace_ms ?? null,
+    due_from: m.due_from ?? null,
+    created_at: m.created_at ?? 0,
+    started_at: m.started_at ?? null,
   };
 }
 
@@ -95,10 +114,20 @@ export function cantTellNow(m: MonitorView, nowMs: number): string | null {
   return cantTellWords({ cant_tell: m.cant_tell ?? null, last_status: m.last_status }, windowMs, nowMs);
 }
 
-/** Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h". */
+/** Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h", "push · 1d · grace 1h". */
 export function laneKind(m: MonitorView): string {
   if (sourceOf(m) === "fingerprints") {
     return "fingerprints · 24h";
+  }
+  if (sourceOf(m) === "push") {
+    const every = m.every_ms ?? null;
+    if (every === null) {
+      return m.enabled === 0 ? "push · paused" : "push";
+    }
+    if (m.enabled === 0) {
+      return `push · ${formatSpan(every)} · paused`;
+    }
+    return `push · ${formatSpan(every)} · grace ${formatSpan(m.grace_ms ?? Math.min(every, 60 * 60_000))}`;
   }
   return `search · ${opensWhen(m)} · ${m.saved?.range ?? "custom"}`;
 }
@@ -119,14 +148,22 @@ export function openCardLine(m: MonitorView, nowMs = Date.now()): string {
   if (sourceOf(m) === "fingerprints") {
     return `fingerprints · ${q} · after a deploy or flag`;
   }
+  if (sourceOf(m) === "push") {
+    return pushCardLine(m, nowMs);
+  }
   const last = readsQuiet(m) && typeof m.last_line_at === "number" ? ` · last line ${clockAt(m.last_line_at, nowMs)}` : "";
   return `search · ${q} · ${opensWhenLine(m)}${last}`;
 }
 
-export type LaneReadout = { badge: string; tone: "red" | "sec"; text: string; title?: string };
+export type LaneReadout = { badge: string; tone: "red" | "amber" | "sec" | "out"; text: string; title?: string };
 
 /** Right of a lane: its state, and what it last read. */
 export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number): LaneReadout {
+  if (sourceOf(m) === "push") {
+    const r = pushReadout(m, nowMs, null);
+    // On 18c's one line a push lane says its state, and its value when it has one.
+    return { badge: r.badge, tone: r.tone, text: r.value };
+  }
   if (m.enabled === 0) {
     return { badge: "paused", tone: "sec", text: "" };
   }
@@ -377,4 +414,216 @@ export function monitorHuntRange(
   const end = stretch.resolved_at ?? nowMs;
   const pad = Math.max(15 * 60_000, (end - stretch.opened_at) / 2);
   return { range: "custom", fromMs: stretch.opened_at - pad, toMs: Math.min(nowMs, end + pad) };
+}
+
+/** "87.2 %", "3": a pushed value with its unit. */
+export function pushValue(value: number | null | undefined, unit: string | null | undefined): string {
+  if (typeof value !== "number") {
+    return "";
+  }
+  const n = Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(6)));
+  return unit ? `${n} ${unit}` : n;
+}
+
+/** "10-08", or "14:02" today. */
+function dayAt(ms: number, nowMs: number): string {
+  return mmdd(ms) === mmdd(nowMs) ? hhmm(ms) : mmdd(ms);
+}
+
+export type PushReadout = LaneReadout & {
+  /** 18f's second line: when it is next due, when it opens, when its run started. */
+  next: string;
+  /** Its last value, for 18c's one line. */
+  value: string;
+};
+
+/**
+ * Right of a push lane (18f): open, late, running, warn or ok, and under it when the next result
+ * is due, when a late one opens ("down"), or the due time it missed.
+ */
+export function pushReadout(m: MonitorView, nowMs: number, open: MonitorStretch | null): PushReadout {
+  const clock = pushClock(m);
+  const value = pushValue(m.last_value, null);
+  if (m.enabled === 0) {
+    return { badge: "paused", tone: "out", text: "", next: m.paused_at ? `since ${dayAt(m.paused_at, nowMs)}` : "", value: "" };
+  }
+  const due = pushDueAt(clock);
+  const stretch = open ?? m.open;
+  if (m.state === "open" && stretch) {
+    const badge = `open ${formatOpenFor(nowMs - stretch.opened_at)}`;
+    if (stretch.due_at != null) {
+      return { badge, tone: "red", text: "", next: `due ${clockAt(stretch.due_at, nowMs)} · missed`, value };
+    }
+    return { badge, tone: "red", text: "", next: due !== null && due > nowMs ? `next ${clockAt(due, nowMs)}` : "", value };
+  }
+  if (isLate(clock, nowMs)) {
+    const opens = pushOpensAt(clock)!;
+    return { badge: `late ${formatOpenFor(nowMs - due!)}`, tone: "amber", text: "", next: `down ${clockAt(opens, nowMs)}`, value };
+  }
+  if (isRunning(clock)) {
+    return {
+      badge: `running ${formatOpenFor(nowMs - clock.started_at!)}`,
+      tone: "sec",
+      text: "",
+      next: `started ${clockAt(clock.started_at!, nowMs)}`,
+      value,
+    };
+  }
+  const next =
+    due !== null
+      ? `next ${clockAt(due, nowMs)}`
+      : m.last_result_at
+        ? `last ${clockAt(m.last_result_at, nowMs)}`
+        : "";
+  return m.last_result === "warn"
+    ? { badge: "warn", tone: "amber", text: "", next, value }
+    : { badge: "ok", tone: "sec", text: "", next, value };
+}
+
+/** An open push card's second line (18c): "push · every 1d, grace 1h · last result 10-19 02:04 ok". */
+export function pushCardLine(m: MonitorView, nowMs: number): string {
+  const every = m.every_ms ?? null;
+  const schedule =
+    every === null ? "by its results" : `every ${formatSpan(every)}, grace ${formatSpan(m.grace_ms ?? Math.min(every, 60 * 60_000))}`;
+  const last = m.last_result_at ? ` · last result ${clockAt(m.last_result_at, nowMs)} ${m.last_result ?? ""}`.trimEnd() : "";
+  return `push · ${schedule}${last}`;
+}
+
+export type PushTick = {
+  id: number;
+  left: number;
+  /** A run's bar, from its /start to its end; 0 draws a 2px tick. */
+  width: number;
+  tone: "ok" | "warn" | "fail";
+  result: PushResultRow;
+};
+
+/** Each result a tick, each run a bar back to its /start (18f). */
+export function pushTicks(results: readonly PushResultRow[], fromMs: number, toMs: number): PushTick[] {
+  const out: PushTick[] = [];
+  for (const r of results) {
+    const end = clockFrac(r.at, fromMs, toMs);
+    if (end < 0 || end > 1) {
+      continue;
+    }
+    const start = r.duration_ms ? Math.max(0, clockFrac(r.at - r.duration_ms, fromMs, toMs)) : end;
+    out.push({ id: r.id, left: start, width: end - start, tone: r.result, result: r });
+  }
+  return out;
+}
+
+export type PushBand = { key: string; left: number; width: number; kind: "late" | "open" | "resolved" | "running"; stretch: MonitorStretch | null };
+
+function span(fromT: number, toT: number, fromMs: number, toMs: number): { left: number; width: number } | null {
+  if (toT < fromMs || fromT > toMs) {
+    return null;
+  }
+  const left = Math.max(0, clockFrac(fromT, fromMs, toMs));
+  const right = Math.min(1, clockFrac(toT, fromMs, toMs));
+  return { left, width: Math.max(minStretchFrac / 2, right - left) };
+}
+
+/**
+ * A push lane's bands (18f): each stretch red (dim once resolved), amber before it from the due
+ * time it missed, amber from the due time to now while late, and an outline while a run is going.
+ */
+export function pushBands(
+  m: MonitorView,
+  stretches: readonly MonitorStretch[],
+  nowMs: number,
+  fromMs: number,
+  toMs: number,
+): PushBand[] {
+  const out: PushBand[] = [];
+  for (const s of stretches) {
+    if (s.due_at != null && s.due_at < s.opened_at) {
+      const late = span(s.due_at, s.opened_at, fromMs, toMs);
+      if (late) {
+        out.push({ key: `${s.id}-late`, ...late, kind: "late", stretch: s });
+      }
+    }
+    const open = span(s.opened_at, s.resolved_at ?? nowMs, fromMs, toMs);
+    if (open) {
+      out.push({ key: s.id, ...open, kind: s.resolved_at === null ? "open" : "resolved", stretch: s });
+    }
+  }
+  const clock = pushClock(m);
+  if (isLate(clock, nowMs)) {
+    const late = span(pushDueAt(clock)!, nowMs, fromMs, toMs);
+    if (late) {
+      out.push({ key: "late-now", ...late, kind: "late", stretch: null });
+    }
+  }
+  if (isRunning(clock) && m.state !== "open") {
+    const run = span(clock.started_at!, nowMs, fromMs, toMs);
+    if (run) {
+      out.push({ key: "running", ...run, kind: "running", stretch: null });
+    }
+  }
+  return out;
+}
+
+/** The dashed line (18f): when the result it waits for was due, while that is on the clock. */
+export function pushDueLine(m: MonitorView, nowMs: number, fromMs: number, toMs: number): number | null {
+  const missed = m.state === "open" ? (m.open?.due_at ?? null) : null;
+  const clock = pushClock(m);
+  const due = missed ?? (isLate(clock, nowMs) ? pushDueAt(clock) : null);
+  if (due === null) {
+    return null;
+  }
+  const at = clockFrac(due, fromMs, toMs);
+  return at >= 0 && at <= 1 ? at : null;
+}
+
+/** "3m 12s", "45s", "1h 4m": how long a run took. */
+export function formatRun(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) {
+    return `${s}s`;
+  }
+  if (s < 3600) {
+    const rest = s % 60;
+    return rest > 0 ? `${Math.floor(s / 60)}m ${rest}s` : `${Math.floor(s / 60)}m`;
+  }
+  return formatOpenFor(ms);
+}
+
+function hhmmss(ms: number): string {
+  const d = new Date(ms);
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
+
+/** A result's card on a push lane (18f): what it said, when, how long it ran and from where. */
+export function resultCard(
+  r: PushResultRow,
+  stretches: readonly MonitorStretch[],
+  nowMs: number,
+): { badge: string; tone: LaneReadout["tone"]; at: string; ran: string; message: string; stretch: MonitorStretch | null; opened: string } {
+  const badge = r.exit_code !== null ? `${r.result} · exit ${r.exit_code}` : r.result;
+  const tone = r.result === "fail" ? "red" : r.result === "warn" ? "amber" : "sec";
+  const ran = [
+    r.duration_ms ? `started ${hhmmss(r.at - r.duration_ms)}` : "",
+    r.duration_ms ? `ran ${formatRun(r.duration_ms)}` : "",
+    r.host ? `from ${r.host}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  // The stretch this result opened: it opened in the same second the result arrived.
+  const stretch = stretches.find((s) => Math.abs(s.opened_at - r.at) < 1000) ?? null;
+  const opened = stretch
+    ? stretch.resolved_at !== null
+      ? `opened · resolved ${clockAt(stretch.resolved_at, nowMs)} · ${formatOpenFor(stretch.resolved_at - stretch.opened_at)}`
+      : `opened · open ${formatOpenFor(nowMs - stretch.opened_at)}`
+    : "";
+  return { badge, tone, at: `${mmdd(r.at)} ${hhmmss(r.at)}`, ran, message: r.message, stretch, opened };
+}
+
+/** The clock a push monitor opens on as a hunt with nothing open (18i): a few of its results. */
+export function pushHuntRange(m: Pick<MonitorView, "every_ms">): "1h" | "4h" | "24h" | "7d" {
+  const every = m.every_ms ?? null;
+  if (every === null) {
+    return "24h";
+  }
+  const want = every * 6;
+  return want <= hourMs ? "1h" : want <= 4 * hourMs ? "4h" : want <= dayMs ? "24h" : "7d";
 }

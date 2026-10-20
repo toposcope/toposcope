@@ -45,7 +45,14 @@ const btn2 = "flex h-[26px] items-center rounded-md border px-2.5 text-[12px] ho
 
 /** "opened 10:41 · at least 50 lines in 15m", "opened 10:41 · fewer than 1 line in 15m". */
 function openedLine(monitor: MonitorView, stretch: MonitorStretch, nowMs: number): string {
-  const what = sourceOf(monitor) === "fingerprints" ? "new fingerprints" : opensWhenLine(monitor);
+  const what =
+    sourceOf(monitor) === "fingerprints"
+      ? "new fingerprints"
+      : sourceOf(monitor) === "push"
+        ? stretch.due_at != null
+          ? `missed, due ${clockAt(stretch.due_at, nowMs)}`
+          : "a fail"
+        : opensWhenLine(monitor);
   if (stretch.resolved_at === null) {
     return `opened ${clockAt(stretch.opened_at, nowMs)} · ${what}`;
   }

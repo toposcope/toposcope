@@ -22,6 +22,7 @@ bash <this skill's directory>/toposcope.sh <command>
 | `app-env <file>` | Writes the settings an app needs into a file. |
 | `marker` | Prints one word to put in a test error. |
 | `check <word>` | Reads that error back: **frames**, **message**, or **nothing arrived**. |
+| `check <monitor> -- <command>` | Runs a command and sends how it went to a push monitor. |
 
 ## Rules
 
@@ -140,6 +141,14 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
    - **nothing arrived** — no row. Look at the endpoint and its port (8080 for HTTP, 4319 for gRPC), the token, and whether the exporter flushed before the process ended. Then check again.
 
 Check once for each app.
+
+## A job's result
+
+`check <monitor> -- <command>` runs any command, a cron job or a Nagios plugin, and sends how it went to the push monitor of that name; its first result creates the monitor. The exit code is the status (0 ok, 1 warn, 2 fail, 3 unknown, anything else a fail), and the tail of the output is the message. For a Nagios plugin, whose first line carries perfdata, that line is the message and its first value is the value, with its unit. The command's output and exit code pass through. It sends to `TOPOSCOPE_URL` with `TOPOSCOPE_INGEST_TOKEN` when they are set, as `app-env` writes them, and else to the instance on this machine.
+
+```bash
+bash <this skill's directory>/toposcope.sh check disk-var -- /usr/lib/nagios/plugins/check_disk -w 20% -c 10% -p /var
+```
 
 ## What this skill does not do
 

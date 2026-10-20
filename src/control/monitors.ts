@@ -1,10 +1,13 @@
 import type { Context } from "hono";
 import { lastLineAt } from "../alerts/last-line";
 import {
+  lastPushResult,
   monitorHistory,
   openStretch,
+  resultsBetween,
   sentCallsBetween,
   stretchesBetween,
+  type PushResultRow,
   type StretchWithCalls,
 } from "../alerts/monitor-store";
 import { parseRangeMs } from "../query/relative";
@@ -18,8 +21,16 @@ import {
   readJsonObject,
   readMonitorFields,
   removeMonitor,
+  updateAlertRule,
   type AlertRule,
 } from "./alerts";
+import {
+  applyPushFields,
+  insertPushMonitor,
+  pingKeyOf,
+  pushCapProblem,
+  readPushFields,
+} from "./push-monitors";
 import { getDb } from "./index";
 import { getSaved } from "./saved-searches";
 
@@ -92,8 +103,21 @@ export async function listMonitors(c: Context): Promise<Response> {
     monitors: await Promise.all(allAlertRules().map(view)),
     stretches: stretchesBetween(win.fromMs, win.toMs),
     sent: sentCallsBetween(win.fromMs, win.toMs),
+    // Results on the clock (#177): each a tick, at most 240 columns a lane.
+    results: resultsBetween(win.fromMs, win.toMs),
     link: publicUrl() !== null,
   });
+}
+
+/**
+ * A monitor's own page: the monitor, and for a push monitor its keyed URL's key and its last
+ * result. The key is printed here and nowhere else (#177).
+ */
+async function page(rule: AlertRule): Promise<MonitorView & { ping_key?: string | null; last?: PushResultRow | null }> {
+  if (rule.source !== "push") {
+    return view(rule);
+  }
+  return { ...(await view(rule)), ping_key: pingKeyOf(rule.id), last: lastPushResult(rule.id) };
 }
 
 function byName(name: string): AlertRule[] {
@@ -124,7 +148,81 @@ export async function getMonitor(c: Context): Promise<Response> {
   if (!rule) {
     return c.json({ error: "Monitor not found" }, 404);
   }
-  return c.json({ ...(await view(rule)), stretches: monitorHistory(rule.id) });
+  return c.json({ ...(await page(rule)), stretches: monitorHistory(rule.id) });
+}
+
+/** A source a monitor keeps: a push monitor stays one, and nothing else becomes one. */
+function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
+  const wantsPush = rec.source === "push";
+  if (existing && existing.source === "push" && rec.source !== undefined && !wantsPush) {
+    return `${existing.name} is a push monitor; delete it to make a ${String(rec.source)} monitor of that name`;
+  }
+  if (existing && existing.source !== "push" && wantsPush) {
+    return `${existing.name} is a ${existing.source} monitor; delete it to make a push monitor of that name`;
+  }
+  return null;
+}
+
+/** `PUT /api/monitors/<name>` with `source: "push"`: create or replace a push monitor (#177). */
+async function putPushMonitor(
+  c: Context,
+  name: string,
+  existing: AlertRule | null,
+  rec: Record<string, unknown>,
+): Promise<Response> {
+  const fields = readPushFields({ ...rec, name }, null);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
+  }
+  const now = Date.now();
+  if (!existing) {
+    const cap = pushCapProblem(1);
+    if (cap) {
+      return c.json({ error: cap }, 400);
+    }
+    const created = insertPushMonitor(fields, now);
+    if ("error" in created) {
+      return c.json({ error: created.error }, 400);
+    }
+    applyMonitorHold(created, rec, now);
+    return c.json(await page(getAlert(created.id)!), 201);
+  }
+  const problem = applyPushFields(existing, fields, now);
+  if (problem) {
+    return c.json({ error: problem.error }, 400);
+  }
+  applyMonitorHold(getAlert(existing.id)!, rec, now);
+  return c.json(await page(getAlert(existing.id)!));
+}
+
+/**
+ * `PUT /api/alert-rules/<id>`: what it did, and for a push monitor its own fields, a field left
+ * out keeping its value.
+ */
+export async function updateMonitorRoute(c: Context): Promise<Response> {
+  const existing = getAlert(c.req.param("id") ?? "");
+  if (!existing || existing.source !== "push") {
+    return updateAlertRule(c);
+  }
+  const rec = await readJsonObject(c);
+  if (rec instanceof Response) {
+    return rec;
+  }
+  const change = sourceChange(existing, rec);
+  if (change) {
+    return c.json({ error: change }, 400);
+  }
+  const fields = readPushFields(rec, existing);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
+  }
+  const now = Date.now();
+  const problem = applyPushFields(existing, fields, now);
+  if (problem) {
+    return c.json({ error: problem.error }, 400);
+  }
+  applyMonitorHold(getAlert(existing.id)!, rec, now);
+  return c.json(getAlert(existing.id));
 }
 
 /**
@@ -142,8 +240,15 @@ export async function putMonitor(c: Context): Promise<Response> {
   if (rec instanceof Response) {
     return rec;
   }
-  if (rec.source === undefined && rec.kind === undefined) {
-    return c.json({ error: "source is required: search or fingerprints" }, 400);
+  if (rec.source === undefined && rec.kind === undefined && existing?.source !== "push") {
+    return c.json({ error: "source is required: search, fingerprints or push" }, 400);
+  }
+  const change = sourceChange(existing, rec);
+  if (change) {
+    return c.json({ error: change }, 400);
+  }
+  if (rec.source === "push" || existing?.source === "push") {
+    return putPushMonitor(c, name, existing, rec);
   }
   const fields = readMonitorFields({ ...rec, name }, null);
   if ("error" in fields) {

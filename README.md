@@ -71,7 +71,8 @@ A coding agent can do this for an app: the [toposcope skill](skills/toposcope/SK
 | JSON or NDJSON logs | `POST /api/ingest` | One event, an array, or NDJSON |
 | Metrics | `POST /v1/metrics` | JSON metric points |
 | Change marks | `POST /v1/marks` | Deploy / flag / incident / note; CI samples in the [ingest guide](docs/ingest.md) |
-| Probes | `POST /v1/probes` | Attach `up=0`/`up=1` or pull one status URL; overlay `metric=up` |
+| Check results | `POST /v1/checks`, `/ping/<key>` | A script's ok, warn or fail; a first result creates its push monitor; the keyed URL takes no token |
+| Probes | `POST /v1/probes` | Attach `up=0`/`up=1` or pull one status URL; overlay `metric=up`; an attached one is also a check result |
 | OTLP traces | `POST /v1/traces` | JSON or protobuf |
 | OTLP profiles | `POST /v1/profiles` | JSON or protobuf |
 | Syslog | UDP `5514` | RFC 3164 |

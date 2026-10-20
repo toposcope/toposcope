@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
 import { keptStretches, type CantTell, type MonitorResult } from "../shared/monitor";
+import { keptResultsMs } from "../shared/push";
 
 /** What became of a stretch's open or resolved call. Null while it is still to be sent. */
 export type CallState = "sent" | "failed" | "silenced" | "none";
@@ -39,14 +40,17 @@ export type MonitorStretch = {
   called_at: number | null;
   open_call: CallState | null;
   resolved_call: CallState | null;
+  /** A push monitor that opened because a result never came: when that result was due (#177). */
+  due_at: number | null;
 };
 
 export type StretchWithCalls = MonitorStretch & { calls: MonitorCall[] };
 
-export type Reading = { value: number; count: number; message: string };
+/** What a pass read, or a pushed result said: a value and a count when it has them, and in words. */
+export type Reading = { value: number | null; count: number | null; message: string };
 
 const STRETCH_COLS =
-  "id, monitor_id, opened_at, resolved_at, closed_by, open_value, open_count, open_message, last_value, last_count, last_at, called_at, open_call, resolved_call";
+  "id, monitor_id, opened_at, resolved_at, closed_by, open_value, open_count, open_message, last_value, last_count, last_at, called_at, open_call, resolved_call, due_at";
 
 type CallRow = Omit<MonitorCall, "ok"> & { ok: number };
 
@@ -91,20 +95,21 @@ export function setCantTell(monitorId: string, why: CantTell | null, db: Databas
   db.query("UPDATE alert_rules SET cant_tell = ? WHERE id = ?").run(why ? JSON.stringify(why) : null, monitorId);
 }
 
-/** A fail while ok: the monitor opens, and a stretch starts. */
+/** A fail while ok: the monitor opens, and a stretch starts. A missed result says when it was due. */
 export function beginStretch(
   monitorId: string,
   at: number,
   reading: Reading,
   db: Database = getDb(),
+  dueAt: number | null = null,
 ): MonitorStretch {
   const id = crypto.randomUUID();
   db.transaction(() => {
     db.query(
       `INSERT INTO monitor_stretches
-        (id, monitor_id, opened_at, open_value, open_count, open_message, last_value, last_count, last_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(id, monitorId, at, reading.value, reading.count, reading.message, reading.value, reading.count, at);
+        (id, monitor_id, opened_at, open_value, open_count, open_message, last_value, last_count, last_at, due_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(id, monitorId, at, reading.value, reading.count, reading.message, reading.value, reading.count, at, dueAt);
     db.query("UPDATE alert_rules SET state = 'open' WHERE id = ?").run(monitorId);
     pruneStretches(monitorId, db);
   })();
@@ -253,4 +258,90 @@ export function pruneStretches(monitorId: string, db: Database = getDb()): void 
 export function forgetMonitor(monitorId: string, db: Database = getDb()): void {
   db.query("DELETE FROM monitor_calls WHERE monitor_id = ?").run(monitorId);
   db.query("DELETE FROM monitor_stretches WHERE monitor_id = ?").run(monitorId);
+  db.query("DELETE FROM monitor_results WHERE monitor_id = ?").run(monitorId);
+}
+
+/** One result as Watch draws it (#177): a tick at its time, a bar back to its `/start`. */
+export type PushResultRow = {
+  id: number;
+  monitor_id: string;
+  at: number;
+  result: "ok" | "warn" | "fail";
+  exit_code: number | null;
+  duration_ms: number | null;
+  value: number | null;
+  unit: string | null;
+  message: string;
+  host: string;
+  via: string;
+};
+
+const RESULT_COLS = "id, monitor_id, at, result, exit_code, duration_ms, value, unit, message, host, via";
+
+/** How bad a result is: within a minute the worst is kept, and of equals the later. */
+const STATUS_RANK = "CASE {s} WHEN 'fail' THEN 2 WHEN 'warn' THEN 1 ELSE 0 END";
+const rank = (col: string) => STATUS_RANK.replace("{s}", col);
+
+/** A result for Watch's ticks: one row a monitor a minute, the worst of the minute winning. */
+export function recordPushResult(row: Omit<PushResultRow, "id">, db: Database = getDb()): void {
+  db.query(
+    `INSERT INTO monitor_results (monitor_id, minute, at, result, exit_code, duration_ms, value, unit, message, host, via)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (monitor_id, minute) DO UPDATE SET
+       at = excluded.at, result = excluded.result, exit_code = excluded.exit_code, duration_ms = excluded.duration_ms,
+       value = excluded.value, unit = excluded.unit, message = excluded.message, host = excluded.host, via = excluded.via
+     WHERE ${rank("excluded.result")} >= ${rank("monitor_results.result")}`,
+  ).run(
+    row.monitor_id,
+    Math.floor(row.at / 60_000),
+    row.at,
+    row.result,
+    row.exit_code,
+    row.duration_ms,
+    row.value,
+    row.unit,
+    row.message,
+    row.host,
+    row.via,
+  );
+}
+
+/** A push monitor's last result as Watch keeps it: the worst of its last minute. */
+export function lastPushResult(monitorId: string, db: Database = getDb()): PushResultRow | null {
+  const row = db
+    .query(`SELECT ${RESULT_COLS} FROM monitor_results WHERE monitor_id = ? ORDER BY at DESC, id DESC LIMIT 1`)
+    .get(monitorId) as PushResultRow | undefined;
+  return row ?? null;
+}
+
+/** Columns a lane's results are read in: within each, the worst result, and of equals the later. */
+export const laneColumns = 240;
+/** A message as a lane's tick carries it; the whole one is its log row. */
+const tickMessage = 300;
+
+/**
+ * Results in [from, to] for Watch's lanes, cut into 240 columns a monitor: each column that has
+ * any is the worst result in it, the later of equals.
+ */
+export function resultsBetween(fromMs: number, toMs: number, db: Database = getDb()): PushResultRow[] {
+  const span = Math.max(1, toMs - fromMs);
+  const rows = db
+    .query(
+      `SELECT ${RESULT_COLS} FROM (
+         SELECT ${RESULT_COLS}, ROW_NUMBER() OVER (
+           PARTITION BY monitor_id, MIN(${laneColumns - 1}, (at - ?) * ${laneColumns} / ?)
+           ORDER BY ${rank("result")} DESC, at DESC, id DESC
+         ) AS n
+         FROM monitor_results WHERE at >= ? AND at <= ?
+       ) WHERE n = 1 ORDER BY monitor_id, at`,
+    )
+    .all(fromMs, span, fromMs, toMs) as PushResultRow[];
+  return rows.map((row) =>
+    row.message.length > tickMessage ? { ...row, message: `${row.message.slice(0, tickMessage)}…` } : row,
+  );
+}
+
+/** Results older than 30 days go. */
+export function pruneResults(now: number, db: Database = getDb()): void {
+  db.query("DELETE FROM monitor_results WHERE at < ?").run(now - keptResultsMs);
 }

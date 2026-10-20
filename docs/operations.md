@@ -40,6 +40,12 @@ A monitor (**Watch → New monitor**, or **Watch this** on a saved search) reads
 
 A monitor can also open on **fewer than** its threshold, for a stream that must keep talking: `host:ci-box` over 15m, fewer than 1, opens when no line has come from the box for 15 minutes, and the next line resolves it. Fewer than reads a count or a rate (no lines is a rate of 0); a p99 or an average over no lines has no value, so those are refused, and so is a saved search with a fixed from/to. Too few lines can also mean the lines are not here yet, so it **stays shut while it can't tell**, and Watch says which: a refused or failed reading; the first window after Toposcope starts (it may have missed lines while it was down); or a linked source that could feed the search is behind or quiet, so the count is a floor. Watch and the editor show when the search last matched a line ("last line 10:26:41, 37m ago").
 
+A **push monitor** takes results instead of reading a search: a cron job, a backup or a Nagios plugin says how it went, through `POST /v1/checks` with the ingest token or its keyed URL `/ping/<key>` with none, and a name not seen before creates it. It opens on a fail, or when no result has come for its `every` plus its grace, and the next ok resolves it; a warn shows on Watch and calls nobody. See [Check results](ingest.md#check-results-push-monitors).
+
+**Settings → Default webhook** is called by any monitor without its own, such as one created by its first result. Leave it empty and such a monitor keeps its state and calls nobody.
+
+`/ping/<key>` is the one route that takes no token, so a proxy in front of Toposcope must pass it through. Its key is printed only on the monitor's page and in its editor; anyone holding it can post that monitor's results and nothing else. Replace a leaked key by declaring the monitor again (`PUT /api/monitors/<name>` with `"source": "push"`, its `every` and `grace`, and a new random UUID as `key`), or delete and recreate it.
+
 A script or an agent can declare one without the UI, by name; the same name replaces it:
 
 ```bash

@@ -46,7 +46,8 @@ export function isSlackIncomingUrl(url: string): boolean {
 export function alertLink(
   base: string,
   fired: {
-    savedId: string;
+    /** The saved search it came from; a push monitor has none. */
+    savedId: string | null;
     query: string;
     agg: string | null;
     from: string;
@@ -65,7 +66,9 @@ export function alertLink(
   if (fired.agg) {
     params.set("agg", fired.agg);
   }
-  params.set("saved", fired.savedId);
+  if (fired.savedId) {
+    params.set("saved", fired.savedId);
+  }
   if (fired.cut) {
     params.set("cut", fired.cut);
   }
@@ -138,6 +141,82 @@ export function alertWebhookBody(args: {
     fired_at: args.firedAt,
     ...(call ? { state: call.state, opened_at: call.openedAt, resolved_at: call.resolvedAt } : {}),
     ...(args.link ? { link: args.link } : {}),
+  };
+}
+
+/**
+ * A push monitor's call (#177): the result that opened it (a fail, or one that never came) in
+ * words, its value when it had one, and where it stands. Slack gets one line of it.
+ */
+export function pushWebhookBody(args: {
+  url: string;
+  alert: { id: string; name: string };
+  query: string;
+  message: string;
+  value: number | null;
+  firedAt: string;
+  link?: string | null;
+  call: StretchCall;
+}): unknown {
+  const call = args.call;
+  const headline =
+    call.state === "resolved"
+      ? `resolved after ${call.duration}`
+      : call.state === "reminder"
+        ? `still open · ${call.duration}`
+        : "opened";
+  if (isSlackIncomingUrl(args.url)) {
+    const open = args.link ? `\n<${args.link}|Open in Toposcope>` : "";
+    const said = args.message ? ` — ${args.message}` : "";
+    return {
+      text: `Toposcope: ${args.alert.name} ${headline}${said}`,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${args.alert.name}* ${headline}\n\`${args.query}\`${args.message ? `\n${args.message}` : ""}${open}`,
+          },
+        },
+      ],
+    };
+  }
+  return {
+    alert: { ...args.alert, source: "push" },
+    query: args.query,
+    message: args.message,
+    value: args.value,
+    fired_at: args.firedAt,
+    state: call.state,
+    opened_at: call.openedAt,
+    resolved_at: call.resolvedAt,
+    ...(args.link ? { link: args.link } : {}),
+  };
+}
+
+/** A push monitor's fill-ins: a search monitor's names, with its status as the series. */
+export function pushFillValues(args: {
+  name: string;
+  value: number | null;
+  query: string;
+  firedAt: string;
+  link: string | null;
+  call: StretchCall;
+  message: string;
+}): Record<string, string> {
+  return {
+    "alert.name": args.name,
+    series: "status",
+    value: args.value === null ? "" : plainNumber(args.value),
+    threshold: "",
+    query: args.query,
+    fired_at: args.firedAt,
+    link: args.link ?? "",
+    state: args.call.state,
+    opened_at: args.call.openedAt,
+    resolved_at: args.call.resolvedAt ?? "",
+    duration: args.call.duration,
+    message: args.message,
   };
 }
 

@@ -17,7 +17,6 @@ import {
   createAlertRule,
   deleteAlertRule,
   listAlertRules,
-  updateAlertRule,
 } from "./control/alerts";
 import {
   createSavedSearch,
@@ -44,6 +43,7 @@ import { ingestRoute } from "./ingest";
 import { ingestMetricsRoute } from "./ingest/metrics";
 import { ingestMarksRoute } from "./ingest/marks";
 import { ingestProbesRoute } from "./ingest/probes";
+import { ingestChecksRoute, pingRoute } from "./ingest/checks";
 import { otlpLogsRoute } from "./ingest/otlp-route";
 import { otlpTracesRoute } from "./ingest/otlp-traces-route";
 import { otlpProfilesRoute } from "./ingest/otlp-profiles-route";
@@ -68,7 +68,7 @@ import { startLinkPuller } from "./links/puller";
 import { loadArrivalSeq } from "./ingest/arrival-seq";
 import { followSpanRoute } from "./query/follow-span";
 import { testAlertCallRoute } from "./alerts/test-call";
-import { deleteMonitor, getMonitor, listMonitors, putMonitor } from "./control/monitors";
+import { deleteMonitor, getMonitor, listMonitors, putMonitor, updateMonitorRoute } from "./control/monitors";
 import { tracesRoute } from "./query/traces";
 import { marksRoute } from "./query/marks";
 import { probesRoute } from "./query/probes";
@@ -199,6 +199,11 @@ app.use("/*", async (c, next) => {
   if (c.req.path.startsWith("/link/v1/")) {
     return next();
   }
+  // A push monitor's keyed URL (#177): the key in the path is the credential, for a cron line
+  // with no token. It writes only that monitor's result.
+  if (c.req.path.startsWith("/ping/")) {
+    return next();
+  }
   const header = c.req.header("authorization");
   const ingest =
     (c.req.path === "/api/ingest" ||
@@ -206,6 +211,7 @@ app.use("/*", async (c, next) => {
       c.req.path === "/v1/metrics" ||
       c.req.path === "/v1/marks" ||
       c.req.path === "/v1/probes" ||
+      c.req.path === "/v1/checks" ||
       c.req.path === "/v1/traces" ||
       c.req.path === "/v1/profiles" ||
       c.req.path === "/v1development/profiles") &&
@@ -256,6 +262,10 @@ app.post("/v1/logs", otlpLogsRoute);
 app.post("/v1/metrics", ingestMetricsRoute);
 app.post("/v1/marks", ingestMarksRoute);
 app.post("/v1/probes", ingestProbesRoute);
+app.post("/v1/checks", ingestChecksRoute);
+// GET (and HEAD) or POST, as Healthchecks' ping URL takes them.
+app.get("/ping/:key/:signal?", pingRoute);
+app.post("/ping/:key/:signal?", pingRoute);
 app.post("/v1/traces", otlpTracesRoute);
 app.post("/v1/profiles", otlpProfilesRoute);
 app.post("/v1development/profiles", otlpProfilesRoute);
@@ -306,7 +316,7 @@ app.post("/api/saved-searches/:id/test", testSavedSearch);
 app.get("/api/alert-rules", listAlertRules);
 app.post("/api/alert-rules/test-call", testAlertCallRoute);
 app.post("/api/alert-rules", createAlertRule);
-app.put("/api/alert-rules/:id", updateAlertRule);
+app.put("/api/alert-rules/:id", updateMonitorRoute);
 app.delete("/api/alert-rules/:id", deleteAlertRule);
 // Monitors (#175); /api/alert-rules stays as their alias for 0.6.
 app.get("/api/monitors", listMonitors);
@@ -325,6 +335,8 @@ app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
 // The ingest paths are an API too: a typo or a wrong method must not get the UI page.
 app.all("/v1/*", (c) => c.json({ error: "Not found" }, 404));
 app.all("/v1development/*", (c) => c.json({ error: "Not found" }, 404));
+// Any other method or shape under /ping is the same 404 an unknown key gets.
+app.all("/ping/*", () => new Response("not found\n", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } }));
 
 // #109: the bare address opens on Home, at that saved search's own URL; any link keeps its own.
 app.get("/", (c, next) => {

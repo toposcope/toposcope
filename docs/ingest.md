@@ -1,8 +1,8 @@
 # Ingest
 
-Toposcope accepts logs, metrics, change marks, probes, traces, and profiles over HTTP. An app speaks OpenTelemetry to it: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional; when there is one, the canonical collector is Vector.
+Toposcope accepts logs, metrics, change marks, check results, probes, traces, and profiles over HTTP. An app speaks OpenTelemetry to it: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional; when there is one, the canonical collector is Vector.
 
-Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/probes`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token.
+Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/checks`, `POST /v1/probes`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token. A push monitor's keyed URL, `/ping/<key>`, is the one route that takes none: its key is the credential.
 
 ## What an app sends
 
@@ -242,9 +242,52 @@ mark_deploy:
         -d "{\"kind\":\"deploy\",\"title\":\"${CI_COMMIT_TAG}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${CI_COMMIT_TAG}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${CI_COMMIT_TAG}\",\"sha\":\"${CI_COMMIT_SHA}\",\"source\":\"gitlab\"}}"
 ```
 
+## Check results (push monitors)
+
+A script, a cron job, a Nagios plugin or a box with no logs tells Toposcope how it went. Toposcope never runs the check; it keeps the result, and a push monitor opens on a fail or when a result does not come.
+
+`POST /v1/checks` takes one result or up to 500, with the ingest token (1 MB, JSON or NDJSON):
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/checks \
+  -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"monitor":"disk-var","status":"warn","message":"/var 87% used","value":87.2,"unit":"%","every":"5m","grace":"2m","host":"log-vm","service":"box-agent"}'
+```
+
+- `monitor` names its monitor (at most 100 characters, no `"`). A name not seen before creates a push monitor, up to 500; past that the request is refused and says why. A name a saved-search monitor has is refused.
+- `status` is `ok`, `warn` or `fail`, or `0`–`3`, Nagios's ok, warning, critical and unknown, so a plugin's exit code is a status. A fail opens the monitor; the next ok resolves it; a warn shows on Watch and calls nobody; unknown changes nothing.
+- `every` (`30s` to `365d`) and `grace` (`0` to `365d`) say when the next result is due. Past `every` with nothing in, the monitor is late; past `every` + `grace` it opens. Without a grace of its own it waits one more `every`, at most an hour. A result that leaves them out keeps the monitor's; without `every` a monitor goes by its results alone and is never late.
+- `message`, `value` with `unit`, `host`, `service` (else `monitor`), `ts` (else now), `exit_code` (0–255; a numeric status is its own) and `duration_ms` are optional.
+
+The reply is `{ ingested, created }`, the names it made monitors for. A bad result refuses the whole request, `result <n>: …`, and stores nothing.
+
+Every result is a log row: `monitor:<name> status:<status> source:push`, with its message, host and service, its `exit_code`, and `duration_ms` when it has one, so `monitor:disk-var` finds them in Search. A fail is an `error` row, a warn a `warn`. A `value` is also the metric `monitor_value`, labelled `monitor`, for the Series overlay. Toposcope never compares the value with anything: the check decides ok, warn or fail.
+
+**The keyed URL** — for a cron line with no token, each push monitor has `/ping/<key>`, shown on its page and in its editor. It takes a GET or a POST with no header, as Healthchecks' ping URL does, so a job wrapped by `runitor` or `hc-ping` points at Toposcope by changing the host:
+
+| Path | Means |
+| --- | --- |
+| `/ping/<key>` | ok |
+| `/ping/<key>/fail` | fail |
+| `/ping/<key>/<exit code>` | 0 is ok, 1–255 a fail |
+| `/ping/<key>/start` | a run began: the next result's `duration_ms` is measured from here, and Watch draws the run as a bar |
+
+A POST body, up to 10 KB, is the message; the rest is not read. A start is a row too (`monitor:<name> signal:start source:push`). An unknown key gets `404` and writes nothing, in the time a known one takes. A key stores at most one start and one result a second; more get `429`.
+
+```bash
+0 2 * * * /usr/local/bin/backup.sh; curl -fsS -m 10 https://toposcope.example.com/ping/<key>/$?
+```
+
+**A command's result** — the [toposcope skill](../skills/toposcope/SKILL.md)'s `toposcope.sh check <monitor> -- <command>` runs any command and sends its exit code, how long it ran and the tail of its output; for a Nagios plugin, the first line is the message and its first perfdata value is the value. It sends to `TOPOSCOPE_URL` with `TOPOSCOPE_INGEST_TOKEN`.
+
+```bash
+toposcope.sh check disk-var -- /usr/lib/nagios/plugins/check_disk -w 20% -c 10% -p /var
+```
+
 ## Probes / liveness
 
-A consumed check is an explicit `up=0` or `up=1` on the hunt clock — the same ingested `up` metric the Series picker already overlays. It is not a log row, not `/api/health`, and not a second Nagios. A missing pull is stored as `up=0`, not a silent green. Empty overlay buckets stay omitted (`null`); they are not a fake 0.
+A consumed check is an explicit `up=0` or `up=1` on the hunt clock — the same ingested `up` metric the Series picker already overlays. It is not `/api/health`, and not a second Nagios. A missing pull is stored as `up=0`, not a silent green. Empty overlay buckets stay omitted (`null`); they are not a fake 0. An attached probe is also a push monitor's result: `up` 1 is ok, 0 a fail, and `check` names the monitor (its `service` without one), so it is a log row too and opens and resolves that monitor. A pulled one is only `up`.
 
 `POST /v1/probes` attaches a result or pulls one status URL. Same bearer/basic, 1 MB body, and 500-item batch as other ingest. Hunt paints with `metric=up` (optional `ml=service:billing`). `GET /api/probes` lists samples in a window.
 

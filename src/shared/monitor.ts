@@ -5,9 +5,15 @@ import { seriesLabel } from "../query/agg";
  * which keeps the state, and Watch, which draws it.
  */
 
-/** Where a monitor's results come from. HTTP(S) and push come later (#177, #178). */
-export const monitorSources = ["search", "fingerprints"] as const;
+/** Where a monitor's results come from: a saved search, new fingerprints, or pushed results (#177). */
+export const monitorSources = ["search", "fingerprints", "push"] as const;
 export type MonitorSource = (typeof monitorSources)[number];
+
+export function parseSource(value: unknown): MonitorSource | null {
+  return typeof value === "string" && (monitorSources as readonly string[]).includes(value)
+    ? (value as MonitorSource)
+    : null;
+}
 
 /** A saved search's series (an alert's `threshold` kind), or new fingerprints after a mark (`first_seen`). */
 export function sourceOfKind(kind: "threshold" | "first_seen"): MonitorSource {

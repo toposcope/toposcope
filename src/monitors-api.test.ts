@@ -126,7 +126,7 @@ describe("PUT /api/monitors/<name> (#175)", () => {
 
   test("says what is wrong with a declaration", () => {
     expect(r.noSource!.status).toBe(400);
-    expect(r.noSource!.body.error).toBe("source is required: search or fingerprints");
+    expect(r.noSource!.body.error).toBe("source is required: search, fingerprints or push");
     expect(r.noSearch!.status).toBe(404);
     expect(r.fpResolved!.status).toBe(400);
     expect(r.fpResolved!.body.error).toBe("a new-fingerprints monitor does not resolve, so it has no resolved body");
@@ -154,7 +154,7 @@ describe("GET /api/monitors (#175)", () => {
   test("lists every monitor with its state, and the window's stretches and calls", () => {
     expect(r.monitors!.status).toBe(200);
     const body = r.monitors!.body;
-    expect(Object.keys(body).sort()).toEqual(["from", "link", "monitors", "now", "sent", "stretches", "to"]);
+    expect(Object.keys(body).sort()).toEqual(["from", "link", "monitors", "now", "results", "sent", "stretches", "to"]);
     expect(body.monitors.map((m: { name: string }) => m.name).sort()).toEqual(["api errors", "ci-box went quiet", "ntfy"]);
     expect(Date.parse(body.to) - Date.parse(body.from)).toBe(24 * 60 * 60_000);
     expect(Date.parse(r.monitors7d!.body.to) - Date.parse(r.monitors7d!.body.from)).toBe(7 * 24 * 60 * 60_000);

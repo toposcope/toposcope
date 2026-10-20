@@ -59,3 +59,8 @@ export function windowMeta(
 ): string {
   return `UTC · ${formatSpanShort(spanMs)} · ${interval} bars`;
 }
+
+/** The window a hunt's monitor band reads its stretches for, to the minute: a reply or a Live poll that moves it by seconds reads nothing new. */
+export function bandWindowKey(window: { fromMs: number; toMs: number }): string {
+  return `${Math.floor(window.fromMs / 60_000)}:${Math.floor(window.toMs / 60_000)}`;
+}

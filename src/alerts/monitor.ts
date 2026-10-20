@@ -44,25 +44,36 @@ import type { AlertSeries } from "./series";
 /** A saved search with no relative range (a fixed from/to) is read every pass and reminds every 5m. */
 export const fallbackWindowMs = 5 * 60 * 1000;
 
-export type SearchMonitorDeps = {
+/** What a monitor's calls go through. */
+export type CallDeps = {
   db: Database;
-  read: (saved: SavedSearch) => Promise<AlertSeries>;
   post: (url: string, payload: WebhookPayload) => Promise<WebhookOutcome>;
   publicUrl: () => string | null;
   recordWebhook: (id: string, attempt: WebhookOutcome & { at: number }, db: Database) => void;
+  /** The webhook from Settings, for a monitor without its own (#177). */
+  defaultWebhook?: () => string | null;
+  /** A call went through. */
+  onSent?: () => void;
+};
+
+export type SearchMonitorDeps = CallDeps & {
+  read: (saved: SavedSearch) => Promise<AlertSeries>;
   recordEval: (
     id: string,
     stamp: { at: number; status: "refused" | "error" | "ok"; error: string | null },
     db: Database,
   ) => void;
-  /** A call went through. */
-  onSent?: () => void;
   /**
    * Why a fewer-than reading may not mean it (#176): Toposcope not up for one whole window, or a
    * linked source short inside it. Without it, every reading can tell.
    */
   cantTell?: (saved: SavedSearch, windowMs: number, now: number) => CantTell | null;
 };
+
+/** Where a monitor's calls go: its own webhook, else the default from Settings, else nowhere. */
+export function callUrl(rule: Pick<AlertRule, "webhook_url">, deps: Pick<CallDeps, "defaultWebhook">): string | null {
+  return rule.webhook_url || deps.defaultWebhook?.() || null;
+}
 
 export function searchWindowMs(saved: Pick<SavedSearch, "range">): number {
   return saved.range ? (parseRangeMs(saved.range) ?? fallbackWindowMs) : fallbackWindowMs;
@@ -138,7 +149,7 @@ export async function passSearchMonitor(
 
   let cantTell: CantTell | null = null;
   if (reading) {
-    let result: MonitorResult | null = readsFail(rule.opens_when, reading.value, rule.threshold) ? "fail" : "ok";
+    let result: MonitorResult | null = readsFail(rule.opens_when, reading.value ?? 0, rule.threshold) ? "fail" : "ok";
     // Too few lines can mean the lines are not here yet: it stays as it is until it can tell.
     if (fewer && result === "fail") {
       cantTell = deps.cantTell?.(saved, windowMs, now) ?? null;
@@ -155,12 +166,60 @@ export async function passSearchMonitor(
     setCantTell(rule.id, cantTell, db);
   }
 
-  if (!rule.webhook_url) {
-    return;
-  }
+  // Read whether or not anybody is called: its state is kept either way (#177).
+  await passCalls(
+    rule,
+    now,
+    {
+      windowMs,
+      sendsResolved: sendsResolved(rule),
+      payload: (what, stretch, url) => searchCallPayload(rule, saved, { what, stretch, reading, expr, now, url }, deps),
+    },
+    deps,
+  );
+}
+
+/**
+ * A monitor's calls on one pass (#175): the open call (tried each pass for up to an hour), a
+ * reminder when one is due, and a resolved call for each stretch that has resolved since. While
+ * silenced nothing is sent, but the calls kept back are recorded, and none is made up when the
+ * silence ends. With no webhook of its own and none in Settings, it calls nobody: its stretches
+ * say so (`none`), and its state is kept all the same.
+ */
+export async function passCalls(
+  rule: AlertRule,
+  now: number,
+  plan: {
+    /** A reminder every `window` is once per this. */
+    windowMs: number;
+    sendsResolved: boolean;
+    payload: (what: Exclude<CallWhat, "sent">, stretch: MonitorStretch, url: string) => WebhookPayload;
+  },
+  deps: CallDeps,
+): Promise<void> {
+  const db = deps.db;
+  const url = callUrl(rule, deps);
   const silenced = rule.silenced_until != null && now < rule.silenced_until;
-  const send = (what: Exclude<CallWhat, "sent">, stretch: MonitorStretch) =>
-    sendSearchCall(rule, saved, { what, stretch, reading, expr, now, windowMs }, deps);
+  const send = async (what: Exclude<CallWhat, "sent">, stretch: MonitorStretch): Promise<WebhookOutcome> => {
+    const outcome = await deps.post(url!, plan.payload(what, stretch, url!));
+    deps.recordWebhook(rule.id, { at: now, ...outcome }, db);
+    recordCall(
+      {
+        monitor_id: rule.id,
+        stretch_id: stretch.id,
+        at: now,
+        what,
+        status: outcome.status,
+        ok: outcome.ok,
+        error: outcome.error,
+      },
+      db,
+    );
+    if (outcome.ok) {
+      deps.onSent?.();
+    }
+    return outcome;
+  };
   const keptBack = (what: CallWhat, stretch: MonitorStretch) =>
     recordCall(
       { monitor_id: rule.id, stretch_id: stretch.id, at: now, what, status: "silenced", ok: false, error: null },
@@ -170,7 +229,9 @@ export async function passSearchMonitor(
   const stretch = openStretch(rule.id, db);
   if (stretch) {
     if (stretch.open_call === null) {
-      if (silenced) {
+      if (!url) {
+        setOpenCall(stretch.id, "none", now, db);
+      } else if (silenced) {
         setOpenCall(stretch.id, "silenced", now, db);
         keptBack("open", stretch);
       } else if (now - stretch.opened_at >= callRetryMs) {
@@ -178,8 +239,8 @@ export async function passSearchMonitor(
       } else if ((await send("open", stretch)).ok) {
         setOpenCall(stretch.id, "sent", now, db);
       }
-    } else {
-      const every = remindEveryMs(rule.remind_every, windowMs);
+    } else if (url) {
+      const every = remindEveryMs(rule.remind_every, plan.windowMs);
       if (every !== null && now - (stretch.called_at ?? stretch.opened_at) >= every) {
         if (silenced) {
           setCalledAt(stretch.id, now, db);
@@ -192,7 +253,7 @@ export async function passSearchMonitor(
   }
 
   for (const done of pendingResolved(rule.id, db)) {
-    if (!sendsResolved(rule)) {
+    if (!plan.sendsResolved || !url) {
       setResolvedCall(done.id, "none", db);
     } else if (silenced) {
       setResolvedCall(done.id, "silenced", db);
@@ -224,8 +285,8 @@ function recordMove(id: string, result: MonitorResult, reading: Reading, now: nu
   }
 }
 
-/** One call for a stretch: built, sent, and kept with the stretch and on the rule. */
-async function sendSearchCall(
+/** One search monitor call for a stretch, as it goes on the wire. */
+function searchCallPayload(
   rule: AlertRule,
   saved: SavedSearch,
   input: {
@@ -234,10 +295,10 @@ async function sendSearchCall(
     reading: Reading | null;
     expr: string | null;
     now: number;
-    windowMs: number;
+    url: string;
   },
-  deps: SearchMonitorDeps,
-): Promise<WebhookOutcome> {
+  deps: CallDeps,
+): WebhookPayload {
   const { what, stretch, now } = input;
   const state: CallState = what;
   // The open call says what opened it; a reminder or a resolved call says what it reads now.
@@ -268,7 +329,7 @@ async function sendSearchCall(
       ? alertLink(base, { savedId: saved.id, query: saved.query, agg: saved.agg, from, to })
       : null;
   const defaultBody = alertWebhookBody({
-    url: rule.webhook_url!,
+    url: input.url,
     alert: {
       id: rule.id,
       name: rule.name,
@@ -294,24 +355,5 @@ async function sendSearchCall(
     call,
     message: stretch.open_message,
   });
-  const payload =
-    what === "resolved" ? renderResolved(rule, defaultBody, values)! : renderWebhook(rule, defaultBody, values);
-  const outcome = await deps.post(rule.webhook_url!, payload);
-  deps.recordWebhook(rule.id, { at: now, ...outcome }, deps.db);
-  recordCall(
-    {
-      monitor_id: rule.id,
-      stretch_id: stretch.id,
-      at: now,
-      what,
-      status: outcome.status,
-      ok: outcome.ok,
-      error: outcome.error,
-    },
-    deps.db,
-  );
-  if (outcome.ok) {
-    deps.onSent?.();
-  }
-  return outcome;
+  return what === "resolved" ? renderResolved(rule, defaultBody, values)! : renderWebhook(rule, defaultBody, values);
 }
