@@ -28,6 +28,7 @@ import {
   eventTableMarkLayout,
   visibleChangeMarks,
   type EventTableMarkRow,
+  type MonitorRowIn,
 } from "../change-marks";
 import type { MarksOverlay } from "./histogram-marks";
 import {
@@ -62,6 +63,8 @@ type Props = {
   onCloseDetail: () => void;
   onLoadMore: () => void;
   marks?: MarksOverlay | null;
+  /** Where monitors on this search opened (#175, 18o). */
+  opened?: MonitorRowIn[];
   live?: boolean;
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
@@ -402,6 +405,7 @@ export function EventTable({
   onLoadToward,
   held = [],
   floor = false,
+  opened = [],
 }: Props) {
   const promoted = parsePromotedCols(cols);
   const pick = promoPicker(events, promoted);
@@ -421,10 +425,16 @@ export function EventTable({
   const visibleMarks = marks
     ? visibleChangeMarks(marks.marks, marks.offKinds, marks.mutedIds)
     : [];
-  const layout = eventTableMarkLayout(events, visibleMarks, focusMarkId, {
-    rows: held,
-    complete: !showLoadMore,
-  });
+  const layout = eventTableMarkLayout(
+    events,
+    visibleMarks,
+    focusMarkId,
+    {
+      rows: held,
+      complete: !showLoadMore,
+    },
+    opened,
+  );
   const inspectMark =
     inspectId != null
       ? (visibleMarks.find((mark) => mark.id === inspectId) ?? null)
@@ -538,6 +548,19 @@ export function EventTable({
         >
           <span className="shrink-0 text-[10px] text-amber-400">▲</span>
           <span className="min-w-0 truncate">{row.text}</span>
+        </div>
+      );
+    }
+    if (row.type === "monitor") {
+      return (
+        <div
+          key={row.key}
+          className="flex h-[26px] min-w-0 items-center gap-2 border-b border-white/[0.06] bg-red-500/[0.08] px-3 text-[11.5px]"
+        >
+          <span className="size-2 shrink-0 rounded-[2px] bg-red-500" />
+          <span className="shrink-0 font-mono">{new Date(row.at).toISOString().slice(11, 19)}</span>
+          <span className="shrink-0 text-red-300">{row.name} opened</span>
+          <span className="min-w-0 truncate text-muted-foreground">· {row.detail}</span>
         </div>
       );
     }

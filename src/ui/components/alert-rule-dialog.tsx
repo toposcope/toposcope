@@ -2,13 +2,14 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   firstSeenMarksScope,
   fireWhenHint,
+  monitorSentence,
   queryPreview,
   savedWindowLabel,
-  thresholdSentence,
 } from "@/alert-condition";
 import { MarkGlyph } from "@/components/histogram-marks";
 import { AlertBodyField } from "@/components/alert-body-field";
-import { alertBodyProblem, type AlertBodyKind } from "../../shared/alert-body";
+import { alertBodyProblem, resolvedBodyProblem, type AlertBodyKind } from "../../shared/alert-body";
+import { defaultRemind, remindIds, type MonitorSource, type RemindId } from "../../shared/monitor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,8 +28,21 @@ import type { AlertKind, AlertRule, SavedSearch } from "@/types";
 import { seriesLabel } from "../../query/agg";
 
 export type AlertDraft =
-  | { mode: "create"; savedSearchId: string; lockSearch: boolean }
+  | { mode: "create"; savedSearchId: string; lockSearch: boolean; source: MonitorSource }
   | { mode: "edit"; rule: AlertRule };
+
+/** What the dialog sends to create or update a monitor. */
+export type MonitorInput = {
+  name: string;
+  kind: AlertKind;
+  saved_search_id: string;
+  threshold: number;
+  webhook_url: string;
+  body_kind: AlertBodyKind;
+  body_template: string;
+  resolved_body: string | null;
+  remind_every: RemindId;
+};
 
 type Probe = {
   value: number;
@@ -42,27 +56,8 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   draft: AlertDraft | null;
   saved: SavedSearch[];
-  onCreate: (input: {
-    name: string;
-    kind: AlertKind;
-    saved_search_id: string;
-    threshold: number;
-    webhook_url: string;
-    body_kind: AlertBodyKind;
-    body_template: string;
-  }) => Promise<void>;
-  onUpdate: (
-    id: string,
-    input: {
-      name: string;
-      kind: AlertKind;
-      saved_search_id: string;
-      threshold: number;
-      webhook_url: string;
-      body_kind: AlertBodyKind;
-      body_template: string;
-    },
-  ) => Promise<void>;
+  onCreate: (input: MonitorInput) => Promise<void>;
+  onUpdate: (id: string, input: MonitorInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   /** TOPOSCOPE_PUBLIC_URL is set: a call links back. */
   canLink: boolean;
@@ -84,6 +79,8 @@ export function AlertRuleDialog({
   const [kind, setKind] = useState<AlertKind>("threshold");
   const [bodyKind, setBodyKind] = useState<AlertBodyKind>("default");
   const [bodyTemplate, setBodyTemplate] = useState("");
+  const [resolvedBody, setResolvedBody] = useState("");
+  const [remind, setRemind] = useState<RemindId>(defaultRemind);
   const [savedSearchId, setSavedSearchId] = useState("");
   const [threshold, setThreshold] = useState("1");
   const [webhook, setWebhook] = useState("");
@@ -111,6 +108,8 @@ export function AlertRuleDialog({
       setKind(draft.rule.kind ?? "threshold");
       setBodyKind(draft.rule.body_kind ?? "default");
       setBodyTemplate(draft.rule.body_template ?? "");
+      setResolvedBody(draft.rule.resolved_body ?? "");
+      setRemind(draft.rule.remind_every ?? "window");
       setSavedSearchId(draft.rule.saved_search_id ?? "");
       setThreshold(String(draft.rule.threshold));
       setWebhook(draft.rule.webhook_url ?? "");
@@ -118,9 +117,11 @@ export function AlertRuleDialog({
     }
     const item = saved.find((row) => row.id === draft.savedSearchId);
     setName(item?.name ?? "");
-    setKind("threshold");
+    setKind(draft.source === "fingerprints" ? "first_seen" : "threshold");
     setBodyKind("default");
     setBodyTemplate("");
+    setResolvedBody("");
+    setRemind(defaultRemind);
     setSavedSearchId(draft.savedSearchId);
     setThreshold("1");
     setWebhook("");
@@ -175,16 +176,18 @@ export function AlertRuleDialog({
   async function submit(e: FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed || !savedSearchId || !thresholdOk || bodyProblem || (!fingerprints && probe?.refused)) {
+    if (!trimmed || !savedSearchId || !thresholdOk || bodyProblem || resolvedProblem || (!fingerprints && probe?.refused)) {
       return;
     }
     setBusy(true);
     try {
-      const body = {
+      const body: MonitorInput = {
         name: trimmed,
         kind,
         body_kind: bodyKind,
         body_template: bodyTemplate,
+        resolved_body: fingerprints || bodyKind === "default" || !resolvedBody.trim() ? null : resolvedBody,
+        remind_every: remind,
         saved_search_id: savedSearchId,
         threshold: thresholdN,
         webhook_url: webhook.trim(),
@@ -222,13 +225,8 @@ export function AlertRuleDialog({
     setSavedSearchId(id);
   }
 
-  const title = editing
-    ? "Edit alert"
-    : lockSearch
-      ? "Alert on this search"
-      : "New alert";
-
   const bodyProblem = alertBodyProblem(bodyKind, bodyTemplate, kind);
+  const resolvedProblem = fingerprints ? null : resolvedBodyProblem(bodyKind, resolvedBody, kind);
 
   function testDraft(): Record<string, unknown> | null {
     if (!savedSearchId || !thresholdOk || bodyProblem || !/^https?:\/\//.test(webhook.trim())) {
@@ -253,7 +251,7 @@ export function AlertRuleDialog({
     }
   }
 
-  const wouldFire =
+  const wouldOpen =
     probe !== null &&
     !probe.refused &&
     thresholdOk &&
@@ -261,9 +259,17 @@ export function AlertRuleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(680px,calc(100vw-32px))] overflow-y-auto">
+      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(760px,calc(100vw-32px))] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          {/* 18j: New monitor / its source; 18t: its source / its name. */}
+          <DialogTitle className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 font-normal text-muted-foreground">
+              {editing ? (fingerprints ? "New fingerprints" : "Saved search") : "New monitor"}
+            </span>
+            <span className="font-normal text-muted-foreground">/</span>
+            <span className="truncate">{editing ? editing.name : fingerprints ? "New fingerprints" : "Saved search"}</span>
+          </DialogTitle>
+          {editing ? (
           <div
             role="radiogroup"
             aria-label="Kind"
@@ -271,7 +277,7 @@ export function AlertRuleDialog({
           >
             {(
               [
-                ["threshold", "Threshold"],
+                ["threshold", "Saved search"],
                 ["first_seen", "New fingerprints"],
               ] as const
             ).map(([id, label]) => (
@@ -291,6 +297,7 @@ export function AlertRuleDialog({
               </button>
             ))}
           </div>
+          ) : null}
           <DialogDescription>
             {fingerprints ? (
               <>
@@ -303,9 +310,9 @@ export function AlertRuleDialog({
                 and each fingerprint is sent once, for the last mark before it first appeared.
               </>
             ) : selected ? (
-              thresholdSentence(selected, thresholdOk ? threshold : "N")
+              monitorSentence(selected, thresholdOk ? threshold : "N", remind)
             ) : (
-              "Pages when this series is at or above the threshold."
+              "Opens when this series is at or above the threshold, and says when it resolved."
             )}
           </DialogDescription>
         </DialogHeader>
@@ -357,8 +364,8 @@ export function AlertRuleDialog({
                     Now {formatAggStat(probe.value)}
                     {thresholdOk ? ` · threshold ${threshold}` : ""}
                   </span>
-                  {wouldFire ? (
-                    <Badge variant="error">would fire</Badge>
+                  {wouldOpen ? (
+                    <Badge variant="error">would open</Badge>
                   ) : (
                     <span>below threshold</span>
                   )}
@@ -387,7 +394,7 @@ export function AlertRuleDialog({
             </DialogField>
           ) : null}
           <DialogField
-            label="Fire when"
+            label={fingerprints ? "Fire when" : "Opens when"}
             help={
               fingerprints
                 ? "events of a new fingerprint after the mark"
@@ -411,6 +418,32 @@ export function AlertRuleDialog({
               />
             </DialogControl>
           </DialogField>
+          {fingerprints ? null : (
+            <DialogField label="Remind">
+              <span
+                role="radiogroup"
+                aria-label="Remind"
+                className="inline-flex h-7 self-start overflow-hidden rounded-[6.4px] border border-white/15"
+              >
+                {remindIds.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="radio"
+                    aria-checked={remind === id}
+                    onClick={() => setRemind(id)}
+                    className={
+                      remind === id
+                        ? "bg-accent px-2.5 text-[12px] text-foreground"
+                        : "px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
+                    }
+                  >
+                    {id === "window" ? `every ${selected?.range ?? "5m"}` : id}
+                  </button>
+                ))}
+              </span>
+            </DialogField>
+          )}
           <DialogField label="Name">
             <DialogControl>
               <input
@@ -438,6 +471,8 @@ export function AlertRuleDialog({
             onBodyKind={setBodyKind}
             template={bodyTemplate}
             onTemplate={setBodyTemplate}
+            resolvedBody={resolvedBody}
+            onResolvedBody={setResolvedBody}
             webhook={webhook}
             preview={{
               name: name.trim(),
@@ -472,6 +507,7 @@ export function AlertRuleDialog({
                 saved.length === 0 ||
                 !thresholdOk ||
                 bodyProblem !== null ||
+                resolvedProblem !== null ||
                 (!fingerprints && Boolean(probe?.refused))
               }
             >

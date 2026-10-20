@@ -194,7 +194,12 @@ export type EventTableMarkRow =
   | { type: "end"; mark: ChangeMark }
   | { type: "fold"; members: ChangeMark[] }
   /** A short source's read position (#139): its rows after this are not here yet. */
-  | { type: "held"; key: string; text: string };
+  | { type: "held"; key: string; text: string }
+  /** A monitor on this search opened here (#175, 18o). */
+  | { type: "monitor"; key: string; at: number; name: string; detail: string };
+
+/** Where monitors on this search opened, to place by time among the rows. */
+export type MonitorRowIn = { at: number; key: string; name: string; detail: string };
 
 /** Hatched rows to place by time: one per short source, at its read position. */
 export type HeldRowsIn = {
@@ -244,9 +249,19 @@ export function eventTableMarkLayout(
   marks: readonly ChangeMark[],
   pinId?: string | null,
   held?: HeldRowsIn,
+  opened: readonly MonitorRowIn[] = [],
 ): EventTableMarkLayout {
   if (events.length === 0) {
     return { rows: [], above: [], below: [] };
+  }
+  const openedAt = new Map<number, MonitorRowIn[]>();
+  for (const row of opened) {
+    const gap = gapBeforeEvent(events, row.at);
+    // Older than the page: it shows when the page reaches it.
+    if (gap === events.length && !held?.complete) {
+      continue;
+    }
+    openedAt.set(gap, [...(openedAt.get(gap) ?? []), row].sort((a, b) => b.at - a.at));
   }
   const heldAt = new Map<number, Array<{ at: number; text: string; key: string }>>();
   for (const row of held?.rows ?? []) {
@@ -299,6 +314,9 @@ export function eventTableMarkLayout(
     for (const row of heldAt.get(i) ?? []) {
       rows.push({ type: "held", key: row.key, text: row.text });
     }
+    for (const row of openedAt.get(i) ?? []) {
+      rows.push({ type: "monitor", ...row });
+    }
     const gapMarks = newestFirst(gaps.get(i) ?? []);
     const gapEnds = newestFirst(ends.get(i) ?? []);
     for (const mark of gapEnds) {
@@ -319,6 +337,9 @@ export function eventTableMarkLayout(
   }
   for (const row of heldAt.get(events.length) ?? []) {
     rows.push({ type: "held", key: row.key, text: row.text });
+  }
+  for (const row of openedAt.get(events.length) ?? []) {
+    rows.push({ type: "monitor", ...row });
   }
   return { rows, above: newestFirst(above), below: newestFirst(below) };
 }

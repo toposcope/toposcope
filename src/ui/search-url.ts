@@ -30,7 +30,7 @@ import {
 
 export type RangeMode = "custom" | string;
 
-export type OperatorView = "search" | "alerts" | "fields" | "links";
+export type OperatorView = "search" | "watch" | "fields" | "links";
 
 export type SearchUrlState = {
   q: string;
@@ -204,8 +204,12 @@ function parseBindCandidates(params: URLSearchParams): Record<string, string> {
 }
 
 function parseOperatorView(raw: string | null): OperatorView {
-  if (raw === "alerts" || raw === "fields" || raw === "links") {
+  if (raw === "watch" || raw === "fields" || raw === "links") {
     return raw;
+  }
+  // Alerts became Watch in 0.6 (#175); an old link still lands there.
+  if (raw === "alerts") {
+    return "watch";
   }
   return "search";
 }
@@ -254,7 +258,7 @@ export function serializeSearchUrl(state: SearchUrlState): string {
   if (state.saved) {
     params.set("saved", state.saved);
   }
-  if (state.view === "alerts" || state.view === "fields" || state.view === "links") {
+  if (state.view === "watch" || state.view === "fields" || state.view === "links") {
     params.set("view", state.view);
   }
   if (state.split !== "level") {

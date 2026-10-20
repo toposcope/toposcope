@@ -1,6 +1,6 @@
 # toposcope
 
-Toposcope is a lightweight, self-hosted log manager for searching live logs with `key:value` queries, saved searches, alerts, histograms, and linked traces and profiles.
+Toposcope is a lightweight, self-hosted log manager for searching live logs with `key:value` queries, saved searches, monitors, histograms, and linked traces and profiles.
 
 It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability.
 
@@ -42,7 +42,7 @@ set +a
 VECTOR_DATA_DIR=vector-data vector -c vector.yaml
 ```
 
-Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and sign in with `TOPOSCOPE_PASSWORD` from `.env`; a browser stays signed in for 30 days. Scripts and `curl -u` keep HTTP Basic Auth, with any username. Name the instance in Settings so two of them can be told apart. This shared operator password also permits writes, including retention changes. Search for `service:smoke`, save the search, then use **Alerts → Test** to verify the full path.
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and sign in with `TOPOSCOPE_PASSWORD` from `.env`; a browser stays signed in for 30 days. Scripts and `curl -u` keep HTTP Basic Auth, with any username. Name the instance in Settings so two of them can be told apart. This shared operator password also permits writes, including retention changes. Search for `service:smoke`, save the search, then use **Test** on it in the sidebar to verify the full path.
 
 The deployment pins `ghcr.io/toposcope/toposcope:0.5.7`; it never uses `:latest`. Anonymous image pulls need no registry login.
 
@@ -50,13 +50,13 @@ The deployment pins `ghcr.io/toposcope/toposcope:0.5.7`; it never uses `:latest`
 
 - Searches logs with copyable `key:value` queries, boolean operators, prefix matching, and numeric comparisons.
 - Tails a moving Live window while keeping older loaded rows available.
-- Provides histograms, facets, promoted columns, saved searches, boards, and webhook alerts.
+- Provides histograms, facets, promoted columns, saved searches, boards, and monitors that open, remind and resolve through a webhook.
 - Opens surrounding events or follows identifiers without replacing the current investigation.
 - Links logs to OTLP trace waterfalls and profile icicles when matching IDs are present.
 - Pulls rows and change marks from another Toposcope instance over a link, through any `q`, and says on Search when a source is short.
 - Overlays ingested metrics or log-derived rate and numeric series on log volume.
 
-Logs, ingested metrics, spans, profile samples, and change marks are stored in ClickHouse. Saved searches, alerts, tokens, and settings are stored in SQLite inside the Toposcope application.
+Logs, ingested metrics, spans, profile samples, and change marks are stored in ClickHouse. Saved searches, monitors, tokens, and settings are stored in SQLite inside the Toposcope application.
 
 ## Send data
 

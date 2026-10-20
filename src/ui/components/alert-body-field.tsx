@@ -8,6 +8,7 @@ import {
   alertBodyProblem,
   alertFillIns,
   checkJsonBody,
+  resolvedBodyProblem,
   starterAlertBody,
   type AlertBodyKind,
 } from "../../shared/alert-body";
@@ -22,6 +23,8 @@ export type TestCallResult = {
   reply: string;
   sent: string;
   content_type: string;
+  /** The resolved body, sent after the open one when there is one (18t). */
+  resolved?: Omit<TestCallResult, "resolved"> | null;
 };
 
 type Props = {
@@ -30,6 +33,9 @@ type Props = {
   onBodyKind: (kind: AlertBodyKind) => void;
   template: string;
   onTemplate: (template: string) => void;
+  /** A search monitor's body for its resolved call; empty sends none (#175). */
+  resolvedBody: string;
+  onResolvedBody: (template: string) => void;
   webhook: string;
   /** For the Slack message the default body becomes. */
   preview: { name: string; query: string; series: string; value: string | null; threshold: string };
@@ -55,16 +61,23 @@ export function AlertBodyField({
   onBodyKind,
   template,
   onTemplate,
+  resolvedBody,
+  onResolvedBody,
   webhook,
   preview,
   canLink,
   testDraft,
 }: Props) {
   const area = useRef<HTMLTextAreaElement | null>(null);
+  const resolvedArea = useRef<HTMLTextAreaElement | null>(null);
+  /** Which body a fill-in goes into: the last one focused. */
+  const target = useRef<"body" | "resolved">("body");
   const fillIns = alertFillIns(alertKind);
   const problem = alertBodyProblem(bodyKind, template, alertKind);
   const jsonFault = bodyKind === "json" ? checkJsonBody(template) : null;
   const slackDefault = bodyKind === "default" && isSlackUrl(webhook.trim());
+  const resolves = alertKind === "threshold";
+  const resolvedProblem = resolves ? resolvedBodyProblem(bodyKind, resolvedBody, alertKind) : null;
 
   function pick(kind: AlertBodyKind) {
     onBodyKind(kind);
@@ -75,11 +88,13 @@ export function AlertBodyField({
 
   function insert(name: string) {
     const token = `{{${name}}}`;
-    const el = area.current;
-    const at = el ? el.selectionStart : template.length;
-    const end = el ? el.selectionEnd : template.length;
-    const next = template.slice(0, at) + token + template.slice(end);
-    onTemplate(next);
+    const resolved = resolves && target.current === "resolved";
+    const el = resolved ? resolvedArea.current : area.current;
+    const text = resolved ? resolvedBody : template;
+    const at = el ? el.selectionStart : text.length;
+    const end = el ? el.selectionEnd : text.length;
+    const next = text.slice(0, at) + token + text.slice(end);
+    (resolved ? onResolvedBody : onTemplate)(next);
     requestAnimationFrame(() => {
       if (el) {
         el.focus();
@@ -128,14 +143,24 @@ export function AlertBodyField({
           ) : null}
         </span>
       </DialogField>
+      {bodyKind === "default" && resolves ? (
+        <p className="text-[12px] text-muted-foreground">
+          Sends <span className="font-mono">state</span> as open, reminder or resolved, with{" "}
+          <span className="font-mono">opened_at</span> and <span className="font-mono">resolved_at</span>.
+        </p>
+      ) : null}
       {bodyKind !== "default" ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_200px] gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_240px] gap-4">
           <div className="flex min-w-0 flex-col gap-2">
+            {resolves ? <span className="text-[12px] font-semibold">When it opens, and each reminder</span> : null}
             <textarea
               ref={area}
               aria-label="Body"
               aria-invalid={problem ? true : undefined}
               value={template}
+              onFocus={() => {
+                target.current = "body";
+              }}
               onChange={(e) => onTemplate(e.target.value)}
               spellCheck={false}
               className={`h-[150px] resize-none rounded-[6.4px] border bg-background px-2.5 py-2 font-mono text-[12px] leading-[18px] outline-none ${
@@ -160,6 +185,40 @@ export function AlertBodyField({
                 )}
               </p>
             ) : null}
+            {resolves ? (
+              // 18t / 18u: the resolved call's own body, empty until written.
+              <>
+                <span className="pt-1.5 text-[12px] font-semibold">When it resolves</span>
+                <textarea
+                  ref={resolvedArea}
+                  aria-label="Resolved body"
+                  aria-invalid={resolvedProblem ? true : undefined}
+                  value={resolvedBody}
+                  onFocus={() => {
+                    target.current = "resolved";
+                  }}
+                  onChange={(e) => onResolvedBody(e.target.value)}
+                  spellCheck={false}
+                  className={`resize-none rounded-[6.4px] border px-2.5 py-2 font-mono text-[12px] leading-[18px] outline-none ${
+                    resolvedProblem
+                      ? "h-[150px] border-red-400 bg-background"
+                      : resolvedBody.trim()
+                        ? "h-[150px] border-white/15 bg-background"
+                        : "h-[96px] border-dashed border-white/[0.18] bg-transparent"
+                  }`}
+                />
+                {resolvedProblem ? (
+                  <p role="alert" className="flex gap-1.5 text-[12px] leading-[18px] text-red-300">
+                    <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{resolvedProblem[0]!.toUpperCase() + resolvedProblem.slice(1)}.</span>
+                  </p>
+                ) : (
+                  <span className="text-[12px] text-muted-foreground">
+                    {resolvedBody.trim() ? "Sent once, when it resolves." : "Empty: no resolved call is sent."}
+                  </span>
+                )}
+              </>
+            ) : null}
           </div>
           <div className="flex flex-col gap-px">
             <span className="pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-muted-foreground">
@@ -174,6 +233,9 @@ export function AlertBodyField({
               >
                 <span className="font-mono text-[11.5px] text-violet-300">{`{{${f.name}}}`}</span>
                 <span className="text-[11px] text-muted-foreground">{f.about}</span>
+                {f.isNew ? (
+                  <span className="rounded-[3px] border border-plate/45 px-1 text-[10px] text-plate">new</span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -212,7 +274,7 @@ export function AlertBodyField({
       ) : null}
       <TestCall
         alertKind={alertKind}
-        disabled={problem !== null}
+        disabled={problem !== null || resolvedProblem !== null}
         testDraft={testDraft}
       />
     </>
@@ -294,8 +356,18 @@ function TestCall({
                 {result.status_text ? ` ${result.status_text}` : ""}
               </b>{" "}
               in {result.ms} ms · {clock(result.at)}
-              {result.ok ? "" : " · the alert would not have paged"}
+              {result.ok ? "" : " · it would not have paged"}
             </span>
+            {result.resolved ? (
+              <span className={result.resolved.ok ? "text-green-300" : "text-red-300"}>
+                · then resolved{" "}
+                <b className="font-mono">
+                  {result.resolved.status ?? "No reply"}
+                  {result.resolved.status_text ? ` ${result.resolved.status_text}` : ""}
+                </b>{" "}
+                in {result.resolved.ms} ms
+              </span>
+            ) : null}
           </span>
         ) : error ? (
           <span role="status" className="text-[12px] text-red-300">
@@ -305,7 +377,7 @@ function TestCall({
           <span className="text-[11.5px] text-muted-foreground">
             {alertKind === "first_seen"
               ? "Sends this body now, filled in from the last mark it watched."
-              : "Sends this body to the webhook now, filled in from the last evaluation."}
+              : "Sends the open body now; with a resolved body, then that one too."}
           </span>
         )}
       </div>

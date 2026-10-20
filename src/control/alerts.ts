@@ -1,5 +1,7 @@
+import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import { nextDelivery, nextEvalAttempt } from "../alerts/delivery";
+import { closeByEdit, forgetMonitor } from "../alerts/monitor-store";
 import {
   parseSilenceFor,
   silencedUntilFrom,
@@ -12,11 +14,21 @@ import { publicUrl } from "../shared/public-url";
 import {
   alertBodyKinds,
   alertBodyProblem,
+  resolvedBodyProblem,
   type AlertBodyKind,
 } from "../shared/alert-body";
+import {
+  defaultRemind,
+  parseRemind,
+  sourceOfKind,
+  type MonitorResult,
+  type MonitorSource,
+  type MonitorState,
+  type RemindId,
+} from "../shared/monitor";
 
 const RULE_COLS =
-  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template";
+  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at";
 
 /** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
 export const alertKinds = ["threshold", "first_seen"] as const;
@@ -54,12 +66,25 @@ export type AlertRule = {
   consecutive_failures: number;
   silenced_until: number | null;
   created_at: number;
+  /** As a monitor (#175): where its results come from, ok or open, and how often it reminds. */
+  source: MonitorSource;
+  state: MonitorState;
+  remind_every: RemindId;
+  /** A text or JSON body's resolved call; without one it sends no resolved call. */
+  resolved_body: string | null;
+  last_result: MonitorResult | null;
+  last_value: number | null;
+  last_result_at: number | null;
 };
 
-type RuleRow = Omit<AlertRule, "kind" | "last_mark" | "body_kind"> & {
+type RuleRow = Omit<AlertRule, "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result"> & {
   kind: string | null;
   last_mark: string | null;
   body_kind: string | null;
+  source: string | null;
+  state: string | null;
+  remind_every: string | null;
+  last_result: string | null;
 };
 
 function parseBodyKind(value: unknown): AlertBodyKind | null {
@@ -72,8 +97,10 @@ function parseBodyKind(value: unknown): AlertBodyKind | null {
 export function readBody(
   rec: Record<string, unknown>,
   kind: AlertKind,
-  existing: { body_kind: AlertBodyKind; body_template: string | null } | null,
-): { body_kind: AlertBodyKind; body_template: string | null } | { error: string } {
+  existing: { body_kind: AlertBodyKind; body_template: string | null; resolved_body?: string | null } | null,
+):
+  | { body_kind: AlertBodyKind; body_template: string | null; resolved_body: string | null }
+  | { error: string } {
   const bodyKind =
     rec.body_kind === undefined ? (existing?.body_kind ?? "default") : parseBodyKind(rec.body_kind);
   if (!bodyKind) {
@@ -89,8 +116,30 @@ export function readBody(
   if (problem) {
     return { error: problem };
   }
-  // A default body keeps the template, so switching back to Text or JSON finds it.
-  return { body_kind: bodyKind, body_template: template };
+  const resolvedRaw =
+    rec.resolved_body === undefined
+      ? (existing?.resolved_body ?? null)
+      : typeof rec.resolved_body === "string"
+        ? rec.resolved_body
+        : null;
+  const resolved = resolvedRaw && resolvedRaw.trim() ? resolvedRaw : null;
+  const resolvedProblem = resolvedBodyProblem(bodyKind, resolved ?? "", kind);
+  if (resolvedProblem) {
+    return { error: resolvedProblem };
+  }
+  // A default body keeps the templates, so switching back to Text or JSON finds them.
+  return { body_kind: bodyKind, body_template: template, resolved_body: resolved };
+}
+
+/** `remind_every` of a create or update: off, window, 1h, 4h or 24h. */
+export function readRemind(
+  rec: Record<string, unknown>,
+  existing: { remind_every: RemindId } | null,
+): RemindId | { error: string } {
+  if (rec.remind_every === undefined) {
+    return existing?.remind_every ?? defaultRemind;
+  }
+  return parseRemind(rec.remind_every) ?? { error: "remind_every must be off, window, 1h, 4h or 24h" };
 }
 
 function parseLastMark(raw: string | null): AlertLastMark | null {
@@ -112,15 +161,26 @@ export function parseAlertKind(value: unknown): AlertKind | null {
 }
 
 function mapRule(row: RuleRow): AlertRule {
+  const kind = parseAlertKind(row.kind) ?? "threshold";
   return {
     ...row,
-    kind: parseAlertKind(row.kind) ?? "threshold",
+    kind,
     last_mark: parseLastMark(row.last_mark),
     body_kind: parseBodyKind(row.body_kind) ?? "default",
     body_template: row.body_template ?? null,
     threshold: Number(row.threshold),
     consecutive_failures: row.consecutive_failures ?? 0,
     silenced_until: row.silenced_until ?? null,
+    source: sourceOfKind(kind),
+    state: row.state === "open" ? "open" : "ok",
+    remind_every: parseRemind(row.remind_every) ?? "window",
+    resolved_body: row.resolved_body ?? null,
+    last_result:
+      row.last_result === "ok" || row.last_result === "warn" || row.last_result === "fail"
+        ? row.last_result
+        : null,
+    last_value: row.last_value ?? null,
+    last_result_at: row.last_result_at ?? null,
   };
 }
 
@@ -171,17 +231,17 @@ export function recordLastMark(ruleId: string, mark: AlertLastMark): void {
     .run(JSON.stringify(mark), ruleId);
 }
 
-export function allAlertRules(): AlertRule[] {
+export function allAlertRules(db: Database = getDb()): AlertRule[] {
   return (
-    getDb()
+    db
       .query(`SELECT ${RULE_COLS} FROM alert_rules ORDER BY created_at DESC`)
       .all() as RuleRow[]
   ).map(mapRule);
 }
 
-export function enabledAlertRules(): AlertRule[] {
+export function enabledAlertRules(db: Database = getDb()): AlertRule[] {
   return (
-    getDb()
+    db
       .query(
         `SELECT ${RULE_COLS} FROM alert_rules WHERE enabled = 1 AND saved_search_id IS NOT NULL`,
       )
@@ -192,12 +252,13 @@ export function enabledAlertRules(): AlertRule[] {
 export function recordWebhookAttempt(
   id: string,
   attempt: { at: number; ok: boolean; status: string; error: string | null },
+  db: Database = getDb(),
 ): void {
-  const existing = getAlert(id);
+  const existing = getAlert(id, db);
   if (!existing) {
     return;
   }
-  writeDelivery(id, nextDelivery(existing, attempt));
+  writeDelivery(id, nextDelivery(existing, attempt), db);
 }
 
 export function recordEvalAttempt(
@@ -207,12 +268,13 @@ export function recordEvalAttempt(
     status: "refused" | "error" | "ok";
     error: string | null;
   },
+  db: Database = getDb(),
 ): void {
-  const existing = getAlert(id);
+  const existing = getAlert(id, db);
   if (!existing) {
     return;
   }
-  writeDelivery(id, nextEvalAttempt(existing, stamp));
+  writeDelivery(id, nextEvalAttempt(existing, stamp), db);
 }
 
 function writeDelivery(
@@ -224,8 +286,9 @@ function writeDelivery(
     consecutive_failures: number;
     last_fired_at: number | null;
   },
+  db: Database,
 ): void {
-  getDb()
+  db
     .query(
       `UPDATE alert_rules SET
          last_attempt_at = ?,
@@ -252,8 +315,8 @@ export function countAlertsForSavedSearch(savedSearchId: string): number {
   return row.n;
 }
 
-export function getAlert(id: string): AlertRule | null {
-  const row = getDb()
+export function getAlert(id: string, db: Database = getDb()): AlertRule | null {
+  const row = db
     .query(`SELECT ${RULE_COLS} FROM alert_rules WHERE id = ?`)
     .get(id) as RuleRow | undefined;
   return row ? mapRule(row) : null;
@@ -287,85 +350,245 @@ export async function listAlertRules(c: Context): Promise<Response> {
   return c.json({ rules: allAlertRules(), link: publicUrl() !== null });
 }
 
+/** A monitor's fields, checked, as a create, an update or a replace gives them. */
+export type MonitorFields = {
+  name: string;
+  kind: AlertKind;
+  saved_search_id: string;
+  query: string;
+  webhook_url: string;
+  threshold: number;
+  body_kind: AlertBodyKind;
+  body_template: string | null;
+  resolved_body: string | null;
+  remind_every: RemindId;
+};
+
+type FieldsError = { error: string; status: 400 | 404 };
+
+/**
+ * Read a monitor's fields. With `existing` (an update), a field left out keeps its value; without
+ * it (a create, or a replace by name), a field left out takes its default.
+ */
+export function readMonitorFields(
+  rec: Record<string, unknown>,
+  existing: AlertRule | null,
+): MonitorFields | FieldsError {
+  const nameRaw = typeof rec.name === "string" ? rec.name.trim() : "";
+  const name = nameRaw.length > 0 ? nameRaw : (existing?.name ?? "");
+  if (name.length === 0) {
+    return { error: "name is required", status: 400 };
+  }
+  let kind: AlertKind | null = existing?.kind ?? "threshold";
+  if (rec.source !== undefined) {
+    kind = rec.source === "search" ? "threshold" : rec.source === "fingerprints" ? "first_seen" : null;
+    if (!kind) {
+      return { error: "source must be search or fingerprints", status: 400 };
+    }
+  }
+  if (rec.kind !== undefined) {
+    kind = parseAlertKind(rec.kind);
+    if (!kind) {
+      return { error: "kind must be threshold or first_seen", status: 400 };
+    }
+  }
+  let savedSearchId =
+    typeof rec.saved_search_id === "string" && rec.saved_search_id.length > 0
+      ? rec.saved_search_id
+      : (existing?.saved_search_id ?? "");
+  if (typeof rec.saved_search === "string" && rec.saved_search.trim() && !rec.saved_search_id) {
+    const named = savedByName(rec.saved_search.trim());
+    if ("error" in named) {
+      return named;
+    }
+    savedSearchId = named.id;
+  }
+  if (savedSearchId.length === 0) {
+    return { error: "saved_search_id is required", status: 400 };
+  }
+  const webhook =
+    rec.webhook_url === undefined && existing
+      ? (existing.webhook_url ?? "")
+      : parseWebhook(rec.webhook_url);
+  if (typeof webhook !== "string") {
+    return { error: webhook.error, status: 400 };
+  }
+  if (webhook.length === 0) {
+    return { error: "webhook_url must be http(s)", status: 400 };
+  }
+  const parsed =
+    rec.threshold === undefined && existing ? existing.threshold : parseThreshold(rec.threshold);
+  const threshold = typeof parsed === "number" ? kindThreshold(kind, parsed) : parsed;
+  if (typeof threshold !== "number") {
+    return { error: threshold.error, status: 400 };
+  }
+  const body = readBody(rec, kind, existing);
+  if ("error" in body) {
+    return { error: body.error, status: 400 };
+  }
+  const remind = readRemind(rec, existing);
+  if (typeof remind !== "string") {
+    return { error: remind.error, status: 400 };
+  }
+  const saved = getSaved(savedSearchId);
+  if (!saved) {
+    return { error: "Saved search not found", status: 404 };
+  }
+  if (saved.board) {
+    return { error: boardWatchRefuse(saved), status: 400 };
+  }
+  return {
+    name,
+    kind,
+    saved_search_id: savedSearchId,
+    query: saved.query,
+    webhook_url: webhook,
+    threshold,
+    ...body,
+    remind_every: remind,
+  };
+}
+
+function savedByName(name: string): { id: string } | FieldsError {
+  const rows = getDb().query("SELECT id FROM saved_searches WHERE name = ?").all(name) as Array<{ id: string }>;
+  if (rows.length === 0) {
+    return { error: `No saved search is named ${name}`, status: 404 };
+  }
+  if (rows.length > 1) {
+    return { error: `${rows.length} saved searches are named ${name}; give saved_search_id`, status: 400 };
+  }
+  return rows[0]!;
+}
+
+/** A new monitor: ok, with no stretches yet. */
+export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRule {
+  const id = crypto.randomUUID();
+  getDb()
+    .query(
+      `INSERT INTO alert_rules
+        (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
+         source, state, remind_every, resolved_body)
+       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?)`,
+    )
+    .run(
+      id,
+      fields.name,
+      fields.query,
+      fields.webhook_url,
+      fields.saved_search_id,
+      fields.threshold,
+      now,
+      fields.kind,
+      fields.body_kind,
+      fields.body_template,
+      sourceOfKind(fields.kind),
+      fields.remind_every,
+      fields.resolved_body,
+    );
+  return getAlert(id)!;
+}
+
+/**
+ * Write a monitor's fields over what it was. When what it reads changes (its search, its source,
+ * its threshold) while it is open, the stretch closes without a call.
+ */
+export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, now = Date.now()): void {
+  getDb()
+    .query(
+      `UPDATE alert_rules
+       SET name = ?, query = ?, webhook_url = ?, saved_search_id = ?, threshold = ?, kind = ?, body_kind = ?, body_template = ?,
+           source = ?, remind_every = ?, resolved_body = ?
+       WHERE id = ?`,
+    )
+    .run(
+      fields.name,
+      fields.query,
+      fields.webhook_url,
+      fields.saved_search_id,
+      fields.threshold,
+      fields.kind,
+      fields.body_kind,
+      fields.body_template,
+      sourceOfKind(fields.kind),
+      fields.remind_every,
+      fields.resolved_body,
+      existing.id,
+    );
+  const readsAnew =
+    fields.kind !== existing.kind ||
+    fields.saved_search_id !== existing.saved_search_id ||
+    fields.threshold !== existing.threshold;
+  if (readsAnew && existing.state === "open") {
+    closeByEdit(existing.id, now);
+  }
+  // What was sent was sent for that kind and that search.
+  if (fields.kind !== existing.kind || fields.saved_search_id !== existing.saved_search_id) {
+    forgetSentFingerprints(existing.id);
+    getDb().query("UPDATE alert_rules SET last_mark = NULL WHERE id = ?").run(existing.id);
+  }
+  if (fields.webhook_url !== (existing.webhook_url ?? "")) {
+    getDb()
+      .query(
+        `UPDATE alert_rules SET
+           last_attempt_at = NULL,
+           last_status = NULL,
+           last_error = NULL,
+           consecutive_failures = 0
+         WHERE id = ?`,
+      )
+      .run(existing.id);
+  }
+}
+
+/** Silence (`silence_for`, `silenced_until`) and pause (`enabled`): what an operator does to a monitor, not what it is. */
+export function applyMonitorHold(existing: AlertRule, rec: Record<string, unknown>, now = Date.now()): void {
+  let silencedUntil = existing.silenced_until;
+  const silenceFor = parseSilenceFor(rec.silence_for);
+  if (silenceFor) {
+    silencedUntil = silencedUntilFrom(now, silenceFor);
+  } else if (rec.silenced_until === null) {
+    silencedUntil = null;
+  } else if (typeof rec.silenced_until === "number" && Number.isFinite(rec.silenced_until)) {
+    silencedUntil = Math.floor(rec.silenced_until);
+  }
+  if (silencedUntil !== existing.silenced_until) {
+    getDb().query("UPDATE alert_rules SET silenced_until = ? WHERE id = ?").run(silencedUntil, existing.id);
+  }
+  if (typeof rec.enabled === "boolean" || rec.enabled === 0 || rec.enabled === 1) {
+    const enabled = rec.enabled === true || rec.enabled === 1 ? 1 : 0;
+    if (enabled !== existing.enabled) {
+      getDb().query("UPDATE alert_rules SET enabled = ? WHERE id = ?").run(enabled, existing.id);
+      // Paused while open: the stretch closes without a call.
+      if (enabled === 0 && existing.state === "open") {
+        closeByEdit(existing.id, now);
+      }
+    }
+  }
+}
+
+/** A monitor and everything kept for it. */
+export function removeMonitor(id: string): void {
+  getDb().query("DELETE FROM alert_rules WHERE id = ?").run(id);
+  forgetSentFingerprints(id);
+  forgetMonitor(id);
+}
+
 export async function createAlertRule(c: Context): Promise<Response> {
   const rec = await readJsonObject(c);
   if (rec instanceof Response) {
     return rec;
   }
-  const name = typeof rec.name === "string" ? rec.name.trim() : "";
-  const savedSearchId =
-    typeof rec.saved_search_id === "string" ? rec.saved_search_id : "";
-  const webhook = parseWebhook(rec.webhook_url);
-  const kind = rec.kind === undefined ? "threshold" : parseAlertKind(rec.kind);
-  if (!kind) {
-    return c.json({ error: "kind must be threshold or first_seen" }, 400);
-  }
-  const parsed = parseThreshold(rec.threshold);
-  const threshold = typeof parsed === "number" ? kindThreshold(kind, parsed) : parsed;
-  if (name.length === 0) {
+  if (typeof rec.name !== "string" || rec.name.trim().length === 0) {
     return c.json({ error: "name is required" }, 400);
   }
-  if (savedSearchId.length === 0) {
+  if (typeof rec.saved_search_id !== "string" || rec.saved_search_id.length === 0) {
     return c.json({ error: "saved_search_id is required" }, 400);
   }
-  if (typeof webhook !== "string") {
-    return c.json({ error: webhook.error }, 400);
+  const fields = readMonitorFields(rec, null);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
   }
-  if (typeof threshold !== "number") {
-    return c.json({ error: threshold.error }, 400);
-  }
-  const body = readBody(rec, kind, null);
-  if ("error" in body) {
-    return c.json({ error: body.error }, 400);
-  }
-  const saved = getSaved(savedSearchId);
-  if (!saved) {
-    return c.json({ error: "Saved search not found" }, 404);
-  }
-  if (saved.board) {
-    return c.json({ error: boardWatchRefuse(saved) }, 400);
-  }
-  const rule: AlertRule = {
-    id: crypto.randomUUID(),
-    name,
-    kind,
-    last_mark: null,
-    body_kind: body.body_kind,
-    body_template: body.body_template,
-    query: saved.query,
-    webhook_url: webhook,
-    saved_search_id: savedSearchId,
-    threshold,
-    enabled: 1,
-    last_fired_at: null,
-    last_attempt_at: null,
-    last_status: null,
-    last_error: null,
-    consecutive_failures: 0,
-    silenced_until: null,
-    created_at: Date.now(),
-  };
-  getDb()
-    .query(
-      `INSERT INTO alert_rules
-        (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      rule.id,
-      rule.name,
-      rule.query,
-      rule.webhook_url,
-      rule.saved_search_id,
-      rule.threshold,
-      rule.enabled,
-      rule.last_fired_at,
-      rule.created_at,
-      rule.kind,
-      rule.body_kind,
-      rule.body_template,
-    );
-  return c.json(rule, 201);
+  return c.json(insertMonitor(fields), 201);
 }
 
 export async function updateAlertRule(c: Context): Promise<Response> {
@@ -381,84 +604,14 @@ export async function updateAlertRule(c: Context): Promise<Response> {
   if (rec instanceof Response) {
     return rec;
   }
-  const nameRaw = typeof rec.name === "string" ? rec.name.trim() : "";
-  const name = nameRaw.length > 0 ? nameRaw : existing.name;
-  const savedSearchId =
-    typeof rec.saved_search_id === "string" && rec.saved_search_id.length > 0
-      ? rec.saved_search_id
-      : (existing.saved_search_id ?? "");
-  if (savedSearchId.length === 0) {
-    return c.json({ error: "saved_search_id is required" }, 400);
+  const fields = readMonitorFields(rec, existing);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
   }
-  const webhook =
-    rec.webhook_url === undefined
-      ? (existing.webhook_url ?? "")
-      : parseWebhook(rec.webhook_url);
-  if (typeof webhook !== "string") {
-    return c.json({ error: webhook.error }, 400);
-  }
-  if (webhook.length === 0) {
-    return c.json({ error: "webhook_url must be http(s)" }, 400);
-  }
-  const kind = rec.kind === undefined ? existing.kind : parseAlertKind(rec.kind);
-  if (!kind) {
-    return c.json({ error: "kind must be threshold or first_seen" }, 400);
-  }
-  const parsed =
-    rec.threshold === undefined
-      ? existing.threshold
-      : parseThreshold(rec.threshold);
-  const threshold = typeof parsed === "number" ? kindThreshold(kind, parsed) : parsed;
-  if (typeof threshold !== "number") {
-    return c.json({ error: threshold.error }, 400);
-  }
-  const body = readBody(rec, kind, existing);
-  if ("error" in body) {
-    return c.json({ error: body.error }, 400);
-  }
-  const saved = getSaved(savedSearchId);
-  if (!saved) {
-    return c.json({ error: "Saved search not found" }, 404);
-  }
-  if (saved.board) {
-    return c.json({ error: boardWatchRefuse(saved) }, 400);
-  }
-  const webhookChanged = webhook !== (existing.webhook_url ?? "");
-  let silencedUntil = existing.silenced_until;
-  const silenceFor = parseSilenceFor(rec.silence_for);
-  if (silenceFor) {
-    silencedUntil = silencedUntilFrom(Date.now(), silenceFor);
-  } else if (rec.silenced_until === null) {
-    silencedUntil = null;
-  } else if (typeof rec.silenced_until === "number" && Number.isFinite(rec.silenced_until)) {
-    silencedUntil = Math.floor(rec.silenced_until);
-  }
-  getDb()
-    .query(
-      `UPDATE alert_rules
-       SET name = ?, query = ?, webhook_url = ?, saved_search_id = ?, threshold = ?, silenced_until = ?, kind = ?, body_kind = ?, body_template = ?
-       WHERE id = ?`,
-    )
-    .run(name, saved.query, webhook, savedSearchId, threshold, silencedUntil, kind, body.body_kind, body.body_template, id);
-  // What was sent was sent for that kind and that search.
-  if (kind !== existing.kind || savedSearchId !== existing.saved_search_id) {
-    forgetSentFingerprints(id);
-    getDb().query("UPDATE alert_rules SET last_mark = NULL WHERE id = ?").run(id);
-  }
-  if (webhookChanged) {
-    getDb()
-      .query(
-        `UPDATE alert_rules SET
-           last_attempt_at = NULL,
-           last_status = NULL,
-           last_error = NULL,
-           consecutive_failures = 0
-         WHERE id = ?`,
-      )
-      .run(id);
-  }
-  const updated = getAlert(id);
-  return c.json(updated);
+  const now = Date.now();
+  applyMonitorFields(existing, fields, now);
+  applyMonitorHold(getAlert(id)!, rec, now);
+  return c.json(getAlert(id));
 }
 
 export async function deleteAlertRule(c: Context): Promise<Response> {
@@ -466,13 +619,9 @@ export async function deleteAlertRule(c: Context): Promise<Response> {
   if (!id) {
     return c.json({ error: "id required" }, 400);
   }
-  const existing = getDb()
-    .query("SELECT id FROM alert_rules WHERE id = ?")
-    .get(id) as { id: string } | undefined;
-  if (!existing) {
+  if (!getAlert(id)) {
     return c.json({ error: "Alert rule not found" }, 404);
   }
-  getDb().query("DELETE FROM alert_rules WHERE id = ?").run(id);
-  forgetSentFingerprints(id);
+  removeMonitor(id);
   return c.json({ ok: true });
 }

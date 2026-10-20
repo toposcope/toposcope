@@ -18,6 +18,8 @@ import { firstSeenPayload, firstSeenWatchMs, watchedMarks } from "./first-seen";
 import {
   alertLink,
   alertWebhookBody,
+  readingMessage,
+  renderResolved,
   renderWebhook,
   thresholdFillValues,
   type WebhookPayload,
@@ -38,6 +40,8 @@ export type TestCallResult = {
   reply: string;
   sent: string;
   content_type: string;
+  /** With a resolved body, it is sent after the open one (18t). */
+  resolved?: Omit<TestCallResult, "resolved"> | null;
 };
 
 /** Post one call and say what came back: status, time, the reply's first 200 characters. */
@@ -125,6 +129,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
   const now = Date.now();
   const firedAt = new Date(now).toISOString();
   let payload: WebhookPayload;
+  let resolvedPayload: WebhookPayload | null = null;
   if (kind === "first_seen") {
     const compiled = compileQuery(saved.query ?? "");
     if (compiled.faults.length > 0) {
@@ -170,6 +175,27 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
       base && from && to
         ? alertLink(base, { savedId: saved.id, query: saved.query, agg: saved.agg, from, to })
         : null;
+    // Sent as the call that opens it would be.
+    const call = { state: "open" as const, openedAt: firedAt, resolvedAt: null, duration: "0s" };
+    const message = readingMessage(series.expr, series.value, threshold);
+    // A resolved body of its own is tried too, as the call that resolves it would read.
+    if (body.body_kind !== "default" && body.resolved_body) {
+      resolvedPayload = renderResolved(
+        rule,
+        {},
+        thresholdFillValues({
+          name,
+          agg: series.expr,
+          value: series.value,
+          threshold,
+          query: saved.query,
+          firedAt,
+          link,
+          call: { state: "resolved", openedAt: firedAt, resolvedAt: firedAt, duration: "0s" },
+          message,
+        }),
+      );
+    }
     payload = renderWebhook(
       rule,
       alertWebhookBody({
@@ -181,6 +207,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
         query: saved.query,
         firedAt,
         link,
+        call,
       }),
       thresholdFillValues({
         name,
@@ -190,8 +217,12 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
         query: saved.query,
         firedAt,
         link,
+        call,
+        message,
       }),
     );
   }
-  return c.json(await sendTestCall(webhook, payload));
+  const opened = await sendTestCall(webhook, payload);
+  const resolved = resolvedPayload ? await sendTestCall(webhook, resolvedPayload) : null;
+  return c.json({ ...opened, resolved });
 }

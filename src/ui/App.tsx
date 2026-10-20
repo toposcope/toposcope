@@ -1,8 +1,11 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Copy, House, KeyRound, Menu, Settings, Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { AlertRuleDialog, type AlertDraft } from "@/components/alert-rule-dialog";
-import { AlertsView, type AlertSeriesView } from "@/components/alerts-view";
+import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
+import { NewMonitorDialog } from "@/components/new-monitor-dialog";
+import { WatchView } from "@/components/watch-view";
+import { MonitorRail } from "@/components/monitor-rail";
+import type { MonitorBand } from "@/components/monitor-band";
 import { FieldsView } from "@/components/fields-view";
 import { LinksView } from "@/components/links-view";
 import { SpanDetail } from "@/components/span-detail";
@@ -18,6 +21,7 @@ import { OperatorSidebar } from "@/components/operator-sidebar";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
 import { loadSavedCounts } from "./saved-counts";
+import { monitorHuntRange, watchCounts, type WatchFilter, type WatchRange } from "./watch";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
@@ -39,8 +43,10 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type {
-  AlertKind,
   AlertRule,
+  MonitorStretch,
+  MonitorView,
+  MonitorsResponse,
   FacetValue,
   Facets,
   HistogramBucket,
@@ -678,8 +684,19 @@ export function App() {
     window.location.assign("/?signed_out=1");
   }
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [alertSeries, setAlertSeries] = useState<Record<string, AlertSeriesView>>({});
-  const [alerts, setAlerts] = useState<AlertRule[]>([]);
+  const [alerts, setAlerts] = useState<MonitorView[]>([]);
+  /** Watch (#175): every monitor, and its stretches on Watch's clock. */
+  const [monitors, setMonitors] = useState<MonitorsResponse | null>(null);
+  const [watchRange, setWatchRange] = useState<WatchRange>("24h");
+  const watchRangeRef = useRef<WatchRange>("24h");
+  const [watchFilter, setWatchFilter] = useState<WatchFilter>("all");
+  const [watchMarkList, setWatchMarkList] = useState<ChangeMark[]>([]);
+  /** 18p: a new monitor chooses its source first. */
+  const [newMonitor, setNewMonitor] = useState<{ savedSearchId: string; lockSearch: boolean } | null>(null);
+  /** The monitor read beside a Search tab (18i), by tab. */
+  const [monitorRail, setMonitorRail] = useState<Record<number, string>>({});
+  /** Stretches of the monitors on this tab's saved search, on its clock (18o). */
+  const [huntStretches, setHuntStretches] = useState<MonitorStretch[]>([]);
   const [alertsCanLink, setAlertsCanLink] = useState(false);
   const [fields, setFields] = useState<FieldsResponse | null>(null);
   const [fieldLinks, setFieldLinks] = useState<Record<string, string>>({});
@@ -735,17 +752,27 @@ export function App() {
   attrFacetsRef.current = attrFacets;
 
   const loadAlerts = useCallback(async () => {
-    const res = await fetch("/api/alert-rules");
+    const res = await fetch(`/api/monitors?range=${watchRangeRef.current}`);
     if (res.status === 401) {
       setUnauthorized(true);
       throw new Error("Unauthorized. Sign in again.");
     }
     if (!res.ok) {
-      throw new Error(`Alert rules failed (${res.status})`);
+      throw new Error(`Monitors failed (${res.status})`);
     }
-    const json = (await res.json()) as { rules: AlertRule[]; link?: boolean };
-    setAlerts(json.rules);
+    const json = (await res.json()) as MonitorsResponse;
+    setMonitors(json);
+    setAlerts(json.monitors);
     setAlertsCanLink(Boolean(json.link));
+  }, []);
+
+  const loadWatchMarks = useCallback(async () => {
+    const res = await fetch(`/api/marks?range=${watchRangeRef.current}`);
+    if (!res.ok) {
+      return;
+    }
+    const body = (await res.json()) as { marks?: ChangeMark[] };
+    setWatchMarkList(Array.isArray(body.marks) ? body.marks : []);
   }, []);
 
   const fieldsQuery = useCallback(() => {
@@ -904,9 +931,8 @@ export function App() {
   }
 
   const loadCounts = useCallback(async (searches: SavedSearch[]) => {
-    const { counts: next, series: nextSeries } = await loadSavedCounts(searches);
+    const { counts: next } = await loadSavedCounts(searches);
     setCounts(next);
-    setAlertSeries(nextSeries);
   }, []);
 
   const loadSaved = useCallback(async () => {
@@ -1926,19 +1952,21 @@ export function App() {
     return () => clearInterval(id);
   }, [fieldsBusy]);
 
+  // Watch reads every 15s; elsewhere the header's open count every 30s.
   useEffect(() => {
-    if (view !== "alerts") {
-      return;
-    }
-    void loadAlerts().catch(() => undefined);
-    if (saved.length > 0) {
-      void loadCounts(saved);
+    const onWatch = view === "watch";
+    if (onWatch) {
+      void loadAlerts().catch(() => undefined);
+      void loadWatchMarks().catch(() => undefined);
     }
     const id = setInterval(() => {
       void loadAlerts().catch(() => undefined);
-    }, 15_000);
+      if (onWatch) {
+        void loadWatchMarks().catch(() => undefined);
+      }
+    }, onWatch ? 15_000 : 30_000);
     return () => clearInterval(id);
-  }, [view, loadAlerts, loadCounts, saved]);
+  }, [view, watchRange, loadAlerts, loadWatchMarks]);
 
   useEffect(() => {
     if (view !== "fields") {
@@ -2163,7 +2191,7 @@ export function App() {
     return () => clearTimeout(timer);
   }, [attrPrefixes, windowParams, wsKind]);
 
-  const dialogOpen = settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null;
+  const dialogOpen = settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2346,15 +2374,7 @@ export function App() {
     toast.message(`${json.count} match${json.count === 1 ? "" : "es"}`);
   }
 
-  async function createAlert(input: {
-    name: string;
-    kind: AlertKind;
-    saved_search_id: string;
-    threshold: number;
-    webhook_url: string;
-    body_kind?: "default" | "text" | "json";
-    body_template?: string;
-  }) {
+  async function createAlert(input: MonitorInput) {
     const res = await fetch("/api/alert-rules", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -2362,26 +2382,20 @@ export function App() {
     });
     if (!res.ok) {
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(json?.error ?? `Create alert failed (${res.status})`);
-      throw new Error("create alert failed");
+      toast.error(json?.error ?? `Create monitor failed (${res.status})`);
+      throw new Error("create monitor failed");
     }
-    toast.success("Alert created");
+    toast.success("Monitor created");
     await loadAlerts();
   }
 
   async function updateAlert(
     id: string,
-    input: {
-      name: string;
-      kind?: AlertKind;
-      saved_search_id: string;
-      threshold: number;
-      webhook_url: string;
-      body_kind?: "default" | "text" | "json";
-      body_template?: string;
-      silence_for?: "1h" | "4h" | "24h";
-      silenced_until?: number | null;
-    },
+    input:
+      | MonitorInput
+      | { silence_for: "1h" | "4h" | "24h" }
+      | { silenced_until: null }
+      | { enabled: boolean },
   ) {
     const res = await fetch(`/api/alert-rules/${id}`, {
       method: "PUT",
@@ -2390,20 +2404,20 @@ export function App() {
     });
     if (!res.ok) {
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(json?.error ?? `Update alert failed (${res.status})`);
-      throw new Error("update alert failed");
+      toast.error(json?.error ?? `Update monitor failed (${res.status})`);
+      throw new Error("update monitor failed");
     }
-    toast.success("Alert updated");
+    toast.success("silence_for" in input ? "Monitor silenced" : "enabled" in input ? (input.enabled ? "Monitor resumed" : "Monitor paused") : "Monitor updated");
     await loadAlerts();
   }
 
   async function deleteAlert(id: string) {
     const res = await fetch(`/api/alert-rules/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast.error(`Delete alert failed (${res.status})`);
-      throw new Error("delete alert failed");
+      toast.error(`Delete monitor failed (${res.status})`);
+      throw new Error("delete monitor failed");
     }
-    toast.success("Alert deleted");
+    toast.success("Monitor deleted");
     await loadAlerts();
   }
 
@@ -2411,17 +2425,31 @@ export function App() {
     rule: AlertRule,
     forId: "1h" | "4h" | "24h" | null,
   ) {
-    if (!rule.saved_search_id || !rule.webhook_url) {
-      toast.error("Alert is missing a saved search or webhook");
+    await updateAlert(rule.id, forId ? { silence_for: forId } : { silenced_until: null });
+  }
+
+  /** A monitor opened as a hunt (18i): its search in a new tab, with the monitor beside it. */
+  function openMonitor(monitor: MonitorView, stretch?: MonitorStretch) {
+    const item = monitor.saved_search_id ? saved.find((row) => row.id === monitor.saved_search_id) : undefined;
+    if (!item) {
+      toast.error("This monitor's saved search is gone");
       return;
     }
-    await updateAlert(rule.id, {
-      name: rule.name,
-      saved_search_id: rule.saved_search_id,
-      threshold: rule.threshold,
-      webhook_url: rule.webhook_url,
-      ...(forId ? { silence_for: forId } : { silenced_until: null }),
-    });
+    setSheetOpen(false);
+    setView("search");
+    const id = wsSeq + 1;
+    addWorkspace({ ...snapFromSaved(item, {}), ...monitorHuntWindow(stretch ?? monitor.open) }, true);
+    setMonitorRail((prev) => ({ ...prev, [id]: monitor.id }));
+  }
+
+  function monitorHuntWindow(stretch?: MonitorStretch | null): Partial<WorkspaceSnap> {
+    if (!stretch) {
+      return {};
+    }
+    const pick = monitorHuntRange(Date.now(), stretch);
+    return pick.range === "custom"
+      ? { range: "custom", from: toLocalInput(new Date(pick.fromMs)), to: toLocalInput(new Date(pick.toMs)) }
+      : { range: pick.range };
   }
 
   function snapFromSaved(
@@ -3461,7 +3489,7 @@ export function App() {
     if (!id) {
       return;
     }
-    setAlertDraft({ mode: "create", savedSearchId: id, lockSearch: false });
+    setNewMonitor({ savedSearchId: id, lockSearch: false });
   }
 
   const emptyIngest = isEmptyIngest({
@@ -3502,6 +3530,44 @@ export function App() {
         ? clockFromMs + spanMs
         : Date.parse(isoFromLocal(to) ?? ""),
   });
+  // Monitors on this tab's saved search: their stretches on this clock (#175, 18o).
+  const bandMonitors = savedId ? alerts.filter((m) => m.saved_search_id === savedId) : [];
+  const bandKey = bandMonitors.map((m) => m.id).join(",");
+  useEffect(() => {
+    if (view !== "search" || !bandKey || !Number.isFinite(windowFromMs) || !Number.isFinite(windowToMs)) {
+      setHuntStretches((prev) => (prev.length > 0 ? [] : prev));
+      return;
+    }
+    const ac = new AbortController();
+    const params = new URLSearchParams({
+      from: new Date(windowFromMs).toISOString(),
+      to: new Date(Math.max(windowToMs, Date.now())).toISOString(),
+    });
+    void fetch(`/api/monitors?${params.toString()}`, { signal: ac.signal })
+      .then((res) => (res.ok ? (res.json() as Promise<MonitorsResponse>) : null))
+      .then((json) => {
+        if (json && !ac.signal.aborted) {
+          setHuntStretches(json.stretches);
+        }
+      })
+      .catch(() => undefined);
+    return () => ac.abort();
+    // The window moves every Live poll; the stretches follow the clock and the 30s monitor read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, bandKey, range, from, to, alerts]);
+  const monitorBand: MonitorBand | null =
+    bandMonitors.length > 0
+      ? {
+          items: huntStretches.flatMap((stretch) => {
+            const monitor = bandMonitors.find((m) => m.id === stretch.monitor_id);
+            return monitor ? [{ stretch, monitor }] : [];
+          }),
+          nowMs: Date.now(),
+          onOpenMonitor: (monitor) => setMonitorRail((prev) => ({ ...prev, [wsId]: monitor.id })),
+          onSilence: (monitor, forId) => void silenceAlert(monitor, forId),
+        }
+      : null;
+  const railMonitor = monitorRail[wsId] ? alerts.find((m) => m.id === monitorRail[wsId]) : undefined;
   const barInterval = displayedHistogramInterval(spanMs, step, chart);
   const searchSlow = searching && searchElapsedMs >= SEARCH_SLOW_AFTER_MS;
   const compiled = compileQuery(q);
@@ -3627,15 +3693,7 @@ export function App() {
     }
     elsewhere[id] = (elsewhere[id] ?? 0) + 1;
   }
-  const anyFiring = alerts.some((rule) => {
-    if (!rule.saved_search_id) {
-      return false;
-    }
-    const point = alertSeries[rule.saved_search_id];
-    return (
-      point !== undefined && !point.refused && point.value >= rule.threshold
-    );
-  });
+  const watching = watchCounts(alerts);
 
   const cutWindows =
     cut && Number.isFinite(windowFromMs) && spanMs > 0
@@ -3685,6 +3743,7 @@ export function App() {
         onFingerprints: openFingerprints,
         onCompare: isSurr ? undefined : openCompare,
         compareMarkId: compare?.mark.id ?? null,
+        monitors: monitorBand,
         cut: washWindows
           ? {
               markId: washWindows.markId,
@@ -3729,7 +3788,7 @@ export function App() {
         if (item.board) {
           return;
         }
-        setAlertDraft({ mode: "create", savedSearchId: item.id, lockSearch: true });
+        setNewMonitor({ savedSearchId: item.id, lockSearch: true });
       }}
       onDeleteSaved={(id) => void onDelete(id)}
       toposcope={
@@ -3822,13 +3881,10 @@ export function App() {
           <Button
             type="button"
             size="sm"
-            variant={view === "alerts" ? "secondary" : "ghost"}
-            onClick={() => setView("alerts")}
+            variant={view === "watch" ? "secondary" : "ghost"}
+            onClick={() => setView("watch")}
           >
-            Alerts
-            {anyFiring ? (
-              <span className="size-1.5 rounded-full bg-destructive" />
-            ) : null}
+            Watch
           </Button>
           <Button
             type="button"
@@ -3848,6 +3904,31 @@ export function App() {
           </Button>
         </nav>
         <div className="ml-auto flex items-center gap-1">
+          {watching.open > 0 || watching.warn > 0 ? (
+            // 18c: what is open, in the header on every view.
+            <button
+              type="button"
+              className={cn(
+                "inline-flex h-[26px] items-center gap-1.5 rounded-md border px-3 text-[12px]",
+                watching.open > 0 ? "border-red-500/50" : "border-white/15",
+              )}
+              title="Open Watch"
+              onClick={() => setView("watch")}
+            >
+              {watching.open > 0 ? (
+                <>
+                  <span className="size-[7px] rounded-full bg-red-500" />
+                  {watching.open} open
+                </>
+              ) : null}
+              {watching.warn > 0 ? (
+                <span className="text-muted-foreground">
+                  {watching.open > 0 ? "· " : ""}
+                  {watching.warn} warn
+                </span>
+              ) : null}
+            </button>
+          ) : null}
           <Button type="button" size="icon" variant="outline" onClick={() => setTokensOpen(true)}>
             <KeyRound />
           </Button>
@@ -3856,15 +3937,20 @@ export function App() {
           </Button>
         </div>
       </header>
-      {view === "alerts" ? (
-        <AlertsView
-          alerts={alerts}
-          saved={saved}
-          series={alertSeries}
-          onOpenSearch={openSavedTab}
-          onEdit={(rule) => setAlertDraft({ mode: "edit", rule })}
-          onCreate={openNewAlert}
-          onSilence={(rule, forId) => void silenceAlert(rule, forId)}
+      {view === "watch" ? (
+        <WatchView
+          data={monitors}
+          canCreate={saved.some((item) => !item.board)}
+          range={watchRange}
+          onRange={(next) => {
+            watchRangeRef.current = next;
+            setWatchRange(next);
+          }}
+          filter={watchFilter}
+          onFilter={setWatchFilter}
+          marks={watchMarkList}
+          onNew={openNewAlert}
+          onOpen={openMonitor}
         />
       ) : view === "links" ? (
         <LinksView onOpenSettings={() => setSettingsOpen(true)} />
@@ -4585,6 +4671,12 @@ export function App() {
                       }}
                       onLoadMore={() => void runSearch("append")}
                       held={heldV?.rows}
+                      opened={(monitorBand?.items ?? []).map(({ stretch, monitor }) => ({
+                        at: stretch.opened_at,
+                        key: `monitor:${stretch.id}`,
+                        name: monitor.name,
+                        detail: stretch.open_message,
+                      }))}
                       floor={heldV?.floor ?? false}
                       marks={marksOverlay}
                       live={live}
@@ -4700,6 +4792,22 @@ export function App() {
             </>
             )}
           </div>
+          {railMonitor && !isSurr ? (
+            <MonitorRail
+              monitor={railMonitor}
+              nowMs={Date.now()}
+              onClose={() =>
+                setMonitorRail((prev) => {
+                  const next = { ...prev };
+                  delete next[wsId];
+                  return next;
+                })
+              }
+              onEdit={() => setAlertDraft({ mode: "edit", rule: railMonitor })}
+              onPause={(paused) => void updateAlert(railMonitor.id, { enabled: !paused })}
+              onSilence={(forId) => void silenceAlert(railMonitor, forId)}
+            />
+          ) : null}
           </div>
         </div>
       )}
@@ -4747,6 +4855,25 @@ export function App() {
           saveUpdate ? updateActiveSaved(name, board) : createSaved(name, board)
         }
         onSaveAs={saveUpdate ? createSaved : undefined}
+      />
+      <NewMonitorDialog
+        open={newMonitor !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNewMonitor(null);
+          }
+        }}
+        example={(() => {
+          const item = saved.find((row) => row.id === newMonitor?.savedSearchId);
+          return item ? { name: item.name, query: item.query, range: item.range } : null;
+        })()}
+        onPick={(source) => {
+          if (!newMonitor) {
+            return;
+          }
+          setAlertDraft({ mode: "create", ...newMonitor, source });
+          setNewMonitor(null);
+        }}
       />
       <AlertRuleDialog
         open={alertDraft !== null}

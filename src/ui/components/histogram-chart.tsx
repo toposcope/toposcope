@@ -66,6 +66,7 @@ import {
   type MarksOverlay,
 } from "./histogram-marks";
 import { CompareFold, type CompareFoldHunt } from "./compare-fold";
+import { monitorBandH } from "./monitor-band";
 import { endLabelMax, lastValue, sparkLines, spreadLabels } from "./metric-spark";
 
 const HOVER_GAP_PX = 12;
@@ -1310,7 +1311,7 @@ export function HistogramChart({
             marginTop: HEAD_H + HEAD_GAP,
             ...(marks
               ? {
-                  height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H}px)`,
+                  height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + monitorBandH(marks.monitors)}px)`,
                 }
               : {}),
           }}
@@ -1703,7 +1704,7 @@ export function HistogramChart({
               color: AGG_COLOR,
               ...(marks
                 ? {
-                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + 2 * PLOT_INSET}px)`,
+                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + monitorBandH(marks.monitors) + 2 * PLOT_INSET}px)`,
                   }
                 : {}),
             }}
@@ -1739,7 +1740,7 @@ export function HistogramChart({
               marginBottom: PLOT_INSET,
               ...(marks
                 ? {
-                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + 2 * PLOT_INSET}px)`,
+                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + monitorBandH(marks.monitors) + 2 * PLOT_INSET}px)`,
                   }
                 : {}),
             }}

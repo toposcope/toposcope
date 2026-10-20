@@ -32,7 +32,7 @@ Capabilities, in this order — not patch numbers:
 
 1. **Identities on the row** — `version`, customer, and flag stamped like `service` and `host` (collector-owned, stored attrs).
 2. **Error fingerprints** — a stable id computed from application errors (exception type + stack, not an operator-written template). New ids after a change mark are the “three new bugs.”
-3. **Change marks** — deploy / flag / incident as a point or band on the histogram clock. Consume CI/git/PagerDuty; a human note and a monitor's open stretch are the writes we own.
+3. **Change marks** — deploy / flag / incident as a point or band on the histogram clock. Consume CI/git/PagerDuty; a human note is the one write we own. A monitor's open stretch is drawn on the same clock, from its own record, not written as a mark.
 4. **Monitors** — a saved search that goes quiet or loud, a check-in that is missed or fails, an HTTP(S) check from this node; each opens, reminds and resolves; anything else pushes its result (not a second Nagios). Locked for 0.6 as [#175](https://github.com/toposcope/toposcope/issues/175)–[#180](https://github.com/toposcope/toposcope/issues/180).
 5. **Compare** — a series vs a locked baseline (including the window before a change mark). The fold vs a selected mark is shipped. Split **one** facet (the hunt’s histogram split) stacks one row per series key so the 0.5% / 4% / 9% reading is honest.
 6. **The sentence** — a model or human writes it from evidence last. Not a source of counts. Not chat-as-search.
