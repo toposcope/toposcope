@@ -19,6 +19,8 @@ import {
   clockAt,
   lastLineWords,
   laneReadout,
+  netConditionsLabel,
+  netTargetLabel,
   opensWhen,
   readsQuiet,
   remindLabel,
@@ -153,9 +155,10 @@ export function MonitorRail({
   const fingerprints = sourceOf(monitor) === "fingerprints";
   const push = sourceOf(monitor) === "push";
   const http = sourceOf(monitor) === "http" ? (monitor.http ?? null) : null;
-  // An HTTP(S) monitor without a webhook of its own calls the default in Settings (#177).
+  const net = sourceOf(monitor) === "tcp" || sourceOf(monitor) === "cert" ? (monitor.net ?? null) : null;
+  // A monitor run from this node without a webhook of its own calls the default in Settings (#177).
   const [fallback, setFallback] = useState<string | null>(null);
-  const wantsDefault = http !== null && !monitor.webhook_url;
+  const wantsDefault = (http !== null || net !== null) && !monitor.webhook_url;
   useEffect(() => {
     if (!wantsDefault) {
       return;
@@ -236,8 +239,32 @@ export function MonitorRail({
             ) : null}
           </>
         ) : null}
-        {push || http ? null : <Row k="search">{monitor.saved?.name ?? "—"}</Row>}
-        {push || http ? null : fingerprints ? (
+        {net ? (
+          <>
+            <Row k="checks">
+              <span className="font-mono">{netTargetLabel(monitor)}</span>
+            </Row>
+            <Row k="conditions">
+              <span className="block font-mono whitespace-pre-wrap">{net.conditions || netConditionsLabel(monitor)}</span>
+            </Row>
+            <Row k="runs">
+              <span className="font-mono">
+                every {net.every} · opens after {net.fail_after} failed run{net.fail_after === 1 ? "" : "s"}
+              </span>
+            </Row>
+            {net.last_run ? (
+              <Row k="last run">
+                <span className="font-mono">
+                  {clockAt(net.last_run.at, nowMs)} · {net.last_run.result}
+                  {net.last_run.connected ? ` · ${net.last_run.duration_ms}ms` : ""}
+                  {net.last_run.why ? ` · ${net.last_run.why}` : ""}
+                </span>
+              </Row>
+            ) : null}
+          </>
+        ) : null}
+        {push || http || net ? null : <Row k="search">{monitor.saved?.name ?? "—"}</Row>}
+        {push || http || net ? null : fingerprints ? (
           <Row k="opens on">
             <span className="font-mono">≥ {monitor.threshold} after a deploy or flag · 24h</span>
           </Row>
@@ -258,7 +285,7 @@ export function MonitorRail({
             <span className="font-mono">{cantTell}</span>
           </Row>
         ) : null}
-        {!fingerprints && !push && !http && monitor.last_result_at ? (
+        {!fingerprints && !push && !http && !net && monitor.last_result_at ? (
           <Row k="last read">
             <span className="font-mono">
               {clockAt(monitor.last_result_at, nowMs)} · {lastReading(monitor)}

@@ -212,6 +212,30 @@ export type HttpMonitorView = {
   last_run: HttpLastRun | null;
 };
 
+/** A TCP or certificate monitor's last run (#180). */
+export type NetLastRun = {
+  at: number;
+  result: "ok" | "warn" | "fail";
+  connected: boolean;
+  duration_ms: number;
+  line: string | null;
+  why: string | null;
+  cert_valid_to: string | null;
+  cert_subject: string | null;
+};
+
+/** Where a TCP or certificate monitor connects (#180). */
+export type NetMonitorView = {
+  target: string;
+  starttls: "smtp" | "imap" | "pop3" | null;
+  every: string;
+  every_ms: number;
+  conditions: string;
+  fail_after: number;
+  fails_in_row: number;
+  next_run_at: number | null;
+  last_run: NetLastRun | null;
+};
 
 /** A monitor as `GET /api/monitors` lists it. */
 export type MonitorView = AlertRule & {
@@ -221,6 +245,8 @@ export type MonitorView = AlertRule & {
   last_line_at?: number | null;
   /** Set on an HTTP(S) monitor. Fixtures may leave it out. */
   http?: HttpMonitorView | null;
+  /** Set on a TCP or certificate monitor. Fixtures may leave it out. */
+  net?: NetMonitorView | null;
 };
 
 /** `POST /api/monitors/send`: the editor's Send (18r). */
@@ -240,6 +266,22 @@ export type HttpSendResult = {
   error: string | null;
   timings: { dns: number; connect: number; tls: number | null; wait: number; body: number; total: number };
   cert: { subject: string; issuer: string; valid_to: string } | null;
+  duration_ms: number;
+};
+
+/** `POST /api/monitors/send` with `source: "tcp" | "cert"`: the TCP · certificate editor's Send (#180). */
+export type NetSendResult = {
+  at: number;
+  source: "tcp" | "cert";
+  target: string;
+  starttls: "smtp" | "imap" | "pop3" | null;
+  connected: boolean;
+  address: string | null;
+  /** A mail server's greeting before STARTTLS. */
+  greeting: string | null;
+  error: string | null;
+  timings: { dns: number; connect: number; starttls: number | null; tls: number | null; total: number };
+  cert: { subject: string; names: string[]; issuer: string; valid_to: string; untrusted: string | null } | null;
   duration_ms: number;
 };
 

@@ -1,4 +1,4 @@
-import { ArrowUp, Globe, Search, X } from "lucide-react";
+import { ArrowUp, Globe, Lock, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { MonitorSource } from "../../shared/monitor";
@@ -63,10 +63,7 @@ function SourceCard({
   );
 }
 
-/**
- * Frame 18p: a new monitor starts by choosing where its results come from. TCP / certificate
- * joins these cards with its own issue (#180).
- */
+/** Frame 18p: a new monitor starts by choosing where its results come from. */
 export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPick }: Props) {
   const q = example?.query.trim() || "service:api level:error";
   return (
@@ -114,6 +111,13 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
             example={`${q} · after a deploy`}
             onClick={() => onPick("fingerprints")}
             disabled={!canSearch}
+          />
+          <SourceCard
+            icon={<Lock className="size-3.5" />}
+            title="TCP · certificate"
+            about="A port answers in time; a certificate has enough days left, with STARTTLS for mail."
+            example="smtp.example.com:587 · cert > 14d"
+            onClick={() => onPick("tcp")}
           />
           <div className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-dashed border-white/20 p-3.5">
             <span className="text-[14px] font-medium">From a script or an agent</span>

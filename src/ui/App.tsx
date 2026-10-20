@@ -5,6 +5,7 @@ import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/component
 import { NewMonitorDialog } from "@/components/new-monitor-dialog";
 import { PushMonitorDialog, type PushDraft, type PushInput } from "@/components/push-monitor-dialog";
 import { HttpMonitorDialog, type HttpDraft, type HttpMonitorInput } from "@/components/http-monitor-dialog";
+import { NetMonitorDialog, type NetDraft, type NetMonitorInput } from "@/components/net-monitor-dialog";
 import { WatchView } from "@/components/watch-view";
 import { MonitorRail } from "@/components/monitor-rail";
 import type { MonitorBand } from "@/components/monitor-band";
@@ -702,6 +703,8 @@ export function App() {
   const [pushDraft, setPushDraft] = useState<PushDraft | null>(null);
   /** 18r: an HTTP(S) monitor's editor. */
   const [httpDraft, setHttpDraft] = useState<HttpDraft | null>(null);
+  /** 18r's TCP · certificate editor (#180). */
+  const [netDraft, setNetDraft] = useState<NetDraft | null>(null);
   /** The monitor read beside a Search tab (18i), by tab. */
   const [monitorRail, setMonitorRail] = useState<Record<number, string>>({});
   /** Stretches of the monitors on this tab's saved search, on its clock (18o). */
@@ -2201,7 +2204,7 @@ export function App() {
   }, [attrPrefixes, windowParams, wsKind]);
 
   const dialogOpen =
-    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null;
+    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null || netDraft !== null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2384,7 +2387,7 @@ export function App() {
     toast.message(`${json.count} match${json.count === 1 ? "" : "es"}`);
   }
 
-  async function createAlert(input: MonitorInput | HttpMonitorInput) {
+  async function createAlert(input: MonitorInput | HttpMonitorInput | NetMonitorInput) {
     const res = await fetch("/api/alert-rules", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -2404,6 +2407,7 @@ export function App() {
     input:
       | MonitorInput
       | HttpMonitorInput
+      | NetMonitorInput
       | { silence_for: "1h" | "4h" | "24h" }
       | { silenced_until: null }
       | { enabled: boolean },
@@ -2494,8 +2498,8 @@ export function App() {
       setMonitorRail((prev) => ({ ...prev, [id]: monitor.id }));
       return;
     }
-    if (sourceOf(monitor) === "http") {
-      // Its results are its rows (#178).
+    if (sourceOf(monitor) === "http" || sourceOf(monitor) === "tcp" || sourceOf(monitor) === "cert") {
+      // Its results are its rows (#178, #180).
       setSheetOpen(false);
       setView("search");
       const tab = wsSeq + 1;
@@ -3554,7 +3558,7 @@ export function App() {
   }, [attrKeyOptions]);
 
   function openNewAlert() {
-    // A push or HTTP(S) monitor needs no saved search (#177, #178); the others pick one.
+    // A push, HTTP(S), TCP or certificate monitor needs no saved search (#177, #178, #180); the others pick one.
     const watchable = saved.filter((item) => !item.board);
     const current = saved.find((item) => item.id === savedId);
     const id =
@@ -3601,11 +3605,11 @@ export function App() {
         : Date.parse(isoFromLocal(to) ?? ""),
   });
   // Monitors on this tab's saved search: their stretches on this clock (#175, 18o).
-  // A push or HTTP(S) monitor's stretches sit on a hunt of its own `monitor:<name>` (18i).
+  // A push, HTTP(S), TCP or certificate monitor's stretches sit on a hunt of its own `monitor:<name>` (18i).
   const bandMonitors = alerts.filter(
     (m) =>
       (savedId && m.saved_search_id === savedId) ||
-      ((sourceOf(m) === "push" || sourceOf(m) === "http") && Boolean(q.trim()) && m.query === q.trim()),
+      (["push", "http", "tcp", "cert"].includes(sourceOf(m)) && Boolean(q.trim()) && m.query === q.trim()),
   );
   const bandKey = bandMonitors.map((m) => m.id).join(",");
   // Read again when the search's reply moves the window off the clock guessed before it.
@@ -4891,7 +4895,9 @@ export function App() {
                   ? setPushDraft({ mode: "edit", rule: railMonitor })
                   : sourceOf(railMonitor) === "http"
                     ? setHttpDraft({ mode: "edit", monitor: railMonitor })
-                    : setAlertDraft({ mode: "edit", rule: railMonitor })
+                    : sourceOf(railMonitor) === "tcp" || sourceOf(railMonitor) === "cert"
+                      ? setNetDraft({ mode: "edit", monitor: railMonitor })
+                      : setAlertDraft({ mode: "edit", rule: railMonitor })
               }
               onPause={(paused) => void updateAlert(railMonitor.id, { enabled: !paused })}
               onSilence={(forId) => void silenceAlert(railMonitor, forId)}
@@ -4972,6 +4978,11 @@ export function App() {
             setNewMonitor(null);
             return;
           }
+          if (source === "tcp" || source === "cert") {
+            setNetDraft({ mode: "create" });
+            setNewMonitor(null);
+            return;
+          }
           if (!newMonitor.savedSearchId) {
             toast.error("Save a search first");
             return;
@@ -5002,6 +5013,23 @@ export function App() {
         draft={httpDraft}
         onBack={() => {
           setHttpDraft(null);
+          openNewAlert();
+        }}
+        onCreate={createAlert}
+        onUpdate={updateAlert}
+        onDelete={deleteAlert}
+        canLink={alertsCanLink}
+      />
+      <NetMonitorDialog
+        open={netDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNetDraft(null);
+          }
+        }}
+        draft={netDraft}
+        onBack={() => {
+          setNetDraft(null);
           openNewAlert();
         }}
         onCreate={createAlert}

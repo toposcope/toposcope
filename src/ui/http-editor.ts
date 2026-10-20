@@ -5,6 +5,7 @@ import {
   httpHeaderProblem,
   maxHttpHeaders,
   parseConditionLine,
+  type CheckKind,
   type ConditionLevel,
   type ConditionLine,
   type JsonScalar,
@@ -39,13 +40,16 @@ export type EditorLine = {
   error: string | null;
 };
 
-/** Each written line, read: a condition, or why it is not one. Blank lines are left out. */
-export function editorLines(text: string): EditorLine[] {
+/**
+ * Each written line, read: a condition, or why it is not one. Blank lines are left out. `kind`
+ * is whose lines they are: an HTTP(S) monitor's, or a TCP or certificate monitor's (#180).
+ */
+export function editorLines(text: string, kind: CheckKind = "http"): EditorLine[] {
   return text.split("\n").flatMap((raw, index): EditorLine[] => {
     if (!raw.trim()) {
       return [];
     }
-    const read = parseConditionLine(raw);
+    const read = parseConditionLine(raw, kind);
     return "error" in read
       ? [{ index, raw, line: null, error: read.error }]
       : [{ index, raw, line: read, error: null }];
@@ -53,8 +57,8 @@ export function editorLines(text: string): EditorLine[] {
 }
 
 /** The good lines, in order: what a run is judged by. */
-export function goodLines(text: string): ConditionLine[] {
-  return editorLines(text).flatMap((l) => (l.line ? [l.line] : []));
+export function goodLines(text: string, kind: CheckKind = "http"): ConditionLine[] {
+  return editorLines(text, kind).flatMap((l) => (l.line ? [l.line] : []));
 }
 
 function writeLine(line: Pick<ConditionLine, "text" | "level">): string {
@@ -72,8 +76,8 @@ function replaceAt(text: string, index: number, next: string | null): string {
 }
 
 /** A line's fail | warn toggle. */
-export function setLineLevel(text: string, index: number, level: ConditionLevel): string {
-  const read = parseConditionLine(text.split("\n")[index] ?? "");
+export function setLineLevel(text: string, index: number, level: ConditionLevel, kind: CheckKind = "http"): string {
+  const read = parseConditionLine(text.split("\n")[index] ?? "", kind);
   return "error" in read ? text : replaceAt(text, index, writeLine({ text: read.text, level }));
 }
 
@@ -83,13 +87,13 @@ export function removeLine(text: string, index: number): string {
 }
 
 /** A picked condition, as a new last line; a line already there is not written twice. */
-export function addLine(text: string, line: string): string {
-  const read = parseConditionLine(line);
+export function addLine(text: string, line: string, kind: CheckKind = "http"): string {
+  const read = parseConditionLine(line, kind);
   if ("error" in read) {
     return text;
   }
   const canonical = formatCondition(read.cond);
-  if (goodLines(text).some((l) => formatCondition(l.cond) === canonical)) {
+  if (goodLines(text, kind).some((l) => formatCondition(l.cond) === canonical)) {
     return text;
   }
   const body = text.replace(/\s+$/, "");
@@ -97,8 +101,8 @@ export function addLine(text: string, line: string): string {
 }
 
 /** The first `time <` line and its limit, for the marker on the timing bar. */
-export function timeLine(text: string): { index: number; ms: number; level: ConditionLevel } | null {
-  for (const l of editorLines(text)) {
+export function timeLine(text: string, kind: CheckKind = "http"): { index: number; ms: number; level: ConditionLevel } | null {
+  for (const l of editorLines(text, kind)) {
     if (l.line?.cond.what === "time" && (l.line.cond.op === "<" || l.line.cond.op === "<=")) {
       return { index: l.index, ms: l.line.cond.ms, level: l.line.level };
     }
@@ -107,11 +111,11 @@ export function timeLine(text: string): { index: number; ms: number; level: Cond
 }
 
 /** The marker dragged: the `time <` line takes the new limit, keeping its level. */
-export function setTimeLimit(text: string, ms: number): string {
-  const at = timeLine(text);
+export function setTimeLimit(text: string, ms: number, kind: CheckKind = "http"): string {
+  const at = timeLine(text, kind);
   const limit = Math.max(10, Math.round(ms / 10) * 10);
   if (!at) {
-    return addLine(text, `time < ${limit}ms`);
+    return addLine(text, `time < ${limit}ms`, kind);
   }
   return replaceAt(text, at.index, writeLine({ text: `time < ${limit}ms`, level: at.level }));
 }
@@ -123,27 +127,43 @@ export function offeredTimeLimit(total: number): number {
 
 export type Timings = { dns: number; connect: number; tls: number | null; wait: number; body: number; total: number };
 
-export type TimingSegment = { id: "dns" | "connect" | "tls" | "wait" | "body"; ms: number; frac: number };
+export type TimingSegment = { id: "dns" | "connect" | "starttls" | "tls" | "wait" | "body"; ms: number; frac: number };
 
-/** The timing bar's parts as shares of the bar, which spans the run or the limit, whichever is longer. */
-export function timingBar(t: Timings, limitMs: number | null): { segments: TimingSegment[]; spanMs: number; marker: number | null } {
-  const parts: Array<[TimingSegment["id"], number]> = [
-    ["dns", t.dns],
-    ["connect", t.connect],
-    ["tls", t.tls ?? 0],
-    ["wait", t.wait],
-    ["body", t.body],
-  ];
+export type TimingBar = { segments: TimingSegment[]; spanMs: number; marker: number | null };
+
+/** Parts of a run as shares of a bar that spans the run or the limit, whichever is longer. `keep` is drawn even at 0ms. */
+export function barOf(
+  parts: Array<[TimingSegment["id"], number]>,
+  totalMs: number,
+  limitMs: number | null,
+  keep: TimingSegment["id"] | null,
+): TimingBar {
   const sum = parts.reduce((n, [, ms]) => n + Math.max(0, ms), 0);
-  const total = Math.max(t.total, sum, 1);
+  const total = Math.max(totalMs, sum, 1);
   const spanMs = limitMs !== null && limitMs > total ? limitMs * 1.1 : total;
   return {
     segments: parts
-      .filter(([id, ms]) => ms > 0 || id === "wait")
+      .filter(([id, ms]) => ms > 0 || id === keep)
       .map(([id, ms]) => ({ id, ms, frac: Math.max(0, ms) / spanMs })),
     spanMs,
     marker: limitMs !== null ? Math.min(1, limitMs / spanMs) : null,
   };
+}
+
+/** The timing bar's parts as shares of the bar, which spans the run or the limit, whichever is longer. */
+export function timingBar(t: Timings, limitMs: number | null): TimingBar {
+  return barOf(
+    [
+      ["dns", t.dns],
+      ["connect", t.connect],
+      ["tls", t.tls ?? 0],
+      ["wait", t.wait],
+      ["body", t.body],
+    ],
+    t.total,
+    limitMs,
+    "wait",
+  );
 }
 
 /** "dns 4 · connect 18 · tls 41 · wait 340 · body 9" (no tls over http). */
