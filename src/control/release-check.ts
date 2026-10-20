@@ -163,7 +163,7 @@ export type CheckDeps = {
   now?: () => number;
   running?: string;
   /** Called with what a check that got an answer found (#197 writes its row from here). */
-  onChecked?: (releases: Release[], running: string) => void | Promise<void>;
+  onChecked?: (releases: Release[], running: string) => unknown;
 };
 
 const checkTimeoutMs = 10_000;

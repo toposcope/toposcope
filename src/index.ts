@@ -40,7 +40,7 @@ import {
   deleteApiToken,
   listApiTokens,
 } from "./control/tokens";
-import { ingestRoute } from "./ingest";
+import { ingestRoute, insertEvents } from "./ingest";
 import { ingestMetricsRoute } from "./ingest/metrics";
 import { ingestMarksRoute } from "./ingest/marks";
 import { ingestProbesRoute } from "./ingest/probes";
@@ -82,6 +82,7 @@ import { requirePackagedSecrets } from "./shared/secrets";
 import { requirePublicUrl } from "./shared/public-url";
 import { requireWatchdogUrl } from "./alerts/watchdog";
 import { startReleaseCheck, versionReply } from "./control/release-check";
+import { announceNewRelease } from "./control/update-event";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 
 requirePackagedSecrets();
@@ -406,7 +407,8 @@ async function startBoot(): Promise<void> {
     startHttpMonitors();
     startLinkPuller();
     // Once a day, a few minutes after boot: is a newer release out (#196)? Off with TOPOSCOPE_UPDATE_CHECK=off.
-    startReleaseCheck();
+    // A version seen for the first time writes one event:update_available row, to page on (#197).
+    startReleaseCheck({ onChecked: (releases, running) => announceNewRelease(releases, running, { write: insertEvents }) });
     // A stubbed listener in tests returns nothing.
     stopSyslog = (await startSyslogUdp()) ?? stopSyslog;
     // OTLP over gRPC: each call goes through the same routes, and the same checks, as HTTP.
