@@ -249,11 +249,20 @@ export function callHost(url: string | null): string {
   }
 }
 
-/** "10:41 open · ntfy.sh 200": a call as a stretch lists it (18o). */
+/** "ntfy" for ntfy.sh, "slack" for hooks.slack.com; an address or a bare name as it is. */
+export function serviceName(host: string): string {
+  const name = host.replace(/:\d+$/, "");
+  if (/^[\d.]+$/.test(name) || name.includes(":") || !name.includes(".")) {
+    return host;
+  }
+  const labels = name.split(".");
+  return labels[labels.length - 2]!;
+}
+
+/** "10:41 open · ntfy 200": a call as a stretch lists it (18o). */
 export function callLine(call: MonitorCall, host: string, nowMs: number): string {
-  const what = call.what === "sent" ? "sent" : call.what;
-  const how = call.status === "silenced" ? "silenced" : `${host.split(".")[0]} ${call.status}`;
-  return `${clockAt(call.at, nowMs)} ${what} · ${how}`;
+  const how = call.status === "silenced" ? "silenced" : `${serviceName(host)} ${call.status}`;
+  return `${clockAt(call.at, nowMs)} ${call.what} · ${how}`;
 }
 
 /** "14:41 reminder, if still open": the next call an open stretch will make, when it reminds. */

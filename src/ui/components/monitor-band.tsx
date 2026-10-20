@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import {
   DropdownMenu,
@@ -8,14 +9,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { isTypingTarget } from "@/keyboard";
 import { cn } from "@/lib/utils";
-import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
+import type { ChangeMark } from "../../shared/change-mark";
 import { formatOpenFor } from "../../shared/monitor";
 import type { MonitorStretch, MonitorView } from "@/types";
 import {
   callHost,
   callLine,
   clockAt,
-  clockFrac,
   markBefore,
   nextReminder,
   opensWhen,
@@ -57,27 +57,28 @@ function openedLine(monitor: MonitorView, stretch: MonitorStretch, nowMs: number
   }`;
 }
 
-function StretchCard({
-  monitor,
-  stretch,
-  band,
-  marks,
-  before,
-  left,
-  onFingerprints,
-  onCompare,
-  onClose,
-}: {
-  monitor: MonitorView;
-  stretch: MonitorStretch;
-  band: MonitorBand;
-  marks: ChangeMark[];
-  before: ChangeMark | null;
-  left: number;
-  onFingerprints?: (mark: ChangeMark) => void;
-  onCompare?: (mark: ChangeMark) => void;
-  onClose: () => void;
-}) {
+const CARD_W = 340;
+
+/** Under the band, over whatever is below it (18o), kept inside the window. */
+function cardPlace(anchor: DOMRect): { top: number; left: number } {
+  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - CARD_W - 16));
+  return { top: anchor.bottom + 6, left };
+}
+
+const StretchCard = forwardRef<
+  HTMLDivElement,
+  {
+    monitor: MonitorView;
+    stretch: MonitorStretch;
+    band: MonitorBand;
+    marks: ChangeMark[];
+    before: ChangeMark | null;
+    place: { top: number; left: number };
+    onFingerprints?: (mark: ChangeMark) => void;
+    onCompare?: (mark: ChangeMark) => void;
+    onClose: () => void;
+  }
+>(function StretchCard({ monitor, stretch, band, marks, before, place, onFingerprints, onCompare, onClose }, ref) {
   const nowMs = band.nowMs;
   const open = stretch.resolved_at === null;
   const mark = markBefore(marks, before, stretch.opened_at);
@@ -85,15 +86,11 @@ function StretchCard({
   const next = open && monitor.open?.id === stretch.id ? nextReminder(monitor, nowMs) : null;
   return (
     <div
+      ref={ref}
       role="dialog"
       aria-label={`${monitor.name} · stretch`}
-      className="absolute z-[9] flex w-[340px] flex-col gap-2 rounded-[6.4px] border bg-[#1f1f23] p-3 shadow-[0_10px_30px_rgba(0,0,0,.55)]"
-      style={{
-        top: "100%",
-        marginTop: 4,
-        left: `${(left * 100).toFixed(3)}%`,
-        transform: left > 0.55 ? "translateX(-100%)" : undefined,
-      }}
+      className="fixed z-40 flex flex-col gap-2 rounded-[6.4px] border bg-[#1f1f23] p-3 shadow-[0_10px_30px_rgba(0,0,0,.55)]"
+      style={{ top: place.top, left: place.left, width: CARD_W }}
     >
       <span className="flex items-center gap-2">
         <span className="min-w-0 truncate text-[13px] font-semibold">{monitor.name}</span>
@@ -121,7 +118,7 @@ function StretchCard({
         </span>
         {mark ? (
           <span className="font-mono">
-            <span className="text-muted-foreground">before it</span> ▲ {formatChangeMarkLabel(mark)} ·{" "}
+            <span className="text-muted-foreground">before it</span> ▲ {`${mark.kind} ${mark.service} ${mark.title}`.replace(/\s+/g, " ").trim()} ·{" "}
             {mark.ts.slice(11, 19)}
           </span>
         ) : null}
@@ -176,7 +173,7 @@ function StretchCard({
       </span>
     </div>
   );
-}
+});
 
 /**
  * Under the marks on the hunt clock, each stretch of a monitor on this saved search: dim once
@@ -201,8 +198,15 @@ export function MonitorBandRow({
   onFingerprints?: (mark: ChangeMark) => void;
   onCompare?: (mark: ChangeMark) => void;
 }) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [open, setOpen] = useState<{ id: string; place: { top: number; left: number } } | null>(null);
+  const openId = open?.id ?? null;
+  const setOpenId = (id: string | null) => {
+    if (id === null) {
+      setOpen(null);
+    }
+  };
   const rootRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const toMs = fromMs + plotSpanMs;
   const spans = stretchSpans(
     band.items.map((item) => item.stretch),
@@ -225,7 +229,7 @@ export function MonitorBandRow({
     }
     function onDown(e: MouseEvent) {
       const target = e.target;
-      if (!(target instanceof Element) || rootRef.current?.contains(target)) {
+      if (!(target instanceof Element) || rootRef.current?.contains(target) || cardRef.current?.contains(target)) {
         return;
       }
       // The Silence menu is portalled out of the card.
@@ -264,7 +268,10 @@ export function MonitorBandRow({
                     : "rounded-[2px] bg-red-500/35",
                 )}
                 style={{ left: `${(span.left * 100).toFixed(3)}%`, width: `${(span.width * 100).toFixed(3)}%` }}
-                onClick={() => setOpenId((prev) => (prev === span.id ? null : span.id))}
+                onClick={(e) => {
+                  const place = cardPlace(e.currentTarget.getBoundingClientRect());
+                  setOpen((prev) => (prev?.id === span.id ? null : { id: span.id, place }));
+                }}
               />
               {span.width > 0.08 && !span.open ? (
                 <span
@@ -278,14 +285,15 @@ export function MonitorBandRow({
           );
         })}
       </div>
-      {picked ? (
+      {picked && open ? createPortal(
         <StretchCard
+          ref={cardRef}
           monitor={picked.monitor}
           stretch={picked.stretch}
           band={band}
           marks={marks}
           before={before}
-          left={Math.max(0, Math.min(1, clockFrac(picked.stretch.opened_at, fromMs, toMs)))}
+          place={open.place}
           onFingerprints={
             onFingerprints
               ? (mark) => {
@@ -303,7 +311,8 @@ export function MonitorBandRow({
               : undefined
           }
           onClose={() => setOpenId(null)}
-        />
+        />,
+        document.body,
       ) : null}
     </div>
   );

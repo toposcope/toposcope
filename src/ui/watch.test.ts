@@ -222,6 +222,8 @@ describe("a stretch, read on the hunt clock (#175, frame 18o)", () => {
   test("its calls, and the next reminder while open", () => {
     expect(callLine(call(), "ntfy.sh", now)).toBe("10:41 open · ntfy 200");
     expect(callLine(call({ status: "silenced", ok: false }), "ntfy.sh", now)).toBe("10:41 open · silenced");
+    expect(callLine(call({ what: "resolved" }), "hooks.slack.com", now)).toBe("10:41 resolved · slack 200");
+    expect(callLine(call(), "127.0.0.1:28090", now)).toBe("10:41 open · 127.0.0.1:28090 200");
     // Every window (15m) since 10:41 is due now.
     expect(nextReminder(quiet, now)).toBe(now);
     expect(nextReminder({ ...quiet, remind_every: "4h" }, now)).toBe(now - 22 * minute + 4 * hour);

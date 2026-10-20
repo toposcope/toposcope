@@ -150,7 +150,7 @@ export function AlertBodyField({
         </p>
       ) : null}
       {bodyKind !== "default" ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_200px] gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_240px] gap-4">
           <div className="flex min-w-0 flex-col gap-2">
             {resolves ? <span className="text-[12px] font-semibold">When it opens, and each reminder</span> : null}
             <textarea

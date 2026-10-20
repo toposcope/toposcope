@@ -259,7 +259,7 @@ export function AlertRuleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(680px,calc(100vw-32px))] overflow-y-auto">
+      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(760px,calc(100vw-32px))] overflow-y-auto">
         <DialogHeader>
           {/* 18j: New monitor / its source; 18t: its source / its name. */}
           <DialogTitle className="flex min-w-0 items-baseline gap-2">
@@ -277,7 +277,7 @@ export function AlertRuleDialog({
           >
             {(
               [
-                ["threshold", "Threshold"],
+                ["threshold", "Saved search"],
                 ["first_seen", "New fingerprints"],
               ] as const
             ).map(([id, label]) => (

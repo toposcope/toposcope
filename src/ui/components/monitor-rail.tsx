@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { formatOpenFor } from "../../shared/monitor";
+import { formatCompactCount } from "@/count-format";
+import { formatAggStat } from "@/fill-histogram";
 import type { MonitorView } from "@/types";
 import { callHost, clockAt, laneReadout, opensWhen, remindLabel, sourceOf } from "@/watch";
 
@@ -28,6 +30,17 @@ function callFailure(m: MonitorView): string | null {
   }
   const status = m.last_status ?? "error";
   return m.consecutive_failures === 1 ? `failed ${status}` : `failed ${status} ×${m.consecutive_failures}`;
+}
+
+/** What it last read: its value, or why it could not tell. */
+function lastReading(m: MonitorView): string {
+  if (m.last_status === "refused" || m.last_status === "error") {
+    return m.last_status;
+  }
+  if (typeof m.last_value !== "number") {
+    return "—";
+  }
+  return m.saved?.agg ? formatAggStat(m.last_value) : formatCompactCount(m.last_value);
 }
 
 /** Frame 18i: a monitor read beside the hunt it opened. */
@@ -101,7 +114,7 @@ export function MonitorRail({
         {!fingerprints && monitor.last_result_at ? (
           <Row k="last read">
             <span className="font-mono">
-              {clockAt(monitor.last_result_at, nowMs)} · {readout.text || "—"}
+              {clockAt(monitor.last_result_at, nowMs)} · {lastReading(monitor)}
             </span>
           </Row>
         ) : null}
