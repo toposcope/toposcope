@@ -2,6 +2,7 @@ import type { Server } from "bun";
 import { Hono, type Context } from "hono";
 import { serveStatic } from "hono/bun";
 import { startAlertCron } from "./alerts/cron";
+import { startHttpMonitors } from "./alerts/http-cron";
 import {
   checkBasic,
   passwordMatches,
@@ -69,6 +70,7 @@ import { loadArrivalSeq } from "./ingest/arrival-seq";
 import { followSpanRoute } from "./query/follow-span";
 import { testAlertCallRoute } from "./alerts/test-call";
 import { deleteMonitor, getMonitor, listMonitors, putMonitor } from "./control/monitors";
+import { sendHttpRoute } from "./control/http-monitors";
 import { tracesRoute } from "./query/traces";
 import { marksRoute } from "./query/marks";
 import { probesRoute } from "./query/probes";
@@ -308,6 +310,8 @@ app.put("/api/alert-rules/:id", updateAlertRule);
 app.delete("/api/alert-rules/:id", deleteAlertRule);
 // Monitors (#175); /api/alert-rules stays as their alias for 0.6.
 app.get("/api/monitors", listMonitors);
+// The HTTP(S) editor's Send (#178): one request from this node, nothing stored.
+app.post("/api/monitors/send", sendHttpRoute);
 app.get("/api/monitors/:name", getMonitor);
 app.put("/api/monitors/:name", putMonitor);
 app.delete("/api/monitors/:name", deleteMonitor);
@@ -381,6 +385,8 @@ async function startBoot(): Promise<void> {
     await syncFieldRoleSkip(storedSkipKeys());
     await applyRetentionDays(getRetentionDays());
     startAlertCron();
+    // HTTP(S) monitors keep their own pace, 30s … 1h each, apart from the 60s alert pass.
+    startHttpMonitors();
     startLinkPuller();
     // A stubbed listener in tests returns nothing.
     stopSyslog = (await startSyslogUdp()) ?? stopSyslog;

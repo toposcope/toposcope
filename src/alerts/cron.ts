@@ -7,38 +7,12 @@ import {
 import { getDb } from "../control/index";
 import { getSaved } from "../control/saved-searches";
 import { incMetric } from "../metrics";
-import { clipError, outcomeFromError, outcomeFromHttp } from "./delivery";
+import { clipError, postWebhook } from "./delivery";
 import { publicUrl } from "../shared/public-url";
-import type { WebhookPayload } from "./payload";
 import { passSearchMonitor } from "./monitor";
 import { recordCall } from "./monitor-store";
 import { evaluateAlertSeries } from "./series";
 import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
-
-const WEBHOOK_TIMEOUT_MS = 5000;
-
-export async function postWebhook(
-  url: string,
-  payload: WebhookPayload,
-): Promise<{ ok: boolean; status: string; error: string | null }> {
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), WEBHOOK_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": payload.contentType },
-      body: payload.body,
-      signal: ac.signal,
-      redirect: "error",
-    });
-    return outcomeFromHttp(res.status, res.statusText);
-  } catch (err) {
-    console.error("alert webhook failed", err);
-    return outcomeFromError(err);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 export async function evaluateAlerts(now = Date.now()): Promise<void> {
   const db = getDb();

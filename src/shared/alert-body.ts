@@ -42,14 +42,32 @@ export const firstSeenFillIns: AlertFillIn[] = [
   { name: "link", about: "the mark’s Fingerprints" },
 ];
 
-export function alertFillIns(kind: "threshold" | "first_seen"): AlertFillIn[] {
-  return kind === "first_seen" ? firstSeenFillIns : thresholdFillIns;
+/** An HTTP(S) monitor's (#178): what it calls and what the run that opened it said. */
+export const httpFillIns: AlertFillIn[] = [
+  { name: "alert.name", about: "the monitor" },
+  { name: "url", about: "what it calls" },
+  { name: "status", about: "HTTP status, or empty" },
+  { name: "duration_ms", about: "how long the run took" },
+  { name: "message", about: "the result that opened it" },
+  { name: "state", about: "open, reminder, resolved" },
+  { name: "opened_at", about: "ISO time" },
+  { name: "resolved_at", about: "ISO time" },
+  { name: "duration", about: "how long it has been open" },
+  { name: "fired_at", about: "ISO time" },
+  { name: "link", about: "back to Toposcope" },
+];
+
+/** Whose fill-ins a body may use. */
+export type FillInKind = "threshold" | "first_seen" | "http";
+
+export function alertFillIns(kind: FillInKind): AlertFillIn[] {
+  return kind === "first_seen" ? firstSeenFillIns : kind === "http" ? httpFillIns : thresholdFillIns;
 }
 
 const fillInRe = /\{\{\s*([A-Za-z_][\w.]*)\s*\}\}/g;
 
 /** `{{name}}` fill-ins that this kind of alert does not have. */
-export function unknownFillIns(template: string, kind: "threshold" | "first_seen"): string[] {
+export function unknownFillIns(template: string, kind: FillInKind): string[] {
   const known = new Set(alertFillIns(kind).map((f) => f.name));
   const out: string[] = [];
   for (const m of template.matchAll(fillInRe)) {
@@ -234,7 +252,7 @@ export function jsonBodyFaultText(f: JsonBodyFault): string {
 export function resolvedBodyProblem(
   bodyKind: AlertBodyKind,
   template: string,
-  alertKind: "threshold" | "first_seen",
+  alertKind: FillInKind,
 ): string | null {
   if (!template.trim() || bodyKind === "default") {
     return null;
@@ -250,7 +268,7 @@ export function resolvedBodyProblem(
 export function alertBodyProblem(
   bodyKind: AlertBodyKind,
   template: string,
-  alertKind: "threshold" | "first_seen",
+  alertKind: FillInKind,
 ): string | null {
   if (bodyKind === "default") {
     return null;
@@ -280,14 +298,24 @@ export function alertBodyContentType(kind: AlertBodyKind): string {
 }
 
 /** Prefilled when a resolved body is added. */
-export function starterResolvedBody(bodyKind: "text" | "json"): string {
+export function starterResolvedBody(bodyKind: "text" | "json", alertKind: FillInKind = "threshold"): string {
+  if (alertKind === "http") {
+    return bodyKind === "text"
+      ? "{{alert.name}} resolved after {{duration}}: {{status}} in {{duration_ms}}ms\n{{link}}"
+      : '{\n  "title": "{{alert.name}} resolved",\n  "message": "after {{duration}}: {{status}} in {{duration_ms}}ms",\n  "url": "{{link}}"\n}';
+  }
   return bodyKind === "text"
     ? "{{alert.name}} resolved after {{duration}}: {{series}} {{value}} < {{threshold}}\n{{link}}"
     : '{\n  "title": "{{alert.name}} resolved",\n  "message": "after {{duration}}: {{series}} {{value}} < {{threshold}}",\n  "url": "{{link}}"\n}';
 }
 
 /** Prefilled when Text or JSON is picked, so there is something to change. */
-export function starterAlertBody(bodyKind: "text" | "json", alertKind: "threshold" | "first_seen"): string {
+export function starterAlertBody(bodyKind: "text" | "json", alertKind: FillInKind): string {
+  if (alertKind === "http") {
+    return bodyKind === "text"
+      ? "{{alert.name}} {{state}}: {{message}}\n{{url}}\n{{link}}"
+      : '{\n  "title": "{{alert.name}} {{state}}",\n  "message": "{{message}}",\n  "url": "{{link}}"\n}';
+  }
   if (alertKind === "first_seen") {
     return bodyKind === "text"
       ? "{{alert.name}}: {{fingerprints.count}} new after {{mark.kind}} {{mark.version}}\n{{fingerprints}}\n{{more}}\n{{link}}"

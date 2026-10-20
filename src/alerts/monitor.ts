@@ -78,9 +78,7 @@ const iso = (ms: number) => new Date(ms).toISOString();
 /**
  * One pass of a saved-search monitor (#175). Its series is read; at or above the threshold is a
  * fail, below it an ok, and a refused or failed reading is no result, which changes nothing.
- * Then its calls: the open call (tried each pass for up to an hour), a reminder when one is due,
- * and a resolved call for each stretch that has resolved since. While silenced nothing is sent,
- * but the stretches are kept, and no call is made up for when the silence ends.
+ * Then its calls (`monitorCalls`).
  */
 export async function passSearchMonitor(
   rule: AlertRule,
@@ -136,10 +134,26 @@ export async function passSearchMonitor(
   if (!rule.webhook_url) {
     return;
   }
-  const silenced = rule.silenced_until != null && now < rule.silenced_until;
   const windowMs = searchWindowMs(saved);
-  const send = (what: Exclude<CallWhat, "sent">, stretch: MonitorStretch) =>
-    sendSearchCall(rule, saved, { what, stretch, reading, expr, now, windowMs }, deps);
+  await monitorCalls(rule, now, remindEveryMs(rule.remind_every, windowMs), db, (what, stretch) =>
+    sendSearchCall(rule, saved, { what, stretch, reading, expr, now, windowMs }, deps),
+  );
+}
+
+/**
+ * A monitor's calls on a pass, whatever its source: the open call (tried each pass for up to an
+ * hour), a reminder when one is due, and a resolved call for each stretch that has resolved
+ * since. While silenced nothing is sent, but the stretches are kept, and no call is made up for
+ * when the silence ends.
+ */
+export async function monitorCalls(
+  rule: Pick<AlertRule, "id" | "silenced_until" | "body_kind" | "body_template" | "resolved_body">,
+  now: number,
+  remindMs: number | null,
+  db: Database,
+  send: (what: Exclude<CallWhat, "sent">, stretch: MonitorStretch) => Promise<WebhookOutcome>,
+): Promise<void> {
+  const silenced = rule.silenced_until != null && now < rule.silenced_until;
   const keptBack = (what: CallWhat, stretch: MonitorStretch) =>
     recordCall(
       { monitor_id: rule.id, stretch_id: stretch.id, at: now, what, status: "silenced", ok: false, error: null },
@@ -158,7 +172,7 @@ export async function passSearchMonitor(
         setOpenCall(stretch.id, "sent", now, db);
       }
     } else {
-      const every = remindEveryMs(rule.remind_every, windowMs);
+      const every = remindMs;
       if (every !== null && now - (stretch.called_at ?? stretch.opened_at) >= every) {
         if (silenced) {
           setCalledAt(stretch.id, now, db);

@@ -19,6 +19,8 @@ import {
   removeMonitor,
   type AlertRule,
 } from "./alerts";
+import { getHttp } from "../alerts/http-store";
+import { applyHttpFields, existingHttp, httpView, insertHttpMonitor, readHttpFields, type HttpView } from "./http-monitors";
 import { getDb } from "./index";
 import { getSaved } from "./saved-searches";
 
@@ -31,13 +33,17 @@ export type MonitorView = AlertRule & {
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   /** Its open stretch, with the calls sent for it so far. */
   open: StretchWithCalls | null;
+  /** What an HTTP(S) monitor calls (#178): its headers by name only. */
+  http: HttpView | null;
 };
 
 function view(rule: AlertRule): MonitorView {
   const saved = rule.saved_search_id ? getSaved(rule.saved_search_id) : null;
   const open = rule.state === "open" ? openStretch(rule.id) : null;
+  const http = rule.source === "http" ? getHttp(rule.id) : null;
   return {
     ...rule,
+    http: http ? httpView(http) : null,
     saved: saved
       ? { id: saved.id, name: saved.name, query: saved.query, range: saved.range, agg: saved.agg }
       : null,
@@ -133,13 +139,35 @@ export async function putMonitor(c: Context): Promise<Response> {
     return rec;
   }
   if (rec.source === undefined && rec.kind === undefined) {
-    return c.json({ error: "source is required: search or fingerprints" }, 400);
+    return c.json({ error: "source is required: search, fingerprints or http" }, 400);
+  }
+  const now = Date.now();
+  if (rec.source === "http") {
+    const kept = existing ? existingHttp(existing) : null;
+    if (existing && !kept) {
+      return c.json({ error: `${name} is a ${existing.source} monitor; delete it to make it an HTTP(S) one` }, 409);
+    }
+    // A replace: what is left out takes its default, and a header given as null keeps its stored value.
+    const fields = readHttpFields({ ...rec, name }, null, kept?.http.headers ?? []);
+    if ("error" in fields) {
+      return c.json({ error: fields.error }, fields.status);
+    }
+    if (!kept) {
+      const created = insertHttpMonitor(fields, now);
+      applyMonitorHold(created, rec, now);
+      return c.json(view(getAlert(created.id)!), 201);
+    }
+    applyHttpFields(kept.rule, kept.http, fields, now);
+    applyMonitorHold(getAlert(kept.rule.id)!, rec, now);
+    return c.json(view(getAlert(kept.rule.id)!));
+  }
+  if (existing?.source === "http") {
+    return c.json({ error: `${name} is an http monitor; delete it to make it a ${String(rec.source ?? "search")} one` }, 409);
   }
   const fields = readMonitorFields({ ...rec, name }, null);
   if ("error" in fields) {
     return c.json({ error: fields.error }, fields.status);
   }
-  const now = Date.now();
   if (!existing) {
     const created = insertMonitor(fields, now);
     applyMonitorHold(created, rec, now);

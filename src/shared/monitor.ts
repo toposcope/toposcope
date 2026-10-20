@@ -3,9 +3,20 @@
  * which keeps the state, and Watch, which draws it.
  */
 
-/** Where a monitor's results come from. HTTP(S) and push come later (#177, #178). */
-export const monitorSources = ["search", "fingerprints"] as const;
+/** Where a monitor's results come from: a saved search, new fingerprints, or a URL it calls (#178). */
+export const monitorSources = ["search", "fingerprints", "http"] as const;
 export type MonitorSource = (typeof monitorSources)[number];
+
+export function parseMonitorSource(value: unknown): MonitorSource | null {
+  return typeof value === "string" && (monitorSources as readonly string[]).includes(value)
+    ? (value as MonitorSource)
+    : null;
+}
+
+/** `monitor:api-health`, `monitor:"api /health"`: a monitor's own rows in Search. */
+export function monitorQuery(name: string): string {
+  return /[\s()"]/.test(name) ? `monitor:"${name.replace(/"/g, "")}"` : `monitor:${name}`;
+}
 
 /** A saved search's series (an alert's `threshold` kind), or new fingerprints after a mark (`first_seen`). */
 export function sourceOfKind(kind: "threshold" | "first_seen"): MonitorSource {
@@ -21,7 +32,7 @@ export type MonitorState = "ok" | "open";
 /** A result: a fail opens a monitor, the first ok after it resolves it, a warn shows and changes nothing. */
 export type MonitorResult = "ok" | "warn" | "fail";
 
-/** How often an open monitor reminds: never, once per its search's window, or every 1h, 4h or 24h. */
+/** How often an open monitor reminds: never, once per its search's window, or every 1h, 4h or 24h. An HTTP(S) monitor has no window. */
 export const remindIds = ["off", "window", "1h", "4h", "24h"] as const;
 export type RemindId = (typeof remindIds)[number];
 

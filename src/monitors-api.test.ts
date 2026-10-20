@@ -16,6 +16,7 @@ beforeAll(async () => {
     const migrate = await import(root + "/shared/migrate.ts");
     mock.module(root + "/shared/migrate.ts", () => ({ ...migrate, migrateStore: async () => {}, syncFieldRoleSkip: async () => {} }));
     mock.module(root + "/alerts/cron.ts", () => ({ startAlertCron() {} }));
+    mock.module(root + "/alerts/http-cron.ts", () => ({ startHttpMonitors() {} }));
     mock.module(root + "/ingest/syslog.ts", () => ({ startSyslogUdp: async () => {} }));
     globalThis.fetch = async (url) => {
       if (String(url).endsWith("/ping")) return new Response("Ok.");
@@ -61,6 +62,29 @@ beforeAll(async () => {
     await go("delete", "/api/monitors/ci-box%20went%20quiet", "DELETE");
     await go("gone", "/api/monitors/ci-box%20went%20quiet");
     await go("deleteSearch", "/api/saved-searches/" + saved.id, "DELETE");
+    // HTTP(S) monitors (#178), against a stand on a spare port.
+    const stand = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: (req) => Response.json({ db: "down", auth: req.headers.get("authorization") }) });
+    const standUrl = "http://127.0.0.1:" + stand.port + "/health";
+    const httpBody = { source: "http", url: "https://api.example.com/health", every: "30s", conditions: ["status == 200", "time < 300ms warn"], headers: { Authorization: "Bearer s3cret" }, webhook_url: hook };
+    const declared = (await go("httpDeclare", "/api/monitors/api-health", "PUT", httpBody)).body;
+    await go("httpBadLine", "/api/monitors/bad", "PUT", { ...httpBody, conditions: "status == 200\\nbody has ok" });
+    await go("httpBadEvery", "/api/monitors/bad", "PUT", { ...httpBody, every: "10s" });
+    await go("httpWindow", "/api/monitors/bad", "PUT", { ...httpBody, remind_every: "window" });
+    await go("httpNoUrl", "/api/monitors/bad", "PUT", { ...httpBody, url: "ftp://api.example.com/" });
+    await go("httpKeep", "/api/alert-rules/" + declared.id, "PUT", { url: standUrl, headers: { Authorization: null } });
+    await go("httpPause", "/api/alert-rules/" + declared.id, "PUT", { enabled: false });
+    await go("httpOne", "/api/monitors/api-health");
+    const listed = await app.fetch(new Request("http://app.test/api/monitors", { headers: auth }));
+    out.httpListText = { status: listed.status, body: await listed.text() };
+    await go("httpSend", "/api/monitors/send", "POST", { url: standUrl, method: "GET", conditions: '$.db == "ok"' });
+    await go("httpSendKept", "/api/monitors/send", "POST", { id: declared.id, url: standUrl, method: "GET", headers: { Authorization: null } });
+    await go("httpSendBad", "/api/monitors/send", "POST", { url: "ftp://x/" });
+    await go("httpSendBadLine", "/api/monitors/send", "POST", { url: standUrl, conditions: "$..db == 1" });
+    await go("httpClash", "/api/monitors/api-health", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
+    await go("httpCreate", "/api/alert-rules", "POST", { ...httpBody, name: "made in the dialog" });
+    await go("httpDelete", "/api/monitors/api-health", "DELETE");
+    await go("httpGone", "/api/monitors/api-health");
+    stand.stop(true);
     console.log(JSON.stringify(out));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
@@ -126,7 +150,7 @@ describe("PUT /api/monitors/<name> (#175)", () => {
 
   test("says what is wrong with a declaration", () => {
     expect(r.noSource!.status).toBe(400);
-    expect(r.noSource!.body.error).toBe("source is required: search or fingerprints");
+    expect(r.noSource!.body.error).toBe("source is required: search, fingerprints or http");
     expect(r.noSearch!.status).toBe(404);
     expect(r.fpResolved!.status).toBe(400);
     expect(r.fpResolved!.body.error).toBe("a new-fingerprints monitor does not resolve, so it has no resolved body");
@@ -160,5 +184,67 @@ describe("GET /api/monitors (#175)", () => {
     expect(Date.parse(r.monitors7d!.body.to) - Date.parse(r.monitors7d!.body.from)).toBe(7 * 24 * 60 * 60_000);
     expect(r.monitorsHunt!.body.from).toBe("2026-10-19T11:03:00.000Z");
     expect(r.monitorsBad!.status).toBe(400);
+  });
+});
+
+describe("HTTP(S) monitors (#178)", () => {
+  test("are declared by name, their lines stored as written, a warn line marked at its end", () => {
+    expect(r.httpDeclare!.status).toBe(201);
+    expect(r.httpDeclare!.body).toMatchObject({ name: "api-health", source: "http", state: "ok", remind_every: "4h", saved: null });
+    expect(r.httpDeclare!.body.http).toMatchObject({
+      url: "https://api.example.com/health",
+      method: "GET",
+      every: "30s",
+      every_ms: 30_000,
+      conditions: "status == 200\ntime < 300ms   warn",
+      fail_after: 2,
+      headers: ["Authorization"],
+      last_run: null,
+    });
+    expect(r.httpCreate!.status).toBe(201);
+    expect(r.httpCreate!.body).toMatchObject({ name: "made in the dialog", source: "http" });
+  });
+
+  test("a header's value is never shown back, and null keeps it", () => {
+    expect(JSON.stringify(r.httpDeclare!.body)).not.toContain("s3cret");
+    expect(r.httpListText!.status).toBe(200);
+    expect(r.httpListText!.body).toContain("api-health");
+    expect(r.httpListText!.body).not.toContain("s3cret");
+    expect(r.httpKeep!.status).toBe(200);
+    expect(r.httpOne!.body.http.headers).toEqual(["Authorization"]);
+    expect(r.httpOne!.body.enabled).toBe(0);
+    // The editor's Send uses the stored value for a header it gives as null.
+    expect(JSON.parse(r.httpSendKept!.body.response.body).auth).toBe("Bearer s3cret");
+  });
+
+  test("says what is wrong, by line", () => {
+    expect(r.httpBadLine!.status).toBe(400);
+    expect(r.httpBadLine!.body.error).toStartWith("conditions line 2: not a condition");
+    expect(r.httpBadEvery!.body.error).toStartWith("every must be 30s … 1h");
+    expect(r.httpWindow!.body.error).toBe("remind_every must be off, 1h, 4h or 24h");
+    expect(r.httpNoUrl!.body.error).toBe("url must be an http(s) URL");
+    expect(r.httpClash!.status).toBe(409);
+  });
+
+  test("Send runs it once and says what each line makes of the response", () => {
+    expect(r.httpSend!.status).toBe(200);
+    const sent = r.httpSend!.body;
+    expect(sent.response).toMatchObject({ status: 200, status_text: "OK", http_version: "HTTP/1.1" });
+    expect(sent.error).toBeNull();
+    expect(sent.cert).toBeNull();
+    expect(Object.keys(sent.timings).sort()).toEqual(["body", "connect", "dns", "tls", "total", "wait"]);
+    expect(sent.verdict).toMatchObject({
+      result: "fail",
+      line: '$.db == "ok"',
+      why: '$.db is "down", not "ok"',
+      lines: [{ text: '$.db == "ok"', level: "fail", pass: false, got: '"down"' }],
+    });
+    expect(r.httpSendBad!.status).toBe(400);
+    expect(r.httpSendBadLine!.status).toBe(400);
+  });
+
+  test("delete takes it and what it calls", () => {
+    expect(r.httpDelete!.status).toBe(200);
+    expect(r.httpGone!.status).toBe(404);
   });
 });

@@ -121,6 +121,22 @@ export function migrateControlDb(db: Database): void {
     );
   `);
   db.run("CREATE INDEX IF NOT EXISTS monitor_calls_by_monitor ON monitor_calls (monitor_id, at)");
+  // What an HTTP(S) monitor calls, its conditions, and where its runs stand (#178).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS monitor_http (
+      monitor_id TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      method TEXT NOT NULL DEFAULT 'GET',
+      body TEXT,
+      headers TEXT NOT NULL DEFAULT '[]',
+      every_ms INTEGER NOT NULL DEFAULT 30000,
+      conditions TEXT NOT NULL DEFAULT '',
+      fail_after INTEGER NOT NULL DEFAULT 2,
+      fails_in_row INTEGER NOT NULL DEFAULT 0,
+      next_run_at INTEGER,
+      last_run TEXT
+    );
+  `);
   db.run(`
     CREATE TABLE IF NOT EXISTS alert_sent_fingerprints (
       rule_id TEXT NOT NULL,
