@@ -28,6 +28,8 @@ export type NetExchange =
       address: string;
       /** A mail server's greeting before STARTTLS: `220 smtp.agental.dev ESMTP`. */
       greeting: string | null;
+      /** The TLS version the handshake settled on, `TLS 1.3`; null on a TCP monitor. */
+      protocol: string | null;
       timings: NetTimings;
       cert: NetCertSeen | null;
     }
@@ -37,6 +39,7 @@ export type NetExchange =
       error: string;
       address: string | null;
       greeting: string | null;
+      protocol: string | null;
       timings: NetTimings;
       cert: NetCertSeen | null;
     };
@@ -76,10 +79,12 @@ function certOf(socket: TLSSocket): NetCertSeen | null {
   const to = Date.parse(peer.valid_to);
   const name = (v: unknown) => (Array.isArray(v) ? String(v[0] ?? "") : typeof v === "string" ? v : "");
   const subject = name(peer.subject?.CN);
+  // "R11 · Let's Encrypt": the issuing CA's name, then its organization.
+  const issuer = [...new Set([name(peer.issuer?.CN), name(peer.issuer?.O)].filter(Boolean))].join(" · ");
   return {
     subject,
     names: namesOf(peer.subjectaltname, subject),
-    issuer: name(peer.issuer?.O) || name(peer.issuer?.CN),
+    issuer,
     valid_to: Number.isFinite(to) ? new Date(to).toISOString() : peer.valid_to,
     untrusted: socket.authorized ? null : tlsError(socket.authorizationError),
   };
@@ -214,6 +219,7 @@ export async function runNetRequest(input: NetRequestInput): Promise<NetExchange
   let socket: Socket | TLSSocket | null = null;
   let address: string | null = null;
   let greeting: string | null = null;
+  let protocol: string | null = null;
   let cert: NetCertSeen | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let over = false;
@@ -277,6 +283,7 @@ export async function runNetRequest(input: NetRequestInput): Promise<NetExchange
     secure.on("error", () => undefined);
     socket = still(secure);
     timings.tls = at() - mark;
+    protocol = secure.getProtocol()?.replace(/^TLSv/, "TLS ") ?? null;
     cert = certOf(secure);
     if (!cert) {
       throw new RunError("no certificate");
@@ -292,7 +299,7 @@ export async function runNetRequest(input: NetRequestInput): Promise<NetExchange
   try {
     await Promise.race([run(), timeout]);
     timings.total = at();
-    return { ok: true, address: address!, greeting, timings, cert };
+    return { ok: true, address: address!, greeting, protocol, timings, cert };
   } catch (err) {
     timings.total = at();
     return {
@@ -300,6 +307,7 @@ export async function runNetRequest(input: NetRequestInput): Promise<NetExchange
       error: err instanceof RunError ? err.message : netError(err, host),
       address,
       greeting,
+      protocol,
       timings,
       cert,
     };

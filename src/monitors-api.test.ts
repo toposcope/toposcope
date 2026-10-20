@@ -106,7 +106,7 @@ beforeAll(async () => {
     const certBody = { source: "cert", target: "smtp.agental.dev:587", starttls: "smtp", every: "1h", conditions: ["cert > 14d", "cert name == smtp.agental.dev"] };
     const certMade = (await go("certDeclare", "/api/monitors/mail-cert", "PUT", certBody)).body;
     await go("certBadStarttls", "/api/monitors/bad", "PUT", { ...certBody, starttls: "ftp" });
-    await go("certBadLine", "/api/monitors/bad", "PUT", { ...certBody, conditions: ["connected"] });
+    await go("certBadLine", "/api/monitors/bad", "PUT", { ...certBody, conditions: ["status == 200"] });
     await go("certUpdate", "/api/alert-rules/" + certMade.id, "PUT", { starttls: null, target: "imap.agental.dev:993" });
     await go("certOne", "/api/monitors/mail-cert");
     await go("netClash", "/api/monitors/db-port", "PUT", { source: "cert", target: "db.internal:5432" });
@@ -333,7 +333,7 @@ describe("TCP and certificate monitors (#180)", () => {
   test("each reads its own lines, and says what is wrong", () => {
     expect(r.tcpBadLine!.status).toBe(400);
     expect(r.tcpBadLine!.body.error).toBe("conditions line 1: not a TCP condition: connected, time < 200ms");
-    expect(r.certBadLine!.body.error).toBe("conditions line 1: not a certificate condition: cert > 14d, cert name == mail.example.com");
+    expect(r.certBadLine!.body.error).toBe("conditions line 1: not a certificate condition: connected, time < 200ms, cert > 14d, cert name == mail.example.com");
     expect(r.tcpBadTarget!.body.error).toBe("target is host:port, without a scheme or a path");
     expect(r.tcpNoPort!.body.error).toBe("target is host:port: db.internal:5432, or [::1]:993");
     expect(r.tcpStarttls!.body.error).toBe("starttls is for a certificate monitor; a TCP monitor only connects");

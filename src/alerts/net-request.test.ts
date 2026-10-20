@@ -58,6 +58,7 @@ describe("runNetRequest", () => {
     const left = Date.parse(x.cert!.valid_to) - Date.now();
     expect(Math.round(left / (24 * 60 * 60_000))).toBe(20);
     expect(x.timings.tls).toBeGreaterThan(0);
+    expect(x.protocol).toMatch(/^TLS 1\.[23]$/);
   });
 
   test("a certificate this node does not trust is still read, and says why", async () => {

@@ -272,6 +272,7 @@ export async function sendNetRoute(c: Context, rec: Record<string, unknown>, sou
     connected: x.ok || x.address !== null,
     address: x.address,
     greeting: x.greeting,
+    protocol: x.protocol,
     error: x.ok ? null : x.error,
     timings: x.timings,
     cert: x.cert,

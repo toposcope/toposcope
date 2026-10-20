@@ -63,7 +63,7 @@ describe("conditions by monitor", () => {
     expect(parseConditionLine("cert > 14d", "tcp")).toEqual({ error: "not a TCP condition: connected, time < 200ms" });
   });
 
-  test("a certificate monitor reads cert days and cert name", () => {
+  test("a certificate monitor reads cert days and cert name, and connected and time (18x)", () => {
     expect(parseConditionLine("cert > 14d", "cert")).toMatchObject({ cond: { what: "cert", op: ">", ms: 14 * day } });
     expect(parseConditionLine("cert name == Mail.Example.com", "cert")).toEqual({
       text: "cert name == Mail.Example.com",
@@ -72,10 +72,11 @@ describe("conditions by monitor", () => {
     });
     expect(parseConditionLine('cert name == "*.example.com" warn', "cert")).toMatchObject({ level: "warn", cond: { name: "*.example.com" } });
     expect(parseConditionLine("cert name == not a name", "cert")).toEqual({ error: "cert name needs a host name: cert name == mail.example.com" });
-    expect(parseConditionLine("connected", "cert")).toEqual({
-      error: "not a certificate condition: cert > 14d, cert name == mail.example.com",
+    expect(parseConditionLine("connected", "cert")).toMatchObject({ cond: { what: "connected" } });
+    expect(parseConditionLine("time < 200ms   warn", "cert")).toMatchObject({ level: "warn", cond: { what: "time", ms: 200 } });
+    expect(parseConditionLine("status == 200", "cert")).toEqual({
+      error: "not a certificate condition: connected, time < 200ms, cert > 14d, cert name == mail.example.com",
     });
-    expect(parseConditionLine("time < 200ms", "cert")).toMatchObject({ error: expect.stringContaining("not a certificate condition") });
   });
 
   test("an HTTP(S) monitor's lines are as they were", () => {

@@ -54,13 +54,13 @@ export type CheckKind = "http" | "tcp" | "cert";
 const kindConditions: Record<CheckKind, ReadonlySet<Condition["what"]>> = {
   http: new Set(["status", "status-in", "time", "body", "json", "header", "cert"]),
   tcp: new Set(["connected", "time"]),
-  cert: new Set(["cert", "cert-name"]),
+  cert: new Set(["connected", "time", "cert", "cert-name"]),
 };
 
 const kindHelp: Record<CheckKind, string> = {
   http: 'not a condition: status == 200, time < 300ms, body contains "ok", $.db == "ok", header … contains …, cert > 14d',
   tcp: "not a TCP condition: connected, time < 200ms",
-  cert: "not a certificate condition: cert > 14d, cert name == mail.example.com",
+  cert: "not a certificate condition: connected, time < 200ms, cert > 14d, cert name == mail.example.com",
 };
 
 export type ConditionLevel = "fail" | "warn";

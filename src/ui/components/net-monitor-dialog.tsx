@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { ChevronDown, X } from "lucide-react";
 import {
   AddChip,
   box,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { addLine, editorLines, goodLines, offeredTimeLimit, setTimeLimit, timeLine } from "@/http-editor";
 import {
   nameFromTarget,
+  netModeAbout,
   netModeExample,
   netModeLabel,
   netModeOf,
@@ -26,6 +28,7 @@ import {
   netTimingBar,
   netTimingWords,
   offeredCertName,
+  tlsWords,
   type NetMode,
 } from "@/net-editor";
 import type { MonitorView, NetSendResult } from "@/types";
@@ -69,9 +72,48 @@ type Props = {
 const segColors: Record<string, string> = {
   dns: "#52525b",
   connect: "#71717a",
-  starttls: "#38bdf8",
   tls: "#a1a1aa",
 };
+
+/** 18x's kind menu: each kind, and what it checks beside it. */
+function KindSelect({ value, modes, onPick }: { value: NetMode; modes: readonly NetMode[]; onPick: (mode: NetMode) => void }) {
+  return (
+    <SelectPrimitive.Root value={value} onValueChange={(v) => onPick(v as NetMode)}>
+      <SelectPrimitive.Trigger
+        aria-label="Kind"
+        className={cn(box, "ml-3 w-[86px] justify-between bg-transparent font-mono outline-none focus-visible:border-[#e7e1d3]")}
+      >
+        <SelectPrimitive.Value />
+        <SelectPrimitive.Icon asChild>
+          <ChevronDown className="size-3 text-muted-foreground" />
+        </SelectPrimitive.Icon>
+      </SelectPrimitive.Trigger>
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          position="popper"
+          sideOffset={4}
+          align="start"
+          className="z-50 w-[250px] rounded-[8px] border border-white/14 bg-[#1f1f23] p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)]"
+        >
+          <SelectPrimitive.Viewport className="flex flex-col gap-px">
+            {modes.map((m) => (
+              <SelectPrimitive.Item
+                key={m}
+                value={m}
+                className="flex cursor-pointer items-center justify-between rounded-[5px] px-2 py-1.5 text-[12.5px] outline-none select-none data-[highlighted]:bg-[#27272a] data-[state=checked]:bg-[#27272a]"
+              >
+                <SelectPrimitive.ItemText>
+                  <span className="font-mono">{netModeLabel[m]}</span>
+                </SelectPrimitive.ItemText>
+                <span className="text-muted-foreground">{netModeAbout[m]}</span>
+              </SelectPrimitive.Item>
+            ))}
+          </SelectPrimitive.Viewport>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    </SelectPrimitive.Root>
+  );
+}
 
 /**
  * The TCP · certificate editor (#180), as 18r draws the HTTP(S) one: where it connects, sent
@@ -196,10 +238,17 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
 
   function pickMode(next: NetMode) {
     const was = netSourceOf(mode).source;
+    const now = netSourceOf(next).source;
     setMode(next);
-    // TCP and certificate lines are not the same lines: a switch starts them over.
-    if (netSourceOf(next).source !== was) {
-      setLines("");
+    if (now !== was) {
+      // A certificate monitor reads connected and time too; cert lines go when it becomes TCP.
+      setLines((t) => {
+        const keep = new Set(editorLines(t, now).filter((r) => r.line).map((r) => r.index));
+        return t
+          .split("\n")
+          .filter((_, i) => keep.has(i))
+          .join("\n");
+      });
       if (!nameTouched) {
         setName("");
       }
@@ -316,7 +365,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
     }
   }
 
-  const limit = source === "tcp" ? timeLine(lines, "tcp") : null;
+  const limit = timeLine(lines, source);
   const timing = run ? netTimingBar(run.timings, limit?.ms ?? null) : null;
   const certLeft = run?.cert ? Date.parse(run.cert.valid_to) - Date.now() : null;
   const certName = run?.cert ? offeredCertName(run.cert, run.target) : null;
@@ -338,7 +387,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
     }
     const rect = el.getBoundingClientRect();
     const frac = Math.min(1, Math.max(0.01, (e.clientX - rect.left) / rect.width));
-    setLines((t) => setTimeLimit(t, frac * span, "tcp"));
+    setLines((t) => setTimeLimit(t, frac * span, source));
   }
 
   return (
@@ -361,21 +410,12 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
               Toposcope connects to a port from this node on a schedule, or reads the certificate it answers with; conditions on
               what answered say ok, warn or fail.
             </DialogDescription>
-            <select
-              aria-label="Protocol"
+            <KindSelect
               value={mode}
               // A monitor stays a TCP monitor or a certificate monitor once made.
-              onChange={(e) => pickMode(e.target.value as NetMode)}
-              className={cn(box, "ml-3 w-[76px] bg-transparent font-mono outline-none")}
-            >
-              {netModes
-                .filter((m) => !editing || netSourceOf(m).source === (editing.source === "cert" ? "cert" : "tcp"))
-                .map((m) => (
-                  <option key={m} value={m}>
-                    {netModeLabel[m]}
-                  </option>
-                ))}
-            </select>
+              modes={netModes.filter((m) => !editing || netSourceOf(m).source === (editing.source === "cert" ? "cert" : "tcp"))}
+              onPick={pickMode}
+            />
             <input
               aria-label="Host and port"
               value={target}
@@ -410,7 +450,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
           <div className="grid min-h-[420px] grid-cols-1 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-3 border-white/[0.08] px-4 py-3.5 md:border-r">
               <div className="flex items-center gap-2.5">
-                <span className="text-[12px] font-semibold">Response</span>
+                <span className="text-[12px] font-semibold">Answer</span>
                 <span className="font-mono text-[11.5px] text-muted-foreground">
                   from this node{run ? ` · ${clock(run.at)}` : ""}
                 </span>
@@ -425,15 +465,16 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
               ) : (
                 <>
                   {run.connected ? (
+                    // 18x: "connected · TLS 1.3 via STARTTLS" on a certificate monitor, the address on a TCP one.
                     <div className="flex items-center gap-2.5 text-[12.5px]">
                       <span className="font-mono text-[13px]">connected</span>
-                      <span className="font-mono text-muted-foreground">{run.address}</span>
+                      <span className="font-mono text-muted-foreground">
+                        {run.cert ? tlsWords(run.protocol, run.starttls) : run.address}
+                      </span>
                       {run.error ? <span className="min-w-0 truncate font-mono text-red-300">{run.error}</span> : null}
-                      {source === "tcp" ? (
-                        <span className="ml-auto">
-                          <AddChip line="connected" onAdd={addPicked} />
-                        </span>
-                      ) : null}
+                      <span className="ml-auto">
+                        <AddChip line="connected" onAdd={addPicked} />
+                      </span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2.5 text-[12.5px]">
@@ -447,7 +488,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                       <span className="flex items-center gap-2 text-[12px]">
                         <span className="font-mono">{run.duration_ms}ms</span>
                         <span className="text-muted-foreground">{netTimingWords(run.timings)}</span>
-                        {source === "tcp" && !limit ? (
+                        {!limit ? (
                           <span className="ml-auto">
                             <AddChip line={`time < ${offeredTimeLimit(run.duration_ms)}ms`} onAdd={addPicked} />
                           </span>
@@ -479,7 +520,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                             onKeyDown={(e) => {
                               if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
                                 e.preventDefault();
-                                setLines((t) => setTimeLimit(t, limit.ms + (e.key === "ArrowLeft" ? -10 : 10), "tcp"));
+                                setLines((t) => setTimeLimit(t, limit.ms + (e.key === "ArrowLeft" ? -10 : 10), source));
                               }
                             }}
                             className="absolute top-0.5 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize touch-none outline-none"
@@ -501,17 +542,36 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                   ) : null}
 
                   {run.cert ? (
-                    <div className="flex items-center gap-2.5 text-[12.5px]">
-                      <span className="text-muted-foreground">certificate</span>
-                      <span className="min-w-0 truncate font-mono">
-                        {run.cert.subject || run.cert.names[0] || "—"} · expires {mmdd(run.cert.valid_to)} ·{" "}
-                        {certLeft !== null ? formatCertShort(certLeft) : "—"}
+                    // 18x: when it expires, the name it is for, and who issued it.
+                    <div className="flex flex-col gap-2 rounded-[6px] border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-[12.5px]">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="w-[84px] shrink-0 text-muted-foreground">certificate</span>
+                        <span className="min-w-0 truncate font-mono">
+                          expires {mmdd(run.cert.valid_to)} · {certLeft !== null ? formatCertShort(certLeft) : "—"}
+                        </span>
+                        <span className="ml-auto shrink-0">
+                          <AddChip line="cert > 14d" onAdd={addPicked} />
+                        </span>
                       </span>
-                      <span className="ml-auto flex shrink-0 gap-1">
-                        <AddChip line="cert > 14d" onAdd={addPicked} />
-                        {certName ? <AddChip line={certName} onAdd={addPicked} /> : null}
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="w-[84px] shrink-0 text-muted-foreground">name</span>
+                        <span className="min-w-0 truncate font-mono" title={run.cert.names.join(", ")}>
+                          {run.cert.subject || run.cert.names[0] || "—"}
+                        </span>
+                        {certName ? (
+                          <span className="ml-auto shrink-0">
+                            <AddChip line={certName} onAdd={addPicked} />
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="w-[84px] shrink-0 text-muted-foreground">issuer</span>
+                        <span className="min-w-0 truncate font-mono text-muted-foreground">{run.cert.issuer || "—"}</span>
                       </span>
                     </div>
+                  ) : null}
+                  {run.connected ? (
+                    <span className="text-[11.5px] text-muted-foreground">Click a chip to make it a condition.</span>
                   ) : null}
                 </>
               )}
@@ -523,7 +583,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                 lines={lines}
                 setLines={setLines}
                 results={lineResult}
-                none={source === "tcp" ? "connecting passes" : "a trusted certificate for this host passes"}
+                none={source === "tcp" ? "connecting passes" : "a trusted certificate for its host passes"}
               />
 
               <RunCallsRows
@@ -571,7 +631,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                 "Sending from this node…"
               ) : sentence ? (
                 <>
-                  With these, the last run would{" "}
+                  With these, the last answer would{" "}
                   <span
                     className={
                       sentence.word === "pass" ? "text-[#7dd3fc]" : sentence.word === "warn" ? "text-[#fcd34d]" : "text-[#fca5a5]"
@@ -582,7 +642,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                   {sentence.rest}
                 </>
               ) : (
-                "Send it to see what these lines make of what answers."
+                "Send it to see what these lines make of its answer."
               )}
             </span>
             <span className="ml-auto flex shrink-0 gap-2">

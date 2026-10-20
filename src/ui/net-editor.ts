@@ -12,6 +12,15 @@ export type NetMode = (typeof netModes)[number];
 
 export const netModeLabel: Record<NetMode, string> = { tcp: "TCP", tls: "TLS", smtp: "SMTP", imap: "IMAP", pop3: "POP3" };
 
+/** What each one does, beside it in the menu (18x). */
+export const netModeAbout: Record<NetMode, string> = {
+  tcp: "connects",
+  tls: "certificate",
+  smtp: "certificate · STARTTLS",
+  imap: "certificate · STARTTLS",
+  pop3: "certificate · STARTTLS",
+};
+
 export function netModeOf(source: NetSource, starttls: Starttls | null): NetMode {
   return source === "tcp" ? "tcp" : (starttls ?? "tls");
 }
@@ -29,30 +38,32 @@ export const netModeExample: Record<NetMode, string> = {
   pop3: "pop.example.com:110",
 };
 
-/** "db:5432", "10.0.0.5:6379", "smtp.agental.dev certificate": a name to start from. */
+/** "db:5432", "10.0.0.5:6379", "smtp certificate": a name to start from (18x). */
 export function nameFromTarget(raw: string, source: NetSource): string {
   const t = parseNetTarget(raw);
   if ("error" in t) {
     return "";
   }
-  if (source === "cert") {
-    return `${t.host} certificate`.slice(0, 80);
-  }
   // An address or a bare name is kept whole.
   const bare = /^[\d.]+$/.test(t.host) || t.host.includes(":") || !t.host.includes(".");
-  return `${bare ? t.host : t.host.split(".")[0]!}:${t.port}`.slice(0, 80);
+  const host = bare ? t.host : t.host.split(".")[0]!;
+  return (source === "cert" ? `${host} certificate` : `${host}:${t.port}`).slice(0, 80);
 }
 
 export type NetTimings = { dns: number; connect: number; starttls: number | null; tls: number | null; total: number };
 
-/** The run's parts on 18r's bar: dns, connect, then STARTTLS and the handshake on a certificate monitor. */
+/** TLS's share: the handshake, and the STARTTLS exchange before it (18x draws them as one). */
+function tlsMs(t: NetTimings): number | null {
+  return t.tls === null && t.starttls === null ? null : (t.tls ?? 0) + (t.starttls ?? 0);
+}
+
+/** The run's parts on 18r's bar: dns, connect, and on a certificate monitor tls (18x). */
 export function netTimingBar(t: NetTimings, limitMs: number | null): TimingBar {
   return barOf(
     [
       ["dns", t.dns],
       ["connect", t.connect],
-      ["starttls", t.starttls ?? 0],
-      ["tls", t.tls ?? 0],
+      ["tls", tlsMs(t) ?? 0],
     ],
     t.total,
     limitMs,
@@ -60,15 +71,16 @@ export function netTimingBar(t: NetTimings, limitMs: number | null): TimingBar {
   );
 }
 
-/** "dns 4 · connect 18 · starttls 6 · tls 41". */
+/** "dns 3 · connect 22 · tls 33" (18x). */
 export function netTimingWords(t: NetTimings): string {
   const r = (n: number) => String(Math.round(n));
-  return [
-    `dns ${r(t.dns)}`,
-    `connect ${r(t.connect)}`,
-    ...(t.starttls !== null ? [`starttls ${r(t.starttls)}`] : []),
-    ...(t.tls !== null ? [`tls ${r(t.tls)}`] : []),
-  ].join(" · ");
+  const tls = tlsMs(t);
+  return [`dns ${r(t.dns)}`, `connect ${r(t.connect)}`, ...(tls !== null ? [`tls ${r(tls)}`] : [])].join(" · ");
+}
+
+/** "TLS 1.3 via STARTTLS", "TLS 1.3": how a certificate monitor got to its certificate. */
+export function tlsWords(protocol: string | null, starttls: Starttls | null): string {
+  return `${protocol ?? "TLS"}${starttls ? " via STARTTLS" : ""}`;
 }
 
 /** The cert name a run offers: what the certificate was issued to, else the host it was asked for. */

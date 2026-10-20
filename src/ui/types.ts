@@ -279,6 +279,8 @@ export type NetSendResult = {
   address: string | null;
   /** A mail server's greeting before STARTTLS. */
   greeting: string | null;
+  /** `TLS 1.3`, on a certificate monitor that got that far. */
+  protocol: string | null;
   error: string | null;
   timings: { dns: number; connect: number; starttls: number | null; tls: number | null; total: number };
   cert: { subject: string; names: string[]; issuer: string; valid_to: string; untrusted: string | null } | null;

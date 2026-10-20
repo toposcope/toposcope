@@ -146,9 +146,14 @@ export function netConditionsLabel(m: MonitorView): string {
   return lines.length === 1 ? lines[0]!.text : `${lines.length} conditions`;
 }
 
-/** "smtp.agental.dev:587 starttls smtp", "db.internal:5432": where it connects. */
+/** "TLS", "SMTP": how a certificate monitor reaches its certificate (18y). */
+function certKind(m: MonitorView): string {
+  return (m.net?.starttls ?? "tls").toUpperCase();
+}
+
+/** "SMTP smtp.agental.dev:587", "db.internal:5432": where it connects, and how for a certificate. */
 export function netTargetLabel(m: MonitorView): string {
-  return `${m.net?.target ?? ""}${m.net?.starttls ? ` starttls ${m.net.starttls}` : ""}`;
+  return sourceOf(m) === "cert" ? `${certKind(m)} ${m.net?.target ?? ""}` : (m.net?.target ?? "");
 }
 
 /** "3 conditions", "cert > 14d", "any 2xx". */
@@ -165,7 +170,7 @@ export function httpConditionsLabel(m: MonitorView): string {
 
 /**
  * Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h", "push · 1d · grace 1h",
- * "http · 30s · 3 conditions", "cert · 1h · cert > 14d".
+ * "http · 30s · 3 conditions", "tcp · 30s · connected", "certificate · SMTP · 1h".
  */
 export function laneKind(m: MonitorView): string {
   if (sourceOf(m) === "fingerprints") {
@@ -174,8 +179,12 @@ export function laneKind(m: MonitorView): string {
   if (sourceOf(m) === "http") {
     return `http · ${m.http?.every ?? "30s"} · ${httpConditionsLabel(m)}`;
   }
+  if (sourceOf(m) === "cert") {
+    // 18y: "certificate · SMTP · 1h".
+    return `certificate · ${certKind(m)} · ${m.net?.every ?? "30s"}`;
+  }
   if (isNet(m)) {
-    return `${sourceOf(m)} · ${m.net?.every ?? "30s"} · ${netConditionsLabel(m)}`;
+    return `tcp · ${m.net?.every ?? "30s"} · ${netConditionsLabel(m)}`;
   }
   if (sourceOf(m) === "push") {
     const every = m.every_ms ?? null;
@@ -215,7 +224,7 @@ export function openCardLine(m: MonitorView, nowMs = Date.now()): string {
   }
   if (isNet(m)) {
     const why = m.net?.last_run?.why ?? m.open?.open_message ?? "";
-    return `${sourceOf(m)} · ${netTargetLabel(m)}${why ? ` · ${why}` : ""}`;
+    return `${sourceOf(m) === "cert" ? "certificate" : "tcp"} · ${netTargetLabel(m)}${why ? ` · ${why}` : ""}`;
   }
   const last = readsQuiet(m) && typeof m.last_line_at === "number" ? ` · last line ${clockAt(m.last_line_at, nowMs)}` : "";
   return `search · ${q} · ${opensWhenLine(m)}${last}`;
