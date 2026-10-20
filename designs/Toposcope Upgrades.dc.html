@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;line-height:14px;border:1px solid rgba(255,255,255,0.14);border-radius:3px;padding:0 4px;background:#18181b;color:#d4d4d8}
+  .cut{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Upgrades</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 19a–19j · the running version and a newer release, in the footer · approved 2026-10-20</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Toposcope Upgrades — 19a–19j</h2>
+
+    <div id="19a" data-frame="19a" data-screen-label="19a Today: no version on screen" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Today: no version on screen</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19a" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19a</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">Today: no screen says which Toposcope is running</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">The footer as it is on 0.6.0, for reference. Keyboard hints on the left; on the right the ingest meter, then the ClickHouse and App meters. The version is only in the open <span class="mono">/api/health</span>, which nobody reads: agental's log VM sat on 0.5.7 for a day after 0.6.0 shipped, and nothing on screen said so.</p>
+    </div>
+  </div>
+
+  <div style="border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column; height: 470px">
+    <div style="height: 40px; flex: none; display: flex; align-items: center; gap: 18px; padding: 0 14px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px">
+      <span style="font-weight: 600">toposcope</span>
+      <span style="color: #fafafa">Search</span><span style="color: #a1a1aa">Watch</span><span style="color: #a1a1aa">Fields</span><span style="color: #a1a1aa">Links</span>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 14px; opacity: 0.45">
+      <div style="height: 30px; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; display: flex; align-items: center; padding: 0 10px" class="mono"><span style="font-size: 12px; color: #a1a1aa">level:error service:api</span></div>
+      <div style="height: 120px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; align-items: flex-end; gap: 3px; padding: 10px">
+        <sc-for list="{{f19a_bars}}" as="b" hint-placeholder-count="60"><span style="flex: 1; background: #3f3f46; border-radius: 1px; height: {{b.h}}"></span></sc-for>
+      </div>
+      <sc-for list="{{f19a_rows}}" as="r" hint-placeholder-count="6"><div style="height: 22px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06)"><span style="width: 90px; height: 7px; background: #27272a; border-radius: 2px"></span><span style="width: 50px; height: 7px; background: #3f3f46; border-radius: 2px"></span><span style="width: {{r.w}}; height: 7px; background: #27272a; border-radius: 2px"></span></div></sc-for>
+    </div>
+    <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); background: #0a0a0c; padding: 0 12px; font-size: 11px; color: #a1a1aa">
+      <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden">
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">/</kbd>search</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">↑↓←→</kbd>focus</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">wheel / + −</kbd>zoom</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">esc</kbd>close</span>
+      </div>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none">
+        <span class="mono" style="color: #d4d4d8">1.24K/s</span>
+        <svg width="64" height="12" viewBox="0 0 64 12" aria-hidden="true"><polyline points="{{f19a_spark}}" fill="none" stroke="#a1a1aa" stroke-width="1"/></svg>
+        <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+        <span style="display: inline-flex; align-items: center; gap: 5px">ClickHouse<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 9px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 5px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+        <span style="display: inline-flex; align-items: center; gap: 5px">App<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 6px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 2px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+      </div>
+    </footer>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">The only place the version is today</div>
+      <div class="mono" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 12px; font-size: 12px; line-height: 1.6; color: #d4d4d8">
+        <div><span style="color: #71717a">$</span> curl -fsS http://127.0.0.1:8080/api/health</div>
+        <div style="color: #a1a1aa">{"ok":true,"phase":"ready","clickhouse":true,"sqlite":true,"version":"0.6.0"}</div>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">Open with no sign-in, so it stays as it is: it must not say how far behind an instance is.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">What the next frames add</div>
+      <p style="margin: 0; font-size: 12.5px; line-height: 1.6; color: #d4d4d8">The running version at the footer's right end, always (19b). When a newer release is known, <span class="mono">0.6.0 → 0.6.1</span>, and a panel with what changes, what to read first, and the one command to run on the host (19c). No upgrade button: the app never controls Docker.</p>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19b" data-frame="19b" data-screen-label="19b Up to date" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Up to date</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19b" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19b</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">Up to date: the running version, always at the footer's right end</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">After the App meter, in mono, as muted as the rest of the footer. It is a button: clicking it opens a small panel that says when the release check last ran and what it found. Nothing else changes in the footer.</p>
+    </div>
+  </div>
+
+  <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">At rest</div>
+  <div style="border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column; height: 120px">
+    <div style="flex: 1; padding: 14px; opacity: 0.4; display: flex; flex-direction: column; gap: 8px">
+      <div style="height: 7px; width: 70%; background: #27272a; border-radius: 2px"></div>
+      <div style="height: 7px; width: 55%; background: #27272a; border-radius: 2px"></div>
+      <div style="height: 7px; width: 62%; background: #27272a; border-radius: 2px"></div>
+    </div>
+    <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); background: #0a0a0c; padding: 0 12px; font-size: 11px; color: #a1a1aa">
+      <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden">
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">/</kbd>search</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">↑↓←→</kbd>focus</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">wheel / + −</kbd>zoom</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">esc</kbd>close</span>
+      </div>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none">
+        <span class="mono" style="color: #d4d4d8">1.24K/s</span>
+        <svg width="64" height="12" viewBox="0 0 64 12" aria-hidden="true"><polyline points="{{f19b_spark}}" fill="none" stroke="#a1a1aa" stroke-width="1"/></svg>
+        <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+        <span style="display: inline-flex; align-items: center; gap: 5px">ClickHouse<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 9px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 5px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+        <span style="display: inline-flex; align-items: center; gap: 5px">App<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 6px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 2px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+        <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+        <button type="button" class="mono" aria-label="Toposcope 0.6.0, up to date" style="background: none; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #a1a1aa; cursor: pointer">0.6.0</button>
+      </div>
+    </footer>
+  </div>
+
+  <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">Clicked: the panel opens above it</div>
+  <div style="position: relative; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column; height: 330px">
+    <div style="flex: 1; padding: 14px; opacity: 0.4; display: flex; flex-direction: column; gap: 8px">
+      <div style="height: 7px; width: 70%; background: #27272a; border-radius: 2px"></div>
+      <div style="height: 7px; width: 55%; background: #27272a; border-radius: 2px"></div>
+      <div style="height: 7px; width: 62%; background: #27272a; border-radius: 2px"></div>
+      <div style="height: 7px; width: 48%; background: #27272a; border-radius: 2px"></div>
+      <div style="height: 7px; width: 66%; background: #27272a; border-radius: 2px"></div>
+    </div>
+    <div role="dialog" aria-label="Toposcope version" style="position: absolute; right: 8px; bottom: 36px; width: 340px; box-sizing: border-box; padding: 12px 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <span style="font-size: 13px; font-weight: 600">Toposcope</span>
+        <span class="mono" style="font-size: 12px; color: #d4d4d8">0.6.0</span>
+        <span style="flex: 1"></span>
+        <a href="https://github.com/toposcope/toposcope/releases/tag/v0.6.0" style="font-size: 11.5px; text-decoration: none">Release notes ↗</a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #d4d4d8">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#a1a1aa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>
+        Up to date · checked 3 hours ago
+      </div>
+      <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">Toposcope asks GitHub once a day whether a newer release is out, and sends nothing about this instance. <span class="mono" style="color: #d4d4d8">TOPOSCOPE_UPDATE_CHECK=off</span> in <span class="mono">.env</span> stops it.</p>
+    </div>
+    <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); background: #0a0a0c; padding: 0 12px; font-size: 11px; color: #a1a1aa">
+      <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden">
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">/</kbd>search</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">↑↓←→</kbd>focus</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">wheel / + −</kbd>zoom</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">esc</kbd>close</span>
+      </div>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none">
+        <span class="mono" style="color: #d4d4d8">1.24K/s</span>
+        <svg width="64" height="12" viewBox="0 0 64 12" aria-hidden="true"><polyline points="{{f19b_spark}}" fill="none" stroke="#a1a1aa" stroke-width="1"/></svg>
+        <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+        <span style="display: inline-flex; align-items: center; gap: 5px">ClickHouse<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 9px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 5px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+        <span style="display: inline-flex; align-items: center; gap: 5px">App<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 6px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 2px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+        <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+        <button type="button" class="mono" aria-expanded="true" aria-label="Toposcope 0.6.0, up to date" style="background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #fafafa; cursor: pointer">0.6.0</button>
+      </div>
+    </footer>
+  </div>
+
+  <p style="margin: 0; font-size: 12.5px; line-height: 1.55; color: #a1a1aa; max-width: 96ch">The panel is a popover anchored to the version: Esc or a click outside closes it. When the check is off or failed, the footer still shows only the bare version, and the panel says why (19g), never "Up to date".</p>
+</div>
+      </div>
+    </div>
+
+    <div id="19c" data-frame="19c" data-screen-label="19c A patch is out" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">A patch is out</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19c" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19c</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">A patch is out: 0.6.0 → 0.6.1, and the panel that says what to do</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">The footer item gains an arrow and the new version in plate, and stays the same size and grey. Clicking it opens the panel: Before you upgrade first, then what's new, then the one command to run on the host.</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 28px; flex: 1; min-height: 0">
+    <ol style="margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 16px; font-size: 12.5px; line-height: 1.55; color: #a1a1aa">
+      <li><span style="color: #fafafa">The footer.</span> <span class="mono" style="color: #d4d4d8">0.6.0 → <span style="color: #e7e1d3">0.6.1</span></span>, nothing louder: no badge, no red, no banner. It is noticed by someone who looks at the footer every day.</li>
+      <li><span style="color: #fafafa">Before you upgrade, first and apart.</span> Behaviour operators rely on that changes, new settings, whether a backup matters. Someone who reads one part reads this one. It comes from the release's own <span class="mono">**Before you upgrade:**</span> paragraph.</li>
+      <li><span style="color: #fafafa">What's new.</span> The release notes as published, plain paragraphs, inline code and links only.</li>
+      <li><span style="color: #fafafa">The command, the only action.</span> Copy puts exactly <span class="mono" style="color: #d4d4d8">./toposcope.sh upgrade 0.6.1</span> on the clipboard (19f). The app never runs it: it would need the Docker socket.</li>
+      <li><span style="color: #fafafa">The backup.</span> Its size comes from what the ClickHouse and App meters already read, so nobody is surprised by minutes of downtime.</li>
+      <li><span style="color: #fafafa">The quiet line.</span> When the check last ran; a failed or switched-off check is said here (19g), never in the footer.</li>
+    </ol>
+
+    <div style="position: relative; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+      <div style="flex: 1; padding: 14px; opacity: 0.35; display: flex; flex-direction: column; gap: 8px">
+        <div style="height: 7px; width: 70%; background: #27272a; border-radius: 2px"></div>
+        <div style="height: 7px; width: 55%; background: #27272a; border-radius: 2px"></div>
+        <div style="height: 7px; width: 62%; background: #27272a; border-radius: 2px"></div>
+      </div>
+
+      <div role="dialog" aria-label="Toposcope 0.6.1 is out" style="position: absolute; right: 8px; bottom: 36px; width: 460px; box-sizing: border-box; padding: 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: 14px; font-weight: 600">Toposcope 0.6.1 is out</span>
+            <span style="flex: 1"></span>
+            <a href="https://github.com/toposcope/toposcope/releases/tag/v0.6.1" style="font-size: 11.5px; text-decoration: none">Release on GitHub ↗</a>
+          </div>
+          <span class="mono" style="font-size: 11px; color: #a1a1aa">you run 0.6.0 · patch · 20 Oct 2026</span>
+        </div>
+
+        <div style="border: 1px solid rgba(245,158,11,0.45); background: rgba(245,158,11,0.07); border-radius: 6.4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px">
+          <div style="display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #fcd34d"><span style="width: 6px; height: 6px; border-radius: 3px; background: #f59e0b"></span>Before you upgrade</div>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #f4f4f5">From this version Toposcope asks GitHub once a day whether a newer release is out. It sends nothing about this instance. Set <span class="mono" style="font-size: 11.5px">TOPOSCOPE_UPDATE_CHECK=off</span> in <span class="mono" style="font-size: 11.5px">.env</span> to stop it.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #a1a1aa">What's new in 0.6.1</div>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8">Toposcope knows when a release is out. Once a day it reads GitHub's public list of releases and keeps what is newer than the one running. <span class="mono" style="font-size: 11.5px">GET /api/version</span> says what it found.</p>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8">The footer shows the running version, and the newer one when there is one, with this panel.</p>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8"><span class="mono" style="font-size: 11.5px">toposcope.sh upgrade</span> backs up both stores, swaps <span class="mono" style="font-size: 11.5px">compose.yml</span>, waits for the new version, and rolls back by itself if it does not come up.</p>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8">Every release ships <span class="mono" style="font-size: 11.5px">SHA256SUMS</span>, and <span class="mono" style="font-size: 11.5px">toposcope.sh</span> is a release file.</p>
+        </div>
+
+        <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+          <div style="font-size: 12px; font-weight: 600">Upgrade</div>
+          <p style="margin: 0; font-size: 12px; line-height: 1.45; color: #a1a1aa">Run it on the host, in the directory that holds <span class="mono" style="font-size: 11.5px">compose.yml</span>.</p>
+          <div style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; background: #0a0a0c; padding: 4px 4px 4px 10px">
+            <code class="mono" style="flex: 1; font-size: 12.5px; color: #fafafa">./toposcope.sh upgrade 0.6.1</code>
+            <button type="button" style="display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12px; cursor: pointer">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg>
+              Copy
+            </button>
+          </div>
+          <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">Backs up both stores first: about 1.2 GB (ClickHouse 1.16 GB, SQLite 41 MB). Ingest stops while it runs. Add <span class="mono">--no-backup</span> to skip it.</p>
+        </div>
+
+        <div style="font-size: 11px; color: #71717a">Checked 3 hours ago</div>
+      </div>
+
+      <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); background: #0a0a0c; padding: 0 12px; font-size: 11px; color: #a1a1aa">
+        <span style="color: #52525b">…</span>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none">
+          <span class="mono" style="color: #d4d4d8">1.24K/s</span>
+          <svg width="64" height="12" viewBox="0 0 64 12" aria-hidden="true"><polyline points="{{f19c_spark}}" fill="none" stroke="#a1a1aa" stroke-width="1"/></svg>
+          <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+          <span style="display: inline-flex; align-items: center; gap: 5px">ClickHouse<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 9px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 5px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+          <span style="display: inline-flex; align-items: center; gap: 5px">App<span style="display: inline-flex; flex-direction: column; gap: 2px"><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 6px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span><span style="width: 22px; height: 3px; background: #27272a; border-radius: 1px; display: block"><span style="width: 2px; height: 3px; background: #a1a1aa; border-radius: 1px; display: block"></span></span></span></span>
+          <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+          <button type="button" class="mono" aria-expanded="true" aria-label="Toposcope 0.6.0, 0.6.1 is out" style="background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #d4d4d8; cursor: pointer">0.6.0 → <span style="color: #e7e1d3">0.6.1</span></button>
+        </div>
+      </footer>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19d" data-frame="19d" data-screen-label="19d Patch and minor, side by side" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Patch and minor, side by side</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19d" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19d</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">Patch and minor: the dot says "read first", not the size of the step</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">A step from 0.6 to 0.7 is likelier to change behaviour, but what decides is whether any release in between carries a Before you upgrade. When one does, a small amber dot follows the version, and its tooltip says "read before upgrading". The step itself is named in the panel's header. Bracketed text stands for a release that does not exist yet.</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; flex: 1; min-height: 0">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">A patch with nothing to read first: just the arrow</div>
+      <div style="position: relative; flex: 1; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+        <div style="flex: 1"></div>
+        <div role="dialog" aria-label="Toposcope 0.6.2 is out" style="position: absolute; right: 8px; bottom: 36px; width: 420px; box-sizing: border-box; padding: 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 3px">
+            <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; font-weight: 600">Toposcope 0.6.2 is out</span><span style="flex: 1"></span><a href="https://github.com/toposcope/toposcope/releases" style="font-size: 11.5px; text-decoration: none">Release on GitHub ↗</a></div>
+            <span class="mono" style="font-size: 11px; color: #a1a1aa">you run 0.6.1 · patch · [date]</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #a1a1aa">What's new in 0.6.2</div>
+            <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #71717a">[0.6.2's release notes]</p>
+          </div>
+          <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+            <div style="font-size: 12px; font-weight: 600">Upgrade</div>
+            <div style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; background: #0a0a0c; padding: 4px 4px 4px 10px"><code class="mono" style="flex: 1; font-size: 12.5px">./toposcope.sh upgrade 0.6.2</code><button type="button" style="height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12px">Copy</button></div>
+            <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">Backs up both stores first: about 1.2 GB. Ingest stops while it runs.</p>
+          </div>
+          <div style="font-size: 11px; color: #71717a">Checked 2 hours ago</div>
+        </div>
+        <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding: 0 12px; font-size: 11px; color: #a1a1aa">
+          <span style="color: #52525b">…</span>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
+            <span>App</span>
+            <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+            <button type="button" class="mono" aria-expanded="true" aria-label="Toposcope 0.6.1, 0.6.2 is out" style="background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #d4d4d8">0.6.1 → <span style="color: #e7e1d3">0.6.2</span></button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">A minor step with a Before you upgrade: the arrow and a dot</div>
+      <div style="position: relative; flex: 1; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+        <div style="flex: 1"></div>
+        <div role="dialog" aria-label="Toposcope 0.7.0 is out" style="position: absolute; right: 8px; bottom: 36px; width: 420px; box-sizing: border-box; padding: 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 3px">
+            <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; font-weight: 600">Toposcope 0.7.0 is out</span><span style="flex: 1"></span><a href="https://github.com/toposcope/toposcope/releases" style="font-size: 11.5px; text-decoration: none">Release on GitHub ↗</a></div>
+            <span class="mono" style="font-size: 11px; color: #a1a1aa">you run 0.6.1 · minor · [date]</span>
+          </div>
+          <div style="border: 1px solid rgba(245,158,11,0.45); background: rgba(245,158,11,0.07); border-radius: 6.4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #fcd34d"><span style="width: 6px; height: 6px; border-radius: 3px; background: #f59e0b"></span>Before you upgrade</div>
+            <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #a1a1aa">[0.7.0's Before you upgrade]</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #a1a1aa">What's new in 0.7.0</div>
+            <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #71717a">[0.7.0's release notes]</p>
+          </div>
+          <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+            <div style="font-size: 12px; font-weight: 600">Upgrade</div>
+            <div style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; background: #0a0a0c; padding: 4px 4px 4px 10px"><code class="mono" style="flex: 1; font-size: 12.5px">./toposcope.sh upgrade 0.7.0</code><button type="button" style="height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12px">Copy</button></div>
+            <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">Backs up both stores first: about 1.2 GB. Ingest stops while it runs.</p>
+          </div>
+          <div style="font-size: 11px; color: #71717a">Checked 2 hours ago</div>
+        </div>
+        <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding: 0 12px; font-size: 11px; color: #a1a1aa">
+          <span style="color: #52525b">…</span>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
+            <span>App</span>
+            <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+            <button type="button" class="mono" aria-expanded="true" aria-label="Toposcope 0.6.1, 0.7.0 is out, read before upgrading" style="display: inline-flex; align-items: center; gap: 5px; background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #d4d4d8">0.6.1 → <span style="color: #e7e1d3">0.7.0</span><span style="width: 5px; height: 5px; border-radius: 3px; background: #f59e0b"></span></button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+    <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">No dot, no amber: there is nothing that must be read before running the command. The panel has no Before you upgrade box at all, rather than an empty one.</p>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">The dot at rest, with the tooltip a hover shows. The same dot leads the Before you upgrade box, so the two read as one thing.</p>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span class="mono" style="display: inline-flex; align-items: center; gap: 5px; padding: 2px 6px; font-size: 11px; color: #a1a1aa">0.6.1 → <span style="color: #e7e1d3">0.7.0</span><span style="width: 5px; height: 5px; border-radius: 3px; background: #f59e0b"></span></span>
+        <span role="tooltip" style="padding: 4px 8px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 5px; font-size: 11px; color: #d4d4d8">0.7.0 is out · read before upgrading</span>
+      </div>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19e" data-frame="19e" data-screen-label="19e Three releases behind" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19e" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19e</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Three releases behind</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19e" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19e</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">Three releases behind: 0.5.6 → 0.6.1</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">Every release between the running one and the latest is listed, newest first. Before you upgrade comes first for all of them together. Only 0.6.1 carries one: earlier releases kept their upgrade notes in the operations guide, which is linked rather than copied. Each release's notes start collapsed to their first line.</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 28px; flex: 1; min-height: 0">
+    <div style="display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; line-height: 1.55; color: #a1a1aa">
+      <p style="margin: 0"><span style="color: #fafafa">The header counts.</span> "3 releases since yours", the step to the latest (minor: 0.5 → 0.6), and a dot, because one of them has a Before you upgrade (19d).</p>
+      <p style="margin: 0"><span style="color: #fafafa">Before you upgrade, all together.</span> A release that has none shows a link to the operations guide, which holds the notes for 0.6.0 and earlier, because those were not back-filled into the releases.</p>
+      <p style="margin: 0"><span style="color: #fafafa">What's new, collapsed.</span> One line each, newest first. Show all opens that release's whole notes in place, and the panel scrolls inside its own box, never the page.</p>
+      <p style="margin: 0"><span style="color: #fafafa">One command.</span> It goes straight to 0.6.1 and takes one backup, rather than three upgrades in a row.</p>
+    </div>
+
+    <div style="position: relative; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+      <div style="flex: 1"></div>
+      <div role="dialog" aria-label="Three releases since yours" style="position: absolute; right: 8px; bottom: 36px; width: 460px; box-sizing: border-box; padding: 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; font-weight: 600">3 releases since yours</span><span style="flex: 1"></span><a href="https://github.com/toposcope/toposcope/releases" style="font-size: 11.5px; text-decoration: none">Releases on GitHub ↗</a></div>
+          <span class="mono" style="font-size: 11px; color: #a1a1aa">you run 0.5.6 · latest 0.6.1 · minor</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <div style="border: 1px solid rgba(245,158,11,0.45); background: rgba(245,158,11,0.07); border-radius: 6.4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px">
+            <div style="display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #fcd34d"><span style="width: 6px; height: 6px; border-radius: 3px; background: #f59e0b"></span>Before you upgrade · <span class="mono" style="font-weight: 500">0.6.1</span></div>
+            <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #f4f4f5">From this version Toposcope asks GitHub once a day whether a newer release is out. It sends nothing about this instance. Set <span class="mono" style="font-size: 11.5px">TOPOSCOPE_UPDATE_CHECK=off</span> in <span class="mono" style="font-size: 11.5px">.env</span> to stop it.</p>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 8px; font-size: 12px; color: #a1a1aa; padding: 0 2px"><span class="mono" style="width: 38px; color: #d4d4d8">0.6.0</span><span style="flex: 1">Upgrade notes for this release are in the <a href="https://github.com/toposcope/toposcope/blob/main/docs/operations.md" style="text-decoration: none">operations guide ↗</a></span></div>
+          <div style="display: flex; align-items: baseline; gap: 8px; font-size: 12px; color: #a1a1aa; padding: 0 2px"><span class="mono" style="width: 38px; color: #d4d4d8">0.5.7</span><span style="flex: 1">Upgrade notes for this release are in the <a href="https://github.com/toposcope/toposcope/blob/main/docs/operations.md" style="text-decoration: none">operations guide ↗</a></span></div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #a1a1aa; margin-bottom: 2px">What's new</div>
+          <sc-for list="{{f19e_releases}}" as="r" hint-placeholder-count="3">
+            <div style="display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-top: 1px solid rgba(255,255,255,0.06)">
+              <span class="mono" style="flex: none; width: 38px; font-size: 12px; color: #fafafa">{{r.v}}</span>
+              <span class="mono" style="flex: none; width: 48px; font-size: 11px; color: #71717a">{{r.date}}</span>
+              <span class="cut" style="flex: 1; min-width: 0; font-size: 12.5px; color: #d4d4d8">{{r.first}}</span>
+              <button type="button" style="flex: none; background: none; border: 0; padding: 0; font-size: 11.5px; color: #e7e1d3; cursor: pointer">Show all</button>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+          <div style="font-size: 12px; font-weight: 600">Upgrade to 0.6.1</div>
+          <p style="margin: 0; font-size: 12px; line-height: 1.45; color: #a1a1aa">Run it on the host, in the directory that holds <span class="mono" style="font-size: 11.5px">compose.yml</span>.</p>
+          <div style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; background: #0a0a0c; padding: 4px 4px 4px 10px"><code class="mono" style="flex: 1; font-size: 12.5px">./toposcope.sh upgrade 0.6.1</code><button type="button" style="height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12px">Copy</button></div>
+          <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">One backup first: about 1.2 GB (ClickHouse 1.16 GB, SQLite 41 MB). Ingest stops while it runs. Add <span class="mono">--no-backup</span> to skip it.</p>
+        </div>
+        <div style="font-size: 11px; color: #71717a">Checked 3 hours ago</div>
+      </div>
+      <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding: 0 12px; font-size: 11px; color: #a1a1aa">
+        <span style="color: #52525b">…</span>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
+          <span>App</span>
+          <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+          <button type="button" class="mono" aria-expanded="true" aria-label="Toposcope 0.5.6, 0.6.1 is out, read before upgrading" style="display: inline-flex; align-items: center; gap: 5px; background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #d4d4d8">0.5.6 → <span style="color: #e7e1d3">0.6.1</span><span style="width: 5px; height: 5px; border-radius: 3px; background: #f59e0b"></span></button>
+        </div>
+      </footer>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19f" data-frame="19f" data-screen-label="19f The command, copied" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19f" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19f</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The command, copied</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19f" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 22px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19f</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">The command, copied</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">The panel's Upgrade box, drawn at twice the size. Copy puts exactly the command on the clipboard, with no prompt sign and no newline, so pasting never runs it by accident. The button says so for two seconds, then goes back. A browser that refuses the clipboard gets the command selected instead.</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px">
+    <sc-for list="{{f19f_states}}" as="s" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">{{s.label}}</div>
+        <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+          <div style="font-size: 13px; font-weight: 600">Upgrade</div>
+          <div style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; background: #0a0a0c; padding: 5px 5px 5px 10px">
+            <code class="mono" style="flex: 1; font-size: 13px; padding: 1px 2px; border-radius: 3px; background: {{s.sel}}">./toposcope.sh upgrade 0.6.1</code>
+            <sc-if value="{{s.copied}}" hint-placeholder-val="{{false}}">
+              <button type="button" aria-live="polite" style="display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid rgba(231,225,211,0.5); background: rgba(231,225,211,0.1); color: #e7e1d3; font-size: 12.5px">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>
+                Copied
+              </button>
+            </sc-if>
+            <sc-if value="{{s.plain}}" hint-placeholder-val="{{true}}">
+              <button type="button" style="display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12.5px">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M10.5 5V3.5A1.5 1.5 0 0 0 9 2H3.5A1.5 1.5 0 0 0 2 3.5V9a1.5 1.5 0 0 0 1.5 1.5H5"/></svg>
+                Copy
+              </button>
+            </sc-if>
+          </div>
+          <p style="margin: 0; font-size: 12px; line-height: 1.5; color: {{s.noteColor}}">{{s.note}}</p>
+        </div>
+        <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">{{s.caption}}</p>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px">
+    <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">What lands on the clipboard</div>
+    <div class="mono" style="border: 1px dashed rgba(255,255,255,0.18); border-radius: 6.4px; padding: 10px 12px; font-size: 13px; color: #fafafa">./toposcope.sh upgrade 0.6.1</div>
+    <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">The version is the latest one the panel shows, never "latest", so what runs is what was read. <span class="mono">TOPOSCOPE_DIR</span> and a project name are the host's business: the line under the box says where to run it, and the app does not guess.</p>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19g" data-frame="19g" data-screen-label="19g Could not check; check off" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19g" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19g</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Could not check; check off</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19g" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19g</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">Could not check, and check off: said in the panel, never in the footer</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">In both, the footer shows the bare version, exactly as when up to date, because nothing is known to be newer. It never claims "up to date", and nothing turns red: an air-gapped box is not broken. The panel says what happened and how to change it.</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; flex: 1; min-height: 0">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">Could not check (offline, blocked, rate-limited)</div>
+      <div style="position: relative; flex: 1; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+        <div style="flex: 1"></div>
+        <div role="dialog" aria-label="Toposcope version" style="position: absolute; right: 8px; bottom: 36px; width: 400px; box-sizing: border-box; padding: 12px 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 13px; font-weight: 600">Toposcope</span><span class="mono" style="font-size: 12px; color: #d4d4d8">0.6.0</span><span style="flex: 1"></span><a href="https://github.com/toposcope/toposcope/releases" style="font-size: 11.5px; text-decoration: none">Releases on GitHub ↗</a></div>
+          <div style="display: flex; align-items: flex-start; gap: 8px">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#a1a1aa" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px; flex: none"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v3.6M8 11h.01"/></svg>
+            <div style="display: flex; flex-direction: column; gap: 3px">
+              <span style="font-size: 12.5px; color: #d4d4d8">Could not check for releases since 18 Oct</span>
+              <span class="mono" style="font-size: 11px; color: #a1a1aa">api.github.com: connection timed out</span>
+            </div>
+          </div>
+          <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">The last answer, on 18 Oct, knew of nothing newer. Toposcope tries again once a day. A box with no way out can stop trying with <span class="mono" style="color: #d4d4d8">TOPOSCOPE_UPDATE_CHECK=off</span>.</p>
+        </div>
+        <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding: 0 12px; font-size: 11px; color: #a1a1aa">
+          <span style="color: #52525b">…</span>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
+            <span>App</span>
+            <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+            <button type="button" class="mono" aria-expanded="true" aria-label="Toposcope 0.6.0, could not check for releases" style="background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #fafafa">0.6.0</button>
+          </div>
+        </footer>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">The last answer is kept. If it knew of a newer release, the footer keeps its arrow and the panel adds this line under the header.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">The release check is off</div>
+      <div style="position: relative; flex: 1; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+        <div style="flex: 1"></div>
+        <div role="dialog" aria-label="Toposcope version" style="position: absolute; right: 8px; bottom: 36px; width: 400px; box-sizing: border-box; padding: 12px 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 13px; font-weight: 600">Toposcope</span><span class="mono" style="font-size: 12px; color: #d4d4d8">0.6.0</span><span style="flex: 1"></span><a href="https://github.com/toposcope/toposcope/releases" style="font-size: 11.5px; text-decoration: none">Releases on GitHub ↗</a></div>
+          <div style="display: flex; align-items: flex-start; gap: 8px">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#a1a1aa" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="margin-top: 2px; flex: none"><circle cx="8" cy="8" r="6"/><path d="M4 12L12 4"/></svg>
+            <span style="font-size: 12.5px; color: #d4d4d8">The release check is off (<span class="mono" style="font-size: 11.5px">TOPOSCOPE_UPDATE_CHECK=off</span>)</span>
+          </div>
+          <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">This instance does not know whether a newer release is out, and calls nobody to find out. Remove the line from <span class="mono">.env</span> and restart to turn it back on.</p>
+        </div>
+        <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding: 0 12px; font-size: 11px; color: #a1a1aa">
+          <span style="color: #52525b">…</span>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px">
+            <span>App</span>
+            <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+            <button type="button" class="mono" aria-expanded="true" aria-label="Toposcope 0.6.0, release check off" style="background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #fafafa">0.6.0</button>
+          </div>
+        </footer>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">Off is a choice made on the host, so it is said plainly and without a warning colour.</p>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19h" data-frame="19h" data-screen-label="19h The same, as a Settings tab" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19h" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19h</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The same, as a Settings tab</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19h" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19h</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">The same content as an About tab in Settings, against the popover</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">Settings today is one form with no tabs: instance name, retention, default webhook, count format, timestamps, ingest endpoint. An About tab would split it in two. The footer item would then open Settings on About, with the same three parts as 19c. Drawn so the two can be compared; the popover reads better (right).</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 640px minmax(0, 1fr); gap: 28px; flex: 1; min-height: 0; align-items: start">
+    <div role="dialog" aria-label="Settings" style="border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; background: #18181b; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 15px; font-weight: 600">Settings</div>
+        <div style="font-size: 12.5px; color: #a1a1aa">ClickHouse TTL for logs and the minute histogram.</div>
+      </div>
+      <div role="tablist" style="display: flex; gap: 2px; border-bottom: 1px solid rgba(255,255,255,0.1)">
+        <button type="button" role="tab" aria-selected="false" style="background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; font-size: 12.5px; color: #a1a1aa">General</button>
+        <button type="button" role="tab" aria-selected="true" style="background: none; border: 0; border-bottom: 2px solid #e7e1d3; padding: 6px 10px; font-size: 12.5px; color: #fafafa; display: inline-flex; align-items: center; gap: 6px">About<span style="width: 5px; height: 5px; border-radius: 3px; background: #f59e0b"></span></button>
+      </div>
+
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <span style="font-size: 14px; font-weight: 600">Toposcope 0.6.1 is out</span>
+        <span class="mono" style="font-size: 11px; color: #a1a1aa">you run 0.6.0 · patch · 20 Oct 2026</span>
+        <span style="flex: 1"></span>
+        <a href="https://github.com/toposcope/toposcope/releases/tag/v0.6.1" style="font-size: 11.5px; text-decoration: none">Release on GitHub ↗</a>
+      </div>
+      <div style="border: 1px solid rgba(245,158,11,0.45); background: rgba(245,158,11,0.07); border-radius: 6.4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px">
+        <div style="display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #fcd34d"><span style="width: 6px; height: 6px; border-radius: 3px; background: #f59e0b"></span>Before you upgrade</div>
+        <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #f4f4f5">From this version Toposcope asks GitHub once a day whether a newer release is out. It sends nothing about this instance. Set <span class="mono" style="font-size: 11.5px">TOPOSCOPE_UPDATE_CHECK=off</span> in <span class="mono" style="font-size: 11.5px">.env</span> to stop it.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #a1a1aa">What's new in 0.6.1</div>
+        <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8">Toposcope knows when a release is out. Once a day it reads GitHub's public list of releases and keeps what is newer than the one running.</p>
+        <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8"><span class="mono" style="font-size: 11.5px">toposcope.sh upgrade</span> backs up both stores, swaps <span class="mono" style="font-size: 11.5px">compose.yml</span>, waits for the new version, and rolls back by itself if it does not come up.</p>
+      </div>
+      <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 12px; font-weight: 600">Upgrade</div>
+        <div style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; background: #0a0a0c; padding: 4px 4px 4px 10px"><code class="mono" style="flex: 1; font-size: 12.5px">./toposcope.sh upgrade 0.6.1</code><button type="button" style="height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12px">Copy</button></div>
+        <p style="margin: 0; font-size: 11.5px; line-height: 1.5; color: #a1a1aa">Run it on the host, in the directory that holds <span class="mono">compose.yml</span>. Backs up both stores first: about 1.2 GB. Ingest stops while it runs.</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="font-size: 11px; color: #71717a">Checked 3 hours ago</span>
+        <span style="flex: 1"></span>
+        <button type="button" style="height: 30px; padding: 0 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12.5px">Close</button>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; font-size: 12.5px; line-height: 1.55; color: #a1a1aa">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">Popover (19c), proposed</div>
+      <div style="border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: #0d0d10">
+        <span style="color: #fafafa">Pros</span>
+        <span>One click from where the version is shown, and gone with Esc. Settings stays the form it is. Nothing that holds the instance's settings moves.</span>
+        <span style="color: #fafafa">Cons</span>
+        <span>The panel can grow tall when several releases are behind (19e), so it scrolls inside its own box.</span>
+      </div>
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">About tab in Settings</div>
+      <div style="border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: #0d0d10">
+        <span style="color: #fafafa">Pros</span>
+        <span>Room for long notes; a place to look for the version even without the footer.</span>
+        <span style="color: #fafafa">Cons</span>
+        <span>Adds tabs to a dialog that has none, and the General tab's Save would sit beside a tab with nothing to save. Reading release notes is not a setting.</span>
+      </div>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19i" data-frame="19i" data-screen-label="19i A narrow window" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19i" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19i</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">A narrow window</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19i" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19i</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">A narrow window: the hints give way, the version and its arrow stay</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">The footer's right side never shrinks; the keyboard hints on the left are cut first, as they are today. At 1024px the last two hints go. The panel keeps its width and opens upward from the version; it scrolls inside its own box when the window is short.</p>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">1152px: everything fits</div>
+    <footer style="width: 1152px; height: 28px; box-sizing: border-box; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; background: #0a0a0c; padding: 0 12px; font-size: 11px; color: #a1a1aa">
+      <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden">
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">/</kbd>search</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">↑↓←→</kbd>focus</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">wheel / + −</kbd>zoom</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">esc</kbd>close</span>
+      </div>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none">
+        <span class="mono" style="color: #d4d4d8">1.24K/s</span>
+        <svg width="64" height="12" viewBox="0 0 64 12" aria-hidden="true"><polyline points="{{f19i_spark}}" fill="none" stroke="#a1a1aa" stroke-width="1"/></svg>
+        <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+        <span>ClickHouse ▮</span><span>App ▮</span>
+        <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+        <button type="button" class="mono" style="background: none; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #a1a1aa">0.6.0 → <span style="color: #e7e1d3">0.6.1</span></button>
+      </div>
+    </footer>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">1024px, with the panel open</div>
+    <div style="position: relative; width: 1024px; height: 560px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+      <div style="flex: 1; padding: 14px; opacity: 0.35; display: flex; flex-direction: column; gap: 8px">
+        <div style="height: 7px; width: 70%; background: #27272a; border-radius: 2px"></div>
+        <div style="height: 7px; width: 55%; background: #27272a; border-radius: 2px"></div>
+        <div style="height: 7px; width: 62%; background: #27272a; border-radius: 2px"></div>
+      </div>
+      <div role="dialog" aria-label="Toposcope 0.6.1 is out" style="position: absolute; right: 8px; bottom: 36px; width: 460px; max-height: 480px; overflow: hidden; box-sizing: border-box; padding: 14px; background: #18181b; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; box-shadow: 0 18px 40px -12px rgba(0,0,0,0.7); display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 14px; font-weight: 600">Toposcope 0.6.1 is out</span><span style="flex: 1"></span><a href="https://github.com/toposcope/toposcope/releases/tag/v0.6.1" style="font-size: 11.5px; text-decoration: none">Release on GitHub ↗</a></div>
+          <span class="mono" style="font-size: 11px; color: #a1a1aa">you run 0.6.0 · patch · 20 Oct 2026</span>
+        </div>
+        <div style="border: 1px solid rgba(245,158,11,0.45); background: rgba(245,158,11,0.07); border-radius: 6.4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px">
+          <div style="display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #fcd34d"><span style="width: 6px; height: 6px; border-radius: 3px; background: #f59e0b"></span>Before you upgrade</div>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #f4f4f5">From this version Toposcope asks GitHub once a day whether a newer release is out. It sends nothing about this instance. Set <span class="mono" style="font-size: 11.5px">TOPOSCOPE_UPDATE_CHECK=off</span> in <span class="mono" style="font-size: 11.5px">.env</span> to stop it.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #a1a1aa">What's new in 0.6.1</div>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8">Toposcope knows when a release is out. Once a day it reads GitHub's public list of releases and keeps what is newer than the one running.</p>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8">The footer shows the running version, and the newer one when there is one, with this panel.</p>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.5; color: #d4d4d8"><span class="mono" style="font-size: 11.5px">toposcope.sh upgrade</span> backs up both stores, swaps <span class="mono" style="font-size: 11.5px">compose.yml</span>, waits for the new version, and rolls back by itself.</p>
+        </div>
+        <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; background: #0d0d10; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px">
+          <div style="font-size: 12px; font-weight: 600">Upgrade</div>
+          <div style="display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; background: #0a0a0c; padding: 4px 4px 4px 10px"><code class="mono" style="flex: 1; font-size: 12.5px">./toposcope.sh upgrade 0.6.1</code><button type="button" style="height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.16); background: #18181b; color: #fafafa; font-size: 12px">Copy</button></div>
+        </div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 36px; background: linear-gradient(to bottom, rgba(24,24,27,0), #18181b); pointer-events: none"></div>
+        <span style="position: absolute; right: 4px; top: 60px; width: 3px; height: 120px; border-radius: 2px; background: rgba(255,255,255,0.18)"></span>
+      </div>
+      <footer style="height: 28px; flex: none; display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); background: #0a0a0c; padding: 0 12px; font-size: 11px; color: #a1a1aa">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden">
+          <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">/</kbd>search</span>
+          <span style="display: inline-flex; align-items: center; gap: 4px; white-space: nowrap"><kbd class="k">↑↓←→</kbd>focus</span>
+        </div>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none">
+          <span class="mono" style="color: #d4d4d8">1.24K/s</span>
+          <svg width="64" height="12" viewBox="0 0 64 12" aria-hidden="true"><polyline points="{{f19i_spark}}" fill="none" stroke="#a1a1aa" stroke-width="1"/></svg>
+          <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+          <span>ClickHouse ▮</span><span>App ▮</span>
+          <span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span>
+          <button type="button" class="mono" aria-expanded="true" style="background: #27272a; border: 0; padding: 2px 6px; margin-right: -6px; border-radius: 4px; font-size: 11px; color: #d4d4d8">0.6.0 → <span style="color: #e7e1d3">0.6.1</span></button>
+        </div>
+      </footer>
+    </div>
+    <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">The meters are drawn simplified here. The version stays last on the right at any width; on a window narrower than the panel, the panel takes the window's width less 16px.</p>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="19j" data-frame="19j" data-screen-label="19j Tried and rejected" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#19j" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">19j</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Tried and rejected</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×900</span>
+      </div>
+      <div data-crop="19j" style="position:relative; width:1200px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1200px; height: 900px; box-sizing: border-box; padding: 24px; background: #000000; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <div style="display: flex; gap: 14px; align-items: flex-start">
+    <span class="mono" style="flex: none; border: 1px solid rgba(255,255,255,0.22); border-radius: 5px; padding: 3px 7px; font-size: 13px; color: #d4d4d8">19j</span>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em">Tried and rejected</h1>
+      <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: #a1a1aa; max-width: 92ch">Four ways other tools announce a release, drawn and crossed out, each with the reason it does not fit a log manager someone opens in the middle of an incident.</p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; flex: 1; min-height: 0">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">A banner across the top</div>
+      <div style="position: relative; height: 210px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column">
+        <div style="height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: rgba(231,225,211,0.12); border-bottom: 1px solid rgba(231,225,211,0.3); font-size: 12.5px">Toposcope 0.6.1 is available.<span style="color: #e7e1d3; text-decoration: underline">See what's new</span><span style="flex: 1"></span><span style="color: #a1a1aa">×</span></div>
+        <div style="height: 34px; display: flex; align-items: center; gap: 16px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 12.5px"><span style="font-weight: 600">toposcope</span><span>Search</span><span style="color: #a1a1aa">Watch</span></div>
+        <div style="flex: 1; padding: 12px; opacity: 0.35; display: flex; flex-direction: column; gap: 8px"><div style="height: 7px; width: 70%; background: #27272a; border-radius: 2px"></div><div style="height: 7px; width: 55%; background: #27272a; border-radius: 2px"></div></div>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/><line x1="100" y1="0" x2="0" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/></svg>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">Loud on every view, and it pushes the hunt down a row. Dismissed, it comes back on the next release. The footer is where the app's own state already lives.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">An "Upgrade now" button</div>
+      <div style="position: relative; height: 210px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; align-items: center; justify-content: center">
+        <div style="width: 340px; border: 1px solid rgba(255,255,255,0.14); border-radius: 6.4px; background: #18181b; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px">
+          <span style="font-size: 13.5px; font-weight: 600">Toposcope 0.6.1 is out</span>
+          <span style="font-size: 12px; color: #a1a1aa">Upgrade in place. The app restarts by itself.</span>
+          <span style="align-self: flex-start; height: 30px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 6px; background: #e7e1d3; color: #18181b; font-size: 12.5px; font-weight: 600">Upgrade now</span>
+        </div>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/><line x1="100" y1="0" x2="0" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/></svg>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">The app would need the Docker socket, which is root on the host for anyone who knows the shared password. And the upgrader would be the thing that just broke. The upgrade runs on the host, where the backup and the rollback are (draft 04).</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">A red badge with a count</div>
+      <div style="position: relative; height: 150px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column; justify-content: flex-end">
+        <footer style="height: 28px; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding: 0 12px; font-size: 11px; color: #a1a1aa">
+          <span style="color: #52525b">…</span>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px"><span>App</span><span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span><span class="mono" style="display: inline-flex; align-items: center; gap: 5px">0.5.6<span style="min-width: 16px; height: 16px; border-radius: 8px; background: #dc2626; color: #fff; font-size: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700">3</span></span></div>
+        </footer>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/><line x1="100" y1="0" x2="0" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/></svg>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">Red is for errors, and a count reads like unread mail. Being three releases behind is not a fault. 19e names the count in the panel, and 19d's amber dot says only "read before upgrading".</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 12px; font-weight: 600; color: #a1a1aa">"Up to date" when the check failed</div>
+      <div style="position: relative; height: 150px; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; background: #0a0a0c; display: flex; flex-direction: column; justify-content: flex-end">
+        <footer style="height: 28px; display: flex; align-items: center; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding: 0 12px; font-size: 11px; color: #a1a1aa">
+          <span style="color: #52525b">…</span>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px"><span>App</span><span style="width: 1px; height: 14px; background: rgba(255,255,255,0.1)"></span><span class="mono">0.6.0 · up to date</span></div>
+        </footer>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%" aria-hidden="true"><line x1="0" y1="0" x2="100" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/><line x1="100" y1="0" x2="0" y2="100" stroke="rgba(248,113,113,0.55)" stroke-width="0.6" vector-effect="non-scaling-stroke"/></svg>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #a1a1aa">An instance that could not reach GitHub, or has the check off, does not know. Saying "up to date" would hide exactly the box that is never told. The footer shows the bare version and the panel says why (19g).</p>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f19a', new (class {
+  renderVals() {
+    const bars = Array.from({ length: 60 }, (_, i) => ({ h: `${Math.round(18 + 70 * Math.abs(Math.sin(i * 0.37)) * (i % 7 === 3 ? 1.2 : 0.8))}px` }));
+    const rows = Array.from({ length: 6 }, (_, i) => ({ w: `${260 + ((i * 97) % 320)}px` }));
+    const spark = Array.from({ length: 16 }, (_, i) => `${(i * 64 / 15).toFixed(1)},${(10 - 7 * Math.abs(Math.sin(i * 0.8))).toFixed(1)}`).join(' ');
+    return { bars, rows, spark };
+  }
+})().renderVals()),
+      ...pre('f19b', new (class {
+  renderVals() {
+    const spark = Array.from({ length: 16 }, (_, i) => `${(i * 64 / 15).toFixed(1)},${(10 - 7 * Math.abs(Math.sin(i * 0.8))).toFixed(1)}`).join(' ');
+    return { spark };
+  }
+})().renderVals()),
+      ...pre('f19c', new (class {
+  renderVals() {
+    const spark = Array.from({ length: 16 }, (_, i) => `${(i * 64 / 15).toFixed(1)},${(10 - 7 * Math.abs(Math.sin(i * 0.8))).toFixed(1)}`).join(' ');
+    return { spark };
+  }
+})().renderVals()),
+      ...pre('f19e', new (class {
+  renderVals() {
+    return {
+      releases: [
+        { v: '0.6.1', date: '20 Oct', first: "Toposcope knows when a release is out. Once a day it reads GitHub's public list of releases…" },
+        { v: '0.6.0', date: '20 Oct', first: 'A monitor can call a URL. An HTTP(S) monitor runs from the Toposcope node every 30s to 1h…' },
+        { v: '0.5.7', date: '18 Oct', first: 'A metric panel can say what it shows. A panel merges up to four metrics of one unit…' },
+      ],
+    };
+  }
+})().renderVals()),
+      ...pre('f19f', new (class {
+  renderVals() {
+    const note = 'Backs up both stores first: about 1.2 GB. Ingest stops while it runs. Add --no-backup to skip it.';
+    return {
+      states: [
+        { label: 'Before', copied: false, plain: true, sel: 'transparent', note, noteColor: '#a1a1aa', caption: 'The button sits at the end of the command line, the only button in the panel.' },
+        { label: 'Clicked: Copied, for two seconds', copied: true, plain: false, sel: 'transparent', note, noteColor: '#a1a1aa', caption: 'A check and "Copied" in plate. Screen readers hear "Copied". Then it reads Copy again.' },
+        { label: 'The clipboard refused', copied: false, plain: true, sel: 'rgba(231,225,211,0.22)', note: 'Could not copy here. The command is selected: press ⌘C or Ctrl+C.', noteColor: '#fcd34d', caption: 'A browser can refuse the clipboard, for example over plain http on a LAN address. The command is selected so a key press copies it.' },
+      ],
+    };
+  }
+})().renderVals()),
+      ...pre('f19i', new (class {
+  renderVals() {
+    const spark = Array.from({ length: 16 }, (_, i) => `${(i * 64 / 15).toFixed(1)},${(10 - 7 * Math.abs(Math.sin(i * 0.8))).toFixed(1)}`).join(' ');
+    return { spark };
+  }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>
