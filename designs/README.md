@@ -56,8 +56,8 @@ Approved — panel lines, 2026-10-18. Not in a cut yet; no issue yet.
 
 Locked — monitors (0.6, [#175](https://github.com/toposcope/toposcope/issues/175)–[#180](https://github.com/toposcope/toposcope/issues/180)), 2026-10-20. Each frame was one artboard of a Design canvas; the sheet stacks the picked ones:
 
-- [Toposcope Liveness.dc.html](Toposcope%20Liveness.dc.html) — frames 18c–18u: Watch, every monitor on one clock with open ones first; push monitors over 7 days, each result a tick and each run a bar; a monitor opened as a hunt; an open stretch as a band on the hunt clock beside the deploy before it; a new monitor choosing where its results come from; a saved-search monitor, at least or fewer than; HTTP(S) conditions picked from the live response and stored as lines; a push monitor and the three ways a script reports to it; the resolved body, left empty (no resolved call is sent) and written for ntfy
-- [liveness/](liveness/) — crops for issues (18c 18f 18i 18o 18p 18j 18r 18s 18t 18u)
+- [Toposcope Liveness.dc.html](Toposcope%20Liveness.dc.html) — frames 18c–18w: Watch, every monitor on one clock with open ones first; push monitors over 7 days, each result a tick and each run a bar; a monitor opened as a hunt; an open stretch as a band on the hunt clock beside the deploy before it; a new monitor choosing where its results come from; a saved-search monitor, at least or fewer than; HTTP(S) conditions picked from the live response and stored as lines; a push monitor and the three ways a script reports to it; the resolved body, left empty (no resolved call is sent) and written for ntfy; an HTTP(S) monitor's request headers and POST body; the default webhook in Settings
+- [liveness/](liveness/) — crops for issues (18c 18f 18i 18o 18p 18j 18r 18s 18t 18u 18v 18w)
 
 Where an issue and its sheet differ, the issue wins.
 
