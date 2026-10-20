@@ -38,6 +38,8 @@ Set `TOPOSCOPE_PUBLIC_URL` in `.env` to the address people open, such as `https:
 
 A monitor (**Watch → New monitor**, or **Watch this** on a saved search) reads its saved search every minute. At or above its threshold it **opens**: it calls its webhook once, then reminds while it stays open (every 4h by default; off, once per window, 1h or 24h), and when the search falls back it **resolves** and calls once more. A reading that is refused or fails changes nothing. Each open-to-resolved stretch is kept with the calls sent during it, and Watch draws them on one clock. Silence stops the calls, not the record. Alerts made before 0.6 are monitors that remind once per window, so they call as often as they did.
 
+A monitor can also open on **fewer than** its threshold, for a stream that must keep talking: `host:ci-box` over 15m, fewer than 1, opens when no line has come from the box for 15 minutes, and the next line resolves it. Fewer than reads a count or a rate (no lines is a rate of 0); a p99 or an average over no lines has no value, so those are refused, and so is a saved search with a fixed from/to. Too few lines can also mean the lines are not here yet, so it **stays shut while it can't tell**, and Watch says which: a refused or failed reading; the first window after Toposcope starts (it may have missed lines while it was down); or a linked source that could feed the search is behind or quiet, so the count is a floor. Watch and the editor show when the search last matched a line ("last line 10:26:41, 37m ago").
+
 A **push monitor** takes results instead of reading a search: a cron job, a backup or a Nagios plugin says how it went, through `POST /v1/checks` with the ingest token or its keyed URL `/ping/<key>` with none, and a name not seen before creates it. It opens on a fail, or when no result has come for its `every` plus its grace, and the next ok resolves it; a warn shows on Watch and calls nobody. See [Check results](ingest.md#check-results-push-monitors).
 
 **Settings → Default webhook** is called by any monitor without its own, such as one created by its first result. Leave it empty and such a monitor keeps its state and calls nobody.
@@ -50,6 +52,9 @@ A script or an agent can declare one without the UI, by name; the same name repl
 curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-errors \
   -H 'content-type: application/json' \
   -d '{"source": "search", "saved_search": "api errors", "threshold": 50, "webhook_url": "https://ntfy.sh/my-topic", "remind_every": "4h"}'
+curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/ci-box-went-quiet \
+  -H 'content-type: application/json' \
+  -d '{"source": "search", "saved_search": "ci-box lines", "opens_when": "fewer_than", "threshold": 1, "webhook_url": "https://ntfy.sh/my-topic"}'
 ```
 
 ## Monitor bodies
@@ -81,6 +86,31 @@ ntfy takes the body as the notification, at `https://ntfy.sh/<topic>`, so a text
 {{more}}
 {{link}}
 ```
+
+## Who watches Toposcope
+
+Toposcope is one node. When the box, the app or its ClickHouse stops, every monitor stops with it, and that silence looks the same as all being well. So point it at something somewhere else.
+
+**`TOPOSCOPE_WATCHDOG_URL`.** Set it in `.env` (Compose passes it through) to a check-in URL on another service. After each monitor pass, once a minute, Toposcope sends `GET <url>` when the pass read its stores, and `GET <url>/fail` when it could not: ClickHouse did not answer a query, or SQLite could not be read. When the check-ins stop, or a `/fail` arrives, that service pages. Leave it unset and nothing is called; a value that is not an `http` or `https` address, or that has a `#`, stops the app at boot with that reason. The address is not logged.
+
+- **Healthchecks.io** (or a self-hosted Healthchecks): a check with period 1 minute and a grace of a few minutes; set `https://hc-ping.com/<uuid>`. `/fail` pages at once.
+- **Better Stack**: a heartbeat; set its URL. `/fail` pages at once.
+- **Uptime Kuma** or **Gatus**: a push monitor's URL; a missing check-in pages when its interval runs out. They do not read `/fail`, so ClickHouse down is noticed when the check-ins stop instead.
+- **A second Toposcope**: a push monitor's keyed URL there, which reads `/fail`.
+
+The check-in goes from the end of the pass, not from a timer of its own: a timer would keep checking in while the monitor loop is stuck. A pass that is still running when the next minute comes skips that minute, so a stuck pass sends nothing.
+
+**An outside check on `GET /api/health`.** It is open (no password), and 200 only when the app is ready and both stores answer; otherwise 503 (see [Health and metrics](#health-and-metrics)). It needs `/api/health` reachable from where the check runs.
+
+| What stops | `TOPOSCOPE_WATCHDOG_URL` | Outside check on `/api/health` |
+| --- | --- | --- |
+| The box | check-ins stop | no answer |
+| The app | check-ins stop | no answer |
+| ClickHouse | `/fail` within two passes | 503 |
+| The monitor loop, stuck | check-ins stop | still 200: not caught |
+| A monitor's webhook target | not caught | not caught |
+
+Neither notices a webhook target that is down: Toposcope does not page about itself through its own webhooks. Watch shows each monitor's failed calls (`failed 503 ×3`) on its rail and its stretches.
 
 ## Links
 

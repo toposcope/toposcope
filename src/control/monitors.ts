@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { lastLineAt } from "../alerts/last-line";
 import {
   lastPushResult,
   monitorHistory,
@@ -42,17 +43,26 @@ export type MonitorView = AlertRule & {
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   /** Its open stretch, with the calls sent for it so far. */
   open: StretchWithCalls | null;
+  /**
+   * A fewer-than monitor's newest matching line (#176): null when none in a year, left out when
+   * it could not be read.
+   */
+  last_line_at?: number | null;
 };
 
-function view(rule: AlertRule): MonitorView {
+async function view(rule: AlertRule): Promise<MonitorView> {
   const saved = rule.saved_search_id ? getSaved(rule.saved_search_id) : null;
   const open = rule.state === "open" ? openStretch(rule.id) : null;
+  // One row a monitor, read with Watch's refresh; only a monitor on a quiet stream says it.
+  const lastLine =
+    saved && rule.kind === "threshold" && rule.opens_when === "fewer_than" ? await lastLineAt(saved.query) : undefined;
   return {
     ...rule,
     saved: saved
       ? { id: saved.id, name: saved.name, query: saved.query, range: saved.range, agg: saved.agg }
       : null,
     open: open ? { ...open, calls: monitorHistory(rule.id, 1)[0]?.calls ?? [] } : null,
+    ...(lastLine !== undefined ? { last_line_at: lastLine } : {}),
   };
 }
 
@@ -90,7 +100,7 @@ export async function listMonitors(c: Context): Promise<Response> {
     now,
     from: new Date(win.fromMs).toISOString(),
     to: new Date(win.toMs).toISOString(),
-    monitors: allAlertRules().map(view),
+    monitors: await Promise.all(allAlertRules().map(view)),
     stretches: stretchesBetween(win.fromMs, win.toMs),
     sent: sentCallsBetween(win.fromMs, win.toMs),
     // Results on the clock (#177): each a tick, at most 240 columns a lane.
@@ -103,11 +113,11 @@ export async function listMonitors(c: Context): Promise<Response> {
  * A monitor's own page: the monitor, and for a push monitor its keyed URL's key and its last
  * result. The key is printed here and nowhere else (#177).
  */
-function page(rule: AlertRule): MonitorView & { ping_key?: string | null; last?: PushResultRow | null } {
+async function page(rule: AlertRule): Promise<MonitorView & { ping_key?: string | null; last?: PushResultRow | null }> {
   if (rule.source !== "push") {
     return view(rule);
   }
-  return { ...view(rule), ping_key: pingKeyOf(rule.id), last: lastPushResult(rule.id) };
+  return { ...(await view(rule)), ping_key: pingKeyOf(rule.id), last: lastPushResult(rule.id) };
 }
 
 function byName(name: string): AlertRule[] {
@@ -138,7 +148,7 @@ export async function getMonitor(c: Context): Promise<Response> {
   if (!rule) {
     return c.json({ error: "Monitor not found" }, 404);
   }
-  return c.json({ ...page(rule), stretches: monitorHistory(rule.id) });
+  return c.json({ ...(await page(rule)), stretches: monitorHistory(rule.id) });
 }
 
 /** A source a monitor keeps: a push monitor stays one, and nothing else becomes one. */
@@ -154,7 +164,12 @@ function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>):
 }
 
 /** `PUT /api/monitors/<name>` with `source: "push"`: create or replace a push monitor (#177). */
-function putPushMonitor(c: Context, name: string, existing: AlertRule | null, rec: Record<string, unknown>): Response {
+async function putPushMonitor(
+  c: Context,
+  name: string,
+  existing: AlertRule | null,
+  rec: Record<string, unknown>,
+): Promise<Response> {
   const fields = readPushFields({ ...rec, name }, null);
   if ("error" in fields) {
     return c.json({ error: fields.error }, fields.status);
@@ -170,14 +185,14 @@ function putPushMonitor(c: Context, name: string, existing: AlertRule | null, re
       return c.json({ error: created.error }, 400);
     }
     applyMonitorHold(created, rec, now);
-    return c.json(page(getAlert(created.id)!), 201);
+    return c.json(await page(getAlert(created.id)!), 201);
   }
   const problem = applyPushFields(existing, fields, now);
   if (problem) {
     return c.json({ error: problem.error }, 400);
   }
   applyMonitorHold(getAlert(existing.id)!, rec, now);
-  return c.json(page(getAlert(existing.id)!));
+  return c.json(await page(getAlert(existing.id)!));
 }
 
 /**
@@ -243,11 +258,11 @@ export async function putMonitor(c: Context): Promise<Response> {
   if (!existing) {
     const created = insertMonitor(fields, now);
     applyMonitorHold(created, rec, now);
-    return c.json(view(getAlert(created.id)!), 201);
+    return c.json(await view(getAlert(created.id)!), 201);
   }
   applyMonitorFields(existing, fields, now);
   applyMonitorHold(getAlert(existing.id)!, rec, now);
-  return c.json(view(getAlert(existing.id)!));
+  return c.json(await view(getAlert(existing.id)!));
 }
 
 /** `DELETE /api/monitors/:name` — the monitor and its record. */

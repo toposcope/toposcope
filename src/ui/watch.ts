@@ -1,7 +1,7 @@
 import { seriesLabel } from "../query/agg";
 import { parseRangeMs } from "../query/relative";
 import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
-import { formatOpenFor, type MonitorSource } from "../shared/monitor";
+import { cantTellWords, formatOpenFor, opensWhenWords, type MonitorSource } from "../shared/monitor";
 import { formatSpan, isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../shared/push";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
@@ -77,14 +77,41 @@ export function pushClock(m: MonitorView): PushClock {
   };
 }
 
-function plain(n: number): string {
-  return Number.isInteger(n) ? n.toLocaleString("en-US") : String(Number(n.toPrecision(6)));
+/** "at least 50", "fewer than 1", "p99(duration_ms) at least 800": what opens a search monitor. */
+export function opensWhen(m: Pick<MonitorView, "threshold" | "saved" | "opens_when">): string {
+  const agg = m.saved?.agg ?? null;
+  return opensWhenWords(m.opens_when ?? "at_least", agg ? seriesLabel(agg) : null, m.threshold);
 }
 
-/** "at least 50", "p99(duration_ms) at least 800": what opens a search monitor. */
-export function opensWhen(m: Pick<MonitorView, "threshold" | "saved">): string {
-  const agg = m.saved?.agg ?? null;
-  return `${agg ? `${seriesLabel(agg)} ` : ""}at least ${plain(m.threshold)}`;
+/** A search monitor that opens when its search goes quiet (#176). */
+export function readsQuiet(m: Pick<MonitorView, "opens_when" | "source" | "kind">): boolean {
+  return sourceOf(m) === "search" && m.opens_when === "fewer_than";
+}
+
+/** "10:26:41, 37m ago", "10-19 23:58:02, 11h 5m ago": when a quiet search last matched a line. */
+export function lastLineWords(at: number | null | undefined, nowMs: number): string {
+  if (at === undefined) {
+    return "—";
+  }
+  if (at === null) {
+    return "none in a year";
+  }
+  return `${secondsAt(at, nowMs)}, ${formatOpenFor(nowMs - at)} ago`;
+}
+
+/** "10:26:41", or "10-19 10:26:41" when it was not today. */
+export function secondsAt(ms: number, nowMs: number): string {
+  const hms = `${hhmm(ms)}:${pad(new Date(ms).getUTCSeconds())}`;
+  return mmdd(ms) === mmdd(nowMs) ? hms : `${mmdd(ms)} ${hms}`;
+}
+
+/** Why a quiet monitor stays shut now, when it can't tell (#176); null when it can. */
+export function cantTellNow(m: MonitorView, nowMs: number): string | null {
+  if (!readsQuiet(m) || m.state === "open") {
+    return null;
+  }
+  const windowMs = (m.saved?.range ? parseRangeMs(m.saved.range) : null) ?? 5 * 60_000;
+  return cantTellWords({ cant_tell: m.cant_tell ?? null, last_status: m.last_status }, windowMs, nowMs);
 }
 
 /** Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h", "push · 1d · grace 1h". */
@@ -105,21 +132,30 @@ export function laneKind(m: MonitorView): string {
   return `search · ${opensWhen(m)} · ${m.saved?.range ?? "custom"}`;
 }
 
-/** An open card's second line: "search · host:ci-box · at least 50 lines in 15m". */
-export function openCardLine(m: MonitorView): string {
+/** "at least 50 lines in 15m", "fewer than 1 line in 15m", "rate fewer than 0.5 in 15m". */
+export function opensWhenLine(m: MonitorView): string {
+  const agg = m.saved?.agg ?? null;
+  const what = agg ? opensWhen(m) : `${opensWhen(m)} line${m.threshold === 1 ? "" : "s"}`;
+  return `${what} in ${m.saved?.range ?? "its window"}`;
+}
+
+/**
+ * An open card's second line: "search · host:ci-box · at least 50 lines in 15m", and for a quiet
+ * search "· last line 10:26" (18c).
+ */
+export function openCardLine(m: MonitorView, nowMs = Date.now()): string {
   const q = m.saved?.query.trim() || "*";
   if (sourceOf(m) === "fingerprints") {
     return `fingerprints · ${q} · after a deploy or flag`;
   }
   if (sourceOf(m) === "push") {
-    return pushCardLine(m, Date.now());
+    return pushCardLine(m, nowMs);
   }
-  const agg = m.saved?.agg ?? null;
-  const what = agg ? opensWhen(m) : `at least ${plain(m.threshold)} line${m.threshold === 1 ? "" : "s"}`;
-  return `search · ${q} · ${what} in ${m.saved?.range ?? "its window"}`;
+  const last = readsQuiet(m) && typeof m.last_line_at === "number" ? ` · last line ${clockAt(m.last_line_at, nowMs)}` : "";
+  return `search · ${q} · ${opensWhenLine(m)}${last}`;
 }
 
-export type LaneReadout = { badge: string; tone: "red" | "amber" | "sec" | "out"; text: string };
+export type LaneReadout = { badge: string; tone: "red" | "amber" | "sec" | "out"; text: string; title?: string };
 
 /** Right of a lane: its state, and what it last read. */
 export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number): LaneReadout {
@@ -136,6 +172,11 @@ export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number)
     return { badge: `open ${formatOpenFor(nowMs - m.open.opened_at)}`, tone: "red", text: silenced };
   }
   let reading = "";
+  // A quiet search that could not tell stays shut, and says so (#176).
+  const why = cantTellNow(m, nowMs);
+  if (why) {
+    return { badge: "ok", tone: "sec", text: ["can't tell", silenced].filter(Boolean).join(" · "), title: `can't tell: ${why}` };
+  }
   if (sourceOf(m) === "fingerprints") {
     reading = `${sentInWindow} sent`;
   } else if (m.last_status === "refused" || m.last_status === "error") {

@@ -1,4 +1,4 @@
-import type { MonitorSource, RemindId } from "../shared/monitor";
+import type { CantTell, MonitorSource, OpensWhen, RemindId } from "../shared/monitor";
 import type { HistogramReading } from "../shared/metric";
 import type { WidgetLayout } from "../shared/widgets";
 import type { BoardSlots } from "../shared/boards";
@@ -125,6 +125,10 @@ export type AlertRule = {
   last_result?: "ok" | "warn" | "fail" | null;
   last_value?: number | null;
   last_result_at?: number | null;
+  /** A search monitor opens at least or fewer than its threshold (#176). */
+  opens_when?: OpensWhen;
+  /** Why a fewer-than monitor stayed shut on its last pass. */
+  cant_tell?: CantTell | null;
   /** A push monitor (#177): its schedule, the time its next result counts from, a run in flight, its last ok. */
   query?: string;
   every_ms?: number | null;
@@ -187,6 +191,8 @@ export type PushResultRow = {
 export type MonitorView = AlertRule & {
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   open: MonitorStretch | null;
+  /** A fewer-than monitor's newest matching line; null when none in a year, absent when unread. */
+  last_line_at?: number | null;
 };
 
 export type MonitorsResponse = {

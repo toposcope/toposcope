@@ -19,17 +19,22 @@ import {
 } from "../shared/alert-body";
 import {
   defaultRemind,
+  fewerThanProblem,
+  parseCantTell,
+  parseOpensWhen,
   parseRemind,
   parseSource,
   sourceOfKind,
+  type CantTell,
   type MonitorResult,
   type MonitorSource,
   type MonitorState,
+  type OpensWhen,
   type RemindId,
 } from "../shared/monitor";
 
 const RULE_COLS =
-  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
+  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
 
 /** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
 export const alertKinds = ["threshold", "first_seen"] as const;
@@ -76,6 +81,10 @@ export type AlertRule = {
   last_result: MonitorResult | null;
   last_value: number | null;
   last_result_at: number | null;
+  /** A search monitor opens at least or fewer than its threshold (#176). */
+  opens_when: OpensWhen;
+  /** Why a fewer-than monitor stayed shut on its last pass, when its reading said it would open. */
+  cant_tell: CantTell | null;
   /** A push monitor (#177): when its next result is due, and how long past that before it opens. Null: by its results alone. */
   every_ms: number | null;
   grace_ms: number | null;
@@ -88,7 +97,10 @@ export type AlertRule = {
   paused_at: number | null;
 };
 
-type RuleRow = Omit<AlertRule, "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result"> & {
+type RuleRow = Omit<
+  AlertRule,
+  "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result" | "opens_when" | "cant_tell"
+> & {
   kind: string | null;
   last_mark: string | null;
   body_kind: string | null;
@@ -96,6 +108,8 @@ type RuleRow = Omit<AlertRule, "kind" | "last_mark" | "body_kind" | "source" | "
   state: string | null;
   remind_every: string | null;
   last_result: string | null;
+  opens_when: string | null;
+  cant_tell: string | null;
 };
 
 function parseBodyKind(value: unknown): AlertBodyKind | null {
@@ -192,6 +206,8 @@ function mapRule(row: RuleRow): AlertRule {
         : null,
     last_value: row.last_value ?? null,
     last_result_at: row.last_result_at ?? null,
+    opens_when: parseOpensWhen(row.opens_when) ?? "at_least",
+    cant_tell: parseCantTell(row.cant_tell),
     every_ms: row.every_ms ?? null,
     grace_ms: row.grace_ms ?? null,
     due_from: row.due_from ?? null,
@@ -400,6 +416,7 @@ export type MonitorFields = {
   body_template: string | null;
   resolved_body: string | null;
   remind_every: RemindId;
+  opens_when: OpensWhen;
 };
 
 type FieldsError = { error: string; status: 400 | 404 };
@@ -468,12 +485,28 @@ export function readMonitorFields(
   if (typeof remind !== "string") {
     return { error: remind.error, status: 400 };
   }
+  const opensWhen =
+    rec.opens_when === undefined
+      ? kind === "first_seen"
+        ? "at_least"
+        : (existing?.opens_when ?? "at_least")
+      : parseOpensWhen(rec.opens_when);
+  if (!opensWhen) {
+    return { error: "opens_when must be at_least or fewer_than", status: 400 };
+  }
+  if (opensWhen === "fewer_than" && kind === "first_seen") {
+    return { error: "fewer than reads a saved search's series, not new fingerprints", status: 400 };
+  }
   const saved = getSaved(savedSearchId);
   if (!saved) {
     return { error: "Saved search not found", status: 404 };
   }
   if (saved.board) {
     return { error: boardWatchRefuse(saved), status: 400 };
+  }
+  const fewerProblem = opensWhen === "fewer_than" ? fewerThanProblem(saved) : null;
+  if (fewerProblem) {
+    return { error: fewerProblem, status: 400 };
   }
   return {
     name,
@@ -484,6 +517,7 @@ export function readMonitorFields(
     threshold,
     ...body,
     remind_every: remind,
+    opens_when: opensWhen,
   };
 }
 
@@ -505,8 +539,8 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
     .query(
       `INSERT INTO alert_rules
         (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
-         source, state, remind_every, resolved_body)
-       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?)`,
+         source, state, remind_every, resolved_body, opens_when)
+       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?)`,
     )
     .run(
       id,
@@ -522,6 +556,7 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
       sourceOfKind(fields.kind),
       fields.remind_every,
       fields.resolved_body,
+      fields.opens_when,
     );
   return getAlert(id)!;
 }
@@ -535,7 +570,7 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
     .query(
       `UPDATE alert_rules
        SET name = ?, query = ?, webhook_url = ?, saved_search_id = ?, threshold = ?, kind = ?, body_kind = ?, body_template = ?,
-           source = ?, remind_every = ?, resolved_body = ?
+           source = ?, remind_every = ?, resolved_body = ?, opens_when = ?
        WHERE id = ?`,
     )
     .run(
@@ -550,14 +585,20 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
       sourceOfKind(fields.kind),
       fields.remind_every,
       fields.resolved_body,
+      fields.opens_when,
       existing.id,
     );
   const readsAnew =
     fields.kind !== existing.kind ||
     fields.saved_search_id !== existing.saved_search_id ||
-    fields.threshold !== existing.threshold;
+    fields.threshold !== existing.threshold ||
+    fields.opens_when !== existing.opens_when;
   if (readsAnew && existing.state === "open") {
     closeByEdit(existing.id, now);
+  }
+  if (readsAnew) {
+    // Why it could not tell was about what it read before.
+    getDb().query("UPDATE alert_rules SET cant_tell = NULL WHERE id = ?").run(existing.id);
   }
   // What was sent was sent for that kind and that search.
   if (fields.kind !== existing.kind || fields.saved_search_id !== existing.saved_search_id) {

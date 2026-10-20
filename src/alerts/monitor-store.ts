@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
-import { keptStretches, type MonitorResult } from "../shared/monitor";
+import { keptStretches, type CantTell, type MonitorResult } from "../shared/monitor";
 import { keptResultsMs } from "../shared/push";
 
 /** What became of a stretch's open or resolved call. Null while it is still to be sent. */
@@ -88,6 +88,11 @@ export function recordResult(
     at,
     monitorId,
   );
+}
+
+/** Why it could not tell on this pass (#176), or null when it could. */
+export function setCantTell(monitorId: string, why: CantTell | null, db: Database = getDb()): void {
+  db.query("UPDATE alert_rules SET cant_tell = ? WHERE id = ?").run(why ? JSON.stringify(why) : null, monitorId);
 }
 
 /** A fail while ok: the monitor opens, and a stretch starts. A missed result says when it was due. */
