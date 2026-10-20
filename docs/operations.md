@@ -38,6 +38,12 @@ Set `TOPOSCOPE_PUBLIC_URL` in `.env` to the address people open, such as `https:
 
 A monitor (**Watch → New monitor**, or **Watch this** on a saved search) reads its saved search every minute. At or above its threshold it **opens**: it calls its webhook once, then reminds while it stays open (every 4h by default; off, once per window, 1h or 24h), and when the search falls back it **resolves** and calls once more. A reading that is refused or fails changes nothing. Each open-to-resolved stretch is kept with the calls sent during it, and Watch draws them on one clock. Silence stops the calls, not the record. Alerts made before 0.6 are monitors that remind once per window, so they call as often as they did.
 
+A **push monitor** takes results instead of reading a search: a cron job, a backup or a Nagios plugin says how it went, through `POST /v1/checks` with the ingest token or its keyed URL `/ping/<key>` with none, and a name not seen before creates it. It opens on a fail, or when no result has come for its `every` plus its grace, and the next ok resolves it; a warn shows on Watch and calls nobody. See [Check results](ingest.md#check-results-push-monitors).
+
+**Settings → Default webhook** is called by any monitor without its own, such as one created by its first result. Leave it empty and such a monitor keeps its state and calls nobody.
+
+`/ping/<key>` is the one route that takes no token, so a proxy in front of Toposcope must pass it through. Its key is printed only on the monitor's page and in its editor; anyone holding it can post that monitor's results and nothing else. Replace a leaked key by declaring the monitor again (`PUT /api/monitors/<name>` with `"source": "push"`, its `every` and `grace`, and a new random UUID as `key`), or delete and recreate it.
+
 A script or an agent can declare one without the UI, by name; the same name replaces it:
 
 ```bash

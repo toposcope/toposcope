@@ -86,6 +86,34 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "last_result", "TEXT");
   addColumnIfMissing(db, "alert_rules", "last_value", "REAL");
   addColumnIfMissing(db, "alert_rules", "last_result_at", "INTEGER");
+  // A push monitor (#177): its keyed URL, when its next result is due and how long past that it
+  // waits, when its due time counts from, the run started and not yet ended, its last ok, and
+  // when it was paused (any monitor).
+  addColumnIfMissing(db, "alert_rules", "ping_key", "TEXT");
+  addColumnIfMissing(db, "alert_rules", "every_ms", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "grace_ms", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "due_from", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "started_at", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "last_ok_at", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "paused_at", "INTEGER");
+  db.run("CREATE UNIQUE INDEX IF NOT EXISTS alert_rules_ping_key ON alert_rules (ping_key) WHERE ping_key IS NOT NULL");
+  // A push monitor's last results, for Watch's ticks (#177). Each is also a log row.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS monitor_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      monitor_id TEXT NOT NULL,
+      at INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      exit_code INTEGER,
+      duration_ms INTEGER,
+      value REAL,
+      unit TEXT,
+      message TEXT NOT NULL DEFAULT '',
+      host TEXT NOT NULL DEFAULT '',
+      via TEXT NOT NULL DEFAULT ''
+    );
+  `);
+  db.run("CREATE INDEX IF NOT EXISTS monitor_results_by_monitor ON monitor_results (monitor_id, at)");
   // Each open-to-resolved stretch, and the calls sent for it (#175).
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_stretches (
@@ -108,6 +136,8 @@ export function migrateControlDb(db: Database): void {
   db.run(
     "CREATE INDEX IF NOT EXISTS monitor_stretches_by_monitor ON monitor_stretches (monitor_id, opened_at)",
   );
+  // When the result a push monitor missed was due (#177): Watch draws it late from there.
+  addColumnIfMissing(db, "monitor_stretches", "due_at", "INTEGER");
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

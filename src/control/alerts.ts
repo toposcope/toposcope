@@ -20,6 +20,7 @@ import {
 import {
   defaultRemind,
   parseRemind,
+  parseSource,
   sourceOfKind,
   type MonitorResult,
   type MonitorSource,
@@ -28,7 +29,7 @@ import {
 } from "../shared/monitor";
 
 const RULE_COLS =
-  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at";
+  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
 
 /** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
 export const alertKinds = ["threshold", "first_seen"] as const;
@@ -75,6 +76,16 @@ export type AlertRule = {
   last_result: MonitorResult | null;
   last_value: number | null;
   last_result_at: number | null;
+  /** A push monitor (#177): when its next result is due, and how long past that before it opens. Null: by its results alone. */
+  every_ms: number | null;
+  grace_ms: number | null;
+  /** When its next result's due time counts from. */
+  due_from: number | null;
+  /** A run's `/start`, until its result. */
+  started_at: number | null;
+  last_ok_at: number | null;
+  /** When it was paused, while it is. */
+  paused_at: number | null;
 };
 
 type RuleRow = Omit<AlertRule, "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result"> & {
@@ -171,7 +182,7 @@ function mapRule(row: RuleRow): AlertRule {
     threshold: Number(row.threshold),
     consecutive_failures: row.consecutive_failures ?? 0,
     silenced_until: row.silenced_until ?? null,
-    source: sourceOfKind(kind),
+    source: parseSource(row.source) ?? sourceOfKind(kind),
     state: row.state === "open" ? "open" : "ok",
     remind_every: parseRemind(row.remind_every) ?? "window",
     resolved_body: row.resolved_body ?? null,
@@ -181,6 +192,12 @@ function mapRule(row: RuleRow): AlertRule {
         : null,
     last_value: row.last_value ?? null,
     last_result_at: row.last_result_at ?? null,
+    every_ms: row.every_ms ?? null,
+    grace_ms: row.grace_ms ?? null,
+    due_from: row.due_from ?? null,
+    started_at: row.started_at ?? null,
+    last_ok_at: row.last_ok_at ?? null,
+    paused_at: row.paused_at ?? null,
   };
 }
 
@@ -246,6 +263,27 @@ export function enabledAlertRules(db: Database = getDb()): AlertRule[] {
         `SELECT ${RULE_COLS} FROM alert_rules WHERE enabled = 1 AND saved_search_id IS NOT NULL`,
       )
       .all() as RuleRow[]
+  ).map(mapRule);
+}
+
+/** Push monitors that are not paused, for the pass (#177). */
+export function enabledPushMonitors(db: Database = getDb()): AlertRule[] {
+  return (
+    db.query(`SELECT ${RULE_COLS} FROM alert_rules WHERE enabled = 1 AND source = 'push'`).all() as RuleRow[]
+  ).map(mapRule);
+}
+
+/** Every monitor of these names, oldest first. */
+export function monitorsNamed(names: string[], db: Database = getDb()): AlertRule[] {
+  if (names.length === 0) {
+    return [];
+  }
+  return (
+    db
+      .query(
+        `SELECT ${RULE_COLS} FROM alert_rules WHERE name IN (${names.map(() => "?").join(", ")}) ORDER BY created_at`,
+      )
+      .all(...names) as RuleRow[]
   ).map(mapRule);
 }
 
@@ -383,7 +421,7 @@ export function readMonitorFields(
   if (rec.source !== undefined) {
     kind = rec.source === "search" ? "threshold" : rec.source === "fingerprints" ? "first_seen" : null;
     if (!kind) {
-      return { error: "source must be search or fingerprints", status: 400 };
+      return { error: "source must be search, fingerprints or push", status: 400 };
     }
   }
   if (rec.kind !== undefined) {
@@ -557,7 +595,12 @@ export function applyMonitorHold(existing: AlertRule, rec: Record<string, unknow
   if (typeof rec.enabled === "boolean" || rec.enabled === 0 || rec.enabled === 1) {
     const enabled = rec.enabled === true || rec.enabled === 1 ? 1 : 0;
     if (enabled !== existing.enabled) {
-      getDb().query("UPDATE alert_rules SET enabled = ? WHERE id = ?").run(enabled, existing.id);
+      // Paused says since when; resumed, a push monitor's next result is due counted from now.
+      getDb()
+        .query(
+          "UPDATE alert_rules SET enabled = ?, paused_at = ?, due_from = CASE WHEN ? = 1 AND source = 'push' THEN ? ELSE due_from END WHERE id = ?",
+        )
+        .run(enabled, enabled === 0 ? now : null, enabled, now, existing.id);
       // Paused while open: the stretch closes without a call.
       if (enabled === 0 && existing.state === "open") {
         closeByEdit(existing.id, now);

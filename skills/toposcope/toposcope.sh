@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # One Toposcope on this machine, for the toposcope agent skill.
-# Talks only to 127.0.0.1. Writes secrets to files and never prints them.
+# Talks only to 127.0.0.1, except `check <monitor> -- <command>`, which sends
+# to TOPOSCOPE_URL when it is set. Writes secrets to files and never prints them.
 # Stops the instance when asked and never removes data.
 set -euo pipefail
 
@@ -275,6 +276,87 @@ cmd_check() {
   printf '\nopen: http://127.0.0.1:8080/?q=%s%%20OR%%20exception.message:%s&range=15m\n' "$word" "$word"
 }
 
+# A string's JSON text, without its quotes. Control characters other than tab,
+# newline and carriage return are dropped.
+json_text() {
+  printf '%s' "$1" | LC_ALL=C tr -d '\000-\010\013\014\016-\037' |
+    LC_ALL=C sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e "s/$(printf '\t')/\\\\t/g" -e "s/$(printf '\r')/\\\\r/g" |
+    awk 'NR > 1 { printf "%s", "\\n" } { printf "%s", $0 }'
+}
+
+now_ms() {
+  if [ -n "${EPOCHREALTIME:-}" ]; then
+    # Seconds and microseconds, whatever the locale's decimal mark.
+    local digits="${EPOCHREALTIME//[!0-9]/}"
+    printf '%s' "${digits:0:13}"
+  else
+    printf '%s000' "$(date +%s)"
+  fi
+}
+
+# Runs a command and sends how it went to a push monitor (#177): its exit code
+# (0 ok, 1 warn, 2 fail, 3 unknown, anything else a fail), how long it ran, and
+# the tail of its output. For a Nagios plugin, whose first line carries
+# perfdata, that line is the message and its first value is the value. A name
+# not seen before creates its monitor. The command's output and exit code pass
+# through, so cron still sees them.
+cmd_check_monitor() {
+  local monitor="${1:-}"
+  [ -n "$monitor" ] && [ "${2:-}" = "--" ] && [ "$#" -gt 2 ] ||
+    die "Usage: check <monitor> -- <command> [args...]"
+  shift 2
+  need curl
+  local url="${TOPOSCOPE_URL:-$URL}" token="${TOPOSCOPE_INGEST_TOKEN:-}"
+  [ -n "$token" ] || token="$(env_value TOPOSCOPE_INGEST_TOKEN)"
+  [ -n "$token" ] || die "No ingest token: set TOPOSCOPE_INGEST_TOKEN, or run up."
+
+  local out code started ended
+  started="$(now_ms)"
+  set +e
+  out="$("$@" 2>&1)"
+  code=$?
+  set -e
+  ended="$(now_ms)"
+  [ -z "$out" ] || printf '%s\n' "$out"
+
+  local first message="" value="" unit="" perf=""
+  first="${out%%$'\n'*}"
+  case "$first" in
+    *"|"*=*)
+      message="${first%%|*}"
+      message="${message%"${message##*[![:space:]]}"}"
+      perf="$(printf '%s' "${first#*|}" |
+        LC_ALL=C sed -E -n "s/^[[:space:]]*('[^']*'|[^=[:space:]]+)=(-?[0-9]+(\.[0-9]+)?)([a-zA-Z%]*).*/\2 \4/p")"
+      if [ -n "$perf" ]; then
+        value="$(printf '%s' "${perf%% *}" | awk '{ print $1 + 0 }')"
+        unit="${perf#* }"
+      fi
+      ;;
+    *)
+      message="$(printf '%s' "$out" | tail -c 4096)"
+      ;;
+  esac
+
+  local status
+  case "$code" in
+    0 | 1 | 2 | 3) status="$code" ;;
+    *) status='"fail"' ;;
+  esac
+  local body
+  body="{\"monitor\":\"$(json_text "$monitor")\",\"status\":$status,\"exit_code\":$code"
+  body="$body,\"duration_ms\":$((ended - started)),\"host\":\"$(json_text "$(uname -n)")\""
+  body="$body,\"message\":\"$(json_text "$message")\""
+  [ -z "$value" ] || body="$body,\"value\":$value"
+  [ -z "$unit" ] || body="$body,\"unit\":\"$(json_text "$unit")\""
+  body="$body}"
+
+  printf 'header = "authorization: Bearer %s"\n' "$token" |
+    curl -fsS -m 10 -K - -o /dev/null -X POST "$url/v1/checks" \
+      -H 'content-type: application/json' -A "toposcope.sh/$VERSION" --data-binary "$body" ||
+    printf 'The result of %s was not sent to %s.\n' "$monitor" "$url" >&2
+  return "$code"
+}
+
 case "${1:-}" in
   cost) cmd_cost ;;
   up) cmd_up ;;
@@ -282,8 +364,9 @@ case "${1:-}" in
   stop) cmd_stop ;;
   app-env) shift; cmd_app_env "$@" ;;
   marker) cmd_marker ;;
-  check) shift; cmd_check "$@" ;;
+  # `check <word>` reads a test error back; `check <monitor> -- <command>` sends a result.
+  check) shift; if [ "${2:-}" = "--" ]; then cmd_check_monitor "$@"; else cmd_check "$@"; fi ;;
   *)
-    die "Usage: toposcope.sh cost | up | status | stop | app-env <file> [--service <name>] [--version <version>] | marker | check <word>"
+    die "Usage: toposcope.sh cost | up | status | stop | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
     ;;
 esac

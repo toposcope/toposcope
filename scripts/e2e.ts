@@ -3636,6 +3636,139 @@ async function main(): Promise<void> {
     if (after.status !== 401 || after.headers.get("www-authenticate")) throw new Error(`after Sign out the cookie should be refused without the challenge, got ${after.status}`);
   }
 
+  // #177: a script, a cron job or a box tells Toposcope how it went. A first result creates its
+  // push monitor; past every it is late and past every + grace it opens (the pass runs here with
+  // a clock it is handed); a fail opens, a warn does not, Nagios's 3 changes nothing; the keyed
+  // URL's /fail opens; results are rows in Search; 501 results and an unknown key are refused.
+  {
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const bearer = { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` };
+    const pushName = `e2e-push-${marker}`;
+    const nagiosName = `e2e-nagios-${marker}`;
+    const probeName = `e2e_probe_${marker}`;
+    const calls: Array<Record<string, unknown>> = [];
+    const pushHook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        calls.push((await req.json()) as Record<string, unknown>);
+        return new Response("ok");
+      },
+    });
+    const settingsBefore = (await (await fetch(`${APP_URL}/api/settings`, { headers: auth })).json()) as {
+      default_webhook_url?: string | null;
+    };
+    const check = (body: unknown) => fetch(`${APP_URL}/v1/checks`, { method: "POST", headers: bearer, body: JSON.stringify(body) });
+    type PushPage = {
+      id: string;
+      state: string;
+      source: string;
+      last_result: string | null;
+      due_from: number;
+      ping_key?: string;
+      open: { due_at: number | null } | null;
+    };
+    const page = async (name: string) =>
+      (await (await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(name)}`, { headers: auth })).json()) as PushPage;
+    try {
+      // A monitor its first result made calls the default webhook from Settings.
+      const setDefault = await fetch(`${APP_URL}/api/settings`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ default_webhook_url: `http://127.0.0.1:${pushHook.port}/default` }),
+      });
+      if (!setDefault.ok) throw new Error(`setting the default webhook failed: ${setDefault.status}`);
+
+      const first = await check({ monitor: pushName, status: "ok", message: "snapshot saved", every: "1h", grace: "15m", host: "e2e-box" });
+      const firstBody = (await first.json()) as { ingested: number; created: string[] };
+      if (!first.ok || JSON.stringify(firstBody.created) !== JSON.stringify([pushName])) {
+        throw new Error(`a result for an unknown name should create its monitor, got ${first.status} ${JSON.stringify(firstBody)}`);
+      }
+      const made = await page(pushName);
+      if (made.source !== "push" || made.state !== "ok" || !made.ping_key) throw new Error(`a push monitor should be made, got ${JSON.stringify(made)}`);
+      const key = made.ping_key;
+      const listText = await (await fetch(`${APP_URL}/api/monitors`, { headers: auth })).text();
+      if (listText.includes(key)) throw new Error("the monitors list must not print a push monitor's key");
+
+      // every 1h, grace 15m, nothing after: late at 1h, open at 1h15m.
+      const t0 = made.due_from;
+      await evaluateAlerts(t0 + 60 * 60_000 + 30_000);
+      const late = await page(pushName);
+      const callCount = () => calls.length;
+      if (late.state !== "ok" || callCount() !== 0) throw new Error(`late is not open and calls nobody, got ${JSON.stringify(late)} ${JSON.stringify(calls)}`);
+      await evaluateAlerts(t0 + 75 * 60_000);
+      const missed = await page(pushName);
+      if (missed.state !== "open" || missed.open?.due_at !== t0 + 60 * 60_000) {
+        throw new Error(`past every + grace it should open, missed, got ${JSON.stringify(missed)}`);
+      }
+      if (callCount() !== 1 || calls[0]!.state !== "open" || (calls[0]!.alert as { source?: string }).source !== "push") {
+        throw new Error(`a missed result should call the default webhook once, got ${JSON.stringify(calls)}`);
+      }
+
+      // The next ok resolves it; a warn shows and does not open.
+      if (!(await check({ monitor: pushName, status: "ok" })).ok) throw new Error("ok result failed");
+      // The resolve happened at the real time; its call goes out on a pass at that time (or the app's own).
+      await evaluateAlerts(Date.now());
+      if ((await page(pushName)).state !== "ok" || calls.at(-1)?.state !== "resolved") throw new Error(`an ok should resolve it, got ${JSON.stringify(calls)}`);
+      if (!(await check({ monitor: pushName, status: "warn", message: "/var 87% used", value: 87.2, unit: "%" })).ok) throw new Error("warn result failed");
+      const warned = await page(pushName);
+      if (warned.state !== "ok" || warned.last_result !== "warn") throw new Error(`a warn shows and does not open, got ${JSON.stringify(warned)}`);
+
+      // Nagios's 2 opens; 3 changes nothing.
+      if (!(await check({ monitor: nagiosName, status: 2, message: "DISK CRITICAL" })).ok) throw new Error("nagios 2 failed");
+      if ((await page(nagiosName)).state !== "open") throw new Error("exit code 2 should open");
+      if (!(await check({ monitor: nagiosName, status: 3 })).ok) throw new Error("nagios 3 failed");
+      const unknown = await page(nagiosName);
+      if (unknown.state !== "open" || unknown.last_result !== "fail") throw new Error(`3 should change nothing, got ${JSON.stringify(unknown)}`);
+
+      // The keyed URL's /fail opens, with no token; an unknown key gets 404 and writes nothing.
+      const fail = await fetch(`${APP_URL}/ping/${key}/fail`, { method: "POST", body: "unable to create lock" });
+      if (fail.status !== 200 || (await fail.text()) !== "OK\n") throw new Error(`/ping/<key>/fail should answer OK, got ${fail.status}`);
+      if ((await page(pushName)).state !== "open") throw new Error("the keyed URL's /fail should open it");
+      const stranger = await fetch(`${APP_URL}/ping/${crypto.randomUUID()}/fail`, { method: "POST", body: `stranger-${marker}` });
+      if (stranger.status !== 404) throw new Error(`an unknown key should get 404, got ${stranger.status}`);
+      const again = await fetch(`${APP_URL}/ping/${key}/fail`);
+      if (again.status !== 429) throw new Error(`a second result within a second should get 429, got ${again.status}`);
+
+      // An attached probe is a result too.
+      const probe = await fetch(`${APP_URL}/v1/probes`, { method: "POST", headers: bearer, body: JSON.stringify({ service: "e2e", up: 0, check: probeName }) });
+      if (!probe.ok || (await page(probeName)).state !== "open") throw new Error("an attached probe should be read as a fail");
+
+      // 501 results are refused.
+      const tooMany = await check(Array.from({ length: 501 }, (_, i) => ({ monitor: `${pushName}-${i}`, status: "ok" })));
+      if (tooMany.status !== 400) throw new Error(`a batch of 501 should be refused, got ${tooMany.status}`);
+
+      // Every result is a row: monitor:<name> finds them, and nothing the unknown key sent.
+      const rows = async (q: string) =>
+        (
+          (await (
+            await fetch(`${APP_URL}/api/search?${new URLSearchParams({ q, range: "15m" }).toString()}`, { headers: auth })
+          ).json()) as { total: number; events: Array<{ message: string; level: string; attrs: Record<string, string> }> }
+        );
+      let found = await rows(`monitor:${pushName}`);
+      for (let i = 0; i < 40 && found.total < 4; i++) {
+        await Bun.sleep(250);
+        found = await rows(`monitor:${pushName}`);
+      }
+      const failRow = found.events.find((e) => e.message === "unable to create lock");
+      if (found.total !== 4 || failRow?.level !== "error" || failRow.attrs.status !== "fail" || failRow.attrs.source !== "push") {
+        throw new Error(`results should be rows found by monitor:<name>, got ${JSON.stringify(found.events)}`);
+      }
+      if ((await rows(`stranger-${marker}`)).total !== 0) throw new Error("an unknown key should write nothing");
+      if ((await rows(`monitor:${nagiosName} status:unknown`)).total !== 1) throw new Error("an unknown result is still a row");
+    } finally {
+      pushHook.stop();
+      for (const n of [pushName, nagiosName, probeName]) {
+        await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { method: "DELETE", headers: auth });
+      }
+      await fetch(`${APP_URL}/api/settings`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ default_webhook_url: settingsBefore.default_webhook_url ?? "" }),
+      });
+    }
+  }
+
   // #175, last: it waits minutes for its rows to age out of a 15m window, and the tests above
   // read a window that ends a minute after this run began.
   // A search monitor opens once, reminds on its schedule and sends one resolved call when its
@@ -3746,7 +3879,7 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → monitor open, remind, resolved");
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → monitor open, remind, resolved");
 }
 
 await main();

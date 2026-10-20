@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
 import { keptStretches, type MonitorResult } from "../shared/monitor";
+import { keptResults, type CheckStatus } from "../shared/push";
 
 /** What became of a stretch's open or resolved call. Null while it is still to be sent. */
 export type CallState = "sent" | "failed" | "silenced" | "none";
@@ -39,14 +40,17 @@ export type MonitorStretch = {
   called_at: number | null;
   open_call: CallState | null;
   resolved_call: CallState | null;
+  /** A push monitor that opened because a result never came: when that result was due (#177). */
+  due_at: number | null;
 };
 
 export type StretchWithCalls = MonitorStretch & { calls: MonitorCall[] };
 
-export type Reading = { value: number; count: number; message: string };
+/** What a pass read, or a pushed result said: a value and a count when it has them, and in words. */
+export type Reading = { value: number | null; count: number | null; message: string };
 
 const STRETCH_COLS =
-  "id, monitor_id, opened_at, resolved_at, closed_by, open_value, open_count, open_message, last_value, last_count, last_at, called_at, open_call, resolved_call";
+  "id, monitor_id, opened_at, resolved_at, closed_by, open_value, open_count, open_message, last_value, last_count, last_at, called_at, open_call, resolved_call, due_at";
 
 type CallRow = Omit<MonitorCall, "ok"> & { ok: number };
 
@@ -86,20 +90,21 @@ export function recordResult(
   );
 }
 
-/** A fail while ok: the monitor opens, and a stretch starts. */
+/** A fail while ok: the monitor opens, and a stretch starts. A missed result says when it was due. */
 export function beginStretch(
   monitorId: string,
   at: number,
   reading: Reading,
   db: Database = getDb(),
+  dueAt: number | null = null,
 ): MonitorStretch {
   const id = crypto.randomUUID();
   db.transaction(() => {
     db.query(
       `INSERT INTO monitor_stretches
-        (id, monitor_id, opened_at, open_value, open_count, open_message, last_value, last_count, last_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(id, monitorId, at, reading.value, reading.count, reading.message, reading.value, reading.count, at);
+        (id, monitor_id, opened_at, open_value, open_count, open_message, last_value, last_count, last_at, due_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(id, monitorId, at, reading.value, reading.count, reading.message, reading.value, reading.count, at, dueAt);
     db.query("UPDATE alert_rules SET state = 'open' WHERE id = ?").run(monitorId);
     pruneStretches(monitorId, db);
   })();
@@ -248,4 +253,97 @@ export function pruneStretches(monitorId: string, db: Database = getDb()): void 
 export function forgetMonitor(monitorId: string, db: Database = getDb()): void {
   db.query("DELETE FROM monitor_calls WHERE monitor_id = ?").run(monitorId);
   db.query("DELETE FROM monitor_stretches WHERE monitor_id = ?").run(monitorId);
+  db.query("DELETE FROM monitor_results WHERE monitor_id = ?").run(monitorId);
+}
+
+/** One pushed result as Watch draws it (#177): a tick at its time, a bar back to its `/start`. */
+export type PushResultRow = {
+  id: number;
+  monitor_id: string;
+  at: number;
+  status: CheckStatus;
+  exit_code: number | null;
+  duration_ms: number | null;
+  value: number | null;
+  unit: string | null;
+  message: string;
+  host: string;
+  via: string;
+};
+
+const RESULT_COLS = "id, monitor_id, at, status, exit_code, duration_ms, value, unit, message, host, via";
+
+export function recordPushResult(row: Omit<PushResultRow, "id">, db: Database = getDb()): void {
+  db.query(
+    `INSERT INTO monitor_results (monitor_id, at, status, exit_code, duration_ms, value, unit, message, host, via)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    row.monitor_id,
+    row.at,
+    row.status,
+    row.exit_code,
+    row.duration_ms,
+    row.value,
+    row.unit,
+    row.message,
+    row.host,
+    row.via,
+  );
+}
+
+/** A push monitor's last result, whatever it said. */
+export function lastPushResult(monitorId: string, db: Database = getDb()): PushResultRow | null {
+  const row = db
+    .query(`SELECT ${RESULT_COLS} FROM monitor_results WHERE monitor_id = ? ORDER BY at DESC, id DESC LIMIT 1`)
+    .get(monitorId) as PushResultRow | undefined;
+  return row ?? null;
+}
+
+/** Most ticks a lane is sent; past that it is drawn dense, with only what was not ok as ticks. */
+export const laneTicks = 300;
+/** A message as a lane's tick carries it; the whole one is its log row. */
+const tickMessage = 300;
+
+/**
+ * Push results in [from, to], by monitor, for Watch's lanes. A lane with more than 300 is sent
+ * as dense (the span its results cover and how many) with only its warns, fails and unknowns.
+ */
+export function resultsBetween(
+  fromMs: number,
+  toMs: number,
+  db: Database = getDb(),
+): { results: PushResultRow[]; dense: Array<{ monitor_id: string; from: number; to: number; n: number }> } {
+  const counts = db
+    .query(
+      `SELECT monitor_id, count(*) AS n, min(at) AS first, max(at) AS last FROM monitor_results
+       WHERE at >= ? AND at <= ? GROUP BY monitor_id`,
+    )
+    .all(fromMs, toMs) as Array<{ monitor_id: string; n: number; first: number; last: number }>;
+  const results: PushResultRow[] = [];
+  const dense: Array<{ monitor_id: string; from: number; to: number; n: number }> = [];
+  const clip = (row: PushResultRow): PushResultRow =>
+    row.message.length > tickMessage ? { ...row, message: `${row.message.slice(0, tickMessage)}…` } : row;
+  for (const c of counts) {
+    const many = c.n > laneTicks;
+    if (many) {
+      dense.push({ monitor_id: c.monitor_id, from: c.first, to: c.last, n: c.n });
+    }
+    const rows = db
+      .query(
+        `SELECT ${RESULT_COLS} FROM monitor_results
+         WHERE monitor_id = ? AND at >= ? AND at <= ? ${many ? "AND status != 'ok'" : ""}
+         ORDER BY at DESC, id DESC LIMIT ?`,
+      )
+      .all(c.monitor_id, fromMs, toMs, laneTicks) as PushResultRow[];
+    results.push(...rows.reverse().map(clip));
+  }
+  return { results, dense };
+}
+
+/** Keep a push monitor's last 1000 results. */
+export function pruneResults(monitorId: string, db: Database = getDb()): void {
+  db.query(
+    `DELETE FROM monitor_results WHERE id IN (
+       SELECT id FROM monitor_results WHERE monitor_id = ? ORDER BY at DESC, id DESC LIMIT -1 OFFSET ?)`,
+  ).run(monitorId, keptResults);
 }

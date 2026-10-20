@@ -28,8 +28,48 @@ export function writeRetentionDays(
   return n;
 }
 
+/**
+ * The webhook any monitor without its own calls (#177), such as one created by its first result.
+ * Null when none is set: such a monitor keeps its state and calls nobody.
+ */
+export function getDefaultWebhook(db: Database = getDb()): string | null {
+  const row = db.query("SELECT value FROM settings WHERE key = 'default_webhook_url'").get() as
+    | { value: string }
+    | undefined;
+  return row?.value ? row.value : null;
+}
+
+/** An http(s) URL, or empty for none. */
+export function parseDefaultWebhook(value: unknown): string | null | { error: string } {
+  if (value === null || value === "") {
+    return null;
+  }
+  const url = typeof value === "string" ? value.trim() : "";
+  if (url === "") {
+    return null;
+  }
+  if (!/^https?:\/\/\S+$/.test(url) || url.length > 2000) {
+    return { error: "default_webhook_url must be http(s), or empty for none" };
+  }
+  return url;
+}
+
+export function writeDefaultWebhook(url: string | null, db: Database = getDb()): void {
+  if (url === null) {
+    db.query("DELETE FROM settings WHERE key = 'default_webhook_url'").run();
+    return;
+  }
+  db.query(
+    "INSERT INTO settings (key, value) VALUES ('default_webhook_url', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(url);
+}
+
+function settingsBody(extra: { retention_days: number; instance_name: string | null }) {
+  return { ...extra, default_webhook_url: getDefaultWebhook() };
+}
+
 export async function getSettings(c: Context): Promise<Response> {
-  return c.json({ retention_days: getRetentionDays(), instance_name: instanceName() });
+  return c.json(settingsBody({ retention_days: getRetentionDays(), instance_name: instanceName() }));
 }
 
 export async function putSettings(c: Context): Promise<Response> {
@@ -44,7 +84,8 @@ export async function putSettings(c: Context): Promise<Response> {
   }
   const rec = body as Record<string, unknown>;
   const hasName = "instance_name" in rec;
-  if (rec.retention_days === undefined && !hasName) {
+  const hasWebhook = "default_webhook_url" in rec;
+  if (rec.retention_days === undefined && !hasName && !hasWebhook) {
     return c.json({ error: "retention_days is required" }, 400);
   }
   if (rec.retention_days !== undefined && typeof rec.retention_days !== "number") {
@@ -61,11 +102,18 @@ export async function putSettings(c: Context): Promise<Response> {
   if (name && typeof name === "object") {
     return c.json({ error: name.error }, 400);
   }
+  const webhook = hasWebhook ? parseDefaultWebhook(rec.default_webhook_url) : undefined;
+  if (webhook && typeof webhook === "object") {
+    return c.json({ error: webhook.error }, 400);
+  }
+  if (webhook !== undefined) {
+    writeDefaultWebhook(webhook);
+  }
   const savedName = name === undefined ? instanceName() : writeInstanceName(name);
   // Rows ingested from now on are stamped with the new name; rows stored keep the old one.
   setHereName(savedName);
   if (typeof rec.retention_days !== "number") {
-    return c.json({ retention_days: getRetentionDays(), instance_name: savedName });
+    return c.json(settingsBody({ retention_days: getRetentionDays(), instance_name: savedName }));
   }
   const days = writeRetentionDays(rec.retention_days);
   try {
@@ -73,7 +121,7 @@ export async function putSettings(c: Context): Promise<Response> {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "ClickHouse command failed";
-    return c.json({ error: message.slice(0, 500), retention_days: days, instance_name: savedName }, 500);
+    return c.json({ error: message.slice(0, 500), ...settingsBody({ retention_days: days, instance_name: savedName }) }, 500);
   }
-  return c.json({ retention_days: days, instance_name: savedName });
+  return c.json(settingsBody({ retention_days: days, instance_name: savedName }));
 }
