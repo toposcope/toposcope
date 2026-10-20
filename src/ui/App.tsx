@@ -3,6 +3,7 @@ import { ChevronDown, Copy, House, KeyRound, Menu, Settings, Undo2 } from "lucid
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
 import { NewMonitorDialog } from "@/components/new-monitor-dialog";
+import { PushMonitorDialog, type PushDraft, type PushInput } from "@/components/push-monitor-dialog";
 import { HttpMonitorDialog, type HttpDraft, type HttpMonitorInput } from "@/components/http-monitor-dialog";
 import { WatchView } from "@/components/watch-view";
 import { MonitorRail } from "@/components/monitor-rail";
@@ -22,7 +23,8 @@ import { OperatorSidebar } from "@/components/operator-sidebar";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
 import { loadSavedCounts } from "./saved-counts";
-import { monitorHuntRange, watchCounts, type WatchFilter, type WatchRange } from "./watch";
+import { monitorHuntRange, pushHuntRange, sourceOf, watchCounts, type WatchFilter, type WatchRange } from "./watch";
+import { monitorQuery } from "../shared/push";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
@@ -63,7 +65,6 @@ import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
 import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
 import { clampSidebar, sidebarDefault } from "./saved-list";
-import { monitorQuery } from "../shared/monitor";
 import { joinTraceRef } from "../shared/ids";
 import {
   formatChangeMarkLabel,
@@ -210,6 +211,7 @@ import { SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
 import {
+  bandWindowKey,
   searchWindowMs,
   windowHead,
   windowMeta,
@@ -695,6 +697,8 @@ export function App() {
   const [watchMarkList, setWatchMarkList] = useState<ChangeMark[]>([]);
   /** 18p: a new monitor chooses its source first. */
   const [newMonitor, setNewMonitor] = useState<{ savedSearchId: string | null; lockSearch: boolean } | null>(null);
+  /** 18s: a push monitor's editor (#177). */
+  const [pushDraft, setPushDraft] = useState<PushDraft | null>(null);
   /** 18r: an HTTP(S) monitor's editor. */
   const [httpDraft, setHttpDraft] = useState<HttpDraft | null>(null);
   /** The monitor read beside a Search tab (18i), by tab. */
@@ -2196,7 +2200,7 @@ export function App() {
   }, [attrPrefixes, windowParams, wsKind]);
 
   const dialogOpen =
-    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || httpDraft !== null;
+    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2427,6 +2431,37 @@ export function App() {
     await loadAlerts();
   }
 
+  /** A push monitor from its editor (18s): declared by name, so a first result that made it is kept. */
+  async function createPush(input: PushInput) {
+    const res = await fetch(`/api/monitors/${encodeURIComponent(input.name)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source: "push", ...input }),
+    });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(json?.error ?? `Create monitor failed (${res.status})`);
+      throw new Error("create monitor failed");
+    }
+    toast.success(res.status === 201 ? "Monitor created" : "Monitor updated");
+    await loadAlerts();
+  }
+
+  async function updatePush(id: string, input: PushInput) {
+    const res = await fetch(`/api/alert-rules/${id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(json?.error ?? `Update monitor failed (${res.status})`);
+      throw new Error("update monitor failed");
+    }
+    toast.success("Monitor updated");
+    await loadAlerts();
+  }
+
   async function silenceAlert(
     rule: AlertRule,
     forId: "1h" | "4h" | "24h" | null,
@@ -2435,14 +2470,36 @@ export function App() {
   }
 
   /** A monitor opened as a hunt (18i): its search in a new tab, with the monitor beside it. */
-  function openMonitor(monitor: MonitorView, stretch?: MonitorStretch) {
-    if (monitor.source === "http") {
+  function openMonitor(monitor: MonitorView, stretch?: Pick<MonitorStretch, "opened_at" | "resolved_at">) {
+    if (sourceOf(monitor) === "push") {
+      // 18i: its results are rows (`monitor:<name>`), with how each went and how long it ran.
+      setSheetOpen(false);
+      setView("search");
+      const id = wsSeq + 1;
+      const at = stretch ?? monitor.open;
+      addWorkspace(
+        {
+          ...blankSearchSnap(),
+          kind: "search",
+          q: monitor.query ?? monitorQuery(monitor.name),
+          range: pushHuntRange(monitor),
+          live: false,
+          attrFacets: ["status", "signal"],
+          cols: ["status", "duration_ms"],
+          ...(at ? monitorHuntWindow(at) : {}),
+        },
+        true,
+      );
+      setMonitorRail((prev) => ({ ...prev, [id]: monitor.id }));
+      return;
+    }
+    if (sourceOf(monitor) === "http") {
       // Its results are its rows (#178).
       setSheetOpen(false);
       setView("search");
       const tab = wsSeq + 1;
       addWorkspace(
-        { ...blankSearchSnap(), q: monitorQuery(monitor.name), range: "1h", live: false, ...monitorHuntWindow(stretch ?? monitor.open) },
+        { ...blankSearchSnap(), q: monitor.query || monitorQuery(monitor.name), range: "1h", live: false, ...monitorHuntWindow(stretch ?? monitor.open) },
         true,
       );
       setMonitorRail((prev) => ({ ...prev, [tab]: monitor.id }));
@@ -2460,7 +2517,7 @@ export function App() {
     setMonitorRail((prev) => ({ ...prev, [id]: monitor.id }));
   }
 
-  function monitorHuntWindow(stretch?: MonitorStretch | null): Partial<WorkspaceSnap> {
+  function monitorHuntWindow(stretch?: Pick<MonitorStretch, "opened_at" | "resolved_at"> | null): Partial<WorkspaceSnap> {
     if (!stretch) {
       return {};
     }
@@ -3496,10 +3553,11 @@ export function App() {
   }, [attrKeyOptions]);
 
   function openNewAlert() {
+    // A push or HTTP(S) monitor needs no saved search (#177, #178); the others pick one.
     const watchable = saved.filter((item) => !item.board);
     const current = saved.find((item) => item.id === savedId);
-    // An HTTP(S) monitor needs no saved search; the other sources start from one.
-    const id = current && !current.board ? current.id : (watchable[0]?.id ?? null);
+    const id =
+      current && !current.board ? current.id : (watchable[0]?.id ?? null);
     setNewMonitor({ savedSearchId: id, lockSearch: false });
   }
 
@@ -3542,14 +3600,15 @@ export function App() {
         : Date.parse(isoFromLocal(to) ?? ""),
   });
   // Monitors on this tab's saved search: their stretches on this clock (#175, 18o).
-  const railHttp = monitorRail[wsId] ? alerts.find((m) => m.id === monitorRail[wsId] && m.source === "http") : undefined;
-  // Its own saved search's monitors (18o), or the HTTP(S) monitor this tab was opened for.
-  const bandMonitors = savedId
-    ? alerts.filter((m) => m.saved_search_id === savedId)
-    : railHttp && q.trim() === monitorQuery(railHttp.name)
-      ? [railHttp]
-      : [];
+  // A push or HTTP(S) monitor's stretches sit on a hunt of its own `monitor:<name>` (18i).
+  const bandMonitors = alerts.filter(
+    (m) =>
+      (savedId && m.saved_search_id === savedId) ||
+      ((sourceOf(m) === "push" || sourceOf(m) === "http") && Boolean(q.trim()) && m.query === q.trim()),
+  );
   const bandKey = bandMonitors.map((m) => m.id).join(",");
+  // Read again when the search's reply moves the window off the clock guessed before it.
+  const bandWindow = bandWindowKey({ fromMs: windowFromMs, toMs: windowToMs });
   useEffect(() => {
     if (view !== "search" || !bandKey || !Number.isFinite(windowFromMs) || !Number.isFinite(windowToMs)) {
       setHuntStretches((prev) => (prev.length > 0 ? [] : prev));
@@ -3569,9 +3628,9 @@ export function App() {
       })
       .catch(() => undefined);
     return () => ac.abort();
-    // The window moves every Live poll; the stretches follow the clock and the 30s monitor read.
+    // The window moves every Live poll; the stretches follow it to the minute and the 30s monitor read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, bandKey, range, from, to, alerts]);
+  }, [view, bandKey, range, from, to, alerts, bandWindow]);
   const monitorBand: MonitorBand | null =
     bandMonitors.length > 0
       ? {
@@ -3921,7 +3980,7 @@ export function App() {
           </Button>
         </nav>
         <div className="ml-auto flex items-center gap-1">
-          {watching.open > 0 || watching.warn > 0 ? (
+          {watching.open > 0 || watching.late > 0 || watching.warn > 0 ? (
             // 18c: what is open, in the header on every view.
             <button
               type="button"
@@ -3938,9 +3997,15 @@ export function App() {
                   {watching.open} open
                 </>
               ) : null}
-              {watching.warn > 0 ? (
+              {watching.late > 0 ? (
                 <span className="text-muted-foreground">
                   {watching.open > 0 ? "· " : ""}
+                  {watching.late} late
+                </span>
+              ) : null}
+              {watching.warn > 0 ? (
+                <span className="text-muted-foreground">
+                  {watching.open > 0 || watching.late > 0 ? "· " : ""}
                   {watching.warn} warn
                 </span>
               ) : null}
@@ -4821,9 +4886,11 @@ export function App() {
                 })
               }
               onEdit={() =>
-                railMonitor.source === "http"
-                  ? setHttpDraft({ mode: "edit", monitor: railMonitor })
-                  : setAlertDraft({ mode: "edit", rule: railMonitor })
+                sourceOf(railMonitor) === "push"
+                  ? setPushDraft({ mode: "edit", rule: railMonitor })
+                  : sourceOf(railMonitor) === "http"
+                    ? setHttpDraft({ mode: "edit", monitor: railMonitor })
+                    : setAlertDraft({ mode: "edit", rule: railMonitor })
               }
               onPause={(paused) => void updateAlert(railMonitor.id, { enabled: !paused })}
               onSilence={(forId) => void silenceAlert(railMonitor, forId)}
@@ -4893,6 +4960,11 @@ export function App() {
           if (!newMonitor) {
             return;
           }
+          if (source === "push") {
+            setPushDraft({ mode: "create" });
+            setNewMonitor(null);
+            return;
+          }
           if (source === "http") {
             setHttpDraft({ mode: "create" });
             setNewMonitor(null);
@@ -4902,9 +4974,21 @@ export function App() {
             toast.error("Save a search first");
             return;
           }
-          setAlertDraft({ mode: "create", savedSearchId: newMonitor.savedSearchId, lockSearch: newMonitor.lockSearch, source });
+          setAlertDraft({ mode: "create", ...newMonitor, savedSearchId: newMonitor.savedSearchId, source });
           setNewMonitor(null);
         }}
+      />
+      <PushMonitorDialog
+        open={pushDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPushDraft(null);
+          }
+        }}
+        draft={pushDraft}
+        onCreate={createPush}
+        onUpdate={updatePush}
+        onDelete={deleteAlert}
       />
       <HttpMonitorDialog
         open={httpDraft !== null}

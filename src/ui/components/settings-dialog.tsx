@@ -29,6 +29,7 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
   const [days, setDays] = useState("30");
   const [name, setName] = useState("");
   const [savedName, setSavedName] = useState<string | null>(null);
+  const [webhook, setWebhook] = useState("");
   const [saving, setSaving] = useState(false);
   const countFormat = useCountFormat();
   const timestampFormat = useTimestampFormat();
@@ -44,10 +45,15 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
         toast.error("Failed to load settings");
         return;
       }
-      const json = (await res.json()) as { retention_days: number; instance_name?: string | null };
+      const json = (await res.json()) as {
+        retention_days: number;
+        instance_name?: string | null;
+        default_webhook_url?: string | null;
+      };
       setDays(String(json.retention_days));
       setName(json.instance_name ?? "");
       setSavedName(json.instance_name ?? null);
+      setWebhook(json.default_webhook_url ?? "");
     });
   }, [open]);
 
@@ -63,7 +69,7 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ retention_days: retentionDays, instance_name: name }),
+        body: JSON.stringify({ retention_days: retentionDays, instance_name: name, default_webhook_url: webhook.trim() }),
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -146,6 +152,21 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
                 className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
               />
               <span className="shrink-0 text-[11px] text-muted-foreground">1–365</span>
+            </DialogControl>
+          </DialogField>
+          <DialogField
+            label="Default webhook"
+            help="Called by any monitor without its own, such as one created by its first result. Empty: such a monitor keeps its state and calls nobody."
+          >
+            <DialogControl>
+              <input
+                id="default-webhook"
+                type="url"
+                value={webhook}
+                placeholder="https://…"
+                onChange={(e) => setWebhook(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground"
+              />
             </DialogControl>
           </DialogField>
           <DialogField

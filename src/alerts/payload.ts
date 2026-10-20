@@ -4,6 +4,7 @@ import {
   fillAlertBody,
   type AlertBodyKind,
 } from "../shared/alert-body";
+import type { OpensWhen } from "../shared/monitor";
 
 export const silenceForIds = ["1h", "4h", "24h"] as const;
 export type SilenceForId = (typeof silenceForIds)[number];
@@ -45,7 +46,8 @@ export function isSlackIncomingUrl(url: string): boolean {
 export function alertLink(
   base: string,
   fired: {
-    savedId: string;
+    /** The saved search it came from; a push monitor has none. */
+    savedId: string | null;
     query: string;
     agg: string | null;
     from: string;
@@ -64,7 +66,9 @@ export function alertLink(
   if (fired.agg) {
     params.set("agg", fired.agg);
   }
-  params.set("saved", fired.savedId);
+  if (fired.savedId) {
+    params.set("saved", fired.savedId);
+  }
   if (fired.cut) {
     params.set("cut", fired.cut);
   }
@@ -85,7 +89,8 @@ export type StretchCall = {
 
 export function alertWebhookBody(args: {
   url: string;
-  alert: { id: string; name: string; threshold: number };
+  /** `opens_when` only for a monitor that opens on fewer than its threshold (#176). */
+  alert: { id: string; name: string; threshold: number; opens_when?: OpensWhen };
   count: number;
   value: number;
   agg: string | null;
@@ -100,7 +105,9 @@ export function alertWebhookBody(args: {
   const call = args.call ?? null;
   if (isSlackIncomingUrl(args.url)) {
     const open = args.link ? `\n<${args.link}|Open in Toposcope>` : "";
-    const sign = call?.state === "resolved" ? "<" : "≥";
+    // At least opens at ≥ and resolves at <; fewer than the other way round.
+    const fewer = args.alert.opens_when === "fewer_than";
+    const sign = (call?.state === "resolved") !== fewer ? "<" : "≥";
     const reading = `${series} ${args.value} ${sign} ${args.alert.threshold}`;
     const headline =
       call?.state === "resolved"
@@ -137,6 +144,82 @@ export function alertWebhookBody(args: {
   };
 }
 
+/**
+ * A push monitor's call (#177): the result that opened it (a fail, or one that never came) in
+ * words, its value when it had one, and where it stands. Slack gets one line of it.
+ */
+export function pushWebhookBody(args: {
+  url: string;
+  alert: { id: string; name: string };
+  query: string;
+  message: string;
+  value: number | null;
+  firedAt: string;
+  link?: string | null;
+  call: StretchCall;
+}): unknown {
+  const call = args.call;
+  const headline =
+    call.state === "resolved"
+      ? `resolved after ${call.duration}`
+      : call.state === "reminder"
+        ? `still open · ${call.duration}`
+        : "opened";
+  if (isSlackIncomingUrl(args.url)) {
+    const open = args.link ? `\n<${args.link}|Open in Toposcope>` : "";
+    const said = args.message ? ` — ${args.message}` : "";
+    return {
+      text: `Toposcope: ${args.alert.name} ${headline}${said}`,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${args.alert.name}* ${headline}\n\`${args.query}\`${args.message ? `\n${args.message}` : ""}${open}`,
+          },
+        },
+      ],
+    };
+  }
+  return {
+    alert: { ...args.alert, source: "push" },
+    query: args.query,
+    message: args.message,
+    value: args.value,
+    fired_at: args.firedAt,
+    state: call.state,
+    opened_at: call.openedAt,
+    resolved_at: call.resolvedAt,
+    ...(args.link ? { link: args.link } : {}),
+  };
+}
+
+/** A push monitor's fill-ins: a search monitor's names, with its status as the series. */
+export function pushFillValues(args: {
+  name: string;
+  value: number | null;
+  query: string;
+  firedAt: string;
+  link: string | null;
+  call: StretchCall;
+  message: string;
+}): Record<string, string> {
+  return {
+    "alert.name": args.name,
+    series: "status",
+    value: args.value === null ? "" : plainNumber(args.value),
+    threshold: "",
+    query: args.query,
+    fired_at: args.firedAt,
+    link: args.link ?? "",
+    state: args.call.state,
+    opened_at: args.call.openedAt,
+    resolved_at: args.call.resolvedAt ?? "",
+    duration: args.call.duration,
+    message: args.message,
+  };
+}
+
 /** What an HTTP(S) monitor's call says about its check and the run it reads (#178). */
 export type HttpCallFacts = {
   alert: { id: string; name: string };
@@ -160,7 +243,7 @@ export function httpCallBody(webhookUrl: string, f: HttpCallFacts): unknown {
       ? `resolved after ${f.call.duration}`
       : f.call.state === "reminder"
         ? `still open · ${f.call.duration}`
-        : "open";
+        : "opened";
   if (isSlackIncomingUrl(webhookUrl)) {
     const open = f.link ? `\n<${f.link}|Open in Toposcope>` : "";
     return {
@@ -177,8 +260,7 @@ export function httpCallBody(webhookUrl: string, f: HttpCallFacts): unknown {
     };
   }
   return {
-    alert: f.alert,
-    source: "http",
+    alert: { ...f.alert, source: "http" },
     method: f.method,
     url: f.url,
     status: f.status,
@@ -306,8 +388,20 @@ export function thresholdFillValues(args: {
   };
 }
 
-/** "Count 57 ≥ 50", "p99(duration_ms) 412 < 800": a search monitor's result in words. */
-export function readingMessage(agg: string | null, value: number, threshold: number): string {
+/**
+ * "Count 57 ≥ 50", "p99(duration_ms) 412 < 800": a search monitor's result in words; "no line
+ * for 15m" when a fewer-than count read none (#176, 18o).
+ */
+export function readingMessage(
+  agg: string | null,
+  value: number,
+  threshold: number,
+  opensWhen: OpensWhen = "at_least",
+  range: string | null = null,
+): string {
+  if (opensWhen === "fewer_than" && !agg && value === 0 && range) {
+    return `no line for ${range}`;
+  }
   return `${seriesLabel(agg)} ${plainNumber(value)} ${value >= threshold ? "≥" : "<"} ${plainNumber(threshold)}`;
 }
 

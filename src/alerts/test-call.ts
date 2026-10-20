@@ -13,9 +13,11 @@ import { changeMarksBetween } from "../query/marks";
 import { parseRangeMs } from "../query/relative";
 import { publicUrl } from "../shared/public-url";
 import { boardWatchRefuse } from "../shared/boards";
+import { fewerThanProblem, parseOpensWhen } from "../shared/monitor";
 import { parseThreshold } from "./threshold";
 import { firstSeenPayload, firstSeenWatchMs, watchedMarks } from "./first-seen";
-import { monitorQuery } from "../shared/monitor";
+import { getDefaultWebhook } from "../control/settings";
+import { monitorQuery } from "../shared/push";
 import {
   alertLink,
   alertWebhookBody,
@@ -122,6 +124,10 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
   if ("error" in body) {
     return c.json({ error: body.error }, 400);
   }
+  const opensWhen = rec.opens_when === undefined || kind === "first_seen" ? "at_least" : parseOpensWhen(rec.opens_when);
+  if (!opensWhen) {
+    return c.json({ error: "opens_when must be at_least or fewer_than" }, 400);
+  }
   const savedId = typeof rec.saved_search_id === "string" ? rec.saved_search_id : "";
   const saved = savedId ? getSaved(savedId) : null;
   if (!saved) {
@@ -169,6 +175,10 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
       deps: { details: firstSeenDetails, publicUrl },
     });
   } else {
+    const problem = opensWhen === "fewer_than" ? fewerThanProblem(saved) : null;
+    if (problem) {
+      return c.json({ error: problem }, 400);
+    }
     const series = await evaluateAlertSeries(saved);
     if (series.refused) {
       return c.json({ error: series.reason ?? "This series cannot be evaluated." }, 400);
@@ -183,7 +193,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
         : null;
     // Sent as the call that opens it would be.
     const call = { state: "open" as const, openedAt: firedAt, resolvedAt: null, duration: "0s" };
-    const message = readingMessage(series.expr, series.value, threshold);
+    const message = readingMessage(series.expr, series.value, threshold, opensWhen, saved.range);
     // A resolved body of its own is tried too, as the call that resolves it would read.
     if (body.body_kind !== "default" && body.resolved_body) {
       resolvedPayload = renderResolved(
@@ -206,7 +216,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
       rule,
       alertWebhookBody({
         url: webhook,
-        alert: { id: rule.id, name, threshold },
+        alert: { id: rule.id, name, threshold, ...(opensWhen === "fewer_than" ? { opens_when: opensWhen } : {}) },
         count: series.count,
         value: series.value,
         agg: series.expr,
@@ -238,9 +248,14 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
  * from the editor's last Send (`run`: status, duration_ms, why), then its resolved body.
  */
 async function testHttpCall(c: Context, rec: Record<string, unknown>): Promise<Response> {
-  const webhook = parseWebhook(rec.webhook_url);
-  if (typeof webhook !== "string") {
-    return c.json({ error: webhook.error }, 400);
+  // Its own webhook, else the default in Settings: the one its calls would go to.
+  const own = rec.webhook_url === undefined || rec.webhook_url === null || rec.webhook_url === "" ? null : parseWebhook(rec.webhook_url);
+  if (own !== null && typeof own !== "string") {
+    return c.json({ error: own.error }, 400);
+  }
+  const webhook = own ?? getDefaultWebhook();
+  if (!webhook) {
+    return c.json({ error: "No webhook to call: give this monitor one, or set the default in Settings" }, 400);
   }
   const body = readBody(rec, "http", null);
   if ("error" in body) {

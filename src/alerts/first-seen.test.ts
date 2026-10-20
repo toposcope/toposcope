@@ -46,6 +46,14 @@ const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
   last_result: null,
   last_value: null,
   last_result_at: null,
+  opens_when: "at_least",
+  cant_tell: null,
+  every_ms: null,
+  grace_ms: null,
+  due_from: null,
+  started_at: null,
+  last_ok_at: null,
+  paused_at: null,
   ...over,
 });
 

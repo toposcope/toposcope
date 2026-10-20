@@ -19,6 +19,9 @@ import {
 } from "../shared/boards";
 import { formatPromotedCols, parsePromotedCols } from "../shared/attrs";
 import { closeByEdit } from "../alerts/monitor-store";
+import { cantTellNow } from "../alerts/cant-tell";
+import { lastLineAt } from "../alerts/last-line";
+import { searchWindowMs } from "../alerts/monitor";
 import { getDb } from "./index";
 
 export type SavedSearch = {
@@ -436,8 +439,10 @@ export async function testSavedSearch(c: Context): Promise<Response> {
   };
   try {
     let sample: Awaited<ReturnType<typeof searchLogs>> = [];
-    const [series] = await Promise.all([
+    const [series, lastLine] = await Promise.all([
       evaluateAlertSeries(saved),
+      // For fewer than (#176): when it last matched a line, and whether a reading now could tell.
+      lastLineAt(saved.query),
       searchLogs(filters)
         .then((events) => {
           sample = events;
@@ -455,6 +460,8 @@ export async function testSavedSearch(c: Context): Promise<Response> {
       refused: series.refused,
       reason: series.reason,
       sample,
+      ...(lastLine !== undefined ? { last_line_at: lastLine } : {}),
+      cant_tell: saved.range ? cantTellNow(saved.query, searchWindowMs(saved)) : null,
     });
   } catch (err) {
     if (

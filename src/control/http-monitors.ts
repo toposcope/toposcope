@@ -29,6 +29,7 @@ import {
 } from "../shared/http-check";
 import type { AlertBodyKind } from "../shared/alert-body";
 import type { RemindId } from "../shared/monitor";
+import { monitorQuery } from "../shared/push";
 import { getAlert, parseWebhook, readBody, readJsonObject, readRemind, type AlertRule } from "./alerts";
 import { getDb } from "./index";
 
@@ -66,7 +67,8 @@ export function httpView(http: HttpSettings): HttpView {
 export type HttpFields = {
   name: string;
   write: HttpWrite;
-  webhook_url: string;
+  /** Null: the default webhook from Settings, if one is set; with neither it calls nobody. */
+  webhook_url: string | null;
   body_kind: AlertBodyKind;
   body_template: string | null;
   resolved_body: string | null;
@@ -209,10 +211,18 @@ export function readHttpFields(
   if (typeof failAfter !== "number" || !Number.isInteger(failAfter) || failAfter < 1 || failAfter > maxFailAfter) {
     return { error: `fail_after must be a whole number of runs, 1 to ${maxFailAfter}`, status: 400 };
   }
-  const webhook =
-    rec.webhook_url === undefined && existing ? (existing.rule.webhook_url ?? "") : parseWebhook(rec.webhook_url);
-  if (typeof webhook !== "string" || webhook.length === 0) {
-    return { error: "webhook_url must be http(s)", status: 400 };
+  // Its own webhook, or null for the default in Settings (#177), as a push monitor reads it.
+  let webhook: string | null = existing?.rule.webhook_url ?? null;
+  if (rec.webhook_url !== undefined || !existing) {
+    if (rec.webhook_url === undefined || rec.webhook_url === null || rec.webhook_url === "") {
+      webhook = null;
+    } else {
+      const parsed = parseWebhook(rec.webhook_url);
+      if (typeof parsed !== "string") {
+        return { error: "webhook_url must be http(s), or null for the default", status: 400 };
+      }
+      webhook = parsed;
+    }
   }
   const body = readBody(rec, "http", existing?.rule ?? null);
   if ("error" in body) {
@@ -251,10 +261,12 @@ export function insertHttpMonitor(fields: HttpFields, now = Date.now()): AlertRu
       `INSERT INTO alert_rules
         (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
          source, state, remind_every, resolved_body)
-       VALUES (?, ?, '', ?, NULL, 1, 1, NULL, ?, 'http', ?, ?, 'http', 'ok', ?, ?)`,
+       VALUES (?, ?, ?, ?, NULL, 1, 1, NULL, ?, 'http', ?, ?, 'http', 'ok', ?, ?)`,
     ).run(
       id,
       fields.name,
+      // Its own rows, as a push monitor's (#177): a hunt on them draws its stretches.
+      monitorQuery(fields.name),
       fields.webhook_url,
       now,
       fields.body_kind,
@@ -291,10 +303,11 @@ export function applyHttpFields(existing: AlertRule, http: HttpSettings, fields:
       : (http.next_run_at ?? now);
   db.transaction(() => {
     db.query(
-      `UPDATE alert_rules SET name = ?, webhook_url = ?, body_kind = ?, body_template = ?, remind_every = ?, resolved_body = ?
+      `UPDATE alert_rules SET name = ?, query = ?, webhook_url = ?, body_kind = ?, body_template = ?, remind_every = ?, resolved_body = ?
        WHERE id = ?`,
     ).run(
       fields.name,
+      monitorQuery(fields.name),
       fields.webhook_url,
       fields.body_kind,
       fields.body_template,
@@ -307,7 +320,7 @@ export function applyHttpFields(existing: AlertRule, http: HttpSettings, fields:
   if (readsAnew && existing.state === "open") {
     closeByEdit(existing.id, now);
   }
-  if (fields.webhook_url !== (existing.webhook_url ?? "")) {
+  if ((fields.webhook_url ?? "") !== (existing.webhook_url ?? "")) {
     db.query(
       `UPDATE alert_rules SET last_attempt_at = NULL, last_status = NULL, last_error = NULL, consecutive_failures = 0
        WHERE id = ?`,

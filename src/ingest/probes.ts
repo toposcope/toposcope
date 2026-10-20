@@ -11,6 +11,34 @@ import {
 import { incMetric } from "../metrics";
 import { InsertBackpressureError } from "./backpressure";
 import { insertErrorMessage, MAX_BATCH, MAX_BODY_BYTES } from "./index";
+import { applyResults } from "./checks";
+import type { PushResult } from "../alerts/push";
+import { parsePushName } from "../shared/push";
+
+/**
+ * An attached probe is also a push monitor's result (#177): `up` 1 is ok, 0 is a fail, and
+ * `check` names the monitor (its `service` when it has no check). A pulled one is not.
+ */
+export function probeResult(sample: ProbeSample): PushResult | null {
+  const name = parsePushName(sample.check || sample.service);
+  if (sample.source !== "attach" || typeof name !== "string") {
+    return null;
+  }
+  return {
+    monitor: name,
+    status: sample.up === 1 ? "ok" : "fail",
+    message: "",
+    value: null,
+    unit: null,
+    host: sample.host,
+    service: sample.service,
+    ts: sample.ts,
+    exit_code: null,
+    duration_ms: null,
+    via: "probes",
+    from: sample.host,
+  };
+}
 
 function parseNdjson(text: string): unknown[] {
   const lines = text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0);
@@ -104,7 +132,11 @@ export async function ingestProbesRoute(c: Context): Promise<Response> {
   try {
     const ingested = await insertMetricPoints(samples.map(probeToMetricPoint));
     incMetric("ingest_metrics", ingested);
-    return c.json(probesIngestBody(single, samples, ingested));
+    const results = samples.map(probeResult).filter((r): r is PushResult => r !== null);
+    // `up` is stored either way; a result a monitor cannot take says why beside it.
+    const read = results.length > 0 ? await applyResults(results, Date.now()) : null;
+    const body = probesIngestBody(single, samples, ingested);
+    return c.json(read && !read.ok ? { ...body, monitor_error: read.error } : body);
   } catch (err) {
     if (err instanceof InsertBackpressureError) {
       return c.json({ error: "ClickHouse is busy" }, 429, {

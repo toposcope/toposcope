@@ -1,16 +1,29 @@
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { formatOpenFor } from "../../shared/monitor";
+import { formatSpan, maskKey } from "../../shared/push";
 import { formatCompactCount } from "@/count-format";
 import { formatAggStat } from "@/fill-histogram";
-import type { MonitorView } from "@/types";
-import { callHost, clockAt, laneReadout, opensWhen, remindLabel, sourceOf } from "@/watch";
+import type { MonitorPage, MonitorView } from "@/types";
+import { Badge } from "@/components/watch-view";
+import {
+  callHost,
+  cantTellNow,
+  clockAt,
+  lastLineWords,
+  laneReadout,
+  opensWhen,
+  readsQuiet,
+  remindLabel,
+  sourceOf,
+} from "@/watch";
 
 const btn2 = "flex h-7 items-center rounded-md border px-3 text-[13px] hover:bg-accent";
 
@@ -43,6 +56,84 @@ function lastReading(m: MonitorView): string {
   return m.saved?.agg ? formatAggStat(m.last_value) : formatCompactCount(m.last_value);
 }
 
+/**
+ * A push monitor's own rows (18i): its keyed URL, which only its page prints, its schedule, its
+ * last ok and who it calls.
+ */
+function PushRows({ monitor, nowMs }: { monitor: MonitorView; nowMs: number }) {
+  const [key, setKey] = useState<string | null>(null);
+  const [fallback, setFallback] = useState<string | null>(null);
+  useEffect(() => {
+    let stop = false;
+    void fetch(`/api/monitors/${encodeURIComponent(monitor.name)}`)
+      .then((res) => (res.ok ? (res.json() as Promise<MonitorPage>) : null))
+      .then((page) => {
+        if (!stop) {
+          setKey(page?.ping_key ?? null);
+        }
+      })
+      .catch(() => undefined);
+    if (!monitor.webhook_url) {
+      void fetch("/api/settings")
+        .then((res) => (res.ok ? (res.json() as Promise<{ default_webhook_url?: string | null }>) : null))
+        .then((json) => {
+          if (!stop) {
+            setFallback(json?.default_webhook_url ?? null);
+          }
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      stop = true;
+    };
+  }, [monitor.name, monitor.webhook_url]);
+  const every = monitor.every_ms ?? null;
+  const url = key ? `${window.location.origin}/ping/${key}` : null;
+  const failure = callFailure(monitor);
+  return (
+    <>
+      <Row k="keyed URL">
+        <span className="font-mono">{key ? `/ping/${maskKey(key)}` : "—"}</span>
+        {url ? (
+          <button
+            type="button"
+            className="ml-2 hover:underline"
+            onClick={() =>
+              void navigator.clipboard.writeText(url).then(
+                () => toast.success("Keyed URL copied"),
+                () => toast.error("Copy failed"),
+              )
+            }
+          >
+            Copy
+          </button>
+        ) : null}
+      </Row>
+      <Row k="every">
+        <span className="font-mono">
+          {every === null
+            ? "by its results"
+            : `${formatSpan(every)}, grace ${formatSpan(monitor.grace_ms ?? Math.min(every, 60 * 60_000))}`}
+        </span>
+      </Row>
+      <Row k="last ok">
+        <span className="font-mono">{monitor.last_ok_at ? clockAt(monitor.last_ok_at, nowMs) : "—"}</span>
+      </Row>
+      <Row k="calls">
+        <span className="font-mono">
+          {monitor.webhook_url ? callHost(monitor.webhook_url) : fallback ? `default · ${callHost(fallback)}` : "nobody"}
+          {` · ${remindLabel(monitor)}`}
+        </span>
+        {failure ? (
+          <span className="block font-mono text-red-300" title={monitor.last_error ?? undefined}>
+            {failure}
+          </span>
+        ) : null}
+      </Row>
+    </>
+  );
+}
+
 /** Frame 18i: a monitor read beside the hunt it opened. */
 export function MonitorRail({
   monitor,
@@ -60,19 +151,42 @@ export function MonitorRail({
   onSilence: (forId: "1h" | "4h" | "24h" | null) => void;
 }) {
   const fingerprints = sourceOf(monitor) === "fingerprints";
+  const push = sourceOf(monitor) === "push";
   const http = sourceOf(monitor) === "http" ? (monitor.http ?? null) : null;
+  // An HTTP(S) monitor without a webhook of its own calls the default in Settings (#177).
+  const [fallback, setFallback] = useState<string | null>(null);
+  const wantsDefault = http !== null && !monitor.webhook_url;
+  useEffect(() => {
+    if (!wantsDefault) {
+      return;
+    }
+    let stop = false;
+    void fetch("/api/settings")
+      .then((res) => (res.ok ? (res.json() as Promise<{ default_webhook_url?: string | null }>) : null))
+      .then((json) => {
+        if (!stop) {
+          setFallback(json?.default_webhook_url ?? null);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      stop = true;
+    };
+  }, [wantsDefault]);
   const readout = laneReadout(monitor, nowMs, 0);
   const open = monitor.state === "open" ? monitor.open : null;
   const reminded = open?.calls.filter((c) => c.what === "reminder" && c.ok).at(-1);
   const silenced = typeof monitor.silenced_until === "number" && monitor.silenced_until > nowMs;
   const paused = monitor.enabled === 0;
   const failure = callFailure(monitor);
+  const quiet = readsQuiet(monitor);
+  const cantTell = cantTellNow(monitor, nowMs);
   return (
     <aside className="flex w-[330px] max-w-[34%] shrink-0 flex-col gap-3 overflow-y-auto border-l bg-[#0c0c0e] p-3">
       <div className="flex items-center gap-2">
         <span className="min-w-0 truncate text-[13px] font-semibold">{monitor.name}</span>
         <span className="inline-flex h-[18px] items-center rounded-[4px] border border-white/[0.18] px-1.5 text-[10.5px] text-muted-foreground">
-          {fingerprints ? "fingerprints" : http ? "http" : "search"}
+          {sourceOf(monitor)}
         </span>
         <button
           type="button"
@@ -84,18 +198,9 @@ export function MonitorRail({
         </button>
       </div>
       <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            "inline-flex h-[18px] items-center rounded-[4px] px-1.5 text-[10.5px] whitespace-nowrap",
-            readout.tone === "red"
-              ? "bg-red-500/[0.16] text-red-300"
-              : readout.tone === "amber"
-                ? "bg-amber-400/[0.14] text-amber-300"
-                : "bg-[#27272a] text-zinc-300",
-          )}
-        >
+        <Badge tone={open ? "red" : readout.tone}>
           {open ? `open ${formatOpenFor(nowMs - open.opened_at)}` : readout.badge}
-        </span>
+        </Badge>
         {open ? (
           <span className="font-mono text-[11.5px] text-muted-foreground">
             since {clockAt(open.opened_at, nowMs)}
@@ -104,6 +209,7 @@ export function MonitorRail({
         ) : null}
       </div>
       <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 text-[12px]">
+        {push ? <PushRows monitor={monitor} nowMs={nowMs} /> : null}
         {http ? (
           <>
             <Row k="checks">
@@ -129,10 +235,9 @@ export function MonitorRail({
               </Row>
             ) : null}
           </>
-        ) : (
-          <Row k="search">{monitor.saved?.name ?? "—"}</Row>
-        )}
-        {http ? null : fingerprints ? (
+        ) : null}
+        {push || http ? null : <Row k="search">{monitor.saved?.name ?? "—"}</Row>}
+        {push || http ? null : fingerprints ? (
           <Row k="opens on">
             <span className="font-mono">≥ {monitor.threshold} after a deploy or flag · 24h</span>
           </Row>
@@ -143,16 +248,27 @@ export function MonitorRail({
             </span>
           </Row>
         )}
-        {!fingerprints && !http && monitor.last_result_at ? (
+        {quiet ? (
+          <Row k="last line">
+            <span className="font-mono">{lastLineWords(monitor.last_line_at, nowMs)}</span>
+          </Row>
+        ) : null}
+        {cantTell ? (
+          <Row k="can't tell">
+            <span className="font-mono">{cantTell}</span>
+          </Row>
+        ) : null}
+        {!fingerprints && !push && !http && monitor.last_result_at ? (
           <Row k="last read">
             <span className="font-mono">
               {clockAt(monitor.last_result_at, nowMs)} · {lastReading(monitor)}
             </span>
           </Row>
         ) : null}
+        {push ? null : (
         <Row k="calls">
           <span className="font-mono">
-            {callHost(monitor.webhook_url)}
+            {wantsDefault ? (fallback ? `default · ${callHost(fallback)}` : "nobody") : callHost(monitor.webhook_url)}
             {fingerprints ? "" : ` · ${remindLabel(monitor)}`}
           </span>
           {failure ? (
@@ -161,6 +277,7 @@ export function MonitorRail({
             </span>
           ) : null}
         </Row>
+        )}
         {silenced ? (
           <Row k="silenced">
             <span className="font-mono">until {clockAt(monitor.silenced_until!, nowMs)}</span>

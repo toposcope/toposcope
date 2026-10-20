@@ -9,7 +9,7 @@ import { nextRunAt, tickHttpMonitors } from "./http-cron";
 import { runHttpMonitor, type HttpMonitorDeps } from "./http-monitor";
 import { runHttpRequest } from "./http-request";
 import { getHttp, insertHttp, type HttpWrite } from "./http-store";
-import { monitorHistory, openStretch, pruneResults, recordMonitorResult, resultsBetween } from "./monitor-store";
+import { monitorHistory, openStretch, pruneResults, recordPushResult, resultsBetween } from "./monitor-store";
 import type { WebhookPayload } from "./payload";
 
 let certs: Certs;
@@ -104,8 +104,7 @@ describe("an HTTP(S) monitor", () => {
     expect(openStretch(id, db)!.open_message).toBe("status is 503, not 2xx");
     expect(r.calls.map((c) => c.json.state)).toEqual(["open"]);
     expect(r.calls[0]!.json).toMatchObject({
-      alert: { id, name: "api /health" },
-      source: "http",
+      alert: { id, name: "api /health", source: "http" },
       url: `${stands.http}/flip`,
       status: 503,
       message: "status is 503, not 2xx",
@@ -124,6 +123,23 @@ describe("an HTTP(S) monitor", () => {
       ["error", "fail", 503],
       ["info", "ok", 200],
     ]);
+  });
+
+  test("without a webhook of its own it calls the default; with neither it keeps its state and calls nobody", async () => {
+    const db = freshDb();
+    const own = addHttp(db, { url: `${stands.http}/down`, fail_after: 1 }, { id: "http-default", name: "uses the default", webhook_url: null });
+    const r = rig(db);
+    r.deps.defaultWebhook = () => "https://ntfy.example.com/ops";
+    await r.run(own, t0);
+    expect(getAlert(own, db)!.state).toBe("open");
+    expect(r.calls.map((c) => [c.url, c.json.state])).toEqual([["https://ntfy.example.com/ops", "open"]]);
+
+    const none = addHttp(db, { url: `${stands.http}/down`, fail_after: 1 }, { id: "http-nobody", name: "calls nobody", webhook_url: null });
+    r.deps.defaultWebhook = () => null;
+    await r.run(none, t0);
+    expect(getAlert(none, db)!.state).toBe("open");
+    expect(openStretch(none, db)!.open_call).toBe("none");
+    expect(r.calls).toHaveLength(1);
   });
 
   test("one 503 between 200s does not open it", async () => {
@@ -305,7 +321,7 @@ describe("Watch's ticks (monitor_results)", () => {
     for (let i = 0; i < 24 * 60; i++) {
       // One run a minute for a day; one warn and one fail in the same 6-minute column.
       const result = i === 600 ? "warn" : i === 602 ? "fail" : "ok";
-      recordMonitorResult(
+      recordPushResult(
         { monitor_id: id, at: from + i * 60_000 + 5_000, result, exit_code: null, duration_ms: 10, value: null, unit: null, message: result, host: "h", via: "http" },
         db,
       );
@@ -313,7 +329,7 @@ describe("Watch's ticks (monitor_results)", () => {
     const lane = resultsBetween(from, t0, db);
     expect(lane).toHaveLength(240);
     expect(lane.filter((row) => row.result !== "ok").map((row) => row.result)).toEqual(["fail"]);
-    recordMonitorResult(
+    recordPushResult(
       { monitor_id: id, at: t0 - 31 * day, result: "fail", exit_code: null, duration_ms: 1, value: null, unit: null, message: "old", host: "h", via: "http" },
       db,
     );

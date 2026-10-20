@@ -34,7 +34,7 @@ describe("the skill's shape", () => {
   });
 
   test("every command it names is one the script has", () => {
-    const named = [...skill.matchAll(/^\| `([a-z-]+)(?: [^`]*)?` \|/gm)].map((row) => row[1]!);
+    const named = [...new Set([...skill.matchAll(/^\| `([a-z-]+)(?: [^`]*)?` \|/gm)].map((row) => row[1]!))];
     expect(named.sort()).toEqual(["app-env", "check", "cost", "marker", "status", "stop", "up"]);
     for (const command of named) {
       expect(scriptText).toMatch(new RegExp(`^  ${command}\\) `, "m"));
@@ -76,6 +76,7 @@ let home: string;
 let server: ReturnType<typeof Bun.serve>;
 let reply: unknown = {};
 let seen: Array<{ authorization: string | null; q: string | null; range: string | null }> = [];
+let checks: Array<{ authorization: string | null; agent: string | null; body: Record<string, unknown> }> = [];
 
 beforeAll(() => {
   home = mkdtempSync(join(tmpdir(), "toposcope-skill-"));
@@ -87,8 +88,17 @@ beforeAll(() => {
   server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
-    fetch(request) {
+    async fetch(request) {
       const url = new URL(request.url);
+      // Stands in for `POST /v1/checks` too, for `check <monitor> -- <command>`.
+      if (url.pathname === "/v1/checks" && request.method === "POST") {
+        checks.push({
+          authorization: request.headers.get("authorization"),
+          agent: request.headers.get("user-agent"),
+          body: (await request.json()) as Record<string, unknown>,
+        });
+        return Response.json({ ingested: 1, created: [] });
+      }
       if (url.pathname !== "/api/search") {
         return new Response("not found", { status: 404 });
       }
@@ -108,12 +118,18 @@ afterAll(() => {
 });
 
 async function run(...args: string[]): Promise<{ code: number; out: string; err: string }> {
+  return runWith({}, ...args);
+}
+
+async function runWith(env: Record<string, string>, ...args: string[]): Promise<{ code: number; out: string; err: string }> {
+  const { TOPOSCOPE_URL: _url, TOPOSCOPE_INGEST_TOKEN: _token, ...inherited } = process.env;
   const child = Bun.spawn(["bash", script, ...args], {
     env: {
-      ...process.env,
+      ...inherited,
       TOPOSCOPE_DIR: home,
       TOPOSCOPE_PORT: String(server.port),
       TOPOSCOPE_CHECK_WAIT: "0",
+      ...env,
     },
     stdout: "pipe",
     stderr: "pipe",
@@ -250,5 +266,74 @@ describe("app-env", () => {
     const { code } = await run("app-env", file);
     expect(code).not.toBe(0);
     expect(readFileSync(file, "utf8")).toBe("DATABASE_URL=postgres://localhost/app\n");
+  });
+});
+
+describe("check <monitor> -- <command> (#177)", () => {
+  const plugin = "printf '%s\\n' 'DISK WARNING - free space: /var 6.4 GiB (13% inode=91%);| /var=87.2%;80;90;0;100' 'more detail'; exit 1";
+
+  test("a Nagios plugin: its exit code is the status, its first line the message, its first perfdata the value", async () => {
+    checks = [];
+    const { code, out } = await run("check", "disk-var", "--", "sh", "-c", plugin);
+    expect(code).toBe(1);
+    expect(out).toContain("DISK WARNING - free space");
+    expect(checks).toHaveLength(1);
+    expect(checks[0]!.authorization).toBe(`Bearer ${token}`);
+    expect(checks[0]!.agent).toBe(`toposcope.sh/${pkg.version}`);
+    expect(checks[0]!.body).toMatchObject({
+      monitor: "disk-var",
+      status: 1,
+      exit_code: 1,
+      message: "DISK WARNING - free space: /var 6.4 GiB (13% inode=91%);",
+      value: 87.2,
+      unit: "%",
+    });
+    expect(typeof checks[0]!.body.duration_ms).toBe("number");
+    expect(typeof checks[0]!.body.host).toBe("string");
+  });
+
+  test("any command: past 3 its exit code is a fail, and the tail of its output is the message", async () => {
+    checks = [];
+    const { code } = await run("check", "nightly backup", "--", "sh", "-c", 'printf \'%s\\n\' \'a "quoted" back\\slash\' line2; exit 7');
+    expect(code).toBe(7);
+    expect(checks[0]!.body).toMatchObject({
+      monitor: "nightly backup",
+      status: "fail",
+      exit_code: 7,
+      message: 'a "quoted" back\\slash\nline2',
+    });
+    expect(checks[0]!.body.value).toBeUndefined();
+  });
+
+  test("an ok command is status 0", async () => {
+    checks = [];
+    const { code } = await run("check", "rotate", "--", "true");
+    expect(code).toBe(0);
+    expect(checks[0]!.body).toMatchObject({ monitor: "rotate", status: 0, exit_code: 0, message: "" });
+  });
+
+  test("sends to TOPOSCOPE_URL with TOPOSCOPE_INGEST_TOKEN when they are set, and prints no token", async () => {
+    checks = [];
+    const { out, err } = await runWith(
+      { TOPOSCOPE_URL: `http://127.0.0.1:${server.port}`, TOPOSCOPE_INGEST_TOKEN: "another-token-91ac", TOPOSCOPE_DIR: "/nonexistent" },
+      "check",
+      "rotate",
+      "--",
+      "true",
+    );
+    expect(checks[0]!.authorization).toBe("Bearer another-token-91ac");
+    expect(out + err).not.toContain("another-token-91ac");
+  });
+
+  test("a result it cannot send is said, and the command's exit code still passes through", async () => {
+    const { code, err } = await runWith({ TOPOSCOPE_URL: "http://127.0.0.1:9" }, "check", "rotate", "--", "sh", "-c", "exit 2");
+    expect(code).toBe(2);
+    expect(err).toContain("The result of rotate was not sent to http://127.0.0.1:9.");
+  });
+
+  test("wants a command after --", async () => {
+    const { code, err } = await run("check", "rotate", "--");
+    expect(code).not.toBe(0);
+    expect(err).toContain("check <monitor> -- <command>");
   });
 });

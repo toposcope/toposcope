@@ -18,7 +18,9 @@ import {
   clockAt,
   markBefore,
   nextReminder,
-  opensWhen,
+  opensWhenLine,
+  readsQuiet,
+  secondsAt,
   sourceOf,
   stretchSpans,
 } from "@/watch";
@@ -41,14 +43,16 @@ export function monitorBandH(band: MonitorBand | null | undefined): number {
 
 const btn2 = "flex h-[26px] items-center rounded-md border px-2.5 text-[12px] hover:bg-accent";
 
-/** "opened 10:41 · at least 50 lines in 15m". */
+/** "opened 10:41 · at least 50 lines in 15m", "opened 10:41 · fewer than 1 line in 15m". */
 function openedLine(monitor: MonitorView, stretch: MonitorStretch, nowMs: number): string {
   const what =
     sourceOf(monitor) === "fingerprints"
       ? "new fingerprints"
-      : monitor.saved?.agg
-        ? `${opensWhen(monitor)} in ${monitor.saved?.range ?? "its window"}`
-        : `at least ${monitor.threshold} line${monitor.threshold === 1 ? "" : "s"} in ${monitor.saved?.range ?? "its window"}`;
+      : sourceOf(monitor) === "push"
+        ? stretch.due_at != null
+          ? `missed, due ${clockAt(stretch.due_at, nowMs)}`
+          : "a fail"
+        : opensWhenLine(monitor);
   if (stretch.resolved_at === null) {
     return `opened ${clockAt(stretch.opened_at, nowMs)} · ${what}`;
   }
@@ -84,6 +88,9 @@ const StretchCard = forwardRef<
   const mark = markBefore(marks, before, stretch.opened_at);
   const host = callHost(monitor.webhook_url);
   const next = open && monitor.open?.id === stretch.id ? nextReminder(monitor, nowMs) : null;
+  // A quiet search's open stretch says when the last line came (18o); any other, what opened it.
+  const lastLine =
+    open && readsQuiet(monitor) && typeof monitor.last_line_at === "number" ? monitor.last_line_at : null;
   return (
     <div
       ref={ref}
@@ -113,9 +120,15 @@ const StretchCard = forwardRef<
       </span>
       <span className="font-mono text-[11.5px] text-muted-foreground">{openedLine(monitor, stretch, nowMs)}</span>
       <span className="flex flex-col gap-[3px] rounded-[6px] bg-[#0f0f11] p-2 text-[12px]">
-        <span className="font-mono">
-          <span className="text-muted-foreground">opened on</span> {stretch.open_message || "—"}
-        </span>
+        {lastLine !== null ? (
+          <span className="font-mono">
+            <span className="text-muted-foreground">last line</span> {secondsAt(lastLine, nowMs)}
+          </span>
+        ) : (
+          <span className="font-mono">
+            <span className="text-muted-foreground">opened on</span> {stretch.open_message || "—"}
+          </span>
+        )}
         {mark ? (
           <span className="font-mono">
             <span className="text-muted-foreground">before it</span> ▲ {`${mark.kind} ${mark.service} ${mark.title}`.replace(/\s+/g, " ").trim()} ·{" "}

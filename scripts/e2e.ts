@@ -10,8 +10,10 @@ import { encodeOtlpProfilesProtobuf } from "../src/ingest/otlp-profiles-protobuf
 import { toOtlpTracesJson } from "../src/ingest/otlp-traces";
 import { encodeOtlpTracesProtobuf } from "../src/ingest/otlp-traces-protobuf";
 import { formatSyslog3164 } from "../src/ingest/syslog-parse";
-import { evaluateAlerts } from "../src/alerts/cron";
+import { evaluateAlerts, monitorTick } from "../src/alerts/cron";
 import { makeCerts, readCerts, startStands } from "./http-stands";
+import { cantTellHeld } from "../src/alerts/cant-tell";
+import { getAlert } from "../src/control/alerts";
 import { runLiveLoad } from "./load-live";
 import { parseLiveArgs } from "./load-rates";
 import { envValue } from "../src/shared/env";
@@ -1074,7 +1076,8 @@ async function main(): Promise<void> {
       service: probeService,
       up: 0,
       ts: probeTs,
-      check: "github",
+      // An attached check is also a push monitor's result (#177): a name of this run's, deleted below.
+      check: `github_${marker}`,
     }),
   });
   if (!probeAttach.ok) {
@@ -1084,6 +1087,10 @@ async function main(): Promise<void> {
   if (probeAttached.ingested !== 1 || probeAttached.up !== 0) {
     throw new Error(`expected attach up=0, got ${JSON.stringify(probeAttached)}`);
   }
+  await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(`github_${marker}`)}`, {
+    method: "DELETE",
+    headers: { authorization: basicAuth() },
+  });
 
   const downServer = Bun.serve({
     hostname: "127.0.0.1",
@@ -3637,6 +3644,175 @@ async function main(): Promise<void> {
     if (after.status !== 401 || after.headers.get("www-authenticate")) throw new Error(`after Sign out the cookie should be refused without the challenge, got ${after.status}`);
   }
 
+  // #177: a script, a cron job or a box tells Toposcope how it went. A first result creates its
+  // push monitor; past every it is late and past every + grace it opens (the pass runs here with
+  // a clock it is handed); a fail opens, a warn does not, Nagios's 3 changes nothing; the keyed
+  // URL's /fail opens; results are rows in Search; 501 results and an unknown key are refused.
+  {
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const bearer = { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` };
+    const pushName = `e2e-push-${marker}`;
+    const nagiosName = `e2e-nagios-${marker}`;
+    const probeName = `e2e_probe_${marker}`;
+    const calls: Array<Record<string, unknown>> = [];
+    const pushHook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        calls.push((await req.json()) as Record<string, unknown>);
+        return new Response("ok");
+      },
+    });
+    const settingsBefore = (await (await fetch(`${APP_URL}/api/settings`, { headers: auth })).json()) as {
+      default_webhook_url?: string | null;
+    };
+    const check = (body: unknown) => fetch(`${APP_URL}/v1/checks`, { method: "POST", headers: bearer, body: JSON.stringify(body) });
+    type PushPage = {
+      id: string;
+      state: string;
+      source: string;
+      last_result: string | null;
+      due_from: number;
+      ping_key?: string;
+      open: { due_at: number | null } | null;
+    };
+    const page = async (name: string) =>
+      (await (await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(name)}`, { headers: auth })).json()) as PushPage;
+    try {
+      // A monitor its first result made calls the default webhook from Settings.
+      const setDefault = await fetch(`${APP_URL}/api/settings`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ default_webhook_url: `http://127.0.0.1:${pushHook.port}/default` }),
+      });
+      if (!setDefault.ok) throw new Error(`setting the default webhook failed: ${setDefault.status}`);
+
+      const first = await check({ monitor: pushName, status: "ok", message: "snapshot saved", every: "1h", grace: "15m", host: "e2e-box" });
+      const firstBody = (await first.json()) as { ingested: number; created: string[] };
+      if (!first.ok || JSON.stringify(firstBody.created) !== JSON.stringify([pushName])) {
+        throw new Error(`a result for an unknown name should create its monitor, got ${first.status} ${JSON.stringify(firstBody)}`);
+      }
+      const made = await page(pushName);
+      if (made.source !== "push" || made.state !== "ok" || !made.ping_key) throw new Error(`a push monitor should be made, got ${JSON.stringify(made)}`);
+      const key = made.ping_key;
+      const listText = await (await fetch(`${APP_URL}/api/monitors`, { headers: auth })).text();
+      if (listText.includes(key)) throw new Error("the monitors list must not print a push monitor's key");
+
+      // every 1h, grace 15m, nothing after: late at 1h, open at 1h15m.
+      const t0 = made.due_from;
+      await evaluateAlerts(t0 + 60 * 60_000 + 30_000);
+      const late = await page(pushName);
+      const callCount = () => calls.length;
+      if (late.state !== "ok" || callCount() !== 0) throw new Error(`late is not open and calls nobody, got ${JSON.stringify(late)} ${JSON.stringify(calls)}`);
+      await evaluateAlerts(t0 + 75 * 60_000);
+      const missed = await page(pushName);
+      if (missed.state !== "open" || missed.open?.due_at !== t0 + 60 * 60_000) {
+        throw new Error(`past every + grace it should open, missed, got ${JSON.stringify(missed)}`);
+      }
+      if (callCount() !== 1 || calls[0]!.state !== "open" || (calls[0]!.alert as { source?: string }).source !== "push") {
+        throw new Error(`a missed result should call the default webhook once, got ${JSON.stringify(calls)}`);
+      }
+
+      // The next ok resolves it; a warn shows and does not open.
+      if (!(await check({ monitor: pushName, status: "ok" })).ok) throw new Error("ok result failed");
+      // The resolve happened at the real time; its call goes out on a pass at that time (or the app's own).
+      await evaluateAlerts(Date.now());
+      if ((await page(pushName)).state !== "ok" || calls.at(-1)?.state !== "resolved") throw new Error(`an ok should resolve it, got ${JSON.stringify(calls)}`);
+      if (!(await check({ monitor: pushName, status: "warn", message: "/var 87% used", value: 87.2, unit: "%" })).ok) throw new Error("warn result failed");
+      const warned = await page(pushName);
+      if (warned.state !== "ok" || warned.last_result !== "warn") throw new Error(`a warn shows and does not open, got ${JSON.stringify(warned)}`);
+
+      // Nagios's 2 opens; 3 changes nothing.
+      if (!(await check({ monitor: nagiosName, status: 2, message: "DISK CRITICAL" })).ok) throw new Error("nagios 2 failed");
+      if ((await page(nagiosName)).state !== "open") throw new Error("exit code 2 should open");
+      if (!(await check({ monitor: nagiosName, status: 3 })).ok) throw new Error("nagios 3 failed");
+      const unknown = await page(nagiosName);
+      if (unknown.state !== "open" || unknown.last_result !== "fail") throw new Error(`3 should change nothing, got ${JSON.stringify(unknown)}`);
+
+      // The keyed URL's /fail opens, with no token; an unknown key gets 404 and writes nothing.
+      const fail = await fetch(`${APP_URL}/ping/${key}/fail`, { method: "POST", body: "unable to create lock" });
+      if (fail.status !== 200 || (await fail.text()) !== "OK\n") throw new Error(`/ping/<key>/fail should answer OK, got ${fail.status}`);
+      if ((await page(pushName)).state !== "open") throw new Error("the keyed URL's /fail should open it");
+      const stranger = await fetch(`${APP_URL}/ping/${crypto.randomUUID()}/fail`, { method: "POST", body: `stranger-${marker}` });
+      if (stranger.status !== 404) throw new Error(`an unknown key should get 404, got ${stranger.status}`);
+      const again = await fetch(`${APP_URL}/ping/${key}/fail`);
+      if (again.status !== 429) throw new Error(`a second result within a second should get 429, got ${again.status}`);
+
+      // An attached probe is a result too.
+      const probe = await fetch(`${APP_URL}/v1/probes`, { method: "POST", headers: bearer, body: JSON.stringify({ service: "e2e", up: 0, check: probeName }) });
+      if (!probe.ok || (await page(probeName)).state !== "open") throw new Error("an attached probe should be read as a fail");
+
+      // 501 results are refused.
+      const tooMany = await check(Array.from({ length: 501 }, (_, i) => ({ monitor: `${pushName}-${i}`, status: "ok" })));
+      if (tooMany.status !== 400) throw new Error(`a batch of 501 should be refused, got ${tooMany.status}`);
+
+      // Every result is a row: monitor:<name> finds them, and nothing the unknown key sent.
+      const rows = async (q: string) =>
+        (
+          (await (
+            await fetch(`${APP_URL}/api/search?${new URLSearchParams({ q, range: "15m" }).toString()}`, { headers: auth })
+          ).json()) as { total: number; events: Array<{ message: string; level: string; attrs: Record<string, string> }> }
+        );
+      let found = await rows(`monitor:${pushName}`);
+      for (let i = 0; i < 40 && found.total < 4; i++) {
+        await Bun.sleep(250);
+        found = await rows(`monitor:${pushName}`);
+      }
+      const failRow = found.events.find((e) => e.message === "unable to create lock");
+      if (found.total !== 4 || failRow?.level !== "error" || failRow.attrs.status !== "fail" || failRow.attrs.source !== "push") {
+        throw new Error(`results should be rows found by monitor:<name>, got ${JSON.stringify(found.events)}`);
+      }
+      if ((await rows(`stranger-${marker}`)).total !== 0) throw new Error("an unknown key should write nothing");
+      if ((await rows(`monitor:${nagiosName} status:unknown`)).total !== 1) throw new Error("an unknown result is still a row");
+    } finally {
+      pushHook.stop();
+      for (const n of [pushName, nagiosName, probeName]) {
+        await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { method: "DELETE", headers: auth });
+      }
+      await fetch(`${APP_URL}/api/settings`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ default_webhook_url: settingsBefore.default_webhook_url ?? "" }),
+      });
+    }
+  }
+
+  // #179: who watches Toposcope. After each pass the loop checks in at TOPOSCOPE_WATCHDOG_URL,
+  // or at <url>/fail when ClickHouse does not answer; unset, it calls nothing.
+  {
+    const checkIns: string[] = [];
+    const stand = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: (req) => {
+        checkIns.push(`${req.method} ${new URL(req.url).pathname}`);
+        return new Response("OK");
+      },
+    });
+    const before = { url: process.env.TOPOSCOPE_WATCHDOG_URL, ch: process.env.CLICKHOUSE_URL };
+    try {
+      delete process.env.TOPOSCOPE_WATCHDOG_URL;
+      if ((await monitorTick()) !== "ok" || checkIns.length !== 0) throw new Error(`unset, the watchdog calls nothing, got ${JSON.stringify(checkIns)}`);
+      process.env.TOPOSCOPE_WATCHDOG_URL = `http://127.0.0.1:${stand.port}/hc/e2e${marker}`;
+      await monitorTick();
+      await monitorTick();
+      if (JSON.stringify(checkIns) !== JSON.stringify([`GET /hc/e2e${marker}`, `GET /hc/e2e${marker}`])) {
+        throw new Error(`each pass should check in, got ${JSON.stringify(checkIns)}`);
+      }
+      // ClickHouse stops answering: nothing listens on port 9.
+      process.env.CLICKHOUSE_URL = "http://127.0.0.1:9";
+      if ((await monitorTick()) !== "fail" || checkIns.at(-1) !== `GET /hc/e2e${marker}/fail`) {
+        throw new Error(`with ClickHouse down the pass should check in at /fail, got ${JSON.stringify(checkIns)}`);
+      }
+    } finally {
+      if (before.url === undefined) delete process.env.TOPOSCOPE_WATCHDOG_URL;
+      else process.env.TOPOSCOPE_WATCHDOG_URL = before.url;
+      if (before.ch === undefined) delete process.env.CLICKHOUSE_URL;
+      else process.env.CLICKHOUSE_URL = before.ch;
+      stand.stop();
+    }
+  }
+
   // #175, last: it waits minutes for its rows to age out of a 15m window, and the tests above
   // read a window that ends a minute after this run began.
   // A search monitor opens once, reminds on its schedule and sends one resolved call when its
@@ -3747,8 +3923,148 @@ async function main(): Promise<void> {
     }
   }
 
-  // #178, after #175's block: the app runs HTTP(S) monitors on its own clock (every 30s at the
-  // least), so this waits about a minute for real runs against stand-ins on spare ports. The
+  // #176, after #175's block: a saved search that goes quiet. Fewer than 1 line in 15m opens
+  // once the last line has left the window and resolves on the next; it stays shut while it can't
+  // tell (Toposcope not up one whole window, a short linked source); p99 fewer than is refused.
+  {
+    const host = `e2equiet${marker}`;
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const ingestLine = async (ts: string, n: number) => {
+      const res = await fetch(`${APP_URL}/api/ingest`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+        body: JSON.stringify([{ ts, level: "info", service: "ci-runner", host, message: `${host} line ${n}` }]),
+      });
+      if (!res.ok) throw new Error(`quiet ingest failed: ${res.status}`);
+    };
+    // The last line from the box, 14m45s old: in the 15m window now, out of it within seconds.
+    const lastTs = new Date(Date.now() - (14 * 60 + 45) * 1000).toISOString();
+    await ingestLine(lastTs, 1);
+    const save = async (body: Record<string, unknown>) => {
+      const res = await fetch(`${APP_URL}/api/saved-searches`, { method: "POST", headers: auth, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`quiet search save failed: ${res.status}`);
+      return (await res.json()) as { id: string };
+    };
+    const lines = await save({ name: `e2e ci-box lines ${marker}`, query: `host:${host}`, range: "15m" });
+    const never = await save({ name: `e2e never ${marker}`, query: `host:${host}-never`, range: "24h" });
+    const slow = await save({ name: `e2e p99 ${marker}`, query: `host:${host}`, range: "15m", agg: "p99:duration_ms" });
+    const reading = async (): Promise<{ count: number; last_line_at?: number | null }> => {
+      const res = await fetch(`${APP_URL}/api/saved-searches/${lines.id}/test`, { method: "POST", headers: auth });
+      return (await res.json()) as { count: number; last_line_at?: number | null };
+    };
+    for (let i = 0; i < 30 && (await reading()).count < 1; i++) await Bun.sleep(250);
+    if ((await reading()).count !== 1) throw new Error("the box's line is not searchable");
+
+    const calls: Array<{ path: string; body: Record<string, unknown> }> = [];
+    const hook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        calls.push({ path: new URL(req.url).pathname, body: (await req.json()) as Record<string, unknown> });
+        return new Response("ok");
+      },
+    });
+    const name = `e2e ci-box went quiet ${marker}`;
+    const graceName = `e2e never talked ${marker}`;
+    const heldBefore = cantTellHeld.links;
+    try {
+      const declare = (n: string, savedId: string, path: string, extra: Record<string, unknown> = {}) =>
+        fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, {
+          method: "PUT",
+          headers: auth,
+          body: JSON.stringify({ source: "search", saved_search_id: savedId, opens_when: "fewer_than", threshold: 1, webhook_url: `http://127.0.0.1:${hook.port}${path}`, ...extra }),
+        });
+      const made = await declare(name, lines.id, "/quiet");
+      if (made.status !== 201) throw new Error(`a fewer-than monitor should be declared, got ${made.status} ${await made.text()}`);
+      const quiet = (await made.json()) as { id: string; opens_when: string };
+      if (quiet.opens_when !== "fewer_than") throw new Error(`PUT should keep fewer_than, got ${JSON.stringify(quiet)}`);
+      const p99 = await declare(`e2e p99 quiet ${marker}`, slow.id, "/p99", { threshold: 100 });
+      const p99Body = (await p99.json()) as { error?: string };
+      if (p99.status !== 400 || p99Body.error !== "fewer than reads a count or a rate; p99(duration_ms) over no lines has no value") {
+        throw new Error(`p99 fewer than 100 should be refused with a reason, got ${p99.status} ${JSON.stringify(p99Body)}`);
+      }
+
+      const ours = () => calls.filter((c) => c.path === "/quiet").map((c) => c.body.state);
+      const t0 = Date.now();
+      // A clock this process is handed, an uptime of more than one window: the line is still in it.
+      await evaluateAlerts(t0 + 16 * 60_000);
+      if (getAlert(quiet.id)?.state !== "ok" || ours().length !== 0) throw new Error("a line in the window should keep it shut");
+      for (let i = 0; i < 60 && (await reading()).count > 0; i++) await Bun.sleep(1000);
+      if ((await reading()).count !== 0) throw new Error("the box's line did not leave the 15m window");
+
+      // Linked source prod-us is behind and could feed host:<box>: the count is a floor.
+      cantTellHeld.links = () => [
+        {
+          role: "pull",
+          connects: "we",
+          peer_name: "prod-us",
+          q: "",
+          position: 80,
+          settled: 100,
+          arrived_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+          last_contact_at: Date.now() + 17 * 60_000,
+          last_error: null,
+          created_at: t0 - 86_400_000,
+          gone_from: null,
+          gone_to: null,
+          gone_from_at: null,
+          gone_to_at: null,
+        },
+      ];
+      await evaluateAlerts(t0 + 17 * 60_000);
+      const held = getAlert(quiet.id);
+      // The app's own pass may have opened it a moment before, with its own clock and no links.
+      if (ours().length === 0 && (held?.state !== "ok" || held.cant_tell?.kind !== "held" || held.cant_tell.sources[0]?.name !== "prod-us")) {
+        throw new Error(`a short linked source should keep it shut and say so, got ${JSON.stringify(held)}`);
+      }
+      cantTellHeld.links = heldBefore;
+
+      await evaluateAlerts(t0 + 18 * 60_000);
+      if (JSON.stringify(ours()) !== '["open"]') throw new Error(`it should open once the last line is 15m old, got ${JSON.stringify(ours())}`);
+      const opened = calls.find((c) => c.path === "/quiet")!.body as { value: number; alert: { opens_when?: string } };
+      if (opened.value !== 0 || opened.alert.opens_when !== "fewer_than") throw new Error(`the open call should read 0, fewer than, got ${JSON.stringify(opened)}`);
+      const listed = (await (await fetch(`${APP_URL}/api/monitors`, { headers: auth })).json()) as {
+        monitors: Array<{ name: string; state: string; last_line_at?: number | null; open: { open_message: string } | null }>;
+      };
+      const watched = listed.monitors.find((m) => m.name === name);
+      if (watched?.state !== "open" || watched.open?.open_message !== "no line for 15m" || watched.last_line_at !== Date.parse(lastTs)) {
+        throw new Error(`Watch should read it open, no line for 15m, last line at ${lastTs}; got ${JSON.stringify(watched)}`);
+      }
+
+      // The next line resolves it.
+      await ingestLine(new Date().toISOString(), 2);
+      for (let i = 0; i < 30 && (await reading()).count < 1; i++) await Bun.sleep(250);
+      await evaluateAlerts(t0 + 19 * 60_000);
+      if (JSON.stringify(ours()) !== '["open","resolved"]') throw new Error(`the next line should resolve it once, got ${JSON.stringify(ours())}`);
+
+      // Toposcope has not been up 24h: a search that never talked stays shut, and says why.
+      const grace = (await (await declare(graceName, never.id, "/never")).json()) as { id: string };
+      await evaluateAlerts(Date.now());
+      const graceOne = (await (await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(graceName)}`, { headers: auth })).json()) as {
+        state: string;
+        cant_tell: { kind: string } | null;
+        last_line_at?: number | null;
+      };
+      if (graceOne.state !== "ok" || graceOne.cant_tell?.kind !== "starting" || calls.some((c) => c.path === "/never")) {
+        throw new Error(`a monitor should not open before one whole window of uptime, got ${JSON.stringify(graceOne)}`);
+      }
+      if (graceOne.last_line_at !== null) throw new Error(`a search that never matched reads no last line, got ${graceOne.last_line_at}`);
+      void grace;
+    } finally {
+      cantTellHeld.links = heldBefore;
+      hook.stop();
+      for (const n of [name, graceName]) {
+        await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { method: "DELETE", headers: auth });
+      }
+      for (const id of [lines.id, never.id, slow.id]) {
+        await fetch(`${APP_URL}/api/saved-searches/${id}`, { method: "DELETE", headers: auth });
+      }
+    }
+  }
+
+  // #178, last (after #175's and #176's slow blocks): the app runs HTTP(S) monitors on its own
+  // clock (every 30s at the least), so this waits about a minute for real runs against stand-ins
+  // on spare ports. The
   // certificate check needs the app to trust the stand's CA: start it with
   // NODE_EXTRA_CA_CERTS=<dir>/ca.crt after `bun run scripts/http-stands.ts certs <dir>`, and
   // give this run TOPOSCOPE_E2E_CERTS=<dir>. Without them that one check reads the certificate
@@ -3931,7 +4247,7 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → monitor open, remind, resolved → http monitor open, warn, resolved");
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved → http monitor open, warn, resolved");
 }
 
 await main();

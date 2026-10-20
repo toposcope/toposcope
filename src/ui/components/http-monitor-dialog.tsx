@@ -55,7 +55,8 @@ export type HttpMonitorInput = {
   every: string;
   fail_after: number;
   conditions: string;
-  webhook_url: string;
+  /** Null: the default webhook in Settings (#177). */
+  webhook_url: string | null;
   body_kind: AlertBodyKind;
   body_template: string;
   resolved_body: string | null;
@@ -180,8 +181,10 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
   const bar = useRef<HTMLSpanElement | null>(null);
   const dragSpan = useRef<number | null>(null);
   const webhookRef = useRef<HTMLInputElement | null>(null);
-  /** Create without a webhook opens calls and puts the caret in it, once it is drawn. */
+  /** A webhook that is not one opens calls and puts the caret in it, once it is drawn. */
   const [askWebhook, setAskWebhook] = useState(false);
+  /** The default webhook in Settings, which it calls without one of its own (18r: `default · …`). */
+  const [fallback, setFallback] = useState<string | null>(null);
 
   useEffect(() => {
     if (askWebhook && open_.calls && webhookRef.current) {
@@ -194,6 +197,10 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
     if (!open || !draft) {
       return;
     }
+    void fetch("/api/settings")
+      .then((res) => (res.ok ? (res.json() as Promise<{ default_webhook_url?: string | null }>) : null))
+      .then((json) => setFallback(json?.default_webhook_url ?? null))
+      .catch(() => undefined);
     setResult(null);
     setSendError(null);
     setProblem(null);
@@ -333,8 +340,8 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
     if (headersError) {
       return headersError;
     }
-    if (!/^https?:\/\//.test(webhook.trim())) {
-      return "Add a webhook under calls";
+    if (webhook.trim() && !/^https?:\/\//.test(webhook.trim())) {
+      return "The webhook must be http(s); leave it empty for the default";
     }
     if (bodyProblem || resolvedProblem) {
       return (bodyProblem ?? resolvedProblem)!;
@@ -349,7 +356,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
       every,
       fail_after: failAfter,
       conditions: lines,
-      webhook_url: webhook.trim(),
+      webhook_url: webhook.trim() || null,
       body_kind: bodyKind,
       body_template: bodyTemplate,
       resolved_body: bodyKind === "default" || !resolvedBody.trim() ? null : resolvedBody,
@@ -362,7 +369,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
     const made = input();
     if (typeof made === "string") {
       setProblem(made);
-      if (made.startsWith("Add a webhook")) {
+      if (made.startsWith("The webhook")) {
         setOpen_((o) => ({ ...o, calls: true }));
         setAskWebhook(true);
       }
@@ -882,8 +889,13 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                 ) : null}
                 <span className="flex items-center gap-2 text-[12px]">
                   <span className="w-14 shrink-0 text-muted-foreground">calls</span>
-                  <span className={cn("min-w-0 truncate font-mono", webhook.trim() ? "" : "text-muted-foreground")}>
-                    {webhook.trim() ? webhookShort(webhook) : "no webhook yet"} ·{" "}
+                  <span className={cn("min-w-0 truncate font-mono", webhook.trim() || fallback ? "" : "text-muted-foreground")}>
+                    {webhook.trim()
+                      ? webhookShort(webhook)
+                      : fallback
+                        ? `default · ${webhookShort(fallback)}`
+                        : "nobody: no default webhook in Settings"}{" "}
+                    ·{" "}
                     {remind === "off" ? "no reminders" : `remind ${remind}`}
                     {bodyKind !== "default" ? ` · ${bodyKind} body` : ""}
                   </span>
@@ -905,9 +917,12 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                         aria-label="Webhook"
                         value={webhook}
                         onChange={(e) => setWebhook(e.target.value)}
-                        placeholder="https://ntfy.sh/… or https://hooks.slack.com/services/…"
+                        placeholder={fallback ? `empty: the default, ${webhookShort(fallback)}` : "https://ntfy.sh/… or https://hooks.slack.com/services/…"}
                         className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-[12px] outline-none placeholder:text-muted-foreground")}
                       />
+                    </span>
+                    <span className="pl-[66px] text-[11px] text-muted-foreground">
+                      Left empty, it calls the default webhook, set in Settings for any monitor without its own.
                     </span>
                     <span className="flex items-center gap-2 text-[12px]">
                       <span className="w-[58px] shrink-0 text-muted-foreground">remind</span>
@@ -921,7 +936,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                       onTemplate={setBodyTemplate}
                       resolvedBody={resolvedBody}
                       onResolvedBody={setResolvedBody}
-                      webhook={webhook}
+                      webhook={webhook.trim() || fallback || ""}
                       preview={{
                         name: name.trim() || nameFromUrl(url),
                         query: `${method} ${url.trim()}`,
@@ -931,14 +946,14 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                       }}
                       canLink={canLink}
                       testDraft={() =>
-                        /^https?:\/\//.test(webhook.trim()) && !bodyProblem
+                        (/^https?:\/\//.test(webhook.trim()) || (!webhook.trim() && fallback)) && !bodyProblem
                           ? {
                               source: "http",
                               id: editing?.id,
                               name: name.trim() || nameFromUrl(url),
                               url: url.trim(),
                               method,
-                              webhook_url: webhook.trim(),
+                              webhook_url: webhook.trim() || null,
                               body_kind: bodyKind,
                               body_template: bodyTemplate,
                               resolved_body: bodyKind === "default" || !resolvedBody.trim() ? null : resolvedBody,

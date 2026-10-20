@@ -1,10 +1,13 @@
 import type { Context } from "hono";
+import { lastLineAt } from "../alerts/last-line";
 import {
+  lastPushResult,
   monitorHistory,
   openStretch,
   resultsBetween,
   sentCallsBetween,
   stretchesBetween,
+  type PushResultRow,
   type StretchWithCalls,
 } from "../alerts/monitor-store";
 import { parseRangeMs } from "../query/relative";
@@ -18,10 +21,18 @@ import {
   readJsonObject,
   readMonitorFields,
   removeMonitor,
+  updateAlertRule,
   type AlertRule,
 } from "./alerts";
 import { getHttp } from "../alerts/http-store";
 import { applyHttpFields, existingHttp, httpView, insertHttpMonitor, readHttpFields, type HttpView } from "./http-monitors";
+import {
+  applyPushFields,
+  insertPushMonitor,
+  pingKeyOf,
+  pushCapProblem,
+  readPushFields,
+} from "./push-monitors";
 import { getDb } from "./index";
 import { getSaved } from "./saved-searches";
 
@@ -34,13 +45,21 @@ export type MonitorView = AlertRule & {
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   /** Its open stretch, with the calls sent for it so far. */
   open: StretchWithCalls | null;
+  /**
+   * A fewer-than monitor's newest matching line (#176): null when none in a year, left out when
+   * it could not be read.
+   */
+  last_line_at?: number | null;
   /** What an HTTP(S) monitor calls (#178): its headers by name only. */
   http: HttpView | null;
 };
 
-function view(rule: AlertRule): MonitorView {
+async function view(rule: AlertRule): Promise<MonitorView> {
   const saved = rule.saved_search_id ? getSaved(rule.saved_search_id) : null;
   const open = rule.state === "open" ? openStretch(rule.id) : null;
+  // One row a monitor, read with Watch's refresh; only a monitor on a quiet stream says it.
+  const lastLine =
+    saved && rule.kind === "threshold" && rule.opens_when === "fewer_than" ? await lastLineAt(saved.query) : undefined;
   const http = rule.source === "http" ? getHttp(rule.id) : null;
   return {
     ...rule,
@@ -49,6 +68,7 @@ function view(rule: AlertRule): MonitorView {
       ? { id: saved.id, name: saved.name, query: saved.query, range: saved.range, agg: saved.agg }
       : null,
     open: open ? { ...open, calls: monitorHistory(rule.id, 1)[0]?.calls ?? [] } : null,
+    ...(lastLine !== undefined ? { last_line_at: lastLine } : {}),
   };
 }
 
@@ -87,12 +107,24 @@ export async function listMonitors(c: Context): Promise<Response> {
     now,
     from: new Date(win.fromMs).toISOString(),
     to: new Date(win.toMs).toISOString(),
-    monitors: allAlertRules().map(view),
+    monitors: await Promise.all(allAlertRules().map(view)),
     stretches: stretchesBetween(win.fromMs, win.toMs),
     sent: sentCallsBetween(win.fromMs, win.toMs),
+    // Results on the clock (#177, #178): each a tick, at most 240 columns a lane.
     results: resultsBetween(win.fromMs, win.toMs),
     link: publicUrl() !== null,
   });
+}
+
+/**
+ * A monitor's own page: the monitor, and for a push monitor its keyed URL's key and its last
+ * result. The key is printed here and nowhere else (#177).
+ */
+async function page(rule: AlertRule): Promise<MonitorView & { ping_key?: string | null; last?: PushResultRow | null }> {
+  if (rule.source !== "push") {
+    return view(rule);
+  }
+  return { ...(await view(rule)), ping_key: pingKeyOf(rule.id), last: lastPushResult(rule.id) };
 }
 
 function byName(name: string): AlertRule[] {
@@ -123,7 +155,112 @@ export async function getMonitor(c: Context): Promise<Response> {
   if (!rule) {
     return c.json({ error: "Monitor not found" }, 404);
   }
-  return c.json({ ...view(rule), stretches: monitorHistory(rule.id) });
+  return c.json({ ...(await page(rule)), stretches: monitorHistory(rule.id) });
+}
+
+/** "a push", "an HTTP(S)", "a search": a source as a sentence names it. */
+function aSource(source: unknown): string {
+  return source === "http" ? "an HTTP(S)" : `a ${String(source)}`;
+}
+
+/** A source a monitor keeps: a push or HTTP(S) monitor stays one, and nothing else becomes one. */
+function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
+  const keeps = (source: unknown) => source === "push" || source === "http";
+  if (!existing || rec.source === undefined || rec.source === existing.source) {
+    return null;
+  }
+  if (keeps(existing.source) || keeps(rec.source)) {
+    return `${existing.name} is ${aSource(existing.source)} monitor; delete it to make ${aSource(rec.source)} monitor of that name`;
+  }
+  return null;
+}
+
+/** `PUT /api/monitors/<name>` with `source: "push"`: create or replace a push monitor (#177). */
+async function putPushMonitor(
+  c: Context,
+  name: string,
+  existing: AlertRule | null,
+  rec: Record<string, unknown>,
+): Promise<Response> {
+  const fields = readPushFields({ ...rec, name }, null);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
+  }
+  const now = Date.now();
+  if (!existing) {
+    const cap = pushCapProblem(1);
+    if (cap) {
+      return c.json({ error: cap }, 400);
+    }
+    const created = insertPushMonitor(fields, now);
+    if ("error" in created) {
+      return c.json({ error: created.error }, 400);
+    }
+    applyMonitorHold(created, rec, now);
+    return c.json(await page(getAlert(created.id)!), 201);
+  }
+  const problem = applyPushFields(existing, fields, now);
+  if (problem) {
+    return c.json({ error: problem.error }, 400);
+  }
+  applyMonitorHold(getAlert(existing.id)!, rec, now);
+  return c.json(await page(getAlert(existing.id)!));
+}
+
+/**
+ * `PUT /api/monitors/<name>` with `source: "http"`: create or replace an HTTP(S) monitor (#178).
+ * What is left out takes its default, and a header given as null keeps its stored value.
+ */
+async function putHttpMonitor(
+  c: Context,
+  name: string,
+  existing: AlertRule | null,
+  rec: Record<string, unknown>,
+): Promise<Response> {
+  const kept = existing ? existingHttp(existing) : null;
+  const fields = readHttpFields({ ...rec, name }, null, kept?.http.headers ?? []);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
+  }
+  const now = Date.now();
+  if (!kept) {
+    const created = insertHttpMonitor(fields, now);
+    applyMonitorHold(created, rec, now);
+    return c.json(await page(getAlert(created.id)!), 201);
+  }
+  applyHttpFields(kept.rule, kept.http, fields, now);
+  applyMonitorHold(getAlert(kept.rule.id)!, rec, now);
+  return c.json(await page(getAlert(kept.rule.id)!));
+}
+
+/**
+ * `PUT /api/alert-rules/<id>`: what it did, and for a push monitor its own fields, a field left
+ * out keeping its value.
+ */
+export async function updateMonitorRoute(c: Context): Promise<Response> {
+  const existing = getAlert(c.req.param("id") ?? "");
+  if (!existing || existing.source !== "push") {
+    return updateAlertRule(c);
+  }
+  const rec = await readJsonObject(c);
+  if (rec instanceof Response) {
+    return rec;
+  }
+  const change = sourceChange(existing, rec);
+  if (change) {
+    return c.json({ error: change }, 400);
+  }
+  const fields = readPushFields(rec, existing);
+  if ("error" in fields) {
+    return c.json({ error: fields.error }, fields.status);
+  }
+  const now = Date.now();
+  const problem = applyPushFields(existing, fields, now);
+  if (problem) {
+    return c.json({ error: problem.error }, 400);
+  }
+  applyMonitorHold(getAlert(existing.id)!, rec, now);
+  return c.json(getAlert(existing.id));
 }
 
 /**
@@ -141,44 +278,32 @@ export async function putMonitor(c: Context): Promise<Response> {
   if (rec instanceof Response) {
     return rec;
   }
-  if (rec.source === undefined && rec.kind === undefined) {
-    return c.json({ error: "source is required: search, fingerprints or http" }, 400);
+  if (rec.source === undefined && rec.kind === undefined && existing?.source !== "push" && existing?.source !== "http") {
+    return c.json({ error: "source is required: search, fingerprints, push or http" }, 400);
   }
-  const now = Date.now();
-  if (rec.source === "http") {
-    const kept = existing ? existingHttp(existing) : null;
-    if (existing && !kept) {
-      return c.json({ error: `${name} is a ${existing.source} monitor; delete it to make it an HTTP(S) one` }, 409);
-    }
-    // A replace: what is left out takes its default, and a header given as null keeps its stored value.
-    const fields = readHttpFields({ ...rec, name }, null, kept?.http.headers ?? []);
-    if ("error" in fields) {
-      return c.json({ error: fields.error }, fields.status);
-    }
-    if (!kept) {
-      const created = insertHttpMonitor(fields, now);
-      applyMonitorHold(created, rec, now);
-      return c.json(view(getAlert(created.id)!), 201);
-    }
-    applyHttpFields(kept.rule, kept.http, fields, now);
-    applyMonitorHold(getAlert(kept.rule.id)!, rec, now);
-    return c.json(view(getAlert(kept.rule.id)!));
+  const change = sourceChange(existing, rec);
+  if (change) {
+    return c.json({ error: change }, 400);
   }
-  if (existing?.source === "http") {
-    return c.json({ error: `${name} is an http monitor; delete it to make it a ${String(rec.source ?? "search")} one` }, 409);
+  if (rec.source === "push" || existing?.source === "push") {
+    return putPushMonitor(c, name, existing, rec);
+  }
+  if (rec.source === "http" || existing?.source === "http") {
+    return putHttpMonitor(c, name, existing, rec);
   }
   const fields = readMonitorFields({ ...rec, name }, null);
   if ("error" in fields) {
     return c.json({ error: fields.error }, fields.status);
   }
+  const now = Date.now();
   if (!existing) {
     const created = insertMonitor(fields, now);
     applyMonitorHold(created, rec, now);
-    return c.json(view(getAlert(created.id)!), 201);
+    return c.json(await view(getAlert(created.id)!), 201);
   }
   applyMonitorFields(existing, fields, now);
   applyMonitorHold(getAlert(existing.id)!, rec, now);
-  return c.json(view(getAlert(existing.id)!));
+  return c.json(await view(getAlert(existing.id)!));
 }
 
 /** `DELETE /api/monitors/:name` — the monitor and its record. */

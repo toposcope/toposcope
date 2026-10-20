@@ -1,4 +1,3 @@
-import type { Database } from "bun:sqlite";
 import type { AlertRule } from "../control/alerts";
 import {
   judgeRun,
@@ -10,18 +9,17 @@ import {
 } from "../shared/http-check";
 import type { LogEvent } from "../shared/log-event";
 import type { MetricPoint } from "../shared/metric";
-import { formatOpenFor, monitorQuery, remindEveryMs } from "../shared/monitor";
-import type { WebhookOutcome } from "./delivery";
+import { formatOpenFor } from "../shared/monitor";
+import { monitorQuery } from "../shared/push";
 import type { HttpSettings } from "./http-store";
 import { noteHttpRun } from "./http-store";
 import type { HttpExchange, HttpRequestInput } from "./http-request";
-import { monitorCalls, nextMove } from "./monitor";
+import { nextMove, passCalls, type CallDeps } from "./monitor";
 import {
   beginStretch,
   noteReading,
   openStretch,
-  recordCall,
-  recordMonitorResult,
+  recordPushResult,
   recordResult,
   resolveStretch,
   type CallWhat,
@@ -33,6 +31,7 @@ import {
   httpFillValues,
   renderResolved,
   renderWebhook,
+  sendsResolved,
   type WebhookPayload,
 } from "./payload";
 
@@ -140,15 +139,11 @@ export function runRow(
   };
 }
 
-export type HttpMonitorDeps = {
-  db: Database;
+/** Its calls go as any monitor's (`CallDeps`: its own webhook, else the default in Settings). */
+export type HttpMonitorDeps = CallDeps & {
   request: (input: HttpRequestInput) => Promise<HttpExchange>;
   /** The row and the metric into ClickHouse. A monitor still opens and resolves when that fails. */
   write: (row: LogEvent, metric: MetricPoint | null) => Promise<void>;
-  post: (url: string, payload: WebhookPayload) => Promise<WebhookOutcome>;
-  publicUrl: () => string | null;
-  recordWebhook: (id: string, attempt: WebhookOutcome & { at: number }, db: Database) => void;
-  onSent?: () => void;
   clock?: () => number;
 };
 
@@ -202,8 +197,8 @@ export async function runHttpMonitor(
     db,
   );
   recordResult(rule.id, result, run.durationMs, at, db);
-  // Watch's tick for it: the worst run of its minute.
-  recordMonitorResult(
+  // Watch's tick for it, in the table push results share (#177): the worst run of its minute.
+  recordPushResult(
     {
       monitor_id: rule.id,
       at,
@@ -240,21 +235,28 @@ export async function runHttpMonitor(
       break;
   }
 
-  if (rule.webhook_url) {
-    await monitorCalls(rule, at, remindEveryMs(rule.remind_every, http.every_ms), db, (what, stretch) =>
-      sendHttpCall(rule, http, { what, stretch, run, at }, deps),
-    );
-  }
+  // Its state is kept whether or not anybody is called; with no webhook of its own and none in
+  // Settings, its stretches say nobody was (`none`).
+  await passCalls(
+    rule,
+    at,
+    {
+      windowMs: http.every_ms,
+      sendsResolved: sendsResolved(rule),
+      payload: (what, stretch, url) => httpCallPayload(rule, http, { what, stretch, run, at, url }, deps),
+    },
+    deps,
+  );
   return run;
 }
 
-/** One call for a stretch, as `sendSearchCall` makes one for a search. */
-async function sendHttpCall(
+/** One call for a stretch, as it goes on the wire. */
+function httpCallPayload(
   rule: AlertRule,
   http: HttpSettings,
-  input: { what: Exclude<CallWhat, "sent">; stretch: MonitorStretch; run: HttpRun; at: number },
-  deps: HttpMonitorDeps,
-): Promise<WebhookOutcome> {
+  input: { what: Exclude<CallWhat, "sent">; stretch: MonitorStretch; run: HttpRun; at: number; url: string },
+  deps: Pick<CallDeps, "publicUrl">,
+): WebhookPayload {
   const { what, stretch, run, at } = input;
   const iso = (ms: number) => new Date(ms).toISOString();
   // The open call says what opened it; a reminder or a resolved call says what it reads now.
@@ -283,18 +285,7 @@ async function sendHttpCall(
       duration: formatOpenFor(endMs - stretch.opened_at),
     },
   };
-  const defaultBody = httpCallBody(rule.webhook_url!, facts);
+  const defaultBody = httpCallBody(input.url, facts);
   const values = httpFillValues(facts);
-  const payload =
-    what === "resolved" ? renderResolved(rule, defaultBody, values)! : renderWebhook(rule, defaultBody, values);
-  const outcome = await deps.post(rule.webhook_url!, payload);
-  deps.recordWebhook(rule.id, { at, ...outcome }, deps.db);
-  recordCall(
-    { monitor_id: rule.id, stretch_id: stretch.id, at, what, status: outcome.status, ok: outcome.ok, error: outcome.error },
-    deps.db,
-  );
-  if (outcome.ok) {
-    deps.onSent?.();
-  }
-  return outcome;
+  return what === "resolved" ? renderResolved(rule, defaultBody, values)! : renderWebhook(rule, defaultBody, values);
 }

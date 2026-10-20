@@ -1,4 +1,4 @@
-import { Globe, Search, X } from "lucide-react";
+import { ArrowUp, Globe, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { MonitorSource } from "../../shared/monitor";
@@ -64,8 +64,8 @@ function SourceCard({
 }
 
 /**
- * Frame 18p: a new monitor starts by choosing where its results come from. Push and TCP /
- * certificate join these cards with their own issues (#177, #180).
+ * Frame 18p: a new monitor starts by choosing where its results come from. TCP / certificate
+ * joins these cards with its own issue (#180).
  */
 export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPick }: Props) {
   const q = example?.query.trim() || "service:api level:error";
@@ -88,8 +88,8 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
           <SourceCard
             icon={<Search className="size-3.5" />}
             title="Saved search"
-            about="A search that goes loud: at least N lines, or a series at least N, in its window."
-            example={`${q} · at least 50 · ${example?.range ?? "15m"}`}
+            about="A search that goes quiet or loud: at least, or fewer than, N lines in its window."
+            example={`${q} · fewer than 1 · ${example?.range ?? "15m"}`}
             onClick={() => onPick("search")}
             disabled={!canSearch}
           />
@@ -99,6 +99,13 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
             about="Toposcope calls a URL from this node, every 30s to 1h. Conditions on the status, the time, the body, a JSON value, the certificate."
             example="GET https://api.example.com/health"
             onClick={() => onPick("http")}
+          />
+          <SourceCard
+            icon={<ArrowUp className="size-3.5" />}
+            title="Push"
+            about="Any script, cron job or Nagios plugin sends its result: ok, warn or fail, a message, a value. Its first result can create it."
+            example="check_disk -w 20% /var; curl …/ping/…"
+            onClick={() => onPick("push")}
           />
           <SourceCard
             icon={<FingerprintsIcon />}
@@ -130,10 +137,11 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
         </div>
         <div className="flex items-center gap-3 border-t px-[18px] py-3">
           <span className="text-[13px] text-muted-foreground">
-            Every result becomes a log row: <span className="font-mono text-foreground">monitor:&lt;name&gt;</span> in Search.
+            Every result becomes a log row: <span className="font-mono text-foreground">monitor:&lt;name&gt;</span> in
+            Search.
           </span>
-          <Button
-            className="ml-auto" type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <span className="flex-1" />
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
         </div>

@@ -89,6 +89,8 @@ beforeAll(async () => {
     await go("httpTestCallBad", "/api/alert-rules/test-call", "POST", { source: "http", name: "x", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{series}}" });
     out.hooked = hooked;
     await go("httpClash", "/api/monitors/api-health", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
+    await go("httpNoHook", "/api/monitors/no-hook", "PUT", { source: "http", url: "https://api.example.com/health" });
+    await go("httpBadHook", "/api/monitors/bad-hook", "PUT", { source: "http", url: "https://api.example.com/health", webhook_url: "ftp://x" });
     await go("httpCreate", "/api/alert-rules", "POST", { ...httpBody, name: "made in the dialog" });
     await go("httpDelete", "/api/monitors/api-health", "DELETE");
     await go("httpGone", "/api/monitors/api-health");
@@ -158,7 +160,7 @@ describe("PUT /api/monitors/<name> (#175)", () => {
 
   test("says what is wrong with a declaration", () => {
     expect(r.noSource!.status).toBe(400);
-    expect(r.noSource!.body.error).toBe("source is required: search, fingerprints or http");
+    expect(r.noSource!.body.error).toBe("source is required: search, fingerprints, push or http");
     expect(r.noSearch!.status).toBe(404);
     expect(r.fpResolved!.status).toBe(400);
     expect(r.fpResolved!.body.error).toBe("a new-fingerprints monitor does not resolve, so it has no resolved body");
@@ -231,7 +233,12 @@ describe("HTTP(S) monitors (#178)", () => {
     expect(r.httpBadEvery!.body.error).toStartWith("every must be 30s … 1h");
     expect(r.httpWindow!.body.error).toBe("remind_every must be off, 1h, 4h or 24h");
     expect(r.httpNoUrl!.body.error).toBe("url must be an http(s) URL");
-    expect(r.httpClash!.status).toBe(409);
+    expect(r.httpClash!.status).toBe(400);
+    expect(r.httpClash!.body.error).toBe("api-health is an HTTP(S) monitor; delete it to make a search monitor of that name");
+    // Without a webhook of its own it calls the default in Settings.
+    expect(r.httpNoHook!.status).toBe(201);
+    expect(r.httpNoHook!.body).toMatchObject({ webhook_url: null, query: "monitor:no-hook", source: "http" });
+    expect(r.httpBadHook!.body.error).toBe("webhook_url must be http(s), or null for the default");
   });
 
   test("Send runs it once and says what each line makes of the response", () => {

@@ -1,4 +1,4 @@
-import type { MonitorSource, RemindId } from "../shared/monitor";
+import type { CantTell, MonitorSource, OpensWhen, RemindId } from "../shared/monitor";
 import type { HistogramReading } from "../shared/metric";
 import type { WidgetLayout } from "../shared/widgets";
 import type { BoardSlots } from "../shared/boards";
@@ -125,6 +125,19 @@ export type AlertRule = {
   last_result?: "ok" | "warn" | "fail" | null;
   last_value?: number | null;
   last_result_at?: number | null;
+  /** A search monitor opens at least or fewer than its threshold (#176). */
+  opens_when?: OpensWhen;
+  /** Why a fewer-than monitor stayed shut on its last pass. */
+  cant_tell?: CantTell | null;
+  /** A push monitor (#177): its schedule, the time its next result counts from, a run in flight, its last ok. */
+  query?: string;
+  every_ms?: number | null;
+  grace_ms?: number | null;
+  due_from?: number | null;
+  started_at?: number | null;
+  last_ok_at?: number | null;
+  paused_at?: number | null;
+  created_at?: number;
 };
 
 /** A call sent for a stretch, or a new-fingerprints call (`sent`). */
@@ -153,7 +166,24 @@ export type MonitorStretch = {
   called_at: number | null;
   open_call: "sent" | "failed" | "silenced" | "none" | null;
   resolved_call: "sent" | "failed" | "silenced" | "none" | null;
+  /** A push monitor opened by a result that never came: when it was due (#177). */
+  due_at?: number | null;
   calls: MonitorCall[];
+};
+
+/** A result, as a lane draws it (#177): the worst of its column of the clock. */
+export type PushResultRow = {
+  id: number;
+  monitor_id: string;
+  at: number;
+  result: "ok" | "warn" | "fail";
+  exit_code: number | null;
+  duration_ms: number | null;
+  value: number | null;
+  unit: string | null;
+  message: string;
+  host: string;
+  via: string;
 };
 
 /** An HTTP(S) monitor's last run (#178). */
@@ -182,10 +212,13 @@ export type HttpMonitorView = {
   last_run: HttpLastRun | null;
 };
 
+
 /** A monitor as `GET /api/monitors` lists it. */
 export type MonitorView = AlertRule & {
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   open: MonitorStretch | null;
+  /** A fewer-than monitor's newest matching line; null when none in a year, absent when unread. */
+  last_line_at?: number | null;
   /** Set on an HTTP(S) monitor. Fixtures may leave it out. */
   http?: HttpMonitorView | null;
 };
@@ -210,21 +243,6 @@ export type HttpSendResult = {
   duration_ms: number;
 };
 
-/** A result on a lane: the worst of its column (`GET /api/monitors` `results`). */
-export type MonitorResultRow = {
-  id: number;
-  monitor_id: string;
-  at: number;
-  result: "ok" | "warn" | "fail";
-  exit_code: number | null;
-  duration_ms: number | null;
-  value: number | null;
-  unit: string | null;
-  message: string;
-  host: string;
-  via: string;
-};
-
 export type MonitorsResponse = {
   now: number;
   from: string;
@@ -232,7 +250,10 @@ export type MonitorsResponse = {
   monitors: MonitorView[];
   stretches: MonitorStretch[];
   sent: MonitorCall[];
-  /** Results for the lanes' ticks, the worst of each of 240 columns a monitor. Older servers leave it out. */
-  results?: MonitorResultRow[];
+  /** Results in the window, at most 240 columns a lane; older servers and fixtures leave them out. */
+  results?: PushResultRow[];
   link: boolean;
 };
+
+/** A monitor's own page: a push monitor's key and last result come only here. */
+export type MonitorPage = MonitorView & { ping_key?: string | null; last?: PushResultRow | null; stretches: MonitorStretch[] };

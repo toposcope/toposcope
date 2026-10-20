@@ -86,6 +86,20 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "last_result", "TEXT");
   addColumnIfMissing(db, "alert_rules", "last_value", "REAL");
   addColumnIfMissing(db, "alert_rules", "last_result_at", "INTEGER");
+  // A search monitor opens at least or fewer than its threshold, and says why it could not tell (#176).
+  addColumnIfMissing(db, "alert_rules", "opens_when", "TEXT NOT NULL DEFAULT 'at_least'");
+  addColumnIfMissing(db, "alert_rules", "cant_tell", "TEXT");
+  // A push monitor (#177): its keyed URL, when its next result is due and how long past that it
+  // waits, when its due time counts from, the run started and not yet ended, its last ok, and
+  // when it was paused (any monitor).
+  addColumnIfMissing(db, "alert_rules", "ping_key", "TEXT");
+  addColumnIfMissing(db, "alert_rules", "every_ms", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "grace_ms", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "due_from", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "started_at", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "last_ok_at", "INTEGER");
+  addColumnIfMissing(db, "alert_rules", "paused_at", "INTEGER");
+  db.run("CREATE UNIQUE INDEX IF NOT EXISTS alert_rules_ping_key ON alert_rules (ping_key) WHERE ping_key IS NOT NULL");
   // A monitor's results for Watch's ticks (#177, #178), shared by the sources that have results: one row
   // a monitor a minute, the worst of the minute winning (fail > warn > ok, of equals the later), for
   // 30 days. Each result is also a log row. Exit code, unit, host and via are push's, for 18f / 18s.
@@ -130,6 +144,8 @@ export function migrateControlDb(db: Database): void {
   db.run(
     "CREATE INDEX IF NOT EXISTS monitor_stretches_by_monitor ON monitor_stretches (monitor_id, opened_at)",
   );
+  // When the result a push monitor missed was due (#177): Watch draws it late from there.
+  addColumnIfMissing(db, "monitor_stretches", "due_at", "INTEGER");
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

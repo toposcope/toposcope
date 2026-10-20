@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CircleAlert, Check, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DialogField } from "@/components/ui/dialog";
+import { MonitorField, MonitorSwitch } from "@/components/monitor-field";
 import {
   alertBodyContentType,
   alertBodyProblem,
@@ -44,6 +44,10 @@ type Props = {
   canLink: boolean;
   /** The draft to test, or null while it cannot be sent (no search, no webhook, a bad body). */
   testDraft: () => Record<string, unknown> | null;
+  /** The editor's footer holds the test call for a default body (18j); a body of its own keeps it under it (18t). */
+  testInFooter?: boolean;
+  /** A search monitor that opens on fewer than its threshold reads its Slack line the other way round (#176). */
+  fewerThan?: boolean;
 };
 
 function isSlackUrl(url: string): boolean {
@@ -68,6 +72,8 @@ export function AlertBodyField({
   preview,
   canLink,
   testDraft,
+  testInFooter = false,
+  fewerThan = false,
 }: Props) {
   const area = useRef<HTMLTextAreaElement | null>(null);
   const resolvedArea = useRef<HTMLTextAreaElement | null>(null);
@@ -106,50 +112,31 @@ export function AlertBodyField({
 
   return (
     <>
-      <div className="h-px bg-white/[0.08]" />
-      <DialogField label="Body">
+      <MonitorField label="Body">
         <span className="flex items-center gap-2.5">
-          <span
-            role="radiogroup"
-            aria-label="Body"
-            className="inline-flex h-7 overflow-hidden rounded-[6.4px] border border-white/15"
-          >
-            {(
-              [
-                ["default", "Default"],
-                ["text", "Text"],
-                ["json", "JSON"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={bodyKind === id}
-                onClick={() => pick(id)}
-                className={
-                  bodyKind === id
-                    ? "bg-accent px-2.5 text-[12px] text-foreground"
-                    : "px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
-                }
-              >
-                {label}
-              </button>
-            ))}
-          </span>
+          <MonitorSwitch
+            label="Body"
+            value={bodyKind}
+            options={[
+              ["default", "Default"],
+              ["text", "Text"],
+              ["json", "JSON"],
+            ]}
+            onChange={pick}
+          />
           {bodyKind !== "default" ? (
             <span className="font-mono text-[11.5px] text-muted-foreground">
               content-type: {alertBodyContentType(bodyKind).replace("; charset=utf-8", "")}
             </span>
           ) : null}
         </span>
-      </DialogField>
-      {bodyKind === "default" && resolves ? (
-        <p className="text-[12px] text-muted-foreground">
-          Sends <span className="font-mono">state</span> as open, reminder or resolved, with{" "}
-          <span className="font-mono">opened_at</span> and <span className="font-mono">resolved_at</span>.
-        </p>
-      ) : null}
+        {bodyKind === "default" && resolves ? (
+          <p className="text-[12.5px] text-muted-foreground">
+            Sends <span className="font-mono">state</span> as open, reminder or resolved, with{" "}
+            <span className="font-mono">opened_at</span> and <span className="font-mono">resolved_at</span>.
+          </p>
+        ) : null}
+      </MonitorField>
       {bodyKind !== "default" ? (
         <div className="grid grid-cols-[minmax(0,1fr)_240px] gap-4">
           <div className="flex min-w-0 flex-col gap-2">
@@ -268,30 +255,35 @@ export function AlertBodyField({
               </div>
             ) : (
               <div>
-                <b>{preview.series}</b> {preview.value ?? "…"} ≥ {preview.threshold}
+                <b>{preview.series}</b> {preview.value ?? "…"} {fewerThan ? "<" : "≥"} {preview.threshold}
               </div>
             )}
             {canLink ? <span className="text-sky-300">Open in Toposcope</span> : null}
           </div>
         </div>
       ) : null}
-      <TestCall
-        alertKind={alertKind}
-        disabled={problem !== null || resolvedProblem !== null}
-        testDraft={testDraft}
-      />
+      {testInFooter ? null : (
+        <TestCall
+          alertKind={alertKind}
+          disabled={problem !== null || resolvedProblem !== null}
+          testDraft={testDraft}
+        />
+      )}
     </>
   );
 }
 
-function TestCall({
+export function TestCall({
   alertKind,
   disabled,
   testDraft,
+  hint = true,
 }: {
   alertKind: FillInKind;
   disabled: boolean;
   testDraft: () => Record<string, unknown> | null;
+  /** The line beside the button before anything is sent; the footer's button stands alone (18j). */
+  hint?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<TestCallResult | null>(null);
@@ -376,7 +368,7 @@ function TestCall({
           <span role="status" className="text-[12px] text-red-300">
             {error}
           </span>
-        ) : (
+        ) : !hint ? null : (
           <span className="text-[11.5px] text-muted-foreground">
             {alertKind === "first_seen"
               ? "Sends this body now, filled in from the last mark it watched."

@@ -1,5 +1,6 @@
 import { getAlert, recordWebhookAttempt } from "../control/alerts";
 import { getDb } from "../control/index";
+import { getDefaultWebhook } from "../control/settings";
 import { insertEvents } from "../ingest/index";
 import { insertMetricPoints } from "../ingest/metrics";
 import { incMetric } from "../metrics";
@@ -21,8 +22,9 @@ const maxInFlight = 8;
 const running = new Set<string>();
 
 export function httpMonitorDeps(): HttpMonitorDeps {
+  const db = getDb();
   return {
-    db: getDb(),
+    db,
     request: runHttpRequest,
     write: async (row, metric) => {
       await insertEvents([row]);
@@ -33,6 +35,8 @@ export function httpMonitorDeps(): HttpMonitorDeps {
     post: postWebhook,
     publicUrl,
     recordWebhook: recordWebhookAttempt,
+    // A monitor without a webhook of its own calls the one in Settings, if any (#177).
+    defaultWebhook: () => getDefaultWebhook(db),
     onSent: () => incMetric("alert_fires"),
   };
 }

@@ -1,30 +1,33 @@
 import { FormEvent, useEffect, useState } from "react";
+import { ChevronDown, X } from "lucide-react";
 import {
   firstSeenMarksScope,
-  fireWhenHint,
   monitorSentence,
+  monitorTestDraft,
   queryPreview,
   savedWindowLabel,
 } from "@/alert-condition";
 import { MarkGlyph } from "@/components/histogram-marks";
-import { AlertBodyField } from "@/components/alert-body-field";
+import { AlertBodyField, TestCall } from "@/components/alert-body-field";
+import { MonitorField, MonitorSwitch, monitorBox } from "@/components/monitor-field";
 import { alertBodyProblem, resolvedBodyProblem, type AlertBodyKind } from "../../shared/alert-body";
-import { defaultRemind, remindIds, type MonitorSource, type RemindId } from "../../shared/monitor";
+import {
+  cantTellWords,
+  defaultRemind,
+  fewerThanProblem,
+  remindIds,
+  type CantTell,
+  type MonitorSource,
+  type OpensWhen,
+  type RemindId,
+} from "../../shared/monitor";
+import { parseRangeMs } from "../../query/relative";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogControl,
-  DialogDescription,
-  DialogField,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { formatAggStat } from "@/fill-histogram";
 import type { AlertKind, AlertRule, SavedSearch } from "@/types";
+import { lastLineWords } from "@/watch";
 import { seriesLabel } from "../../query/agg";
 
 export type AlertDraft =
@@ -42,6 +45,7 @@ export type MonitorInput = {
   body_template: string;
   resolved_body: string | null;
   remind_every: RemindId;
+  opens_when: OpensWhen;
 };
 
 type Probe = {
@@ -49,6 +53,10 @@ type Probe = {
   refused: boolean;
   reason?: string;
   agg: string | null;
+  /** When the search last matched a line (#176); null when none in a year, absent when unread. */
+  lastLineAt?: number | null;
+  /** Why a fewer-than reading now could not open it (#176). */
+  cantTell: CantTell | null;
 };
 
 type Props = {
@@ -63,6 +71,15 @@ type Props = {
   canLink: boolean;
 };
 
+/** "15m": the window a monitor's search reads, or "its window" for a fixed from/to. */
+function windowWords(item: { range: string | null } | undefined): string {
+  return item?.range ?? "its window";
+}
+
+/**
+ * Frame 18j: a saved-search monitor, at least or fewer than, shut while it can't tell; the
+ * resolved body as 18t and 18u draw it. A new-fingerprints monitor uses the same rows.
+ */
 export function AlertRuleDialog({
   open,
   onOpenChange,
@@ -81,6 +98,7 @@ export function AlertRuleDialog({
   const [bodyTemplate, setBodyTemplate] = useState("");
   const [resolvedBody, setResolvedBody] = useState("");
   const [remind, setRemind] = useState<RemindId>(defaultRemind);
+  const [opensWhen, setOpensWhen] = useState<OpensWhen>("at_least");
   const [savedSearchId, setSavedSearchId] = useState("");
   const [threshold, setThreshold] = useState("1");
   const [webhook, setWebhook] = useState("");
@@ -93,10 +111,13 @@ export function AlertRuleDialog({
   const seriesName = seriesLabel(selected?.agg ?? null);
   const thresholdN = Number(threshold);
   const fingerprints = kind === "first_seen";
+  const fewer = !fingerprints && opensWhen === "fewer_than";
   // A first-seen alert counts events: a whole number, at least 1.
   const thresholdOk = fingerprints
     ? Number.isInteger(thresholdN) && thresholdN >= 1
     : Number.isFinite(thresholdN) && thresholdN > 0;
+  // A percentile over no lines has no value, and a fixed window never moves on (#176).
+  const fewerProblem = fewer && selected ? fewerThanProblem(selected) : null;
 
   useEffect(() => {
     if (!open || !draft) {
@@ -110,6 +131,7 @@ export function AlertRuleDialog({
       setBodyTemplate(draft.rule.body_template ?? "");
       setResolvedBody(draft.rule.resolved_body ?? "");
       setRemind(draft.rule.remind_every ?? "window");
+      setOpensWhen(draft.rule.opens_when ?? "at_least");
       setSavedSearchId(draft.rule.saved_search_id ?? "");
       setThreshold(String(draft.rule.threshold));
       setWebhook(draft.rule.webhook_url ?? "");
@@ -122,6 +144,7 @@ export function AlertRuleDialog({
     setBodyTemplate("");
     setResolvedBody("");
     setRemind(defaultRemind);
+    setOpensWhen("at_least");
     setSavedSearchId(draft.savedSearchId);
     setThreshold("1");
     setWebhook("");
@@ -149,6 +172,8 @@ export function AlertRuleDialog({
           refused?: boolean;
           agg?: string | null;
           reason?: string;
+          last_line_at?: number | null;
+          cant_tell?: CantTell | null;
         };
         if (ac.signal.aborted) {
           return;
@@ -158,6 +183,8 @@ export function AlertRuleDialog({
           refused: Boolean(json.refused),
           reason: json.reason,
           agg: json.agg ?? null,
+          ...("last_line_at" in json ? { lastLineAt: json.last_line_at } : {}),
+          cantTell: json.cant_tell ?? null,
         });
       } catch (err) {
         if (ac.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) {
@@ -173,10 +200,19 @@ export function AlertRuleDialog({
     return () => ac.abort();
   }, [open, savedSearchId]);
 
+  const bodyProblem = alertBodyProblem(bodyKind, bodyTemplate, kind);
+  const resolvedProblem = fingerprints ? null : resolvedBodyProblem(bodyKind, resolvedBody, kind);
+  const blocked =
+    !thresholdOk ||
+    bodyProblem !== null ||
+    resolvedProblem !== null ||
+    fewerProblem !== null ||
+    (!fingerprints && Boolean(probe?.refused));
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed || !savedSearchId || !thresholdOk || bodyProblem || resolvedProblem || (!fingerprints && probe?.refused)) {
+    if (!trimmed || !savedSearchId || blocked) {
       return;
     }
     setBusy(true);
@@ -188,6 +224,7 @@ export function AlertRuleDialog({
         body_template: bodyTemplate,
         resolved_body: fingerprints || bodyKind === "default" || !resolvedBody.trim() ? null : resolvedBody,
         remind_every: remind,
+        opens_when: fingerprints ? "at_least" : opensWhen,
         saved_search_id: savedSearchId,
         threshold: thresholdN,
         webhook_url: webhook.trim(),
@@ -225,23 +262,21 @@ export function AlertRuleDialog({
     setSavedSearchId(id);
   }
 
-  const bodyProblem = alertBodyProblem(bodyKind, bodyTemplate, kind);
-  const resolvedProblem = fingerprints ? null : resolvedBodyProblem(bodyKind, resolvedBody, kind);
-
   function testDraft(): Record<string, unknown> | null {
-    if (!savedSearchId || !thresholdOk || bodyProblem || !/^https?:\/\//.test(webhook.trim())) {
-      return null;
-    }
-    return {
+    return monitorTestDraft({
       id: editing?.id,
-      name: name.trim(),
+      name,
       kind,
-      saved_search_id: savedSearchId,
+      savedSearchId,
       threshold: thresholdN,
-      webhook_url: webhook.trim(),
-      body_kind: bodyKind,
-      body_template: bodyTemplate,
-    };
+      thresholdOk,
+      opensWhen,
+      webhook,
+      bodyKind,
+      bodyTemplate,
+      resolvedBody,
+      problem: bodyProblem !== null || fewerProblem !== null,
+    });
   }
 
   function onPickKind(next: AlertKind) {
@@ -251,282 +286,288 @@ export function AlertRuleDialog({
     }
   }
 
-  const wouldOpen =
-    probe !== null &&
-    !probe.refused &&
-    thresholdOk &&
-    probe.value >= thresholdN;
+  const reads = probe !== null && !probe.refused && thresholdOk;
+  const wouldOpen = reads && (fewer ? probe.value < thresholdN : probe.value >= thresholdN);
+  const windowMs = (selected?.range ? parseRangeMs(selected.range) : null) ?? 5 * 60_000;
+  // Too few lines while it can't tell keeps it shut (#176): say why instead of "would open".
+  const cantTell =
+    fewer && wouldOpen && probe?.cantTell
+      ? cantTellWords({ cant_tell: probe.cantTell, last_status: null }, windowMs, Date.now())
+      : null;
+  const testHere = bodyKind === "default";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(760px,calc(100vw-32px))] overflow-y-auto">
-        <DialogHeader>
-          {/* 18j: New monitor / its source; 18t: its source / its name. */}
-          <DialogTitle className="flex min-w-0 items-baseline gap-2">
-            <span className="shrink-0 font-normal text-muted-foreground">
+      {/* 18j draws a default body at about 630px; 18t widens it for a body of its own and its fill-ins. */}
+      <DialogContent
+        className={`max-h-[calc(100vh-32px)] overflow-y-auto p-0 ${
+          bodyKind === "default" ? "max-w-[min(640px,calc(100vw-32px))]" : "max-w-[min(860px,calc(100vw-32px))]"
+        }`}
+      >
+        {/* 18j: New monitor / its source; 18t: its source / its name. */}
+        <div className="flex items-center gap-2 border-b px-[18px] py-3.5">
+          <DialogTitle className="flex min-w-0 items-baseline gap-2.5">
+            <span className="shrink-0 text-[13px] font-normal text-muted-foreground">
               {editing ? (fingerprints ? "New fingerprints" : "Saved search") : "New monitor"}
             </span>
             <span className="font-normal text-muted-foreground">/</span>
             <span className="truncate">{editing ? editing.name : fingerprints ? "New fingerprints" : "Saved search"}</span>
           </DialogTitle>
-          {editing ? (
-          <div
-            role="radiogroup"
-            aria-label="Kind"
-            className="mt-1 inline-flex h-[30px] self-start overflow-hidden rounded-[6.4px] border border-white/15"
+          <button
+            type="button"
+            aria-label="Close"
+            className="ml-auto flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            onClick={() => onOpenChange(false)}
           >
-            {(
-              [
-                ["threshold", "Saved search"],
-                ["first_seen", "New fingerprints"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={kind === id}
-                onClick={() => onPickKind(id)}
-                className={
-                  kind === id
-                    ? "bg-accent px-3 text-[12.5px] text-foreground"
-                    : "px-3 text-[12.5px] text-muted-foreground hover:text-foreground"
-                }
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          ) : null}
-          <DialogDescription>
-            {fingerprints ? (
-              <>
-                Pages when an error fingerprint in{" "}
-                <b className="text-foreground">{selected?.name ?? "this search"}</b> is first seen
-                after a <b className="text-foreground">deploy</b> or{" "}
-                <b className="text-foreground">flag</b> mark, with at least{" "}
-                <b className="text-foreground">{thresholdOk ? threshold : "N"}</b>{" "}
-                {thresholdN === 1 ? "event" : "events"} after it. Each mark is watched for 24 hours,
-                and each fingerprint is sent once, for the last mark before it first appeared.
-              </>
-            ) : selected ? (
-              monitorSentence(selected, thresholdOk ? threshold : "N", remind)
-            ) : (
-              "Opens when this series is at or above the threshold, and says when it resolved."
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="flex flex-col gap-3" onSubmit={(e) => void submit(e)}>
-          {lockSearch ? null : (
-            <DialogField label="Search">
-              <DialogControl>
-                <select
-                  id="alert-search"
-                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none"
-                  value={savedSearchId}
-                  onChange={(e) => onPickSearch(e.target.value)}
-                  disabled={saved.length === 0}
-                >
-                  {watchable.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} · {seriesLabel(item.agg ?? null)}
-                    </option>
-                  ))}
-                </select>
-              </DialogControl>
-            </DialogField>
-          )}
-          {selected ? (
-            <div className="rounded-[4.4px] border border-white/10 bg-accent/30 px-2.5 py-2">
-              {lockSearch ? (
-                <p className="text-[13px]">{selected.name}</p>
-              ) : null}
-              <p
-                className="truncate font-mono text-[11.5px]"
-                title={queryPreview(selected.query)}
-              >
-                {queryPreview(selected.query)}
-              </p>
-              {fingerprints ? null : (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {savedWindowLabel(selected)} · {seriesName}
-                </p>
+            <X className="size-3.5" />
+          </button>
+        </div>
+        <form className="flex flex-col" onSubmit={(e) => void submit(e)}>
+          <div className="flex flex-col gap-3.5 px-[18px] py-4">
+            <DialogDescription className={fingerprints ? "text-[12.5px]" : "sr-only"}>
+              {fingerprints ? (
+                <>
+                  Pages when an error fingerprint in{" "}
+                  <b className="text-foreground">{selected?.name ?? "this search"}</b> is first seen
+                  after a <b className="text-foreground">deploy</b> or{" "}
+                  <b className="text-foreground">flag</b> mark, with at least{" "}
+                  <b className="text-foreground">{thresholdOk ? threshold : "N"}</b>{" "}
+                  {thresholdN === 1 ? "event" : "events"} after it. Each mark is watched for 24 hours,
+                  and each fingerprint is sent once, for the last mark before it first appeared.
+                </>
+              ) : selected ? (
+                monitorSentence(selected, thresholdOk ? threshold : "N", remind, opensWhen)
+              ) : (
+                "Opens when this series is at least, or fewer than, the threshold, and says when it resolved."
               )}
-              {fingerprints ? null : probeLoading && !probe ? (
-                <p className="mt-1.5 text-[11px] text-muted-foreground">Checking…</p>
-              ) : probe?.refused ? (
-                <p className="mt-1.5 text-[11px] text-destructive">
-                  {probe.reason ?? "This series cannot be evaluated."}
-                </p>
-              ) : probe ? (
-                <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span>
-                    Now {formatAggStat(probe.value)}
-                    {thresholdOk ? ` · threshold ${threshold}` : ""}
-                  </span>
-                  {wouldOpen ? (
-                    <Badge variant="error">would open</Badge>
-                  ) : (
-                    <span>below threshold</span>
-                  )}
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <p className="text-[12px] text-muted-foreground">Save a search first.</p>
-          )}
-          {fingerprints ? (
-            <DialogField label="Marks">
-              <span className="flex flex-wrap items-center gap-2 text-[12px]">
-                {(["deploy", "flag"] as const).map((k) => (
-                  <span
-                    key={k}
-                    className="inline-flex h-6 items-center gap-1.5 rounded-[4px] bg-accent px-2"
+            </DialogDescription>
+            {editing ? (
+              <MonitorField label="Source">
+                <MonitorSwitch
+                  label="Source"
+                  value={kind}
+                  options={[
+                    ["threshold", "Saved search"],
+                    ["first_seen", "New fingerprints"],
+                  ]}
+                  onChange={onPickKind}
+                />
+              </MonitorField>
+            ) : null}
+            <MonitorField label="Search" htmlFor="alert-search">
+              {lockSearch ? (
+                <span className={monitorBox}>
+                  {selected?.name ?? "—"} · {seriesName}
+                </span>
+              ) : (
+                <span className={`${monitorBox} relative pr-7`}>
+                  <select
+                    id="alert-search"
+                    className="min-w-0 flex-1 appearance-none bg-transparent text-[13px] outline-none"
+                    value={savedSearchId}
+                    onChange={(e) => onPickSearch(e.target.value)}
+                    disabled={saved.length === 0}
                   >
-                    <MarkGlyph kind={k} size={10} />
-                    {k}
+                    {watchable.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} · {seriesLabel(item.agg ?? null)}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown aria-hidden className="pointer-events-none absolute right-2.5 size-3 text-muted-foreground" />
+                </span>
+              )}
+              {selected ? (
+                <span
+                  className="truncate font-mono text-[12px] text-muted-foreground"
+                  title={queryPreview(selected.query)}
+                >
+                  {queryPreview(selected.query)}
+                  {fingerprints ? "" : ` · ${savedWindowLabel(selected).toLowerCase()} · ${seriesName}`}
+                </span>
+              ) : (
+                <span className="text-[12px] text-muted-foreground">Save a search first.</span>
+              )}
+            </MonitorField>
+            {fingerprints ? (
+              <MonitorField label="Marks">
+                <span className="flex flex-wrap items-center gap-2 text-[12px]">
+                  {(["deploy", "flag"] as const).map((k) => (
+                    <span key={k} className="inline-flex h-6 items-center gap-1.5 rounded-[4px] bg-accent px-2">
+                      <MarkGlyph kind={k} size={10} />
+                      {k}
+                    </span>
+                  ))}
+                  <span className="text-[11.5px] text-muted-foreground">
+                    {firstSeenMarksScope(selected?.query ?? "")} · watched for 24h each
                   </span>
-                ))}
-                <span className="text-[11.5px] text-muted-foreground">
-                  {firstSeenMarksScope(selected?.query ?? "")} · watched for 24h each
+                </span>
+              </MonitorField>
+            ) : null}
+            <MonitorField label={fingerprints ? "Fire when" : "Opens when"} htmlFor="alert-threshold">
+              <span className="flex flex-wrap items-center gap-2.5">
+                {fingerprints ? (
+                  <span className="text-[13px] text-muted-foreground">at least</span>
+                ) : (
+                  <>
+                    <span className="font-mono text-[13px]">{seriesName === "Count" ? "count" : seriesName}</span>
+                    <MonitorSwitch
+                      label="Opens when"
+                      value={opensWhen}
+                      options={[
+                        ["at_least", "at least"],
+                        ["fewer_than", "fewer than"],
+                      ]}
+                      onChange={setOpensWhen}
+                    />
+                  </>
+                )}
+                <input
+                  id="alert-threshold"
+                  type="number"
+                  min={fingerprints ? 1 : 0}
+                  step={fingerprints ? 1 : "any"}
+                  value={threshold}
+                  autoFocus={Boolean(draft && draft.mode === "create")}
+                  onChange={(e) => setThreshold(e.target.value)}
+                  className={`${monitorBox} w-[70px] bg-transparent font-mono outline-none`}
+                />
+                <span className="text-[13px] text-muted-foreground">
+                  {fingerprints ? "events of a new fingerprint after the mark" : `in ${windowWords(selected)}`}
                 </span>
               </span>
-            </DialogField>
-          ) : null}
-          <DialogField
-            label={fingerprints ? "Fire when" : "Opens when"}
-            help={
-              fingerprints
-                ? "events of a new fingerprint after the mark"
-                : fireWhenHint(selected?.agg ?? null)
-            }
-          >
-            <DialogControl>
-              {fingerprints ? null : (
-                <span className="shrink-0 font-mono text-[13px]">{seriesName}</span>
+              {fingerprints || !selected ? null : (
+                <span className="flex flex-col gap-1 rounded-[6px] border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2">
+                  {fewerProblem ? (
+                    <span className="text-[12.5px] text-destructive">{fewerProblem[0]!.toUpperCase() + fewerProblem.slice(1)}.</span>
+                  ) : probeLoading && !probe ? (
+                    <span className="text-[12.5px] text-muted-foreground">Checking…</span>
+                  ) : probe?.refused ? (
+                    <span className="text-[12.5px] text-destructive">{probe.reason ?? "This series cannot be evaluated."}</span>
+                  ) : probe ? (
+                    <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+                      <span className="shrink-0 font-mono">now {formatAggStat(probe.value)}</span>
+                      {fewer ? (
+                        <>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="min-w-0 truncate font-mono">
+                            last line {lastLineWords(probe.lastLineAt, Date.now())}
+                          </span>
+                        </>
+                      ) : null}
+                      <span className="ml-auto shrink-0">
+                        {cantTell ? (
+                          <span className="text-[12px] text-muted-foreground">can't tell: {cantTell}</span>
+                        ) : wouldOpen ? (
+                          <Badge variant="error">would open</Badge>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground">
+                            {fewer ? "at or above threshold" : "below threshold"}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  ) : null}
+                  {fewer && !fewerProblem ? (
+                    <span className="text-[12.5px] leading-[1.45] text-muted-foreground">
+                      Stays shut while it can't tell: the first {windowWords(selected)} after Toposcope starts, a
+                      refused reading, or a linked source that is behind.
+                    </span>
+                  ) : null}
+                </span>
               )}
-              <span className="text-muted-foreground">≥</span>
-              <input
-                id="alert-threshold"
-                type="number"
-                min={fingerprints ? 1 : 0}
-                step={fingerprints ? 1 : "any"}
-                value={threshold}
-                autoFocus={Boolean(draft && draft.mode === "create")}
-                onChange={(e) => setThreshold(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
-              />
-            </DialogControl>
-          </DialogField>
-          {fingerprints ? null : (
-            <DialogField label="Remind">
-              <span
-                role="radiogroup"
-                aria-label="Remind"
-                className="inline-flex h-7 self-start overflow-hidden rounded-[6.4px] border border-white/15"
-              >
-                {remindIds.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="radio"
-                    aria-checked={remind === id}
-                    onClick={() => setRemind(id)}
-                    className={
-                      remind === id
-                        ? "bg-accent px-2.5 text-[12px] text-foreground"
-                        : "px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
-                    }
-                  >
-                    {id === "window" ? `every ${selected?.range ?? "5m"}` : id}
-                  </button>
-                ))}
-              </span>
-            </DialogField>
-          )}
-          <DialogField label="Name">
-            <DialogControl>
+            </MonitorField>
+            {fingerprints ? null : (
+              <MonitorField label="Remind">
+                <MonitorSwitch
+                  label="Remind"
+                  value={remind}
+                  options={remindIds.map((id) => [id, id === "window" ? `every ${selected?.range ?? "5m"}` : id] as const)}
+                  onChange={setRemind}
+                />
+              </MonitorField>
+            )}
+            <MonitorField label="Name" htmlFor="alert-name">
               <input
                 id="alert-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent text-[13px] outline-none"
+                className={`${monitorBox} bg-transparent outline-none`}
               />
-            </DialogControl>
-          </DialogField>
-          <DialogField label="Webhook">
-            <DialogControl>
+            </MonitorField>
+            <MonitorField label="Webhook" htmlFor="alert-webhook">
               <input
                 id="alert-webhook"
                 value={webhook}
                 onChange={(e) => setWebhook(e.target.value)}
                 placeholder="https://hooks.slack.com/services/… or https://example.com/hook"
-                className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground"
+                className={`${monitorBox} bg-transparent font-mono outline-none placeholder:text-muted-foreground`}
               />
-            </DialogControl>
-          </DialogField>
-          <AlertBodyField
-            alertKind={kind}
-            bodyKind={bodyKind}
-            onBodyKind={setBodyKind}
-            template={bodyTemplate}
-            onTemplate={setBodyTemplate}
-            resolvedBody={resolvedBody}
-            onResolvedBody={setResolvedBody}
-            webhook={webhook}
-            preview={{
-              name: name.trim(),
-              query: selected?.query ?? "",
-              series: seriesName,
-              value: probe && !probe.refused ? formatAggStat(probe.value) : null,
-              threshold,
-            }}
-            canLink={canLink}
-            testDraft={testDraft}
-          />
-          {editing &&
-          (editing.consecutive_failures > 0 ||
-            editing.last_status === "refused" ||
-            editing.last_status === "error") ? (
-            <p className="text-[12px] text-destructive" title={editing.last_error ?? undefined}>
-              Last attempt {editing.last_status ?? "error"}
-              {editing.consecutive_failures > 1
-                ? ` ×${editing.consecutive_failures}`
-                : ""}
-              {editing.last_attempt_at
-                ? ` · ${new Date(editing.last_attempt_at).toISOString().slice(0, 16).replace("T", " ")}Z`
-                : ""}
-            </p>
-          ) : null}
-          <DialogFooter>
-            <Button
-              type="submit"
-              className="h-8"
-              disabled={
-                busy ||
-                saved.length === 0 ||
-                !thresholdOk ||
-                bodyProblem !== null ||
-                resolvedProblem !== null ||
-                (!fingerprints && Boolean(probe?.refused))
-              }
-            >
-              {editing ? "Save" : "Create"}
-            </Button>
+            </MonitorField>
+            <AlertBodyField
+              alertKind={kind}
+              bodyKind={bodyKind}
+              onBodyKind={setBodyKind}
+              template={bodyTemplate}
+              onTemplate={setBodyTemplate}
+              resolvedBody={resolvedBody}
+              onResolvedBody={setResolvedBody}
+              webhook={webhook}
+              preview={{
+                name: name.trim(),
+                query: selected?.query ?? "",
+                series: seriesName,
+                value: probe && !probe.refused ? formatAggStat(probe.value) : null,
+                threshold,
+              }}
+              canLink={canLink}
+              testDraft={testDraft}
+              testInFooter={testHere}
+              fewerThan={fewer}
+            />
+            {editing &&
+            (editing.consecutive_failures > 0 ||
+              editing.last_status === "refused" ||
+              editing.last_status === "error") ? (
+              <p className="text-[12px] text-destructive" title={editing.last_error ?? undefined}>
+                Last attempt {editing.last_status ?? "error"}
+                {editing.consecutive_failures > 1 ? ` ×${editing.consecutive_failures}` : ""}
+                {editing.last_attempt_at
+                  ? ` · ${new Date(editing.last_attempt_at).toISOString().slice(0, 16).replace("T", " ")}Z`
+                  : ""}
+              </p>
+            ) : null}
+          </div>
+          {/* 18j: the test call on the left, Cancel and Create on the right. */}
+          <div className="flex items-start gap-2 border-t px-[18px] py-3">
+            <span className="min-w-0 flex-1">
+              {testHere ? (
+                <TestCall
+                  alertKind={kind}
+                  disabled={bodyProblem !== null || resolvedProblem !== null}
+                  testDraft={testDraft}
+                  hint={false}
+                />
+              ) : null}
+            </span>
             {editing ? (
               <Button
                 type="button"
                 variant="ghost"
-                className="h-8 text-destructive"
+                className="h-[30px] text-destructive"
                 disabled={busy}
                 onClick={() => void remove()}
               >
                 Delete
               </Button>
             ) : null}
-            <span className="flex-1" />
-            <DialogClose type="button">Cancel</DialogClose>
-          </DialogFooter>
+            <DialogClose type="button" className="h-[30px] border border-white/15 text-foreground">
+              Cancel
+            </DialogClose>
+            <Button type="submit" className="h-[30px]" disabled={busy || saved.length === 0 || blocked}>
+              {editing ? "Save" : "Create"}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
