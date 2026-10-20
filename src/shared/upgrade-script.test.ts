@@ -1,0 +1,272 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+// #198: upgrade.sh, the operator script that upgrades a packaged install with a backup first and a
+// way back. Docker, the instance, GitHub's releases and the release files all stand in on loopback:
+// nothing real is started, pulled or backed up.
+// A start that never comes up waits out its (shortened) wait before going back.
+setDefaultTimeout(60_000);
+
+const root = `${import.meta.dir}/../..`;
+const script = `${root}/upgrade.sh`;
+const scriptText = readFileSync(script, "utf8");
+const token = "ingest-secret-upgrade-3c1e";
+const sha = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
+
+const vector = "sources: {}\n";
+const composeFor = (v: string) => `name: toposcope\nservices:\n  app:\n    image: ghcr.io/toposcope/toposcope:${v}\n`;
+function releaseFiles(v: string): Record<string, string> {
+  const files: Record<string, string> = {
+    "compose.yml": composeFor(v),
+    "env.example": `TOPOSCOPE_PASSWORD=\nTOPOSCOPE_INGEST_TOKEN=\n# TOPOSCOPE_UPDATE_CHECK=off\n`,
+    "vector.yaml": vector,
+    LICENSE: "MIT\n",
+    "toposcope.sh": "#!/usr/bin/env bash\n",
+    "upgrade.sh": scriptText,
+  };
+  files.SHA256SUMS = Object.entries(files).map(([name, body]) => `${sha(body)}  ${name}`).join("\n") + "\n";
+  return files;
+}
+
+let releases: Record<string, Record<string, string>> = {};
+let marks: Array<{ authorization: string | null; body: Record<string, unknown> }> = [];
+let state: string;
+let server: ReturnType<typeof Bun.serve>;
+let fakeBin: string;
+
+const releaseList = () => [
+  { tag_name: "v0.6.2", body: "A patch.\n\n**Before you upgrade:** Monitors remind every 4h by default.\n\nMore." },
+  { tag_name: "v0.6.1", body: "The release check." },
+];
+
+beforeAll(() => {
+  state = mkdtempSync(join(tmpdir(), "toposcope-upgrade-state-"));
+  server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    async fetch(request) {
+      const url = new URL(request.url);
+      if (url.pathname === "/api/health") {
+        const v = existsSync(join(state, "version")) ? readFileSync(join(state, "version"), "utf8").trim() : "";
+        return v
+          ? Response.json({ ok: true, phase: "ready", clickhouse: true, sqlite: true, version: v })
+          : Response.json({ ok: false, phase: "starting" }, { status: 503 });
+      }
+      if (url.pathname === "/v1/marks" && request.method === "POST") {
+        marks.push({ authorization: request.headers.get("authorization"), body: (await request.json()) as Record<string, unknown> });
+        return Response.json({ ingested: 1, id: "mk_test" });
+      }
+      if (url.pathname === "/api/releases/latest") return Response.json({ tag_name: "v0.6.2" });
+      if (url.pathname === "/api/releases") return Response.json(releaseList());
+      const m = /^\/release\/v([\d.]+)\/(.+)$/.exec(url.pathname);
+      const body = m ? releases[m[1]!]?.[m[2]!] : undefined;
+      return body === undefined ? new Response("not found", { status: 404 }) : new Response(body);
+    },
+  });
+  // Docker stands in: it records each call; `up` makes a version healthy unless it is listed as
+  // broken; a restore mends the version it restores; tar writes its file.
+  fakeBin = mkdtempSync(join(tmpdir(), "toposcope-fake-docker-"));
+  writeFileSync(
+    join(fakeBin, "docker"),
+    `#!/usr/bin/env bash
+printf '%s\\n' "$*" >>"$FAKE_STATE/calls"
+args=("$@")
+file=""
+for ((i = 0; i < \${#args[@]}; i++)); do
+  [ "\${args[$i]}" = "-f" ] && [ -z "$file" ] && file="\${args[$((i + 1))]}"
+done
+broken() { grep -qx "$1" "$FAKE_STATE/broken" 2>/dev/null; }
+case " $* " in
+  *" config --format json"*) printf '{\\n  "name": "toposcope",\\n  "services": {}\\n}\\n' ;;
+  *" pull "*) exit 0 ;;
+  *" stop"*) rm -f "$FAKE_STATE/version" ;;
+  *" up -d"*)
+    v="$(sed -n 's/.*toposcope:\\(.*\\)$/\\1/p' "$file" | head -n 1)"
+    broken "$v" || printf '%s\\n' "$v" >"$FAKE_STATE/version" ;;
+  *" logs "*) echo "fake app log line" ;;
+  *"--entrypoint du"*) printf '%s\\t/data\\n' "\${FAKE_DU:-100}" ;;
+  *"--entrypoint tar"*)
+    for a in "$@"; do case "$a" in *:/backup) dir="\${a%:/backup}" ;; esac; done
+    for a in "$@"; do case "$a" in /backup/*.tgz) echo backup >"$dir/\${a#/backup/}" ;; esac; done ;;
+  *"--entrypoint sh"*)
+    for a in "$@"; do case "$a" in ghcr.io/toposcope/toposcope:*) v="\${a#*:}" ;; esac; done
+    grep -vx "$v" "$FAKE_STATE/broken" >"$FAKE_STATE/broken.next" 2>/dev/null; mv "$FAKE_STATE/broken.next" "$FAKE_STATE/broken" ;;
+  *) exit 0 ;;
+esac
+`,
+  );
+  chmodSync(join(fakeBin, "docker"), 0o755);
+});
+
+afterAll(() => {
+  server.stop(true);
+  rmSync(state, { recursive: true, force: true });
+  rmSync(fakeBin, { recursive: true, force: true });
+});
+
+let install: string;
+
+beforeEach(() => {
+  releases = { "0.6.1": releaseFiles("0.6.1"), "0.6.2": releaseFiles("0.6.2") };
+  marks = [];
+  for (const f of ["calls", "broken", "version"]) rmSync(join(state, f), { force: true });
+  writeFileSync(join(state, "version"), "0.6.1\n");
+  writeFileSync(join(state, "broken"), "");
+  install = mkdtempSync(join(tmpdir(), "toposcope-install-"));
+  writeFileSync(join(install, "compose.yml"), composeFor("0.6.1"));
+  writeFileSync(join(install, ".env"), `TOPOSCOPE_PASSWORD=operator-secret\nTOPOSCOPE_INGEST_TOKEN=${token}\n`);
+  writeFileSync(join(install, "vector.yaml"), vector);
+});
+
+async function run(args: string[], env: Record<string, string> = {}) {
+  const child = Bun.spawn(["bash", script, ...args], {
+    cwd: install,
+    env: {
+      ...process.env,
+      TOPOSCOPE_DIR: install,
+      TOPOSCOPE_URL: `http://127.0.0.1:${server.port}`,
+      TOPOSCOPE_RELEASE_BASE: `http://127.0.0.1:${server.port}/release`,
+      TOPOSCOPE_RELEASES_API: `http://127.0.0.1:${server.port}/api/releases`,
+      TOPOSCOPE_UPGRADE_WAIT_SECONDS: "2",
+      COMPOSE_PROJECT_NAME: "",
+      FAKE_STATE: state,
+      PATH: `${fakeBin}:${process.env.PATH}`,
+      ...env,
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [out, err, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
+  return { code, out, err, all: out + err };
+}
+
+const calls = () => (existsSync(join(state, "calls")) ? readFileSync(join(state, "calls"), "utf8") : "");
+const backups = () => (existsSync(join(install, "backups")) ? readdirSync(join(install, "backups")).sort() : []);
+
+describe("upgrade.sh upgrades with a backup first (#198)", () => {
+  test("0.6.1 → 0.6.2: checked files, a backup, the new compose.yml, the new version up, a deploy mark", async () => {
+    const r = await run([]);
+    expect(r.code).toBe(0);
+    expect(r.all).toContain("Toposcope 0.6.1 → 0.6.2");
+    expect(r.all).toContain("Before you upgrade to 0.6.2: Monitors remind every 4h by default.");
+    expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.2"));
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.2");
+    const [b] = backups();
+    expect(b).toMatch(/^\d{8}T\d{6}Z-0\.6\.1$/);
+    for (const f of ["ch_data.tgz", "app_data.tgz", "compose.yml", "version"]) expect(existsSync(join(install, "backups", b!, f))).toBe(true);
+    expect(readFileSync(join(install, "backups", b!, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
+    // The new release's own upgrade.sh finished it.
+    expect(calls()).toContain("pull -q app");
+    expect(r.all).toContain("Toposcope 0.6.2 is up.");
+    expect(marks).toEqual([
+      { authorization: `Bearer ${token}`, body: { kind: "deploy", service: "toposcope", title: "Toposcope 0.6.1 → 0.6.2", attrs: { backup: join(install, "backups", b!) } } },
+    ]);
+    // The pull comes before the stop; the stop before the backup.
+    const log = calls();
+    expect(log.indexOf("pull -q app")).toBeLessThan(log.indexOf(" stop"));
+    expect(log.indexOf(" stop")).toBeLessThan(log.indexOf("--entrypoint tar"));
+    expect(r.all).not.toContain(token);
+    expect(r.all).toContain("New settings in env.example that .env does not have: TOPOSCOPE_UPDATE_CHECK");
+  });
+
+  test("a 0.6.2 that never comes up ends back on 0.6.1, said and marked", async () => {
+    writeFileSync(join(state, "broken"), "0.6.2\n");
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(1);
+    expect(r.all).toContain("Toposcope 0.6.2 did not come up.");
+    expect(r.all).toContain("Back on 0.6.1.");
+    expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
+    expect(marks.map((m) => m.body.title)).toEqual(["Toposcope 0.6.2 did not start; back on 0.6.1"]);
+    expect(calls()).not.toContain("--entrypoint sh");
+  });
+
+  test("when 0.6.1 cannot open its data either, both volumes come back from the backup", async () => {
+    writeFileSync(join(state, "broken"), "0.6.2\n0.6.1\n");
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(1);
+    expect(r.all).toContain("Restoring both volumes from");
+    expect(r.all).toContain("Back on 0.6.1, restored from");
+    expect(calls()).toContain("--entrypoint sh");
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
+    expect(marks.map((m) => m.body.title)).toEqual(["Toposcope 0.6.2 did not start; back on 0.6.1, restored from the backup"]);
+  });
+
+  test("a file changed after it was summed is refused before anything stops", async () => {
+    releases["0.6.2"]!["compose.yml"] = composeFor("0.6.2") + "  evil: {}\n";
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(1);
+    expect(r.all).toContain("compose.yml from the 0.6.2 release does not match its SHA256SUMS. Nothing was changed.");
+    expect(calls()).not.toContain(" stop");
+    expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
+  });
+
+  test("--no-backup skips the backup, and says what the way back is then", async () => {
+    const r = await run(["0.6.2", "--no-backup"]);
+    expect(r.code).toBe(0);
+    expect(r.all).toContain("No backup (--no-backup)");
+    expect(backups()).toEqual([]);
+  });
+
+  test("too little disk for the backup is refused with the numbers, before the files change", async () => {
+    const r = await run(["0.6.2"], { FAKE_DU: "999999999999" });
+    expect(r.code).toBe(1);
+    expect(r.all).toMatch(/The backup needs about \d+ MB and .* has \d+ MB free/);
+    expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
+  });
+
+  test("a version that is not newer is refused, and pointed at rollback", async () => {
+    const r = await run(["0.6.1"]);
+    expect(r.code).toBe(1);
+    expect(r.all).toContain("0.6.1 is not newer than the running 0.6.1. To go back, run: ./upgrade.sh rollback");
+  });
+
+  test("an edited vector.yaml is kept, the new one beside it", async () => {
+    releases["0.6.2"] = { ...releaseFiles("0.6.2") };
+    writeFileSync(join(install, "vector.yaml"), "sources: { mine: {} }\n");
+    const files = releaseFiles("0.6.2");
+    files["vector.yaml"] = "sources: { new: {} }\n";
+    files.SHA256SUMS = Object.entries(files).filter(([n]) => n !== "SHA256SUMS").map(([n, b]) => `${sha(b)}  ${n}`).join("\n") + "\n";
+    releases["0.6.2"] = files;
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(0);
+    expect(readFileSync(join(install, "vector.yaml"), "utf8")).toBe("sources: { mine: {} }\n");
+    expect(readFileSync(join(install, "vector.yaml.new"), "utf8")).toBe("sources: { new: {} }\n");
+  });
+});
+
+describe("backup and rollback", () => {
+  test("backup keeps the last 3", async () => {
+    for (let i = 0; i < 4; i++) expect((await run(["backup"])).code).toBe(0);
+    expect(backups()).toHaveLength(3);
+  });
+
+  test("rollback says what it would lose and goes back only with --yes", async () => {
+    expect((await run(["0.6.2"])).code).toBe(0);
+    const told = await run(["rollback"]);
+    expect(told.code).toBe(1);
+    expect(told.all).toContain("everything stored since then is lost");
+    expect(told.all).toContain("Run ./upgrade.sh rollback --yes to go back.");
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.2");
+    const done = await run(["rollback", "--yes"]);
+    expect(done.code).toBe(0);
+    expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
+    expect(marks.at(-1)!.body.title).toBe("Toposcope 0.6.2 → 0.6.1 (rolled back)");
+  });
+});
+
+describe("the script's reach", () => {
+  test("it talks to this machine and to GitHub, nothing else", () => {
+    const hosts = [...scriptText.matchAll(/https?:\/\/([a-z0-9.-]+)/g)].map((u) => u[1]!);
+    expect([...new Set(hosts)].sort()).toEqual(["127.0.0.1", "api.github.com", "github.com"]);
+  });
+
+  test("it removes only old backups and the volumes it restores", () => {
+    expect(scriptText).not.toMatch(/\bcompose (down|rm|kill)\b/);
+    expect(scriptText).not.toMatch(/\bdocker volume rm\b|\bprune\b/);
+    expect([...scriptText.matchAll(/\brm -rf\b/g)]).toHaveLength(2);
+  });
+});

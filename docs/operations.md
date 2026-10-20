@@ -177,13 +177,58 @@ The app stayed near 30 MiB throughout. A second run, stopped at ten minutes, cli
 
 The packaged Compose file lets ClickHouse use up to 4 GB and the app up to 512 MB.
 
+## What Toposcope calls out to
+
+Toposcope calls out only where this list says. Everything but the first item is something you set up.
+
+- **The release check**, on by default. Once a day, and a few minutes after it starts, the app reads GitHub's public list of releases, `GET https://api.github.com/repos/toposcope/toposcope/releases?per_page=30`, with `User-Agent: toposcope` and nothing else: no version, no instance name, no address. GitHub sees the box's IP. A failed check is noted quietly and tried again the next day. The footer shows what it found, signed-in `GET /api/version` returns it, and the first sight of a new version writes one row (see Paging on a new release below). Set `TOPOSCOPE_UPDATE_CHECK=off` in `.env` and restart to stop it; then nothing is called. It honours `HTTPS_PROXY`.
+- **Webhooks**: each monitor's own, and the default in Settings.
+- **HTTP(S) monitors**: the addresses they check, from this node.
+- **Links**: the instances this one pulls from or serves, as each link says.
+- **`TOPOSCOPE_WATCHDOG_URL`**: the check-in after each monitor pass, when it is set.
+
+**Paging on a new release.** The first time the check sees a version newer than the running one, Toposcope writes one row, `service:toposcope event:update_available`, with `running`, `latest`, `step` (`patch`, `minor` or `major`), `behind` and `url`. It writes one row per version, never again for the same one. To be paged:
+1. Save a search for `service:toposcope event:update_available` over 1 day.
+2. Give it a monitor that opens at **at least 1**, with reminders off.
+3. Add `step:minor OR step:major` to the search to page only on the bigger steps.
+
+A monitor with the default body sends a resolved call a day later, when the row leaves its window. Give it a body of its own with an empty resolved body to send none.
+
 ## Upgrade and retention
+
+### With upgrade.sh
+
+From 0.6.1 every release ships `upgrade.sh`, the operator's script for upgrading a packaged install. Run it on the host, in the directory that holds `compose.yml` and `.env`. It is not the agent skill's `toposcope.sh`: that one never removes data.
+
+```bash
+./upgrade.sh                # to the latest stable release
+./upgrade.sh 0.6.2          # to a given release
+./upgrade.sh 0.6.2 --no-backup
+```
+
+In order, it:
+
+1. Checks that Toposcope answers as healthy. It refuses a release that is not newer than the running one.
+2. Downloads the release's files into `releases/X.Y.Z/` and checks each against its `SHA256SUMS`. If one does not match, nothing else happens.
+3. Prints each newer release's Before you upgrade.
+4. Pulls the new image while the old one still runs.
+5. Checks the free disk, stops the stack, and backs up both volumes into `backups/<UTC time>-<from version>/`, with the `compose.yml` in use. It says where the backup went and how big it is, and keeps the last 3. Ingest is refused while the stack is stopped. The packaged Vector buffers on disk and sends when the app is back, OTLP exporters retry or drop according to their own settings, and syslog over UDP is lost. Every run prints how long the stop lasted.
+6. Swaps `compose.yml`, keeping `.env` and `compose.override.yml`. An edited `vector.yaml` is kept, with the new one beside it as `vector.yaml.new`. Any setting the new `env.example` has that `.env` lacks is named.
+7. Starts the stack and waits up to 10 minutes (`--wait <minutes>`) for `/api/health` to report the new version.
+8. Posts a deploy change mark, `Toposcope 0.6.1 → 0.6.2`.
+
+If the new version does not come up, it prints the app's last log lines, starts the old version with its own `compose.yml`, and marks that. If the old version will not open its data either, it restores both volumes from the backup first.
+
+- **`./upgrade.sh backup`** takes the same backup on its own, then starts the stack again.
+- **`./upgrade.sh rollback --yes`** goes back to the last backup: its `compose.yml` and both volumes. Everything stored since that backup is lost, so without `--yes` it only says which backup and when it was taken.
+
+### By hand
 
 Boot is idempotent. No volume wipe is required for a normal upgrade. The process listens on `:8080` before migrate; `/api/health` is **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe, then **200**. Packaged Compose healthchecks that URL.
 
 On `docker compose stop`, an upgrade or a host shutdown the app finishes the requests in flight and the syslog queue, turns anything new away with **503**, and exits 0. Images up to 0.4.11 ignore the signal: Docker waits ten seconds and kills them, and a request that was still inserting is cut.
 
-Update the application image pin in `compose.yml`, then pull and restart:
+Back up both stores first ([Backup and restore](#backup-and-restore)). Then update the application image pin in `compose.yml`, pull and restart:
 
 ```bash
 docker compose pull
@@ -254,7 +299,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 ## Rollback
 
-To roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
+From 0.6.1, `./upgrade.sh rollback --yes` goes back to the last backup the script took (see [With upgrade.sh](#with-upgradesh)). By hand: to roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
 `0.3.14` is the first public pin. Pin `0.5.7` to roll back application code from `0.6.0`.
 

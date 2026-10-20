@@ -75,7 +75,7 @@ jobs:
         run: |
           cp .env.example env.example
           cp skills/toposcope/toposcope.sh toposcope.sh
-          sha256sum compose.yml env.example vector.yaml LICENSE toposcope.sh > SHA256SUMS
+          sha256sum compose.yml env.example vector.yaml LICENSE toposcope.sh upgrade.sh > SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:
           name: ${{ steps.notes.outputs.title }}
@@ -86,4 +86,5 @@ jobs:
             vector.yaml
             LICENSE
             toposcope.sh
+            upgrade.sh
             SHA256SUMS

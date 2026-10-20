@@ -2,7 +2,11 @@
 
 Newest first. Unreleased work is listed here until the next `v*` tag. Shipped versions match `package.json` at tag time.
 
+A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
+
 ## Unreleased
+
+Upgrading is one command on the host, with a backup first and a way back. Every release ships `upgrade.sh`, an operator script of its own, apart from the agent skill's `toposcope.sh`. `./upgrade.sh [X.Y.Z] [--no-backup]` checks the release's files against its `SHA256SUMS`, prints each newer release's Before you upgrade, pulls the new image while the old one runs, backs up both volumes into `backups/` (keeping the last 3, saying where and how big), swaps `compose.yml` (keeping `.env`, `compose.override.yml` and an edited `vector.yaml`), waits for the new version, and posts a deploy mark. When the new version does not come up it starts the old one again, and restores the backup if the old one cannot open its data either. `./upgrade.sh backup` takes the backup alone; `./upgrade.sh rollback --yes` goes back to the last one. `docs/operations.md` starts its upgrade section with the command and gains What Toposcope calls out to, with the recipe for paging on a new release. [#198](https://github.com/toposcope/toposcope/issues/198), [#199](https://github.com/toposcope/toposcope/issues/199)
 
 A release's files can be checked before they are used. Every release now attaches `SHA256SUMS`, one line per file in `sha256sum` format, and `toposcope.sh` is one of its files, so `sha256sum -c SHA256SUMS` checks a download of all five. `toposcope.sh up` checks each file it downloads against the release's `SHA256SUMS` before it puts it in place: a file that does not match, or one the sums do not list, starts nothing and is named, and a release with no `SHA256SUMS` starts nothing either. [#195](https://github.com/toposcope/toposcope/issues/195)
 
