@@ -44,7 +44,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[440px] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-lg border border-white/12 bg-card p-[18px] shadow-[0_20px_50px_oklch(0_0_0_/_55%)]",
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[440px] grid-cols-[minmax(0,1fr)] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-lg border border-white/12 bg-card p-[18px] shadow-[0_20px_50px_oklch(0_0_0_/_55%)]",
           className,
         )}
         {...props}
