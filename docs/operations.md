@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.5.7` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.6.0` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -221,6 +221,10 @@ Version 0.5.6 changes what panel titles, the Alerts list and Search draw, and no
 
 Version 0.5.7 adds one ClickHouse table at boot, `metric_descriptions`, which keeps the description each metric was sent with. Rolling back to 0.5.6 leaves it in place and unused, and descriptions are no longer shown. A panel there draws only its own metric: its merged lines, line names, title and note are not read, and a saved search saved again there loses them. A link made on 0.5.7 that carries them can open that panel with its Replace and log-scale switches wrong.
 
+Version 0.6.0 turns alerts into monitors, and changes nothing in ClickHouse at boot. SQLite gains columns on `alert_rules` and the tables `monitor_stretches`, `monitor_calls`, `monitor_results` and `monitor_http`. Every alert becomes a monitor that keeps calling once per window while it is open, and now also sends one resolved call when it closes. An alert with a body of its own sends no resolved call until it is given a resolved body. The Alerts view is now Watch, and an old `?view=alerts` link lands there. Push monitors (`POST /v1/checks`, `/ping/<key>`) and HTTP(S) monitors are new, and so are a Settings default webhook and `TOPOSCOPE_WATCHDOG_URL` (see “Who watches Toposcope” above).
+
+Rolling back to 0.5.7 leaves the new columns and tables in place and unused: every rule goes back to calling once per window, with no resolved call, and push and HTTP(S) monitors do not run there; nor does a monitor that relies on the default webhook. Before rolling back, pause or delete every fewer-than monitor: 0.5.7 reads it as at least and calls whenever its search has its N lines, that is, all the time while the stream is healthy. A monitor paused in 0.6.0 stays skipped.
+
 ## Backup and restore
 
 Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`.
@@ -252,7 +256,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 To roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin. Pin `0.5.6` to roll back application code from `0.5.7`.
+`0.3.14` is the first public pin. Pin `0.5.7` to roll back application code from `0.6.0`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe. 0.6.0 also adds tables (`monitor_stretches`, `monitor_calls`, `monitor_http` and `monitor_results`); 0.5.7 ignores them, and a push or HTTP(S) monitor's rule, which has no saved search, does not run there. Pinning 0.6.0 again picks them up where they were.
 
