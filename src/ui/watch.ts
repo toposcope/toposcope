@@ -1,6 +1,7 @@
 import { seriesLabel } from "../query/agg";
 import { parseRangeMs } from "../query/relative";
 import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
+import { formatCertShort, parseConditions } from "../shared/http-check";
 import { formatOpenFor, type MonitorSource } from "../shared/monitor";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
@@ -26,6 +27,7 @@ export type WatchFilter = "all" | MonitorSource;
 export function watchFilters(monitors: readonly MonitorView[]): Array<{ id: WatchFilter; label: string; n: number }> {
   const order: Array<[MonitorSource, string]> = [
     ["search", "Search"],
+    ["http", "HTTP"],
     ["fingerprints", "Fingerprints"],
   ];
   const out: Array<{ id: WatchFilter; label: string; n: number }> = [{ id: "all", label: "All", n: monitors.length }];
@@ -68,16 +70,47 @@ export function opensWhen(m: Pick<MonitorView, "threshold" | "saved">): string {
   return `${agg ? `${seriesLabel(agg)} ` : ""}at least ${plain(m.threshold)}`;
 }
 
-/** Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h". */
+/** An HTTP(S) monitor's lines, read. */
+function httpLines(m: MonitorView) {
+  const read = parseConditions(m.http?.conditions ?? "");
+  return "error" in read ? [] : read;
+}
+
+/** An HTTP(S) monitor whose only line is `cert > …`: it reads days left, not time (18c). */
+function certOnly(m: MonitorView): boolean {
+  const lines = httpLines(m);
+  return lines.length === 1 && lines[0]!.cond.what === "cert";
+}
+
+/** "3 conditions", "cert > 14d", "any 2xx". */
+export function httpConditionsLabel(m: MonitorView): string {
+  const lines = httpLines(m);
+  if (lines.length === 0) {
+    return "any 2xx";
+  }
+  if (lines.length === 1) {
+    return lines[0]!.text;
+  }
+  return `${lines.length} conditions`;
+}
+
+/** Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h", "http · 30s · 3 conditions". */
 export function laneKind(m: MonitorView): string {
   if (sourceOf(m) === "fingerprints") {
     return "fingerprints · 24h";
+  }
+  if (sourceOf(m) === "http") {
+    return `http · ${m.http?.every ?? "30s"} · ${httpConditionsLabel(m)}`;
   }
   return `search · ${opensWhen(m)} · ${m.saved?.range ?? "custom"}`;
 }
 
 /** An open card's second line: "search · host:ci-box · at least 50 lines in 15m". */
 export function openCardLine(m: MonitorView): string {
+  if (sourceOf(m) === "http") {
+    const why = m.http?.last_run?.why ?? m.open?.open_message ?? "";
+    return `http · ${m.http?.method ?? "GET"} ${m.http?.url ?? ""}${why ? ` · ${why}` : ""}`;
+  }
   const q = m.saved?.query.trim() || "*";
   if (sourceOf(m) === "fingerprints") {
     return `fingerprints · ${q} · after a deploy or flag`;
@@ -87,7 +120,8 @@ export function openCardLine(m: MonitorView): string {
   return `search · ${q} · ${what} in ${m.saved?.range ?? "its window"}`;
 }
 
-export type LaneReadout = { badge: string; tone: "red" | "sec"; text: string };
+/** Red is open; amber a warn, or an HTTP(S) run that failed before it opens (18c). */
+export type LaneReadout = { badge: string; tone: "red" | "amber" | "sec"; text: string };
 
 /** Right of a lane: its state, and what it last read. */
 export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number): LaneReadout {
@@ -99,6 +133,17 @@ export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number)
     return { badge: `open ${formatOpenFor(nowMs - m.open.opened_at)}`, tone: "red", text: silenced };
   }
   let reading = "";
+  if (sourceOf(m) === "http") {
+    const run = m.http?.last_run;
+    const left = run?.cert_valid_to ? Date.parse(run.cert_valid_to) - nowMs : null;
+    if (run && certOnly(m)) {
+      reading = left !== null ? `${formatCertShort(left)} left` : run.why ?? "";
+    } else if (run) {
+      reading = run.status === null ? "no response" : `${run.duration_ms}ms`;
+    }
+    const badge = run?.result === "warn" ? "warn" : run?.result === "fail" ? "fail" : "ok";
+    return { badge, tone: badge === "ok" ? "sec" : "amber", text: [reading, silenced].filter(Boolean).join(" · ") };
+  }
   if (sourceOf(m) === "fingerprints") {
     reading = `${sentInWindow} sent`;
   } else if (m.last_status === "refused" || m.last_status === "error") {
@@ -275,7 +320,7 @@ export function nextReminder(m: MonitorView, nowMs: number): number | null {
   if (remind === "off") {
     return null;
   }
-  const windowMs = (m.saved?.range ? parseRangeMs(m.saved.range) : null) ?? 5 * 60_000;
+  const windowMs = m.http?.every_ms ?? (m.saved?.range ? parseRangeMs(m.saved.range) : null) ?? 5 * 60_000;
   const every = remind === "window" ? windowMs : remind === "1h" ? hourMs : remind === "4h" ? 4 * hourMs : dayMs;
   const at = (s.called_at ?? s.opened_at) + every;
   return at > nowMs ? at : nowMs;

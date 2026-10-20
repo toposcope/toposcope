@@ -60,6 +60,7 @@ export function MonitorRail({
   onSilence: (forId: "1h" | "4h" | "24h" | null) => void;
 }) {
   const fingerprints = sourceOf(monitor) === "fingerprints";
+  const http = sourceOf(monitor) === "http" ? (monitor.http ?? null) : null;
   const readout = laneReadout(monitor, nowMs, 0);
   const open = monitor.state === "open" ? monitor.open : null;
   const reminded = open?.calls.filter((c) => c.what === "reminder" && c.ok).at(-1);
@@ -71,7 +72,7 @@ export function MonitorRail({
       <div className="flex items-center gap-2">
         <span className="min-w-0 truncate text-[13px] font-semibold">{monitor.name}</span>
         <span className="inline-flex h-[18px] items-center rounded-[4px] border border-white/[0.18] px-1.5 text-[10.5px] text-muted-foreground">
-          {fingerprints ? "fingerprints" : "search"}
+          {fingerprints ? "fingerprints" : http ? "http" : "search"}
         </span>
         <button
           type="button"
@@ -86,7 +87,11 @@ export function MonitorRail({
         <span
           className={cn(
             "inline-flex h-[18px] items-center rounded-[4px] px-1.5 text-[10.5px] whitespace-nowrap",
-            readout.tone === "red" ? "bg-red-500/[0.16] text-red-300" : "bg-[#27272a] text-zinc-300",
+            readout.tone === "red"
+              ? "bg-red-500/[0.16] text-red-300"
+              : readout.tone === "amber"
+                ? "bg-amber-400/[0.14] text-amber-300"
+                : "bg-[#27272a] text-zinc-300",
           )}
         >
           {open ? `open ${formatOpenFor(nowMs - open.opened_at)}` : readout.badge}
@@ -99,8 +104,35 @@ export function MonitorRail({
         ) : null}
       </div>
       <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 text-[12px]">
-        <Row k="search">{monitor.saved?.name ?? "—"}</Row>
-        {fingerprints ? (
+        {http ? (
+          <>
+            <Row k="checks">
+              <span className="font-mono">
+                {http.method} {http.url}
+              </span>
+            </Row>
+            <Row k="conditions">
+              <span className="block font-mono whitespace-pre-wrap">{http.conditions || "any 2xx"}</span>
+            </Row>
+            <Row k="runs">
+              <span className="font-mono">
+                every {http.every} · opens after {http.fail_after} failed run{http.fail_after === 1 ? "" : "s"}
+              </span>
+            </Row>
+            {http.last_run ? (
+              <Row k="last run">
+                <span className="font-mono">
+                  {clockAt(http.last_run.at, nowMs)} · {http.last_run.result}
+                  {http.last_run.status !== null ? ` · ${http.last_run.status} in ${http.last_run.duration_ms}ms` : ""}
+                  {http.last_run.why ? ` · ${http.last_run.why}` : ""}
+                </span>
+              </Row>
+            ) : null}
+          </>
+        ) : (
+          <Row k="search">{monitor.saved?.name ?? "—"}</Row>
+        )}
+        {http ? null : fingerprints ? (
           <Row k="opens on">
             <span className="font-mono">≥ {monitor.threshold} after a deploy or flag · 24h</span>
           </Row>
@@ -111,7 +143,7 @@ export function MonitorRail({
             </span>
           </Row>
         )}
-        {!fingerprints && monitor.last_result_at ? (
+        {!fingerprints && !http && monitor.last_result_at ? (
           <Row k="last read">
             <span className="font-mono">
               {clockAt(monitor.last_result_at, nowMs)} · {lastReading(monitor)}

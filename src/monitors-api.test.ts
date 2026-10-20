@@ -18,8 +18,13 @@ beforeAll(async () => {
     mock.module(root + "/alerts/cron.ts", () => ({ startAlertCron() {} }));
     mock.module(root + "/alerts/http-cron.ts", () => ({ startHttpMonitors() {} }));
     mock.module(root + "/ingest/syslog.ts", () => ({ startSyslogUdp: async () => {} }));
-    globalThis.fetch = async (url) => {
+    const hooked = [];
+    globalThis.fetch = async (url, init) => {
       if (String(url).endsWith("/ping")) return new Response("Ok.");
+      if (String(url).startsWith("http://hook.test/")) {
+        hooked.push({ url: String(url), body: String(init?.body ?? ""), type: init?.headers?.["content-type"] ?? "" });
+        return new Response("queued");
+      }
       if (String(url).startsWith("http://clickhouse.test")) return Response.json({ data: [] });
       throw new Error("Unexpected external fetch");
     };
@@ -80,6 +85,9 @@ beforeAll(async () => {
     await go("httpSendKept", "/api/monitors/send", "POST", { id: declared.id, url: standUrl, method: "GET", headers: { Authorization: null } });
     await go("httpSendBad", "/api/monitors/send", "POST", { url: "ftp://x/" });
     await go("httpSendBadLine", "/api/monitors/send", "POST", { url: standUrl, conditions: "$..db == 1" });
+    await go("httpTestCall", "/api/alert-rules/test-call", "POST", { source: "http", name: "api-health", url: "https://api.example.com/health", method: "GET", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{alert.name}} {{state}}: {{message}} ({{status}})", resolved_body: "{{alert.name}} {{state}}", run: { status: 503, duration_ms: 12, why: "status is 503, not 2xx" } });
+    await go("httpTestCallBad", "/api/alert-rules/test-call", "POST", { source: "http", name: "x", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{series}}" });
+    out.hooked = hooked;
     await go("httpClash", "/api/monitors/api-health", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
     await go("httpCreate", "/api/alert-rules", "POST", { ...httpBody, name: "made in the dialog" });
     await go("httpDelete", "/api/monitors/api-health", "DELETE");
@@ -241,6 +249,16 @@ describe("HTTP(S) monitors (#178)", () => {
     });
     expect(r.httpSendBad!.status).toBe(400);
     expect(r.httpSendBadLine!.status).toBe(400);
+  });
+
+  test("a test call is filled in from the last Send, then sends its resolved body", () => {
+    expect(r.httpTestCall!.status).toBe(200);
+    expect(r.httpTestCall!.body).toMatchObject({ ok: true, status: 200, reply: "queued" });
+    expect(r.httpTestCall!.body.resolved).toMatchObject({ ok: true, status: 200 });
+    const sent = (r.hooked as unknown as Array<{ url: string; body: string }>).map((h) => h.body);
+    expect(sent).toEqual(["api-health open: status is 503, not 2xx (503)", "api-health resolved"]);
+    expect(r.httpTestCallBad!.status).toBe(400);
+    expect(r.httpTestCallBad!.body.error).toBe("{{series}} is not a fill-in for this alert");
   });
 
   test("delete takes it and what it calls", () => {

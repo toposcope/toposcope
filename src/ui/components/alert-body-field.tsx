@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { CircleAlert, Check, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogField } from "@/components/ui/dialog";
-import type { AlertKind } from "@/types";
 import {
   alertBodyContentType,
   alertBodyProblem,
@@ -11,6 +10,7 @@ import {
   resolvedBodyProblem,
   starterAlertBody,
   type AlertBodyKind,
+  type FillInKind,
 } from "../../shared/alert-body";
 
 /** What the server said about a test call (`POST /api/alert-rules/test-call`). */
@@ -28,7 +28,8 @@ export type TestCallResult = {
 };
 
 type Props = {
-  alertKind: AlertKind;
+  /** Whose fill-ins: a search monitor's, a new-fingerprints alert's, or an HTTP(S) monitor's (#178). */
+  alertKind: FillInKind;
   bodyKind: AlertBodyKind;
   onBodyKind: (kind: AlertBodyKind) => void;
   template: string;
@@ -37,7 +38,7 @@ type Props = {
   resolvedBody: string;
   onResolvedBody: (template: string) => void;
   webhook: string;
-  /** For the Slack message the default body becomes. */
+  /** For the Slack message the default body becomes. `query` is an HTTP(S) monitor's `GET url`, `series` its last result. */
   preview: { name: string; query: string; series: string; value: string | null; threshold: string };
   /** TOPOSCOPE_PUBLIC_URL is set, so a call links back. */
   canLink: boolean;
@@ -76,7 +77,7 @@ export function AlertBodyField({
   const problem = alertBodyProblem(bodyKind, template, alertKind);
   const jsonFault = bodyKind === "json" ? checkJsonBody(template) : null;
   const slackDefault = bodyKind === "default" && isSlackUrl(webhook.trim());
-  const resolves = alertKind === "threshold";
+  const resolves = alertKind !== "first_seen";
   const resolvedProblem = resolves ? resolvedBodyProblem(bodyKind, resolvedBody, alertKind) : null;
 
   function pick(kind: AlertBodyKind) {
@@ -255,10 +256,12 @@ export function AlertBodyField({
           </span>
           <div className="flex flex-col gap-1 rounded-[6.4px] border border-white/10 bg-background px-3.5 py-3 text-[13px] leading-[19px]">
             <div>
-              <b>{preview.name || "this alert"}</b> fired
+              <b>{preview.name || "this alert"}</b> {alertKind === "http" ? "open" : "fired"}
             </div>
             <div className="font-mono text-[12px] text-foreground/80">{preview.query || "*"}</div>
-            {alertKind === "first_seen" ? (
+            {alertKind === "http" ? (
+              <div className="text-foreground/90">{preview.series || "what the run that opened it said"}</div>
+            ) : alertKind === "first_seen" ? (
               <div className="text-foreground/90">
                 <span className="font-mono text-[12px]">{"{n}"}</span> new fingerprints after{" "}
                 <span className="font-mono text-[12px]">{"{mark}"}</span>
@@ -286,7 +289,7 @@ function TestCall({
   disabled,
   testDraft,
 }: {
-  alertKind: AlertKind;
+  alertKind: FillInKind;
   disabled: boolean;
   testDraft: () => Record<string, unknown> | null;
 }) {
@@ -377,7 +380,9 @@ function TestCall({
           <span className="text-[11.5px] text-muted-foreground">
             {alertKind === "first_seen"
               ? "Sends this body now, filled in from the last mark it watched."
-              : "Sends the open body now; with a resolved body, then that one too."}
+              : alertKind === "http"
+                ? "Sends the open body now, filled in from the last Send; with a resolved body, then that one too."
+                : "Sends the open body now; with a resolved body, then that one too."}
           </span>
         )}
       </div>

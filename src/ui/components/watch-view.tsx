@@ -61,12 +61,16 @@ function Seg({
   );
 }
 
-function Badge({ tone, children }: { tone: "red" | "sec"; children: React.ReactNode }) {
+function Badge({ tone, children }: { tone: "red" | "amber" | "sec"; children: React.ReactNode }) {
   return (
     <span
       className={cn(
         "inline-flex h-[18px] items-center rounded-[4px] px-1.5 text-[10.5px] whitespace-nowrap",
-        tone === "red" ? "bg-red-500/[0.16] text-red-300" : "bg-[#27272a] text-zinc-300",
+        tone === "red"
+          ? "bg-red-500/[0.16] text-red-300"
+          : tone === "amber"
+            ? "bg-amber-400/[0.14] text-amber-300"
+            : "bg-[#27272a] text-zinc-300",
       )}
     >
       {children}
@@ -253,7 +257,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {canCreate
-                ? "A monitor opens when its search is at or above its threshold, reminds while open, and says when it resolved."
+                ? "A monitor opens when its search is at or above its threshold, or a URL it calls fails its conditions; it reminds while open, and says when it resolved."
                 : "Save a search, then Watch this from the sidebar."}
             </p>
             {canCreate ? (

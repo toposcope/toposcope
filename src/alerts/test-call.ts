@@ -15,9 +15,12 @@ import { publicUrl } from "../shared/public-url";
 import { boardWatchRefuse } from "../shared/boards";
 import { parseThreshold } from "./threshold";
 import { firstSeenPayload, firstSeenWatchMs, watchedMarks } from "./first-seen";
+import { monitorQuery } from "../shared/monitor";
 import {
   alertLink,
   alertWebhookBody,
+  httpCallBody,
+  httpFillValues,
   readingMessage,
   renderResolved,
   renderWebhook,
@@ -98,6 +101,9 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
   const rec = await readJsonObject(c);
   if (rec instanceof Response) {
     return rec;
+  }
+  if (rec.source === "http") {
+    return testHttpCall(c, rec);
   }
   const kind = rec.kind === undefined ? "threshold" : parseAlertKind(rec.kind);
   if (!kind) {
@@ -222,6 +228,55 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
       }),
     );
   }
+  const opened = await sendTestCall(webhook, payload);
+  const resolved = resolvedPayload ? await sendTestCall(webhook, resolvedPayload) : null;
+  return c.json({ ...opened, resolved });
+}
+
+/**
+ * An HTTP(S) monitor's test call (#178): its body as the call that opens it would be, filled in
+ * from the editor's last Send (`run`: status, duration_ms, why), then its resolved body.
+ */
+async function testHttpCall(c: Context, rec: Record<string, unknown>): Promise<Response> {
+  const webhook = parseWebhook(rec.webhook_url);
+  if (typeof webhook !== "string") {
+    return c.json({ error: webhook.error }, 400);
+  }
+  const body = readBody(rec, "http", null);
+  if ("error" in body) {
+    return c.json({ error: body.error }, 400);
+  }
+  const name = typeof rec.name === "string" && rec.name.trim() ? rec.name.trim() : "this monitor";
+  const url = typeof rec.url === "string" ? rec.url.trim() : "";
+  const method = typeof rec.method === "string" ? rec.method.toUpperCase() : "GET";
+  const run = (rec.run && typeof rec.run === "object" ? rec.run : {}) as Record<string, unknown>;
+  const status = typeof run.status === "number" ? run.status : null;
+  const durationMs = typeof run.duration_ms === "number" ? run.duration_ms : 0;
+  const message =
+    typeof run.why === "string" && run.why ? run.why : status !== null ? `${status} in ${durationMs}ms` : "no response yet";
+  const now = Date.now();
+  const firedAt = new Date(now).toISOString();
+  const base = publicUrl();
+  const link = base
+    ? `${base}/?${new URLSearchParams({ q: monitorQuery(name), range: "1h" }).toString()}`
+    : null;
+  const rule = { id: typeof rec.id === "string" ? rec.id : "test", name, webhook_url: webhook, ...body };
+  const facts = (state: "open" | "resolved") => ({
+    alert: { id: rule.id, name },
+    method,
+    url,
+    status,
+    durationMs,
+    message,
+    firedAt,
+    link,
+    call: { state, openedAt: firedAt, resolvedAt: state === "resolved" ? firedAt : null, duration: "0s" },
+  });
+  const payload = renderWebhook(rule, httpCallBody(webhook, facts("open")), httpFillValues(facts("open")));
+  const resolvedPayload =
+    body.body_kind !== "default" && body.resolved_body
+      ? renderResolved(rule, {}, httpFillValues(facts("resolved")))
+      : null;
   const opened = await sendTestCall(webhook, payload);
   const resolved = resolvedPayload ? await sendTestCall(webhook, resolvedPayload) : null;
   return c.json({ ...opened, resolved });

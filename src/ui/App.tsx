@@ -3,6 +3,7 @@ import { ChevronDown, Copy, House, KeyRound, Menu, Settings, Undo2 } from "lucid
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
 import { NewMonitorDialog } from "@/components/new-monitor-dialog";
+import { HttpMonitorDialog, type HttpDraft, type HttpMonitorInput } from "@/components/http-monitor-dialog";
 import { WatchView } from "@/components/watch-view";
 import { MonitorRail } from "@/components/monitor-rail";
 import type { MonitorBand } from "@/components/monitor-band";
@@ -62,6 +63,7 @@ import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
 import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
 import { clampSidebar, sidebarDefault } from "./saved-list";
+import { monitorQuery } from "../shared/monitor";
 import { joinTraceRef } from "../shared/ids";
 import {
   formatChangeMarkLabel,
@@ -692,7 +694,9 @@ export function App() {
   const [watchFilter, setWatchFilter] = useState<WatchFilter>("all");
   const [watchMarkList, setWatchMarkList] = useState<ChangeMark[]>([]);
   /** 18p: a new monitor chooses its source first. */
-  const [newMonitor, setNewMonitor] = useState<{ savedSearchId: string; lockSearch: boolean } | null>(null);
+  const [newMonitor, setNewMonitor] = useState<{ savedSearchId: string | null; lockSearch: boolean } | null>(null);
+  /** 18r: an HTTP(S) monitor's editor. */
+  const [httpDraft, setHttpDraft] = useState<HttpDraft | null>(null);
   /** The monitor read beside a Search tab (18i), by tab. */
   const [monitorRail, setMonitorRail] = useState<Record<number, string>>({});
   /** Stretches of the monitors on this tab's saved search, on its clock (18o). */
@@ -2191,7 +2195,8 @@ export function App() {
     return () => clearTimeout(timer);
   }, [attrPrefixes, windowParams, wsKind]);
 
-  const dialogOpen = settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null;
+  const dialogOpen =
+    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || httpDraft !== null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2374,7 +2379,7 @@ export function App() {
     toast.message(`${json.count} match${json.count === 1 ? "" : "es"}`);
   }
 
-  async function createAlert(input: MonitorInput) {
+  async function createAlert(input: MonitorInput | HttpMonitorInput) {
     const res = await fetch("/api/alert-rules", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -2393,6 +2398,7 @@ export function App() {
     id: string,
     input:
       | MonitorInput
+      | HttpMonitorInput
       | { silence_for: "1h" | "4h" | "24h" }
       | { silenced_until: null }
       | { enabled: boolean },
@@ -2430,6 +2436,18 @@ export function App() {
 
   /** A monitor opened as a hunt (18i): its search in a new tab, with the monitor beside it. */
   function openMonitor(monitor: MonitorView, stretch?: MonitorStretch) {
+    if (monitor.source === "http") {
+      // Its results are its rows (#178).
+      setSheetOpen(false);
+      setView("search");
+      const tab = wsSeq + 1;
+      addWorkspace(
+        { ...blankSearchSnap(), q: monitorQuery(monitor.name), range: "1h", live: false, ...monitorHuntWindow(stretch ?? monitor.open) },
+        true,
+      );
+      setMonitorRail((prev) => ({ ...prev, [tab]: monitor.id }));
+      return;
+    }
     const item = monitor.saved_search_id ? saved.find((row) => row.id === monitor.saved_search_id) : undefined;
     if (!item) {
       toast.error("This monitor's saved search is gone");
@@ -3479,16 +3497,9 @@ export function App() {
 
   function openNewAlert() {
     const watchable = saved.filter((item) => !item.board);
-    if (watchable.length === 0) {
-      toast.error("Save a search first");
-      return;
-    }
     const current = saved.find((item) => item.id === savedId);
-    const id =
-      current && !current.board ? current.id : (watchable[0]?.id ?? null);
-    if (!id) {
-      return;
-    }
+    // An HTTP(S) monitor needs no saved search; the other sources start from one.
+    const id = current && !current.board ? current.id : (watchable[0]?.id ?? null);
     setNewMonitor({ savedSearchId: id, lockSearch: false });
   }
 
@@ -3531,7 +3542,13 @@ export function App() {
         : Date.parse(isoFromLocal(to) ?? ""),
   });
   // Monitors on this tab's saved search: their stretches on this clock (#175, 18o).
-  const bandMonitors = savedId ? alerts.filter((m) => m.saved_search_id === savedId) : [];
+  const railHttp = monitorRail[wsId] ? alerts.find((m) => m.id === monitorRail[wsId] && m.source === "http") : undefined;
+  // Its own saved search's monitors (18o), or the HTTP(S) monitor this tab was opened for.
+  const bandMonitors = savedId
+    ? alerts.filter((m) => m.saved_search_id === savedId)
+    : railHttp && q.trim() === monitorQuery(railHttp.name)
+      ? [railHttp]
+      : [];
   const bandKey = bandMonitors.map((m) => m.id).join(",");
   useEffect(() => {
     if (view !== "search" || !bandKey || !Number.isFinite(windowFromMs) || !Number.isFinite(windowToMs)) {
@@ -3940,7 +3957,7 @@ export function App() {
       {view === "watch" ? (
         <WatchView
           data={monitors}
-          canCreate={saved.some((item) => !item.board)}
+          canCreate
           range={watchRange}
           onRange={(next) => {
             watchRangeRef.current = next;
@@ -4803,7 +4820,11 @@ export function App() {
                   return next;
                 })
               }
-              onEdit={() => setAlertDraft({ mode: "edit", rule: railMonitor })}
+              onEdit={() =>
+                railMonitor.source === "http"
+                  ? setHttpDraft({ mode: "edit", monitor: railMonitor })
+                  : setAlertDraft({ mode: "edit", rule: railMonitor })
+              }
               onPause={(paused) => void updateAlert(railMonitor.id, { enabled: !paused })}
               onSilence={(forId) => void silenceAlert(railMonitor, forId)}
             />
@@ -4867,13 +4888,40 @@ export function App() {
           const item = saved.find((row) => row.id === newMonitor?.savedSearchId);
           return item ? { name: item.name, query: item.query, range: item.range } : null;
         })()}
+        canSearch={saved.some((item) => !item.board)}
         onPick={(source) => {
           if (!newMonitor) {
             return;
           }
-          setAlertDraft({ mode: "create", ...newMonitor, source });
+          if (source === "http") {
+            setHttpDraft({ mode: "create" });
+            setNewMonitor(null);
+            return;
+          }
+          if (!newMonitor.savedSearchId) {
+            toast.error("Save a search first");
+            return;
+          }
+          setAlertDraft({ mode: "create", savedSearchId: newMonitor.savedSearchId, lockSearch: newMonitor.lockSearch, source });
           setNewMonitor(null);
         }}
+      />
+      <HttpMonitorDialog
+        open={httpDraft !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setHttpDraft(null);
+          }
+        }}
+        draft={httpDraft}
+        onBack={() => {
+          setHttpDraft(null);
+          openNewAlert();
+        }}
+        onCreate={createAlert}
+        onUpdate={updateAlert}
+        onDelete={deleteAlert}
+        canLink={alertsCanLink}
       />
       <AlertRuleDialog
         open={alertDraft !== null}

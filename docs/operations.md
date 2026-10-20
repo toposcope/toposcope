@@ -46,11 +46,34 @@ curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-e
   -d '{"source": "search", "saved_search": "api errors", "threshold": 50, "webhook_url": "https://ntfy.sh/my-topic", "remind_every": "4h"}'
 ```
 
+An **HTTP(S) monitor** (**New monitor → HTTP(S)**) calls a URL from this node every 30s to 1h: GET, HEAD, or POST with a body, with headers of its own (an `Authorization` token, say), and a 10s timeout. It passes when all its conditions pass, one a line; with none, any 2xx passes:
+
+```text
+status == 200
+status in 200..299
+time < 300ms   warn
+body contains "ok"
+$.db == "ok"
+$.queue.depth < 100
+header content-type contains json
+cert > 14d
+```
+
+`$.a.b[0]` is a restricted JSONPath into a JSON body: keys and indexes only, no filters, wildcards or scripts. A line that ends in `warn` warns when it does not hold instead of failing: a warn shows on Watch and calls nobody. It opens after 2 failed runs in a row (settable, 1 to 10) and resolves on the next passing run. A redirect is never followed, and fails the run; so does a certificate that is not trusted for the host, before any header is sent. In the editor (18r) **Send** runs the request once from this node and shows what came back, where the time went, the certificate, the headers and the body; a value clicked becomes a line, and the footer says what the lines make of that response. Every run is a log row (`monitor:<name> status:ok|warn|fail source:http`, with `http.status`, `duration_ms`, the `line` that decided it and the `error`), so `monitor:api-health duration_ms:>300` is a search, and a run that got an answer keeps its time as the metric `monitor_duration_ms` for the Series overlay. A monitor says what this node can reach: there is no second place to confirm it from, so a network split between Toposcope and the target pages.
+
+Headers are kept as webhook addresses are, in SQLite; they are sent, and never shown back, in Watch or in the editor (`Authorization: ••••` keeps the stored value). Declare one from a script:
+
+```bash
+curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-health \
+  -H 'content-type: application/json' \
+  -d '{"source": "http", "url": "https://api.example.com/health", "every": "30s", "conditions": ["status == 200", "$.db == \"ok\"", "time < 300ms warn"], "headers": {"Authorization": "Bearer …"}, "webhook_url": "https://ntfy.sh/my-topic"}'
+```
+
 ## Monitor bodies
 
 A monitor sends its default body unless it is given one of its own in the monitor dialog, under **Body**: **Text** (sent as `text/plain`) or **JSON** (sent as `application/json`). The default is the JSON Toposcope always sent, with `state` (`open`, `reminder` or `resolved`), `opened_at` and `resolved_at`, or a Slack message for a `hooks.slack.com` address that says when it resolved and how long it lasted.
 
-A body is written with fill-ins, listed beside it in the dialog: `{{alert.name}}`, `{{series}}`, `{{value}}`, `{{threshold}}`, `{{query}}`, `{{fired_at}}`, `{{link}}`, `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}` and `{{message}}` (the result that opened it) for a saved-search monitor; `{{alert.name}}`, `{{query}}`, `{{mark.kind}}`, `{{mark.version}}`, `{{mark.at}}`, `{{fingerprints.count}}`, `{{fingerprints.first}}`, `{{fingerprints}}`, `{{more}}` and `{{link}}` for a new-fingerprints one. `{{link}}` is empty unless `TOPOSCOPE_PUBLIC_URL` is set. In a JSON body every fill-in is a string, escaped to sit inside quotes, so it goes between `"…"`; a body that does not parse is refused with its line and column. A saved-search monitor with a body of its own sends a resolved call only when it is given a second body, **When it resolves**; left empty, it sends none, so a message written for “it opened” never arrives when it ended. **Send a test call** sends the body now, filled in from the last evaluation (or the last mark the monitor watched), then the resolved body when there is one, and shows the status, the time and the reply's first 200 characters.
+A body is written with fill-ins, listed beside it in the dialog: `{{alert.name}}`, `{{series}}`, `{{value}}`, `{{threshold}}`, `{{query}}`, `{{fired_at}}`, `{{link}}`, `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}` and `{{message}}` (the result that opened it) for a saved-search monitor; `{{alert.name}}`, `{{query}}`, `{{mark.kind}}`, `{{mark.version}}`, `{{mark.at}}`, `{{fingerprints.count}}`, `{{fingerprints.first}}`, `{{fingerprints}}`, `{{more}}` and `{{link}}` for a new-fingerprints one; `{{alert.name}}`, `{{url}}`, `{{status}}`, `{{duration_ms}}`, `{{message}}`, `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}`, `{{fired_at}}` and `{{link}}` for an HTTP(S) one. `{{link}}` is empty unless `TOPOSCOPE_PUBLIC_URL` is set. In a JSON body every fill-in is a string, escaped to sit inside quotes, so it goes between `"…"`; a body that does not parse is refused with its line and column. A saved-search monitor with a body of its own sends a resolved call only when it is given a second body, **When it resolves**; left empty, it sends none, so a message written for “it opened” never arrives when it ended. **Send a test call** sends the body now, filled in from the last evaluation (or the last mark the monitor watched), then the resolved body when there is one, and shows the status, the time and the reply's first 200 characters.
 
 A body is kept as the webhook address is, in SQLite, and anyone with the operator password can read it in the dialog; Watch does not print it.
 

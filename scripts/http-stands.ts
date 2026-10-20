@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
@@ -13,8 +13,9 @@ import { gzipSync } from "node:zlib";
 export type Certs = { dir: string; ca: string; caPath: string; cert: string; key: string; cleanup: () => void };
 
 /** A CA, and a certificate for `names` (localhost and 127.0.0.1) that it signed, valid for `days` more days. */
-export function makeCerts(days: number, names: string[] = ["localhost", "127.0.0.1"]): Certs {
-  const dir = mkdtempSync(join(tmpdir(), "toposcope-certs-"));
+export function makeCerts(days: number, names: string[] = ["localhost", "127.0.0.1"], into?: string): Certs {
+  const dir = into ?? mkdtempSync(join(tmpdir(), "toposcope-certs-"));
+  mkdirSync(dir, { recursive: true });
   const run = (args: string[]) => {
     const out = Bun.spawnSync(["openssl", ...args], { cwd: dir, stderr: "pipe" });
     if (out.exitCode !== 0) {
@@ -33,6 +34,18 @@ export function makeCerts(days: number, names: string[] = ["localhost", "127.0.0
     cert: readFileSync(join(dir, "leaf.crt"), "utf8"),
     key: readFileSync(join(dir, "leaf.key"), "utf8"),
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}
+
+/** Certificates `makeCerts` wrote to `dir` before, as `bun run scripts/http-stands.ts certs <dir>` leaves them. */
+export function readCerts(dir: string): Certs {
+  return {
+    dir,
+    ca: readFileSync(join(dir, "ca.crt"), "utf8"),
+    caPath: join(dir, "ca.crt"),
+    cert: readFileSync(join(dir, "leaf.crt"), "utf8"),
+    key: readFileSync(join(dir, "leaf.key"), "utf8"),
+    cleanup: () => undefined,
   };
 }
 
@@ -123,4 +136,20 @@ export function startStands(certs: Certs, opts: { slowMs?: number; port?: number
       secure.stop(true);
     },
   };
+}
+
+// `bun run scripts/http-stands.ts certs <dir> [days]`: a CA and a localhost certificate it signed,
+// `days` (20) from expiry, so an app started with NODE_EXTRA_CA_CERTS=<dir>/ca.crt trusts the
+// TLS stand that `bun run e2e` starts with TOPOSCOPE_E2E_CERTS=<dir>.
+if (import.meta.main) {
+  const [cmd, dir, days] = Bun.argv.slice(2);
+  if (cmd !== "certs" || !dir) {
+    console.error("usage: bun run scripts/http-stands.ts certs <dir> [days]");
+    process.exit(2);
+  }
+  if (existsSync(join(dir, "ca.crt"))) {
+    console.log(join(dir, "ca.crt"));
+  } else {
+    console.log(makeCerts(Number(days ?? 20), undefined, dir).caPath);
+  }
 }

@@ -156,10 +156,58 @@ export type MonitorStretch = {
   calls: MonitorCall[];
 };
 
+/** An HTTP(S) monitor's last run (#178). */
+export type HttpLastRun = {
+  at: number;
+  result: "ok" | "warn" | "fail";
+  status: number | null;
+  duration_ms: number;
+  line: string | null;
+  why: string | null;
+  cert_valid_to: string | null;
+};
+
+/** What an HTTP(S) monitor calls: its headers by name only. */
+export type HttpMonitorView = {
+  url: string;
+  method: "GET" | "HEAD" | "POST";
+  body: string | null;
+  headers: string[];
+  every: string;
+  every_ms: number;
+  conditions: string;
+  fail_after: number;
+  fails_in_row: number;
+  next_run_at: number | null;
+  last_run: HttpLastRun | null;
+};
+
 /** A monitor as `GET /api/monitors` lists it. */
 export type MonitorView = AlertRule & {
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   open: MonitorStretch | null;
+  /** Set on an HTTP(S) monitor. Fixtures may leave it out. */
+  http?: HttpMonitorView | null;
+};
+
+/** `POST /api/monitors/send`: the editor's Send (18r). */
+export type HttpSendResult = {
+  at: number;
+  url: string;
+  method: "GET" | "HEAD" | "POST";
+  response: {
+    status: number;
+    status_text: string;
+    http_version: string;
+    headers: Array<[string, string]>;
+    body: string;
+    body_bytes: number;
+    truncated: boolean;
+  } | null;
+  error: string | null;
+  timings: { dns: number; connect: number; tls: number | null; wait: number; body: number; total: number };
+  cert: { subject: string; issuer: string; valid_to: string } | null;
+  duration_ms: number;
 };
 
 export type MonitorsResponse = {

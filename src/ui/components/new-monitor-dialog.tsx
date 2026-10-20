@@ -1,4 +1,4 @@
-import { Search, X } from "lucide-react";
+import { Globe, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { MonitorSource } from "../../shared/monitor";
@@ -8,6 +8,8 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   /** A saved search to show in the examples, when there is one. */
   example: { name: string; query: string; range: string | null } | null;
+  /** Saved searches exist, so a search or fingerprints monitor can be made. */
+  canSearch: boolean;
   onPick: (source: MonitorSource) => void;
 };
 
@@ -30,18 +32,22 @@ function SourceCard({
   about,
   example,
   onClick,
+  disabled,
 }: {
   icon: React.ReactNode;
   title: string;
   about: string;
   example: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-white/12 bg-[#141417] p-3.5 text-left outline-none hover:border-white/40 focus-visible:border-plate"
+      disabled={disabled}
+      title={disabled ? "Save a search first" : undefined}
+      className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-white/12 bg-[#141417] p-3.5 text-left outline-none hover:border-white/40 focus-visible:border-plate disabled:opacity-50 disabled:hover:border-white/12"
     >
       <span className="flex items-center gap-2.5">
         <span className="flex size-[26px] items-center justify-center rounded-[6px] bg-[#27272a] text-foreground">
@@ -58,12 +64,11 @@ function SourceCard({
 }
 
 /**
- * Frame 18p: a new monitor starts by choosing where its results come from. HTTP(S), push and
- * TCP / certificate join these cards with their own issues (#177, #178, #180).
+ * Frame 18p: a new monitor starts by choosing where its results come from. Push and TCP /
+ * certificate join these cards with their own issues (#177, #180).
  */
-export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props) {
+export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPick }: Props) {
   const q = example?.query.trim() || "service:api level:error";
-  const slug = (example?.name ?? "api errors").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(880px,calc(100vw-32px))] overflow-y-auto p-0">
@@ -86,6 +91,14 @@ export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props)
             about="A search that goes loud: at least N lines, or a series at least N, in its window."
             example={`${q} · at least 50 · ${example?.range ?? "15m"}`}
             onClick={() => onPick("search")}
+            disabled={!canSearch}
+          />
+          <SourceCard
+            icon={<Globe className="size-3.5" />}
+            title="HTTP(S)"
+            about="Toposcope calls a URL from this node, every 30s to 1h. Conditions on the status, the time, the body, a JSON value, the certificate."
+            example="GET https://api.example.com/health"
+            onClick={() => onPick("http")}
           />
           <SourceCard
             icon={<FingerprintsIcon />}
@@ -93,6 +106,7 @@ export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props)
             about="An error first seen after a deploy or a flag, for 24 hours after the mark."
             example={`${q} · after a deploy`}
             onClick={() => onPick("fingerprints")}
+            disabled={!canSearch}
           />
           <div className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-dashed border-white/20 p-3.5">
             <span className="text-[14px] font-medium">From a script or an agent</span>
@@ -101,9 +115,10 @@ export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props)
             </span>
             <span className="mt-auto flex min-w-0 flex-col rounded-[6px] border border-white/10 bg-[#0f0f11] px-2.5 py-1.5 font-mono text-[12px] leading-[18px]">
               {[
-                `PUT /api/monitors/${slug || "api-errors"}`,
-                `{ "source": "search", "threshold": 50,`,
-                `  "saved_search": ${JSON.stringify(example?.name ?? "api errors")},`,
+                "PUT /api/monitors/api-health",
+                `{ "source": "http", "every": "30s",`,
+                `  "url": "https://api.example.com/health",`,
+                `  "conditions": ["status == 200"],`,
                 `  "webhook_url": "https://ntfy.sh/…" }`,
               ].map((line) => (
                 <span key={line} className="truncate whitespace-pre">
@@ -113,8 +128,12 @@ export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props)
             </span>
           </div>
         </div>
-        <div className="flex items-center justify-end border-t px-[18px] py-3">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex items-center gap-3 border-t px-[18px] py-3">
+          <span className="text-[13px] text-muted-foreground">
+            Every result becomes a log row: <span className="font-mono text-foreground">monitor:&lt;name&gt;</span> in Search.
+          </span>
+          <Button
+            className="ml-auto" type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
         </div>
