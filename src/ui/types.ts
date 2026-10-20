@@ -1,3 +1,4 @@
+import type { MonitorSource, RemindId } from "../shared/monitor";
 import type { HistogramReading } from "../shared/metric";
 import type { WidgetLayout } from "../shared/widgets";
 import type { BoardSlots } from "../shared/boards";
@@ -115,4 +116,58 @@ export type AlertRule = {
   last_error: string | null;
   consecutive_failures: number;
   silenced_until: number | null;
+  /** As a monitor (#175). The server always sends these; fixtures may leave them out. */
+  enabled?: number;
+  source?: MonitorSource;
+  state?: "ok" | "open";
+  remind_every?: RemindId;
+  resolved_body?: string | null;
+  last_result?: "ok" | "warn" | "fail" | null;
+  last_value?: number | null;
+  last_result_at?: number | null;
+};
+
+/** A call sent for a stretch, or a new-fingerprints call (`sent`). */
+export type MonitorCall = {
+  id: number;
+  monitor_id: string;
+  stretch_id: string | null;
+  at: number;
+  what: "open" | "reminder" | "resolved" | "sent";
+  status: string;
+  ok: boolean;
+  error: string | null;
+};
+
+/** One open-to-resolved stretch of a monitor, with its calls. */
+export type MonitorStretch = {
+  id: string;
+  monitor_id: string;
+  opened_at: number;
+  resolved_at: number | null;
+  closed_by: "ok" | "edit" | null;
+  open_value: number | null;
+  open_message: string;
+  last_value: number | null;
+  last_at: number;
+  called_at: number | null;
+  open_call: "sent" | "failed" | "silenced" | "none" | null;
+  resolved_call: "sent" | "failed" | "silenced" | "none" | null;
+  calls: MonitorCall[];
+};
+
+/** A monitor as `GET /api/monitors` lists it. */
+export type MonitorView = AlertRule & {
+  saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
+  open: MonitorStretch | null;
+};
+
+export type MonitorsResponse = {
+  now: number;
+  from: string;
+  to: string;
+  monitors: MonitorView[];
+  stretches: MonitorStretch[];
+  sent: MonitorCall[];
+  link: boolean;
 };

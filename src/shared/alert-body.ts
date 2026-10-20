@@ -9,22 +9,23 @@ export type AlertBodyKind = (typeof alertBodyKinds)[number];
 /** Longest body kept; a push service's message is far shorter. */
 export const maxAlertBodyLength = 8_000;
 
-export type AlertFillIn = { name: string; about: string };
+/** `isNew`: a monitor's fill-in (#175), tagged "new" in the list (18t). */
+export type AlertFillIn = { name: string; about: string; isNew?: boolean };
 
 /** Frame 15e's list, for a threshold alert. */
 export const thresholdFillIns: AlertFillIn[] = [
-  { name: "alert.name", about: "the alert" },
+  { name: "alert.name", about: "the monitor" },
   { name: "series", about: "what it reads" },
   { name: "value", about: "what it read" },
   { name: "threshold", about: "the threshold" },
   { name: "query", about: "the search" },
   { name: "fired_at", about: "ISO time" },
   { name: "link", about: "back to Toposcope" },
-  { name: "state", about: "open, reminder, resolved" },
-  { name: "opened_at", about: "ISO time" },
-  { name: "resolved_at", about: "ISO time, once resolved" },
-  { name: "duration", about: "open so far, or how long" },
-  { name: "message", about: "the result that opened it" },
+  { name: "state", about: "open, reminder, resolved", isNew: true },
+  { name: "opened_at", about: "ISO time", isNew: true },
+  { name: "resolved_at", about: "ISO time", isNew: true },
+  { name: "duration", about: "how long it has been open", isNew: true },
+  { name: "message", about: "the result that opened it", isNew: true },
 ];
 
 /** Frame 15f's list, for a new-fingerprints alert. */

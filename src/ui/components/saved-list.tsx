@@ -330,6 +330,14 @@ export function SavedList({
           ) : null}
           <span className="line-clamp-2 min-w-0 flex-1 text-[13px] leading-4 [overflow-wrap:anywhere]">
             <Marked text={text} find={narrowing ? find : ""} />
+            {/* 18o: a monitor on this search is open. */}
+            {alerts.some((rule) => rule.saved_search_id === item.id && rule.state === "open") ? (
+              <span
+                role="img"
+                aria-label="a monitor on this search is open"
+                className="ml-1.5 inline-block size-1.5 rounded-full bg-red-500 align-middle"
+              />
+            ) : null}
           </span>
           {other > 0 ? (
             <span className="flex h-4 shrink-0 items-center gap-0.5 font-mono text-[10px] text-muted-foreground/70 group-focus-within:invisible group-hover:invisible">
@@ -362,7 +370,7 @@ export function SavedList({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => onTest(item.id)}>Test</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onAlert(item)}>Alert on this</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onAlert(item)}>Watch this</DropdownMenuItem>
                 <DropdownMenuItem
                   className="h-auto flex-col items-start gap-0.5 py-1.5"
                   onSelect={() => onSetHome(homeId === item.id ? null : item.id)}

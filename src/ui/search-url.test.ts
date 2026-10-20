@@ -69,11 +69,15 @@ describe("parseSearchUrl", () => {
     expect(parsed.replaceY).toBe(false);
   });
 
-  test("round-trips alerts view", () => {
-    const encoded = serializeSearchUrl({ ...sample, view: "alerts", live: false });
-    expect(encoded).toContain("view=alerts");
+  test("an old Alerts link opens Watch (#175)", () => {
+    expect(parseSearchUrl("?view=alerts").view).toBe("watch");
+  });
+
+  test("round-trips watch view", () => {
+    const encoded = serializeSearchUrl({ ...sample, view: "watch", live: false });
+    expect(encoded).toContain("view=watch");
     const parsed = parseSearchUrl(encoded);
-    expect(parsed.view).toBe("alerts");
+    expect(parsed.view).toBe("watch");
     expect(parsed.q).toBe("level:error");
     expect(parsed.saved).toBe("abc");
   });

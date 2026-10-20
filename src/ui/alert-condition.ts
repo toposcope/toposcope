@@ -31,16 +31,21 @@ export function queryPreview(query: string): string {
   return trimmed.length > 0 ? trimmed : "*";
 }
 
-/** "Pages when api p99 slow's p99(duration_ms) over its 15m is at or above 800, then waits 15m before it can page again." */
-export function thresholdSentence(
+/**
+ * "Opens when api p99 slow's p99(duration_ms) over its 15m is at or above 800, reminds every 4h
+ * while open, and says when it resolved."
+ */
+export function monitorSentence(
   item: { name: string; agg?: string | null; range: string | null },
   threshold: string,
+  remind: "off" | "window" | "1h" | "4h" | "24h",
 ): string {
   const window = item.range ? `its ${item.range}` : "its window";
-  // The cooldown is the saved range, or 5m when the window is custom.
-  const wait = item.range ?? "5m";
   const series = item.agg ? seriesLabel(item.agg) : "count";
-  return `Pages when ${item.name}’s ${series} over ${window} is at or above ${threshold}, then waits ${wait} before it can page again.`;
+  // Every window is the saved range, or 5m when the window is custom.
+  const reminds =
+    remind === "off" ? "does not remind" : `reminds every ${remind === "window" ? (item.range ?? "5m") : remind} while open`;
+  return `Opens when ${item.name}’s ${series} over ${window} is at or above ${threshold}, ${reminds}, and says when it resolved.`;
 }
 
 /** "on service api, or on no service": the marks a first-seen alert watches, as its q scopes them. */

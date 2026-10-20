@@ -32,15 +32,27 @@ otlp.toposcope.example.com {
 
 In nginx that is `grpc_pass grpc://127.0.0.1:4319;` in a `server` block that listens with `http2 on;`.
 
-Set `TOPOSCOPE_PUBLIC_URL` in `.env` to the address people open, such as `https://toposcope.example.com`, so an alert's webhook can link back to the search that fired. Toposcope cannot work it out itself: alerts are sent from a timer, and behind a proxy or a tunnel the address it listens on is not the one people open. Leave it unset and alerts carry no link. A path is kept, for a proxy that serves Toposcope under a prefix; a value that is not an `http` or `https` address, or that has a query or a `#`, stops the app at boot with that reason.
+Set `TOPOSCOPE_PUBLIC_URL` in `.env` to the address people open, such as `https://toposcope.example.com`, so a monitor's webhook can link back to the search that opened it. Toposcope cannot work it out itself: calls are sent from a timer, and behind a proxy or a tunnel the address it listens on is not the one people open. Leave it unset and calls carry no link. A path is kept, for a proxy that serves Toposcope under a prefix; a value that is not an `http` or `https` address, or that has a query or a `#`, stops the app at boot with that reason.
 
-## Alert bodies
+## Monitors
 
-An alert sends its default body unless it is given one of its own in the alert dialog, under **Body**: **Text** (sent as `text/plain`) or **JSON** (sent as `application/json`). The default is the JSON Toposcope always sent, or a Slack message for a `hooks.slack.com` address.
+A monitor (**Watch → New monitor**, or **Watch this** on a saved search) reads its saved search every minute. At or above its threshold it **opens**: it calls its webhook once, then reminds while it stays open (every 4h by default; off, once per window, 1h or 24h), and when the search falls back it **resolves** and calls once more. A reading that is refused or fails changes nothing. Each open-to-resolved stretch is kept with the calls sent during it, and Watch draws them on one clock. Silence stops the calls, not the record. Alerts made before 0.6 are monitors that remind once per window, so they call as often as they did.
 
-A body is written with fill-ins, listed beside it in the dialog: `{{alert.name}}`, `{{series}}`, `{{value}}`, `{{threshold}}`, `{{query}}`, `{{fired_at}}` and `{{link}}` for a threshold alert; `{{alert.name}}`, `{{query}}`, `{{mark.kind}}`, `{{mark.version}}`, `{{mark.at}}`, `{{fingerprints.count}}`, `{{fingerprints.first}}`, `{{fingerprints}}`, `{{more}}` and `{{link}}` for a new-fingerprints one. `{{link}}` is empty unless `TOPOSCOPE_PUBLIC_URL` is set. In a JSON body every fill-in is a string, escaped to sit inside quotes, so it goes between `"…"`; a body that does not parse is refused with its line and column. **Send a test call** sends the body now, filled in from the last evaluation (or the last mark the alert watched), and shows the status, the time and the reply's first 200 characters.
+A script or an agent can declare one without the UI, by name; the same name replaces it:
 
-A body is kept as the webhook address is, in SQLite, and anyone with the operator password can read it in the dialog; the Alerts list does not print it.
+```bash
+curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-errors \
+  -H 'content-type: application/json' \
+  -d '{"source": "search", "saved_search": "api errors", "threshold": 50, "webhook_url": "https://ntfy.sh/my-topic", "remind_every": "4h"}'
+```
+
+## Monitor bodies
+
+A monitor sends its default body unless it is given one of its own in the monitor dialog, under **Body**: **Text** (sent as `text/plain`) or **JSON** (sent as `application/json`). The default is the JSON Toposcope always sent, with `state` (`open`, `reminder` or `resolved`), `opened_at` and `resolved_at`, or a Slack message for a `hooks.slack.com` address that says when it resolved and how long it lasted.
+
+A body is written with fill-ins, listed beside it in the dialog: `{{alert.name}}`, `{{series}}`, `{{value}}`, `{{threshold}}`, `{{query}}`, `{{fired_at}}`, `{{link}}`, `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}` and `{{message}}` (the result that opened it) for a saved-search monitor; `{{alert.name}}`, `{{query}}`, `{{mark.kind}}`, `{{mark.version}}`, `{{mark.at}}`, `{{fingerprints.count}}`, `{{fingerprints.first}}`, `{{fingerprints}}`, `{{more}}` and `{{link}}` for a new-fingerprints one. `{{link}}` is empty unless `TOPOSCOPE_PUBLIC_URL` is set. In a JSON body every fill-in is a string, escaped to sit inside quotes, so it goes between `"…"`; a body that does not parse is refused with its line and column. A saved-search monitor with a body of its own sends a resolved call only when it is given a second body, **When it resolves**; left empty, it sends none, so a message written for “it opened” never arrives when it ended. **Send a test call** sends the body now, filled in from the last evaluation (or the last mark the monitor watched), then the resolved body when there is one, and shows the status, the time and the reply's first 200 characters.
+
+A body is kept as the webhook address is, in SQLite, and anyone with the operator password can read it in the dialog; Watch does not print it.
 
 Pushover takes JSON with its own fields, at `https://api.pushover.net/1/messages.json`:
 

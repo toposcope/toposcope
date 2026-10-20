@@ -2744,6 +2744,16 @@ async function main(): Promise<void> {
       }
       const sentMessage = (JSON.parse(tcBody.sent ?? "{}") as { message?: string }).message ?? "";
       if (!sentMessage.endsWith(`for ${bodyQuery}`)) throw new Error(`a q with quotes should be escaped into the JSON body, got ${tcBody.sent}`);
+      // #175 (18t): with a resolved body, the test sends that one after the open one.
+      const both = await fetch(`${APP_URL}/api/alert-rules/test-call`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: basicAuth() },
+        body: JSON.stringify({ ...pushover, resolved_body: '{"token": "app", "user": "me", "message": "{{alert.name}} {{state}}"}' }),
+      });
+      const bothBody = (await both.json()) as { ok?: boolean; resolved?: { ok: boolean; sent: string } | null };
+      if (!bothBody.ok || !bothBody.resolved?.ok || JSON.parse(bothBody.resolved.sent).message !== `${pushover.name} resolved`) {
+        throw new Error(`a test with a resolved body should send both, got ${JSON.stringify(bothBody)}`);
+      }
       const broken = await fetch(`${APP_URL}/api/alert-rules`, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: basicAuth() },
@@ -3626,7 +3636,117 @@ async function main(): Promise<void> {
     if (after.status !== 401 || after.headers.get("www-authenticate")) throw new Error(`after Sign out the cookie should be refused without the challenge, got ${after.status}`);
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live");
+  // #175, last: it waits minutes for its rows to age out of a 15m window, and the tests above
+  // read a window that ends a minute after this run began.
+  // A search monitor opens once, reminds on its schedule and sends one resolved call when its
+  // series falls back; a silenced one keeps the record and calls nobody. The pass runs in this
+  // process with a clock it is handed; the series is read from ClickHouse at the real time.
+  {
+    const svc = `e2emon${marker}`;
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    // Rows 14m45s old: in a 15m window now, out of it within a few minutes.
+    const rowTs = new Date(Date.now() - (14 * 60 + 45) * 1000).toISOString();
+    const monIngest = await fetch(`${APP_URL}/api/ingest`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+      body: JSON.stringify([1, 2, 3].map((n) => ({ ts: rowTs, level: "error", service: svc, host: "e2e-1", message: `${svc} row ${n}` }))),
+    });
+    if (!monIngest.ok) throw new Error(`monitor ingest failed: ${monIngest.status}`);
+    const monSavedRes = await fetch(`${APP_URL}/api/saved-searches`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ name: `e2e monitor ${marker}`, query: `service:${svc}`, range: "15m" }),
+    });
+    if (!monSavedRes.ok) throw new Error(`monitor search save failed: ${monSavedRes.status}`);
+    const monSaved = (await monSavedRes.json()) as { id: string };
+    const reading = async (): Promise<number> => {
+      const res = await fetch(`${APP_URL}/api/saved-searches/${monSaved.id}/test`, { method: "POST", headers: auth });
+      return ((await res.json()) as { count: number }).count;
+    };
+    for (let i = 0; i < 30 && (await reading()) < 3; i++) await Bun.sleep(250);
+    if ((await reading()) < 3) throw new Error("monitor rows are not searchable");
+
+    const calls: Array<{ path: string; body: Record<string, unknown> }> = [];
+    const monHook = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: async (req) => {
+        calls.push({ path: new URL(req.url).pathname, body: (await req.json()) as Record<string, unknown> });
+        return new Response("ok");
+      },
+    });
+    const name = `e2e loud ${marker}`;
+    const quietName = `e2e silenced ${marker}`;
+    try {
+      const declare = async (n: string, path: string) =>
+        fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, {
+          method: "PUT",
+          headers: auth,
+          body: JSON.stringify({ source: "search", saved_search_id: monSaved.id, threshold: 1, webhook_url: `http://127.0.0.1:${monHook.port}${path}`, remind_every: "window" }),
+        });
+      const made = await declare(name, "/loud");
+      if (made.status !== 201) throw new Error(`PUT /api/monitors should create, got ${made.status} ${await made.text()}`);
+      const quiet = (await (await declare(quietName, "/quiet")).json()) as { id: string };
+      const silenceRes = await fetch(`${APP_URL}/api/alert-rules/${quiet.id}`, { method: "PUT", headers: auth, body: JSON.stringify({ silence_for: "24h" }) });
+      if (!silenceRes.ok) throw new Error(`silence a monitor failed: ${silenceRes.status}`);
+      const states = (await (await declare(name, "/loud")).json()) as { id: string; remind_every: string };
+      if (states.remind_every !== "window") throw new Error(`PUT again should replace, got ${JSON.stringify(states)}`);
+      const ours = () => calls.filter((c) => c.path === "/loud").map((c) => c.body.state);
+      const t0 = Date.now();
+      await evaluateAlerts(t0);
+      await evaluateAlerts(t0 + 60_000);
+      if (JSON.stringify(ours()) !== '["open"]') throw new Error(`a monitor should open once, got ${JSON.stringify(ours())}`);
+      const listed = (await (await fetch(`${APP_URL}/api/monitors`, { headers: auth })).json()) as {
+        monitors: Array<{ name: string; state: string; open: { opened_at: number; calls: Array<{ what: string; status: string }> } | null }>;
+      };
+      const loud = listed.monitors.find((m) => m.name === name);
+      // The app is another process: the state it reads is SQLite's, as after a restart. Its own
+      // pass may have opened it a moment before this one did.
+      const openedAt = loud?.open?.opened_at ?? 0;
+      if (loud?.state !== "open" || openedAt > t0 || openedAt < t0 - 120_000 || loud.open?.calls[0]?.what !== "open" || loud.open.calls[0]?.status !== "200") {
+        throw new Error(`the app should read the monitor open with its call, got ${JSON.stringify(loud)}`);
+      }
+      if (listed.monitors.find((m) => m.name === quietName)?.state !== "open") throw new Error("a silenced monitor still opens");
+      await evaluateAlerts(t0 + 14 * 60_000);
+      await evaluateAlerts(t0 + 15 * 60_000);
+      if (JSON.stringify(ours()) !== '["open","reminder"]') throw new Error(`a monitor should remind once per window, got ${JSON.stringify(ours())}`);
+      for (let i = 0; i < 90 && (await reading()) > 0; i++) await Bun.sleep(2000);
+      if ((await reading()) !== 0) throw new Error("monitor rows did not leave the 15m window");
+      await evaluateAlerts(t0 + 16 * 60_000);
+      await evaluateAlerts(t0 + 17 * 60_000);
+      const resolved = calls.filter((c) => c.path === "/loud").at(-1)?.body;
+      // Resolved by this pass, or by the app's own a moment earlier: once either way.
+      if (
+        JSON.stringify(ours()) !== '["open","reminder","resolved"]' ||
+        resolved?.opened_at !== new Date(openedAt).toISOString() ||
+        typeof resolved?.resolved_at !== "string" ||
+        Date.parse(resolved.resolved_at) <= openedAt
+      ) {
+        throw new Error(`a monitor should send one resolved call, got ${JSON.stringify(calls.filter((c) => c.path === "/loud"))}`);
+      }
+      if (calls.some((c) => c.path === "/quiet")) throw new Error(`a silenced monitor should call nobody, got ${JSON.stringify(calls)}`);
+      const quietOne = (await (await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(quietName)}`, { headers: auth })).json()) as {
+        state: string;
+        stretches: Array<{ resolved_at: number | null; open_call: string; resolved_call: string; calls: Array<{ what: string; status: string }> }>;
+      };
+      const kept = quietOne.stretches[0];
+      if (quietOne.state !== "ok" || !kept?.resolved_at || kept.open_call !== "silenced" || kept.resolved_call !== "silenced") {
+        throw new Error(`a silenced monitor keeps its stretch, got ${JSON.stringify(quietOne)}`);
+      }
+      const rules = (await (await fetch(`${APP_URL}/api/alert-rules`, { headers: auth })).json()) as { rules: Array<{ name: string; last_fired_at: number | null }>; link: boolean };
+      if (rules.rules.find((r) => r.name === name)?.last_fired_at !== Date.parse(resolved.resolved_at)) {
+        throw new Error("/api/alert-rules should still say when it last fired");
+      }
+    } finally {
+      monHook.stop();
+      for (const n of [name, quietName]) {
+        await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(n)}`, { method: "DELETE", headers: auth });
+      }
+      await fetch(`${APP_URL}/api/saved-searches/${monSaved.id}`, { method: "DELETE", headers: auth });
+    }
+  }
+
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → monitor open, remind, resolved");
 }
 
 await main();

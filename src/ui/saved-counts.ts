@@ -1,5 +1,10 @@
-import type { AlertSeriesView } from "@/components/alerts-view";
 import type { SavedSearch } from "./types";
+
+/** A saved search's series as its run reads it. */
+export type AlertSeriesView = {
+  value: number;
+  refused: boolean;
+};
 
 /** A board has no count of its own: its inputs are unset until it is opened (#126). */
 export function savedCountTargets(searches: readonly SavedSearch[]): SavedSearch[] {

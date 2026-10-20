@@ -19,6 +19,7 @@ import {
   peekCrowded,
   visibleChangeMarks,
 } from "../change-marks";
+import { MonitorBandRow, monitorBandH, type MonitorBand } from "./monitor-band";
 
 export const MARK_LANE_H = 22;
 
@@ -146,6 +147,8 @@ export type MarksOverlay = {
   onCompare?: (mark: ChangeMark) => void;
   compareMarkId?: string | null;
   cut?: MarksCutWash | null;
+  /** Stretches of the monitors on this saved search, under the marks (#175, 18o). */
+  monitors?: MonitorBand | null;
 };
 
 type Open =
@@ -536,7 +539,7 @@ export function HistogramMarkLane({
     <div
       ref={rootRef}
       className="relative shrink-0"
-      style={{ height: MARK_LANE_H }}
+      style={{ height: MARK_LANE_H + monitorBandH(overlay.monitors) }}
     >
       <div
         className="relative h-[22px]"
@@ -806,6 +809,18 @@ export function HistogramMarkLane({
           </button>
         ) : null}
       </div>
+      {overlay.monitors && overlay.monitors.items.length > 0 ? (
+        <MonitorBandRow
+          band={overlay.monitors}
+          fromMs={fromMs}
+          plotSpanMs={plotSpanMs}
+          slidePct={slidePct}
+          marks={overlay.marks}
+          before={overlay.before}
+          onFingerprints={overlay.onFingerprints}
+          onCompare={overlay.onCompare}
+        />
+      ) : null}
     </div>
   );
 }
@@ -903,6 +918,9 @@ export function HistogramMarksChip({
           <path d="M5.2 7 V10.4" />
         </svg>
         marks {chipCount}
+        {overlay.monitors && overlay.monitors.items.length > 0 ? (
+          <span>· monitors {overlay.monitors.items.length}</span>
+        ) : null}
         {hidden ? (
           <span className="size-[5px] rounded-full bg-amber-400" />
         ) : null}
