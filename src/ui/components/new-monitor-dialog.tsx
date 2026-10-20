@@ -83,8 +83,8 @@ export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props)
           <SourceCard
             icon={<Search className="size-3.5" />}
             title="Saved search"
-            about="A search that goes loud: at least N lines, or a series at least N, in its window."
-            example={`${q} · at least 50 · ${example?.range ?? "15m"}`}
+            about="A search that goes quiet or loud: at least, or fewer than, N lines in its window."
+            example={`${q} · fewer than 1 · ${example?.range ?? "15m"}`}
             onClick={() => onPick("search")}
           />
           <SourceCard

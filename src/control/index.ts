@@ -86,6 +86,9 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "last_result", "TEXT");
   addColumnIfMissing(db, "alert_rules", "last_value", "REAL");
   addColumnIfMissing(db, "alert_rules", "last_result_at", "INTEGER");
+  // A search monitor opens at least or fewer than its threshold, and says why it could not tell (#176).
+  addColumnIfMissing(db, "alert_rules", "opens_when", "TEXT NOT NULL DEFAULT 'at_least'");
+  addColumnIfMissing(db, "alert_rules", "cant_tell", "TEXT");
   // Each open-to-resolved stretch, and the calls sent for it (#175).
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_stretches (
