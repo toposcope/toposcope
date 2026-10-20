@@ -75,7 +75,7 @@ describe("the popover's pieces", () => {
   });
 
   test("the command is exact, with the version read, never latest (19f)", () => {
-    expect(upgradeCommand("0.6.1")).toBe("./toposcope.sh upgrade 0.6.1");
+    expect(upgradeCommand("0.6.1")).toBe("./upgrade.sh 0.6.1");
   });
 
   test("the backup's size comes from the stores' own sizes (19c)", () => {
@@ -104,7 +104,7 @@ describe("the popover", () => {
     expect(t).toContain("you run 0.6.0 · patch · 20 Oct 2026");
     const before = t.indexOf("Before you upgrade");
     const news = t.indexOf("What's new in 0.6.1");
-    const cmd = t.indexOf("./toposcope.sh upgrade 0.6.1");
+    const cmd = t.indexOf("./upgrade.sh 0.6.1");
     expect(before).toBeGreaterThan(-1);
     expect(before).toBeLessThan(news);
     expect(news).toBeLessThan(cmd);
@@ -122,7 +122,7 @@ describe("the popover", () => {
     expect(t).toContain("you run 0.5.6 · latest 0.6.1 · minor");
     expect(t.match(/Upgrade notes for this release are in the operations guide/g)).toHaveLength(2);
     expect(t).toContain("Upgrade to 0.6.1");
-    expect(t).toContain("./toposcope.sh upgrade 0.6.1");
+    expect(t).toContain("./upgrade.sh 0.6.1");
     expect(t.match(/Show all/g)).toHaveLength(3);
   });
 

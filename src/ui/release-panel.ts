@@ -81,7 +81,7 @@ export function beforeItems(releases: Release[]): BeforeItem[] {
 
 /** Exactly what Copy puts on the clipboard (19f): no prompt sign, no newline, a version never "latest". */
 export function upgradeCommand(version: string): string {
-  return `./toposcope.sh upgrade ${version}`;
+  return `./upgrade.sh ${version}`;
 }
 
 /** Sizes as the panel writes them (19c): 1.16 GB, 41 MB; the total to one decimal, 1.2 GB. */
