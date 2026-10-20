@@ -120,6 +120,16 @@ describe("release workflow", () => {
     expect(yml).toContain("\n            LICENSE\n");
   });
 
+  test("attaches SHA256SUMS over every other file it attaches, the skill's script among them (#195)", async () => {
+    const yml = await Bun.file(`${root}/.github/workflows/release-image.yml`).text();
+    const attached = yml.slice(yml.indexOf("files: |")).split("\n").slice(1).map((l) => l.trim()).filter((l) => /^[\w.-]+$/.test(l));
+    const summed = yml.match(/sha256sum (.+) > SHA256SUMS/)?.[1]?.split(/\s+/) ?? [];
+    expect(attached).toContain("SHA256SUMS");
+    expect(attached).toContain("toposcope.sh");
+    expect([...summed].sort()).toEqual(attached.filter((f) => f !== "SHA256SUMS").sort());
+    expect(yml).toContain("cp skills/toposcope/toposcope.sh toposcope.sh");
+  });
+
   test("uses the CHANGELOG section as GitHub release notes", async () => {
     const yml = await Bun.file(`${root}/.github/workflows/release-image.yml`).text();
     expect(yml).toContain("scripts/changelog-release-notes.ts");

@@ -70,8 +70,12 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      # Every file a release attaches is in SHA256SUMS, so an install can check what it downloaded (#195).
       - name: Stage release files
-        run: cp .env.example env.example
+        run: |
+          cp .env.example env.example
+          cp skills/toposcope/toposcope.sh toposcope.sh
+          sha256sum compose.yml env.example vector.yaml LICENSE toposcope.sh > SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:
           name: ${{ steps.notes.outputs.title }}
@@ -81,3 +85,5 @@ jobs:
             env.example
             vector.yaml
             LICENSE
+            toposcope.sh
+            SHA256SUMS
