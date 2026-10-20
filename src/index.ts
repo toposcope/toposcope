@@ -81,6 +81,7 @@ import { applyRetentionDays, migrateStore, syncFieldRoleSkip } from "./shared/mi
 import { requirePackagedSecrets } from "./shared/secrets";
 import { requirePublicUrl } from "./shared/public-url";
 import { requireWatchdogUrl } from "./alerts/watchdog";
+import { startReleaseCheck, versionReply } from "./control/release-check";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 
 requirePackagedSecrets();
@@ -307,6 +308,8 @@ app.get("/api/metric-names", metricNamesRoute);
 app.get("/api/metric-labels", metricLabelsRoute);
 app.get("/api/throughput", throughputRoute);
 app.get("/api/system", systemRoute);
+// Signed in, unlike /api/health: how far behind an instance is stays with its operators (#196).
+app.get("/api/version", (c) => c.json(versionReply()));
 app.get("/api/home", getHome);
 app.put("/api/home", putHome);
 app.get("/api/saved-searches", listSavedSearches);
@@ -402,6 +405,8 @@ async function startBoot(): Promise<void> {
     // HTTP(S) monitors keep their own pace, 30s … 1h each, apart from the 60s alert pass.
     startHttpMonitors();
     startLinkPuller();
+    // Once a day, a few minutes after boot: is a newer release out (#196)? Off with TOPOSCOPE_UPDATE_CHECK=off.
+    startReleaseCheck();
     // A stubbed listener in tests returns nothing.
     stopSyslog = (await startSyslogUdp()) ?? stopSyslog;
     // OTLP over gRPC: each call goes through the same routes, and the same checks, as HTTP.

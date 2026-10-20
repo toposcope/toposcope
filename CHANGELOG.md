@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 ## Unreleased
 
+Toposcope knows when a newer release is out. Once a day, and a few minutes after boot, it reads GitHub's public list of releases and keeps every stable release newer than the one running: version, date, link, notes, and the release's own Before you upgrade. It sends nothing about the instance. A check that fails keeps its last answer and says why, quietly. `GET /api/version`, signed in, gives the running version, the latest, the step (patch, minor or major), and every release between them, newest first. `/api/health` is unchanged. `TOPOSCOPE_UPDATE_CHECK=off` in `.env` turns the check off, and then nothing is called; Compose and the env example pass it through. A CHANGELOG version section may now carry one paragraph that starts **Before you upgrade:**, which the release body and `/api/version` carry apart from the notes. [#196](https://github.com/toposcope/toposcope/issues/196)
+
+**Before you upgrade:** From this version Toposcope asks GitHub once a day whether a newer release is out. It sends nothing about this instance. Set `TOPOSCOPE_UPDATE_CHECK=off` in `.env` to stop it.
+
 A minted link key no longer widens its dialog. After Mint key, the direction strip, the filter, the key and their Copy buttons ran out past the right edge of the 480px dialog, because the dialog kept room for the whole key on one line. The key is now cut in its field, as frame 7a draws it, and Copy still takes all of it. Every dialog now stays as wide as it is drawn, whatever unbroken text it holds. [#194](https://github.com/toposcope/toposcope/issues/194)
 
 ## 0.6.0

@@ -86,6 +86,10 @@ beforeAll(async () => {
       ["strangerUnknown", "/v1/no-such-endpoint", { authorization: "Bearer never-issued" }, "POST"],
       ["senderReads", "/api/settings", sender, "GET"],
       ["senderApiUnknown", "/api/no-such-endpoint", sender, "POST"],
+      ["versionUnsigned", "/api/version", {}, "GET"],
+      ["versionSender", "/api/version", sender, "GET"],
+      ["versionSigned", "/api/version", headers, "GET"],
+      ["health", "/api/health", {}, "GET"],
     ]) {
       const response = await app.fetch(new Request("http://app.test" + path, { headers: requestHeaders, method }));
       const text = await response.text();
@@ -222,5 +226,19 @@ describe("/v1 not found", () => {
   test("the development profiles prefix answers the same way", () => {
     expect(results.v1DevGet!.status).toBe(404);
     expect(results.v1DevGet!.body).toEqual({ error: "Not found" });
+  });
+});
+
+describe("GET /api/version (#196)", () => {
+  test("is signed in, unlike /api/health: how far behind an instance is stays with its operators", () => {
+    expect(results.versionUnsigned!.status).toBe(401);
+    expect(results.versionSender!.status).toBe(401);
+    expect(results.versionSigned!.status).toBe(200);
+    const version = JSON.parse(require("node:fs").readFileSync(join(root, "../package.json"), "utf8")).version;
+    expect(results.versionSigned!.body).toEqual({ running: version, latest: version, step: null, check: "on", checked_at: null, error: null, releases: [] });
+  });
+
+  test("/api/health keeps its five keys, and no latest", () => {
+    expect(Object.keys(results.health!.body as object).sort()).toEqual(["clickhouse", "ok", "phase", "sqlite", "version"]);
   });
 });
