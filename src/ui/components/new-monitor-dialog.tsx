@@ -1,4 +1,4 @@
-import { Search, X } from "lucide-react";
+import { ArrowUp, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { MonitorSource } from "../../shared/monitor";
@@ -58,8 +58,8 @@ function SourceCard({
 }
 
 /**
- * Frame 18p: a new monitor starts by choosing where its results come from. HTTP(S), push and
- * TCP / certificate join these cards with their own issues (#177, #178, #180).
+ * Frame 18p: a new monitor starts by choosing where its results come from. HTTP(S) and
+ * TCP / certificate join these cards with their own issues (#178, #180).
  */
 export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props) {
   const q = example?.query.trim() || "service:api level:error";
@@ -88,6 +88,13 @@ export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props)
             onClick={() => onPick("search")}
           />
           <SourceCard
+            icon={<ArrowUp className="size-3.5" />}
+            title="Push"
+            about="Any script, cron job or Nagios plugin sends its result: ok, warn or fail, a message, a value. Its first result can create it."
+            example="check_disk -w 20% /var; curl …/ping/…"
+            onClick={() => onPick("push")}
+          />
+          <SourceCard
             icon={<FingerprintsIcon />}
             title="New fingerprints"
             about="An error first seen after a deploy or a flag, for 24 hours after the mark."
@@ -113,7 +120,12 @@ export function NewMonitorDialog({ open, onOpenChange, example, onPick }: Props)
             </span>
           </div>
         </div>
-        <div className="flex items-center justify-end border-t px-[18px] py-3">
+        <div className="flex items-center gap-3 border-t px-[18px] py-3">
+          <span className="text-[13px] text-muted-foreground">
+            Every result becomes a log row: <span className="font-mono text-foreground">monitor:&lt;name&gt;</span> in
+            Search.
+          </span>
+          <span className="flex-1" />
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

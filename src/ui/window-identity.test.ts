@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { utcWindowStamp, windowHead, windowMeta } from "./window-identity";
+import { bandWindowKey, searchWindowMs, utcWindowStamp, windowHead, windowMeta } from "./window-identity";
 
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
@@ -46,5 +46,19 @@ describe("windowHead", () => {
 describe("windowMeta", () => {
   test("names timezone, span, and bar width", () => {
     expect(windowMeta(HOUR, "1m")).toBe("UTC · 1h · 1m bars");
+  });
+});
+
+describe("the stretches a hunt's band reads (#175, found building #177)", () => {
+  const clock = { fromMs: Date.parse("2026-10-20T13:22:00.000Z"), toMs: Date.parse("2026-10-27T13:22:00.000Z") };
+  const reply = { from: "2026-10-13T14:22:53.887Z", to: "2026-10-20T14:22:53.887Z" };
+
+  test("are read again when the search's reply moves the window off the clock it guessed", () => {
+    expect(bandWindowKey(searchWindowMs(reply, clock))).not.toBe(bandWindowKey(searchWindowMs(null, clock)));
+  });
+
+  test("are not read again for a Live poll that moves the window by seconds", () => {
+    const later = { from: "2026-10-13T14:22:55.887Z", to: "2026-10-20T14:22:55.887Z" };
+    expect(bandWindowKey(searchWindowMs(later, clock))).toBe(bandWindowKey(searchWindowMs(reply, clock)));
   });
 });

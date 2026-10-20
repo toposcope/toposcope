@@ -5,9 +5,15 @@ import type { ChangeMark } from "../shared/change-mark";
 import { MonitorRail } from "./components/monitor-rail";
 import { WatchView } from "./components/watch-view";
 import { eventTableMarkLayout } from "./change-marks";
-import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse } from "./types";
+import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "./types";
 import {
   callLine,
+  pushBands,
+  pushDueLine,
+  pushHuntRange,
+  pushReadout,
+  pushTicks,
+  resultCard,
   laneKind,
   laneReadout,
   markBefore,
@@ -117,8 +123,8 @@ const mark = (id: string, ts: number, over: Partial<ChangeMark> = {}): ChangeMar
 describe("Watch's lanes (#175, frame 18c)", () => {
   test("open ones first, and the header counts them", () => {
     expect(sortForWatch([errors, fingerprints, quiet]).map((m) => m.id)).toEqual(["m-quiet", "m-errors", "m-fp"]);
-    expect(watchCounts([errors, fingerprints, quiet])).toEqual({ open: 1, warn: 0 });
-    expect(watchCounts([monitor({ last_result: "warn" })])).toEqual({ open: 0, warn: 1 });
+    expect(watchCounts([errors, fingerprints, quiet])).toEqual({ open: 1, late: 0, warn: 0 });
+    expect(watchCounts([monitor({ last_result: "warn" })])).toEqual({ open: 0, late: 0, warn: 1 });
   });
 
   test("the segments name each source a monitor has", () => {
@@ -279,5 +285,141 @@ describe("a monitor beside its hunt (#175, frame 18i)", () => {
     expect(rail(monitor({ last_status: "503", consecutive_failures: 2 }))).toContain("failed 503 ×2");
     expect(rail(monitor())).not.toContain("failed");
     expect(rail(monitor({ enabled: 0 }))).toContain("Resume");
+  });
+});
+
+const push = (over: Partial<MonitorView> = {}): MonitorView =>
+  monitor({
+    id: "m-push",
+    name: "nightly-backup",
+    kind: "threshold",
+    source: "push",
+    saved_search_id: null,
+    saved: null,
+    query: "monitor:nightly-backup",
+    webhook_url: null,
+    every_ms: 24 * hour,
+    grace_ms: hour,
+    due_from: now - 9 * hour,
+    created_at: now - 30 * 24 * hour,
+    started_at: null,
+    last_ok_at: now - 9 * hour,
+    paused_at: null,
+    last_result: "ok",
+    last_value: null,
+    ...over,
+  });
+
+const result = (over: Partial<PushResultRow> = {}): PushResultRow => ({
+  id: 1,
+  monitor_id: "m-push",
+  at: now - 4 * 24 * hour,
+  status: "fail",
+  exit_code: 1,
+  duration_ms: 192_000,
+  value: null,
+  unit: null,
+  message: "unable to create lock in backend",
+  host: "10.0.4.12",
+  via: "ping",
+  ...over,
+});
+
+describe("push monitors on Watch (#177, frames 18c and 18f)", () => {
+  test("a push lane says its schedule, and paused when it is", () => {
+    expect(laneKind(push())).toBe("push · 1d · grace 1h");
+    expect(laneKind(push({ every_ms: 7 * 24 * hour, grace_ms: 24 * hour }))).toBe("push · 7d · grace 1d");
+    expect(laneKind(push({ enabled: 0, every_ms: 7 * 24 * hour }))).toBe("push · 7d · paused");
+    expect(laneKind(push({ every_ms: null }))).toBe("push");
+  });
+
+  test("late past every, with when it goes down; the header counts it", () => {
+    const zfs = push({ every_ms: hour, grace_ms: 15 * minute, due_from: now - 66 * minute });
+    expect(pushReadout(zfs, now, null)).toMatchObject({ badge: "late 6m", tone: "amber", next: "down 11:12" });
+    expect(watchCounts([zfs, errors], now)).toEqual({ open: 0, late: 1, warn: 0 });
+  });
+
+  test("open after a missed result says the due time it missed", () => {
+    const open = stretch({ monitor_id: "m-push", opened_at: now - (7 * hour + 59 * minute), due_at: now - (8 * hour + 59 * minute) });
+    const m = push({ state: "open", open, due_from: now - (32 * hour + 59 * minute) });
+    expect(pushReadout(m, now, null)).toMatchObject({ badge: "open 7h 59m", tone: "red", next: "due 02:04 · missed" });
+  });
+
+  test("running from its /start, ok with when it is next due, paused since a day, warn amber", () => {
+    expect(pushReadout(push({ started_at: now - 12 * minute }), now, null)).toMatchObject({ badge: "running 12m", next: "started 10:51" });
+    expect(pushReadout(push(), now, null)).toMatchObject({ badge: "ok", tone: "sec", next: "next 10-21 02:03" });
+    expect(pushReadout(push({ enabled: 0, paused_at: now - 12 * 24 * hour }), now, null)).toMatchObject({ badge: "paused", tone: "out", next: "since 10-08" });
+    expect(pushReadout(push({ last_result: "warn", last_value: 87.2 }), now, null)).toMatchObject({ badge: "warn", tone: "amber", value: "87.2" });
+  });
+
+  test("each result a tick, a run a bar back to its /start", () => {
+    const from = now - 7 * 24 * hour;
+    const [tick] = pushTicks([result()], from, now);
+    expect(tick!.tone).toBe("fail");
+    expect(tick!.width).toBeCloseTo(192_000 / (7 * 24 * hour), 8);
+    expect(pushTicks([result({ duration_ms: null })], from, now)[0]!.width).toBe(0);
+    expect(pushTicks([result({ at: from - hour })], from, now)).toEqual([]);
+  });
+
+  test("a stretch is red, amber from the due time it missed; late is amber to now", () => {
+    const from = now - 24 * hour;
+    const s = stretch({ id: "st-m", monitor_id: "m-push", opened_at: now - 8 * hour, due_at: now - 9 * hour });
+    const bands = pushBands(push({ state: "open", open: s }), [s], now, from, now);
+    expect(bands.map((b) => b.kind)).toEqual(["late", "open"]);
+    expect(pushDueLine(push({ state: "open", open: s }), now, from, now)).toBeCloseTo(15 / 24, 6);
+    const late = push({ every_ms: hour, grace_ms: 15 * minute, due_from: now - 66 * minute });
+    expect(pushBands(late, [], now, from, now).map((b) => b.kind)).toEqual(["late"]);
+    expect(pushDueLine(push(), now, from, now)).toBeNull();
+  });
+
+  test("a result's card: its exit code, when, how long it ran and from where, and the stretch it opened", () => {
+    const r = result();
+    const s = stretch({ monitor_id: "m-push", opened_at: r.at, resolved_at: r.at + 24 * hour + 2 * minute, closed_by: "ok" });
+    expect(resultCard(r, [s], now)).toMatchObject({
+      badge: "fail · exit 1",
+      tone: "red",
+      at: "10-16 11:03:00",
+      ran: "started 10:59:48 · ran 3m 12s · from 10.0.4.12",
+      opened: "opened · resolved 10-17 11:05 · 24h 2m",
+    });
+  });
+
+  test("its hunt opens on a clock that holds a few of its results", () => {
+    expect(pushHuntRange({ every_ms: 24 * hour })).toBe("7d");
+    expect(pushHuntRange({ every_ms: 5 * minute })).toBe("1h");
+    expect(pushHuntRange({ every_ms: null })).toBe("24h");
+  });
+
+  test("the Push segment draws its lanes taller, says what a tick and a bar are, and when each is next due", () => {
+    const data: MonitorsResponse = {
+      now,
+      from: new Date(now - 7 * 24 * hour).toISOString(),
+      to: new Date(now).toISOString(),
+      monitors: [push(), errors],
+      stretches: [],
+      sent: [],
+      results: [result({ id: 2, status: "ok", at: now - 9 * hour })],
+      dense: [],
+      link: false,
+    };
+    const html = renderToStaticMarkup(
+      createElement(WatchView, {
+        data,
+        canCreate: true,
+        range: "7d",
+        onRange: () => {},
+        filter: "push",
+        onFilter: () => {},
+        marks: [],
+        onNew: () => {},
+        onOpen: () => {},
+      }),
+    );
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(text).toContain("All 2 Search 1 Push 1");
+    expect(text).toContain("Each tick is a result. A bar is a run, from its /start to its end. The dashed line is when the next one is due.");
+    expect(text).toContain("nightly-backup push · 1d · grace 1h ok next 10-21 02:03");
+    expect(text).not.toContain("api errors");
+    expect(text).not.toContain("marks deploys and flags");
   });
 });

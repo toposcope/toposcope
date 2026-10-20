@@ -125,6 +125,15 @@ export type AlertRule = {
   last_result?: "ok" | "warn" | "fail" | null;
   last_value?: number | null;
   last_result_at?: number | null;
+  /** A push monitor (#177): its schedule, the time its next result counts from, a run in flight, its last ok. */
+  query?: string;
+  every_ms?: number | null;
+  grace_ms?: number | null;
+  due_from?: number | null;
+  started_at?: number | null;
+  last_ok_at?: number | null;
+  paused_at?: number | null;
+  created_at?: number;
 };
 
 /** A call sent for a stretch, or a new-fingerprints call (`sent`). */
@@ -153,8 +162,28 @@ export type MonitorStretch = {
   called_at: number | null;
   open_call: "sent" | "failed" | "silenced" | "none" | null;
   resolved_call: "sent" | "failed" | "silenced" | "none" | null;
+  /** A push monitor opened by a result that never came: when it was due (#177). */
+  due_at?: number | null;
   calls: MonitorCall[];
 };
+
+/** A pushed result, as a push lane draws it (#177). */
+export type PushResultRow = {
+  id: number;
+  monitor_id: string;
+  at: number;
+  status: "ok" | "warn" | "fail" | "unknown";
+  exit_code: number | null;
+  duration_ms: number | null;
+  value: number | null;
+  unit: string | null;
+  message: string;
+  host: string;
+  via: string;
+};
+
+/** A lane with more results than it is sent: the span they cover, and how many. */
+export type DenseLane = { monitor_id: string; from: number; to: number; n: number };
 
 /** A monitor as `GET /api/monitors` lists it. */
 export type MonitorView = AlertRule & {
@@ -169,5 +198,11 @@ export type MonitorsResponse = {
   monitors: MonitorView[];
   stretches: MonitorStretch[];
   sent: MonitorCall[];
+  /** Push results in the window; older servers and fixtures leave them out. */
+  results?: PushResultRow[];
+  dense?: DenseLane[];
   link: boolean;
 };
+
+/** A monitor's own page: a push monitor's key and last result come only here. */
+export type MonitorPage = MonitorView & { ping_key?: string | null; last?: PushResultRow | null; stretches: MonitorStretch[] };

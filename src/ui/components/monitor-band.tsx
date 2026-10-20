@@ -46,6 +46,10 @@ function openedLine(monitor: MonitorView, stretch: MonitorStretch, nowMs: number
   const what =
     sourceOf(monitor) === "fingerprints"
       ? "new fingerprints"
+      : sourceOf(monitor) === "push"
+        ? stretch.due_at != null
+          ? `missed, due ${clockAt(stretch.due_at, nowMs)}`
+          : "a fail"
       : monitor.saved?.agg
         ? `${opensWhen(monitor)} in ${monitor.saved?.range ?? "its window"}`
         : `at least ${monitor.threshold} line${monitor.threshold === 1 ? "" : "s"} in ${monitor.saved?.range ?? "its window"}`;
