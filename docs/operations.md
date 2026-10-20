@@ -76,6 +76,31 @@ ntfy takes the body as the notification, at `https://ntfy.sh/<topic>`, so a text
 {{link}}
 ```
 
+## Who watches Toposcope
+
+Toposcope is one node. When the box, the app or its ClickHouse stops, every monitor stops with it, and that silence looks the same as all being well. So point it at something somewhere else.
+
+**`TOPOSCOPE_WATCHDOG_URL`.** Set it in `.env` (Compose passes it through) to a check-in URL on another service. After each monitor pass, once a minute, Toposcope sends `GET <url>` when the pass read its stores, and `GET <url>/fail` when it could not: ClickHouse did not answer a query, or SQLite could not be read. When the check-ins stop, or a `/fail` arrives, that service pages. Leave it unset and nothing is called; a value that is not an `http` or `https` address, or that has a `#`, stops the app at boot with that reason. The address is not logged.
+
+- **Healthchecks.io** (or a self-hosted Healthchecks): a check with period 1 minute and a grace of a few minutes; set `https://hc-ping.com/<uuid>`. `/fail` pages at once.
+- **Better Stack**: a heartbeat; set its URL. `/fail` pages at once.
+- **Uptime Kuma** or **Gatus**: a push monitor's URL; a missing check-in pages when its interval runs out. They do not read `/fail`, so ClickHouse down is noticed when the check-ins stop instead.
+- **A second Toposcope**: a push monitor's keyed URL there, which reads `/fail`.
+
+The check-in goes from the end of the pass, not from a timer of its own: a timer would keep checking in while the monitor loop is stuck. A pass that is still running when the next minute comes skips that minute, so a stuck pass sends nothing.
+
+**An outside check on `GET /api/health`.** It is open (no password), and 200 only when the app is ready and both stores answer; otherwise 503 (see [Health and metrics](#health-and-metrics)). It needs `/api/health` reachable from where the check runs.
+
+| What stops | `TOPOSCOPE_WATCHDOG_URL` | Outside check on `/api/health` |
+| --- | --- | --- |
+| The box | check-ins stop | no answer |
+| The app | check-ins stop | no answer |
+| ClickHouse | `/fail` within two passes | 503 |
+| The monitor loop, stuck | check-ins stop | still 200: not caught |
+| A monitor's webhook target | not caught | not caught |
+
+Neither notices a webhook target that is down: Toposcope does not page about itself through its own webhooks. Watch shows each monitor's failed calls (`failed 503 ×3`) on its rail and its stretches.
+
 ## Links
 
 A link is one instance pulling rows from another, made from **Links** in the header. The instance the other can reach mints a key; the other pastes it, and the side that pasted connects. **Offer rows from here** mints a single-use key for one filter: whoever pastes it pulls the rows that match. **Invite a source here** mints a key that lets this instance pull from whoever pastes it, once or for many until a date (30 days at most). A key carries this instance's address, its name, a short id, the filter and a secret; it is shown once and stored hashed. On the first paste the two instances swap it for a secret of their own, and that secret reads the link's feed and nothing else.
