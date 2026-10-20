@@ -5,13 +5,15 @@ import {
   recordWebhookAttempt,
 } from "../control/alerts";
 import { getDb } from "../control/index";
+import { clickhouseQuery } from "../shared/clickhouse";
 import { getSaved } from "../control/saved-searches";
 import { incMetric } from "../metrics";
 import { clipError, outcomeFromError, outcomeFromHttp } from "./delivery";
 import { publicUrl } from "../shared/public-url";
 import type { WebhookPayload } from "./payload";
 import { passSearchMonitor } from "./monitor";
-import { recordCall } from "./monitor-store";
+import { closeByEdit, recordCall } from "./monitor-store";
+import { pingWatchdog } from "./watchdog";
 import { evaluateAlertSeries } from "./series";
 import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
 
@@ -50,6 +52,11 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
     }
     const saved = getSaved(rule.saved_search_id);
     if (!saved || saved.board) {
+      // Its saved search is gone, or became a board: nothing reads it any more, so an open
+      // stretch closes as an edit closes it, without a call.
+      if (rule.state === "open") {
+        closeByEdit(rule.id, now, db);
+      }
       continue;
     }
     if (rule.kind === "first_seen") {
@@ -93,6 +100,62 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
   }
 }
 
+const storesTimeoutMs = 10_000;
+
+/** ClickHouse answers a query (SQLite was read for the rules): a pass with no monitors proves it too. */
+async function storesAnswer(): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      clickhouseQuery<{ ok: number }>("SELECT 1 AS ok").then((rows) => Number(rows[0]?.ok) === 1),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), storesTimeoutMs);
+      }),
+    ]);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** What a tick runs; tests swap them. */
+export const monitorLoop = {
+  evaluate: (now?: number) => evaluateAlerts(now),
+  storesAnswer,
+  checkIn: (ok: boolean) => pingWatchdog(ok),
+};
+
+let passRunning = false;
+
+/**
+ * One tick of the monitor loop: a pass over every monitor, then the watchdog's check-in (#179),
+ * `ok` when the pass read its stores. A tick while the last pass is still running is skipped, so
+ * two passes never send one call twice; a stuck pass sends no check-in, and the outside service
+ * notices.
+ */
+export async function monitorTick(now?: number): Promise<"skipped" | "ok" | "fail"> {
+  if (passRunning) {
+    console.warn("monitor pass still running: this tick is skipped");
+    return "skipped";
+  }
+  passRunning = true;
+  try {
+    let ok = true;
+    try {
+      await monitorLoop.evaluate(now);
+    } catch (err) {
+      ok = false;
+      console.error("monitor pass failed", err);
+    }
+    ok = ok && (await monitorLoop.storesAnswer());
+    await monitorLoop.checkIn(ok);
+    return ok ? "ok" : "fail";
+  } finally {
+    passRunning = false;
+  }
+}
+
 export function startAlertCron(): void {
   const raw = process.env.ALERT_CRON_MS;
   const ms = raw !== undefined && raw !== "" ? Number(raw) : 60_000;
@@ -100,6 +163,6 @@ export function startAlertCron(): void {
     return;
   }
   setInterval(() => {
-    void evaluateAlerts();
+    void monitorTick();
   }, ms);
 }
