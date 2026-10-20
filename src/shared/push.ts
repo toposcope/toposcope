@@ -21,8 +21,11 @@ export const maxPingBody = 10 * 1024;
 export const maxCheckMessage = 10 * 1024;
 export const maxMonitorName = 100;
 export const maxCheckUnit = 16;
-/** Results a push monitor keeps in SQLite for Watch's ticks; every result is also a log row. */
-export const keptResults = 1000;
+/**
+ * Watch's ticks are kept in SQLite a monitor a minute, the worst result of the minute winning,
+ * for 30 days; every result is also a log row, which is the record.
+ */
+export const keptResultsMs = 30 * 24 * 60 * 60_000;
 /** A ping stored at most once a second per key, for its start and for its result each. */
 export const pingEveryMs = 1000;
 
@@ -138,6 +141,18 @@ export function monitorQuery(name: string): string {
 /** A keyed URL's key: a random UUID. */
 export function isPingKey(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value);
+}
+
+/**
+ * A fresh key: a random (version 4) UUID. Built from `getRandomValues`, which a browser has on a
+ * plain-http address too, where `randomUUID` is missing.
+ */
+export function randomPingKey(): string {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6]! & 0x0f) | 0x40;
+  b[8] = (b[8]! & 0x3f) | 0x80;
+  const hex = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 /** `9f2c…e41a`: a key as Watch may show it, never whole. */

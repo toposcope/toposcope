@@ -7,6 +7,7 @@ import {
   isPingKey,
   levelOfStatus,
   maskKey,
+  randomPingKey,
   monitorQuery,
   parseCheckStatus,
   parseEvery,
@@ -144,5 +145,8 @@ describe("names and keys", () => {
     expect(isPingKey("00000000-0000-0000-0000-000000000000")).toBe(false);
     expect(isPingKey(key.toUpperCase())).toBe(false);
     expect(maskKey("9f2c1111-2222-4333-8444-55555555e41a")).toBe("9f2c…e41a");
+    const keys = new Set(Array.from({ length: 50 }, randomPingKey));
+    expect(keys.size).toBe(50);
+    expect([...keys].every(isPingKey)).toBe(true);
   });
 });

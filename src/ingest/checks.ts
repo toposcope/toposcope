@@ -1,7 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { Context } from "hono";
 import { applyPushResult, noteStart, type PushResult } from "../alerts/push";
-import { pruneResults } from "../alerts/monitor-store";
 import { getAlert, monitorsNamed, type AlertRule } from "../control/alerts";
 import { getDb } from "../control/index";
 import {
@@ -225,7 +224,6 @@ export async function applyResults(results: PushResult[], nowMs: number): Promis
     return { ok: false, status: 503, error: insertErrorMessage(err) };
   }
   const created: string[] = [];
-  const touched = new Set<string>();
   for (const result of results) {
     // Looked up again: a request that ran beside this one may have made it meanwhile.
     let rule = monitorsNamed([result.monitor], db).find((r) => r.source === "push") ?? null;
@@ -242,10 +240,6 @@ export async function applyResults(results: PushResult[], nowMs: number): Promis
       created.push(rule.name);
     }
     applyPushResult(rule, result, nowMs, db);
-    touched.add(rule.id);
-  }
-  for (const id of touched) {
-    pruneResults(id, db);
   }
   return { ok: true, ingested: results.length, created };
 }

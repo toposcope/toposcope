@@ -4,7 +4,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { formatSpan, maskKey, monitorQuery, parseEvery, parseGrace, parsePushName, viaLabel } from "../../shared/push";
+import {
+  formatSpan,
+  maskKey,
+  monitorQuery,
+  parseEvery,
+  parseGrace,
+  parsePushName,
+  randomPingKey,
+  viaLabel,
+} from "../../shared/push";
 import type { MonitorPage, MonitorView, PushResultRow } from "@/types";
 import { Badge } from "@/components/watch-view";
 import { pushValue } from "@/watch";
@@ -143,7 +152,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
       return;
     }
     setPage(null);
-    setMinted(crypto.randomUUID());
+    setMinted(randomPingKey());
     if (draft.mode === "edit") {
       setName(draft.rule.name);
       setEvery(draft.rule.every_ms ? formatSpan(draft.rule.every_ms) : "");

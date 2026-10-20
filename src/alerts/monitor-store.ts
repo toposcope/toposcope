@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
 import { keptStretches, type MonitorResult } from "../shared/monitor";
-import { keptResults, type CheckStatus } from "../shared/push";
+import { keptResultsMs, type CheckStatus } from "../shared/push";
 
 /** What became of a stretch's open or resolved call. Null while it is still to be sent. */
 export type CallState = "sent" | "failed" | "silenced" | "none";
@@ -273,12 +273,22 @@ export type PushResultRow = {
 
 const RESULT_COLS = "id, monitor_id, at, status, exit_code, duration_ms, value, unit, message, host, via";
 
+/** How bad a result is: within a minute the worst is kept, and of equals the later. */
+const STATUS_RANK = "CASE {s} WHEN 'fail' THEN 3 WHEN 'warn' THEN 2 WHEN 'unknown' THEN 1 ELSE 0 END";
+const rank = (col: string) => STATUS_RANK.replace("{s}", col);
+
+/** A result for Watch's ticks: one row a monitor a minute, the worst of the minute winning. */
 export function recordPushResult(row: Omit<PushResultRow, "id">, db: Database = getDb()): void {
   db.query(
-    `INSERT INTO monitor_results (monitor_id, at, status, exit_code, duration_ms, value, unit, message, host, via)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO monitor_results (monitor_id, minute, at, status, exit_code, duration_ms, value, unit, message, host, via)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (monitor_id, minute) DO UPDATE SET
+       at = excluded.at, status = excluded.status, exit_code = excluded.exit_code, duration_ms = excluded.duration_ms,
+       value = excluded.value, unit = excluded.unit, message = excluded.message, host = excluded.host, via = excluded.via
+     WHERE ${rank("excluded.status")} >= ${rank("monitor_results.status")}`,
   ).run(
     row.monitor_id,
+    Math.floor(row.at / 60_000),
     row.at,
     row.status,
     row.exit_code,
@@ -291,7 +301,7 @@ export function recordPushResult(row: Omit<PushResultRow, "id">, db: Database = 
   );
 }
 
-/** A push monitor's last result, whatever it said. */
+/** A push monitor's last result as Watch keeps it: the worst of its last minute. */
 export function lastPushResult(monitorId: string, db: Database = getDb()): PushResultRow | null {
   const row = db
     .query(`SELECT ${RESULT_COLS} FROM monitor_results WHERE monitor_id = ? ORDER BY at DESC, id DESC LIMIT 1`)
@@ -340,10 +350,7 @@ export function resultsBetween(
   return { results, dense };
 }
 
-/** Keep a push monitor's last 1000 results. */
-export function pruneResults(monitorId: string, db: Database = getDb()): void {
-  db.query(
-    `DELETE FROM monitor_results WHERE id IN (
-       SELECT id FROM monitor_results WHERE monitor_id = ? ORDER BY at DESC, id DESC LIMIT -1 OFFSET ?)`,
-  ).run(monitorId, keptResults);
+/** Results older than 30 days go. */
+export function pruneResults(now: number, db: Database = getDb()): void {
+  db.query("DELETE FROM monitor_results WHERE at < ?").run(now - keptResultsMs);
 }

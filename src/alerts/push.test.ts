@@ -6,7 +6,7 @@ import { insertPushMonitor, pushFieldsOfResult } from "../control/push-monitors"
 import { isLate } from "../shared/push";
 import type { WebhookOutcome } from "./delivery";
 import type { CallDeps } from "./monitor";
-import { lastPushResult, monitorHistory, openStretch } from "./monitor-store";
+import { lastPushResult, monitorHistory, openStretch, pruneResults, resultsBetween } from "./monitor-store";
 import type { WebhookPayload } from "./payload";
 import { applyPushResult, noteStart, passPushMonitor, type PushResult } from "./push";
 
@@ -130,6 +130,34 @@ describe("a push monitor's results (#177)", () => {
     r.push("ok", t0 + 4 * minute, { duration_ms: 4 * minute });
     expect(r.rule().started_at).toBeNull();
     expect(lastPushResult(r.id, r.db)?.duration_ms).toBe(4 * minute);
+  });
+});
+
+describe("Watch's ticks (#177): one a monitor a minute, the worst winning, for 30 days", () => {
+  test("a fail and then an ok in one minute keep the fail; an equal later one replaces it", () => {
+    const r = rig();
+    r.push("fail", t0 + 10_000, { exit_code: 2 });
+    r.push("ok", t0 + 20_000);
+    expect(resultsBetween(t0, t0 + minute, r.db).results.map((x) => [x.status, x.exit_code])).toEqual([["fail", 2]]);
+    r.push("fail", t0 + 30_000, { exit_code: 1 });
+    expect(resultsBetween(t0, t0 + minute, r.db).results.map((x) => [x.status, x.exit_code])).toEqual([["fail", 1]]);
+  });
+
+  test("a warn replaces an ok and an unknown; the next minute is a row of its own", () => {
+    const r = rig();
+    r.push("ok", t0 + 1000);
+    r.push("unknown", t0 + 2000);
+    r.push("warn", t0 + 3000);
+    r.push("ok", t0 + minute + 1000);
+    expect(resultsBetween(t0, t0 + 2 * minute, r.db).results.map((x) => x.status)).toEqual(["warn", "ok"]);
+  });
+
+  test("results older than 30 days go", () => {
+    const r = rig();
+    r.push("ok", t0);
+    r.push("ok", t0 + 2 * minute);
+    pruneResults(t0 + 30 * 24 * hour + minute, r.db);
+    expect(resultsBetween(0, t0 + 31 * 24 * hour, r.db).results.map((x) => x.at)).toEqual([t0 + 2 * minute]);
   });
 });
 

@@ -14,7 +14,7 @@ import { publicUrl } from "../shared/public-url";
 import type { WebhookPayload } from "./payload";
 import { callUrl, passSearchMonitor, type CallDeps } from "./monitor";
 import { passPushMonitor } from "./push";
-import { recordCall } from "./monitor-store";
+import { pruneResults, recordCall } from "./monitor-store";
 import { evaluateAlertSeries } from "./series";
 import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
 
@@ -47,6 +47,7 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
   const db = getDb();
   const rules = enabledAlertRules(db);
   pruneSentFingerprints(now - 2 * firstSeenWatchMs);
+  pruneResults(now, db);
   const calls: CallDeps = {
     db,
     post: postWebhook,
