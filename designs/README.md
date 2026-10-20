@@ -59,6 +59,16 @@ Locked — monitors (0.6, [#175](https://github.com/toposcope/toposcope/issues/1
 - [Toposcope Liveness.dc.html](Toposcope%20Liveness.dc.html) — frames 18c–18y: Watch, every monitor on one clock with open ones first; push monitors over 7 days, each result a tick and each run a bar; a monitor opened as a hunt; an open stretch as a band on the hunt clock beside the deploy before it; a new monitor choosing where its results come from; a saved-search monitor, at least or fewer than; HTTP(S) conditions picked from the live response and stored as lines; a push monitor and the three ways a script reports to it; the resolved body, left empty (no resolved call is sent) and written for ntfy; an HTTP(S) monitor's request headers and POST body; the default webhook in Settings; the TCP · certificate editor and Watch's TCP and Certificate filters
 - [liveness/](liveness/) — crops for issues (18c 18f 18i 18o 18p 18j 18r 18s 18t 18u 18v 18w 18x 18y)
 
+Locked — upgrades (0.6.1, [#195](https://github.com/toposcope/toposcope/issues/195)–[#199](https://github.com/toposcope/toposcope/issues/199), [#201](https://github.com/toposcope/toposcope/issues/201)), 2026-10-20.
+
+- [Toposcope Upgrades.dc.html](Toposcope%20Upgrades.dc.html) — frames 19a–19j: the running version in the footer, up to date and behind; its panel with Before you upgrade first, what's new, the backup size and the command; an amber dot for a release in between that asks for a step; three releases behind; the command copied; could not check and the check off; the same as a Settings tab; a narrow window; rejects
+- [upgrades/](upgrades/) — crops for issues (19a–19j)
+
+Picked — Watch's marks lane when deploys crowd, 2026-10-21: option A (20b, 20c, 20f).
+
+- [Toposcope Watch Marks.dc.html](Toposcope%20Watch%20Marks.dc.html) — frames 20a–20g: 43 deploys in a day as 0.6.1 draws them; A, Search's counted chips on Watch with the wash up through the monitor rows; a chip hovered and its list pinned; B, triangles only; C, a name only where it fits; A on a quiet day and at 7d and 30d, where a chip is a tick's worth of marks; rejects
+- [watch-marks/](watch-marks/) — crops for issues (20a–20g)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
