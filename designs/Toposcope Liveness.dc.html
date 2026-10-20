@@ -136,6 +136,34 @@
   [data-crop="18s"] .way h3{margin:0;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px}
   [data-crop="18s"] .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#e4e4e7;background:#0f0f11;border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:8px 10px;white-space:pre;line-height:1.55;overflow:hidden}
   [data-crop="18s"] .num{width:18px;height:18px;border-radius:999px;background:#27272a;color:#e7e1d3;font-size:10.5px;display:inline-flex;align-items:center;justify-content:center}
+  [data-crop="18t"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18t"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18t"] .mut{color:#a1a1aa}
+  [data-crop="18t"] .btn{height:30px;padding:0 14px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
+  [data-crop="18t"] .btn2{height:30px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18t"] .seg{height:26px;padding:0 10px;border:0;background:transparent;color:#a1a1aa;font:inherit;font-size:12px;border-radius:5px}
+  [data-crop="18t"] .seg.on{background:#27272a;color:#fafafa}
+  [data-crop="18t"] .sw{display:inline-flex;padding:2px;border-radius:7px;background:#0f0f11;border:1px solid rgba(255,255,255,.1);width:max-content}
+  [data-crop="18t"] .sum{display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 12px;font-size:12.5px}
+  [data-crop="18t"] .ed{min-height:132px;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:#0a0a0c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.6;white-space:pre;color:#f4f4f5}
+  [data-crop="18t"] .fi{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.7}
+  [data-crop="18t"] .fi .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#c4b5fd}
+  [data-crop="18t"] .new{font-size:10px;color:#e7e1d3;border:1px solid rgba(231,225,211,.45);border-radius:3px;padding:0 4px}
+  [data-crop="18t"] .lab2{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px}
+  [data-crop="18u"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18u"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18u"] .mut{color:#a1a1aa}
+  [data-crop="18u"] .btn{height:30px;padding:0 14px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
+  [data-crop="18u"] .btn2{height:30px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18u"] .seg{height:26px;padding:0 10px;border:0;background:transparent;color:#a1a1aa;font:inherit;font-size:12px;border-radius:5px}
+  [data-crop="18u"] .seg.on{background:#27272a;color:#fafafa}
+  [data-crop="18u"] .sw{display:inline-flex;padding:2px;border-radius:7px;background:#0f0f11;border:1px solid rgba(255,255,255,.1);width:max-content}
+  [data-crop="18u"] .sum{display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 12px;font-size:12.5px}
+  [data-crop="18u"] .ed{min-height:132px;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:#0a0a0c;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.6;white-space:pre;color:#f4f4f5}
+  [data-crop="18u"] .fi{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.7}
+  [data-crop="18u"] .fi .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#c4b5fd}
+  [data-crop="18u"] .new{font-size:10px;color:#e7e1d3;border:1px solid rgba(231,225,211,.45);border-radius:3px;padding:0 4px}
+  [data-crop="18u"] .lab2{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px}
 </style>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
 </helmet>
@@ -145,7 +173,7 @@
   <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
     <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
     <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Liveness</h1>
-    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 18c–18s · monitors (0.6): Watch, one monitor, writing a monitor</span>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 18c–18u · monitors (0.6): Watch, one monitor, writing a monitor, the resolved body</span>
   </div>
 
   <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Watch</h2>
@@ -847,6 +875,122 @@ Authorization: Bearer $TOKEN
       </div>
     </div>
 
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">The resolved body</h2>
+
+    <div id="18t" data-frame="18t" data-screen-label="18t The resolved body, left empty: no resolved call is sent" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18t" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18t</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The resolved body, left empty: no resolved call is sent</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×960</span>
+      </div>
+      <div data-crop="18t" style="position:relative; width:1280px; height:960px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:960px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:28px;box-sizing:border-box;background:#050506">
+  <section role="dialog" aria-label="Edit monitor" style="position:relative;width:860px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <a href="#" style="font-size:12.5px;color:#a1a1aa">Saved search</a><span class="mut">/</span>
+      <h2 style="margin:0;font-size:15px;font-weight:600">ci-box went quiet</h2>
+      <button type="button" aria-label="Close" style="margin-left:auto;width:26px;height:26px;border:0;background:transparent;color:#a1a1aa;font-size:16px">×</button>
+    </div>
+
+    <div style="padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+      <div class="sum">
+        <span class="mut">Search</span><span class="mono">ci-box lines · host:ci-box · 15m</span>
+        <span class="mut">Opens when</span><span class="mono">count fewer than 1 in 15m</span>
+        <span class="mut">Remind</span><span class="mono">4h</span>
+        <span class="mut">Calls</span><span class="mono">default · https://ntfy.sh/agental-ops</span>
+      </div>
+      <div style="height:1px;background:rgba(255,255,255,.08)"></div>
+
+      <div style="display:flex;align-items:center;gap:12px"><span class="mut" style="font-size:12px;width:96px">Body</span><span class="sw"><button class="seg" type="button">Default</button><button class="seg" type="button">Text</button><button class="seg on" type="button">JSON</button></span><span class="mono mut" style="font-size:12px">content-type: application/json</span></div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span class="lab2">When it opens, and each reminder</span>
+            <span class="ed">{{f18t_openBody}}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span class="lab2">When it resolves</span>
+            <span class="ed" style="{{f18t_resolvedStyle}}">{{f18t_resolvedBody}}</span>
+            <span class="mut" style="font-size:12px">{{f18t_resolvedNote}}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;padding-top:24px">
+          <span class="mut" style="font-size:11px;font-weight:600;letter-spacing:.06em">FILL IN · click to add</span>
+          <sc-for list="{{f18t_fills}}" as="f" hint-placeholder-count="12">
+            <span class="fi"><span class="k">{{f.name}}</span><span class="mut">{{f.about}}</span><sc-if value="{{f.isNew}}" hint-placeholder-val="{{false}}"><span class="new">new</span></sc-if></span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px"><button class="btn2" type="button">Send a test call</button><span class="mut" style="font-size:12px">Sends the open body now; with a resolved body, then that one too.</span></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn2" type="button">Cancel</button><button class="btn" type="button">Save</button></span>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="18u" data-frame="18u" data-screen-label="18u The resolved body, written for ntfy: sent once, when it resolves" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18u" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18u</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The resolved body, written for ntfy: sent once, when it resolves</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×960</span>
+      </div>
+      <div data-crop="18u" style="position:relative; width:1280px; height:960px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:960px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:28px;box-sizing:border-box;background:#050506">
+  <section role="dialog" aria-label="Edit monitor" style="position:relative;width:860px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <a href="#" style="font-size:12.5px;color:#a1a1aa">Saved search</a><span class="mut">/</span>
+      <h2 style="margin:0;font-size:15px;font-weight:600">ci-box went quiet</h2>
+      <button type="button" aria-label="Close" style="margin-left:auto;width:26px;height:26px;border:0;background:transparent;color:#a1a1aa;font-size:16px">×</button>
+    </div>
+
+    <div style="padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+      <div class="sum">
+        <span class="mut">Search</span><span class="mono">ci-box lines · host:ci-box · 15m</span>
+        <span class="mut">Opens when</span><span class="mono">count fewer than 1 in 15m</span>
+        <span class="mut">Remind</span><span class="mono">4h</span>
+        <span class="mut">Calls</span><span class="mono">default · https://ntfy.sh/agental-ops</span>
+      </div>
+      <div style="height:1px;background:rgba(255,255,255,.08)"></div>
+
+      <div style="display:flex;align-items:center;gap:12px"><span class="mut" style="font-size:12px;width:96px">Body</span><span class="sw"><button class="seg" type="button">Default</button><button class="seg" type="button">Text</button><button class="seg on" type="button">JSON</button></span><span class="mono mut" style="font-size:12px">content-type: application/json</span></div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span class="lab2">When it opens, and each reminder</span>
+            <span class="ed">{{f18u_openBody}}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span class="lab2">When it resolves</span>
+            <span class="ed" style="{{f18u_resolvedStyle}}">{{f18u_resolvedBody}}</span>
+            <span class="mut" style="font-size:12px">{{f18u_resolvedNote}}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;padding-top:24px">
+          <span class="mut" style="font-size:11px;font-weight:600;letter-spacing:.06em">FILL IN · click to add</span>
+          <sc-for list="{{f18u_fills}}" as="f" hint-placeholder-count="12">
+            <span class="fi"><span class="k">{{f.name}}</span><span class="mut">{{f.about}}</span><sc-if value="{{f.isNew}}" hint-placeholder-val="{{false}}"><span class="new">new</span></sc-if></span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px"><button class="btn2" type="button">Send a test call</button><span class="mut" style="font-size:12px">Sends the open body now; with a resolved body, then that one too.</span></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn2" type="button">Cancel</button><button class="btn" type="button">Save</button></span>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -985,6 +1129,60 @@ class Component extends DCLogic {
     ];
     const linesText = 'status == 200\n$.db == "ok"\ntime < 300ms   warn\ncert > 14d';
     return { conds, linesText };
+  }
+})().renderVals()),
+      ...pre('f18t', new (class {
+  renderVals() {
+    const o = '{{', c = '}}';
+    const f = (n) => o + n + c;
+    const fill = (name, about, isNew) => ({ name: f(name), about, isNew: !!isNew });
+    return {
+      openBody: '{\n  "topic": "agental-ops",\n  "title": "' + f('alert.name') + ' ' + f('state') + '",\n  "message": "' + f('message') + ' · open ' + f('duration') + '",\n  "priority": 4,\n  "click": "' + f('link') + '"\n}',
+      resolvedBody: '',
+      resolvedStyle: 'min-height:96px;border-style:dashed;border-color:rgba(255,255,255,.18);background:transparent',
+      resolvedNote: 'Empty: no resolved call is sent.',
+      fills: [
+        fill('alert.name', 'the monitor'),
+        fill('series', 'count'),
+        fill('value', 'what it read'),
+        fill('threshold', 'fewer than 1'),
+        fill('query', 'the search'),
+        fill('fired_at', 'ISO time'),
+        fill('link', 'back to Toposcope'),
+        fill('state', 'open, reminder, resolved', true),
+        fill('opened_at', 'ISO time', true),
+        fill('resolved_at', 'ISO time', true),
+        fill('duration', 'how long it has been open', true),
+        fill('message', 'the result that opened it', true)
+      ]
+    };
+  }
+})().renderVals()),
+      ...pre('f18u', new (class {
+  renderVals() {
+    const o = '{{', c = '}}';
+    const f = (n) => o + n + c;
+    const fill = (name, about, isNew) => ({ name: f(name), about, isNew: !!isNew });
+    return {
+      openBody: '{\n  "topic": "agental-ops",\n  "title": "' + f('alert.name') + ' ' + f('state') + '",\n  "message": "' + f('message') + ' · open ' + f('duration') + '",\n  "priority": 4,\n  "click": "' + f('link') + '"\n}',
+      resolvedBody: '{\n  "topic": "agental-ops",\n  "title": "' + f('alert.name') + ' resolved",\n  "message": "open ' + f('duration') + ', ' + f('opened_at') + ' to ' + f('resolved_at') + '",\n  "priority": 2,\n  "tags": ["white_check_mark"]\n}',
+      resolvedStyle: '',
+      resolvedNote: 'Sent once, when it resolves.',
+      fills: [
+        fill('alert.name', 'the monitor'),
+        fill('series', 'count'),
+        fill('value', 'what it read'),
+        fill('threshold', 'fewer than 1'),
+        fill('query', 'the search'),
+        fill('fired_at', 'ISO time'),
+        fill('link', 'back to Toposcope'),
+        fill('state', 'open, reminder, resolved', true),
+        fill('opened_at', 'ISO time', true),
+        fill('resolved_at', 'ISO time', true),
+        fill('duration', 'how long it has been open', true),
+        fill('message', 'the result that opened it', true)
+      ]
+    };
   }
 })().renderVals()),
     };
