@@ -868,11 +868,11 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                     className="ml-auto shrink-0 hover:underline"
                     onClick={() => setOpen_((o) => ({ ...o, run: !o.run }))}
                   >
-                    Change
+                    {open_.run ? "Done" : "Change"}
                   </button>
                 </span>
                 {open_.run ? (
-                  <span className="flex flex-wrap items-center gap-2 pb-1 pl-16 text-[12px] text-muted-foreground">
+                  <span className="flex flex-wrap items-center gap-2 rounded-[6px] border border-white/10 bg-[#0f0f11] p-2.5 text-[12px] text-muted-foreground">
                     every
                     <Seg label="Every" ids={httpEveryIds} value={every as (typeof httpEveryIds)[number]} onPick={setEvery} />
                     open after
@@ -893,11 +893,11 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                     className="ml-auto shrink-0 hover:underline"
                     onClick={() => setOpen_((o) => ({ ...o, calls: !o.calls }))}
                   >
-                    Change
+                    {open_.calls ? "Done" : "Change"}
                   </button>
                 </span>
                 {open_.calls ? (
-                  <div className="flex flex-col gap-3 pb-1 pl-16">
+                  <div className="flex flex-col gap-3 rounded-[6px] border border-white/10 bg-[#0f0f11] p-2.5">
                     <span className="flex items-center gap-2 text-[12px]">
                       <span className="w-[58px] shrink-0 text-muted-foreground">webhook</span>
                       <input
@@ -955,7 +955,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                   <span className="w-14 shrink-0 text-muted-foreground">request</span>
                   <span className="min-w-0 truncate font-mono">
                     {headerCount === 0 ? "no headers" : `${headerCount} header${headerCount === 1 ? "" : "s"}`} ·{" "}
-                    {method === "POST" && reqBody ? `body ${formatBytes(new TextEncoder().encode(reqBody).length)}` : "no body"}
+                    {method === "POST" && reqBody ? "a body" : "no body"}
                   </span>
                   <button
                     type="button"
@@ -963,39 +963,44 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                     className="ml-auto shrink-0 hover:underline"
                     onClick={() => setOpen_((o) => ({ ...o, request: !o.request }))}
                   >
-                    Change
+                    {open_.request ? "Done" : "Change"}
                   </button>
                 </span>
                 {open_.request ? (
-                  <div className="flex flex-col gap-2 pb-1 pl-16">
-                    <label className="flex flex-col gap-1">
-                      <span className="text-[11px] text-muted-foreground">
-                        Headers, Name: value a line. Kept as a webhook URL is: sent, never shown back.
-                      </span>
+                  // 18v: the request's headers, and the body a POST sends.
+                  <div className="flex flex-col gap-1.5 rounded-[6px] border border-white/10 bg-[#0f0f11] p-2.5">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-[11px] text-muted-foreground">headers · Name: value, one a line</span>
                       <textarea
                         aria-label="Headers"
                         value={reqHeaders}
                         spellCheck={false}
-                        rows={3}
+                        rows={Math.max(2, reqHeaders.split("\n").length)}
                         placeholder="Authorization: Bearer …"
                         onChange={(e) => setReqHeaders(e.target.value)}
                         className={cn(
-                          "resize-y rounded-[5px] border bg-[#0f0f11] px-2.5 py-2 font-mono text-[11.5px] leading-[1.55] outline-none placeholder:text-muted-foreground/60",
-                          headersError ? "border-red-400" : "border-white/[0.08]",
+                          "resize-y rounded-[5px] border bg-transparent px-[9px] py-[7px] font-mono text-[12px] leading-[1.6] outline-none placeholder:text-muted-foreground/60",
+                          headersError ? "border-red-400" : "border-white/15",
                         )}
                       />
-                      {headersError ? <span className="text-[11.5px] text-red-300">{headersError}</span> : null}
                     </label>
+                    {headersError ? (
+                      <span className="text-[11px] text-red-300">{headersError}</span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">
+                        A saved value shows as •••• and is kept unless you type over it.
+                      </span>
+                    )}
                     {method === "POST" ? (
-                      <label className="flex flex-col gap-1">
-                        <span className="text-[11px] text-muted-foreground">Body, sent with each POST</span>
+                      <label className="mt-1 flex flex-col gap-1.5">
+                        <span className="text-[11px] text-muted-foreground">body · sent with POST</span>
                         <textarea
-                          aria-label="Request body"
+                          aria-label="Body"
                           value={reqBody}
                           spellCheck={false}
-                          rows={3}
+                          rows={Math.max(1, reqBody.split("\n").length)}
                           onChange={(e) => setReqBody(e.target.value)}
-                          className="resize-y rounded-[5px] border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2 font-mono text-[11.5px] leading-[1.55] outline-none"
+                          className="resize-y rounded-[5px] border border-white/15 bg-transparent px-[9px] py-[7px] font-mono text-[12px] leading-[1.6] outline-none"
                         />
                       </label>
                     ) : null}

@@ -232,8 +232,8 @@ export function headerContains(name: string, value: string): string | null {
   return `header ${name.toLowerCase()} contains ${/\s/.test(text) ? JSON.stringify(text) : text}`;
 }
 
-/** Shown for a stored header's value, which the browser is never sent. */
-export const keptValue = "••••";
+/** Shown for a stored header's value, which the browser is never sent (18v). */
+export const keptValue = "••••••••••••";
 
 /** A monitor's headers in the request box: `Name: value`, a stored one as `Name: ••••`. */
 export function headersText(names: readonly string[]): string {
@@ -256,7 +256,7 @@ export function readHeadersText(
     }
     const name = line.slice(0, at).trim();
     const value = line.slice(at + 1).trim();
-    if (value === keptValue) {
+    if (/^•+$/.test(value)) {
       out[name] = null;
       continue;
     }

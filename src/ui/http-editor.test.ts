@@ -91,7 +91,7 @@ describe("the stored lines (18r)", () => {
   });
 
   test("request headers: a stored value comes back as •••• and is kept as null", () => {
-    expect(headersText(["Authorization"])).toBe("Authorization: ••••");
+    expect(headersText(["Authorization"])).toBe("Authorization: ••••••••••••");
     expect(readHeadersText("Authorization: ••••\nX-Env: prod")).toEqual({
       ok: true,
       headers: { Authorization: null, "X-Env": "prod" },
