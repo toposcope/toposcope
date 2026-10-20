@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.6.0` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.6.1` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -194,7 +194,7 @@ Toposcope calls out only where this list says. Everything but the first item is 
 
 - **The release check**, on by default. Once a day, and a few minutes after it starts, the app reads GitHub's public list of releases, `GET https://api.github.com/repos/toposcope/toposcope/releases?per_page=30`, with `User-Agent: toposcope` and nothing else: no version, no instance name, no address. GitHub sees the box's IP. A failed check is noted quietly and tried again the next day. The footer shows what it found, signed-in `GET /api/version` returns it, and the first sight of a new version writes one row (see Paging on a new release below). Set `TOPOSCOPE_UPDATE_CHECK=off` in `.env` and restart to stop it; then nothing is called. It honours `HTTPS_PROXY`.
 - **Webhooks**: each monitor's own, and the default in Settings.
-- **HTTP(S) monitors**: the addresses they check, from this node.
+- **HTTP(S), TCP and certificate monitors**: the addresses and ports they check, from this node.
 - **Links**: the instances this one pulls from or serves, as each link says.
 - **`TOPOSCOPE_WATCHDOG_URL`**: the check-in after each monitor pass, when it is set.
 
@@ -281,6 +281,8 @@ Version 0.6.0 turns alerts into monitors, and changes nothing in ClickHouse at b
 
 Rolling back to 0.5.7 leaves the new columns and tables in place and unused: every rule goes back to calling once per window, with no resolved call, and push and HTTP(S) monitors do not run there; nor does a monitor that relies on the default webhook. Before rolling back, pause or delete every fewer-than monitor: 0.5.7 reads it as at least and calls whenever its search has its N lines, that is, all the time while the stream is healthy. A monitor paused in 0.6.0 stays skipped.
 
+Version 0.6.1 changes nothing in ClickHouse at boot. SQLite gains one table, `monitor_net`, for TCP and certificate monitors, and two `settings` rows, `update_check` and `update_announced`. From this version Toposcope reads GitHub's public releases list once a day (see [What Toposcope calls out to](#what-toposcope-calls-out-to)); `TOPOSCOPE_UPDATE_CHECK=off` stops it. Rolling back to 0.6.0 leaves the table and rows in place and unused: TCP and certificate monitors do not run there, and the footer shows no version. Upgrades from 0.6.1 on can use `upgrade.sh`, which 0.6.1 is the first release to ship.
+
 ## Backup and restore
 
 Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`.
@@ -312,7 +314,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 From 0.6.1, `./upgrade.sh rollback --yes` goes back to the last backup the script took (see [With upgrade.sh](#with-upgradesh)). By hand: to roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin. Pin `0.5.7` to roll back application code from `0.6.0`.
+`0.3.14` is the first public pin. Pin `0.6.0` to roll back application code from `0.6.1`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe. 0.6.0 also adds tables (`monitor_stretches`, `monitor_calls`, `monitor_http` and `monitor_results`); 0.5.7 ignores them, and a push or HTTP(S) monitor's rule, which has no saved search, does not run there. Pinning 0.6.0 again picks them up where they were. TCP and certificate monitors add `monitor_net`; a release before them ignores it, and does not run them (Watch lists each as a search monitor with no search, and one that was open stays open until they run again).
 

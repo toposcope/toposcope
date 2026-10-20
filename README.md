@@ -4,16 +4,25 @@ Toposcope is a lightweight, self-hosted log manager for searching live logs with
 
 It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability.
 
-Current release: `0.6.0` · [MIT Expat license](LICENSE)
+Current release: `0.6.1` · [MIT Expat license](LICENSE)
 
 ## Quick start
 
-The packaged install is the recommended path for operators. Download these four files from the [v0.6.0 release](https://github.com/toposcope/toposcope/releases/tag/v0.6.0) into one directory:
+The packaged install is the recommended path for operators. Download these files from the [v0.6.1 release](https://github.com/toposcope/toposcope/releases/tag/v0.6.1) into one directory:
 
 - `compose.yml`
 - `env.example`
 - `vector.yaml`
 - `LICENSE`
+- `toposcope.sh`
+- `upgrade.sh`
+- `SHA256SUMS`
+
+Check them against the release's sums before you use them (on macOS, `shasum -a 256 -c SHA256SUMS`):
+
+```bash
+sha256sum -c SHA256SUMS
+```
 
 Create the environment file, write three independent secrets into it without printing them, and start the stack:
 
@@ -44,7 +53,7 @@ VECTOR_DATA_DIR=vector-data vector -c vector.yaml
 
 Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and sign in with `TOPOSCOPE_PASSWORD` from `.env`; a browser stays signed in for 30 days. Scripts and `curl -u` keep HTTP Basic Auth, with any username. Name the instance in Settings so two of them can be told apart. This shared operator password also permits writes, including retention changes. Search for `service:smoke`, save the search, then use **Test** on it in the sidebar to verify the full path.
 
-The deployment pins `ghcr.io/toposcope/toposcope:0.6.0`; it never uses `:latest`. Anonymous image pulls need no registry login.
+The deployment pins `ghcr.io/toposcope/toposcope:0.6.1`; it never uses `:latest`. Anonymous image pulls need no registry login.
 
 ## What Toposcope does
 
