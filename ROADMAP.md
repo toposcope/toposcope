@@ -32,8 +32,8 @@ Capabilities, in this order — not patch numbers:
 
 1. **Identities on the row** — `version`, customer, and flag stamped like `service` and `host` (collector-owned, stored attrs).
 2. **Error fingerprints** — a stable id computed from application errors (exception type + stack, not an operator-written template). New ids after a change mark are the “three new bugs.”
-3. **Change marks** — deploy / flag / incident as a point or band on the histogram clock. Consume CI/git/PagerDuty; a human note is the one write we own.
-4. **Probe / liveness** — attach-and-pull status APIs; explicit `up=0`; consumed checks (not a second Nagios).
+3. **Change marks** — deploy / flag / incident as a point or band on the histogram clock. Consume CI/git/PagerDuty; a human note and a monitor's open stretch are the writes we own.
+4. **Monitors** — a saved search that goes quiet or loud, a check-in that is missed or fails, an HTTP(S) check from this node; each opens, reminds and resolves; anything else pushes its result (not a second Nagios). Locked for 0.6 as [#175](https://github.com/toposcope/toposcope/issues/175)–[#180](https://github.com/toposcope/toposcope/issues/180).
 5. **Compare** — a series vs a locked baseline (including the window before a change mark). The fold vs a selected mark is shipped. Split **one** facet (the hunt’s histogram split) stacks one row per series key so the 0.5% / 4% / 9% reading is honest.
 6. **The sentence** — a model or human writes it from evidence last. Not a source of counts. Not chat-as-search.
 
@@ -54,4 +54,4 @@ These need a drawing or an explicit choice before they are work:
 
 Do not send these as PRs expecting a merge. They are a different product.
 
-PromQL, Grafana, pie / heatmap, Helm, k8s, S3 / cold volume, SSO, users / roles, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr.
+PromQL, Grafana, pie / heatmap, Helm, k8s, S3 / cold volume, SSO, users / roles, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place.
