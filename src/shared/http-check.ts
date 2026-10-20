@@ -39,7 +39,29 @@ export type Condition =
   | { what: "body"; text: string }
   | { what: "json"; path: PathStep[]; op: CompareOp; value: JsonScalar }
   | { what: "header"; name: string; text: string }
-  | { what: "cert"; op: ">" | ">="; ms: number };
+  | { what: "cert"; op: ">" | ">="; ms: number }
+  /** A TCP monitor's (#180): the port took the connection. */
+  | { what: "connected" }
+  /** A certificate monitor's (#180): the certificate is for this name, as a client would check it. */
+  | { what: "cert-name"; name: string };
+
+/**
+ * Which monitor a line is for: an HTTP(S) monitor (#178), or a TCP or certificate monitor (#180).
+ * Each reads its own conditions.
+ */
+export type CheckKind = "http" | "tcp" | "cert";
+
+const kindConditions: Record<CheckKind, ReadonlySet<Condition["what"]>> = {
+  http: new Set(["status", "status-in", "time", "body", "json", "header", "cert"]),
+  tcp: new Set(["connected", "time"]),
+  cert: new Set(["connected", "time", "cert", "cert-name"]),
+};
+
+const kindHelp: Record<CheckKind, string> = {
+  http: 'not a condition: status == 200, time < 300ms, body contains "ok", $.db == "ok", header … contains …, cert > 14d',
+  tcp: "not a TCP condition: connected, time < 200ms",
+  cert: "not a certificate condition: connected, time < 200ms, cert > 14d, cert name == mail.example.com",
+};
 
 export type ConditionLevel = "fail" | "warn";
 
@@ -241,8 +263,50 @@ function parseSpan(raw: string): number | null {
   return Number(m[1]) * (m[2] === "d" ? dayMs : hourMs);
 }
 
-function parseCondition(text: string): Condition | string {
-  let m = /^status\s+in\s+(\d{3})\s*\.\.\s*(\d{3})$/i.exec(text);
+/** A name a certificate can be for: a host name, `*.` and a host name, or an address. */
+const certNameRe = /^(\*\.)?[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?(\.[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?)*$|^[\d.]+$|^[0-9a-f:]+$/;
+
+/** What a line could be, by its first word: `status`, `time`, `$.`, `cert name`, … */
+function whatOf(text: string): Array<Condition["what"]> {
+  const t = text.toLowerCase();
+  if (t.startsWith("$")) {
+    return ["json"];
+  }
+  if (/^cert\s+name\b/.test(t)) {
+    return ["cert-name"];
+  }
+  const word = /^[a-z]+/.exec(t)?.[0];
+  return word === "status"
+    ? ["status", "status-in"]
+    : word === "time" || word === "body" || word === "header" || word === "cert" || word === "connected"
+      ? [word]
+      : [];
+}
+
+function parseCondition(text: string, kind: CheckKind): Condition | string {
+  // A line another monitor reads is not one: a TCP monitor has no status.
+  if (!whatOf(text).some((what) => kindConditions[kind].has(what))) {
+    return kindHelp[kind];
+  }
+  const cond = readCondition(text);
+  if (typeof cond === "string") {
+    return cond;
+  }
+  return kindConditions[kind].has(cond.what) ? cond : kindHelp[kind];
+}
+
+function readCondition(text: string): Condition | string {
+  if (/^connected$/i.test(text)) {
+    return { what: "connected" };
+  }
+  let m = /^cert\s+name\s*==\s*(.+)$/i.exec(text);
+  if (m) {
+    const name = parseText(m[1]!)?.toLowerCase().replace(/^\[|\]$/g, "");
+    return name && name.length <= 253 && certNameRe.test(name)
+      ? { what: "cert-name", name }
+      : "cert name needs a host name: cert name == mail.example.com";
+  }
+  m = /^status\s+in\s+(\d{3})\s*\.\.\s*(\d{3})$/i.exec(text);
   if (m) {
     const from = Number(m[1]);
     const to = Number(m[2]);
@@ -296,7 +360,7 @@ function parseCondition(text: string): Condition | string {
     }
     return { what: "json", path, op, value };
   }
-  return 'not a condition: status == 200, time < 300ms, body contains "ok", $.db == "ok", header … contains …, cert > 14d';
+  return kindHelp.http;
 }
 
 /** The text a line keeps for a condition, written one way. */
@@ -318,37 +382,41 @@ export function formatCondition(c: Condition): string {
       const days = c.ms / dayMs;
       return `cert ${c.op} ${Number.isInteger(days) ? `${days}d` : `${c.ms / hourMs}h`}`;
     }
+    case "connected":
+      return "connected";
+    case "cert-name":
+      return `cert name == ${c.name}`;
   }
 }
 
 /** One line: its condition, and `warn` at its end when it warns instead of failing. */
-export function parseConditionLine(raw: string): ConditionLine | { error: string } {
+export function parseConditionLine(raw: string, kind: CheckKind = "http"): ConditionLine | { error: string } {
   const text = raw.trim();
   if (text.length > maxConditionLine) {
     return { error: `longer than ${maxConditionLine} characters` };
   }
   const warn = /^(.*\S)\s+warn$/i.exec(text);
   if (warn) {
-    const cond = parseCondition(warn[1]!);
+    const cond = parseCondition(warn[1]!, kind);
     if (typeof cond !== "string") {
       return { text: warn[1]!, level: "warn", cond };
     }
   }
   const failed = /^(.*\S)\s+fail$/i.exec(text);
-  const body = failed && typeof parseCondition(failed[1]!) !== "string" ? failed[1]! : text;
-  const cond = parseCondition(body);
+  const body = failed && typeof parseCondition(failed[1]!, kind) !== "string" ? failed[1]! : text;
+  const cond = parseCondition(body, kind);
   return typeof cond === "string" ? { error: cond } : { text: body, level: "fail", cond };
 }
 
 /** Every line, or the first that does not read, by its number. Blank lines are skipped. */
-export function parseConditions(text: string): ConditionLine[] | { error: string; line: number } {
+export function parseConditions(text: string, kind: CheckKind = "http"): ConditionLine[] | { error: string; line: number } {
   const out: ConditionLine[] = [];
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     if (!lines[i]!.trim()) {
       continue;
     }
-    const line = parseConditionLine(lines[i]!);
+    const line = parseConditionLine(lines[i]!, kind);
     if ("error" in line) {
       return { error: `line ${i + 1}: ${line.error}`, line: i + 1 };
     }
@@ -390,7 +458,7 @@ export type Verdict = {
   why: string | null;
 };
 
-function compare(a: number, op: CompareOp, b: number): boolean {
+export function compare(a: number, op: CompareOp, b: number): boolean {
   switch (op) {
     case "==":
       return a === b;
@@ -553,15 +621,35 @@ export function judgeLine(c: Condition, seen: HttpSeen, nowMs: number, doc: { va
       if (!seen.https || !seen.certValidTo) {
         return { pass: false, got: "no certificate", why: "no certificate over http" };
       }
-      const left = Date.parse(seen.certValidTo) - nowMs;
-      const pass = c.op === ">" ? left > c.ms : left >= c.ms;
-      return {
-        pass,
-        got: formatCertShort(left),
-        why: pass ? null : left <= 0 ? "the certificate has expired" : `certificate expires in ${formatCertLeft(left)}`,
-      };
+      return judgeCertLeft(c, seen.certValidTo, nowMs);
+    }
+    case "connected":
+    case "cert-name":
+      // Not an HTTP(S) monitor's lines; the parser keeps them out.
+      return { pass: null, got: "—", why: null };
+  }
+}
+
+/** `cert > 14d` against when a certificate stops being valid. */
+export function judgeCertLeft(c: Extract<Condition, { what: "cert" }>, validTo: string, nowMs: number): LineResult {
+  const left = Date.parse(validTo) - nowMs;
+  const pass = c.op === ">" ? left > c.ms : left >= c.ms;
+  return {
+    pass,
+    got: formatCertShort(left),
+    why: pass ? null : left <= 0 ? "the certificate has expired" : `certificate expires in ${formatCertLeft(left)}`,
+  };
+}
+
+/** A fail line that does not hold fails the run, then a warn line warns; when every line holds it is ok. */
+export function decideLines(lines: readonly ConditionLine[], results: LineResult[]): Verdict {
+  for (const level of ["fail", "warn"] as const) {
+    const i = lines.findIndex((l, k) => l.level === level && results[k]!.pass === false);
+    if (i >= 0) {
+      return { result: level, lines: results, line: lines[i]!.text, why: results[i]!.why };
     }
   }
+  return { result: "ok", lines: results, line: null, why: null };
 }
 
 function parseDoc(body: string): { value: unknown; isJson: boolean } {
@@ -625,13 +713,7 @@ export function judgeRun(
       why: ok ? null : `status is ${run.seen.status}, not 2xx`,
     };
   }
-  for (const level of ["fail", "warn"] as const) {
-    const i = lines.findIndex((l, k) => l.level === level && results[k]!.pass === false);
-    if (i >= 0) {
-      return { result: level, lines: results, line: lines[i]!.text, why: results[i]!.why };
-    }
-  }
-  return { result: "ok", lines: results, line: null, why: null };
+  return decideLines(lines, results);
 }
 
 /** 18r's footer: "With these, the last response would warn: 412ms is over 300ms." */

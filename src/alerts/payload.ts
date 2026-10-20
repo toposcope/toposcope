@@ -291,6 +291,78 @@ export function httpFillValues(f: HttpCallFacts): Record<string, string> {
   };
 }
 
+/** What a TCP or certificate monitor's call says about its check and the run it reads (#180). */
+export type NetCallFacts = {
+  alert: { id: string; name: string; source: "tcp" | "cert" };
+  /** host:port. */
+  target: string;
+  /** A certificate monitor's STARTTLS, if it uses one. */
+  starttls: string | null;
+  durationMs: number;
+  /** The run that opened it, in words: `connect ECONNREFUSED`, `certificate expires in 6 days`. */
+  message: string;
+  /** When its certificate stops being valid, ISO; null on a TCP monitor or with no handshake. */
+  certValidTo: string | null;
+  firedAt: string;
+  link: string | null;
+  call: StretchCall;
+};
+
+/** "tcp db.internal:5432", "cert smtp.agental.dev:587 starttls smtp": what it checks, in a line. */
+function netWhat(f: Pick<NetCallFacts, "alert" | "target" | "starttls">): string {
+  return `${f.alert.source} ${f.target}${f.starttls ? ` starttls ${f.starttls}` : ""}`;
+}
+
+/** A TCP or certificate monitor's call: Slack's shape for a Slack URL, otherwise JSON a receiver can read. */
+export function netCallBody(webhookUrl: string, f: NetCallFacts): unknown {
+  const headline =
+    f.call.state === "resolved"
+      ? `resolved after ${f.call.duration}`
+      : f.call.state === "reminder"
+        ? `still open · ${f.call.duration}`
+        : "opened";
+  if (isSlackIncomingUrl(webhookUrl)) {
+    const open = f.link ? `\n<${f.link}|Open in Toposcope>` : "";
+    return {
+      text: `Toposcope: ${f.alert.name} ${headline} — ${f.message}`,
+      blocks: [
+        {
+          type: "section",
+          text: { type: "mrkdwn", text: `*${f.alert.name}* ${headline}\n\`${netWhat(f)}\`\n${f.message}${open}` },
+        },
+      ],
+    };
+  }
+  return {
+    alert: f.alert,
+    target: f.target,
+    ...(f.alert.source === "cert" ? { starttls: f.starttls, cert_valid_to: f.certValidTo } : {}),
+    duration_ms: Math.round(f.durationMs),
+    message: f.message,
+    state: f.call.state,
+    opened_at: f.call.openedAt,
+    resolved_at: f.call.resolvedAt,
+    fired_at: f.firedAt,
+    ...(f.link ? { link: f.link } : {}),
+  };
+}
+
+/** A TCP or certificate monitor's fill-ins, for a text or JSON body of its own. */
+export function netFillValues(f: NetCallFacts): Record<string, string> {
+  return {
+    "alert.name": f.alert.name,
+    target: f.target,
+    duration_ms: String(Math.round(f.durationMs)),
+    message: f.message,
+    state: f.call.state,
+    opened_at: f.call.openedAt,
+    resolved_at: f.call.resolvedAt ?? "",
+    duration: f.call.duration,
+    fired_at: f.firedAt,
+    link: f.link ?? "",
+  };
+}
+
 export type FirstSeenFingerprint = {
   e1: string;
   type: string;

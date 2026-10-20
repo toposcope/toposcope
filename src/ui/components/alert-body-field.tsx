@@ -243,10 +243,10 @@ export function AlertBodyField({
           </span>
           <div className="flex flex-col gap-1 rounded-[6.4px] border border-white/10 bg-background px-3.5 py-3 text-[13px] leading-[19px]">
             <div>
-              <b>{preview.name || "this alert"}</b> {alertKind === "http" ? "open" : "fired"}
+              <b>{preview.name || "this alert"}</b> {alertKind === "http" || alertKind === "net" ? "open" : "fired"}
             </div>
             <div className="font-mono text-[12px] text-foreground/80">{preview.query || "*"}</div>
-            {alertKind === "http" ? (
+            {alertKind === "http" || alertKind === "net" ? (
               <div className="text-foreground/90">{preview.series || "what the run that opened it said"}</div>
             ) : alertKind === "first_seen" ? (
               <div className="text-foreground/90">
@@ -372,7 +372,7 @@ export function TestCall({
           <span className="text-[11.5px] text-muted-foreground">
             {alertKind === "first_seen"
               ? "Sends this body now, filled in from the last mark it watched."
-              : alertKind === "http"
+              : alertKind === "http" || alertKind === "net"
                 ? "Sends the open body now, filled in from the last Send; with a resolved body, then that one too."
                 : "Sends the open body now; with a resolved body, then that one too."}
           </span>

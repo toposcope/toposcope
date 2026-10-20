@@ -68,7 +68,7 @@ const userAgent = "toposcope-monitor/1";
 
 class RunError extends Error {}
 
-function tlsError(code: string | Error | undefined): string {
+export function tlsError(code: string | Error | undefined): string {
   const c = typeof code === "string" ? code : (code as { code?: string } | undefined)?.code ?? code?.message ?? "";
   switch (c) {
     case "CERT_HAS_EXPIRED":
@@ -89,7 +89,7 @@ function tlsError(code: string | Error | undefined): string {
   }
 }
 
-function netError(err: unknown, host: string): string {
+export function netError(err: unknown, host: string): string {
   const e = err as { code?: string; message?: string };
   switch (e?.code) {
     case "ECONNREFUSED":
@@ -124,7 +124,7 @@ function certOf(socket: TLSSocket): HttpCert | null {
 }
 
 /** The addresses to try, IPv4 first, as a browser would fall back. */
-async function addresses(host: string): Promise<string[]> {
+export async function addresses(host: string): Promise<string[]> {
   if (isIP(host)) {
     return [host];
   }
@@ -132,7 +132,7 @@ async function addresses(host: string): Promise<string[]> {
   return [...all.filter((a) => a.family === 4), ...all.filter((a) => a.family !== 4)].map((a) => a.address);
 }
 
-function openTcp(address: string, port: number, held: (s: Socket) => void): Promise<Socket> {
+export function openTcp(address: string, port: number, held: (s: Socket) => void): Promise<Socket> {
   return new Promise((resolve, reject) => {
     const socket = tcpConnect({ host: address, port });
     held(socket);
@@ -147,13 +147,19 @@ function openTcp(address: string, port: number, held: (s: Socket) => void): Prom
   });
 }
 
-function openTls(socket: Socket, servername: string | undefined, ca: string | undefined): Promise<TLSSocket> {
+/** TLS over a connected socket. Its certificate is checked by the caller, not here. */
+export function openTls(
+  socket: Socket,
+  servername: string | undefined,
+  ca: string | undefined,
+  alpn: string[] | null = ["http/1.1"],
+): Promise<TLSSocket> {
   return new Promise((resolve, reject) => {
     const secure = tlsConnect({
       socket,
       servername,
       rejectUnauthorized: false,
-      ALPNProtocols: ["http/1.1"],
+      ...(alpn ? { ALPNProtocols: alpn } : {}),
       ...(ca ? { ca } : {}),
     });
     secure.once("secureConnect", () => {

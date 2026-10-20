@@ -196,40 +196,77 @@ export async function runHttpMonitor(
     },
     db,
   );
-  recordResult(rule.id, result, run.durationMs, at, db);
+  await settleNodeRun(
+    rule,
+    {
+      result,
+      durationMs: run.durationMs,
+      message: runSummary(run),
+      host: hostOf(http.url),
+      via: "http",
+      // The status is what opened it, for its open call.
+      reading: { value: run.durationMs, count: run.exchange.ok ? run.exchange.status : 0, message: runSummary(run) },
+      failsInRow,
+      failAfter: http.fail_after,
+      everyMs: http.every_ms,
+      payload: (what, stretch, url) => httpCallPayload(rule, http, { what, stretch, run, at, url }, deps),
+    },
+    at,
+    deps,
+  );
+  return run;
+}
+
+/** What a run from this node (HTTP(S), TCP or certificate) leaves its monitor with. */
+export type NodeRunOutcome = {
+  result: HttpResult;
+  durationMs: number;
+  message: string;
+  host: string;
+  via: "http" | "tcp" | "cert";
+  reading: Reading;
+  /** Failures in a row with this run counted. */
+  failsInRow: number;
+  failAfter: number;
+  everyMs: number;
+  payload: (what: Exclude<CallWhat, "sent">, stretch: MonitorStretch, url: string) => WebhookPayload;
+};
+
+/**
+ * A run's result kept, and what it does to its monitor: a fail opens it at `failAfter` in a row,
+ * an ok resolves it, a warn shows and changes neither. Then its calls, as any monitor's.
+ */
+export async function settleNodeRun(rule: AlertRule, o: NodeRunOutcome, at: number, deps: CallDeps): Promise<void> {
+  const db = deps.db;
+  recordResult(rule.id, o.result, o.durationMs, at, db);
   // Watch's tick for it, in the table push results share (#177): the worst run of its minute.
   recordPushResult(
     {
       monitor_id: rule.id,
       at,
-      result,
+      result: o.result,
       exit_code: null,
-      duration_ms: run.durationMs,
+      duration_ms: o.durationMs,
       value: null,
       unit: null,
-      message: runSummary(run),
-      host: hostOf(http.url),
-      via: "http",
+      message: o.message,
+      host: o.host,
+      via: o.via,
     },
     db,
   );
-  const reading: Reading = {
-    value: run.durationMs,
-    count: run.exchange.ok ? run.exchange.status : 0,
-    message: runSummary(run),
-  };
   const open = openStretch(rule.id, db);
-  switch (nextMove(open ? "open" : "ok", result)) {
+  switch (nextMove(open ? "open" : "ok", o.result)) {
     case "open":
-      if (failsInRow >= http.fail_after) {
-        beginStretch(rule.id, at, reading, db);
+      if (o.failsInRow >= o.failAfter) {
+        beginStretch(rule.id, at, o.reading, db);
       }
       break;
     case "still-open":
-      noteReading(open!.id, at, reading, db);
+      noteReading(open!.id, at, o.reading, db);
       break;
     case "resolve":
-      resolveStretch(rule.id, open!.id, at, reading, db);
+      resolveStretch(rule.id, open!.id, at, o.reading, db);
       break;
     default:
       break;
@@ -237,17 +274,7 @@ export async function runHttpMonitor(
 
   // Its state is kept whether or not anybody is called; with no webhook of its own and none in
   // Settings, its stretches say nobody was (`none`).
-  await passCalls(
-    rule,
-    at,
-    {
-      windowMs: http.every_ms,
-      sendsResolved: sendsResolved(rule),
-      payload: (what, stretch, url) => httpCallPayload(rule, http, { what, stretch, run, at, url }, deps),
-    },
-    deps,
-  );
-  return run;
+  await passCalls(rule, at, { windowMs: o.everyMs, sendsResolved: sendsResolved(rule), payload: o.payload }, deps);
 }
 
 /** One call for a stretch, as it goes on the wire. */

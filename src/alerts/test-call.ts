@@ -23,6 +23,8 @@ import {
   alertWebhookBody,
   httpCallBody,
   httpFillValues,
+  netCallBody,
+  netFillValues,
   readingMessage,
   renderResolved,
   renderWebhook,
@@ -30,6 +32,7 @@ import {
   type WebhookPayload,
 } from "./payload";
 import { evaluateAlertSeries } from "./series";
+import { isNetSource, parseStarttls, type NetSource } from "../shared/net-check";
 
 const TEST_TIMEOUT_MS = 5000;
 /** The reply shown, as its first 200 characters. */
@@ -106,6 +109,9 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
   }
   if (rec.source === "http") {
     return testHttpCall(c, rec);
+  }
+  if (isNetSource(rec.source)) {
+    return testNetCall(c, rec, rec.source);
   }
   const kind = rec.kind === undefined ? "threshold" : parseAlertKind(rec.kind);
   if (!kind) {
@@ -292,6 +298,53 @@ async function testHttpCall(c: Context, rec: Record<string, unknown>): Promise<R
     body.body_kind !== "default" && body.resolved_body
       ? renderResolved(rule, {}, httpFillValues(facts("resolved")))
       : null;
+  const opened = await sendTestCall(webhook, payload);
+  const resolved = resolvedPayload ? await sendTestCall(webhook, resolvedPayload) : null;
+  return c.json({ ...opened, resolved });
+}
+
+/**
+ * A TCP or certificate monitor's test call (#180): its body as the call that opens it would be,
+ * filled in from the editor's last Send (`run`: duration_ms, why, cert_valid_to), then its
+ * resolved body.
+ */
+async function testNetCall(c: Context, rec: Record<string, unknown>, source: NetSource): Promise<Response> {
+  const own = rec.webhook_url === undefined || rec.webhook_url === null || rec.webhook_url === "" ? null : parseWebhook(rec.webhook_url);
+  if (own !== null && typeof own !== "string") {
+    return c.json({ error: own.error }, 400);
+  }
+  const webhook = own ?? getDefaultWebhook();
+  if (!webhook) {
+    return c.json({ error: "No webhook to call: give this monitor one, or set the default in Settings" }, 400);
+  }
+  const body = readBody(rec, "net", null);
+  if ("error" in body) {
+    return c.json({ error: body.error }, 400);
+  }
+  const name = typeof rec.name === "string" && rec.name.trim() ? rec.name.trim() : "this monitor";
+  const target = typeof rec.target === "string" ? rec.target.trim() : "";
+  const run = (rec.run && typeof rec.run === "object" ? rec.run : {}) as Record<string, unknown>;
+  const durationMs = typeof run.duration_ms === "number" ? run.duration_ms : 0;
+  const message = typeof run.why === "string" && run.why ? run.why : rec.run ? `connected in ${durationMs}ms` : "no run yet";
+  const now = Date.now();
+  const firedAt = new Date(now).toISOString();
+  const base = publicUrl();
+  const link = base ? `${base}/?${new URLSearchParams({ q: monitorQuery(name), range: "1h" }).toString()}` : null;
+  const rule = { id: typeof rec.id === "string" ? rec.id : "test", name, webhook_url: webhook, ...body };
+  const facts = (state: "open" | "resolved") => ({
+    alert: { id: rule.id, name, source },
+    target,
+    starttls: source === "cert" ? (parseStarttls(rec.starttls) ?? null) : null,
+    durationMs,
+    message,
+    certValidTo: typeof run.cert_valid_to === "string" ? run.cert_valid_to : null,
+    firedAt,
+    link,
+    call: { state, openedAt: firedAt, resolvedAt: state === "resolved" ? firedAt : null, duration: "0s" },
+  });
+  const payload = renderWebhook(rule, netCallBody(webhook, facts("open")), netFillValues(facts("open")));
+  const resolvedPayload =
+    body.body_kind !== "default" && body.resolved_body ? renderResolved(rule, {}, netFillValues(facts("resolved"))) : null;
   const opened = await sendTestCall(webhook, payload);
   const resolved = resolvedPayload ? await sendTestCall(webhook, resolvedPayload) : null;
   return c.json({ ...opened, resolved });

@@ -87,13 +87,41 @@ beforeAll(async () => {
     await go("httpSendBadLine", "/api/monitors/send", "POST", { url: standUrl, conditions: "$..db == 1" });
     await go("httpTestCall", "/api/alert-rules/test-call", "POST", { source: "http", name: "api-health", url: "https://api.example.com/health", method: "GET", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{alert.name}} {{state}}: {{message}} ({{status}})", resolved_body: "{{alert.name}} {{state}}", run: { status: 503, duration_ms: 12, why: "status is 503, not 2xx" } });
     await go("httpTestCallBad", "/api/alert-rules/test-call", "POST", { source: "http", name: "x", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{series}}" });
-    out.hooked = hooked;
+    out.hooked = hooked.slice();
     await go("httpClash", "/api/monitors/api-health", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
     await go("httpNoHook", "/api/monitors/no-hook", "PUT", { source: "http", url: "https://api.example.com/health" });
     await go("httpBadHook", "/api/monitors/bad-hook", "PUT", { source: "http", url: "https://api.example.com/health", webhook_url: "ftp://x" });
     await go("httpCreate", "/api/alert-rules", "POST", { ...httpBody, name: "made in the dialog" });
     await go("httpDelete", "/api/monitors/api-health", "DELETE");
     await go("httpGone", "/api/monitors/api-health");
+    // TCP and certificate monitors (#180), against a port on a spare port.
+    const tcpStand = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {}, open(s) { s.end(); } } });
+    const tcpTarget = "127.0.0.1:" + tcpStand.port;
+    const tcpBody = { source: "tcp", target: "db.internal:5432", every: "1m", conditions: ["connected", "time < 200ms warn"] };
+    await go("tcpDeclare", "/api/monitors/db-port", "PUT", tcpBody);
+    await go("tcpBadLine", "/api/monitors/bad", "PUT", { ...tcpBody, conditions: ["status == 200"] });
+    await go("tcpBadTarget", "/api/monitors/bad", "PUT", { ...tcpBody, target: "tcp://db.internal:5432" });
+    await go("tcpNoPort", "/api/monitors/bad", "PUT", { ...tcpBody, target: "db.internal" });
+    await go("tcpStarttls", "/api/monitors/bad", "PUT", { ...tcpBody, starttls: "smtp" });
+    const certBody = { source: "cert", target: "smtp.agental.dev:587", starttls: "smtp", every: "1h", conditions: ["cert > 14d", "cert name == smtp.agental.dev"] };
+    const certMade = (await go("certDeclare", "/api/monitors/mail-cert", "PUT", certBody)).body;
+    await go("certBadStarttls", "/api/monitors/bad", "PUT", { ...certBody, starttls: "ftp" });
+    await go("certBadLine", "/api/monitors/bad", "PUT", { ...certBody, conditions: ["status == 200"] });
+    await go("certUpdate", "/api/alert-rules/" + certMade.id, "PUT", { starttls: null, target: "imap.agental.dev:993" });
+    await go("certOne", "/api/monitors/mail-cert");
+    await go("netClash", "/api/monitors/db-port", "PUT", { source: "cert", target: "db.internal:5432" });
+    await go("netClashSearch", "/api/monitors/mail-cert", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
+    await go("netList", "/api/monitors");
+    await go("tcpSend", "/api/monitors/send", "POST", { source: "tcp", target: tcpTarget, conditions: "connected\\ntime < 5000ms" });
+    await go("tcpSendBad", "/api/monitors/send", "POST", { source: "tcp", target: "nope" });
+    const netBefore = hooked.length;
+    await go("certTestCall", "/api/alert-rules/test-call", "POST", { source: "cert", name: "mail-cert", target: "smtp.agental.dev:587", starttls: "smtp", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{alert.name}} {{state}}: {{message}} ({{target}})", run: { duration_ms: 40, why: "certificate expires in 6 days" } });
+    await go("certTestCallBad", "/api/alert-rules/test-call", "POST", { source: "cert", name: "x", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{url}}" });
+    out.netHooked = hooked.slice(netBefore);
+    await go("tcpCreate", "/api/alert-rules", "POST", { ...tcpBody, name: "tcp from the dialog" });
+    await go("tcpDelete", "/api/monitors/db-port", "DELETE");
+    await go("tcpGone", "/api/monitors/db-port");
+    tcpStand.stop(true);
     stand.stop(true);
     console.log(JSON.stringify(out));
   `;
@@ -160,7 +188,7 @@ describe("PUT /api/monitors/<name> (#175)", () => {
 
   test("says what is wrong with a declaration", () => {
     expect(r.noSource!.status).toBe(400);
-    expect(r.noSource!.body.error).toBe("source is required: search, fingerprints, push or http");
+    expect(r.noSource!.body.error).toBe("source is required: search, fingerprints, push, http, tcp or cert");
     expect(r.noSearch!.status).toBe(404);
     expect(r.fpResolved!.status).toBe(400);
     expect(r.fpResolved!.body.error).toBe("a new-fingerprints monitor does not resolve, so it has no resolved body");
@@ -271,5 +299,72 @@ describe("HTTP(S) monitors (#178)", () => {
   test("delete takes it and what it calls", () => {
     expect(r.httpDelete!.status).toBe(200);
     expect(r.httpGone!.status).toBe(404);
+  });
+});
+
+describe("TCP and certificate monitors (#180)", () => {
+  test("are declared by name, a certificate monitor with its STARTTLS", () => {
+    expect(r.tcpDeclare!.status).toBe(201);
+    expect(r.tcpDeclare!.body).toMatchObject({ name: "db-port", source: "tcp", state: "ok", query: "monitor:db-port", http: null });
+    expect(r.tcpDeclare!.body.net).toMatchObject({
+      target: "db.internal:5432",
+      starttls: null,
+      every: "1m",
+      conditions: "connected\ntime < 200ms   warn",
+      fail_after: 2,
+      last_run: null,
+    });
+    expect(r.certDeclare!.status).toBe(201);
+    expect(r.certDeclare!.body).toMatchObject({ name: "mail-cert", source: "cert" });
+    expect(r.certDeclare!.body.net).toMatchObject({
+      target: "smtp.agental.dev:587",
+      starttls: "smtp",
+      every: "1h",
+      conditions: "cert > 14d\ncert name == smtp.agental.dev",
+    });
+    expect(r.certUpdate!.status).toBe(200);
+    expect(r.certOne!.body.net).toMatchObject({ target: "imap.agental.dev:993", starttls: null, conditions: "cert > 14d\ncert name == smtp.agental.dev" });
+    expect(r.tcpCreate!.status).toBe(201);
+    expect(r.tcpCreate!.body).toMatchObject({ name: "tcp from the dialog", source: "tcp" });
+    const listed = r.netList!.body.monitors as Array<{ name: string; net: unknown }>;
+    expect(listed.find((m) => m.name === "mail-cert")?.net).toMatchObject({ target: "imap.agental.dev:993" });
+  });
+
+  test("each reads its own lines, and says what is wrong", () => {
+    expect(r.tcpBadLine!.status).toBe(400);
+    expect(r.tcpBadLine!.body.error).toBe("conditions line 1: not a TCP condition: connected, time < 200ms");
+    expect(r.certBadLine!.body.error).toBe("conditions line 1: not a certificate condition: connected, time < 200ms, cert > 14d, cert name == mail.example.com");
+    expect(r.tcpBadTarget!.body.error).toBe("target is host:port, without a scheme or a path");
+    expect(r.tcpNoPort!.body.error).toBe("target is host:port: db.internal:5432, or [::1]:993");
+    expect(r.tcpStarttls!.body.error).toBe("starttls is for a certificate monitor; a TCP monitor only connects");
+    expect(r.certBadStarttls!.body.error).toBe("starttls must be smtp, imap or pop3, or null for TLS from the first byte");
+    expect(r.netClash!.status).toBe(400);
+    expect(r.netClash!.body.error).toBe("db-port is a TCP monitor; delete it to make a certificate monitor of that name");
+    expect(r.netClashSearch!.body.error).toBe("mail-cert is a certificate monitor; delete it to make a search monitor of that name");
+  });
+
+  test("Send connects once and says what each line makes of it", () => {
+    expect(r.tcpSend!.status).toBe(200);
+    const sent = r.tcpSend!.body;
+    expect(sent).toMatchObject({ source: "tcp", connected: true, address: "127.0.0.1", error: null, cert: null });
+    expect(Object.keys(sent.timings).sort()).toEqual(["connect", "dns", "starttls", "tls", "total"]);
+    expect(sent.verdict.result).toBe("ok");
+    expect(sent.verdict.lines.map((l: { text: string; pass: boolean }) => [l.text, l.pass])).toEqual([
+      ["connected", true],
+      ["time < 5000ms", true],
+    ]);
+    expect(r.tcpSendBad!.status).toBe(400);
+  });
+
+  test("a test call is filled in from the last Send, with its own fill-ins", () => {
+    expect(r.certTestCall!.status).toBe(200);
+    const sent = (r.netHooked as unknown as Array<{ body: string }>).map((h) => h.body);
+    expect(sent).toEqual(["mail-cert open: certificate expires in 6 days (smtp.agental.dev:587)"]);
+    expect(r.certTestCallBad!.body.error).toBe("{{url}} is not a fill-in for this alert");
+  });
+
+  test("delete takes it and where it connects", () => {
+    expect(r.tcpDelete!.status).toBe(200);
+    expect(r.tcpGone!.status).toBe(404);
   });
 });

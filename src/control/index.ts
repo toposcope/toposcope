@@ -175,6 +175,20 @@ export function migrateControlDb(db: Database): void {
       last_run TEXT
     );
   `);
+  // Where a TCP or certificate monitor connects, its conditions, and where its runs stand (#180).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS monitor_net (
+      monitor_id TEXT PRIMARY KEY,
+      target TEXT NOT NULL,
+      starttls TEXT,
+      every_ms INTEGER NOT NULL DEFAULT 30000,
+      conditions TEXT NOT NULL DEFAULT '',
+      fail_after INTEGER NOT NULL DEFAULT 2,
+      fails_in_row INTEGER NOT NULL DEFAULT 0,
+      next_run_at INTEGER,
+      last_run TEXT
+    );
+  `);
   db.run(`
     CREATE TABLE IF NOT EXISTS alert_sent_fingerprints (
       rule_id TEXT NOT NULL,

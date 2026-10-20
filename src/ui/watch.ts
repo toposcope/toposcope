@@ -29,6 +29,8 @@ export function watchFilters(monitors: readonly MonitorView[]): Array<{ id: Watc
   const order: Array<[MonitorSource, string]> = [
     ["search", "Search"],
     ["http", "HTTP"],
+    ["tcp", "TCP"],
+    ["cert", "Certificate"],
     ["push", "Push"],
     ["fingerprints", "Fingerprints"],
   ];
@@ -128,6 +130,32 @@ function certOnly(m: MonitorView): boolean {
   return lines.length === 1 && lines[0]!.cond.what === "cert";
 }
 
+/** A TCP or certificate monitor (#180). */
+function isNet(m: MonitorView): boolean {
+  return sourceOf(m) === "tcp" || sourceOf(m) === "cert";
+}
+
+/** "2 conditions", "cert > 14d", "connects", "trusted": a TCP or certificate monitor's lines, short. */
+export function netConditionsLabel(m: MonitorView): string {
+  const source = sourceOf(m) === "cert" ? "cert" : "tcp";
+  const read = parseConditions(m.net?.conditions ?? "", source);
+  const lines = "error" in read ? [] : read;
+  if (lines.length === 0) {
+    return source === "cert" ? "trusted" : "connects";
+  }
+  return lines.length === 1 ? lines[0]!.text : `${lines.length} conditions`;
+}
+
+/** "TLS", "SMTP": how a certificate monitor reaches its certificate (18y). */
+function certKind(m: MonitorView): string {
+  return (m.net?.starttls ?? "tls").toUpperCase();
+}
+
+/** "SMTP smtp.agental.dev:587", "db.internal:5432": where it connects, and how for a certificate. */
+export function netTargetLabel(m: MonitorView): string {
+  return sourceOf(m) === "cert" ? `${certKind(m)} ${m.net?.target ?? ""}` : (m.net?.target ?? "");
+}
+
 /** "3 conditions", "cert > 14d", "any 2xx". */
 export function httpConditionsLabel(m: MonitorView): string {
   const lines = httpLines(m);
@@ -142,7 +170,7 @@ export function httpConditionsLabel(m: MonitorView): string {
 
 /**
  * Under a lane's name: "search · at least 50 · 15m", "fingerprints · 24h", "push · 1d · grace 1h",
- * "http · 30s · 3 conditions".
+ * "http · 30s · 3 conditions", "tcp · 30s · connected", "certificate · SMTP · 1h".
  */
 export function laneKind(m: MonitorView): string {
   if (sourceOf(m) === "fingerprints") {
@@ -150,6 +178,13 @@ export function laneKind(m: MonitorView): string {
   }
   if (sourceOf(m) === "http") {
     return `http · ${m.http?.every ?? "30s"} · ${httpConditionsLabel(m)}`;
+  }
+  if (sourceOf(m) === "cert") {
+    // 18y: "certificate · SMTP · 1h".
+    return `certificate · ${certKind(m)} · ${m.net?.every ?? "30s"}`;
+  }
+  if (isNet(m)) {
+    return `tcp · ${m.net?.every ?? "30s"} · ${netConditionsLabel(m)}`;
   }
   if (sourceOf(m) === "push") {
     const every = m.every_ms ?? null;
@@ -187,11 +222,15 @@ export function openCardLine(m: MonitorView, nowMs = Date.now()): string {
     const why = m.http?.last_run?.why ?? m.open?.open_message ?? "";
     return `http · ${m.http?.method ?? "GET"} ${m.http?.url ?? ""}${why ? ` · ${why}` : ""}`;
   }
+  if (isNet(m)) {
+    const why = m.net?.last_run?.why ?? m.open?.open_message ?? "";
+    return `${sourceOf(m) === "cert" ? "certificate" : "tcp"} · ${netTargetLabel(m)}${why ? ` · ${why}` : ""}`;
+  }
   const last = readsQuiet(m) && typeof m.last_line_at === "number" ? ` · last line ${clockAt(m.last_line_at, nowMs)}` : "";
   return `search · ${q} · ${opensWhenLine(m)}${last}`;
 }
 
-/** Red is open; amber a warn, late, or an HTTP(S) run that failed before it opens (18c). */
+/** Red is open; amber a warn, late, or a run from this node that failed before it opens (18c). */
 export type LaneReadout = { badge: string; tone: "red" | "amber" | "sec" | "out"; text: string; title?: string };
 
 /** Right of a lane: its state, and what it last read. */
@@ -216,6 +255,18 @@ export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number)
       reading = left !== null ? `${formatCertShort(left)} left` : (run.why ?? "");
     } else if (run) {
       reading = run.status === null ? "no response" : `${run.duration_ms}ms`;
+    }
+    const badge = run?.result === "warn" ? "warn" : run?.result === "fail" ? "fail" : "ok";
+    return { badge, tone: badge === "ok" ? "sec" : "amber", text: [reading, silenced].filter(Boolean).join(" · ") };
+  }
+  if (isNet(m)) {
+    // A certificate monitor reads days left; a TCP monitor its time, or that nothing took it.
+    const run = m.net?.last_run;
+    const left = run?.cert_valid_to ? Date.parse(run.cert_valid_to) - nowMs : null;
+    if (run && sourceOf(m) === "cert") {
+      reading = left !== null ? `${formatCertShort(left)} left` : (run.why ?? "");
+    } else if (run) {
+      reading = run.connected ? `${run.duration_ms}ms` : "no connection";
     }
     const badge = run?.result === "warn" ? "warn" : run?.result === "fail" ? "fail" : "ok";
     return { badge, tone: badge === "ok" ? "sec" : "amber", text: [reading, silenced].filter(Boolean).join(" · ") };
@@ -431,7 +482,7 @@ export function nextReminder(m: MonitorView, nowMs: number): number | null {
   if (remind === "off") {
     return null;
   }
-  const windowMs = m.http?.every_ms ?? (m.saved?.range ? parseRangeMs(m.saved.range) : null) ?? 5 * 60_000;
+  const windowMs = m.http?.every_ms ?? m.net?.every_ms ?? (m.saved?.range ? parseRangeMs(m.saved.range) : null) ?? 5 * 60_000;
   const every = remind === "window" ? windowMs : remind === "1h" ? hourMs : remind === "4h" ? 4 * hourMs : dayMs;
   const at = (s.called_at ?? s.opened_at) + every;
   return at > nowMs ? at : nowMs;

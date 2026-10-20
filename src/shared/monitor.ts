@@ -7,9 +7,9 @@ import { seriesLabel } from "../query/agg";
 
 /**
  * Where a monitor's results come from: a saved search, new fingerprints, pushed results (#177),
- * or a URL it calls (#178).
+ * a URL it calls (#178), or a port it connects to and the certificate it answers with (#180).
  */
-export const monitorSources = ["search", "fingerprints", "push", "http"] as const;
+export const monitorSources = ["search", "fingerprints", "push", "http", "tcp", "cert"] as const;
 export type MonitorSource = (typeof monitorSources)[number];
 
 export function parseSource(value: unknown): MonitorSource | null {

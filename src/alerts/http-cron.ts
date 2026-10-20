@@ -1,4 +1,4 @@
-import { getAlert, recordWebhookAttempt } from "../control/alerts";
+import { getAlert, recordWebhookAttempt, type AlertRule } from "../control/alerts";
 import { getDb } from "../control/index";
 import { getDefaultWebhook } from "../control/settings";
 import { insertEvents } from "../ingest/index";
@@ -9,10 +9,14 @@ import { postWebhook } from "./delivery";
 import { runHttpMonitor, type HttpMonitorDeps } from "./http-monitor";
 import { runHttpRequest } from "./http-request";
 import { dueHttp, setNextRun } from "./http-store";
+import { runNetMonitor, type NetMonitorDeps } from "./net-monitor";
+import { runNetRequest } from "./net-request";
+import { dueNet, setNetNextRun } from "./net-store";
 
 /**
- * HTTP(S) monitors run on their own clock (#178), not on the 60s alert pass: each second this
- * loop reads which enabled monitors are due (`monitor_http.next_run_at`), moves each one's next
+ * Checks from this node run on their own clock, not on the 60s alert pass: HTTP(S) monitors
+ * (#178), and TCP and certificate monitors (#180). Each second this loop reads which enabled
+ * monitors are due (`monitor_http.next_run_at`, `monitor_net.next_run_at`), moves each one's next
  * run on by its `every` before it starts, and runs up to 8 at a time. A run in flight is never
  * started twice; a monitor that was due while Toposcope was down runs once, then keeps its pace.
  */
@@ -21,11 +25,12 @@ const tickMs = 1_000;
 const maxInFlight = 8;
 const running = new Set<string>();
 
-export function httpMonitorDeps(): HttpMonitorDeps {
+export function httpMonitorDeps(): HttpMonitorDeps & NetMonitorDeps {
   const db = getDb();
   return {
     db,
     request: runHttpRequest,
+    connect: runNetRequest,
     write: async (row, metric) => {
       await insertEvents([row]);
       if (metric) {
@@ -48,23 +53,43 @@ export function nextRunAt(scheduled: number | null, everyMs: number, now: number
 }
 
 /** Start every due monitor that is not already running. Resolves when the runs it started end. */
-export async function tickHttpMonitors(now = Date.now(), deps: HttpMonitorDeps = httpMonitorDeps()): Promise<void> {
+export async function tickHttpMonitors(
+  now = Date.now(),
+  deps: HttpMonitorDeps & Partial<Pick<NetMonitorDeps, "connect">> = httpMonitorDeps(),
+): Promise<void> {
   const started: Promise<unknown>[] = [];
-  for (const http of dueHttp(now, deps.db)) {
-    if (running.has(http.monitor_id) || running.size >= maxInFlight) {
-      continue;
+  const start = (id: string, nextAt: (ruleId: string) => void, run: (rule: AlertRule) => Promise<unknown>) => {
+    if (running.has(id) || running.size >= maxInFlight) {
+      return;
     }
-    const rule = getAlert(http.monitor_id, deps.db);
+    const rule = getAlert(id, deps.db);
     if (!rule) {
-      continue;
+      return;
     }
     running.add(rule.id);
-    setNextRun(rule.id, nextRunAt(http.next_run_at, http.every_ms, now), deps.db);
+    nextAt(rule.id);
     started.push(
-      runHttpMonitor(rule, http, now, deps)
+      run(rule)
         .catch((err) => console.error(`monitor ${rule.name} run failed`, err))
         .finally(() => running.delete(rule.id)),
     );
+  };
+  for (const http of dueHttp(now, deps.db)) {
+    start(
+      http.monitor_id,
+      (id) => setNextRun(id, nextRunAt(http.next_run_at, http.every_ms, now), deps.db),
+      (rule) => runHttpMonitor(rule, http, now, deps),
+    );
+  }
+  const connect = deps.connect;
+  if (connect) {
+    for (const net of dueNet(now, deps.db)) {
+      start(
+        net.monitor_id,
+        (id) => setNetNextRun(id, nextRunAt(net.next_run_at, net.every_ms, now), deps.db),
+        (rule) => runNetMonitor(rule, net, now, { ...deps, connect }),
+      );
+    }
   }
   await Promise.all(started);
 }

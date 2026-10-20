@@ -105,7 +105,7 @@ function Grid({ ticks }: { ticks: Array<{ left: number }> }) {
   );
 }
 
-/** An HTTP(S) run's tick (18c): an ok is a faint hairline, a warn or a fail taller and in colour. */
+/** A run's tick (18c), HTTP(S), TCP or certificate: an ok is a faint hairline, a warn or a fail taller and in colour. */
 const runTone: Record<"ok" | "warn" | "fail", string> = {
   ok: "top-[5px] bottom-[5px] bg-[rgba(231,225,211,.7)]",
   warn: "top-[3px] bottom-[3px] bg-amber-400",
@@ -136,8 +136,12 @@ function Lane({
   const fingerprints = sourceOf(monitor) === "fingerprints";
   const dots = fingerprints ? sentDots(sent.filter((c) => c.ok), fromMs, toMs) : [];
   const readout = laneReadout(monitor, nowMs, dots.length);
-  // An HTTP(S) lane draws its runs (18c): a texture when they are dense, else a tick each.
-  const runs = sourceOf(monitor) === "http" ? httpLane(results, monitor.http?.every_ms ?? 30_000, fromMs, toMs) : null;
+  // A lane of runs from this node draws them (18c): a texture when they are dense, else a tick each.
+  const source = sourceOf(monitor);
+  const runs =
+    source === "http" || source === "tcp" || source === "cert"
+      ? httpLane(results, (monitor.http ?? monitor.net)?.every_ms ?? 30_000, fromMs, toMs)
+      : null;
   return (
     <div className={lrow} data-monitor={monitor.id}>
       <button
@@ -544,7 +548,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {canCreate
-                ? "A monitor opens when its search has at least, or fewer than, N lines in its window, or a URL it calls fails its conditions; it reminds while open, and says when it resolved."
+                ? "A monitor opens when its search has at least, or fewer than, N lines in its window, or a URL, a port or a certificate it checks fails its conditions; it reminds while open, and says when it resolved."
                 : "Save a search, then Watch this from the sidebar."}
             </p>
             {canCreate ? (

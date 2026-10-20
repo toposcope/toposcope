@@ -50,7 +50,7 @@ The deployment pins `ghcr.io/toposcope/toposcope:0.6.0`; it never uses `:latest`
 
 - Searches logs with copyable `key:value` queries, boolean operators, prefix matching, and numeric comparisons.
 - Tails a moving Live window while keeping older loaded rows available.
-- Provides histograms, facets, promoted columns, saved searches, boards, and monitors that open, remind and resolve through a webhook: on a saved search, or on an HTTP(S) check with conditions, run from this node.
+- Provides histograms, facets, promoted columns, saved searches, boards, and monitors that open, remind and resolve through a webhook: on a saved search, or on an HTTP(S), TCP or certificate check with conditions, run from this node.
 - Opens surrounding events or follows identifiers without replacing the current investigation.
 - Links logs to OTLP trace waterfalls and profile icicles when matching IDs are present.
 - Pulls rows and change marks from another Toposcope instance over a link, through any `q`, and says on Search when a source is short.

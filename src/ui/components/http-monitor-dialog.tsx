@@ -1,6 +1,18 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { AlertBodyField } from "@/components/alert-body-field";
+import {
+  AddChip,
+  box,
+  btn,
+  btn2,
+  clock,
+  ConditionsPanel,
+  mmdd,
+  resultsByLine,
+  RunCallsRows,
+  type RunCallsSet,
+  type RunCallsState,
+} from "@/components/check-editor-parts";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
@@ -16,13 +28,10 @@ import {
   offeredLines,
   offeredTimeLimit,
   readHeadersText,
-  removeLine,
-  setLineLevel,
   setTimeLimit,
   timeLine,
   timingBar,
   timingWords,
-  webhookShort,
   type JsonRow,
 } from "@/http-editor";
 import type { HttpSendResult, MonitorView } from "@/types";
@@ -31,13 +40,11 @@ import {
   defaultFailAfter,
   defaultHttpEvery,
   formatCertShort,
-  httpEveryIds,
   httpMethods,
   httpUrlProblem,
   judgeRun,
   verdictSentence,
   type HttpMethod,
-  type LineResult,
 } from "../../shared/http-check";
 import { defaultRemind, type RemindId } from "../../shared/monitor";
 
@@ -75,11 +82,6 @@ type Props = {
   canLink: boolean;
 };
 
-const box = "box-border flex min-h-[30px] items-center gap-2 rounded-[6px] border border-white/15 px-2.5 py-[5px] text-[13px]";
-const btn2 = "h-[30px] rounded-[6px] border border-white/15 bg-transparent px-3 text-[13px] text-foreground hover:bg-accent disabled:opacity-50";
-const btn = "h-[30px] rounded-[6px] bg-[#e4e4e7] px-3.5 text-[13px] font-medium text-[#18181b] hover:bg-white disabled:opacity-50";
-const add =
-  "inline-flex h-5 shrink-0 items-center gap-1 rounded-[4px] border border-dashed border-[rgba(231,225,211,.6)] bg-transparent px-[7px] text-[11px] whitespace-nowrap text-[#e7e1d3] hover:bg-[rgba(231,225,211,.08)]";
 const segColors: Record<string, string> = {
   dns: "#52525b",
   connect: "#71717a",
@@ -87,67 +89,6 @@ const segColors: Record<string, string> = {
   wait: "#38bdf8",
   body: "#e7e1d3",
 };
-const remindIds = ["off", "1h", "4h", "24h"] as const;
-const failAfterIds = [1, 2, 3, 5] as const;
-
-function AddChip({ line, label, onAdd }: { line: string; label?: string; onAdd: (line: string) => void }) {
-  return (
-    <button
-      type="button"
-      className={add}
-      title={line}
-      onClick={(e) => {
-        e.stopPropagation();
-        onAdd(line);
-      }}
-    >
-      + {label ?? line}
-    </button>
-  );
-}
-
-function Seg<T extends string | number>({
-  label,
-  ids,
-  value,
-  onPick,
-  text,
-}: {
-  label: string;
-  ids: readonly T[];
-  value: T;
-  onPick: (id: T) => void;
-  text?: (id: T) => string;
-}) {
-  return (
-    <span role="radiogroup" aria-label={label} className="inline-flex h-7 overflow-hidden rounded-[6.4px] border border-white/15">
-      {ids.map((id) => (
-        <button
-          key={String(id)}
-          type="button"
-          role="radio"
-          aria-checked={value === id}
-          onClick={() => onPick(id)}
-          className={
-            value === id
-              ? "bg-accent px-2.5 text-[12px] text-foreground"
-              : "px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
-          }
-        >
-          {text ? text(id) : String(id)}
-        </button>
-      ))}
-    </span>
-  );
-}
-
-function clock(ms: number): string {
-  return new Date(ms).toISOString().slice(11, 19);
-}
-
-function mmdd(iso: string): string {
-  return iso.slice(5, 10);
-}
 
 function jsonValue(v: JsonRow["value"]): string {
   return typeof v === "string" ? JSON.stringify(v) : String(v);
@@ -185,6 +126,20 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
   const [askWebhook, setAskWebhook] = useState(false);
   /** The default webhook in Settings, which it calls without one of its own (18r: `default · …`). */
   const [fallback, setFallback] = useState<string | null>(null);
+  const runCalls: RunCallsState = { name, every, failAfter, webhook, remind, bodyKind, bodyTemplate, resolvedBody };
+  const setRunCall: RunCallsSet = {
+    name: (v) => {
+      setName(v);
+      setNameTouched(true);
+    },
+    every: setEvery,
+    failAfter: setFailAfter,
+    webhook: setWebhook,
+    remind: setRemind,
+    bodyKind: setBodyKind,
+    bodyTemplate: setBodyTemplate,
+    resolvedBody: setResolvedBody,
+  };
 
   useEffect(() => {
     if (askWebhook && open_.calls && webhookRef.current) {
@@ -274,15 +229,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
       Date.now(),
     );
   }, [result, good]);
-  const lineResult = new Map<number, LineResult>();
-  if (verdict) {
-    let k = 0;
-    for (const r of rows) {
-      if (r.line) {
-        lineResult.set(r.index, verdict.lines[k++]!);
-      }
-    }
-  }
+  const lineResult = resultsByLine(lines, "http", verdict?.lines ?? null);
 
   async function send() {
     if (!url.trim() || urlProblem || headersError) {
@@ -772,200 +719,38 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
             </div>
 
             <div className="flex min-w-0 flex-col gap-2.5 px-4 py-3.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-semibold">Conditions</span>
-                <span className="font-mono text-[11.5px] text-muted-foreground">
-                  {good.length > 0 ? `${good.length} · all must pass` : "none · any 2xx passes"}
-                </span>
-              </div>
-              {rows.map((row) => {
-                const r = lineResult.get(row.index);
-                const level = row.line?.level ?? "fail";
-                const tone =
-                  !r || r.pass === null
-                    ? "text-muted-foreground"
-                    : r.pass
-                      ? "text-[#7dd3fc]"
-                      : level === "warn"
-                        ? "text-[#fcd34d]"
-                        : "text-[#fca5a5]";
-                return (
-                  <div
-                    key={`${row.index}-${row.raw}`}
-                    data-line={row.index}
-                    className={cn(
-                      "grid grid-cols-[minmax(0,1fr)_auto_22px] items-center gap-2 rounded-[6px] border bg-[#0f0f11] px-2.5 py-[7px] text-[12.5px]",
-                      row.error ? "border-red-400/50" : "border-white/[0.08]",
-                    )}
-                  >
-                    <span className="min-w-0 font-mono [overflow-wrap:anywhere]">
-                      {row.line ? row.line.text : row.raw.trim()}{" "}
-                      {r ? (
-                        <span className={tone} title={r.why ?? undefined}>
-                          {r.pass === null ? "—" : `${r.pass ? "✓" : "✗"} ${r.got}`}
-                        </span>
-                      ) : null}
-                      {row.error ? <span className="block font-sans text-[11.5px] text-red-300">{row.error}</span> : null}
-                    </span>
-                    {row.line ? (
-                      <span className="inline-flex rounded-[5px] border border-white/12 p-px">
-                        {(["fail", "warn"] as const).map((lv) => (
-                          <button
-                            key={lv}
-                            type="button"
-                            aria-pressed={level === lv}
-                            onClick={() => setLines((t) => setLineLevel(t, row.index, lv))}
-                            className={cn(
-                              "rounded-[4px] px-1.5 py-px text-[10.5px]",
-                              level === lv ? "bg-[#27272a] text-foreground" : "text-muted-foreground hover:text-foreground",
-                            )}
-                          >
-                            {lv}
-                          </button>
-                        ))}
-                      </span>
-                    ) : (
-                      <span />
-                    )}
-                    <button
-                      type="button"
-                      aria-label="Remove"
-                      className="text-[14px] text-muted-foreground hover:text-foreground"
-                      onClick={() => setLines((t) => removeLine(t, row.index))}
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              })}
-              <label className="mt-1 flex flex-col gap-1">
-                <span className="text-[11px] text-muted-foreground">Stored as lines</span>
-                <textarea
-                  aria-label="Stored as lines"
-                  value={lines}
-                  spellCheck={false}
-                  rows={Math.max(4, lines.split("\n").length + 1)}
-                  onChange={(e) => setLines(e.target.value)}
-                  className="resize-y rounded-[5px] border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2 font-mono text-[11.5px] leading-[1.55] text-[#d4d4d8] outline-none"
-                />
-              </label>
+              <ConditionsPanel kind="http" lines={lines} setLines={setLines} results={lineResult} none="any 2xx passes" />
 
-              <div className="mt-auto flex flex-col gap-1.5 border-t border-white/[0.08] pt-2.5">
-                <span className="flex items-center gap-2 text-[12px]">
-                  <span className="w-14 shrink-0 text-muted-foreground">name</span>
-                  <input
-                    aria-label="Name"
-                    value={name}
-                    placeholder={nameFromUrl(url) || "api /health"}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      setNameTouched(true);
-                    }}
-                    className={cn(box, "min-h-7 flex-1 bg-transparent outline-none placeholder:text-muted-foreground")}
-                  />
-                </span>
-                <span className="flex items-center gap-2 text-[12px]">
-                  <span className="w-14 shrink-0 text-muted-foreground">run</span>
-                  <span className="min-w-0 truncate font-mono">
-                    every {every} · open after {failAfter} failed run{failAfter === 1 ? "" : "s"}
-                  </span>
-                  <button
-                    type="button"
-                    aria-expanded={open_.run}
-                    className="ml-auto shrink-0 hover:underline"
-                    onClick={() => setOpen_((o) => ({ ...o, run: !o.run }))}
-                  >
-                    {open_.run ? "Done" : "Change"}
-                  </button>
-                </span>
-                {open_.run ? (
-                  <span className="flex flex-wrap items-center gap-2 rounded-[6px] border border-white/10 bg-[#0f0f11] p-2.5 text-[12px] text-muted-foreground">
-                    every
-                    <Seg label="Every" ids={httpEveryIds} value={every as (typeof httpEveryIds)[number]} onPick={setEvery} />
-                    open after
-                    <Seg label="Open after" ids={failAfterIds} value={failAfter as (typeof failAfterIds)[number]} onPick={setFailAfter} />
-                    failed runs
-                  </span>
-                ) : null}
-                <span className="flex items-center gap-2 text-[12px]">
-                  <span className="w-14 shrink-0 text-muted-foreground">calls</span>
-                  <span className={cn("min-w-0 truncate font-mono", webhook.trim() || fallback ? "" : "text-muted-foreground")}>
-                    {webhook.trim()
-                      ? webhookShort(webhook)
-                      : fallback
-                        ? `default · ${webhookShort(fallback)}`
-                        : "nobody: no default webhook in Settings"}{" "}
-                    ·{" "}
-                    {remind === "off" ? "no reminders" : `remind ${remind}`}
-                    {bodyKind !== "default" ? ` · ${bodyKind} body` : ""}
-                  </span>
-                  <button
-                    type="button"
-                    aria-expanded={open_.calls}
-                    className="ml-auto shrink-0 hover:underline"
-                    onClick={() => setOpen_((o) => ({ ...o, calls: !o.calls }))}
-                  >
-                    {open_.calls ? "Done" : "Change"}
-                  </button>
-                </span>
-                {open_.calls ? (
-                  <div className="flex flex-col gap-3 rounded-[6px] border border-white/10 bg-[#0f0f11] p-2.5">
-                    <span className="flex items-center gap-2 text-[12px]">
-                      <span className="w-[58px] shrink-0 text-muted-foreground">webhook</span>
-                      <input
-                        ref={webhookRef}
-                        aria-label="Webhook"
-                        value={webhook}
-                        onChange={(e) => setWebhook(e.target.value)}
-                        placeholder={fallback ? `empty: the default, ${webhookShort(fallback)}` : "https://ntfy.sh/… or https://hooks.slack.com/services/…"}
-                        className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-[12px] outline-none placeholder:text-muted-foreground")}
-                      />
-                    </span>
-                    <span className="pl-[66px] text-[11px] text-muted-foreground">
-                      Left empty, it calls the default webhook, set in Settings for any monitor without its own.
-                    </span>
-                    <span className="flex items-center gap-2 text-[12px]">
-                      <span className="w-[58px] shrink-0 text-muted-foreground">remind</span>
-                      <Seg label="Remind" ids={remindIds} value={remind as (typeof remindIds)[number]} onPick={setRemind} />
-                    </span>
-                    <AlertBodyField
-                      alertKind="http"
-                      bodyKind={bodyKind}
-                      onBodyKind={setBodyKind}
-                      template={bodyTemplate}
-                      onTemplate={setBodyTemplate}
-                      resolvedBody={resolvedBody}
-                      onResolvedBody={setResolvedBody}
-                      webhook={webhook.trim() || fallback || ""}
-                      preview={{
+              <RunCallsRows
+                state={runCalls}
+                set={setRunCall}
+                namePlaceholder={nameFromUrl(url) || "api /health"}
+                open={open_}
+                onToggle={(which) => setOpen_((o) => ({ ...o, [which]: !o[which] }))}
+                webhookRef={webhookRef}
+                fallback={fallback}
+                alertKind="http"
+                preview={{ name: name.trim() || nameFromUrl(url), query: `${method} ${url.trim()}`, series: verdict?.why ?? "" }}
+                canLink={canLink}
+                testDraft={() =>
+                  (/^https?:\/\//.test(webhook.trim()) || (!webhook.trim() && fallback)) && !bodyProblem
+                    ? {
+                        source: "http",
+                        id: editing?.id,
                         name: name.trim() || nameFromUrl(url),
-                        query: `${method} ${url.trim()}`,
-                        series: verdict?.why ?? "",
-                        value: null,
-                        threshold: "",
-                      }}
-                      canLink={canLink}
-                      testDraft={() =>
-                        (/^https?:\/\//.test(webhook.trim()) || (!webhook.trim() && fallback)) && !bodyProblem
-                          ? {
-                              source: "http",
-                              id: editing?.id,
-                              name: name.trim() || nameFromUrl(url),
-                              url: url.trim(),
-                              method,
-                              webhook_url: webhook.trim() || null,
-                              body_kind: bodyKind,
-                              body_template: bodyTemplate,
-                              resolved_body: bodyKind === "default" || !resolvedBody.trim() ? null : resolvedBody,
-                              run: result
-                                ? { status: result.response?.status ?? null, duration_ms: result.duration_ms, why: verdict?.why ?? null }
-                                : null,
-                            }
-                          : null
+                        url: url.trim(),
+                        method,
+                        webhook_url: webhook.trim() || null,
+                        body_kind: bodyKind,
+                        body_template: bodyTemplate,
+                        resolved_body: bodyKind === "default" || !resolvedBody.trim() ? null : resolvedBody,
+                        run: result
+                          ? { status: result.response?.status ?? null, duration_ms: result.duration_ms, why: verdict?.why ?? null }
+                          : null,
                       }
-                    />
-                  </div>
-                ) : null}
+                    : null
+                }
+              >
                 <span className="flex items-center gap-2 text-[12px]">
                   <span className="w-14 shrink-0 text-muted-foreground">request</span>
                   <span className="min-w-0 truncate font-mono">
@@ -1021,7 +806,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                     ) : null}
                   </div>
                 ) : null}
-              </div>
+              </RunCallsRows>
             </div>
           </div>
 
