@@ -78,10 +78,12 @@ import { throughputRoute } from "./query/throughput";
 import { applyRetentionDays, migrateStore, syncFieldRoleSkip } from "./shared/migrate";
 import { requirePackagedSecrets } from "./shared/secrets";
 import { requirePublicUrl } from "./shared/public-url";
+import { requireWatchdogUrl } from "./alerts/watchdog";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 
 requirePackagedSecrets();
 requirePublicUrl();
+requireWatchdogUrl();
 
 let bootPhase: BootPhase = "starting";
 /** Set by SIGTERM or SIGINT: the process is finishing what it has and takes nothing new. */

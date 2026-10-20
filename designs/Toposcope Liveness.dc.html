@@ -164,6 +164,31 @@
   [data-crop="18u"] .fi .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#c4b5fd}
   [data-crop="18u"] .new{font-size:10px;color:#e7e1d3;border:1px solid rgba(231,225,211,.45);border-radius:3px;padding:0 4px}
   [data-crop="18u"] .lab2{font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px}
+  [data-crop="18v"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18v"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18v"] .mut{color:#a1a1aa}
+  [data-crop="18v"] .btn{height:30px;padding:0 14px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
+  [data-crop="18v"] .btn2{height:30px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:13px}
+  [data-crop="18v"] .box{min-height:30px;box-sizing:border-box;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);font-size:13px;display:flex;align-items:center;gap:8px}
+  [data-crop="18v"] .add{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:4px;border:1px dashed rgba(231,225,211,.6);background:transparent;color:#e7e1d3;font:inherit;font-size:11px}
+  [data-crop="18v"] .jl{display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  [data-crop="18v"] .k{color:#7dd3fc}
+  [data-crop="18v"] .v{color:#e4e4e7}
+  [data-crop="18v"] .cond{display:grid;grid-template-columns:minmax(0,1fr) auto 22px;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:#0f0f11;border:1px solid rgba(255,255,255,.08);font-size:12.5px}
+  [data-crop="18v"] .lvl{display:inline-flex;padding:1px;border-radius:5px;border:1px solid rgba(255,255,255,.12)}
+  [data-crop="18v"] .lvl span{font-size:10.5px;padding:1px 6px;border-radius:4px;color:#a1a1aa}
+  [data-crop="18v"] .lvl .on{background:#27272a;color:#fafafa}
+  [data-crop="18w"] .tp{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.35}
+  [data-crop="18w"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  [data-crop="18w"] .mut{color:#a1a1aa}
+  [data-crop="18w"] .fld{display:flex;flex-direction:column;gap:6px}
+  [data-crop="18w"] .lab{font-size:13px;font-weight:500;color:#fafafa;display:flex;align-items:center;gap:8px}
+  [data-crop="18w"] .ctl{display:flex;align-items:center;gap:8px;height:32px;box-sizing:border-box;padding:0 9px;border-radius:4.4px;border:1px solid rgba(255,255,255,.15)}
+  [data-crop="18w"] .ctl .v{min-width:0;flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  [data-crop="18w"] .help{font-size:11px;color:#a1a1aa}
+  [data-crop="18w"] .sb{height:24px;padding:0 9px;border-radius:2.4px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fafafa;font:inherit;font-size:11px}
+  [data-crop="18w"] .new{font-size:10px;font-weight:400;color:#e7e1d3;border:1px solid rgba(231,225,211,.45);border-radius:3px;padding:0 4px}
+  [data-crop="18w"] .btn{height:32px;padding:0 14px;border-radius:6px;border:0;background:#e4e4e7;color:#18181b;font:inherit;font-size:13px;font-weight:500}
 </style>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
 </helmet>
@@ -173,7 +198,7 @@
   <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
     <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
     <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Liveness</h1>
-    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 18c–18u · monitors (0.6): Watch, one monitor, writing a monitor, the resolved body</span>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 18c–18w · monitors (0.6): Watch, one monitor, writing a monitor, the resolved body, the request, the default webhook</span>
   </div>
 
   <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Watch</h2>
@@ -991,6 +1016,144 @@ Authorization: Bearer $TOKEN
       </div>
     </div>
 
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">The request</h2>
+
+    <div id="18v" data-frame="18v" data-screen-label="18v An HTTP(S) monitor's request: headers, one a line, and a body sent with POST" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18v" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18v</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">An HTTP(S) monitor's request: headers, one a line, and a body sent with POST</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×960</span>
+      </div>
+      <div data-crop="18v" style="position:relative; width:1280px; height:960px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:960px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:28px;box-sizing:border-box;background:#050506">
+  <div aria-hidden="true" style="position:absolute;inset:0;opacity:.22;padding:56px 32px;display:flex;flex-direction:column;gap:8px">
+    <div style="height:14px;width:90px;background:#27272a;border-radius:3px"></div>
+    <div style="height:340px;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6px"></div>
+  </div>
+
+  <section role="dialog" aria-label="New HTTP(S) monitor" style="position:relative;width:1080px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <a href="#" style="font-size:12.5px;color:#a1a1aa">New monitor</a><span class="mut">/</span>
+      <h2 style="margin:0;font-size:15px;font-weight:600">HTTP(S)</h2>
+      <span class="box mono" style="width:66px;margin-left:12px">POST</span>
+      <span class="box mono" style="flex:1;font-size:12.5px">https://api.agental.dev/health</span>
+      <button class="btn2" type="button">Send</button>
+      <button type="button" aria-label="Close" style="width:26px;height:26px;border:0;background:transparent;color:#a1a1aa;font-size:16px">×</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);min-height:520px">
+      <div style="border-right:1px solid rgba(255,255,255,.08);padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:600">Response</span><span class="mono mut" style="font-size:11.5px">from this node · 11:03:12</span></div>
+
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="mono" style="font-size:13px">200 OK</span><span class="mono mut">HTTP/2 · 61 B</span><span class="add" style="margin-left:auto">+ status == 200</span></div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mono">412ms</span><span class="mut">dns 4 · connect 18 · tls 41 · wait 340 · body 9</span></span>
+          <span style="position:relative;height:30px;display:block">
+            <span style="position:absolute;left:0;right:0;top:10px;height:10px;display:flex;border-radius:3px;overflow:hidden">
+              <span style="width:1%;background:#52525b"></span><span style="width:4.4%;background:#71717a"></span><span style="width:10%;background:#a1a1aa"></span><span style="width:82.5%;background:#38bdf8"></span><span style="width:2.1%;background:#e7e1d3"></span>
+            </span>
+            <span style="position:absolute;top:2px;bottom:0;left:72.8%;width:0;border-left:2px solid #fcd34d"></span>
+            <span class="mono" style="position:absolute;top:-4px;left:calc(72.8% + 6px);font-size:10.5px;color:#fcd34d">300ms, drag</span>
+          </span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="mut">certificate</span><span class="mono">api.agental.dev · expires 12-20 · 61d</span><span class="add" style="margin-left:auto">+ cert &gt; 14d</span></div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="mut">headers</span><span class="mono mut">content-type: application/json · 6 more</span></div>
+
+        <div style="border:1px solid rgba(255,255,255,.1);border-radius:6px;background:#0f0f11;padding:6px 0;position:relative">
+          <div class="jl"><span class="mut">{</span></div>
+          <div class="jl" style="padding-left:26px"><span class="k">"db"</span><span class="mut">:</span><span class="v">"ok"</span><span class="mut">,</span></div>
+          <div class="jl" style="padding-left:26px"><span class="k">"queue"</span><span class="mut">: {</span></div>
+          <div class="jl" style="padding-left:44px"><span class="k">"depth"</span><span class="mut">:</span><span class="v">3</span></div>
+          <div class="jl" style="padding-left:26px"><span class="mut">},</span></div>
+          <div class="jl" style="padding-left:26px"><span class="k">"version"</span><span class="mut">:</span><span class="v">"0.9.3"</span></div>
+          <div class="jl"><span class="mut">}</span></div>
+        </div>
+        <span class="mut" style="font-size:11.5px">Click a value to make it a condition. A number offers == , &lt; and &gt;.</span>
+      </div>
+
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:600">Conditions</span><span class="mono mut" style="font-size:11.5px">4 · all must pass</span></div>
+        <sc-for list="{{f18v_conds}}" as="c" hint-placeholder-count="4">
+          <div class="cond"><span class="mono">{{c.text}} <span style="{{c.gotStyle}}">{{c.got}}</span></span><span class="lvl"><span class="{{c.failOn}}">fail</span><span class="{{c.warnOn}}">warn</span></span><button type="button" aria-label="Remove" style="border:0;background:transparent;color:#a1a1aa;font-size:14px">×</button></div>
+        </sc-for>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+          <span class="mut" style="font-size:11px">Stored as lines</span>
+          <span class="mono" style="font-size:11.5px;white-space:pre;color:#d4d4d8;background:#0f0f11;border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:8px 10px;line-height:1.55">{{f18v_linesText}}</span>
+        </div>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)">
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mut" style="width:56px">name</span><span class="box" style="flex:1;min-height:28px">api /health</span></span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mut" style="width:56px">run</span><span class="mono">every 30s · open after 2 failed runs</span><a href="#" style="margin-left:auto">Change</a></span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mut" style="width:56px">calls</span><span class="mono">default · ntfy.sh/agental-ops · remind 4h</span><a href="#" style="margin-left:auto">Change</a></span>
+          <span style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="mut" style="width:56px">request</span><span class="mono">2 headers · a body</span><a href="#" style="margin-left:auto">Done</a></span>
+          <span style="display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:6px;background:#0f0f11;border:1px solid rgba(255,255,255,.1)">
+            <span class="mut" style="font-size:11px">headers · Name: value, one a line</span>
+            <span role="textbox" aria-label="Headers" class="mono" style="display:block;padding:7px 9px;border-radius:5px;border:1px solid rgba(255,255,255,.15);font-size:12px;line-height:1.6;white-space:pre">Authorization: ••••••••••••
+Accept: application/json</span>
+            <span class="mut" style="font-size:11px">A saved value shows as •••• and is kept unless you type over it.</span>
+            <span class="mut" style="font-size:11px;margin-top:4px">body · sent with POST</span>
+            <span role="textbox" aria-label="Body" class="mono" style="display:block;padding:7px 9px;border-radius:5px;border:1px solid rgba(255,255,255,.15);font-size:12px;line-height:1.6;white-space:pre">{ "probe": true }</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid rgba(255,255,255,.08)">
+      <span class="mut" style="font-size:12px">With these, the last response would <span style="color:#fcd34d">warn</span>: 412ms is over 300ms.</span>
+      <span style="margin-left:auto;display:flex;gap:8px"><button class="btn2" type="button">Cancel</button><button class="btn" type="button">Create</button></span>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">The default webhook</h2>
+
+    <div id="18w" data-frame="18w" data-screen-label="18w Settings: the default webhook, called by any monitor without its own" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#18w" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">18w</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Settings: the default webhook, called by any monitor without its own</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×820</span>
+      </div>
+      <div data-crop="18w" style="position:relative; width:1280px; height:820px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="tp" style="width:100%;min-height:820px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:40px;box-sizing:border-box;background:#050506">
+  <div aria-hidden="true" style="position:absolute;inset:0;opacity:.22;padding:56px 32px;display:flex;flex-direction:column;gap:8px">
+    <div style="height:14px;width:90px;background:#27272a;border-radius:3px"></div>
+    <div style="height:340px;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:6px"></div>
+  </div>
+
+  <section role="dialog" aria-label="Settings" style="position:relative;width:512px;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6);padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <h2 style="margin:0;font-size:18px;font-weight:600">Settings</h2>
+      <p class="mut" style="margin:0;font-size:13px">ClickHouse TTL for logs and the minute histogram.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="fld"><span class="lab">Instance name</span><span class="ctl"><span class="v">agental-logs</span></span></div>
+      <div class="fld"><span class="lab">Retention days</span><span class="ctl"><span class="v">30</span><span class="mut" style="font-size:11px">1–365</span></span><span class="help">Applies ALTER TTL on save.</span></div>
+
+      <div class="fld" style="padding:10px;margin:-10px;border-radius:8px;background:rgba(231,225,211,.05);outline:1px dashed rgba(231,225,211,.35);outline-offset:-1px">
+        <span class="lab">Default webhook<span class="new">new</span></span>
+        <span class="ctl"><span class="v">https://ntfy.sh/agental-ops</span></span>
+        <span class="help">Called by any monitor without its own, such as one created by its first result. Empty: such a monitor keeps its state and calls nobody.</span>
+      </div>
+
+      <div class="fld"><span class="lab">Count format</span><span class="ctl"><span class="v">1.24K · compact</span><button class="sb" type="button">Switch</button></span><span class="help">Applies to facets, the table footer and alert counts.</span></div>
+      <div class="fld"><span class="lab">Timestamps</span><span class="ctl"><span class="v">compact · 10-20 11:03</span><button class="sb" type="button">Switch</button></span><span class="help">Compact follows the histogram date rule. Full is always date and milliseconds. This browser, not saved searches.</span></div>
+      <div class="fld"><span class="lab">Ingest endpoint</span><span class="ctl"><span class="v">https://logs.agental.dev/v1/logs</span><button class="sb" type="button">Copy</button></span></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+      <button class="btn" type="button">Save</button>
+      <span style="flex:1"></span>
+      <button type="button" style="height:32px;padding:0 10px;border:0;background:transparent;color:#a1a1aa;font:inherit;font-size:13px">Cancel</button>
+    </div>
+  </section>
+</div>
+      </div>
+    </div>
+
 </section>
 </x-dc>
 <script type="text/x-dc" data-dc-script>
@@ -1183,6 +1346,19 @@ class Component extends DCLogic {
         fill('message', 'the result that opened it', true)
       ]
     };
+  }
+})().renderVals()),
+      ...pre('f18v', new (class {
+  renderVals() {
+    const C = (text, got, pass, warn) => ({ text, got: (pass ? '✓ ' : '✗ ') + got, gotStyle: pass ? 'color:#7dd3fc' : 'color:#fcd34d', failOn: warn ? '' : 'on', warnOn: warn ? 'on' : '' });
+    const conds = [
+      C('status == 200', '200', true, false),
+      C('$.db == "ok"', '"ok"', true, false),
+      C('time < 300ms', '412ms', false, true),
+      C('cert > 14d', '61d', true, false)
+    ];
+    const linesText = 'status == 200\n$.db == "ok"\ntime < 300ms   warn\ncert > 14d';
+    return { conds, linesText };
   }
 })().renderVals()),
     };

@@ -10,7 +10,7 @@ import { encodeOtlpProfilesProtobuf } from "../src/ingest/otlp-profiles-protobuf
 import { toOtlpTracesJson } from "../src/ingest/otlp-traces";
 import { encodeOtlpTracesProtobuf } from "../src/ingest/otlp-traces-protobuf";
 import { formatSyslog3164 } from "../src/ingest/syslog-parse";
-import { evaluateAlerts } from "../src/alerts/cron";
+import { evaluateAlerts, monitorTick } from "../src/alerts/cron";
 import { cantTellHeld } from "../src/alerts/cant-tell";
 import { getAlert } from "../src/control/alerts";
 import { runLiveLoad } from "./load-live";
@@ -3638,6 +3638,42 @@ async function main(): Promise<void> {
     if (after.status !== 401 || after.headers.get("www-authenticate")) throw new Error(`after Sign out the cookie should be refused without the challenge, got ${after.status}`);
   }
 
+  // #179: who watches Toposcope. After each pass the loop checks in at TOPOSCOPE_WATCHDOG_URL,
+  // or at <url>/fail when ClickHouse does not answer; unset, it calls nothing.
+  {
+    const checkIns: string[] = [];
+    const stand = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: (req) => {
+        checkIns.push(`${req.method} ${new URL(req.url).pathname}`);
+        return new Response("OK");
+      },
+    });
+    const before = { url: process.env.TOPOSCOPE_WATCHDOG_URL, ch: process.env.CLICKHOUSE_URL };
+    try {
+      delete process.env.TOPOSCOPE_WATCHDOG_URL;
+      if ((await monitorTick()) !== "ok" || checkIns.length !== 0) throw new Error(`unset, the watchdog calls nothing, got ${JSON.stringify(checkIns)}`);
+      process.env.TOPOSCOPE_WATCHDOG_URL = `http://127.0.0.1:${stand.port}/hc/e2e${marker}`;
+      await monitorTick();
+      await monitorTick();
+      if (JSON.stringify(checkIns) !== JSON.stringify([`GET /hc/e2e${marker}`, `GET /hc/e2e${marker}`])) {
+        throw new Error(`each pass should check in, got ${JSON.stringify(checkIns)}`);
+      }
+      // ClickHouse stops answering: nothing listens on port 9.
+      process.env.CLICKHOUSE_URL = "http://127.0.0.1:9";
+      if ((await monitorTick()) !== "fail" || checkIns.at(-1) !== `GET /hc/e2e${marker}/fail`) {
+        throw new Error(`with ClickHouse down the pass should check in at /fail, got ${JSON.stringify(checkIns)}`);
+      }
+    } finally {
+      if (before.url === undefined) delete process.env.TOPOSCOPE_WATCHDOG_URL;
+      else process.env.TOPOSCOPE_WATCHDOG_URL = before.url;
+      if (before.ch === undefined) delete process.env.CLICKHOUSE_URL;
+      else process.env.CLICKHOUSE_URL = before.ch;
+      stand.stop();
+    }
+  }
+
   // #175, last: it waits minutes for its rows to age out of a 15m window, and the tests above
   // read a window that ends a minute after this run began.
   // A search monitor opens once, reminds on its schedule and sends one resolved call when its
@@ -3887,7 +3923,7 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved");
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved");
 }
 
 await main();
