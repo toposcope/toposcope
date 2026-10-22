@@ -9,7 +9,8 @@ type Result = {
   status: number;
   contentType: string | null;
   body: unknown;
-  stored?: number;
+  stored?: number | null;
+  logs?: number;
   commands?: string[];
 };
 let results: Record<string, Result>;
@@ -186,7 +187,7 @@ describe("metrics retention over HTTP", () => {
     expect(result.status).toBe(200);
     expect(result.stored).toBe(days);
     expect(result.logs).toBe(30);
-    expect(result.body.metrics_retention_days).toBe(days);
+    expect((result.body as { metrics_retention_days: number | null }).metrics_retention_days).toBe(days);
     const alters = result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"));
     expect(alters.map((sql) => sql.split(" ")[2]).sort()).toEqual([
       "metric_buckets",
@@ -200,7 +201,7 @@ describe("metrics retention over HTTP", () => {
     const result = results["metrics-valid:null"]!;
     expect(result.status).toBe(200);
     expect(result.stored).toBeNull();
-    expect(result.body.metrics_retention_days).toBeNull();
+    expect((result.body as { metrics_retention_days: number | null }).metrics_retention_days).toBeNull();
     // The stub reports every table at 30 days already, so nothing changes.
     expect(result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"))).toEqual([]);
   });
