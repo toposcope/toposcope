@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, Copy } from "lucide-react";
+import { ArrowUpRight, Check, Copy, LoaderCircle, RotateCw } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { VersionReply } from "../../shared/releases";
@@ -184,8 +184,33 @@ function WhatsNewList({ reply }: { reply: VersionReply }) {
   );
 }
 
+/** Check now (#219, 22a–22d): one check by hand; off while it runs. */
+function CheckNow({ checking, onCheck }: { checking: boolean; onCheck?: () => void }) {
+  if (!onCheck) return null;
+  return (
+    <button
+      type="button"
+      disabled={checking}
+      onClick={onCheck}
+      className="inline-flex h-[22px] shrink-0 items-center gap-[5px] rounded-[4.4px] border border-white/16 px-2 text-[11.5px] text-foreground hover:bg-accent disabled:opacity-45 disabled:hover:bg-transparent"
+    >
+      <RotateCw className="size-3" aria-hidden="true" />
+      Check now
+    </button>
+  );
+}
+
+type PanelProps = {
+  reply: VersionReply;
+  now: number;
+  /** A check by hand is running (22b). */
+  checking?: boolean;
+  /** Check now; absent, no button. Never shown while the check is off. */
+  onCheck?: () => void;
+};
+
 /** The popover's content, by state: off, could not check, up to date, one release out, several. */
-export function ReleasePanel({ reply, now }: { reply: VersionReply; now: number }) {
+export function ReleasePanel({ reply, now, checking = false, onCheck }: PanelProps) {
   const running = reply.running;
   const tagUrl = `${releasesPageUrl}/tag/v${running}`;
   if (reply.check === "off") {
@@ -205,9 +230,16 @@ export function ReleasePanel({ reply, now }: { reply: VersionReply; now: number 
   const latest = reply.releases[0];
   const failed = reply.error ? (
     <div className="flex flex-col gap-1">
-      <p className="m-0 text-[12.5px] text-zinc-300">
-        {reply.checked_at ? `Could not check for releases since ${dayLabel(reply.checked_at)}` : "Could not check for releases yet"}
-      </p>
+      <div className="flex items-center gap-2">
+        <p className="m-0 min-w-0 flex-1 text-[12.5px] text-zinc-300">
+          {checking
+            ? "Checking GitHub for releases…"
+            : reply.checked_at
+              ? `Could not check for releases since ${dayLabel(reply.checked_at)}`
+              : "Could not check for releases yet"}
+        </p>
+        {latest && reply.latest !== running ? null : <CheckNow checking={checking} onCheck={onCheck} />}
+      </div>
       <p className="m-0 font-mono text-[11px] text-muted-foreground">{reply.error}</p>
     </div>
   ) : null;
@@ -228,14 +260,20 @@ export function ReleasePanel({ reply, now }: { reply: VersionReply; now: number 
       <div className="flex flex-col gap-2.5">
         <Header title={`Toposcope ${running}`} link={<External href={tagUrl}>Release notes</External>} />
         <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
-          {reply.checked_at ? (
+          {checking ? (
+            <>
+              <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+              <span className="min-w-0 flex-1">Checking GitHub for releases…</span>
+            </>
+          ) : reply.checked_at ? (
             <>
               <Check className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              Up to date · checked {agoLabel(reply.checked_at, now)}
+              <span className="min-w-0 flex-1">Up to date · checked {agoLabel(reply.checked_at, now)}</span>
             </>
           ) : (
-            "Not checked yet: Toposcope looks a few minutes after it starts."
+            <span className="min-w-0 flex-1">Not checked yet: Toposcope looks a few minutes after it starts.</span>
           )}
+          <CheckNow checking={checking} onCheck={onCheck} />
         </div>
         <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
           Toposcope asks GitHub once a day whether a newer release is out, and sends nothing about this instance.{" "}
@@ -271,11 +309,16 @@ export function ReleasePanel({ reply, now }: { reply: VersionReply; now: number 
         </div>
       ) : null}
       <UpgradeBox version={reply.latest} title={several ? `Upgrade to ${reply.latest}` : "Upgrade"} size={backupSize(reply.store)} />
-      {reply.checked_at ? (
-        <div className="text-[11px] text-zinc-500">
-          {reply.error ? "Last answer" : "Checked"} {agoLabel(reply.checked_at, now)}
-        </div>
-      ) : null}
+      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+        <span className="min-w-0 flex-1">
+          {checking
+            ? "Checking GitHub for releases…"
+            : reply.checked_at
+              ? `${reply.error ? "Last answer" : "Checked"} ${agoLabel(reply.checked_at, now)}`
+              : null}
+        </span>
+        <CheckNow checking={checking} onCheck={onCheck} />
+      </div>
     </div>
   );
 }
@@ -284,6 +327,16 @@ export function ReleasePanel({ reply, now }: { reply: VersionReply; now: number 
 export function VersionFooter() {
   const [reply, setReply] = useState<VersionReply | null>(null);
   const [open, setOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const checkNow = () => {
+    setChecking(true);
+    void fetch("/api/version/check", { method: "POST" })
+      .then(async (res) => {
+        if (res.ok) setReply((await res.json()) as VersionReply);
+      })
+      .catch(() => undefined)
+      .finally(() => setChecking(false));
+  };
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -331,7 +384,7 @@ export function VersionFooter() {
           sideOffset={6}
           className="max-h-[calc(100vh-80px)] w-[min(460px,calc(100vw-16px))] overflow-y-auto rounded-[6.4px] border-white/14 bg-[#18181b] p-[14px] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
         >
-          <ReleasePanel reply={reply} now={Date.now()} />
+          <ReleasePanel reply={reply} now={Date.now()} checking={checking} onCheck={reply.check === "on" ? checkNow : undefined} />
         </PopoverContent>
       </Popover>
     </>

@@ -175,6 +175,25 @@ export function versionReply(db: Database = getDb(), env: Env = process.env, run
   };
 }
 
+/** A check by hand is not repeated within this long of the last attempt: clicks do not spend GitHub's limit. */
+export const manualCheckGapMs = 30_000;
+
+/**
+ * Check now (#219): one check, as the daily one, then what `GET /api/version` answers. A check
+ * attempted under 30s ago answers the stored result instead; off, nobody is called.
+ */
+export async function checkReleasesNow(deps: CheckDeps = {}, env: Env = process.env): Promise<VersionReply> {
+  const db = deps.db ?? getDb();
+  if (updateCheckOn(env)) {
+    const last = readStoredCheck(db).attempted_at;
+    const now = (deps.now ?? Date.now)();
+    if (!last || now - Date.parse(last) >= manualCheckGapMs) {
+      await runReleaseCheck({ ...deps, db });
+    }
+  }
+  return versionReply(db, env, deps.running);
+}
+
 const firstDelayMs = 5 * 60_000;
 const dayMs = 24 * 60 * 60_000;
 const jitterMs = 60 * 60_000;

@@ -149,3 +149,40 @@ describe("the popover", () => {
     expect(t).not.toContain("Up to date");
   });
 });
+
+describe("Check now (#219)", () => {
+  const drawWith = (v: VersionReply, checking = false) =>
+    renderToStaticMarkup(createElement(ReleasePanel, { reply: { ...v, store }, now, checking, onCheck: () => undefined }));
+  const buttons = (html: string) => [...html.matchAll(/<button[^>]*>(.*?)<\/button>/g)].filter((m) => text(m[1]!) === "Check now").map((m) => m[0]);
+
+  test("on the status line when up to date (22a)", () => {
+    const html = drawWith(reply({}));
+    expect(text(html)).toContain("Up to date · checked 3 hours ago");
+    expect(buttons(html)).toHaveLength(1);
+    expect(buttons(html)[0]).not.toContain(` disabled=""`);
+  });
+
+  test("while it runs the line says so and the button is off (22b)", () => {
+    const html = drawWith(reply({}), true);
+    expect(text(html)).toContain("Checking GitHub for releases…");
+    expect(text(html)).not.toContain("Up to date");
+    expect(buttons(html)[0]).toContain(` disabled=""`);
+  });
+
+  test("with a release out it sits at the foot, beside Checked (22c)", () => {
+    const html = drawWith(reply({ latest: "0.6.1", step: "patch", releases: [r("0.6.1")] }));
+    expect(text(html)).toContain("Checked 3 hours ago");
+    expect(buttons(html)).toHaveLength(1);
+  });
+
+  test("a failed check offers it once, to try again (22d)", () => {
+    const html = drawWith(reply({ checked_at: "2026-10-18T07:00:00Z", error: "GitHub answered 403" }));
+    expect(text(html)).toContain("Could not check for releases since 18 Oct");
+    expect(buttons(html)).toHaveLength(1);
+  });
+
+  test("no button without a handler, as the footer gives none while the check is off", () => {
+    expect(buttons(draw(reply({})))).toHaveLength(0);
+    expect(buttons(draw(reply({ check: "off", checked_at: null })))).toHaveLength(0);
+  });
+});
