@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, Copy, LoaderCircle, RotateCw } from "lucide-react";
+import { ArrowUpRight, Check, CircleAlert, Copy, LoaderCircle, RotateCw } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { VersionReply } from "../../shared/releases";
 import {
   agoLabel,
+  backupLabel,
   backupSize,
+  clockLabel,
+  tookLabel,
+  upgradeTarget,
+  upgradeView,
   beforeItems,
   dayLabel,
   firstLine,
@@ -24,6 +29,10 @@ import {
  */
 
 const pollMs = 60 * 60_000;
+/** While an upgrade is asked for or running: through the restart, until the new version answers. */
+const upgradingPollMs = 2_000;
+/** Set before the reload onto a new version, so the popover opens on it (22i). */
+const upgradedKey = "toposcope.upgraded";
 
 function External({ href, children }: { href: string; children: ReactNode }) {
   return (
@@ -107,18 +116,173 @@ function CopyCommand({ command }: { command: string }) {
   );
 }
 
-function UpgradeBox({ version, title, size }: { version: string; title: string; size: string | null }) {
+/** Asks the host to upgrade (#220); resolves to an error to show, or null once asked. */
+type OnUpgrade = (version: string) => Promise<string | null>;
+
+const primaryButton =
+  "inline-flex h-[30px] shrink-0 items-center rounded-[4.4px] bg-primary px-3.5 text-[12.5px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60";
+
+function LogTail({ lines }: { lines: string[] }) {
+  if (lines.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2 rounded-[6.4px] border border-white/10 bg-[#0d0d10] px-3 py-2.5">
-      <div className="text-[12px] font-semibold">{title}</div>
+    <div className="flex flex-col gap-0.5 overflow-hidden rounded-[5px] border border-white/8 bg-[#0a0a0c] px-2.5 py-2 font-mono text-[11px] text-muted-foreground">
+      {lines.map((line, i) => (
+        <span key={i} className="truncate whitespace-pre">
+          {line}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** The command on the host: the whole box when upgrading from here is off (22e), one click away when on (22f). */
+function HostCommand({ version }: { version: string }) {
+  return (
+    <>
       <p className="m-0 text-[12px] leading-[1.45] text-muted-foreground">
         Run it on the host, in the directory that holds <code className="font-mono text-[11.5px]">compose.yml</code>.
       </p>
       <CopyCommand command={upgradeCommand(version)} />
+    </>
+  );
+}
+
+function UpgradeBox({
+  version,
+  title,
+  size,
+  reply,
+  onUpgrade,
+}: {
+  version: string;
+  title: string;
+  size: string | null;
+  reply: VersionReply;
+  onUpgrade?: OnUpgrade;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const backs = size ? `Backs up both stores first: ${size}.` : "Backs up both stores first.";
+  const status = reply.upgrader?.status;
+  const ask = () => {
+    if (!onUpgrade) return;
+    setAsking(true);
+    setError(null);
+    void onUpgrade(version).then((err) => {
+      setAsking(false);
+      setError(err);
+      if (!err) setConfirming(false);
+    });
+  };
+  if (!reply.upgrader?.enabled || !onUpgrade) {
+    return (
+      <div className="flex flex-col gap-2 rounded-[6.4px] border border-white/10 bg-[#0d0d10] px-3 py-2.5">
+        <div className="text-[12px] font-semibold">{title}</div>
+        <HostCommand version={version} />
+        <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+          {backs} Ingest stops while it runs. Add <code className="font-mono">--no-backup</code> to skip it.
+        </p>
+        {reply.upgrader ? (
+          <p className="m-0 border-t border-white/8 pt-2 text-[11.5px] leading-[1.5] text-muted-foreground">
+            To upgrade from here instead, run <code className="font-mono">./upgrade.sh enable-ui</code> once on the host (Linux with systemd).
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-2 rounded-[6.4px] border border-amber-500/45 bg-amber-500/[0.07] px-3 py-2.5">
+        <div className="text-[12px] font-semibold">Upgrade to {version} now?</div>
+        <p className="m-0 text-[12px] leading-[1.45] text-zinc-300">
+          Toposcope backs up both stores{size ? ` (${size})` : ""}, stops, and starts {version}. Nothing is ingested meanwhile; collectors
+          hold and resend.
+        </p>
+        <div className="flex items-center gap-2">
+          <button type="button" className={primaryButton} disabled={asking} onClick={ask}>
+            Upgrade
+          </button>
+          <button
+            type="button"
+            className="h-[30px] rounded-[4.4px] px-2.5 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            onClick={() => setConfirming(false)}
+          >
+            Cancel
+          </button>
+        </div>
+        {error ? <p className="m-0 text-[11.5px] text-red-300">{error}</p> : null}
+      </div>
+    );
+  }
+  if (upgradeView(reply, Date.now()) === "failed" && status) {
+    return (
+      <div className="flex flex-col gap-2 rounded-[6.4px] border border-red-400/40 bg-red-400/[0.06] px-3 py-2.5">
+        <div className="flex items-center gap-[7px] text-[12.5px] text-red-300">
+          <CircleAlert className="size-3.5 text-red-400" aria-hidden="true" />
+          Upgrade to {status.to} failed · back on {reply.running}
+        </div>
+        {status.message ? <p className="m-0 text-[12px] leading-[1.45] text-zinc-300">{status.message}</p> : null}
+        <LogTail lines={reply.upgrader?.log.slice(-4) ?? []} />
+        <div className="flex items-center gap-2">
+          <button type="button" className={primaryButton} onClick={() => setConfirming(true)}>
+            Try again
+          </button>
+          <span className="flex-1" />
+          <span className="text-[11px] text-zinc-500">
+            whole log: <code className="font-mono">upgrade/last.log</code> in the app volume
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-[6.4px] border border-white/10 bg-[#0d0d10] px-3 py-2.5">
+      <div className="text-[12px] font-semibold">{title}</div>
+      <div className="flex items-center gap-2">
+        <button type="button" className={primaryButton} onClick={() => setConfirming(true)}>
+          Upgrade to {version}
+        </button>
+      </div>
       <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
-        {size ? `Backs up both stores first: ${size}.` : "Backs up both stores first."} Ingest stops while it runs. Add{" "}
-        <code className="font-mono">--no-backup</code> to skip it.
+        {backs} Ingest stops while it runs. The host runs it; this page reconnects after.
       </p>
+      <details className="text-[11.5px] text-muted-foreground">
+        <summary className="cursor-pointer hover:text-foreground">Or on the host</summary>
+        <div className="mt-2 flex flex-col gap-2">
+          <HostCommand version={version} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+/** Upgrading (22h): the host's log until the app stops, then the page waits and reconnects. */
+function UpgradingPanel({ reply, now }: { reply: VersionReply; now: number }) {
+  const u = reply.upgrader!;
+  const to = upgradeTarget(reply) ?? reply.latest;
+  const started = u.status?.state === "running" ? u.status.started_at : u.requested?.requested_at ?? null;
+  const release = reply.releases.find((r) => r.version === to);
+  const log = u.status?.state === "running" ? u.log : [];
+  const line = log.at(-1) ?? "Asked; waiting for the host to start it…";
+  return (
+    <div className="flex flex-col gap-2.5">
+      <Header
+        title={`Upgrading to ${to}`}
+        link={<External href={release?.url ?? releasesPageUrl}>Release on GitHub</External>}
+        sub={started ? `started ${clockLabel(started)} · ${tookLabel(started, now)}` : undefined}
+      />
+      <div className="flex flex-col gap-2 rounded-[6.4px] border border-white/10 bg-[#0d0d10] px-3 py-2.5">
+        <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
+          <LoaderCircle className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
+          <span className="min-w-0 truncate">{line}</span>
+        </div>
+        <LogTail lines={log.slice(-5, -1)} />
+        <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+          Toposcope stops while this runs. This page reconnects when it is back.
+        </p>
+      </div>
+      {reply.checked_at ? <div className="text-[11px] text-zinc-500">Checked {agoLabel(reply.checked_at, now)}</div> : null}
     </div>
   );
 }
@@ -207,10 +371,12 @@ type PanelProps = {
   checking?: boolean;
   /** Check now; absent, no button. Never shown while the check is off. */
   onCheck?: () => void;
+  /** Upgrade from here (#220); absent, only the command. */
+  onUpgrade?: OnUpgrade;
 };
 
 /** The popover's content, by state: off, could not check, up to date, one release out, several. */
-export function ReleasePanel({ reply, now, checking = false, onCheck }: PanelProps) {
+export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade }: PanelProps) {
   const running = reply.running;
   const tagUrl = `${releasesPageUrl}/tag/v${running}`;
   if (reply.check === "off") {
@@ -226,6 +392,10 @@ export function ReleasePanel({ reply, now, checking = false, onCheck }: PanelPro
         </p>
       </div>
     );
+  }
+  const view = upgradeView(reply, now);
+  if (view === "running") {
+    return <UpgradingPanel reply={reply} now={now} />;
   }
   const latest = reply.releases[0];
   const failed = reply.error ? (
@@ -253,6 +423,38 @@ export function ReleasePanel({ reply, now, checking = false, onCheck }: PanelPro
             {reply.checked_at ? `The last answer, on ${dayLabel(reply.checked_at)}, knew of nothing newer. ` : ""}Toposcope tries again once a
             day. A box with no way out can stop trying with <code className="font-mono">TOPOSCOPE_UPDATE_CHECK=off</code>.
           </p>
+        </div>
+      );
+    }
+    const done = view === "done" ? reply.upgrader!.status! : null;
+    if (done) {
+      const backup = backupLabel(done.backup);
+      return (
+        <div className="flex flex-col gap-2.5">
+          <Header title={`Toposcope ${running}`} link={<External href={tagUrl}>Release notes</External>} />
+          <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
+            <Check className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span>
+              Upgraded from {done.from ?? "the last version"} · took {tookLabel(done.started_at, done.finished_at)}
+              {backup ? (
+                <>
+                  {" "}
+                  · backup in <code className="font-mono text-[11.5px]">{backup}</code>
+                </>
+              ) : null}
+            </span>
+          </div>
+          {backup ? (
+            <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+              Going back: <code className="font-mono">./upgrade.sh rollback --yes</code> on the host restores that backup.
+            </p>
+          ) : null}
+          {reply.checked_at ? (
+            <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
+              <Check className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span className="min-w-0 flex-1">Up to date · checked {agoLabel(reply.checked_at, now)}</span>
+            </div>
+          ) : null}
         </div>
       );
     }
@@ -308,7 +510,13 @@ export function ReleasePanel({ reply, now, checking = false, onCheck }: PanelPro
           <Paragraphs notes={latest.notes} />
         </div>
       ) : null}
-      <UpgradeBox version={reply.latest} title={several ? `Upgrade to ${reply.latest}` : "Upgrade"} size={backupSize(reply.store)} />
+      <UpgradeBox
+        version={reply.latest}
+        title={several ? `Upgrade to ${reply.latest}` : "Upgrade"}
+        size={backupSize(reply.store)}
+        reply={reply}
+        onUpgrade={onUpgrade}
+      />
       <div className="flex items-center gap-2 text-[11px] text-zinc-500">
         <span className="min-w-0 flex-1">
           {checking
@@ -326,7 +534,16 @@ export function ReleasePanel({ reply, now, checking = false, onCheck }: PanelPro
 /** The footer item and its popover. */
 export function VersionFooter() {
   const [reply, setReply] = useState<VersionReply | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => {
+    try {
+      if (sessionStorage.getItem(upgradedKey) !== "1") return false;
+      sessionStorage.removeItem(upgradedKey);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  const loaded = useRef<string | null>(null);
   const [checking, setChecking] = useState(false);
   const checkNow = () => {
     setChecking(true);
@@ -337,6 +554,44 @@ export function VersionFooter() {
       .catch(() => undefined)
       .finally(() => setChecking(false));
   };
+  const upgrade = async (version: string): Promise<string | null> => {
+    const res = await fetch("/api/version/upgrade", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ version }),
+    }).catch(() => null);
+    if (!res) return "Toposcope did not answer.";
+    const body = (await res.json().catch(() => ({}))) as { error?: string; upgrader?: VersionReply["upgrader"] };
+    if (body.upgrader) setReply((r) => (r ? { ...r, upgrader: body.upgrader } : r));
+    return res.ok ? null : (body.error ?? `Asking failed (${res.status})`);
+  };
+  const upgrading = reply ? upgradeView(reply, Date.now()) === "running" : false;
+  // Through the restart: a failed fetch is the app being down, so keep asking.
+  useEffect(() => {
+    if (!upgrading) return;
+    const t = setInterval(() => {
+      void fetch("/api/version")
+        .then(async (res) => {
+          if (res.ok) setReply((await res.json()) as VersionReply);
+        })
+        .catch(() => undefined);
+    }, upgradingPollMs);
+    return () => clearInterval(t);
+  }, [upgrading]);
+  // A new version answering: this page's code is the old one's, so load the new, popover open.
+  useEffect(() => {
+    if (!reply) return;
+    if (loaded.current === null) {
+      loaded.current = reply.running;
+    } else if (reply.running !== loaded.current) {
+      try {
+        sessionStorage.setItem(upgradedKey, "1");
+      } catch {
+        // The popover just stays shut after the reload.
+      }
+      window.location.reload();
+    }
+  }, [reply]);
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -376,6 +631,7 @@ export function VersionFooter() {
               </>
             ) : null}
             {chip.readFirst ? <span className="size-[5px] rounded-full bg-amber-500" aria-hidden="true" /> : null}
+            {upgrading ? <span>· upgrading</span> : null}
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -384,7 +640,13 @@ export function VersionFooter() {
           sideOffset={6}
           className="max-h-[calc(100vh-80px)] w-[min(460px,calc(100vw-16px))] overflow-y-auto rounded-[6.4px] border-white/14 bg-[#18181b] p-[14px] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
         >
-          <ReleasePanel reply={reply} now={Date.now()} checking={checking} onCheck={reply.check === "on" ? checkNow : undefined} />
+          <ReleasePanel
+            reply={reply}
+            now={Date.now()}
+            checking={checking}
+            onCheck={reply.check === "on" ? checkNow : undefined}
+            onUpgrade={upgrade}
+          />
         </PopoverContent>
       </Popover>
     </>

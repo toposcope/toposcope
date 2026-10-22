@@ -302,7 +302,7 @@ describe("GET /api/version (#196)", () => {
     expect(results.versionSender!.status).toBe(401);
     expect(results.versionSigned!.status).toBe(200);
     const version = JSON.parse(require("node:fs").readFileSync(join(root, "../package.json"), "utf8")).version;
-    expect(results.versionSigned!.body).toEqual({ running: version, latest: version, step: null, check: "on", checked_at: null, error: null, releases: [] });
+    expect(results.versionSigned!.body).toEqual({ running: version, latest: version, step: null, check: "on", checked_at: null, error: null, releases: [], upgrader: { enabled: false, requested: null, status: null, log: [] } });
   });
 
   test("/api/health keeps its five keys, and no latest", () => {

@@ -130,3 +130,49 @@ export function agoLabel(iso: string | null, now: number): string {
   if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
   return `on ${dayLabel(iso)}`;
 }
+
+/** How long an upgrade's "done" is said after the restart (22i). */
+const doneShownMs = 24 * 60 * 60_000;
+
+/**
+ * Which of the upgrade-from-here states the popover is in (#220): an upgrade asked for or running
+ * (22h), just done (22i), failed with the release still newer (22j), or none of them.
+ */
+export function upgradeView(reply: VersionReply, now: number): "running" | "done" | "failed" | null {
+  const u = reply.upgrader;
+  if (!u) return null;
+  if (u.requested || u.status?.state === "running") return "running";
+  const s = u.status;
+  if (s?.state === "done" && s.to === reply.running && now - Date.parse(s.finished_at ?? "") < doneShownMs) return "done";
+  if (s?.state === "failed" && s.to && s.to !== reply.running && reply.latest !== reply.running) return "failed";
+  return null;
+}
+
+/** The release an upgrade is going to: the request's, else the run's. */
+export function upgradeTarget(reply: VersionReply): string | null {
+  return reply.upgrader?.requested?.version ?? reply.upgrader?.status?.to ?? null;
+}
+
+/** A backup's place, from the install's directory: `backups/20261024T140210Z-0.6.2`. */
+export function backupLabel(path: string | null): string | null {
+  if (!path) return null;
+  const name = path.replace(/\/+$/, "").split("/").pop();
+  return name ? `backups/${name}` : null;
+}
+
+/** `41s`, `2m 05s`. */
+export function tookLabel(from: string | null, to: string | number | null): string {
+  const a = Date.parse(from ?? "");
+  const b = typeof to === "number" ? to : Date.parse(to ?? "");
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return "";
+  const s = Math.max(0, Math.round((b - a) / 1000));
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+/** The local clock, `14:02:11`. */
+export function clockLabel(iso: string | null): string {
+  const t = Date.parse(iso ?? "");
+  if (!Number.isFinite(t)) return "";
+  const d = new Date(t);
+  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":");
+}
