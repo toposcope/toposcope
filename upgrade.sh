@@ -389,15 +389,26 @@ cmd_rollback() {
 # --- Upgrade from here (#220) ---------------------------------------------------------------
 # The app writes upgrade/request.json into its own volume; a systemd path unit runs ui-run, which
 # runs the ordinary upgrade and writes upgrade/status.json and upgrade/last.log back for the app.
+#
+# This runs as root on the host, and the volume is the app's to write: a link the app puts there
+# could name any host path. So this script never opens a path in the volume itself. Every read and
+# write there runs in a throwaway container that mounts only that volume, with no network, where a
+# link can only name a path inside that container.
 
-# The app's volume on this host, where it and this script meet.
+app_volume() { printf '%s_app_data' "$(project)"; }
+
+# Where the volume is on this host: only for the path unit to watch, never opened here.
 ui_dir() {
-  local name mount
-  name="$(project)"
-  [ -n "$name" ] || return 1
-  mount="$(docker volume inspect -f '{{ .Mountpoint }}' "${name}_app_data" 2>/dev/null)" || return 1
+  local mount
+  [ -n "$(project)" ] || return 1
+  mount="$(docker volume inspect -f '{{ .Mountpoint }}' "$(app_volume)" 2>/dev/null)" || return 1
   [ -n "$mount" ] || return 1
   printf '%s/upgrade' "$mount"
+}
+
+# Runs a shell script inside the volume, as /data, with this script's stdin.
+in_volume() {
+  docker run --rm -i --network none -v "$(app_volume):/data" --entrypoint /bin/sh "$(app_image "$ROOT/compose.yml")" -c "$1"
 }
 
 now_utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -410,13 +421,10 @@ json_or_null() {
 
 # state to from started finished backup message
 write_status() {
-  local dir="$1" tmp
-  shift
-  tmp="$dir/.status.json.new"
   printf '{"state":%s,"to":%s,"from":%s,"started_at":%s,"finished_at":%s,"backup":%s,"message":%s}\n' \
     "$(json_or_null "$1")" "$(json_or_null "$2")" "$(json_or_null "$3")" "$(json_or_null "$4")" \
-    "$(json_or_null "$5")" "$(json_or_null "$6")" "$(json_or_null "$7")" >"$tmp"
-  mv -f "$tmp" "$dir/status.json"
+    "$(json_or_null "$5")" "$(json_or_null "$6")" "$(json_or_null "$7")" |
+    in_volume 'mkdir -p /data/upgrade && cat >/data/upgrade/.status.json.new && mv -f /data/upgrade/.status.json.new /data/upgrade/status.json'
 }
 
 unit_name() { printf 'toposcope-upgrade-%s' "$1"; }
@@ -433,8 +441,7 @@ cmd_enable_ui() {
   case "$root" in *[[:space:]]*) die "The install's path has a space in it, which a systemd unit cannot name: $root" ;; esac
   name="$(project)"
   [ -n "$name" ] || die "Could not tell this install's Compose project, so not which volume the app writes to."
-  dir="$(ui_dir)" || die "Could not find the ${name}_app_data volume. Is Toposcope installed here?"
-  mkdir -p "$dir"
+  dir="$(ui_dir)" || die "Could not find the $(app_volume) volume. Is Toposcope installed here?"
   unit="$(unit_name "$name")"
   cat >"$UNITS/$unit.path" <<UNIT
 [Unit]
@@ -461,10 +468,11 @@ Environment=COMPOSE_PROJECT_NAME=$name
 ExecStart=$root/upgrade.sh ui-run
 UNIT
   # A request left from before must not start an upgrade the moment the unit is on.
-  rm -f "$dir/request.json"
+  printf '{"enabled_at":"%s","unit":"%s"}\n' "$(now_utc)" "$unit" |
+    in_volume 'mkdir -p /data/upgrade && rm -f /data/upgrade/request.json && cat >/data/upgrade/enabled' ||
+    die "Could not write into the $(app_volume) volume."
   systemctl daemon-reload || die "systemctl daemon-reload failed."
   systemctl enable --now "$unit.path" >/dev/null 2>&1 || die "Could not start $unit.path. See: systemctl status $unit.path"
-  printf '{"enabled_at":"%s","unit":"%s"}\n' "$(now_utc)" "$unit" >"$dir/enabled"
   say "Upgrading from the app is on for $root ($unit.path)."
   say "The app's version popover now offers Upgrade; this host runs ./upgrade.sh X.Y.Z when it is clicked, with its backup."
   say "To turn it off: ./upgrade.sh disable-ui"
@@ -473,51 +481,48 @@ UNIT
 cmd_disable_ui() {
   need systemctl
   [ -w "$UNITS" ] || die "Removing the unit writes $UNITS, which needs root: sudo ./upgrade.sh disable-ui"
-  local name dir unit
+  local name unit
   name="$(project)"
   [ -n "$name" ] || die "Could not tell this install's Compose project."
   unit="$(unit_name "$name")"
   systemctl disable --now "$unit.path" >/dev/null 2>&1 || true
   rm -f "$UNITS/$unit.path" "$UNITS/$unit.service"
   systemctl daemon-reload || true
-  if dir="$(ui_dir)"; then
-    rm -f "$dir/enabled" "$dir/request.json"
-  fi
+  in_volume 'rm -f /data/upgrade/enabled /data/upgrade/request.json' </dev/null || true
   say "Upgrading from the app is off. ./upgrade.sh X.Y.Z still works."
 }
 
 # Run by the systemd unit when the app asks: takes the request, runs the upgrade, says how it went.
 cmd_ui_run() {
-  local dir req version from started code now backup message
-  dir="$(ui_dir)" || die "Could not find the app's volume."
-  req="$dir/request.json"
-  [ -f "$req" ] || return 0
-  version="$(sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p' "$req" | head -n 1)"
-  # Taken first: the path unit must not fire again on the same request.
-  rm -f "$req"
+  local request version from started code now backup message log="$ROOT/upgrade-ui.log"
+  # Taken in the same breath as read: the path unit must not fire again on the same request.
+  request="$(in_volume 'f=/data/upgrade/request.json; [ -f "$f" ] || exit 0; head -c 4096 "$f"; rm -f "$f"' </dev/null)" ||
+    die "Could not read the app's volume."
+  [ -n "$request" ] || return 0
+  version="$(printf '%s' "$request" | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p' | head -n 1)"
   from="$(running_version)"
   started="$(now_utc)"
   if ! is_version "$version"; then
-    write_status "$dir" failed "" "$from" "$started" "$started" "" "The request did not name a release (X.Y.Z)."
+    write_status failed "" "$from" "$started" "$started" "" "The request did not name a release (X.Y.Z)."
     return 1
   fi
-  write_status "$dir" running "$version" "$from" "$started" "" "" ""
+  write_status running "$version" "$from" "$started" "" "" ""
+  # The output goes to the install's own directory, and a copy into the volume through the container.
   set +e
-  # This script, as it is now: the upgrade replaces the file, not this run of it.
-  TOPOSCOPE_DIR="$ROOT" bash "$0" "$version" >"$dir/last.log" 2>&1
-  code=$?
+  TOPOSCOPE_DIR="$ROOT" bash "$0" "$version" 2>&1 | tee "$log" | in_volume 'cat >/data/upgrade/last.log'
+  code="${PIPESTATUS[0]}"
   set -e
   now="$(running_version)"
-  backup="$(sed -n 's/.* Backup: \(.*\)$/\1/p' "$dir/last.log" | tail -n 1)"
+  backup="$(sed -n 's/.* Backup: \(.*\)$/\1/p' "$log" | tail -n 1)"
   if [ "$code" = 0 ] && [ "$now" = "$version" ]; then
-    write_status "$dir" done "$version" "$from" "$started" "$(now_utc)" "$backup" ""
+    write_status done "$version" "$from" "$started" "$(now_utc)" "$backup" ""
     return 0
   fi
-  [ -n "$backup" ] || backup="$(sed -n 's/^Backup done in [0-9]*s: \(.*\), [0-9]* MB\.$/\1/p' "$dir/last.log" | tail -n 1)"
-  message="$(grep -E 'did not come up|does not match|Could not|is not newer|not answering|needs about|No compose.yml|not installed|has no SHA256SUMS|did not finish|does not list' "$dir/last.log" | head -n 1 || true)"
-  [ -n "$message" ] || message="$(grep -v '^ ' "$dir/last.log" | tail -n 1 || true)"
+  [ -n "$backup" ] || backup="$(sed -n 's/^Backup done in [0-9]*s: \(.*\), [0-9]* MB\.$/\1/p' "$log" | tail -n 1)"
+  message="$(grep -E 'did not come up|does not match|Could not|is not newer|not answering|needs about|No compose.yml|not installed|has no SHA256SUMS|did not finish|does not list' "$log" | head -n 1 || true)"
+  [ -n "$message" ] || message="$(grep -v '^ ' "$log" | tail -n 1 || true)"
   message="${message% Its last log lines:}"
-  write_status "$dir" failed "$version" "$from" "$started" "$(now_utc)" "$backup" "$message"
+  write_status failed "$version" "$from" "$started" "$(now_utc)" "$backup" "$message"
   return 1
 }
 

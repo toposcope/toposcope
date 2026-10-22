@@ -79,6 +79,10 @@ for ((i = 0; i < \${#args[@]}; i++)); do
 done
 broken() { grep -qx "$1" "$FAKE_STATE/broken" 2>/dev/null; }
 case " $* " in
+  *"--entrypoint /bin/sh"*)
+    # A script run inside the app's volume: the stand-in volume is a directory here.
+    script="\${args[$((\${#args[@]} - 1))]}"
+    exec bash -c "\${script//\/data/$FAKE_VOLUME}" ;;
   *" config --format json"*) printf '{\\n  "name": "toposcope",\\n  "services": {}\\n}\\n' ;;
   *"volume inspect"*) [ -n "$FAKE_VOLUME" ] && printf '%s\\n' "$FAKE_VOLUME" || exit 1 ;;
   *" pull "*) exit 0 ;;
@@ -281,6 +285,15 @@ describe("backup and rollback", () => {
 });
 
 describe("the script's reach", () => {
+  test("it never opens a path in the app's volume itself: reads and writes there run in a container (#220)", () => {
+    const section = scriptText.slice(scriptText.indexOf("# --- Upgrade from here"));
+    // The host path appears once, for the path unit to watch.
+    expect([...section.matchAll(/\$dir\//g)]).toHaveLength(1);
+    expect(section).toContain("PathExists=$dir/request.json");
+    expect(section).not.toMatch(/>\s*"?\$(dir|tmp)/);
+    expect(section).toContain("--network none");
+  });
+
   test("it talks to this machine and to GitHub, nothing else", () => {
     const hosts = [...scriptText.matchAll(/https?:\/\/([a-z0-9.-]+)/g)].map((u) => u[1]!);
     expect([...new Set(hosts)].sort()).toEqual(["127.0.0.1", "api.github.com", "github.com"]);
