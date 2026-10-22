@@ -29,6 +29,16 @@ export function clampRetentionDays(days: number): number {
   return Math.min(365, Math.max(1, Math.floor(days)));
 }
 
+/** Metrics may outlive logs: they carry no addresses, and a year of them is small. */
+export const maxMetricsRetentionDays = 730;
+
+export function clampMetricsRetentionDays(days: number): number {
+  if (Number.isNaN(days)) {
+    return 30;
+  }
+  return Math.min(maxMetricsRetentionDays, Math.max(1, Math.floor(days)));
+}
+
 /** Pass 23: inverted text indexes are GA from 26.2; compose pins 26.3 LTS. */
 export const minClickHouseVersion = "26.3";
 
@@ -84,10 +94,10 @@ export const retentionTtlTables = [
   { table: "logs_attr_keys_by_minute", clock: "minute" },
   { table: "logs_attr_values_by_minute", clock: "minute" },
   { table: "logs_attr_numeric_by_minute", clock: "minute" },
-  { table: "metrics", clock: "ts" },
-  { table: "metrics_by_minute", clock: "minute" },
-  { table: "metric_buckets", clock: "ts" },
-  { table: "metric_buckets_by_minute", clock: "minute" },
+  { table: "metrics", clock: "ts", metrics: true },
+  { table: "metrics_by_minute", clock: "minute", metrics: true },
+  { table: "metric_buckets", clock: "ts", metrics: true },
+  { table: "metric_buckets_by_minute", clock: "minute", metrics: true },
   { table: "spans", clock: "ts" },
   { table: "profile_samples", clock: "ts" },
   { table: "change_marks", clock: "ts" },
@@ -102,8 +112,13 @@ export function retentionTtlAlterSql(
   clock: (typeof retentionTtlTables)[number]["clock"],
   days: number,
 ): string {
-  const n = clampRetentionDays(days);
+  const n = isMetricsRetentionTable(table) ? clampMetricsRetentionDays(days) : clampRetentionDays(days);
   return `ALTER TABLE ${table} MODIFY TTL toDate(${clock}) + INTERVAL ${n} DAY ${retentionTtlAlterSettings}`;
+}
+
+/** Ingested metrics and their rollups keep `metrics_retention_days`; every other table keeps `retention_days`. */
+export function isMetricsRetentionTable(table: string): boolean {
+  return retentionTtlTables.some((spec) => spec.table === table && "metrics" in spec);
 }
 
 export const killUnfinishedTtlMutationSql =
@@ -121,8 +136,10 @@ export function parseTtlIntervalDays(engineFull: string): number | null {
   return null;
 }
 
-export async function applyRetentionDays(days: number): Promise<void> {
+/** `metricsDays` defaults to `days`: metrics follow logs until they have a retention of their own. */
+export async function applyRetentionDays(days: number, metricsDays: number = days): Promise<void> {
   const n = clampRetentionDays(days);
+  const m = clampMetricsRetentionDays(metricsDays);
   try {
     await clickhouseCommand(killUnfinishedTtlMutationSql);
   } catch {
@@ -130,10 +147,11 @@ export async function applyRetentionDays(days: number): Promise<void> {
   }
   const have = await currentTtlIntervalDays();
   for (const spec of retentionTtlTables) {
-    if (have[spec.table] === n) {
+    const want = "metrics" in spec ? m : n;
+    if (have[spec.table] === want) {
       continue;
     }
-    await clickhouseCommand(retentionTtlAlterSql(spec.table, spec.clock, n));
+    await clickhouseCommand(retentionTtlAlterSql(spec.table, spec.clock, want));
   }
 }
 

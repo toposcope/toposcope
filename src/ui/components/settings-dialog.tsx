@@ -27,6 +27,8 @@ const previewN = 1240;
 
 export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstanceName }: Props) {
   const [days, setDays] = useState("30");
+  // Empty: metrics follow Retention days.
+  const [metricsDays, setMetricsDays] = useState("");
   const [name, setName] = useState("");
   const [savedName, setSavedName] = useState<string | null>(null);
   const [webhook, setWebhook] = useState("");
@@ -47,10 +49,12 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
       }
       const json = (await res.json()) as {
         retention_days: number;
+        metrics_retention_days?: number | null;
         instance_name?: string | null;
         default_webhook_url?: string | null;
       };
       setDays(String(json.retention_days));
+      setMetricsDays(json.metrics_retention_days == null ? "" : String(json.metrics_retention_days));
       setName(json.instance_name ?? "");
       setSavedName(json.instance_name ?? null);
       setWebhook(json.default_webhook_url ?? "");
@@ -64,25 +68,47 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
       toast.error("Retention must be 1–365 days");
       return;
     }
+    const metricsRetentionDays = metricsDays.trim() === "" ? null : Number(metricsDays);
+    if (
+      metricsRetentionDays !== null &&
+      (!Number.isInteger(metricsRetentionDays) || metricsRetentionDays < 1 || metricsRetentionDays > 730)
+    ) {
+      toast.error("Metrics retention must be 1–730 days");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ retention_days: retentionDays, instance_name: name, default_webhook_url: webhook.trim() }),
+        body: JSON.stringify({
+          retention_days: retentionDays,
+          metrics_retention_days: metricsRetentionDays,
+          instance_name: name,
+          default_webhook_url: webhook.trim(),
+        }),
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => null)) as { error?: string } | null;
         toast.error(err?.error ?? `Save failed (${res.status})`);
         return;
       }
-      const json = (await res.json()) as { retention_days: number; instance_name?: string | null };
+      const json = (await res.json()) as {
+        retention_days: number;
+        metrics_retention_days?: number | null;
+        instance_name?: string | null;
+      };
       setDays(String(json.retention_days));
+      setMetricsDays(json.metrics_retention_days == null ? "" : String(json.metrics_retention_days));
       onRetentionDays?.(json.retention_days);
       if ((json.instance_name ?? null) !== savedName) {
         onInstanceName?.(json.instance_name ?? null);
       }
-      toast.success(`Retention set to ${json.retention_days} days`);
+      toast.success(
+        json.metrics_retention_days == null
+          ? `Retention set to ${json.retention_days} days`
+          : `Retention set: logs ${json.retention_days} days, metrics ${json.metrics_retention_days}`,
+      );
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -121,7 +147,7 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            ClickHouse TTL for logs and the minute histogram.
+            ClickHouse TTL for each signal and its rollups.
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-3" onSubmit={(e) => void onSave(e)}>
@@ -140,7 +166,10 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
               ) : null}
             </DialogControl>
           </DialogField>
-          <DialogField label="Retention days" help="Applies ALTER TTL on save.">
+          <DialogField
+            label="Retention days"
+            help="Logs, spans, profiles and marks. Applies ALTER TTL on save."
+          >
             <DialogControl>
               <input
                 id="retention"
@@ -152,6 +181,24 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
                 className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
               />
               <span className="shrink-0 text-[11px] text-muted-foreground">1–365</span>
+            </DialogControl>
+          </DialogField>
+          <DialogField
+            label="Metrics retention days"
+            help="Ingested metrics and their minute rollups. Empty follows Retention days."
+          >
+            <DialogControl>
+              <input
+                id="metrics-retention"
+                type="number"
+                min={1}
+                max={730}
+                value={metricsDays}
+                placeholder={`${days.trim() || "30"} · as logs`}
+                onChange={(e) => setMetricsDays(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground"
+              />
+              <span className="shrink-0 text-[11px] text-muted-foreground">1–730</span>
             </DialogControl>
           </DialogField>
           <DialogField
