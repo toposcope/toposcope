@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import {
+  checkReleasesNow,
   newerReleases,
   readStoredCheck,
   releaseStep,
@@ -147,5 +148,58 @@ describe("GET /api/version's reply", () => {
       error: null,
       releases: [],
     });
+  });
+});
+
+describe("Check now (#219)", () => {
+  test("one check now, answered as GET /api/version answers, and handed on as the daily one is", async () => {
+    const db = memDb();
+    let calls = 0;
+    const seen: string[][] = [];
+    const fetchStub = (async () => {
+      calls++;
+      return Response.json(list);
+    }) as unknown as typeof fetch;
+    const reply = await checkReleasesNow(
+      { db, fetch: fetchStub, running: "0.6.0", now: () => Date.parse("2026-10-23T10:00:00Z"), onChecked: (r) => void seen.push(r.map((x) => x.version)) },
+      {},
+    );
+    expect(calls).toBe(1);
+    expect(reply).toMatchObject({ running: "0.6.0", latest: "0.6.1", step: "patch", check: "on", checked_at: "2026-10-23T10:00:00.000Z" });
+    expect(seen).toEqual([["0.6.1"]]);
+  });
+
+  test("within 30s of the last attempt it answers the stored result and calls nobody", async () => {
+    const db = memDb();
+    let calls = 0;
+    const fetchStub = (async () => {
+      calls++;
+      return Response.json(list);
+    }) as unknown as typeof fetch;
+    const at = (t: string) => ({ db, fetch: fetchStub, running: "0.6.0", now: () => Date.parse(t) });
+    await checkReleasesNow(at("2026-10-23T10:00:00Z"), {});
+    const again = await checkReleasesNow(at("2026-10-23T10:00:29Z"), {});
+    expect(calls).toBe(1);
+    expect(again.checked_at).toBe("2026-10-23T10:00:00.000Z");
+    await checkReleasesNow(at("2026-10-23T10:00:30Z"), {});
+    expect(calls).toBe(2);
+  });
+
+  test("a failed attempt counts too, and its reply says why", async () => {
+    const db = memDb();
+    const limited = (async () => new Response("", { status: 403 })) as unknown as typeof fetch;
+    const reply = await checkReleasesNow({ db, fetch: limited, running: "0.6.0", now: () => Date.parse("2026-10-23T10:00:00Z") }, {});
+    expect(reply.error).toBe("GitHub answered 403");
+    expect(reply.checked_at).toBeNull();
+  });
+
+  test("off: nobody is called, and the reply says off", async () => {
+    const db = memDb();
+    const never = (async () => {
+      throw new Error("no call may be made while the check is off");
+    }) as unknown as typeof fetch;
+    const reply = await checkReleasesNow({ db, fetch: never, running: "0.6.0" }, { TOPOSCOPE_UPDATE_CHECK: "off" });
+    expect(reply.check).toBe("off");
+    expect(readStoredCheck(db).attempted_at).toBeNull();
   });
 });

@@ -81,7 +81,7 @@ import { applyRetentionDays, migrateStore, syncFieldRoleSkip } from "./shared/mi
 import { requirePackagedSecrets } from "./shared/secrets";
 import { requirePublicUrl } from "./shared/public-url";
 import { requireWatchdogUrl } from "./alerts/watchdog";
-import { startReleaseCheck, versionReply } from "./control/release-check";
+import { checkReleasesNow, startReleaseCheck, versionReply, type CheckDeps, type VersionReply } from "./control/release-check";
 import { announceNewRelease } from "./control/update-event";
 import { storeSize } from "./control/store-size";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
@@ -310,12 +310,18 @@ app.get("/api/metric-names", metricNamesRoute);
 app.get("/api/metric-labels", metricLabelsRoute);
 app.get("/api/throughput", throughputRoute);
 app.get("/api/system", systemRoute);
+// A version seen for the first time writes one event:update_available row, to page on (#197).
+const releaseCheckDeps: CheckDeps = {
+  onChecked: (releases, running) => announceNewRelease(releases, running, { write: insertEvents }),
+};
+// The stores are sized only when an upgrade is on offer: the panel says how big its backup is (#201).
+async function versionBody(reply: VersionReply) {
+  return reply.releases.length > 0 ? { ...reply, store: await storeSize() } : reply;
+}
 // Signed in, unlike /api/health: how far behind an instance is stays with its operators (#196).
-app.get("/api/version", async (c) => {
-  const reply = versionReply();
-  // The stores are sized only when an upgrade is on offer: the panel says how big its backup is (#201).
-  return c.json(reply.releases.length > 0 ? { ...reply, store: await storeSize() } : reply);
-});
+app.get("/api/version", async (c) => c.json(await versionBody(versionReply())));
+// Check now (#219): one check by hand, on top of the daily one.
+app.post("/api/version/check", async (c) => c.json(await versionBody(await checkReleasesNow(releaseCheckDeps))));
 app.get("/api/home", getHome);
 app.put("/api/home", putHome);
 app.get("/api/saved-searches", listSavedSearches);
@@ -412,8 +418,7 @@ async function startBoot(): Promise<void> {
     startHttpMonitors();
     startLinkPuller();
     // Once a day, a few minutes after boot: is a newer release out (#196)? Off with TOPOSCOPE_UPDATE_CHECK=off.
-    // A version seen for the first time writes one event:update_available row, to page on (#197).
-    startReleaseCheck({ onChecked: (releases, running) => announceNewRelease(releases, running, { write: insertEvents }) });
+    startReleaseCheck(releaseCheckDeps);
     // A stubbed listener in tests returns nothing.
     stopSyslog = (await startSyslogUdp()) ?? stopSyslog;
     // OTLP over gRPC: each call goes through the same routes, and the same checks, as HTTP.

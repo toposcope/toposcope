@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Check for a release now, on top of the daily check. The footer's version popover gains **Check now** on its status line, as frames 22a–22d draw it: while it runs the line says so, a check that finds a release turns the popover into the upgrade panel and the footer follows, and a failed check says why and can be tried again. Signed-in `POST /api/version/check` runs the same check and answers what `GET /api/version` answers; a check attempted under 30 seconds ago is not repeated, a version seen for the first time writes its `event:update_available` row as the daily check does, and with `TOPOSCOPE_UPDATE_CHECK=off` nothing is called and there is no button. [#219](https://github.com/toposcope/toposcope/issues/219)
+
 ## 0.6.2
 
 Metrics can keep longer than logs. Settings gains **Metrics retention days** (1–730), as frames 21a–21c draw it: ingested metrics and their minute rollups (`metrics`, `metric_buckets`, `metrics_by_minute`, `metric_buckets_by_minute`) keep that many days, while logs, spans, profiles and marks keep **Retention days**. Empty, the default, follows Retention days, as every install does today. `PUT /api/settings` takes `"metrics_retention_days": 400`, or `null` to follow logs again; a value out of range is 400 before anything is written. A year of a fleet's metrics is small, and metrics carry no addresses, so logs can stay at 30 days. [#215](https://github.com/toposcope/toposcope/issues/215)
