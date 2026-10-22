@@ -69,6 +69,11 @@ Picked — Watch's marks lane when deploys crowd, 2026-10-21: option A (20b, 20c
 - [Toposcope Watch Marks.dc.html](Toposcope%20Watch%20Marks.dc.html) — frames 20a–20g: 43 deploys in a day as 0.6.1 draws them; A, Search's counted chips on Watch with the wash up through the monitor rows; a chip hovered and its list pinned; B, triangles only; C, a name only where it fits; A on a quiet day and at 7d and 30d, where a chip is a tick's worth of marks; rejects
 - [watch-marks/](watch-marks/) — crops for issues (20a–20g)
 
+Locked — metrics retention (0.6.x), 2026-10-23:
+
+- [Toposcope Metrics Retention.dc.html](Toposcope%20Metrics%20Retention.dc.html) — frames 21a–21c: Settings gains Metrics retention days under Retention days; empty follows logs and says so; saved at 400 with one toast naming both; out of range refused
+- [metrics-retention/](metrics-retention/) — crops for issues (21a–21c)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.

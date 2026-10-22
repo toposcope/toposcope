@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Metrics Retention</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 21a–21c · Settings: metrics keep their own retention, apart from logs</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Settings · metrics keep their own retention</h2>
+
+    <div id="21a" data-frame="21a" data-screen-label="21a metrics unset, follows logs" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#21a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">21a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">metrics unset, follows logs</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×720</span>
+      </div>
+      <div data-crop="21a" style="position:relative; width:520px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 720px; box-sizing: border-box; background: #09090b; padding: 40px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px; display: flex; flex-direction: column; align-items: center">
+<div style="width: 440px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.55); display: flex; flex-direction: column">
+<div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px">
+<div style="font-size: 15px; font-weight: 600; letter-spacing: -0.01em">Settings</div>
+<div style="font-size: 13px; line-height: 1.5; color: #a1a1aa">ClickHouse TTL for each signal and its rollups.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21a-a-name" style="font-size: 13px; font-weight: 500">Instance name</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21a-a-name" value="logs-vm" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21a-a-ret" style="font-size: 13px; font-weight: 500">Retention days</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21a-a-ret" value="30" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+<span style="font-size: 11px; color: #a1a1aa">1–365</span>
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Logs, spans, profiles and marks. Applies ALTER TTL on save.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21a-a-mret" style="font-size: 13px; font-weight: 500">Metrics retention days</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21a-a-mret" value="" placeholder="30 · as logs" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+<span style="font-size: 11px; color: #a1a1aa">1–730</span>
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Ingested metrics and their minute rollups. Empty follows Retention days.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21a-a-hook" style="font-size: 13px; font-weight: 500">Default webhook</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21a-a-hook" value="" placeholder="https://…" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Called by any monitor without its own, such as one created by its first result. Empty: such a monitor keeps its state and calls nobody.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 500">Count format</span>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<span style="flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px">Compact — 1.24K</span>
+<button type="button" style="height: 24px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2.4px; background: transparent; color: #fafafa; padding: 0 9px; font-size: 11px">Switch</button>
+</div>
+</div>
+<div style="font-size: 11px; color: #71717a">… Timestamps, Ingest endpoint as today</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 16px">
+<button type="button" style="height: 32px; border: 0; border-radius: 4.4px; background: #e4e4e7; color: #18181b; padding: 0 14px; font-size: 13px; font-weight: 500">Save</button>
+<span style="flex: 1"></span>
+<button type="button" style="height: 32px; border: 0; border-radius: 4.4px; background: transparent; color: #a1a1aa; padding: 0 12px; font-size: 13px">Cancel</button>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="21b" data-frame="21b" data-screen-label="21b metrics 400, saved" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#21b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">21b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">metrics 400, saved</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×720</span>
+      </div>
+      <div data-crop="21b" style="position:relative; width:520px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 720px; box-sizing: border-box; background: #09090b; padding: 40px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px; display: flex; flex-direction: column; align-items: center; position: relative">
+<div style="width: 440px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.55); display: flex; flex-direction: column">
+<div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px">
+<div style="font-size: 15px; font-weight: 600; letter-spacing: -0.01em">Settings</div>
+<div style="font-size: 13px; line-height: 1.5; color: #a1a1aa">ClickHouse TTL for each signal and its rollups.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21b-b-name" style="font-size: 13px; font-weight: 500">Instance name</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21b-b-name" value="logs-vm" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21b-b-ret" style="font-size: 13px; font-weight: 500">Retention days</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21b-b-ret" value="30" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+<span style="font-size: 11px; color: #a1a1aa">1–365</span>
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Logs, spans, profiles and marks. Applies ALTER TTL on save.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21b-b-mret" style="font-size: 13px; font-weight: 500">Metrics retention days</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21b-b-mret" value="400" placeholder="30 · as logs" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+<span style="font-size: 11px; color: #a1a1aa">1–730</span>
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Ingested metrics and their minute rollups. Empty follows Retention days.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21b-b-hook" style="font-size: 13px; font-weight: 500">Default webhook</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21b-b-hook" value="" placeholder="https://…" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Called by any monitor without its own, such as one created by its first result. Empty: such a monitor keeps its state and calls nobody.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 500">Count format</span>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<span style="flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px">Compact — 1.24K</span>
+<button type="button" style="height: 24px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2.4px; background: transparent; color: #fafafa; padding: 0 9px; font-size: 11px">Switch</button>
+</div>
+</div>
+<div style="font-size: 11px; color: #71717a">… Timestamps, Ingest endpoint as today</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 16px">
+<button type="button" style="height: 32px; border: 0; border-radius: 4.4px; background: #e4e4e7; color: #18181b; padding: 0 14px; font-size: 13px; font-weight: 500">Save</button>
+<span style="flex: 1"></span>
+<button type="button" style="height: 32px; border: 0; border-radius: 4.4px; background: transparent; color: #a1a1aa; padding: 0 12px; font-size: 13px">Cancel</button>
+</div>
+</div>
+<div style="position: absolute; right: 24px; bottom: 24px; width: 300px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; padding: 12px 14px; font-size: 13px; display: flex; gap: 8px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#a1a1aa" stroke-width="1.6" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg><span>Retention set: logs 30 days, metrics 400</span></div>
+</div>
+      </div>
+    </div>
+
+    <div id="21c" data-frame="21c" data-screen-label="21c metrics out of range" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#21c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">21c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">metrics out of range</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×720</span>
+      </div>
+      <div data-crop="21c" style="position:relative; width:520px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 720px; box-sizing: border-box; background: #09090b; padding: 40px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px; display: flex; flex-direction: column; align-items: center; position: relative">
+<div style="width: 440px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.55); display: flex; flex-direction: column">
+<div style="display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px">
+<div style="font-size: 15px; font-weight: 600; letter-spacing: -0.01em">Settings</div>
+<div style="font-size: 13px; line-height: 1.5; color: #a1a1aa">ClickHouse TTL for each signal and its rollups.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21c-c-name" style="font-size: 13px; font-weight: 500">Instance name</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21c-c-name" value="logs-vm" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21c-c-ret" style="font-size: 13px; font-weight: 500">Retention days</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21c-c-ret" value="30" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+<span style="font-size: 11px; color: #a1a1aa">1–365</span>
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Logs, spans, profiles and marks. Applies ALTER TTL on save.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21c-c-mret" style="font-size: 13px; font-weight: 500">Metrics retention days</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21c-c-mret" value="800" placeholder="30 · as logs" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+<span style="font-size: 11px; color: #a1a1aa">1–730</span>
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Ingested metrics and their minute rollups. Empty follows Retention days.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="21c-c-hook" style="font-size: 13px; font-weight: 500">Default webhook</label>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<input id="21c-c-hook" value="" placeholder="https://…" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #fafafa; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; outline: none">
+</div>
+<span style="font-size: 11px; color: #a1a1aa">Called by any monitor without its own, such as one created by its first result. Empty: such a monitor keeps its state and calls nobody.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 500">Count format</span>
+<div style="display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; padding: 0 9px">
+<span style="flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px">Compact — 1.24K</span>
+<button type="button" style="height: 24px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2.4px; background: transparent; color: #fafafa; padding: 0 9px; font-size: 11px">Switch</button>
+</div>
+</div>
+<div style="font-size: 11px; color: #71717a">… Timestamps, Ingest endpoint as today</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; margin-top: 16px">
+<button type="button" style="height: 32px; border: 0; border-radius: 4.4px; background: #e4e4e7; color: #18181b; padding: 0 14px; font-size: 13px; font-weight: 500">Save</button>
+<span style="flex: 1"></span>
+<button type="button" style="height: 32px; border: 0; border-radius: 4.4px; background: transparent; color: #a1a1aa; padding: 0 12px; font-size: 13px">Cancel</button>
+</div>
+</div>
+<div style="position: absolute; right: 24px; bottom: 24px; width: 300px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; padding: 12px 14px; font-size: 13px; display: flex; gap: 8px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5)"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#f87171" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5M8 11h.01"/></svg><span>Metrics retention must be 1–730 days</span></div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+
+    };
+  }
+}
+</script>
+</body>
+</html>
