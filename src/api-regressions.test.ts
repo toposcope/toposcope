@@ -64,6 +64,28 @@ beforeAll(async () => {
       const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: '{"retention_days":' + value + '}' }));
       out[value] = { status: response.status, contentType: response.headers.get("content-type"), body: await response.json(), stored: settings.getRetentionDays(), commands: [...commands] };
     }
+    for (const value of ["0", "731", "10.5", '"400"', "true"]) {
+      settings.writeRetentionDays(30);
+      settings.writeMetricsRetentionDays(90);
+      commands.length = 0;
+      const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: '{"metrics_retention_days":' + value + '}' }));
+      out["metrics:" + value] = { status: response.status, body: await response.json(), stored: settings.getMetricsRetentionDays(), commands: [...commands] };
+    }
+    for (const value of ["400", "730", "null"]) {
+      settings.writeRetentionDays(30);
+      settings.writeMetricsRetentionDays(90);
+      commands.length = 0;
+      const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: '{"metrics_retention_days":' + value + '}' }));
+      out["metrics-valid:" + value] = { status: response.status, body: await response.json(), stored: settings.getMetricsRetentionDays(), logs: settings.getRetentionDays(), commands: [...commands] };
+    }
+    settings.writeRetentionDays(30);
+    settings.writeMetricsRetentionDays(400);
+    commands.length = 0;
+    {
+      const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: JSON.stringify({ retention_days: 14 }) }));
+      out["logs-only"] = { status: response.status, body: await response.json(), stored: settings.getMetricsRetentionDays(), commands: [...commands] };
+    }
+    settings.writeMetricsRetentionDays(null);
     for (const days of [1, 365]) {
       commands.length = 0;
       const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: JSON.stringify({ retention_days: days }) }));
@@ -143,9 +165,53 @@ describe("retention HTTP validation", () => {
     const result = results[`valid-${days}`]!;
     expect(result.status).toBe(200);
     expect(result.stored).toBe(days);
-    expect(result.body).toEqual({ retention_days: days, instance_name: null, default_webhook_url: null });
+    expect(result.body).toEqual({ retention_days: days, metrics_retention_days: null, instance_name: null, default_webhook_url: null });
     expect(result.commands?.filter((sql) => sql.startsWith("ALTER TABLE"))).toHaveLength(12);
     expect(result.commands?.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain(`INTERVAL ${days} DAY`);
+  });
+});
+
+describe("metrics retention over HTTP", () => {
+  test.each(["0", "731", "10.5", '"400"', "true"])(
+    "rejects %s before changing SQLite or ClickHouse TTL",
+    (value) => {
+      const result = results["metrics:" + value]!;
+      expect(result.status).toBe(400);
+      expect(result.stored).toBe(90);
+      expect(result.commands).toEqual([]);
+    },
+  );
+  test.each([400, 730])("keeps metrics %s days and logs 30", (days) => {
+    const result = results["metrics-valid:" + days]!;
+    expect(result.status).toBe(200);
+    expect(result.stored).toBe(days);
+    expect(result.logs).toBe(30);
+    expect(result.body.metrics_retention_days).toBe(days);
+    const alters = result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"));
+    expect(alters.map((sql) => sql.split(" ")[2]).sort()).toEqual([
+      "metric_buckets",
+      "metric_buckets_by_minute",
+      "metrics",
+      "metrics_by_minute",
+    ]);
+    for (const sql of alters) expect(sql).toContain(`INTERVAL ${days} DAY`);
+  });
+  test("null puts metrics back on the logs retention", () => {
+    const result = results["metrics-valid:null"]!;
+    expect(result.status).toBe(200);
+    expect(result.stored).toBeNull();
+    expect(result.body.metrics_retention_days).toBeNull();
+    // The stub reports every table at 30 days already, so nothing changes.
+    expect(result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"))).toEqual([]);
+  });
+  test("changing logs alone leaves metrics on their own retention", () => {
+    const result = results["logs-only"]!;
+    expect(result.status).toBe(200);
+    expect(result.stored).toBe(400);
+    const alters = result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"));
+    expect(alters).toHaveLength(12);
+    expect(alters.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain("INTERVAL 14 DAY");
+    expect(alters.find((sql) => sql.startsWith("ALTER TABLE metrics "))).toContain("INTERVAL 400 DAY");
   });
 });
 
@@ -160,7 +226,7 @@ describe("API not found", () => {
   });
   test("known API still returns its JSON result", () => {
     expect(results.known!.status).toBe(200);
-    expect(results.known!.body).toEqual({ retention_days: 365, instance_name: null, default_webhook_url: null });
+    expect(results.known!.body).toEqual({ retention_days: 365, metrics_retention_days: null, instance_name: null, default_webhook_url: null });
   });
   test("unknown POST returns the same JSON 404", () => {
     expect(results.post!.status).toBe(404);

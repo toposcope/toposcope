@@ -1,12 +1,19 @@
 import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
-import { applyRetentionDays, clampRetentionDays } from "../shared/migrate";
+import {
+  applyRetentionDays,
+  clampMetricsRetentionDays,
+  clampRetentionDays,
+  maxMetricsRetentionDays,
+} from "../shared/migrate";
 import { getDb } from "./index";
 import { setHereName } from "../shared/here";
 import { instanceName, parseInstanceName, writeInstanceName } from "./instance";
 
 export type Settings = {
   retention_days: number;
+  /** Null: metrics follow `retention_days`. */
+  metrics_retention_days: number | null;
 };
 
 export function getRetentionDays(db: Database = getDb()): number {
@@ -26,6 +33,53 @@ export function writeRetentionDays(
     "INSERT INTO settings (key, value) VALUES ('retention_days', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
   ).run(String(n));
   return n;
+}
+
+/** Metrics' own retention, or null when they follow logs. */
+export function getMetricsRetentionDays(db: Database = getDb()): number | null {
+  const row = db
+    .query("SELECT value FROM settings WHERE key = 'metrics_retention_days'")
+    .get() as { value: string } | null;
+  if (!row) {
+    return null;
+  }
+  return clampMetricsRetentionDays(Number(row.value));
+}
+
+/** The days the metric tables keep: their own, else what logs keep. */
+export function effectiveMetricsRetentionDays(db: Database = getDb()): number {
+  return getMetricsRetentionDays(db) ?? getRetentionDays(db);
+}
+
+export function writeMetricsRetentionDays(
+  days: number | null,
+  db: Database = getDb(),
+): number | null {
+  if (days === null) {
+    db.query("DELETE FROM settings WHERE key = 'metrics_retention_days'").run();
+    return null;
+  }
+  const n = clampMetricsRetentionDays(days);
+  db.query(
+    "INSERT INTO settings (key, value) VALUES ('metrics_retention_days', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(String(n));
+  return n;
+}
+
+/** A whole number of days in range, or null (or empty) for none. */
+export function parseMetricsRetentionDays(value: unknown): number | null | { error: string } {
+  if (value === null || value === "") {
+    return null;
+  }
+  if (
+    typeof value !== "number" ||
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > maxMetricsRetentionDays
+  ) {
+    return { error: `Metrics retention must be 1–${maxMetricsRetentionDays} whole days, or null to follow retention_days` };
+  }
+  return value;
 }
 
 /**
@@ -65,7 +119,11 @@ export function writeDefaultWebhook(url: string | null, db: Database = getDb()):
 }
 
 function settingsBody(extra: { retention_days: number; instance_name: string | null }) {
-  return { ...extra, default_webhook_url: getDefaultWebhook() };
+  return {
+    ...extra,
+    metrics_retention_days: getMetricsRetentionDays(),
+    default_webhook_url: getDefaultWebhook(),
+  };
 }
 
 export async function getSettings(c: Context): Promise<Response> {
@@ -85,7 +143,8 @@ export async function putSettings(c: Context): Promise<Response> {
   const rec = body as Record<string, unknown>;
   const hasName = "instance_name" in rec;
   const hasWebhook = "default_webhook_url" in rec;
-  if (rec.retention_days === undefined && !hasName && !hasWebhook) {
+  const hasMetrics = "metrics_retention_days" in rec;
+  if (rec.retention_days === undefined && !hasName && !hasWebhook && !hasMetrics) {
     return c.json({ error: "retention_days is required" }, 400);
   }
   if (rec.retention_days !== undefined && typeof rec.retention_days !== "number") {
@@ -106,18 +165,26 @@ export async function putSettings(c: Context): Promise<Response> {
   if (webhook && typeof webhook === "object") {
     return c.json({ error: webhook.error }, 400);
   }
+  const metricsDays = hasMetrics ? parseMetricsRetentionDays(rec.metrics_retention_days) : undefined;
+  if (metricsDays && typeof metricsDays === "object") {
+    return c.json({ error: metricsDays.error }, 400);
+  }
   if (webhook !== undefined) {
     writeDefaultWebhook(webhook);
   }
   const savedName = name === undefined ? instanceName() : writeInstanceName(name);
   // Rows ingested from now on are stamped with the new name; rows stored keep the old one.
   setHereName(savedName);
-  if (typeof rec.retention_days !== "number") {
+  if (metricsDays !== undefined) {
+    writeMetricsRetentionDays(metricsDays);
+  }
+  if (typeof rec.retention_days !== "number" && !hasMetrics) {
     return c.json(settingsBody({ retention_days: getRetentionDays(), instance_name: savedName }));
   }
-  const days = writeRetentionDays(rec.retention_days);
+  const days =
+    typeof rec.retention_days === "number" ? writeRetentionDays(rec.retention_days) : getRetentionDays();
   try {
-    await applyRetentionDays(days);
+    await applyRetentionDays(days, effectiveMetricsRetentionDays());
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "ClickHouse command failed";

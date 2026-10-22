@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Metrics can keep longer than logs. Settings gains **Metrics retention days** (1–730), as frames 21a–21c draw it: ingested metrics and their minute rollups (`metrics`, `metric_buckets`, `metrics_by_minute`, `metric_buckets_by_minute`) keep that many days, while logs, spans, profiles and marks keep **Retention days**. Empty, the default, follows Retention days, as every install does today. `PUT /api/settings` takes `"metrics_retention_days": 400`, or `null` to follow logs again; a value out of range is 400 before anything is written. A year of a fleet's metrics is small, and metrics carry no addresses, so logs can stay at 30 days. [#ISSUE](https://github.com/toposcope/toposcope/issues/ISSUE)
+
 `upgrade.sh` prints each newer release's Before you upgrade paragraph, not a mention of it. Upgrading to 0.6.1 printed a fragment of its notes (“which the release body and `/api/version` carry apart from the notes”) because the script took the first `**Before you upgrade:**` anywhere in the release body; it now takes only a paragraph that starts with it, as the footer panel already did, and keeps quotes inside it. The target release's own script prints this line, so the fix shows from the next release on. [#210](https://github.com/toposcope/toposcope/issues/210)
 
 ## 0.6.1

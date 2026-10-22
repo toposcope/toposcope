@@ -3,7 +3,9 @@ import {
   attrNumericMvWhereSql,
   attrRoleSkipSql,
   attrValueMvWhereSql,
+  clampMetricsRetentionDays,
   clampRetentionDays,
+  isMetricsRetentionTable,
   clickhouseVersionAtLeast,
   isDayPartition,
   killUnfinishedTtlMutationSql,
@@ -101,6 +103,15 @@ describe("clampRetentionDays", () => {
   });
 });
 
+describe("clampMetricsRetentionDays", () => {
+  test("allows more than logs, up to 730", () => {
+    expect(clampMetricsRetentionDays(Number.NaN)).toBe(30);
+    expect(clampMetricsRetentionDays(0)).toBe(1);
+    expect(clampMetricsRetentionDays(400)).toBe(400);
+    expect(clampMetricsRetentionDays(800)).toBe(730);
+  });
+});
+
 describe("retention TTL ALTER", () => {
   test("covers every retained table and does not wait for mutations", () => {
     expect(retentionTtlTables.map((spec) => spec.table)).toEqual([
@@ -121,6 +132,23 @@ describe("retention TTL ALTER", () => {
     expect(retentionTtlAlterSettings).toContain("alter_sync = 0");
     expect(killUnfinishedTtlMutationSql).toContain("KILL MUTATION");
     expect(killUnfinishedTtlMutationSql).toContain("TTL");
+  });
+
+  test("metrics and their rollups are the metric tables", () => {
+    expect(retentionTtlTables.map((spec) => spec.table).filter(isMetricsRetentionTable)).toEqual([
+      "metrics",
+      "metrics_by_minute",
+      "metric_buckets",
+      "metric_buckets_by_minute",
+    ]);
+  });
+
+  test("a metric table clamps to the metrics range", () => {
+    expect(retentionTtlAlterSql("metrics", "ts", 400)).toBe(
+      "ALTER TABLE metrics MODIFY TTL toDate(ts) + INTERVAL 400 DAY SETTINGS mutations_sync = 0, alter_sync = 0",
+    );
+    expect(retentionTtlAlterSql("metric_buckets_by_minute", "minute", 800)).toContain("INTERVAL 730 DAY");
+    expect(retentionTtlAlterSql("spans", "ts", 400)).toContain("INTERVAL 365 DAY");
   });
 
   test("uses toDate(ts) or toDate(minute) and clamps days", () => {

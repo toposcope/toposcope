@@ -28,7 +28,7 @@ import {
   updateSavedSearch,
 } from "./control/saved-searches";
 import { getFields, putFields, storedSkipKeys } from "./control/fields";
-import { getRetentionDays, getSettings, putSettings } from "./control/settings";
+import { effectiveMetricsRetentionDays, getRetentionDays, getSettings, putSettings } from "./control/settings";
 import { instanceId, instanceName } from "./control/instance";
 import { setHereName } from "./shared/here";
 import { getHome, homeSaved, putHome } from "./control/home";
@@ -406,7 +406,7 @@ async function startBoot(): Promise<void> {
     getDb();
     setHereName(instanceName());
     await syncFieldRoleSkip(storedSkipKeys());
-    await applyRetentionDays(getRetentionDays());
+    await applyRetentionDays(getRetentionDays(), effectiveMetricsRetentionDays());
     startAlertCron();
     // HTTP(S) monitors keep their own pace, 30s … 1h each, apart from the 60s alert pass.
     startHttpMonitors();
