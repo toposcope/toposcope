@@ -143,6 +143,7 @@ function Plot({ params, body, muted }: { params: EmbedParams; body: SeriesBody; 
           name={metric ?? params.title}
           window={window}
           live={false}
+          chart={params.chart === "bars" || params.chart === "stacked" ? params.chart : "line"}
         />
       )}
     </div>

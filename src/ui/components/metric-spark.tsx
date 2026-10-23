@@ -47,6 +47,53 @@ export function sparkTimes(barTimes: readonly string[], result: SearchAggResult 
   return [...all].sort();
 }
 
+export type BarRect = { key: string; color: string; x: number; y: number; w: number; h: number };
+
+/**
+ * A metric panel's bars (#237, 25b, 25c) in the plot's 0–100 box: one bar per bucket, a split's
+ * bars side by side, or stacked when `stacked` (their sum is the bar's height).
+ */
+export function barRects(lines: readonly SparkLine[], n: number, peak: number, stacked: boolean): BarRect[] {
+  if (n === 0 || lines.length === 0 || !(peak > 0)) {
+    return [];
+  }
+  const slot = 100 / n;
+  const pad = Math.min(slot * 0.15, 0.6);
+  const out: BarRect[] = [];
+  for (let i = 0; i < n; i++) {
+    const x0 = i * slot + pad;
+    const wAll = slot - 2 * pad;
+    if (stacked) {
+      let base = 0;
+      for (const l of lines) {
+        const v = l.vals[i];
+        if (v === null || v === undefined || v <= 0) continue;
+        const h = (v / peak) * 100;
+        out.push({ key: l.key, color: l.color, x: x0, y: 100 - base - h, w: wAll, h });
+        base += h;
+      }
+    } else {
+      const w = wAll / lines.length;
+      lines.forEach((l, k) => {
+        const v = l.vals[i];
+        if (v === null || v === undefined || v <= 0) return;
+        const h = (v / peak) * 100;
+        out.push({ key: l.key, color: l.color, x: x0 + k * w, y: 100 - h, w, h });
+      });
+    }
+  }
+  return out;
+}
+
+/** The tallest bar of a stack: each bucket's sum. */
+export function stackedPeak(lines: readonly SparkLine[], n: number): number {
+  let peak = 0;
+  for (let i = 0; i < n; i++) {
+    peak = Math.max(peak, lines.reduce((sum, l) => sum + Math.max(0, l.vals[i] ?? 0), 0));
+  }
+  return peak;
+}
+
 /** A line's last value in the window: what its end label and legend say. */
 export function lastValue(vals: ReadonlyArray<number | null>): number | null {
   for (let i = vals.length - 1; i >= 0; i--) {
@@ -91,6 +138,7 @@ export function MetricSpark({
   window,
   live,
   namedLines = false,
+  chart = "line",
 }: {
   times: string[];
   result: SearchAggResult | null;
@@ -102,6 +150,8 @@ export function MetricSpark({
   live: boolean;
   /** Lines given names (#169): said in a legend under the plot, with their values (17b). */
   namedLines?: boolean;
+  /** Lines, bars, or a split's bars stacked (#237). */
+  chart?: "line" | "bars" | "stacked";
 }) {
   const theme = usePlotTheme();
   const lines = useMemo(() => sparkLines(times, result, theme), [times, result, theme]);
@@ -109,13 +159,16 @@ export function MetricSpark({
   const finite = lines.flatMap((l) => l.vals.filter((v): v is number => v !== null));
   const quiet = finite.length === 0;
   // Some room above the highest line, so it does not sit on the panel's edge.
-  const peak = quiet ? 1 : Math.max(1e-9, ...finite) * 1.15;
   const n = times.length;
+  const stacked = chart === "stacked" && lines.length > 1;
+  const peak = quiet ? 1 : Math.max(1e-9, stacked ? stackedPeak(lines, n) : Math.max(...finite)) * 1.15;
+  const bars = chart === "line" ? null : barRects(lines, n, peak, stacked);
   const step = n > 1 ? Date.parse(times[1]!) - Date.parse(times[0]!) : 60_000;
   const seconds = step < 60_000;
   const split = Boolean(result?.splits);
-  const named = split && lines.length <= endLabelMax && !namedLines;
-  const legend = split && (lines.length > endLabelMax || namedLines);
+  // Bars are named in a legend: an end label would sit on the last bar.
+  const named = split && lines.length <= endLabelMax && !namedLines && chart === "line";
+  const legend = split && (lines.length > endLabelMax || namedLines || chart !== "line");
 
   // Live keeps a resting pointer on its bar: held by time, not by position (13i).
   const [hoverT, setHoverT] = useState<string | null>(null);
@@ -185,7 +238,11 @@ export function MetricSpark({
             </span>
           ) : (
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 block h-full w-full overflow-visible" aria-hidden>
-              {lines.map((l) => (
+              {bars
+                ? bars.map((b, i) => (
+                    <rect key={i} x={b.x} y={b.y} width={b.w} height={b.h} fill={b.color} opacity={b.key === "other" ? 0.6 : 1} />
+                  ))
+                : lines.map((l) => (
                 <polyline
                   key={l.key || "line"}
                   points={points(l.vals)}
@@ -235,6 +292,9 @@ export function MetricSpark({
                 <span className="text-muted-foreground">
                   {clock(times[hoverIdx]!, seconds)}–{clock(new Date(Date.parse(times[hoverIdx]!) + step).toISOString(), seconds)}
                   {split ? ` · ${readingWord}` : ""}
+                  {stacked
+                    ? ` · total ${withUnit(formatAggStat(lines.reduce((sum, l) => sum + Math.max(0, l.vals[hoverIdx] ?? 0), 0)), unit)}`
+                    : ""}
                 </span>
                 {split ? (
                   lines.map((l) => (
@@ -358,4 +418,57 @@ export function MetricSplitPicker({
       </PopoverContent>
     </Popover>
   );
+}
+
+/**
+ * Line · Bars · Stacked in a metric panel's head (#237, 25a). Stacked adds parts up, so it is
+ * offered only where they do (a counter, a histogram's count or sum, with a split); otherwise it is
+ * disabled and says why (25d).
+ */
+export function MetricChartPicker({
+  value,
+  stackable,
+  onChange,
+}: {
+  value: "line" | "bars" | "stacked";
+  /** True, or why a stack would not add up. */
+  stackable: true | string;
+  onChange: (next: "line" | "bars" | "stacked") => void;
+}) {
+  const options = [
+    ["line", "Line"],
+    ["bars", "Bars"],
+    ["stacked", "Stacked"],
+  ] as const;
+  return (
+    <div role="group" aria-label="Chart" className="flex shrink-0 overflow-hidden rounded-[4.4px] border border-input" onPointerDown={(e) => e.stopPropagation()}>
+      {options.map(([id, label], i) => {
+        const off = id === "stacked" && stackable !== true;
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={value === id}
+            disabled={off}
+            title={off ? stackable : undefined}
+            className={`h-[22px] px-2 text-[11.5px] ${i > 0 ? "border-l border-input" : ""} ${
+              value === id ? "bg-plate/15 text-foreground" : "text-muted-foreground hover:text-foreground"
+            } disabled:cursor-not-allowed disabled:text-muted-foreground/40 disabled:hover:text-muted-foreground/40`}
+            onClick={() => onChange(id)}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Whether a metric's bars may stack (#237): their parts must add up to the bar. */
+export function metricStackable(result: { kind?: string; reading?: string } | null, split: string | null): true | string {
+  const adds = result?.kind === "counter" || (result?.kind === "histogram" && (result.reading === "count" || result.reading === "sum"));
+  if (!adds) {
+    return "Stacking adds parts up. An average's or a percentile's parts do not add up to anything, so this draws as lines or bars side by side.";
+  }
+  return split ? true : "Stacked needs a split: one part per value of a label.";
 }
