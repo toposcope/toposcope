@@ -701,6 +701,17 @@ export async function facets(
   return result;
 }
 
+/**
+ * One field's values by count in the window, following the whole `q` (nothing omitted): a
+ * share's Top-N (#225). Core fields read their rollup as the sidebar does; any other key is an attr.
+ */
+export async function topValues(filters: SearchFilters, key: string, limit?: number): Promise<FacetValue[]> {
+  const resolved = resolveFilters(filters);
+  return key === "level" || key === "service" || key === "host"
+    ? facetValues(resolved, key, limit, false)
+    : attrFacetValues(resolved, key, limit, false);
+}
+
 async function clickhouseQuerySoft<T>(
   sql: string,
   params: Record<string, string>,
