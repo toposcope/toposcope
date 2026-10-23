@@ -20,6 +20,9 @@ import {
   type ShareScope,
 } from "./scope";
 import type { ShareRecord } from "./store";
+import { windowWithin } from "./limits";
+import { originOf } from "./operator";
+import { noteRead, noteRefused } from "./use";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -130,6 +133,23 @@ function stepMs(filters: SearchFilters): number {
   return histogramIntervalMs(resolved.from, resolved.to, resolved.step);
 }
 
+/** A read the share does not allow: counted and written down, then answered. */
+function refuse(c: Context, error: string, status: 400 | 404): Response {
+  noteRefused(c.get("share").name, originOf(c), c.req.path, error);
+  return c.json({ error }, status);
+}
+
+/** The read's window inside the share's limits, or the refusal to answer with. */
+function limitedWindow(c: Context): Pick<SearchFilters, "from" | "to" | "step"> | Response {
+  const window = windowWithin(c.get("share").limits, windowParams(c));
+  return "error" in window ? refuse(c, window.error, 400) : window;
+}
+
+function done(c: Context, body: unknown): Response {
+  noteRead(c.get("share").name, originOf(c));
+  return c.json(body);
+}
+
 function readError(c: Context, err: unknown): Response | null {
   if (
     err instanceof InvalidRangeError ||
@@ -137,34 +157,38 @@ function readError(c: Context, err: unknown): Response | null {
     err instanceof InvalidMetricError ||
     err instanceof QueryCompileError
   ) {
-    return c.json({ error: err.message }, 400);
+    return refuse(c, err.message, 400);
   }
   return null;
 }
 
 /** `GET /share/v1/series` — one metric series, or one log count or rate, inside the share's scope. */
 export async function shareSeriesRoute(c: Context): Promise<Response> {
+  const window = limitedWindow(c);
+  if (window instanceof Response) {
+    return window;
+  }
   const plan = planSeries(c.get("share").scope, {
     metric: c.req.query("metric") ?? undefined,
     agg: c.req.query("agg") ?? undefined,
     ml: c.req.query("ml") ?? undefined,
     split: c.req.query("split") ?? undefined,
-    window: windowParams(c),
+    window,
   });
   if ("error" in plan) {
-    return c.json({ error: plan.error }, plan.status);
+    return refuse(c, plan.error, plan.status);
   }
   try {
     const result = await search(plan.filters);
     const head = { from: result.from, to: result.to, step_ms: stepMs(plan.filters) };
     if (plan.kind === "metric") {
-      return c.json({ ...head, series: seriesOnly(result.agg) });
+      return done(c, { ...head, series: seriesOnly(result.agg) });
     }
     const refused = result.scan?.source === "refused" ? { refused: result.scan.reason } : {};
     const buckets = result.histogram.map((b) =>
       plan.filters.split === "none" ? { t: b.t, n: b.n } : { t: b.t, n: b.n, series: b.series },
     );
-    return c.json({
+    return done(c, {
       ...head,
       agg: plan.agg,
       total: result.total,
@@ -182,26 +206,28 @@ export async function shareTopRoute(c: Context): Promise<Response> {
   const scope = c.get("share").scope;
   const key = (c.req.query("key") ?? "").trim().toLowerCase();
   if (!scope.split.includes(key)) {
-    return c.json({ error: key ? `this share cannot count by ${key}` : "key is required" }, 400);
+    return refuse(c, key ? `this share cannot count by ${key}` : "key is required", 400);
   }
   const narrowing = parseNarrowing(scope, c.req.query("ml"));
   if ("error" in narrowing) {
-    return c.json({ error: narrowing.error }, 400);
+    return refuse(c, narrowing.error, 400);
   }
   const q = logQueryFor(scope, narrowing);
   if (q === null) {
-    return c.json({ error: "this share reads no logs" }, 404);
+    return refuse(c, "this share reads no logs", 404);
   }
   const nRaw = c.req.query("n");
   const n = nRaw === undefined ? 10 : Number(nRaw);
   if (!Number.isInteger(n) || n < 1 || n > 50) {
-    return c.json({ error: "n is 1–50" }, 400);
+    return refuse(c, "n is 1–50", 400);
+  }
+  const window = limitedWindow(c);
+  if (window instanceof Response) {
+    return window;
   }
   try {
-    const { step: _step, ...window } = windowParams(c);
-    const resolved = resolveFilters({ ...window, q });
-    const values = await topValues(resolved, key, n);
-    return c.json({ from: resolved.from ?? null, to: resolved.to ?? null, key, values });
+    const values = await topValues({ from: window.from, to: window.to, q }, key, n);
+    return done(c, { from: window.from ?? null, to: window.to ?? null, key, values });
   } catch (err) {
     return readError(c, err) ?? Promise.reject(err);
   }
@@ -288,9 +314,12 @@ async function namesUnderLabels(labels: Record<string, string>, from?: string, t
  */
 export async function shareNamesRoute(c: Context): Promise<Response> {
   const scope = c.get("share").scope;
+  const window = limitedWindow(c);
+  if (window instanceof Response) {
+    return window;
+  }
   try {
-    const { step: _step, ...window } = windowParams(c);
-    const resolved = resolveFilters(window);
+    const resolved = { from: window.from, to: window.to };
     const listed = scope.metric_names.length === 0 ? null : await metricNames({ from: resolved.from, to: resolved.to });
     // A name the pattern allows but that has points only under other labels is not in the scope.
     const under = listed ? await namesUnderLabels(scope.metric_labels, resolved.from, resolved.to) : null;
@@ -311,7 +340,7 @@ export async function shareNamesRoute(c: Context): Promise<Response> {
       const fromLogs = q === null ? [] : (await topValues({ ...resolved, q }, key, 50)).map((v) => v.v);
       values[key] = [...new Set([...fromMetrics, ...fromLogs])].slice(0, 50);
     }
-    return c.json({ from: resolved.from ?? null, to: resolved.to ?? null, metrics, logs: scope.logs !== null, values });
+    return done(c, { from: resolved.from ?? null, to: resolved.to ?? null, metrics, logs: scope.logs !== null, values });
   } catch (err) {
     return readError(c, err) ?? Promise.reject(err);
   }

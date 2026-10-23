@@ -4454,6 +4454,45 @@ async function main(): Promise<void> {
     if (JSON.stringify(names.metrics?.map((m) => m.name)) !== JSON.stringify([`fleet_${marker}`]) || names.values?.host?.includes("box-9")) {
       throw new Error(`names should list only the scope's metrics and values, got ${JSON.stringify(names)}`);
     }
+    // Limits (#226): the finest bar, the longest window, the oldest reach, reads per minute.
+    const snapped = (await (await read(`/share/v1/series?range=15m&metric=fleet_${marker}`)).json()) as { step_ms?: number };
+    if (snapped.step_ms !== 60_000) {
+      throw new Error(`Auto under a 1m floor should snap to 1m bars, got ${JSON.stringify(snapped)}`);
+    }
+    for (const [path, why] of [
+      [`/share/v1/series?range=1h&step=10s&metric=fleet_${marker}`, "finest bar is 1m"],
+      [`/share/v1/series?range=30d&metric=fleet_${marker}`, "longest window is 7d"],
+      [`/share/v1/series?from=${new Date(Date.now() - 40 * 86_400_000).toISOString()}&to=${new Date(Date.now() - 35 * 86_400_000).toISOString()}&metric=fleet_${marker}`, "reaches back 30d"],
+    ] as const) {
+      const res = await read(path);
+      const body = (await res.json()) as { error?: string };
+      if (res.status !== 400 || !body.error?.includes(why)) {
+        throw new Error(`${path} should be refused with "${why}", got ${res.status} ${JSON.stringify(body)}`);
+      }
+    }
+    const used = (await (await fetch(`${APP_URL}/api/shares`, { headers: auth })).json()) as {
+      shares: Array<{ name: string; use: { reads_24h: number; refused_24h: number; last_read_at: string | null } }>;
+    };
+    const mine = used.shares.find((s) => s.name === name)?.use;
+    if (!mine || mine.reads_24h < 4 || mine.refused_24h < 8 || !mine.last_read_at) {
+      throw new Error(`the share list should say how the share was used, got ${JSON.stringify(mine)}`);
+    }
+    const slow = `${name}-slow`;
+    const slowMade = (await (
+      await fetch(`${APP_URL}/api/shares/${slow}`, {
+        method: "PUT",
+        headers: auth,
+        body: JSON.stringify({ expires_at: Date.now() + 86_400_000, scope: { metric_names: ["fleet_*"] }, limits: { reads_per_minute: 2 } }),
+      })
+    ).json()) as { secret?: string };
+    const slowRead = () => read(`/share/v1/names?range=1h`, { authorization: `Bearer ${slowMade.secret}` });
+    const statuses = [(await slowRead()).status, (await slowRead()).status];
+    const third = await slowRead();
+    if (statuses.join() !== "200,200" || third.status !== 429 || !third.headers.get("retry-after")) {
+      throw new Error(`a share's third read in a minute at 2/min should be 429 with Retry-After, got ${statuses} ${third.status}`);
+    }
+    await fetch(`${APP_URL}/api/shares/${slow}`, { method: "DELETE", headers: auth });
+
     await fetch(`${APP_URL}/api/shares/${name}`, { method: "DELETE", headers: auth });
     const afterRevoke = await read(`/share/v1/names?${window}`);
     if (afterRevoke.status !== 401) {

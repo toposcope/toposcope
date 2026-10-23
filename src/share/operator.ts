@@ -1,5 +1,8 @@
 import type { Context, Next } from "hono";
+import { parseShareLimits } from "./limits";
 import { formatShareScope, parseShareScope } from "./scope";
+import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
+import { noteLimited, pendingUse, takeRead } from "./use";
 import {
   listShares,
   parseShareExpiry,
@@ -16,11 +19,26 @@ export function shareJson(share: ShareRecord): Record<string, unknown> {
   return {
     name: share.name,
     scope: formatShareScope(share.scope),
+    limits: share.limits,
     expires_at: share.expires_at,
     revoked_at: share.revoked_at,
     created_at: share.created_at,
     updated_at: share.updated_at,
   };
+}
+
+/** Where a read came from, for the use rows: the page's origin, never the viewer's address. */
+export function originOf(c: Context): string | undefined {
+  const origin = c.req.header("origin");
+  if (origin && origin !== "null") {
+    return origin;
+  }
+  try {
+    const referer = c.req.header("referer");
+    return referer ? new URL(referer).origin : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function presented(header: string | undefined): string | null {
@@ -37,13 +55,63 @@ export async function shareAuth(c: Context, next: Next): Promise<Response | void
   if (!share) {
     return c.json({ error: "Unauthorized" }, 401);
   }
+  const turn = takeRead(share.id, share.limits.reads_per_minute);
+  if (!turn.ok) {
+    noteLimited(share.name, originOf(c));
+    return c.json({ error: "Too many reads" }, 429, { "retry-after": String(turn.retryAfter) });
+  }
   c.set("share", share);
   await next();
 }
 
+export type ShareUse = { last_read_at: string | null; reads_24h: number; refused_24h: number };
+
+/** Each share's last 24 hours, from its use rows (#226) and the minute not yet written. */
+async function shareUse(): Promise<Map<string, ShareUse>> {
+  const rows = await clickhouseQuery<{ share: string; reads: string | number; refused: string | number; last: string | null }>(
+    `
+    SELECT
+      attr_map['share'] AS share,
+      sum(toUInt64OrZero(attr_map['reads']) + toUInt64OrZero(attr_map['cached'])) AS reads,
+      sum(toUInt64OrZero(attr_map['refused'])) AS refused,
+      maxIf(ts, toUInt64OrZero(attr_map['reads']) + toUInt64OrZero(attr_map['cached']) > 0) AS last
+    FROM logs
+    WHERE tenant_id = 'default' AND service = 'toposcope' AND ts >= now64(3) - INTERVAL 1 DAY
+      AND attr_map['status'] = 'used' AND attr_map['share'] != ''
+    GROUP BY share
+  `,
+    {},
+  );
+  const out = new Map<string, ShareUse>();
+  for (const row of rows) {
+    const reads = Number(row.reads);
+    out.set(String(row.share), {
+      last_read_at: reads > 0 && row.last ? toIsoTimestamp(String(row.last)) : null,
+      reads_24h: reads,
+      refused_24h: Number(row.refused),
+    });
+  }
+  for (const [name, t] of pendingUse()) {
+    const prev = out.get(name) ?? { last_read_at: null, reads_24h: 0, refused_24h: 0 };
+    out.set(name, {
+      last_read_at: t.last_read_at ?? prev.last_read_at,
+      reads_24h: prev.reads_24h + t.reads,
+      refused_24h: prev.refused_24h + t.refused,
+    });
+  }
+  return out;
+}
+
 /** `GET /api/shares` — every share, live ones first, revoked ones kept so the list can say so. */
 export async function listSharesRoute(c: Context): Promise<Response> {
-  return c.json({ shares: listShares().map(shareJson) });
+  // The list still answers when ClickHouse does not; it just cannot say how a share was used.
+  const use = await shareUse().catch(() => new Map<string, ShareUse>());
+  return c.json({
+    shares: listShares().map((share) => ({
+      ...shareJson(share),
+      use: use.get(share.name) ?? { last_read_at: null, reads_24h: 0, refused_24h: 0 },
+    })),
+  });
 }
 
 async function shareBody(c: Context): Promise<Record<string, unknown> | null> {
@@ -63,7 +131,13 @@ function writeShare(c: Context, name: string | null, body: Record<string, unknow
   if (typeof expires !== "number") {
     return c.json({ error: expires.error }, 400);
   }
-  const { share, secret, created } = putShare({ name, scope, expires_at: expires });
+  // A field left out keeps what the live share has, or takes its default.
+  const live = shareByName(name);
+  const limits = parseShareLimits(body.limits, live && live.revoked_at === null ? live.limits : undefined);
+  if ("error" in limits) {
+    return c.json({ error: limits.error }, 400);
+  }
+  const { share, secret, created } = putShare({ name, scope, limits, expires_at: expires });
   return c.json({ share: shareJson(share), ...(secret ? { secret } : {}) }, created ? 201 : 200);
 }
 
