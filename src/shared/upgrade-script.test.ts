@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -79,7 +79,12 @@ for ((i = 0; i < \${#args[@]}; i++)); do
 done
 broken() { grep -qx "$1" "$FAKE_STATE/broken" 2>/dev/null; }
 case " $* " in
+  *"--entrypoint /bin/sh"*)
+    # A script run inside the app's volume: the stand-in volume is a directory here.
+    script="\${args[$((\${#args[@]} - 1))]}"
+    exec bash -c "\${script//\/data/$FAKE_VOLUME}" ;;
   *" config --format json"*) printf '{\\n  "name": "toposcope",\\n  "services": {}\\n}\\n' ;;
+  *"volume inspect"*) [ -n "$FAKE_VOLUME" ] && printf '%s\\n' "$FAKE_VOLUME" || exit 1 ;;
   *" pull "*) exit 0 ;;
   *" stop"*) rm -f "$FAKE_STATE/version" ;;
   *" up -d"*)
@@ -98,6 +103,8 @@ esac
 `,
   );
   chmodSync(join(fakeBin, "docker"), 0o755);
+  writeFileSync(join(fakeBin, "systemctl"), `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >>"$FAKE_STATE/systemctl"\n`);
+  chmodSync(join(fakeBin, "systemctl"), 0o755);
 });
 
 afterAll(() => {
@@ -111,7 +118,7 @@ let install: string;
 beforeEach(() => {
   releases = { "0.6.1": releaseFiles("0.6.1"), "0.6.2": releaseFiles("0.6.2") };
   marks = [];
-  for (const f of ["calls", "broken", "version"]) rmSync(join(state, f), { force: true });
+  for (const f of ["calls", "broken", "version", "systemctl"]) rmSync(join(state, f), { force: true });
   writeFileSync(join(state, "version"), "0.6.1\n");
   writeFileSync(join(state, "broken"), "");
   install = mkdtempSync(join(tmpdir(), "toposcope-install-"));
@@ -278,6 +285,15 @@ describe("backup and rollback", () => {
 });
 
 describe("the script's reach", () => {
+  test("it never opens a path in the app's volume itself: reads and writes there run in a container (#220)", () => {
+    const section = scriptText.slice(scriptText.indexOf("# --- Upgrade from here"));
+    // The host path appears once, for the path unit to watch.
+    expect([...section.matchAll(/\$dir\//g)]).toHaveLength(1);
+    expect(section).toContain("PathExists=$dir/request.json");
+    expect(section).not.toMatch(/>\s*"?\$(dir|tmp)/);
+    expect(section).toContain("--network none");
+  });
+
   test("it talks to this machine and to GitHub, nothing else", () => {
     const hosts = [...scriptText.matchAll(/https?:\/\/([a-z0-9.-]+)/g)].map((u) => u[1]!);
     expect([...new Set(hosts)].sort()).toEqual(["127.0.0.1", "api.github.com", "github.com"]);
@@ -287,5 +303,106 @@ describe("the script's reach", () => {
     expect(scriptText).not.toMatch(/\bcompose (down|rm|kill)\b/);
     expect(scriptText).not.toMatch(/\bdocker volume rm\b|\bprune\b/);
     expect([...scriptText.matchAll(/\brm -rf\b/g)]).toHaveLength(2);
+  });
+});
+
+describe("upgrade from here (#220)", () => {
+  let volume: string;
+  let units: string;
+  let systemdRun: string;
+  beforeEach(() => {
+    volume = mkdtempSync(join(tmpdir(), "toposcope-app-volume-"));
+    units = mkdtempSync(join(tmpdir(), "toposcope-units-"));
+    systemdRun = mkdtempSync(join(tmpdir(), "toposcope-systemd-run-"));
+  });
+  const env = () => ({ FAKE_VOLUME: volume, TOPOSCOPE_SYSTEMD_DIR: units, TOPOSCOPE_SYSTEMD_RUN: systemdRun });
+  const up = (f: string) => join(volume, "upgrade", f);
+  const status = () => JSON.parse(readFileSync(up("status.json"), "utf8")) as Record<string, string | null>;
+  const systemctl = () => (existsSync(join(state, "systemctl")) ? readFileSync(join(state, "systemctl"), "utf8") : "");
+  const ask = (version: string) => {
+    mkdirSync(join(volume, "upgrade"), { recursive: true });
+    writeFileSync(up("request.json"), JSON.stringify({ version, requested_at: "2026-10-24T14:02:00Z" }));
+  };
+
+  test("enable-ui installs a path unit on the app's request file and a service that runs ui-run here", async () => {
+    mkdirSync(join(volume, "upgrade"), { recursive: true });
+    writeFileSync(up("request.json"), '{"version":"0.6.2"}');
+    const r = await run(["enable-ui"], env());
+    expect(r.code).toBe(0);
+    const path = readFileSync(join(units, "toposcope-upgrade-toposcope.path"), "utf8");
+    const service = readFileSync(join(units, "toposcope-upgrade-toposcope.service"), "utf8");
+    expect(path).toContain(`PathExists=${up("request.json")}`);
+    expect(service).toContain(`ExecStart=${install}/upgrade.sh ui-run`);
+    expect(service).toContain(`WorkingDirectory=${install}`);
+    expect(service).toContain("COMPOSE_PROJECT_NAME=toposcope");
+    expect(service).toContain("TimeoutStartSec=infinity");
+    expect(systemctl()).toBe("daemon-reload\nenable --now toposcope-upgrade-toposcope.path\n");
+    expect(existsSync(up("enabled"))).toBe(true);
+    // A request left from before does not start an upgrade the moment the unit is on.
+    expect(existsSync(up("request.json"))).toBe(false);
+    expect(r.all).toContain("./upgrade.sh disable-ui");
+  });
+
+  test("enable-ui on a host without systemd says the command still works, and installs nothing", async () => {
+    const r = await run(["enable-ui"], { ...env(), TOPOSCOPE_SYSTEMD_RUN: join(systemdRun, "absent") });
+    expect(r.code).toBe(1);
+    expect(r.all).toContain("needs systemd");
+    expect(readdirSync(units)).toEqual([]);
+  });
+
+  test("disable-ui removes the units and the app's flag", async () => {
+    expect((await run(["enable-ui"], env())).code).toBe(0);
+    const r = await run(["disable-ui"], env());
+    expect(r.code).toBe(0);
+    expect(readdirSync(units)).toEqual([]);
+    expect(existsSync(up("enabled"))).toBe(false);
+    expect(systemctl()).toContain("disable --now toposcope-upgrade-toposcope.path");
+  });
+
+  test("ui-run takes the request first, runs the ordinary upgrade, and says it is done with the backup", async () => {
+    ask("0.6.2");
+    const r = await run(["ui-run"], env());
+    expect(r.code).toBe(0);
+    expect(existsSync(up("request.json"))).toBe(false);
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.2");
+    const s = status();
+    expect(s).toMatchObject({ state: "done", to: "0.6.2", from: "0.6.1", message: null });
+    expect(s.backup).toBe(join(install, "backups", backups()[0]!));
+    expect(s.started_at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
+    expect(readFileSync(up("last.log"), "utf8")).toContain("Toposcope 0.6.2 is up.");
+    expect(readFileSync(up("last.log"), "utf8")).not.toContain(token);
+  });
+
+  test("a version that never comes up: failed, back on the old one, in upgrade.sh's own words", async () => {
+    writeFileSync(join(state, "broken"), "0.6.2\n");
+    ask("0.6.2");
+    const r = await run(["ui-run"], env());
+    expect(r.code).toBe(1);
+    expect(status()).toMatchObject({ state: "failed", to: "0.6.2", from: "0.6.1", message: "Toposcope 0.6.2 did not come up." });
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
+  });
+
+  test("a request that is not a bare X.Y.Z runs nothing", async () => {
+    ask('0.6.2; touch /tmp/pwned');
+    const r = await run(["ui-run"], env());
+    expect(r.code).toBe(1);
+    expect(status()).toMatchObject({ state: "failed", message: "The request did not name a release (X.Y.Z)." });
+    expect(calls()).not.toContain("pull");
+    expect(existsSync(up("request.json"))).toBe(false);
+  });
+
+  test("a release that is not there: failed, said, and nothing stopped", async () => {
+    ask("0.6.9");
+    const r = await run(["ui-run"], env());
+    expect(r.code).toBe(1);
+    expect(status()).toMatchObject({ state: "failed", to: "0.6.9", message: "The 0.6.9 release has no SHA256SUMS, so its files cannot be checked. Nothing was changed." });
+    expect(calls()).not.toContain(" stop");
+  });
+
+  test("no request, nothing to do", async () => {
+    const r = await run(["ui-run"], env());
+    expect(r.code).toBe(0);
+    expect(calls()).not.toContain("pull");
+    expect(calls()).not.toContain(" stop");
   });
 });

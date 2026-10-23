@@ -84,6 +84,7 @@ import { requireWatchdogUrl } from "./alerts/watchdog";
 import { checkReleasesNow, startReleaseCheck, versionReply, type CheckDeps, type VersionReply } from "./control/release-check";
 import { announceNewRelease } from "./control/update-event";
 import { storeSize } from "./control/store-size";
+import { readUpgrader, requestUpgrade } from "./control/upgrader";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 
 requirePackagedSecrets();
@@ -315,13 +316,21 @@ const releaseCheckDeps: CheckDeps = {
   onChecked: (releases, running) => announceNewRelease(releases, running, { write: insertEvents }),
 };
 // The stores are sized only when an upgrade is on offer: the panel says how big its backup is (#201).
-async function versionBody(reply: VersionReply) {
-  return reply.releases.length > 0 ? { ...reply, store: await storeSize() } : reply;
+async function versionBody(reply: VersionReply): Promise<VersionReply> {
+  const upgrader = readUpgrader();
+  return reply.releases.length > 0 ? { ...reply, store: await storeSize(), upgrader } : { ...reply, upgrader };
 }
 // Signed in, unlike /api/health: how far behind an instance is stays with its operators (#196).
 app.get("/api/version", async (c) => c.json(await versionBody(versionReply())));
 // Check now (#219): one check by hand, on top of the daily one.
 app.post("/api/version/check", async (c) => c.json(await versionBody(await checkReleasesNow(releaseCheckDeps))));
+// Upgrade from here (#220): the app writes a request into its own volume; the host's upgrade.sh runs it.
+app.post("/api/version/upgrade", async (c) => {
+  const body = (await c.req.json().catch(() => null)) as { version?: unknown } | null;
+  const known = versionReply().releases.map((r) => r.version);
+  const answer = requestUpgrade(body?.version, known);
+  return c.json(answer.body, answer.status);
+});
 app.get("/api/home", getHome);
 app.put("/api/home", putHome);
 app.get("/api/saved-searches", listSavedSearches);

@@ -233,6 +233,16 @@ If the new version does not come up, it prints the app's last log lines, starts 
 - **`./upgrade.sh backup`** takes the same backup on its own, then starts the stack again.
 - **`./upgrade.sh rollback --yes`** goes back to the last backup: its `compose.yml` and both volumes. Everything stored since that backup is lost, so without `--yes` it only says which backup and when it was taken.
 
+### From the app
+
+From 0.6.3 the footer's version popover can upgrade too, once the host allows it. The app still never touches Docker: its **Upgrade** button only writes the release asked for into `upgrade/request.json` in the app's own volume, and the host runs `upgrade.sh`. Turn it on once, as root, in the install's directory (Linux with systemd):
+
+```bash
+sudo ./upgrade.sh enable-ui
+```
+
+That installs `toposcope-upgrade-<project>.path`, which watches the request file, and `toposcope-upgrade-<project>.service`, which runs `./upgrade.sh ui-run` here, as root. The volume is the app's to write, so `ui-run` never opens a path in it: every read and write there runs in a throwaway container that mounts only that volume, with no network, so a link the app put there cannot name a host path. `ui-run` takes the request first, accepts only a bare `X.Y.Z`, and runs `./upgrade.sh X.Y.Z` exactly as above, backup and way back included; it writes how it went to `upgrade/status.json` and the output to `upgrade/last.log`, both in the app's volume, and the popover shows them. Only a release the release check knows as newer can be asked for, one at a time, and a request the host has not taken within 2 minutes is dropped. Anyone with the operator password can then start an upgrade to a published release; rollback stays on the host. `sudo ./upgrade.sh disable-ui` removes both units.
+
 ### By hand
 
 Boot is idempotent. No volume wipe is required for a normal upgrade. The process listens on `:8080` before migrate; `/api/health` is **503** with `phase` (`starting` / `schema` / `repair` / `ready`) until ingest and search are safe, then **200**. Packaged Compose healthchecks that URL.

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { Release, VersionReply } from "../shared/releases";
+import type { Release, Upgrader, UpgradeStatus, VersionReply } from "../shared/releases";
 import { ReleasePanel } from "./components/version-footer";
-import { agoLabel, backupSize, beforeItems, noteParagraphs, upgradeCommand, versionChip } from "./release-panel";
+import { agoLabel, backupLabel, backupSize, beforeItems, noteParagraphs, tookLabel, upgradeCommand, upgradeView, versionChip } from "./release-panel";
 
 // #201, frames 19b–19g: the footer's version and the popover it opens.
 const r = (version: string, before: string | null = null, notes = `Notes for ${version}.`): Release => ({
@@ -184,5 +184,83 @@ describe("Check now (#219)", () => {
   test("no button without a handler, as the footer gives none while the check is off", () => {
     expect(buttons(draw(reply({})))).toHaveLength(0);
     expect(buttons(draw(reply({ check: "off", checked_at: null })))).toHaveLength(0);
+  });
+});
+
+describe("upgrade from here (#220)", () => {
+  const out = { latest: "0.6.1", step: "patch" as const, releases: [r("0.6.1")] };
+  const upgrader = (extra: Partial<Upgrader> = {}): Upgrader => ({ enabled: true, requested: null, status: null, log: [], ...extra });
+  const st = (extra: Partial<UpgradeStatus>): UpgradeStatus => ({
+    state: "running",
+    to: "0.6.1",
+    from: "0.6.0",
+    started_at: "2026-10-21T09:59:37Z",
+    finished_at: null,
+    backup: null,
+    message: null,
+    ...extra,
+  });
+  const drawUp = (v: VersionReply) =>
+    renderToStaticMarkup(createElement(ReleasePanel, { reply: { ...v, store }, now, onUpgrade: async () => null }));
+
+  test("off: today's command, and how to turn it on (22e)", () => {
+    const t = text(drawUp(reply({ ...out, upgrader: upgrader({ enabled: false }) })));
+    expect(t).toContain("./upgrade.sh 0.6.1");
+    expect(t).toContain("To upgrade from here instead, run ./upgrade.sh enable-ui once on the host (Linux with systemd).");
+    expect(t).not.toContain("Upgrade to 0.6.1");
+  });
+
+  test("on: a button, the command one click away (22f)", () => {
+    const t = text(drawUp(reply({ ...out, upgrader: upgrader() })));
+    expect(t).toContain("Upgrade to 0.6.1");
+    expect(t).toContain("The host runs it; this page reconnects after.");
+    expect(t).toContain("Or on the host");
+    expect(t).toContain("./upgrade.sh 0.6.1");
+    expect(t).not.toContain("enable-ui");
+  });
+
+  test("asked or running: the host's log, and the page waits (22h)", () => {
+    const asked = reply({ ...out, upgrader: upgrader({ requested: { version: "0.6.1", requested_at: "2026-10-21T09:59:50Z" } }) });
+    expect(upgradeView(asked, now)).toBe("running");
+    expect(text(drawUp(asked))).toContain("Asked; waiting for the host to start it…");
+    const running = reply({ ...out, upgrader: upgrader({ status: st({}), log: ["Toposcope 0.6.0 → 0.6.1", "pulled", "stopped", "Backing up about 1200 MB"] }) });
+    const t = text(drawUp(running));
+    expect(t).toContain("Upgrading to 0.6.1");
+    expect(t).toContain("· 23s");
+    expect(t).toContain("Backing up about 1200 MB");
+    expect(t).toContain("Toposcope stops while this runs. This page reconnects when it is back.");
+    expect(t).not.toContain("Upgrade to 0.6.1");
+  });
+
+  test("done, once the new version answers: from, how long, the backup and the way back (22i)", () => {
+    const done = reply({
+      running: "0.6.1",
+      upgrader: upgrader({ status: st({ state: "done", finished_at: "2026-10-21T10:00:18Z", backup: "/opt/toposcope/backups/20261021T095940Z-0.6.0" }) }),
+    });
+    expect(upgradeView(done, now)).toBe("done");
+    const t = text(drawUp(done));
+    expect(t).toContain("Upgraded from 0.6.0 · took 41s · backup in backups/20261021T095940Z-0.6.0");
+    expect(t).toContain("./upgrade.sh rollback --yes");
+    // Said for a day, then the popover is today's again.
+    expect(upgradeView(done, now + 25 * 3600_000)).toBeNull();
+  });
+
+  test("failed and back on the old version: why, the log's tail, Try again (22j)", () => {
+    const failed = reply({
+      ...out,
+      upgrader: upgrader({ status: st({ state: "failed", finished_at: "2026-10-21T10:02:00Z", message: "Toposcope 0.6.1 did not come up." }), log: ["a", "b", "Back on 0.6.0."] }),
+    });
+    expect(upgradeView(failed, now)).toBe("failed");
+    const t = text(drawUp(failed));
+    expect(t).toContain("Upgrade to 0.6.1 failed · back on 0.6.0");
+    expect(t).toContain("Toposcope 0.6.1 did not come up.");
+    expect(t).toContain("Back on 0.6.0.");
+    expect(t).toContain("Try again");
+  });
+
+  test("labels", () => {
+    expect(backupLabel("/opt/toposcope/backups/20261024T140210Z-0.6.2/")).toBe("backups/20261024T140210Z-0.6.2");
+    expect(backupLabel(null)).toBeNull();
+    expect(tookLabel("2026-10-24T14:02:05Z", "2026-10-24T14:04:10Z")).toBe("2m 05s");
   });
 });

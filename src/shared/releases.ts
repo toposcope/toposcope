@@ -27,6 +27,32 @@ export type VersionReply = {
   releases: Release[];
   /** Given only while a newer release is known: the footer's panel says how big the backup is. */
   store?: StoreSize;
+  /** Upgrade from here (#220): whether the host runs upgrades the app asks for, and how the last went. */
+  upgrader?: Upgrader;
+};
+
+/** What the host's `upgrade.sh ui-run` wrote of the last upgrade the app asked for (#220). */
+export type UpgradeStatus = {
+  state: "running" | "done" | "failed";
+  /** The release asked for; null when the request named none. */
+  to: string | null;
+  from: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  /** The backup the upgrade took, as a path on the host. */
+  backup: string | null;
+  /** Why it failed, from upgrade.sh's own words. */
+  message: string | null;
+};
+
+export type Upgrader = {
+  /** The host ran `./upgrade.sh enable-ui`. */
+  enabled: boolean;
+  /** Asked for and not yet taken by the host. */
+  requested: { version: string; requested_at: string } | null;
+  status: UpgradeStatus | null;
+  /** The last lines of the host's log of that upgrade. */
+  log: string[];
 };
 
 export type Semver = [number, number, number];
