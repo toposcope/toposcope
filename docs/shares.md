@@ -17,7 +17,11 @@ Logs read as a count or a rate only. A numeric attr's percentile or maximum can 
 
 ## Make one
 
-Signed in (the operator password or a session):
+In the app: Settings → Shares → **New share** (frames 23g–23j). The list says each share's scope and limits in a line, when it was last read, its reads and refusals over 24 hours (a click on the refusals opens its `share:<name>` rows as a hunt), and lets you edit or revoke it; a revoke is confirmed in the row. The secret is shown once, with the ticket call and the script tag to paste.
+
+On a metric panel, **Copy embed** (in its copy menu, or its ⋯ when the panel is narrow; frame 23k) copies the script tag for that panel with the first share that covers it, `data-ticket="TICKET"` for the host's backend to fill; when shares exist but none covers the panel it says why.
+
+Or over the API, signed in (the operator password or a session):
 
 ```bash
 curl -u :$TOPOSCOPE_PASSWORD -X PUT https://logs.example.com/api/shares/agental-console \

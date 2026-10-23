@@ -36,8 +36,35 @@ type Props = {
   onCopy: (format: WidgetExportFormat) => void;
   onExport: (format: WidgetExportFormat) => void;
   onMovePointerDown: (e: PointerEvent) => void;
+  /** Copy embed on a metric panel (#228, 23k): the share that covers it, or why none does. */
+  embed?: EmbedAction | null;
   children: ReactNode;
 };
+
+export type EmbedAction = { share: string; copy: () => void } | { why: string };
+
+/** 23k: Copy embed, naming the share it uses; disabled, saying why, when none covers the panel. */
+function EmbedRow({ embed, close }: { embed: EmbedAction; close: () => void }) {
+  return (
+    <button
+      type="button"
+      className="flex min-h-10 w-full flex-col items-start justify-center gap-0.5 rounded-[3.4px] px-2 py-1 text-left text-[12.5px] hover:bg-accent disabled:cursor-not-allowed disabled:text-muted-foreground/70 disabled:hover:bg-transparent"
+      disabled={"why" in embed}
+      title={"why" in embed ? embed.why : "Copy the script tag that embeds this panel"}
+      onClick={() => {
+        if ("copy" in embed) {
+          embed.copy();
+          close();
+        }
+      }}
+    >
+      <span>Copy embed</span>
+      <span className={cn("text-[11px]", "share" in embed ? "font-mono text-muted-foreground" : "")}>
+        {"share" in embed ? embed.share : embed.why}
+      </span>
+    </button>
+  );
+}
 
 const dupCap = "Six panels is the cap — remove one to duplicate";
 
@@ -53,12 +80,14 @@ const overflowRow =
 function OverflowMenus({
   atCap,
   exportDisabled,
+  embed,
   onDuplicate,
   onCopy,
   onExport,
 }: {
   atCap: boolean;
   exportDisabled?: boolean;
+  embed?: EmbedAction | null;
   onDuplicate: () => void;
   onCopy: (format: WidgetExportFormat) => void;
   onExport: (format: WidgetExportFormat) => void;
@@ -99,7 +128,7 @@ function OverflowMenus({
       <PopoverContent
         align="end"
         collisionPadding={8}
-        className="w-[168px] bg-[#18181b] p-1"
+        className={cn("bg-[#18181b] p-1", embed && page === "more" ? "w-[210px]" : "w-[168px]")}
         onPointerDown={(e) => e.stopPropagation()}
       >
         {page === "more" ? (
@@ -142,6 +171,12 @@ function OverflowMenus({
                 file
               </span>
             </button>
+            {embed ? (
+              <>
+                <div className="my-1 h-px bg-white/[0.08]" />
+                <EmbedRow embed={embed} close={close} />
+              </>
+            ) : null}
           </>
         ) : (
           widgetExportFormats.map((format) => (
@@ -188,6 +223,7 @@ export function ExtraPanel({
   onCopy,
   onExport,
   onMovePointerDown,
+  embed,
   children,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -266,6 +302,7 @@ export function ExtraPanel({
                 <OverflowMenus
                   atCap={atCap}
                   exportDisabled={exportDisabled}
+                  embed={embed}
                   onDuplicate={onDuplicate}
                   onCopy={onCopy}
                   onExport={onExport}
@@ -313,7 +350,11 @@ export function ExtraPanel({
                       <rect x="13" y="5" width="8" height="14" rx="1.6" opacity="0.5" />
                     </svg>
                   </button>
-                  <WidgetCopyMenu disabled={exportDisabled} onCopy={onCopy} />
+                  <WidgetCopyMenu
+                    disabled={exportDisabled}
+                    onCopy={onCopy}
+                    footer={embed ? (close) => <EmbedRow embed={embed} close={close} /> : undefined}
+                  />
                   <WidgetExportMenu disabled={exportDisabled} onExport={onExport} />
                 </>
               )}
