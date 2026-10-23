@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { migrateControlDb } from "../control/index";
+import { defaultShareLimits as limits } from "./limits";
 import { parseShareScope, type ShareScope } from "./scope";
 import { listShares, parseShareExpiry, parseShareName, putShare, revokeShare, shareBySecret } from "./store";
 
@@ -24,7 +25,7 @@ function scope(): ShareScope {
 describe("share store", () => {
   test("a secret opens its share until it expires or is revoked", () => {
     const db = memDb();
-    const { share, secret, created } = putShare({ name: "console", scope: scope(), expires_at: now + day }, now, db);
+    const { share, secret, created } = putShare({ name: "console", scope: scope(), limits, expires_at: now + day }, now, db);
     expect(created).toBe(true);
     expect(secret).toStartWith("tss1_");
     expect(shareBySecret(secret!, now, db)?.name).toBe("console");
@@ -38,13 +39,13 @@ describe("share store", () => {
 
   test("a change keeps the secret; a revoked name starts over with a new one", () => {
     const db = memDb();
-    const first = putShare({ name: "console", scope: scope(), expires_at: now + day }, now, db);
-    const changed = putShare({ name: "console", scope: scope(), expires_at: now + 2 * day }, now, db);
+    const first = putShare({ name: "console", scope: scope(), limits, expires_at: now + day }, now, db);
+    const changed = putShare({ name: "console", scope: scope(), limits, expires_at: now + 2 * day }, now, db);
     expect(changed.secret).toBeNull();
     expect(changed.share.expires_at).toBe(now + 2 * day);
     expect(shareBySecret(first.secret!, now, db)?.expires_at).toBe(now + 2 * day);
     revokeShare("console", now, db);
-    const again = putShare({ name: "console", scope: scope(), expires_at: now + day }, now, db);
+    const again = putShare({ name: "console", scope: scope(), limits, expires_at: now + day }, now, db);
     expect(again.created).toBe(true);
     expect(shareBySecret(first.secret!, now, db)).toBeNull();
     expect(shareBySecret(again.secret!, now, db)?.revoked_at).toBeNull();

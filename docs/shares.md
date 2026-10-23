@@ -40,6 +40,24 @@ The answer carries `secret` (`tss1_…`) once, when the share is made. It is sto
 - `metric_labels` — equality matchers, as `ml=` writes them, added to every metric read.
 - `logs` — a `q` added to every log read, or `null`: the share reads no logs.
 - `expires_at` — required, at most a year out.
+- `limits` — see below; a field left out takes its default, or keeps what the share had.
+
+## Limits
+
+A scope alone would still let a holder pull a fine-grained copy of everything in it, a few hundred bars at a time. Every share has four limits:
+
+| | Default | |
+| --- | --- | --- |
+| `min_step` | `1m` | The finest bar. Auto snaps up to it; an explicit finer `step=` is refused (400 names the limit), so a caller always knows which number it got. |
+| `max_range` | `7d` | The longest window one read covers, up to `365d`. |
+| `max_lookback` | `30d` | How far before now a window may start, up to `730d`. Without it, a 7d window at `1m` walks all of history a week at a time. |
+| `reads_per_minute` | `120` | Per share. Over it is `429` with `Retry-After`. |
+
+A refused read never reaches ClickHouse. The scan budget that guards `logs` reads applies unchanged: over it, a log series answers 200 with `refused` and why.
+
+## What a share was used for
+
+Once a minute, each share that was read writes one row: `service:toposcope share:<name> status:used` with `reads`, `cached`, `refused`, `limited` and the distinct page origins it was read from. Every refused read also writes its own row (`status:refused`, `reason`, `path`). No viewer addresses. Search, chart or watch them like any rows: a monitor on `service:toposcope share:agental-console status:refused` pages when a page asks for more than its share allows. `GET /api/shares` gives each share's last read and its reads and refusals over 24 hours.
 
 ## Read with one
 

@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import { randomBytes } from "node:crypto";
 import { getDb } from "../control/index";
 import { hashToken } from "../control/tokens";
+import { defaultShareLimits, parseShareLimits, type ShareLimits } from "./limits";
 import { formatShareScope, parseShareScope, type ShareScope } from "./scope";
 
 /** A share (#225): a scope of data and a secret. The secret is kept only as its hash. */
@@ -9,6 +10,7 @@ export type ShareRecord = {
   id: string;
   name: string;
   scope: ShareScope;
+  limits: ShareLimits;
   /** Epoch ms. */
   expires_at: number;
   revoked_at: number | null;
@@ -16,7 +18,7 @@ export type ShareRecord = {
   updated_at: number;
 };
 
-type ShareRow = Omit<ShareRecord, "scope"> & { scope: string; secret_hash: string };
+type ShareRow = Omit<ShareRecord, "scope" | "limits"> & { scope: string; limits: string; secret_hash: string };
 
 export const shareSecretPrefix = "tss1_";
 /** A share lives a year at most. */
@@ -61,10 +63,12 @@ function fromRow(row: ShareRow): ShareRecord {
   if ("error" in scope) {
     throw new Error(`share ${row.name}: stored scope does not parse: ${scope.error}`);
   }
+  const limits = parseShareLimits(JSON.parse(row.limits));
   return {
     id: row.id,
     name: row.name,
     scope,
+    limits: "error" in limits ? defaultShareLimits : limits,
     expires_at: row.expires_at,
     revoked_at: row.revoked_at,
     created_at: row.created_at,
@@ -72,7 +76,7 @@ function fromRow(row: ShareRow): ShareRecord {
   };
 }
 
-const columns = "id, name, scope, secret_hash, expires_at, revoked_at, created_at, updated_at";
+const columns = "id, name, scope, limits, secret_hash, expires_at, revoked_at, created_at, updated_at";
 
 function storedScope(scope: ShareScope): string {
   return JSON.stringify(formatShareScope(scope));
@@ -105,14 +109,15 @@ export function shareBySecret(secret: string, now = Date.now(), db: Database = g
  * share of that name, gets a new secret, returned once; changing a live share keeps its secret.
  */
 export function putShare(
-  input: { name: string; scope: ShareScope; expires_at: number },
+  input: { name: string; scope: ShareScope; limits: ShareLimits; expires_at: number },
   now = Date.now(),
   db: Database = getDb(),
 ): { share: ShareRecord; secret: string | null; created: boolean } {
   const existing = shareByName(input.name, db);
   if (existing && existing.revoked_at === null) {
-    db.query("UPDATE shares SET scope = ?, expires_at = ?, updated_at = ? WHERE id = ?").run(
+    db.query("UPDATE shares SET scope = ?, limits = ?, expires_at = ?, updated_at = ? WHERE id = ?").run(
       storedScope(input.scope),
+      JSON.stringify(input.limits),
       input.expires_at,
       now,
       existing.id,
@@ -124,10 +129,11 @@ export function putShare(
     if (existing) {
       db.query("DELETE FROM shares WHERE id = ?").run(existing.id);
     }
-    db.query(`INSERT INTO shares (${columns}) VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`).run(
+    db.query(`INSERT INTO shares (${columns}) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`).run(
       crypto.randomUUID(),
       input.name,
       storedScope(input.scope),
+      JSON.stringify(input.limits),
       hashToken(secret),
       input.expires_at,
       now,
