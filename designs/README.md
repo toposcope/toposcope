@@ -84,6 +84,13 @@ Locked — shares (0.7.0), 2026-10-23:
 - [Toposcope Shares.dc.html](Toposcope%20Shares.dc.html) — frames 23a–23f, 23l: one panel embedded in another app's page (line, split, stale, ticket expired, refused, empty) and the script tag's fallback in the host page · frames 23g–23k: Settings → Shares (list, create, secret shown once, revoke in the row) and Copy embed on a panel
 - [shares/](shares/) — crops for issues (23a–23l)
 
+Locked — charts, and share from a panel (0.7.1), 2026-10-24:
+
+- [Toposcope Share From A Panel.dc.html](Toposcope%20Share%20From%20A%20Panel.dc.html) — frames 24a–24e: Share… on a panel, the scope proposed from it, a new share inline, the code in three steps with a live preview, added to an existing share · frames 24f–24h: a panel that cannot be shared as it is, Share panels… on a board, Settings → Shares empty
+- [share-from-panel/](share-from-panel/) — crops for issues (24a–24h)
+- [Toposcope Charts.dc.html](Toposcope%20Charts.dc.html) — frames 25a–25d: Line · Bars · Stacked on a metric panel, stacked refused for an average · 25e–25g: a histogram metric as a heatmap, with its p99, and among its readings · 25h–25j: Bars · Donut on Top-N, top N + other · 25k: the same charts embedded
+- [charts/](charts/) — crops for issues (25a–25k)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.

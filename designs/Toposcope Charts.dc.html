@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Charts</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 25a–25k · bars on metric panels, a latency heatmap, a donut on Top-N, embedded with the app's paint</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Bars on a metric panel</h2>
+
+    <div id="25a" data-frame="25a" data-screen-label="25a a metric panel's chart picker" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">a metric panel's chart picker</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25a" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">sum · sandbox_starts</span>
+<span style="flex: 1"></span>
+<div role="group" aria-label="Chart" style="display: flex; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; overflow: hidden">
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; background: transparent; color: #a1a1aa; font-size: 11.5px">Line</button>
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; border-left: 1px solid rgba(255,255,255,0.15); background: rgba(231,225,211,0.16); color: #fafafa; font-size: 11.5px">Bars</button>
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; border-left: 1px solid rgba(255,255,255,0.15); background: transparent; color: #a1a1aa; font-size: 11.5px">Stacked</button>
+</div>
+<span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">Linear</span>
+</div>
+<div style="flex: 1; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: ui-monospace, monospace; font-size: 10.5px; color: #a1a1aa">sum / 15m · counter · peak 412</span>
+<div style="flex: 1; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid rgba(255,255,255,0.12)">
+<sc-for list="{{f25a_bars}}" as="b" hint-placeholder-count="24"><span style="flex: 1; background: #38bdf8; border-radius: 1.5px 1.5px 0 0; height: {{b.h}}"></span></sc-for>
+</div>
+<span style="font-size: 11px; color: #a1a1aa">The picker sits in the head, as log volume's does. Its pick saves with the panel and travels with Share….</span>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="25b" data-frame="25b" data-screen-label="25b bars, one per bucket" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">bars, one per bucket</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25b" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">sum · sandbox_starts</span>
+<span style="flex: 1"></span>
+<span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">Bars · 24h · 1h</span>
+</div>
+<div style="flex: 1; padding: 10px 12px 6px; display: flex; gap: 6px">
+<div style="width: 34px; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa; padding-bottom: 16px"><span>400</span><span>200</span><span>0</span></div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 4px; position: relative">
+<div style="flex: 1; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid rgba(255,255,255,0.12)">
+<sc-for list="{{f25b_bars}}" as="b" hint-placeholder-count="24"><span style="flex: 1; border-radius: 1.5px 1.5px 0 0; height: {{b.h}}; background: {{b.c}}"></span></sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa"><span>15:00</span><span>21:00</span><span>03:00</span><span>09:00</span></div>
+<div role="status" style="position: absolute; left: 62%; top: 6%; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; box-shadow: 0 6px 18px rgba(0,0,0,0.5); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap"><span style="color: #a1a1aa">10-23 09:00–10:00</span><span>412 started</span></div>
+</div>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="25c" data-frame="25c" data-screen-label="25c stacked bars split by host" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">stacked bars split by host</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25c" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">sum · sandbox_starts</span>
+<span style="font-family: ui-monospace, monospace; font-size: 10.5px; color: #a1a1aa; border: 1px dashed rgba(255,255,255,0.2); border-radius: 4px; padding: 0 4px">split host</span>
+<span style="flex: 1"></span>
+<span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">Stacked · 24h · 1h</span>
+</div>
+<div style="flex: 1; padding: 10px 12px 6px; display: flex; gap: 10px">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 4px; position: relative">
+<div style="flex: 1; display: flex; align-items: flex-end; gap: 3px; border-bottom: 1px solid rgba(255,255,255,0.12)">
+<sc-for list="{{f25c_bars}}" as="b" hint-placeholder-count="24"><span style="flex: 1; display: flex; flex-direction: column-reverse; height: {{b.h}}; border-radius: 1.5px 1.5px 0 0; overflow: hidden"><sc-for list="{{b.parts}}" as="p" hint-placeholder-count="4"><span style="flex: {{p.f}}; background: {{p.c}}"></span></sc-for></span></sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa"><span>15:00</span><span>21:00</span><span>03:00</span><span>09:00</span></div>
+<div role="status" style="position: absolute; left: 50%; top: 4%; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; box-shadow: 0 6px 18px rgba(0,0,0,0.5); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap">
+<span style="color: #a1a1aa">10-23 09:00–10:00 · total 412</span>
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #38bdf8"></span>box-ams-01 <span style="flex: 1"></span>164</span>
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #a78bfa"></span>box-ams-02 <span style="flex: 1"></span>118</span>
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #34d399"></span>box-fra-01 <span style="flex: 1"></span>82</span>
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #fbbf24"></span>box-fra-02 <span style="flex: 1"></span>48</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 5px; padding-top: 6px; font-family: ui-monospace, monospace; font-size: 10.5px; color: #d4d4d8">
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #38bdf8"></span>box-ams-01</span>
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #a78bfa"></span>box-ams-02</span>
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #34d399"></span>box-fra-01</span>
+<span style="display: flex; gap: 6px; align-items: center"><span style="width: 10px; height: 2px; background: #fbbf24"></span>box-fra-02</span>
+</div>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="25d" data-frame="25d" data-screen-label="25d stacked refused for an average" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">stacked refused for an average</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25d" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px; position: relative">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">avg · fleet_cpu_seconds</span>
+<span style="font-family: ui-monospace, monospace; font-size: 10.5px; color: #a1a1aa; border: 1px dashed rgba(255,255,255,0.2); border-radius: 4px; padding: 0 4px">split host</span>
+<span style="flex: 1"></span>
+<div role="group" aria-label="Chart" style="display: flex; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; overflow: hidden">
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; background: rgba(231,225,211,0.16); color: #fafafa; font-size: 11.5px">Line</button>
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; border-left: 1px solid rgba(255,255,255,0.15); background: transparent; color: #a1a1aa; font-size: 11.5px">Bars</button>
+<button type="button" disabled style="height: 22px; padding: 0 8px; border: 0; border-left: 1px solid rgba(255,255,255,0.15); background: transparent; color: #52525b; font-size: 11.5px">Stacked</button>
+</div>
+</div>
+<div style="flex: 1; padding: 10px 12px"><svg width="500" height="200" viewBox="0 0 500 200" aria-hidden="true" style="display: block"><polyline fill="none" stroke="#38bdf8" stroke-width="1.6" points="0,60 50,56 100,62 150,52 200,48 250,54 300,46 350,44 400,50 450,40 500,38"></polyline><polyline fill="none" stroke="#a78bfa" stroke-width="1.6" points="0,90 50,84 100,92 150,80 200,76 250,86 300,72 350,78 400,70 450,74 500,66"></polyline><polyline fill="none" stroke="#34d399" stroke-width="1.6" points="0,120 50,112 100,104 150,112 200,118 250,104 300,102 350,110 400,98 450,96 500,90"></polyline><polyline fill="none" stroke="#fbbf24" stroke-width="1.6" points="0,146 50,144 100,140 150,142 200,136 250,134 300,138 350,130 400,132 450,126 500,120"></polyline></svg></div>
+</div>
+<div role="tooltip" style="position: absolute; top: 50px; right: 22px; width: 220px; padding: 7px 9px; background: #18181b; border: 1px solid rgba(255,255,255,0.15); border-radius: 6.4px; box-shadow: 0 10px 24px rgba(0,0,0,0.55); font-size: 12px; line-height: 1.45; color: #d4d4d8">Stacking adds parts up. An average's parts do not add up to anything, so this gauge draws as lines or bars side by side.</div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">A heatmap of a histogram metric</h2>
+
+    <div id="25e" data-frame="25e" data-screen-label="25e latency heatmap after a deploy" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25e" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25e</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">latency heatmap after a deploy</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">720×380</span>
+      </div>
+      <div data-crop="25e" style="position:relative; width:720px; height:380px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 720px; height: 380px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px">
+<div style="height: 348px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">heatmap · http.server.duration</span>
+<span style="flex: 1"></span>
+<span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">24h · 30m · log shade</span>
+</div>
+<div style="flex: 1; padding: 10px 12px 6px; display: flex; gap: 6px; min-height: 0">
+<div style="width: 44px; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa; padding-bottom: 18px"><span>10s</span><span>1s</span><span>100ms</span><span>10ms</span><span>1ms</span></div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 4px; position: relative; min-width: 0">
+<div style="flex: 1; display: grid; grid-template-columns: repeat(48, minmax(0, 1fr)); grid-template-rows: repeat(12, minmax(0, 1fr)); gap: 1px">
+<sc-for list="{{f25e_cells}}" as="c" hint-placeholder-count="576"><span style="background: {{c.bg}}"></span></sc-for>
+</div>
+<span aria-hidden="true" style="position: absolute; left: 62.5%; top: 0; bottom: 18px; width: 0; border-left: 1.5px dashed #e7e1d3"></span>
+<span style="position: absolute; left: calc(62.5% + 4px); top: 2px; font-family: ui-monospace, monospace; font-size: 10px; color: #e7e1d3">deploy v0.9</span>
+<div style="display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa"><span>15:00</span><span>21:00</span><span>03:00</span><span>09:00</span></div>
+</div>
+<div style="width: 64px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa">
+<span>requests</span>
+<span style="width: 12px; flex: 1; border-radius: 2px; background: linear-gradient(to top, rgba(56,189,248,0.08), #38bdf8)"></span>
+<span>1 … 4.2K</span>
+</div>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="25f" data-frame="25f" data-screen-label="25f heatmap with p99 over it, hover a cell" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25f" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25f</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">heatmap with p99 over it, hover a cell</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">720×380</span>
+      </div>
+      <div data-crop="25f" style="position:relative; width:720px; height:380px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 720px; height: 380px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px">
+<div style="height: 348px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">heatmap · http.server.duration</span>
+<label style="display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #d4d4d8"><input type="checkbox" checked style="accent-color: #e7e1d3">p99 over it</label>
+<span style="flex: 1"></span>
+<span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">24h · 30m · log shade</span>
+</div>
+<div style="flex: 1; padding: 10px 12px 6px; display: flex; gap: 6px; min-height: 0">
+<div style="width: 44px; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa; padding-bottom: 18px"><span>10s</span><span>1s</span><span>100ms</span><span>10ms</span><span>1ms</span></div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 4px; position: relative; min-width: 0">
+<div style="flex: 1; position: relative; display: grid; grid-template-columns: repeat(48, minmax(0, 1fr)); grid-template-rows: repeat(12, minmax(0, 1fr)); gap: 1px">
+<sc-for list="{{f25f_cells}}" as="c" hint-placeholder-count="576"><span style="background: {{c.bg}}; outline: {{c.ring}}"></span></sc-for>
+<svg viewBox="0 0 48 12" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible"><polyline fill="none" stroke="#fbbf24" stroke-width="1.6" vector-effect="non-scaling-stroke" points="{{f25f_p99}}"></polyline></svg>
+</div>
+<div role="status" style="position: absolute; left: 70%; top: 10%; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; box-shadow: 0 6px 18px rgba(0,0,0,0.5); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap">
+<span style="color: #a1a1aa">10-23 10:00–10:30</span>
+<span>500ms – 1s · 1,240 requests</span>
+<span style="color: #a1a1aa">31% of the bar · p99 1.8s</span>
+</div>
+<div style="display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa"><span>15:00</span><span>21:00</span><span>03:00</span><span>09:00</span></div>
+</div>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="25g" data-frame="25g" data-screen-label="25g Heatmap among a histogram's readings" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25g" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25g</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Heatmap among a histogram's readings</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25g" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px; position: relative">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<button type="button" style="display: flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: 4.4px; border: 1px dashed rgba(255,255,255,0.25); background: transparent; color: #fafafa; font-family: ui-monospace, monospace; font-size: 11.5px">p99 · http.server.duration<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+</div>
+</div>
+<div style="position: absolute; left: 30px; top: 74px; width: 250px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.15); border-radius: 6.4px; padding: 4px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); display: flex; flex-direction: column">
+<span style="padding: 4px 8px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #a1a1aa">Read it as</span>
+<sc-for list="{{f25g_readings}}" as="r" hint-placeholder-count="7"><button type="button" style="height: 28px; text-align: left; padding: 0 8px; border: 0; border-radius: 4.4px; background: {{r.bg}}; color: #fafafa; font-size: 12.5px; display: flex; justify-content: space-between; align-items: center"><span>{{r.name}}</span><span style="font-size: 11px; color: #a1a1aa">{{r.note}}</span></button></sc-for>
+</div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">A donut on Top-N: top N + other</h2>
+
+    <div id="25h" data-frame="25h" data-screen-label="25h Top-N view switch" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25h" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25h</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Top-N view switch</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25h" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">top</span>
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px; border: 1px dashed rgba(255,255,255,0.25); border-radius: 4px; padding: 0 5px">5</span>
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">by</span>
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px; border: 1px dashed rgba(255,255,255,0.25); border-radius: 4px; padding: 0 5px">host</span>
+<span style="flex: 1"></span>
+<div role="group" aria-label="View" style="display: flex; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; overflow: hidden">
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; background: rgba(231,225,211,0.16); color: #fafafa; font-size: 11.5px">Bars</button>
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; border-left: 1px solid rgba(255,255,255,0.15); background: transparent; color: #a1a1aa; font-size: 11.5px">Donut</button>
+</div>
+<button type="button" aria-label="Show shares" style="width: 22px; height: 22px; border-radius: 4.4px; border: 0; background: transparent; color: #a1a1aa; font-size: 11px">%</button>
+</div>
+<div style="flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{f25h_rows}}" as="r" hint-placeholder-count="6"><div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px"><span style="width: 92px; font-family: ui-monospace, monospace; font-size: 11.5px; color: {{r.fg}}">{{r.k}}</span><span style="flex: 1; height: 14px; position: relative"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{r.w}}; background: {{r.c}}; border-radius: 2px"></span></span><span style="width: 52px; text-align: right; font-family: ui-monospace, monospace; font-size: 11px; color: #d4d4d8">{{r.n}}</span></div></sc-for>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="25i" data-frame="25i" data-screen-label="25i donut, top 5 + other" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25i" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25i</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">donut, top 5 + other</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25i" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">top</span>
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px; border: 1px dashed rgba(255,255,255,0.25); border-radius: 4px; padding: 0 5px">5</span>
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">by</span>
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px; border: 1px dashed rgba(255,255,255,0.25); border-radius: 4px; padding: 0 5px">host</span>
+<span style="flex: 1"></span>
+<div role="group" aria-label="View" style="display: flex; border: 1px solid rgba(255,255,255,0.15); border-radius: 4.4px; overflow: hidden">
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; background: transparent; color: #a1a1aa; font-size: 11.5px">Bars</button>
+<button type="button" style="height: 22px; padding: 0 8px; border: 0; border-left: 1px solid rgba(255,255,255,0.15); background: rgba(231,225,211,0.16); color: #fafafa; font-size: 11.5px">Donut</button>
+</div>
+</div>
+<div style="flex: 1; display: flex; align-items: center; gap: 24px; padding: 8px 20px">
+<div style="position: relative; width: 200px; height: 200px; flex: none">
+<svg width="200" height="200" viewBox="0 0 200 200" role="img" aria-label="Events by host, top 5 and other">
+<g transform="rotate(-90 100 100)" fill="none" stroke-width="30">
+<circle cx="100" cy="100" r="60" stroke="#38bdf8" stroke-dasharray="126.2 250.8" stroke-dashoffset="0"></circle>
+<circle cx="100" cy="100" r="60" stroke="#a78bfa" stroke-dasharray="80.9 296.1" stroke-dashoffset="-128.2"></circle>
+<circle cx="100" cy="100" r="60" stroke="#34d399" stroke-dasharray="58.3 318.7" stroke-dashoffset="-211.1"></circle>
+<circle cx="100" cy="100" r="60" stroke="#fbbf24" stroke-dasharray="39.5 337.5" stroke-dashoffset="-271.4"></circle>
+<circle cx="100" cy="100" r="60" stroke="#fb7185" stroke-dasharray="28.2 348.8" stroke-dashoffset="-312.9"></circle>
+<circle cx="100" cy="100" r="60" stroke="#94a3b8" stroke-dasharray="31.9 345.1" stroke-dashoffset="-343.1"></circle>
+</g>
+</svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+<span style="font-family: ui-monospace, monospace; font-size: 18px; font-weight: 600">12.1K</span>
+<span style="font-size: 11px; color: #a1a1aa">events · 24h</span>
+</div>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 7px; font-size: 12.5px">
+<sc-for list="{{f25i_rows}}" as="r" hint-placeholder-count="6"><div style="display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 2px; background: {{r.c}}"></span><span style="flex: 1; font-family: ui-monospace, monospace; font-size: 11.5px; color: {{r.fg}}">{{r.k}}</span><span style="font-family: ui-monospace, monospace; font-size: 11px; color: #d4d4d8">{{r.p}}</span><span style="width: 44px; text-align: right; font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">{{r.n}}</span></div></sc-for>
+</div>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="25j" data-frame="25j" data-screen-label="25j donut hover and Filter / Exclude" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25j" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25j</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">donut hover and Filter / Exclude</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×320</span>
+      </div>
+      <div data-crop="25j" style="position:relative; width:560px; height:320px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 560px; height: 320px; box-sizing: border-box; background: #09090b; padding: 16px; font-family: ui-sans-serif, system-ui, sans-serif; color: #fafafa; font-size: 14px; position: relative">
+<div style="height: 288px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6.4px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: ui-monospace, monospace; font-size: 11.5px">top 5 by host</span>
+<span style="flex: 1"></span>
+<span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">Donut</span>
+</div>
+<div style="flex: 1; display: flex; align-items: center; padding: 8px 20px">
+<div style="position: relative; width: 200px; height: 200px">
+<svg width="200" height="200" viewBox="0 0 200 200" role="img" aria-label="Events by host, box-ams-02 highlighted">
+<g transform="rotate(-90 100 100)" fill="none" stroke-width="30">
+<circle cx="100" cy="100" r="60" stroke="#38bdf8" stroke-opacity="0.35" stroke-dasharray="126.2 250.8" stroke-dashoffset="0"></circle>
+<circle cx="100" cy="100" r="60" stroke="#a78bfa" stroke-width="36" stroke-dasharray="80.9 296.1" stroke-dashoffset="-128.2"></circle>
+<circle cx="100" cy="100" r="60" stroke="#34d399" stroke-opacity="0.35" stroke-dasharray="58.3 318.7" stroke-dashoffset="-211.1"></circle>
+<circle cx="100" cy="100" r="60" stroke="#fbbf24" stroke-opacity="0.35" stroke-dasharray="39.5 337.5" stroke-dashoffset="-271.4"></circle>
+<circle cx="100" cy="100" r="60" stroke="#fb7185" stroke-opacity="0.35" stroke-dasharray="28.2 348.8" stroke-dashoffset="-312.9"></circle>
+<circle cx="100" cy="100" r="60" stroke="#94a3b8" stroke-opacity="0.35" stroke-dasharray="31.9 345.1" stroke-dashoffset="-343.1"></circle>
+</g>
+</svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+<span style="font-family: ui-monospace, monospace; font-size: 18px; font-weight: 600">22%</span>
+<span style="font-size: 11px; color: #a1a1aa">box-ams-02</span>
+</div>
+</div>
+</div>
+</div>
+<div role="status" style="position: absolute; left: 252px; top: 104px; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 6.4px; box-shadow: 0 6px 18px rgba(0,0,0,0.5); font-family: ui-monospace, monospace; font-size: 11px; white-space: nowrap">
+<span>box-ams-02</span>
+<span style="color: #a1a1aa">2.66K events · 22% of 12.1K</span>
+</div>
+<div style="position: absolute; left: 252px; top: 160px; width: 170px; box-sizing: border-box; background: #18181b; border: 1px solid rgba(255,255,255,0.15); border-radius: 6.4px; padding: 4px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); display: flex; flex-direction: column">
+<button type="button" style="height: 28px; text-align: left; padding: 0 8px; border: 0; border-radius: 4.4px; background: rgba(255,255,255,0.08); color: #fafafa; font-size: 12.5px">Filter <span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">host:box-ams-02</span></button>
+<button type="button" style="height: 28px; text-align: left; padding: 0 8px; border: 0; border-radius: 4.4px; background: transparent; color: #fafafa; font-size: 12.5px">Exclude</button>
+</div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Embedded, with the app's own paint</h2>
+
+    <div id="25k" data-frame="25k" data-screen-label="25k the same charts, embedded" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#25k" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">25k</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">the same charts, embedded</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1240×360</span>
+      </div>
+      <div data-crop="25k" style="position:relative; width:1240px; height:360px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 1240px; height: 360px; box-sizing: border-box; background: #f4f4f5; padding: 16px 20px; font-family: ui-sans-serif, system-ui, sans-serif; color: #18181b; font-size: 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 10px"><span style="font-size: 15px; font-weight: 600">agental admin · Fleet</span><span style="font-size: 12px; color: #52525b">the host's page: three script tags, chart=stacked · heatmap · donut</span></div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; flex: 1">
+<div style="background: #ffffff; border-radius: 6.4px; padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 13px; font-weight: 600">Sandboxes started</span><span style="font-family: ui-monospace, monospace; font-size: 11px; color: #52525b">sum · split host</span><span style="flex: 1"></span><span style="font-family: ui-monospace, monospace; font-size: 11px; color: #52525b">24h · 1h</span></div>
+<div style="flex: 1; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid rgba(0,0,0,0.12)">
+<sc-for list="{{f25k_bars}}" as="b" hint-placeholder-count="24"><span style="flex: 1; display: flex; flex-direction: column-reverse; height: {{b.h}}; overflow: hidden; border-radius: 1.5px 1.5px 0 0"><span style="flex: 4; background: #18181b"></span><span style="flex: 3; background: #2563eb"></span><span style="flex: 2; background: #d97706"></span><span style="flex: 1.2; background: #7c3aed"></span></span></sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; color: #52525b"><span>15:00</span><span>21:00</span><span>03:00</span><span>09:00</span></div>
+</div>
+<div style="background: #18181b; color: #fafafa; border-radius: 6.4px; padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 13px; font-weight: 600">Request time</span><span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">heatmap</span><span style="flex: 1"></span><span style="font-family: ui-monospace, monospace; font-size: 11px; color: #a1a1aa">24h · 30m</span></div>
+<div style="flex: 1; display: grid; grid-template-columns: repeat(48, minmax(0, 1fr)); grid-template-rows: repeat(12, minmax(0, 1fr)); gap: 1px">
+<sc-for list="{{f25k_cells}}" as="c" hint-placeholder-count="576"><span style="background: {{c}}"></span></sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-family: ui-monospace, monospace; font-size: 10px; color: #a1a1aa"><span>15:00</span><span>21:00</span><span>03:00</span><span>09:00</span></div>
+</div>
+<div style="background: #ffffff; border-radius: 6.4px; padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 13px; font-weight: 600">Events by host</span><span style="font-family: ui-monospace, monospace; font-size: 11px; color: #52525b">top 5 + other</span><span style="flex: 1"></span><span style="font-family: ui-monospace, monospace; font-size: 11px; color: #52525b">24h</span></div>
+<div style="flex: 1; display: flex; align-items: center; gap: 16px">
+<div style="position: relative; width: 170px; height: 170px; flex: none">
+<svg width="170" height="170" viewBox="0 0 200 200" role="img" aria-label="Events by host">
+<g transform="rotate(-90 100 100)" fill="none" stroke-width="30">
+<circle cx="100" cy="100" r="60" stroke="#18181b" stroke-dasharray="126.2 250.8" stroke-dashoffset="0"></circle>
+<circle cx="100" cy="100" r="60" stroke="#2563eb" stroke-dasharray="80.9 296.1" stroke-dashoffset="-128.2"></circle>
+<circle cx="100" cy="100" r="60" stroke="#d97706" stroke-dasharray="58.3 318.7" stroke-dashoffset="-211.1"></circle>
+<circle cx="100" cy="100" r="60" stroke="#7c3aed" stroke-dasharray="39.5 337.5" stroke-dashoffset="-271.4"></circle>
+<circle cx="100" cy="100" r="60" stroke="#059669" stroke-dasharray="28.2 348.8" stroke-dashoffset="-312.9"></circle>
+<circle cx="100" cy="100" r="60" stroke="#a1a1aa" stroke-dasharray="31.9 345.1" stroke-dashoffset="-343.1"></circle>
+</g>
+</svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center"><span style="font-family: ui-monospace, monospace; font-size: 16px; font-weight: 600">12.1K</span><span style="font-size: 10.5px; color: #52525b">events</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 5px; font-family: ui-monospace, monospace; font-size: 11px; color: #3f3f46">
+<span>■ box-ams-01 34%</span><span style="color: #2563eb">■ <span style="color: #3f3f46">box-ams-02 22%</span></span><span style="color: #d97706">■ <span style="color: #3f3f46">box-fra-01 16%</span></span><span style="color: #7c3aed">■ <span style="color: #3f3f46">box-fra-02 11%</span></span><span style="color: #059669">■ <span style="color: #3f3f46">box-nyc-01 8%</span></span><span style="color: #a1a1aa">■ <span style="color: #52525b">other 9%</span></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f25a', new (class {
+renderVals() {
+const v = [30,34,28,40,52,60,58,72,80,76,90,96,88,70,64,58,62,74,82,100,94,78,66,54];
+return { bars: v.map((x) => ({ h: x + '%' })) };
+}
+})().renderVals()),
+      ...pre('f25b', new (class {
+renderVals() {
+const v = [30,34,28,40,52,60,58,72,80,76,90,96,88,70,64,58,62,74,82,100,94,78,66,54];
+return { bars: v.map((x, i) => ({ h: x + '%', c: i === 19 ? '#7dd3fc' : '#38bdf8' })) };
+}
+})().renderVals()),
+      ...pre('f25c', new (class {
+renderVals() {
+const v = [30,34,28,40,52,60,58,72,80,76,90,96,88,70,64,58,62,74,82,100,94,78,66,54];
+const cols = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24'];
+const share = [4, 3, 2, 1.2];
+return { bars: v.map((x, i) => ({ h: x + '%', parts: cols.map((c, k) => ({ c, f: String(share[k] + ((i + k) % 3) * 0.3) })) })) };
+}
+})().renderVals()),
+      ...pre('f25e', new (class {
+renderVals() {
+const cells = [];
+for (let r = 0; r < 12; r++) {
+for (let c = 0; c < 48; c++) {
+const row = 11 - r;
+let v = Math.exp(-Math.pow(row - 4.2 - Math.sin(c / 6) * 0.3, 2) / 1.6);
+if (c >= 30) v = Math.max(v * 0.8, 0.75 * Math.exp(-Math.pow(row - 8, 2) / 0.9));
+v += 0.04 * ((c * 7 + r * 13) % 5) / 5;
+const a = Math.min(1, Math.max(0.04, v));
+cells.push({ bg: 'rgba(56,189,248,' + a.toFixed(2) + ')' });
+}
+}
+return { cells };
+}
+})().renderVals()),
+      ...pre('f25f', new (class {
+renderVals() {
+const cells = [];
+for (let r = 0; r < 12; r++) {
+for (let c = 0; c < 48; c++) {
+const row = 11 - r;
+let v = Math.exp(-Math.pow(row - 4.2 - Math.sin(c / 6) * 0.3, 2) / 1.6);
+if (c >= 30) v = Math.max(v * 0.8, 0.75 * Math.exp(-Math.pow(row - 8, 2) / 0.9));
+v += 0.04 * ((c * 7 + r * 13) % 5) / 5;
+const a = Math.min(1, Math.max(0.04, v));
+cells.push({ bg: 'rgba(56,189,248,' + a.toFixed(2) + ')', ring: r === 3 && c === 34 ? '1.5px solid #fafafa' : 'none' });
+}
+}
+const pts = [];
+for (let c = 0; c < 48; c++) {
+const row = c >= 30 ? 9.2 : 6.1 + Math.sin(c / 6) * 0.3;
+pts.push((c + 0.5) + ',' + (12 - row).toFixed(2));
+}
+return { cells, p99: pts.join(' ') };
+}
+})().renderVals()),
+      ...pre('f25g', new (class {
+renderVals() {
+const rows = [['count', 'requests'], ['sum', 'total ms'], ['avg', ''], ['p50', ''], ['p90', ''], ['p99', 'now'], ['Heatmap', 'every bucket on the clock']];
+return { readings: rows.map(([name, note]) => ({ name, note, bg: name === 'Heatmap' ? 'rgba(231,225,211,0.14)' : 'transparent' })) };
+}
+})().renderVals()),
+      ...pre('f25h', new (class {
+renderVals() {
+const rows = [['box-ams-01', 4120, '#38bdf8'], ['box-ams-02', 2660, '#a78bfa'], ['box-fra-01', 1940, '#34d399'], ['box-fra-02', 1330, '#fbbf24'], ['box-nyc-01', 970, '#fb7185'], ['other', 1090, '#94a3b8']];
+return { rows: rows.map(([k, n, c]) => ({ k, n: (n / 1000).toFixed(2) + 'K', c, w: (n / 4120 * 100).toFixed(1) + '%', fg: k === 'other' ? '#a1a1aa' : '#fafafa' })) };
+}
+})().renderVals()),
+      ...pre('f25i', new (class {
+renderVals() {
+const rows = [['box-ams-01', 4120, '#38bdf8'], ['box-ams-02', 2660, '#a78bfa'], ['box-fra-01', 1940, '#34d399'], ['box-fra-02', 1330, '#fbbf24'], ['box-nyc-01', 970, '#fb7185'], ['other · 14 hosts', 1090, '#94a3b8']];
+const total = rows.reduce((s, r) => s + r[1], 0);
+return { rows: rows.map(([k, n, c]) => ({ k, c, n: (n / 1000).toFixed(2) + 'K', p: Math.round(n / total * 100) + '%', fg: k.startsWith('other') ? '#a1a1aa' : '#fafafa' })) };
+}
+})().renderVals()),
+      ...pre('f25k', new (class {
+renderVals() {
+const v = [30,34,28,40,52,60,58,72,80,76,90,96,88,70,64,58,62,74,82,100,94,78,66,54];
+const cells = [];
+for (let r = 0; r < 12; r++) {
+for (let c = 0; c < 48; c++) {
+const row = 11 - r;
+let x = Math.exp(-Math.pow(row - 4.2 - Math.sin(c / 6) * 0.3, 2) / 1.6);
+if (c >= 30) x = Math.max(x * 0.8, 0.75 * Math.exp(-Math.pow(row - 8, 2) / 0.9));
+cells.push('rgba(56,189,248,' + Math.min(1, Math.max(0.05, x)).toFixed(2) + ')');
+}
+}
+return { bars: v.map((x) => ({ h: x + '%' })), cells };
+}
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>
