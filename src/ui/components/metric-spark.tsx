@@ -6,30 +6,34 @@ import type { SearchAggResult } from "@/types";
 import { alignAggBuckets } from "../../query/agg";
 import { useSeriesCatalog } from "../series-catalog";
 import { withUnit } from "../metric-unit";
+import { darkPlotTheme, usePlotTheme, type PlotTheme } from "../plot-theme";
 
 /** One line per value of a split (frames 13e, 13g); the sixth colour is not `other`'s grey. */
-export const splitPalette = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#e2e8f0", "#c084fc", "#2dd4bf"];
-export const otherColor = "#94a3b8";
-const LINE = "#a78bfa";
+export const splitPalette = darkPlotTheme.palette;
+export const otherColor = darkPlotTheme.other;
 /** Up to this many lines are named at their ends; more get a legend (13g). */
 export const endLabelMax = 3;
 
 export type SparkLine = { key: string; color: string; dashed: boolean; vals: Array<number | null> };
 
 /** The lines a metric result draws, on the panel's bars. */
-export function sparkLines(times: readonly string[], result: SearchAggResult | null): SparkLine[] {
+export function sparkLines(
+  times: readonly string[],
+  result: SearchAggResult | null,
+  theme: PlotTheme = darkPlotTheme,
+): SparkLine[] {
   if (!result || result.source === "refused") {
     return [];
   }
   if (result.splits) {
     return result.splits.map((s, i) => ({
       key: s.key,
-      color: s.key === "other" ? otherColor : splitPalette[i % splitPalette.length]!,
+      color: s.key === "other" ? theme.other : theme.palette[i % theme.palette.length]!,
       dashed: s.key === "other",
       vals: alignAggBuckets(times, s.buckets),
     }));
   }
-  return [{ key: "", color: LINE, dashed: false, vals: alignAggBuckets(times, result.buckets) }];
+  return [{ key: "", color: theme.line, dashed: false, vals: alignAggBuckets(times, result.buckets) }];
 }
 
 /** The bars' times, or the series' own when the panel has no log bars to borrow. */
@@ -99,7 +103,8 @@ export function MetricSpark({
   /** Lines given names (#169): said in a legend under the plot, with their values (17b). */
   namedLines?: boolean;
 }) {
-  const lines = useMemo(() => sparkLines(times, result), [times, result]);
+  const theme = usePlotTheme();
+  const lines = useMemo(() => sparkLines(times, result, theme), [times, result, theme]);
   const unit = result?.unit;
   const finite = lines.flatMap((l) => l.vals.filter((v): v is number => v !== null));
   const quiet = finite.length === 0;
@@ -170,7 +175,7 @@ export function MetricSpark({
         </div>
         <div
           ref={plotRef}
-          className={`relative min-w-0 flex-1 border-b border-white/[0.12] ${named ? "mr-[92px]" : ""}`}
+          className={`relative min-w-0 flex-1 border-b border-[var(--plot-axis)] ${named ? "mr-[92px]" : ""}`}
           onPointerMove={onMove}
           onPointerLeave={() => setHoverT(null)}
         >
@@ -207,20 +212,20 @@ export function MetricSpark({
             : null}
           {hoverIdx >= 0 && !quiet ? (
             <>
-              <span className="pointer-events-none absolute inset-y-0 w-px bg-white/35" style={{ left: `${x(hoverIdx)}%` }} />
+              <span className="pointer-events-none absolute inset-y-0 w-px bg-[var(--plot-hair)]" style={{ left: `${x(hoverIdx)}%` }} />
               {lines.map((l) => {
                 const v = l.vals[hoverIdx];
                 return v === null || v === undefined ? null : (
                   <span
                     key={l.key || "dot"}
-                    className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_2px_#111113]"
+                    className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_2px_var(--plot-ring)]"
                     style={{ left: `${x(hoverIdx)}%`, top: `${y(v)}%`, background: l.color }}
                   />
                 );
               })}
               <div
                 role="status"
-                className="pointer-events-none absolute top-[6%] z-10 flex flex-col gap-0.5 rounded-[6.4px] border border-white/12 bg-[#18181b] px-2 py-1.5 font-mono text-[11px] leading-[17px] whitespace-nowrap shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
+                className="pointer-events-none absolute top-[6%] z-10 flex flex-col gap-0.5 rounded-[6.4px] border border-[var(--plot-axis)] bg-[var(--plot-pop)] px-2 py-1.5 font-mono text-[11px] leading-[17px] whitespace-nowrap shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
                 style={
                   x(hoverIdx) > 55
                     ? { right: `calc(${100 - x(hoverIdx)}% + 14px)` }

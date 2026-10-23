@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+An embedded panel is painted by the app's own panels, so it looks on the other site as it does in Toposcope, light or dark, and every chart the app gains embeds as soon as it ships. The embed tag gains `chart`: `line` (the default, as before), `stat` for one number, and `top` with `key` and `n` for a Top-N through the share's `/share/v1/top`. [#235](https://github.com/toposcope/toposcope/issues/235)
+
 ## 0.7.0
 
 **Before you upgrade:** every Toposcope page now refuses to be framed (`frame-ancestors 'none'`): a page that put Toposcope in an iframe stops showing it, and should embed a share's panel instead. Nothing changes in ClickHouse; SQLite gains a `shares` table that 0.6.3 leaves unread on a rollback.
