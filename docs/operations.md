@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.6.2` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.6.3` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -296,6 +296,8 @@ Version 0.6.1 changes nothing in ClickHouse at boot. SQLite gains one table, `mo
 
 Version 0.6.2 adds one optional `settings` row, `metrics_retention_days`, and changes nothing until it is set: metrics follow `retention_days` as before. Once set, boot and every save apply it to `metrics`, `metric_buckets` and their minute rollups. Rolling back to 0.6.1 applies `retention_days` to those tables again at boot, so metrics older than that are deleted as ClickHouse applies TTL; set metrics back to follow logs, or take a backup, first.
 
+Version 0.6.3 changes nothing in ClickHouse or SQLite at boot. **Check now** and the upgrade button are new in the version popover; upgrading from the app stays off until the host runs `sudo ./upgrade.sh enable-ui`, and it writes only `upgrade/` in the app's volume. Before rolling back to 0.6.2, run `sudo ./upgrade.sh disable-ui` if it was turned on: 0.6.2's `upgrade.sh` has no `ui-run`, so the unit would fail on a click that 0.6.2's popover can no longer make.
+
 ## Backup and restore
 
 Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`.
@@ -327,7 +329,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 From 0.6.1, `./upgrade.sh rollback --yes` goes back to the last backup the script took (see [With upgrade.sh](#with-upgradesh)). By hand: to roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin. Pin `0.6.1` to roll back application code from `0.6.2`.
+`0.3.14` is the first public pin. Pin `0.6.2` to roll back application code from `0.6.3`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe. 0.6.0 also adds tables (`monitor_stretches`, `monitor_calls`, `monitor_http` and `monitor_results`); 0.5.7 ignores them, and a push or HTTP(S) monitor's rule, which has no saved search, does not run there. Pinning 0.6.0 again picks them up where they were. TCP and certificate monitors add `monitor_net`; a release before them ignores it, and does not run them (Watch lists each as a search monitor with no search, and one that was open stays open until they run again).
 
