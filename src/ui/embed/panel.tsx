@@ -1,23 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
-import { formatAggStat } from "../fill-histogram";
-import { withUnit } from "../metric-unit";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { HbarWidget } from "@/components/hbar-widget";
+import { MetricSpark, sparkTimes } from "@/components/metric-spark";
+import { StatWidget } from "@/components/stat-widget";
+import type { SearchAggResult } from "@/types";
 import {
-  axisSteps,
-  embedLines,
+  embedAggResult,
   embedMessage,
   nextEmbedState,
   pollMs,
-  tickLabel,
   type EmbedParams,
   type EmbedState,
   type SeriesBody,
 } from "../embed-view";
-
-/** Line colours: the plate for one line, the panels' split palette for many (23a, 23b). */
-const palettes = {
-  dark: { one: "#e7e1d3", many: ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#e2e8f0", "#c084fc", "#2dd4bf"] },
-  light: { one: "#18181b", many: ["#18181b", "#2563eb", "#d97706", "#7c3aed", "#059669", "#db2777", "#0891b2", "#65a30d"] },
-};
 
 function clock(ms: number): string {
   return new Date(ms).toISOString().slice(11, 16);
@@ -42,7 +36,7 @@ export function EmbedPanel({ params }: { params: EmbedParams }) {
     async function read() {
       let next: EmbedState;
       try {
-        const res = await fetch(`/share/v1/series?${params.query.toString()}`, {
+        const res = await fetch(`${params.path}?${params.query.toString()}`, {
           headers: { authorization: `Bearer ${params.ticket}` },
         });
         next = nextEmbedState(stateRef.current, { status: res.status, body: await res.json().catch(() => null) }, Date.now());
@@ -69,7 +63,6 @@ export function EmbedPanel({ params }: { params: EmbedParams }) {
 
   const body = state.kind === "painted" || state.kind === "stale" ? state.body : null;
   const stale = state.kind === "stale";
-  const span = body?.from && body.to ? Date.parse(body.to) - Date.parse(body.from) : 0;
   const right =
     state.kind === "stale"
       ? `not answering${state.readAt ? ` · last read ${clock(state.readAt)}` : ""}`
@@ -92,7 +85,7 @@ export function EmbedPanel({ params }: { params: EmbedParams }) {
       ) : state.kind === "stale" && !body ? (
         <Notice line="Toposcope is not answering" sub="It will try again." />
       ) : body ? (
-        <Plot body={body} span={span} theme={params.theme} muted={stale} />
+        <Plot params={params} body={body} muted={stale} />
       ) : null}
     </div>
   );
@@ -111,113 +104,47 @@ function Notice({ line, sub, mono = false }: { line: string; sub: string; mono?:
   );
 }
 
-function Plot({ body, span, theme, muted }: { body: SeriesBody; span: number; theme: "dark" | "light"; muted: boolean }) {
-  const { lines, unit } = useMemo(() => embedLines(body), [body]);
-  const box = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 400, h: 180 });
-  const [hover, setHover] = useState<number | null>(null);
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
-    ro.observe(el);
-    setSize({ w: el.clientWidth, h: el.clientHeight });
-    return () => ro.disconnect();
-  }, []);
-
-  const values = lines.flatMap((l) => l.points.map((p) => p.v));
-  if (values.length === 0) {
-    return (
-      <div className="plot-wrap">
-        <div className="plot" ref={box}>
-          <span className="empty">No points in this window</span>
-        </div>
-      </div>
-    );
-  }
-  const palette = palettes[theme];
-  const split = lines.length > 1 || lines[0]?.key !== "";
-  const color = (i: number) => (split ? palette.many[i % palette.many.length]! : palette.one);
-  const steps = axisSteps(Math.max(...values));
-  const top = steps[0]!;
-  const from = body.from ? Date.parse(body.from) : Math.min(...lines.flatMap((l) => l.points.map((p) => p.t)));
-  const to = body.to ? Date.parse(body.to) : Math.max(...lines.flatMap((l) => l.points.map((p) => p.t)));
-  const left = 44;
-  const bottom = 18;
-  const w = Math.max(1, size.w - left);
-  const h = Math.max(1, size.h - bottom);
-  const x = (t: number) => left + ((t - from) / Math.max(1, to - from)) * w;
-  const y = (v: number) => h - (v / top) * (h - 6);
-  const ticks = [0, 1, 2, 3].map((i) => from + ((to - from) * i) / 4);
-  const times = [...new Set(lines.flatMap((l) => l.points.map((p) => p.t)))].sort((a, b) => a - b);
-  const hoverT = hover === null ? null : times[hover] ?? null;
-
-  function onMove(e: PointerEvent<HTMLDivElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const t = from + ((e.clientX - rect.left - left) / w) * (to - from);
-    let best = 0;
-    times.forEach((tt, i) => {
-      if (Math.abs(tt - t) < Math.abs(times[best]! - t)) best = i;
-    });
-    setHover(times.length ? best : null);
-  }
-
+/**
+ * The plot, painted by the app's own panel components (#235): what a panel draws in Toposcope it
+ * draws here. Muted while Toposcope is not answering.
+ */
+function Plot({ params, body, muted }: { params: EmbedParams; body: SeriesBody; muted: boolean }) {
+  const result = useMemo(() => embedAggResult(body), [body]) as unknown as SearchAggResult;
+  const times = useMemo(() => sparkTimes([], result), [result]);
+  const window = params.query.get("range") ?? "";
+  const metric = params.query.get("metric");
+  const reading = (body.series as { reading?: string } | null | undefined)?.reading;
   return (
-    <div className={`plot-wrap ${split && size.w >= 560 ? "with-legend" : ""}`}>
-      <div className="plot" ref={box} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
-        <svg width={size.w} height={size.h} role="img" aria-label="panel series" className={muted ? "muted" : ""}>
-          {steps.map((v) => (
-            <g key={v}>
-              <line className="grid" x1={left} x2={size.w} y1={y(v)} y2={y(v)} />
-              <text className="axis" x={left - 6} y={y(v) + 3.5} textAnchor="end">
-                {v === 0 ? "0" : withUnit(formatAggStat(v), unit)}
-              </text>
-            </g>
-          ))}
-          {ticks.map((t) => (
-            <text key={t} className="axis" x={x(t)} y={size.h - 4}>
-              {tickLabel(t, span)}
-            </text>
-          ))}
-          {lines.map((l, i) => (
-            <polyline
-              key={l.key || "line"}
-              fill="none"
-              stroke={muted ? "currentColor" : color(i)}
-              strokeWidth="1.6"
-              strokeDasharray={muted ? "4 3" : l.key === "other" ? "3 3" : undefined}
-              strokeLinejoin="round"
-              points={l.points.map((p) => `${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ")}
-            />
-          ))}
-          {hoverT !== null && !muted ? <line className="hair" x1={x(hoverT)} x2={x(hoverT)} y1={0} y2={h} /> : null}
-        </svg>
-        {hoverT !== null && !muted ? (
-          <div role="status" className="readout" style={x(hoverT) > size.w * 0.55 ? { right: size.w - x(hoverT) + 12 } : { left: x(hoverT) + 12 }}>
-            <span className="readout-time">{new Date(hoverT).toISOString().slice(span >= 86_400_000 ? 5 : 11, 16).replace("T", " ")}</span>
-            {lines.map((l, i) => {
-              const p = l.points.find((pp) => pp.t === hoverT);
-              return p ? (
-                <span key={l.key || "v"} className="readout-row">
-                  {split ? <span className="swatch" style={{ background: color(i) }} /> : null}
-                  {split ? <span className="readout-key">{l.key}</span> : null}
-                  <span>{withUnit(formatAggStat(p.v), unit)}</span>
-                </span>
-              ) : null;
-            })}
-          </div>
-        ) : null}
-      </div>
-      {split ? (
-        <div className="legend">
-          {lines.map((l, i) => (
-            <span key={l.key} className="legend-row">
-              <span className="swatch" style={{ background: color(i) }} />
-              {l.key}
-            </span>
-          ))}
-        </div>
-      ) : null}
+    <div className={`flex min-h-0 flex-1 flex-col ${muted ? "opacity-40" : ""}`}>
+      {params.chart === "top" ? (
+        <HbarWidget
+          split="service"
+          attr={body.key ?? params.query.get("key")}
+          values={body.values ?? []}
+          total={(body.values ?? []).reduce((sum, v) => sum + v.n, 0)}
+          n={Number(params.query.get("n") ?? 10) || 10}
+          pct={false}
+          loading={false}
+        />
+      ) : params.chart === "stat" ? (
+        <StatWidget
+          total={body.total ?? 0}
+          agg={metric ? null : (body.agg ?? "count")}
+          metric={metric}
+          aggResult={metric ? result : body.agg === "rate" ? result : null}
+          loading={false}
+        />
+      ) : (
+        <MetricSpark
+          times={times}
+          result={result}
+          readingWord={reading ?? (metric ? (result.kind === "counter" ? "sum" : "avg") : (body.agg ?? "count"))}
+          kindWord={result.kind ?? "counter"}
+          name={metric ?? params.title}
+          window={window}
+          live={false}
+        />
+      )}
     </div>
   );
 }

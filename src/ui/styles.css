@@ -53,6 +53,35 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);
   --plate: oklch(0.906 0.014 84);
+  /* A panel's plot (#235): its axis, hover hairline, bar track, row hover and readout. */
+  --plot-axis: oklch(1 0 0 / 12%);
+  --plot-hair: oklch(1 0 0 / 35%);
+  --plot-track: oklch(1 0 0 / 5%);
+  --plot-hover: oklch(1 0 0 / 4%);
+  --plot-pop: #18181b;
+  --plot-ring: #111113;
+}
+
+/* An embed drawn light (#235, frame 23b): the same panels on white. */
+.light {
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --border: rgb(0 0 0 / 10%);
+  --input: rgb(0 0 0 / 15%);
+  --plot-axis: rgb(0 0 0 / 12%);
+  --plot-hair: rgb(0 0 0 / 30%);
+  --plot-track: rgb(0 0 0 / 5%);
+  --plot-hover: rgb(0 0 0 / 4%);
+  --plot-pop: #ffffff;
+  --plot-ring: #ffffff;
 }
 
 @layer base {

@@ -211,7 +211,7 @@ export function HbarWidget({
                 <span className="max-w-[40%] min-w-14 shrink-0 truncate text-left text-[11.5px] text-muted-foreground">
                   {bar.key}
                 </span>
-                <div className="h-2 min-w-6 flex-1 rounded-sm bg-white/5">
+                <div className="h-2 min-w-6 flex-1 rounded-sm bg-[var(--plot-track)]">
                   <span
                     className="block h-2 rounded-sm"
                     style={{
@@ -234,7 +234,7 @@ export function HbarWidget({
             const rowClass = cn(
               "flex w-full items-center gap-2 rounded-[3.4px] px-1 py-[3px] text-left",
               clickable
-                ? "cursor-pointer hover:bg-white/[0.04]"
+                ? "cursor-pointer hover:bg-[var(--plot-hover)]"
                 : "cursor-default",
             );
             if (!clickable || !field) {

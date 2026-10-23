@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { axisSteps, embedLines, embedMessage, nextEmbedState, parseEmbedParams, pollMs, tickLabel, type SeriesBody } from "./embed-view";
+import { embedAggResult, embedMessage, nextEmbedState, parseEmbedParams, pollMs, type SeriesBody } from "./embed-view";
 
 const now = Date.parse("2026-10-23T14:02:00Z");
 const body: SeriesBody = {
@@ -49,18 +49,18 @@ describe("embed states", () => {
 });
 
 describe("embed plot", () => {
-  test("lines from a metric, a split, or a log count", () => {
-    expect(embedLines(body)).toEqual({ lines: [{ key: "", points: [{ t: Date.parse(body.from!), v: 0.5 }] }], unit: "s" });
-    const counted = embedLines({ ...body, series: undefined, agg: "count", buckets: [{ t: body.from!, n: 3, series: { a: 1, b: 2 } }] });
-    expect(counted.lines.map((l) => l.key)).toEqual(["a", "b"]);
+  test("a metric as it came, a log count as one line or one per split value", () => {
+    expect(embedAggResult(body)).toMatchObject({ source: "metric", unit: "s", buckets: [{ t: body.from, v: 0.5 }] });
+    const counted = embedAggResult({ ...body, series: undefined, agg: "count", buckets: [{ t: body.from!, n: 3, series: { a: 1, b: 2 } }] });
+    expect(counted.stat).toBe(3);
+    expect(counted.splits?.map((s) => s.key)).toEqual(["a", "b"]);
   });
 
-  test("axis labels follow the histogram's date rule, with round gridlines", () => {
-    expect(tickLabel(now, 7 * 86_400_000)).toBe("10-23");
-    expect(tickLabel(now, 86_400_000)).toBe("14:02");
-    expect(tickLabel(now, 3_600_000)).toBe("14:02");
-    expect(tickLabel(now, 600_000)).toBe("14:02:00");
-    expect(axisSteps(1.4)).toEqual([1.5, 1, 0.5, 0]);
-    expect(axisSteps(0)).toEqual([1, 0.5, 0]);
+  test("a Top-N reads /share/v1/top with its key and n", () => {
+    const p = parseEmbedParams("?ticket=t&chart=top&key=host&n=5&range=24h&metric=ignored");
+    expect(p.path).toBe("/share/v1/top");
+    expect(p.query.toString()).toBe("key=host&n=5&range=24h");
+    expect(p.what).toBe("top 5 by host");
+    expect(parseEmbedParams("?chart=nope&metric=cpu").chart).toBe("line");
   });
 });

@@ -1,0 +1,4 @@
+/* The app's tokens and Tailwind (#235). This build's root is embed/, so the panels it paints are named for Tailwind to scan. */
+@import "../styles.css";
+@source "../components";
+@source "../*.ts";
