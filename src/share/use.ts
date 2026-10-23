@@ -117,6 +117,8 @@ export function startShareUse(write: (rows: LogEvent[]) => Promise<unknown>): ()
       write(rows).catch((err) => console.error("share use rows not written", err));
     }
   }, 60_000);
+  // Never what keeps a process alive: a test that loads the app, or a stop, exits as before.
+  timer.unref?.();
   return () => clearInterval(timer);
 }
 
