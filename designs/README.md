@@ -79,6 +79,11 @@ Locked — the version popover (0.6.x), 2026-10-23:
 - [Toposcope Check Now.dc.html](Toposcope%20Check%20Now.dc.html) — frames 22a–22d: Check now on the popover's status line; checking; a check that finds a release; a check that fails · frames 22e–22j: upgrade from here, off by default and how to turn it on; on; confirm in the box; upgrading with the host's log; upgraded; failed and back on the old version
 - [check-now/](check-now/) — crops for issues (22a–22j)
 
+Locked — shares (0.7.0), 2026-10-23:
+
+- [Toposcope Shares.dc.html](Toposcope%20Shares.dc.html) — frames 23a–23f, 23l: one panel embedded in another app's page (line, split, stale, ticket expired, refused, empty) and the script tag's fallback in the host page · frames 23g–23k: Settings → Shares (list, create, secret shown once, revoke in the row) and Copy embed on a panel
+- [shares/](shares/) — crops for issues (23a–23l)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
