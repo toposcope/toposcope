@@ -252,6 +252,37 @@ async function metricLabelValues(opts: {
 }
 
 /**
+ * The names with points under the scope's labels in the window, a histogram's `.count` and `.sum`
+ * as its own name; null when the scope has no labels and every allowed name is inside it.
+ */
+async function namesUnderLabels(labels: Record<string, string>, from?: string, to?: string): Promise<Set<string> | null> {
+  const entries = Object.entries(labels);
+  if (entries.length === 0) {
+    return null;
+  }
+  const params: Record<string, string> = { tenant_id: "default" };
+  const where = ["tenant_id = {tenant_id:String}"];
+  if (from) {
+    where.push("ts >= parseDateTime64BestEffort({from:String})");
+    params.from = from;
+  }
+  if (to) {
+    where.push("ts <= parseDateTime64BestEffort({to:String})");
+    params.to = to;
+  }
+  entries.forEach(([k, v], i) => {
+    where.push(`labels[{lk${i}:String}] = {lv${i}:String}`);
+    params[`lk${i}`] = k;
+    params[`lv${i}`] = v;
+  });
+  const rows = await clickhouseQuery<{ name: string }>(
+    `SELECT DISTINCT name FROM metrics WHERE ${where.join(" AND ")} LIMIT 1000`,
+    params,
+  );
+  return new Set(rows.map((row) => String(row.name).replace(/\.(count|sum)$/, "")));
+}
+
+/**
  * `GET /share/v1/names` — what a picker needs: the metric names the share can read in the window,
  * with kind and unit, and the values of its split and narrow keys inside the scope.
  */
@@ -261,8 +292,10 @@ export async function shareNamesRoute(c: Context): Promise<Response> {
     const { step: _step, ...window } = windowParams(c);
     const resolved = resolveFilters(window);
     const listed = scope.metric_names.length === 0 ? null : await metricNames({ from: resolved.from, to: resolved.to });
+    // A name the pattern allows but that has points only under other labels is not in the scope.
+    const under = listed ? await namesUnderLabels(scope.metric_labels, resolved.from, resolved.to) : null;
     const metrics = (listed?.keys ?? [])
-      .filter((row) => metricAllowed(scope, row.k))
+      .filter((row) => metricAllowed(scope, row.k) && (under === null || under.has(row.k)))
       .map(({ k, kind, unit, description }) => ({ name: k, kind, ...(unit ? { unit } : {}), ...(description ? { description } : {}) }));
     const keys = [...new Set([...scope.split, ...scope.narrow])];
     const values: Record<string, string[]> = {};

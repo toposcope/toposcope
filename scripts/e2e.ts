@@ -4358,8 +4358,8 @@ async function main(): Promise<void> {
     const svc = `share-${marker}`;
     const ts = new Date().toISOString();
     const points = [
-      { name: `fleet_${marker}`, value: 2, ts, labels: { service: svc, host: "box-1", account_id: "acct-7" } },
-      { name: `fleet_${marker}`, value: 4, ts, labels: { service: svc, host: "box-2", account_id: "acct-8" } },
+      { name: `fleet_${marker}`, value: 2, ts, labels: { service: svc, host: "box-1" } },
+      { name: `fleet_${marker}`, value: 4, ts, labels: { service: svc, host: "box-2" } },
       { name: `fleet_${marker}`, value: 99, ts, labels: { service: "other", host: "box-9" } },
       { name: `billing_${marker}`, value: 1, ts, labels: { service: svc } },
     ];
