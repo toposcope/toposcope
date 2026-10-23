@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Plus } from "lucide-react";
-import { ExtraPanel } from "@/components/extra-panel";
+import { ExtraPanel, type EmbedAction } from "@/components/extra-panel";
+import { embedTag, shareCovering } from "../share-cover";
+import { useShares } from "../use-shares";
+import { formatRangeToken, partsFromMs } from "../../query/relative";
 import { HistogramChart } from "@/components/histogram-chart";
 import {
   HistogramMarksChip,
@@ -212,6 +215,7 @@ export function WidgetCanvas({
   const ghostRef = useRef<Cell | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [compareLines, setCompareLines] = useState(1);
+  const shares = useShares();
   const [drag, setDrag] = useState<Drag | null>(null);
   const [ghost, setGhost] = useState<Cell | null>(null);
   const [lift, setLift] = useState<{ dx: number; dy: number } | null>(null);
@@ -633,6 +637,34 @@ export function WidgetCanvas({
     }
   }
 
+  /** Copy embed (#228, 23k) for a metric panel: the share that covers it, or why none does. */
+  function embedFor(widget: WidgetDef): EmbedAction | null {
+    if (widget.kind !== "timeseries" || !widget.metric) {
+      return null;
+    }
+    const panel = { metric: widget.metric, labels: widget.metricLabels, split: widget.metricSplit ?? null };
+    const cover = shareCovering(shares, panel);
+    if (!cover) {
+      return null;
+    }
+    if ("why" in cover) {
+      return cover;
+    }
+    if ((widget.lines ?? []).length > 0) {
+      return { why: "an embed draws one metric; this panel merges several" };
+    }
+    const { count, unit } = partsFromMs(spanMs);
+    const tag = embedTag(window.location.origin, panel, { range: formatRangeToken(count, unit), title: widget.title ?? undefined });
+    return {
+      share: cover.share.name,
+      copy: () =>
+        void navigator.clipboard.writeText(tag).then(
+          () => toast.success(`Embed copied · ${cover.share.name} · mint a ticket for TICKET`),
+          () => toast.error("Copy failed"),
+        ),
+    };
+  }
+
   function extraIdentity(widget: WidgetDef, data: SeriesData): ReactNode {
     switch (widget.kind) {
       case "stat":
@@ -1023,6 +1055,7 @@ export function WidgetCanvas({
                   highlight={isFresh}
                   lockChrome={locked}
                   identity={extraIdentity(widget, data)}
+                  embed={embedFor(widget)}
                   pct={widget.pct}
                   onPct={
                     widget.kind === "hbar"

@@ -32,6 +32,7 @@ import { SystemMeters } from "@/components/system-meters";
 import { VersionFooter } from "@/components/version-footer";
 import { TimeRangePicker } from "@/components/time-range-picker";
 import { TokensDialog } from "@/components/tokens-dialog";
+import { SharesDialog } from "@/components/shares-dialog";
 import { ThroughputMeter } from "@/components/throughput-meter";
 import { WidgetCanvas, type SeriesData } from "@/components/widget-canvas";
 import { BoardEmpty } from "@/components/board-inputs";
@@ -725,6 +726,7 @@ export function App() {
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tokensOpen, setTokensOpen] = useState(false);
+  const [sharesOpen, setSharesOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
   const [saveUpdate, setSaveUpdate] = useState(false);
@@ -4930,8 +4932,22 @@ export function App() {
         onOpenChange={setSettingsOpen}
         onRetentionDays={setRetentionDays}
         onInstanceName={() => void loadInstance().catch(() => undefined)}
+        onOpenShares={() => {
+          setSettingsOpen(false);
+          setSharesOpen(true);
+        }}
       />
       <TokensDialog open={tokensOpen} onOpenChange={setTokensOpen} />
+      <SharesDialog
+        open={sharesOpen}
+        onOpenChange={setSharesOpen}
+        onOpenUse={(useQ) => {
+          // A share's use rows, refusals first to read, in a Search tab of their own.
+          setSharesOpen(false);
+          setView("search");
+          addWorkspace({ ...blankSearchSnap(), kind: "search", q: useQ, range: "24h", live: false }, true);
+        }}
+      />
       <SaveSearchDialog
         open={saveAsOpen}
         onOpenChange={setSaveAsOpen}

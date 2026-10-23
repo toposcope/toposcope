@@ -14,6 +14,8 @@ type Props = {
   ariaLabel: string;
   trigger: ReactNode;
   onPick: (format: WidgetExportFormat) => void;
+  /** Rows after the formats, under a rule (Copy embed, #228); given `close`. */
+  footer?: (close: () => void) => ReactNode;
 };
 
 export function WidgetFormatMenu({
@@ -22,6 +24,7 @@ export function WidgetFormatMenu({
   ariaLabel,
   trigger,
   onPick,
+  footer,
 }: Props) {
   const [open, setOpen] = useState(false);
   return (
@@ -62,6 +65,12 @@ export function WidgetFormatMenu({
             </span>
           </button>
         ))}
+        {footer ? (
+          <>
+            <div className="my-1 h-px bg-white/[0.08]" />
+            {footer(() => setOpen(false))}
+          </>
+        ) : null}
       </PopoverContent>
     </Popover>
   );
