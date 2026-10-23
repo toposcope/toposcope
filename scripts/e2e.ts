@@ -4485,9 +4485,10 @@ async function main(): Promise<void> {
         body: JSON.stringify({ expires_at: Date.now() + 86_400_000, scope: { metric_names: ["fleet_*"] }, limits: { reads_per_minute: 2 } }),
       })
     ).json()) as { secret?: string };
-    const slowRead = () => read(`/share/v1/names?range=1h`, { authorization: `Bearer ${slowMade.secret}` });
-    const statuses = [(await slowRead()).status, (await slowRead()).status];
-    const third = await slowRead();
+    // Each read asks something new: an answer served again from the cache (#227) is off the rate.
+    const slowRead = (n: number) => read(`/share/v1/names?range=1h&try=${n}`, { authorization: `Bearer ${slowMade.secret}` });
+    const statuses = [(await slowRead(1)).status, (await slowRead(2)).status];
+    const third = await slowRead(3);
     if (statuses.join() !== "200,200" || third.status !== 429 || !third.headers.get("retry-after")) {
       throw new Error(`a share's third read in a minute at 2/min should be 429 with Retry-After, got ${statuses} ${third.status}`);
     }
