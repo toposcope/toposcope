@@ -6,6 +6,7 @@ docs/VISION.md
 private/
 node_modules
 src/ui/dist
+src/ui/dist-embed
 data
 *.sqlite
 .env

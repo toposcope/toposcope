@@ -21,12 +21,15 @@ import {
 } from "./scope";
 import type { ShareRecord } from "./store";
 import { windowWithin } from "./limits";
-import { originOf } from "./operator";
+import { originOf, rateTurn } from "./operator";
+import { cacheMs, readShareCache, shareCacheKey, writeShareCache } from "./cache";
 import { noteRead, noteRefused } from "./use";
 
 declare module "hono" {
   interface ContextVariableMap {
     share: ShareRecord;
+    /** What opened the read: the share's secret, or a ticket a page holds (#227). */
+    shareVia: "secret" | "ticket";
   }
 }
 
@@ -160,6 +163,35 @@ function readError(c: Context, err: unknown): Response | null {
     return refuse(c, err.message, 400);
   }
   return null;
+}
+
+/**
+ * Every `GET` read under a share (#227): an answer read in the last moment is served again and
+ * counted as cached, off the rate; otherwise the read takes a turn of the rate (#226) and a good
+ * answer is kept until its next bar starts, or 30 seconds.
+ */
+export async function shareReadCache(c: Context, next: () => Promise<void>): Promise<Response | void> {
+  const share = c.get("share");
+  const key = shareCacheKey(c.req.path, c.req.query());
+  const hit = readShareCache(share.id, key);
+  if (hit) {
+    noteRead(share.name, originOf(c), true);
+    return c.json(hit.body, 200, { "cache-control": `private, max-age=${Math.ceil(hit.leftMs / 1000)}`, vary: "Authorization" });
+  }
+  const limited = rateTurn(c);
+  if (limited) {
+    return limited;
+  }
+  await next();
+  if (c.res.status !== 200) {
+    return;
+  }
+  const body = (await c.res.clone().json()) as { step_ms?: number };
+  const ms = cacheMs(Date.now(), body.step_ms);
+  writeShareCache(share.id, key, body, ms);
+  // Per credential in the browser: an expired ticket must not be handed a live ticket's answer.
+  c.res.headers.set("cache-control", `private, max-age=${Math.ceil(ms / 1000)}`);
+  c.res.headers.set("vary", "Authorization");
 }
 
 /** `GET /share/v1/series` — one metric series, or one log count or rate, inside the share's scope. */

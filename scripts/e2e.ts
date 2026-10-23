@@ -4485,18 +4485,67 @@ async function main(): Promise<void> {
         body: JSON.stringify({ expires_at: Date.now() + 86_400_000, scope: { metric_names: ["fleet_*"] }, limits: { reads_per_minute: 2 } }),
       })
     ).json()) as { secret?: string };
-    const slowRead = () => read(`/share/v1/names?range=1h`, { authorization: `Bearer ${slowMade.secret}` });
-    const statuses = [(await slowRead()).status, (await slowRead()).status];
-    const third = await slowRead();
+    // Each read asks something new: an answer served again from the cache (#227) is off the rate.
+    const slowRead = (n: number) => read(`/share/v1/names?range=1h&try=${n}`, { authorization: `Bearer ${slowMade.secret}` });
+    const statuses = [(await slowRead(1)).status, (await slowRead(2)).status];
+    const third = await slowRead(3);
     if (statuses.join() !== "200,200" || third.status !== 429 || !third.headers.get("retry-after")) {
       throw new Error(`a share's third read in a minute at 2/min should be 429 with Retry-After, got ${statuses} ${third.status}`);
     }
     await fetch(`${APP_URL}/api/shares/${slow}`, { method: "DELETE", headers: auth });
 
+    // Embed (#227): a ticket from the secret, the share's own frame rules, answers kept a moment.
+    const framed = await fetch(`${APP_URL}/api/shares/${name}`, {
+      method: "PUT",
+      headers: auth,
+      body: JSON.stringify({
+        expires_at: Date.now() + 86_400_000,
+        scope: { metric_names: ["fleet_*"], metric_labels: `service:${svc}`, logs: `service:${svc}`, split: ["host"], narrow: ["host"] },
+        embed: { frame_ancestors: ["https://admin.example.com"] },
+      }),
+    });
+    if (framed.status !== 200) {
+      throw new Error(`changing a share should keep it and answer 200, got ${framed.status}`);
+    }
+    const minted = await fetch(`${APP_URL}/share/v1/tickets`, { method: "POST", headers: { authorization: `Bearer ${secret}` } });
+    const { ticket } = (await minted.json()) as { ticket?: string };
+    if (minted.status !== 200 || !ticket?.startsWith("tst1_")) {
+      throw new Error(`the secret should mint a ticket, got ${minted.status}`);
+    }
+    const byTicket = { authorization: `Bearer ${ticket}` };
+    const again = await fetch(`${APP_URL}/share/v1/tickets`, { method: "POST", headers: byTicket });
+    if (again.status !== 403) {
+      throw new Error(`a ticket must not mint a ticket, got ${again.status}`);
+    }
+    const panelPath = `/share/v1/series?range=1h&metric=fleet_${marker}&e2e=${marker}`;
+    const first = await read(panelPath, byTicket);
+    const second = await read(panelPath, byTicket);
+    if (first.status !== 200 || second.status !== 200 || !second.headers.get("cache-control")?.startsWith("private, max-age=")) {
+      throw new Error(`a ticket should read its share's panel, kept a moment: ${first.status} ${second.status} ${second.headers.get("cache-control")}`);
+    }
+    if ((await read(`/api/saved-searches`, byTicket)).status !== 401) {
+      throw new Error("a ticket must open nothing under /api");
+    }
+    const page = await fetch(`${APP_URL}/embed?ticket=${encodeURIComponent(ticket)}&metric=fleet_${marker}&range=1h`);
+    if (page.status !== 200 || page.headers.get("content-security-policy") !== "frame-ancestors https://admin.example.com" || page.headers.get("www-authenticate")) {
+      throw new Error(`/embed should be framed by the share's origins only, without a sign-in: ${page.status} ${page.headers.get("content-security-policy")}`);
+    }
+    const loader = await fetch(`${APP_URL}/embed.js`);
+    if (loader.status !== 200 || !(loader.headers.get("content-type") ?? "").includes("javascript")) {
+      throw new Error(`/embed.js should be a script anyone can load, got ${loader.status}`);
+    }
+    const signInPage = await fetch(`${APP_URL}/`, { headers: { accept: "text/html" } });
+    if (signInPage.headers.get("content-security-policy") !== "frame-ancestors 'none'") {
+      throw new Error(`every other page should refuse to be framed, got ${signInPage.headers.get("content-security-policy")}`);
+    }
+
     await fetch(`${APP_URL}/api/shares/${name}`, { method: "DELETE", headers: auth });
     const afterRevoke = await read(`/share/v1/names?${window}`);
     if (afterRevoke.status !== 401) {
       throw new Error(`a revoked share should answer 401 at once, got ${afterRevoke.status}`);
+    }
+    if ((await read(panelPath, byTicket)).status !== 401) {
+      throw new Error("a revoked share's tickets should stop at once, cached answer or not");
     }
   }
 

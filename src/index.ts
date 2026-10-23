@@ -86,8 +86,10 @@ import { announceNewRelease } from "./control/update-event";
 import { storeSize } from "./control/store-size";
 import { readUpgrader, requestUpgrade } from "./control/upgrader";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
-import { createShareRoute, listSharesRoute, putShareRoute, revokeShareRoute, shareAuth } from "./share/operator";
-import { shareNamesRoute, shareSeriesRoute, shareTopRoute } from "./share/read";
+import { createShareRoute, listSharesRoute, putShareRoute, revokeShareRoute, shareAuth, ticketRoute } from "./share/operator";
+import { shareNamesRoute, shareReadCache, shareSeriesRoute, shareTopRoute } from "./share/read";
+import { embedAssetRoute, embedJsRoute, embedPageRoute } from "./share/embed-page";
+import { noFraming } from "./share/embed";
 import { startShareUse } from "./share/use";
 
 requirePackagedSecrets();
@@ -114,6 +116,9 @@ app.use("/*", async (c, next) => {
   }
   return next();
 });
+
+// Nothing frames Toposcope but an embed (#227), which sends its share's own frame rules.
+app.use("/*", noFraming);
 
 app.onError((err, c) => {
   console.error(err);
@@ -215,6 +220,10 @@ app.use("/*", async (c, next) => {
   }
   // A share (#225) proves its own secret, below; the password does not open share reads.
   if (c.req.path.startsWith("/share/")) {
+    return next();
+  }
+  // An embed (#227) reads with the ticket in its URL; the page, its files and the loader hold no data.
+  if (c.req.path === "/embed" || c.req.path === "/embed.js" || c.req.path.startsWith("/embed/assets/")) {
     return next();
   }
   const header = c.req.header("authorization");
@@ -364,6 +373,8 @@ app.post("/api/shares", createShareRoute);
 app.put("/api/shares/:name", putShareRoute);
 app.delete("/api/shares/:name", revokeShareRoute);
 app.use("/share/*", shareAuth);
+app.post("/share/v1/tickets", ticketRoute);
+app.get("/share/v1/*", shareReadCache);
 app.get("/share/v1/series", shareSeriesRoute);
 app.get("/share/v1/top", shareTopRoute);
 app.get("/share/v1/names", shareNamesRoute);
@@ -377,6 +388,9 @@ app.put("/api/fields", putFields);
 
 app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
 app.all("/share/*", (c) => c.json({ error: "Not found" }, 404));
+app.get("/embed", embedPageRoute);
+app.get("/embed.js", embedJsRoute);
+app.get("/embed/assets/*", embedAssetRoute);
 // The ingest paths are an API too: a typo or a wrong method must not get the UI page.
 app.all("/v1/*", (c) => c.json({ error: "Not found" }, 404));
 app.all("/v1development/*", (c) => c.json({ error: "Not found" }, 404));
