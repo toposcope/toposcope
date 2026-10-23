@@ -4352,7 +4352,116 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved → http monitor open, warn, resolved → tcp monitor open, certificate fail, starttls");
+  // Shares (#225): one scope of numbers, read with the share's secret and nothing else.
+  {
+    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const svc = `share-${marker}`;
+    const ts = new Date().toISOString();
+    const points = [
+      { name: `fleet_${marker}`, value: 2, ts, labels: { service: svc, host: "box-1" } },
+      { name: `fleet_${marker}`, value: 4, ts, labels: { service: svc, host: "box-2" } },
+      { name: `fleet_${marker}`, value: 99, ts, labels: { service: "other", host: "box-9" } },
+      { name: `billing_${marker}`, value: 1, ts, labels: { service: svc } },
+    ];
+    const metricsSent = await fetch(`${APP_URL}/v1/metrics`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` },
+      body: JSON.stringify(points),
+    });
+    const logsSent = await fetch(`${APP_URL}/api/ingest`, {
+      method: "POST",
+      headers: { "content-type": "application/x-ndjson", authorization: `Bearer ${INGEST_TOKEN}` },
+      body: [
+        { service: svc, host: "box-1", level: "error", message: `${marker} share row`, attrs: { account_id: "acct-7" } },
+        { service: svc, host: "box-2", level: "info", message: `${marker} share row`, attrs: { account_id: "acct-8" } },
+        { service: "other", host: "box-9", level: "info", message: `${marker} share row` },
+      ]
+        .map((row) => JSON.stringify(row))
+        .join("\n"),
+    });
+    if (!metricsSent.ok || !logsSent.ok) {
+      throw new Error(`share fixtures not ingested: ${metricsSent.status} ${logsSent.status}`);
+    }
+    const name = `e2e-${marker.toLowerCase()}`;
+    const created = await fetch(`${APP_URL}/api/shares`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({
+        name,
+        expires_at: Date.now() + 86_400_000,
+        scope: {
+          metric_names: [`fleet_*`],
+          metric_labels: `service:${svc}`,
+          logs: `service:${svc}`,
+          split: ["host"],
+          narrow: ["host"],
+        },
+      }),
+    });
+    const { secret, share } = (await created.json()) as { secret?: string; share?: { name: string } };
+    if (created.status !== 201 || !secret || share?.name !== name) {
+      throw new Error(`creating a share should answer 201 with its secret once, got ${created.status}`);
+    }
+    const listed = JSON.stringify(await (await fetch(`${APP_URL}/api/shares`, { headers: auth })).json());
+    if (listed.includes(secret)) {
+      throw new Error("the share list must never carry a secret");
+    }
+    const read = (path: string, headers: Record<string, string> = { authorization: `Bearer ${secret}` }) =>
+      fetch(`${APP_URL}${path}`, { headers });
+    const window = new URLSearchParams({ from: new Date(Date.now() - 10 * 60_000).toISOString(), to: new Date(Date.now() + 60_000).toISOString() });
+
+    const series = (await (await read(`/share/v1/series?${window}&metric=fleet_${marker}&split=host`)).json()) as {
+      series?: { splits?: Array<{ key: string }>; expr?: string; buckets: unknown[] };
+    };
+    const hosts = (series.series?.splits ?? []).map((s) => s.key).sort();
+    if (JSON.stringify(hosts) !== JSON.stringify(["box-1", "box-2"]) || series.series?.expr !== undefined) {
+      throw new Error(`a share's metric read should hold its scope's hosts only and not state the scope, got ${JSON.stringify(series)}`);
+    }
+    const counted = (await (await read(`/share/v1/series?${window}&agg=count&ml=host:box-1`)).json()) as { total?: number; events?: unknown };
+    if (counted.total !== 1 || counted.events !== undefined) {
+      throw new Error(`a share's log count should be the scope's narrowed rows, never events, got ${JSON.stringify(counted)}`);
+    }
+    const top = (await (await read(`/share/v1/top?${window}&key=host`)).json()) as { values?: Array<{ v: string }> };
+    if (JSON.stringify((top.values ?? []).map((v) => v.v).sort()) !== JSON.stringify(["box-1", "box-2"])) {
+      throw new Error(`a share's Top-N should count the scope's rows only, got ${JSON.stringify(top)}`);
+    }
+    const refusals: Array<[string, number]> = [
+      [`/share/v1/series?${window}&metric=billing_${marker}`, 404],
+      [`/share/v1/series?${window}&metric=fleet_${marker}&split=account_id`, 400],
+      [`/share/v1/series?${window}&agg=count&ml=account_id:acct-7`, 400],
+      [`/share/v1/series?${window}&agg=max:duration_ms`, 400],
+      [`/share/v1/top?${window}&key=account_id`, 400],
+    ];
+    for (const [path, status] of refusals) {
+      const res = await read(path);
+      if (res.status !== status) {
+        throw new Error(`${path} should be ${status} through a share, got ${res.status}`);
+      }
+    }
+    for (const path of [`/api/search?${window}&q=service:${svc}`, "/api/saved-searches", "/api/shares"]) {
+      const res = await read(path);
+      if (res.status !== 401) {
+        throw new Error(`a share secret must not open ${path}, got ${res.status}`);
+      }
+    }
+    for (const headers of [{ authorization: basicAuth() }, { authorization: `Bearer ${INGEST_TOKEN}` }, {} as Record<string, string>]) {
+      const res = await read(`/share/v1/names?${window}`, headers);
+      if (res.status !== 401 || res.headers.get("www-authenticate")) {
+        throw new Error(`only a share secret opens /share/v1, with no Basic prompt; got ${res.status}`);
+      }
+    }
+    const names = (await (await read(`/share/v1/names?${window}`)).json()) as { metrics?: Array<{ name: string }>; values?: Record<string, string[]> };
+    if (JSON.stringify(names.metrics?.map((m) => m.name)) !== JSON.stringify([`fleet_${marker}`]) || names.values?.host?.includes("box-9")) {
+      throw new Error(`names should list only the scope's metrics and values, got ${JSON.stringify(names)}`);
+    }
+    await fetch(`${APP_URL}/api/shares/${name}`, { method: "DELETE", headers: auth });
+    const afterRevoke = await read(`/share/v1/names?${window}`);
+    if (afterRevoke.status !== 401) {
+      throw new Error(`a revoked share should answer 401 at once, got ${afterRevoke.status}`);
+    }
+  }
+
+  console.log("e2e ok: ingest → search → surrounding → otlp protobuf → otlp grpc → syslog → token → run → alert series fire → follow-id → traces → profiles → load:live → push monitor late, open, resolved → watchdog → monitor open, remind, resolved → fewer than: quiet, can't tell, resolved → http monitor open, warn, resolved → tcp monitor open, certificate fail, starttls → shares");
 }
 
 await main();

@@ -280,6 +280,19 @@ export function migrateControlDb(db: Database): void {
       metric_label TEXT NOT NULL
     );
   `);
+  // Shares (#225): a scope of data and the hash of its secret; see src/share/store.ts.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS shares (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      scope TEXT NOT NULL,
+      secret_hash TEXT NOT NULL UNIQUE,
+      expires_at INTEGER NOT NULL,
+      revoked_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+  `);
   const retention = db
     .query("SELECT value FROM settings WHERE key = 'retention_days'")
     .get() as { value: string } | undefined;

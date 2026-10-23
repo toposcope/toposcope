@@ -86,6 +86,8 @@ import { announceNewRelease } from "./control/update-event";
 import { storeSize } from "./control/store-size";
 import { readUpgrader, requestUpgrade } from "./control/upgrader";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
+import { createShareRoute, listSharesRoute, putShareRoute, revokeShareRoute, shareAuth } from "./share/operator";
+import { shareNamesRoute, shareSeriesRoute, shareTopRoute } from "./share/read";
 
 requirePackagedSecrets();
 requirePublicUrl();
@@ -208,6 +210,10 @@ app.use("/*", async (c, next) => {
   // A push monitor's keyed URL (#177): the key in the path is the credential, for a cron line
   // with no token. It writes only that monitor's result.
   if (c.req.path.startsWith("/ping/")) {
+    return next();
+  }
+  // A share (#225) proves its own secret, below; the password does not open share reads.
+  if (c.req.path.startsWith("/share/")) {
     return next();
   }
   const header = c.req.header("authorization");
@@ -351,6 +357,15 @@ app.post("/api/monitors/send", sendHttpRoute);
 app.get("/api/monitors/:name", getMonitor);
 app.put("/api/monitors/:name", putMonitor);
 app.delete("/api/monitors/:name", deleteMonitor);
+// Shares (#225): signed in to make and revoke them; /share/v1 reads with one's secret.
+app.get("/api/shares", listSharesRoute);
+app.post("/api/shares", createShareRoute);
+app.put("/api/shares/:name", putShareRoute);
+app.delete("/api/shares/:name", revokeShareRoute);
+app.use("/share/*", shareAuth);
+app.get("/share/v1/series", shareSeriesRoute);
+app.get("/share/v1/top", shareTopRoute);
+app.get("/share/v1/names", shareNamesRoute);
 app.get("/api/api-tokens", listApiTokens);
 app.post("/api/api-tokens", createApiToken);
 app.delete("/api/api-tokens/:id", deleteApiToken);
@@ -360,6 +375,7 @@ app.get("/api/fields", getFields);
 app.put("/api/fields", putFields);
 
 app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
+app.all("/share/*", (c) => c.json({ error: "Not found" }, 404));
 // The ingest paths are an API too: a typo or a wrong method must not get the UI page.
 app.all("/v1/*", (c) => c.json({ error: "Not found" }, 404));
 app.all("/v1development/*", (c) => c.json({ error: "Not found" }, 404));
