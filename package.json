@@ -7,7 +7,7 @@
     "dev": "bun run scripts/dev.ts",
     "dev:ui": "vite --config src/ui/vite.config.ts",
     "start": "bun run src/index.ts",
-    "build:ui": "vite build --config src/ui/vite.config.ts",
+    "build:ui": "vite build --config src/ui/vite.config.ts && vite build --config src/ui/vite.embed.config.ts",
     "seed": "bun run src/seed.ts",
     "truncate": "bun run scripts/truncate.ts",
     "e2e": "bun run scripts/e2e.ts",

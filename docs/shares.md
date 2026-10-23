@@ -75,6 +75,45 @@ curl -H "Authorization: Bearer $TOPOSCOPE_SHARE" \
 
 Only a share's secret opens `/share/v1`; the password and the ingest token do not, and a share's secret opens nothing else. A refusal is `401` with no Basic prompt.
 
+## Embed a panel
+
+A page that wants Toposcope to draw embeds a panel. The secret stays on the host's backend: it trades the secret for a **ticket** a page can hold, then puts the ticket in the page.
+
+1. On the share, list the origins that may frame it, and how long a ticket lasts:
+
+   ```json
+   "embed": { "frame_ancestors": ["https://admin.example.com"], "ticket_ttl": "1h" }
+   ```
+
+   Empty `frame_ancestors` (the default) means JSON only: no page may frame the share. `*` is refused.
+
+2. On each page load, the host's backend mints a ticket:
+
+   ```bash
+   curl -X POST -H "Authorization: Bearer $TOPOSCOPE_SHARE" https://logs.example.com/share/v1/tickets
+   # {"ticket":"tst1_…","expires_at":1792800000000}
+   ```
+
+   A ticket reads exactly what its share reads, for `ticket_ttl` (up to 24h) and never past the share's own expiry; it cannot mint another ticket, and it dies the moment its share is revoked.
+
+3. In the page, the script tag:
+
+   ```html
+   <script src="https://logs.example.com/embed.js"
+     data-ticket="tst1_…" data-metric="fleet_cpu_seconds" data-reading="p99"
+     data-range="24h" data-title="CPU · all boxes" data-height="240px"></script>
+   ```
+
+   or the iframe it places: `<iframe src="https://logs.example.com/embed?ticket=…&metric=fleet_cpu_seconds&reading=p99&range=24h">`.
+
+A panel takes `metric`, `reading`, `ml`, `split`, `agg`, `range` (or `from` and `to`), `step`, `title` and `theme` (`dark`, the default, or `light`), checked against the share exactly as `/share/v1/series` checks them; a refused param is painted in the frame, not left blank. The frame polls at its bar width, never faster than every 30 seconds.
+
+`embed.js` is a loader, not a renderer: it places the iframe where the tag sits and draws nothing itself. When the frame has not said it is ready within 5 seconds — Toposcope is down or unreachable — it puts one plain line, *Toposcope unreachable*, in an element with class `toposcope-fallback`, styled with zero specificity so the host's own CSS for that class wins. A frame that loaded and then loses Toposcope keeps its last paint, muted, and says when it last read. The frame posts `{ type: "toposcope:ready" }`, `toposcope:stale` and `toposcope:expired` to its parent, with no data in them, for a host that wants its own handling.
+
+Framing rules stop framing, not reading: whoever holds a ticket can fetch its numbers. The scope and the limits are the security; `frame_ancestors` keeps Toposcope's panels off pages the operator did not choose. Every other Toposcope page refuses to be framed (`frame-ancestors 'none'`).
+
+Answers are kept for a moment: until the panel's next bar starts, or 30 seconds, whichever is sooner, so twenty open consoles showing one panel cost one read. Answers served that way count as `cached` and do not count against the rate.
+
 ## The agental shape
 
-agental's admin console stops drawing its own fleet charts: one share, `service:agental` and `fleet_*`, split and narrow by `host` and `pool`, read from the console's backend.
+agental's admin console stops drawing its own fleet charts: one share, `service:agental` and `fleet_*`, split and narrow by `host` and `pool`, framed by the console's origin. The console's backend mints a ticket per page load and embeds each panel with a script tag.

@@ -1,16 +1,20 @@
 import type { Context, Next } from "hono";
+import { mintTicket, parseShareEmbed, ticketPrefix, ticketShareRow } from "./embed";
 import { parseShareLimits } from "./limits";
 import { formatShareScope, parseShareScope } from "./scope";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
-import { noteLimited, pendingUse, takeRead } from "./use";
+import { dropShareCache } from "./cache";
+import { noteLimited, noteRead, pendingUse, takeRead } from "./use";
 import {
   listShares,
   parseShareExpiry,
   parseShareName,
   putShare,
   revokeShare,
+  shareById,
   shareByName,
   shareBySecret,
+  shareSecretHash,
   type ShareRecord,
 } from "./store";
 
@@ -20,6 +24,7 @@ export function shareJson(share: ShareRecord): Record<string, unknown> {
     name: share.name,
     scope: formatShareScope(share.scope),
     limits: share.limits,
+    embed: share.embed,
     expires_at: share.expires_at,
     revoked_at: share.revoked_at,
     created_at: share.created_at,
@@ -45,23 +50,64 @@ function presented(header: string | undefined): string | null {
   return header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() || null : null;
 }
 
+/** The share a secret or a live ticket (#227) opens, and which one it was. */
+export function shareFor(presentedValue: string | null): { share: ShareRecord; via: "secret" | "ticket" } | null {
+  if (!presentedValue) {
+    return null;
+  }
+  if (presentedValue.startsWith(ticketPrefix)) {
+    const row = ticketShareRow(presentedValue);
+    const share = row ? shareById(row.id) : null;
+    return share ? { share, via: "ticket" } : null;
+  }
+  const share = shareBySecret(presentedValue);
+  return share ? { share, via: "secret" } : null;
+}
+
 /**
- * `/share/v1/*` (#225): a share's secret and nothing else. The password, a session and the ingest
- * token are refused here, and a refusal never asks for Basic, so no prompt opens in a frame.
+ * `/share/v1/*` (#225): a share's secret, or one of its tickets (#227), and nothing else. The
+ * password, a session and the ingest token are refused here, and a refusal never asks for Basic,
+ * so no prompt opens in a frame. The rate is taken per read, after the cache (#226, #227).
  */
 export async function shareAuth(c: Context, next: Next): Promise<Response | void> {
-  const secret = presented(c.req.header("authorization"));
-  const share = secret ? shareBySecret(secret) : null;
-  if (!share) {
+  const found = shareFor(presented(c.req.header("authorization")));
+  if (!found) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  const turn = takeRead(share.id, share.limits.reads_per_minute);
-  if (!turn.ok) {
-    noteLimited(share.name, originOf(c));
-    return c.json({ error: "Too many reads" }, 429, { "retry-after": String(turn.retryAfter) });
-  }
-  c.set("share", share);
+  c.set("share", found.share);
+  c.set("shareVia", found.via);
   await next();
+}
+
+/** One read off the share's rate (#226), or the 429 to answer with. */
+export function rateTurn(c: Context): Response | null {
+  const share = c.get("share");
+  const turn = takeRead(share.id, share.limits.reads_per_minute);
+  if (turn.ok) {
+    return null;
+  }
+  noteLimited(share.name, originOf(c));
+  return c.json({ error: "Too many reads" }, 429, { "retry-after": String(turn.retryAfter) });
+}
+
+/** `POST /share/v1/tickets` — the host's backend trades the secret for a ticket a page can hold. */
+export async function ticketRoute(c: Context): Promise<Response> {
+  if (c.get("shareVia") !== "secret") {
+    return c.json({ error: "a ticket is minted with the share's secret, not another ticket" }, 403);
+  }
+  const limited = rateTurn(c);
+  if (limited) {
+    return limited;
+  }
+  const share = c.get("share");
+  const hash = shareSecretHash(share.id);
+  if (!hash) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  // A ticket never outlives its share.
+  const minted = mintTicket(share, hash, share.embed.ticket_ttl);
+  noteRead(share.name, originOf(c));
+  return c.json({ ticket: minted.ticket, expires_at: Math.min(minted.expires_at, share.expires_at) });
 }
 
 export type ShareUse = { last_read_at: string | null; reads_24h: number; refused_24h: number };
@@ -133,11 +179,17 @@ function writeShare(c: Context, name: string | null, body: Record<string, unknow
   }
   // A field left out keeps what the live share has, or takes its default.
   const live = shareByName(name);
-  const limits = parseShareLimits(body.limits, live && live.revoked_at === null ? live.limits : undefined);
+  const keep = live && live.revoked_at === null ? live : null;
+  const limits = parseShareLimits(body.limits, keep?.limits);
   if ("error" in limits) {
     return c.json({ error: limits.error }, 400);
   }
-  const { share, secret, created } = putShare({ name, scope, limits, expires_at: expires });
+  const embed = parseShareEmbed(body.embed, keep?.embed);
+  if ("error" in embed) {
+    return c.json({ error: embed.error }, 400);
+  }
+  const { share, secret, created } = putShare({ name, scope, limits, embed, expires_at: expires });
+  dropShareCache(share.id);
   return c.json({ share: shareJson(share), ...(secret ? { secret } : {}) }, created ? 201 : 200);
 }
 
@@ -168,5 +220,8 @@ export async function putShareRoute(c: Context): Promise<Response> {
 export async function revokeShareRoute(c: Context): Promise<Response> {
   const name = parseShareName(c.req.param("name"));
   const share = name ? revokeShare(name) : null;
+  if (share) {
+    dropShareCache(share.id);
+  }
   return share ? c.json({ share: shareJson(share) }) : c.json({ error: "Not found" }, 404);
 }
