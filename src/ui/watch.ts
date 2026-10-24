@@ -4,6 +4,7 @@ import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import { formatCertShort, parseConditions } from "../shared/http-check";
 import { cantTellWords, formatOpenFor, laneColumns, opensWhenWords, type MonitorSource } from "../shared/monitor";
 import { formatSpan, isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../shared/push";
+import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, newestFirst, type MarkCluster } from "./change-marks";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
 import type { MonitorCall, MonitorStretch, MonitorView, PushResultRow } from "./types";
@@ -380,7 +381,7 @@ export function nowLabel(nowMs: number, range: WatchRange): string {
  * 7d, every 5 days over 30d.
  */
 export function watchTicks(fromMs: number, toMs: number, range: WatchRange): Array<{ left: number; label: string }> {
-  const step = range === "24h" ? 3 * hourMs : range === "7d" ? dayMs : 5 * dayMs;
+  const step = watchTickStepMs(range);
   const out: Array<{ left: number; label: string }> = [];
   let t = Math.ceil(fromMs / step) * step;
   for (; t < toMs; t += step) {
@@ -395,48 +396,134 @@ export function watchTicks(fromMs: number, toMs: number, range: WatchRange): Arr
   return out;
 }
 
-/** Deploy and flag marks on the clock's last row, and the words beside them where there is room. */
+/** What a deploy or flag is called on Watch: "api v0.9.3", or the flag's own label. */
+export function watchMarkText(mark: ChangeMark): string {
+  return mark.kind === "deploy" ? `${mark.service} ${mark.title}`.trim() : formatChangeMarkLabel(mark);
+}
+
+export type WatchMarkGroup = {
+  key: string;
+  /** Newest first. */
+  members: ChangeMark[];
+  fromMs: number;
+  toMs: number;
+  /** Where its triangle or chip sits on the clock, 0 to 1. */
+  at: number;
+  from: number;
+  to: number;
+  kinds: ChangeMark["kind"][];
+  /**
+   * A lone mark's name (#212, 20b): only with nothing else within 12% of the clock, Search's
+   * rule (Marks 1e). It is kept to `room` of the lane less `reservePx`, so it never reaches the
+   * next triangle or chip.
+   */
+  label: { text: string; end: boolean; room: number; reservePx: number } | null;
+};
+
+/** How far apart the clock's ticks are, and so how much a chip holds past 24h (20f). */
+export function watchTickStepMs(range: WatchRange): number {
+  return range === "24h" ? 3 * hourMs : range === "7d" ? dayMs : 5 * dayMs;
+}
+
+/**
+ * Deploy and flag marks on the clock's last row (#212). At 24h they fold as Search's lane
+ * folds them (20b): marks less than 1.6% of the clock apart chain into one chip. At 7d and
+ * 30d a chain would fuse days, so a chip is what falls between two ticks (20f).
+ */
 export function watchMarks(
   marks: readonly ChangeMark[],
   fromMs: number,
   toMs: number,
-): { glyphs: Array<{ id: string; kind: ChangeMark["kind"]; left: number }>; labels: Array<{ left: number; text: string; end: boolean }>; count: number } {
-  const shown = marks
-    .filter((m) => m.kind === "deploy" || m.kind === "flag")
-    .map((m) => ({ mark: m, left: clockFrac(Date.parse(m.ts), fromMs, toMs) }))
-    .filter((m) => m.left >= 0 && m.left <= 1)
-    .sort((a, b) => a.left - b.left);
-  // Marks closer than 3% of the clock share one label.
-  const groups: Array<{ left: number; right: number; texts: string[] }> = [];
-  for (const m of shown) {
-    const last = groups.at(-1);
-    const text = m.mark.kind === "deploy" ? `${m.mark.service} ${m.mark.title}`.trim() : formatChangeMarkLabel(m.mark);
-    if (last && m.left - last.right < 0.03) {
-      last.right = m.left;
-      last.texts.push(text);
-    } else {
-      groups.push({ left: m.left, right: m.left, texts: [text] });
+  range: WatchRange = "24h",
+): { groups: WatchMarkGroup[]; washes: boolean; count: number } {
+  const spanMs = toMs - fromMs;
+  const shown = marks.filter((m) => {
+    if (m.kind !== "deploy" && m.kind !== "flag") {
+      return false;
     }
-  }
-  const labels: Array<{ left: number; text: string; end: boolean }> = [];
-  let freeFrom = 0;
-  for (const g of groups) {
-    const text = g.texts.join(" · ");
-    const end = g.left > 0.7;
-    // About 0.6% of the clock a character, at 1280.
-    const width = text.length * 0.006;
-    const start = end ? g.right - width : g.left;
-    if (start < freeFrom) {
+    const t = Date.parse(m.ts);
+    return t >= fromMs && t <= toMs;
+  });
+  const clusters = range === "24h" ? clusterChangeMarks(shown, spanMs) : foldByTick(shown, watchTickStepMs(range));
+  const at = clusters.map((c) => clockFrac((c.fromMs + c.toMs) / 2, fromMs, toMs));
+  const groups = clusters.map((c, i): WatchMarkGroup => {
+    const members = newestFirst(c.members);
+    let label: WatchMarkGroup["label"] = null;
+    if (clusterHasLaneLabel(c, clusters, spanMs)) {
+      const end = at[i]! > 0.7;
+      const other = end ? i - 1 : i + 1;
+      const room = end ? at[i]! - (at[other] ?? 0) : (at[other] ?? 1) - at[i]!;
+      // Its own triangle's 8px, then clear of a triangle or a chip's half.
+      const reservePx = 8 + (clusters[other] ? (clusters[other]!.members.length > 1 ? 30 : 10) : 4);
+      label = { text: watchMarkText(members[0]!), end, room, reservePx };
+    }
+    return {
+      key: `${members[0]!.id}-${members.length}`,
+      members,
+      fromMs: c.fromMs,
+      toMs: c.toMs,
+      at: at[i]!,
+      from: clockFrac(c.fromMs, fromMs, toMs),
+      to: clockFrac(c.toMs, fromMs, toMs),
+      kinds: clusterKinds(c),
+      label,
+    };
+  });
+  return { groups, washes: range === "24h", count: shown.length };
+}
+
+/** 20f: past 24h, one chip for the marks between two ticks, the ticks `watchTicks` draws. */
+function foldByTick(marks: readonly ChangeMark[], stepMs: number): MarkCluster[] {
+  const sorted = [...marks].sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
+  const clusters: MarkCluster[] = [];
+  let slot = Number.NaN;
+  for (const mark of sorted) {
+    const t = Date.parse(mark.ts);
+    const at = Math.floor(t / stepMs);
+    const last = clusters.at(-1);
+    if (last && at === slot) {
+      last.members.push(mark);
+      last.toMs = t;
       continue;
     }
-    labels.push({ left: end ? g.right : g.left, text, end });
-    freeFrom = (end ? g.right : g.left + width) + 0.02;
+    slot = at;
+    clusters.push({ members: [mark], fromMs: t, toMs: t });
   }
+  return clusters;
+}
+
+/** "07:21 – 09:02", "10-17 00:30 – 22:20", or one time for one mark. */
+export function markSpanLabel(fromMs: number, toMs: number, nowMs: number): string {
+  if (fromMs === toMs) {
+    return clockAt(fromMs, nowMs);
+  }
+  return `${clockAt(fromMs, nowMs)} – ${mmdd(fromMs) === mmdd(toMs) ? hhmm(toMs) : clockAt(toMs, nowMs)}`;
+}
+
+/** 20c: a chip's hover, its span, the newest two names and how many more. */
+export function markPeek(group: Pick<WatchMarkGroup, "members" | "fromMs" | "toMs">, nowMs: number): { head: string; names: string[]; more: string } {
+  const n = group.members.length;
   return {
-    glyphs: shown.map((m) => ({ id: m.mark.id, kind: m.mark.kind, left: m.left })),
-    labels,
-    count: shown.length,
+    head: `${n} marks · ${markSpanLabel(group.fromMs, group.toMs, nowMs)}`,
+    names: group.members.slice(0, 2).map(watchMarkText),
+    more: n > 2 ? `+${n - 2} more — click opens the list` : "click opens the list",
   };
+}
+
+/** A lone triangle's hover: "api v0.9.3 · 10:41". */
+export function markHover(mark: ChangeMark, nowMs: number): string {
+  return `${watchMarkText(mark)} · ${clockAt(Date.parse(mark.ts), nowMs)}`;
+}
+
+/** A row of a chip's list (20c): "22:20:54" today, "10-17 22:20" before. */
+export function markRowTime(ms: number, nowMs: number): string {
+  return mmdd(ms) === mmdd(nowMs) ? hhmmss(ms) : `${mmdd(ms)} ${hhmm(ms)}`;
+}
+
+/** The Search window a chip's foot opens (20c): its stretch, with room either side. */
+export function marksHuntWindow(nowMs: number, fromMs: number, toMs: number): { fromMs: number; toMs: number } {
+  const pad = Math.max(15 * 60_000, (toMs - fromMs) / 2);
+  return { fromMs: fromMs - pad, toMs: Math.min(nowMs, toMs + pad) };
 }
 
 /** "10:41", or "10-19 10:41" when it was not today. */

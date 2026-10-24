@@ -24,7 +24,7 @@ import { OperatorSidebar } from "@/components/operator-sidebar";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
 import { loadSavedCounts } from "./saved-counts";
-import { monitorHuntRange, pushHuntRange, sourceOf, watchCounts, type WatchFilter, type WatchRange } from "./watch";
+import { marksHuntWindow, monitorHuntRange, pushHuntRange, sourceOf, watchCounts, type WatchFilter, type WatchRange } from "./watch";
 import { monitorQuery } from "../shared/push";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { StatusFooter } from "@/components/status-footer";
@@ -2524,6 +2524,23 @@ export function App() {
     setMonitorRail((prev) => ({ ...prev, [id]: monitor.id }));
   }
 
+  /** #212, 20c: a chip's stretch of marks, every service, in a new Search tab. */
+  function openMarksStretch(fromMs: number, toMs: number) {
+    const pick = marksHuntWindow(Date.now(), fromMs, toMs);
+    setSheetOpen(false);
+    setView("search");
+    addWorkspace(
+      {
+        ...blankSearchSnap(),
+        range: "custom",
+        from: toLocalInput(new Date(pick.fromMs)),
+        to: toLocalInput(new Date(pick.toMs)),
+        live: false,
+      },
+      true,
+    );
+  }
+
   function monitorHuntWindow(stretch?: Pick<MonitorStretch, "opened_at" | "resolved_at"> | null): Partial<WorkspaceSnap> {
     if (!stretch) {
       return {};
@@ -4040,6 +4057,7 @@ export function App() {
           marks={watchMarkList}
           onNew={openNewAlert}
           onOpen={openMonitor}
+          onOpenMarks={openMarksStretch}
         />
       ) : view === "links" ? (
         <LinksView onOpenSettings={() => setSettingsOpen(true)} />
