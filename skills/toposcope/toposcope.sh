@@ -5,7 +5,7 @@
 # Stops the instance when asked and never removes data.
 set -euo pipefail
 
-VERSION="0.7.1"
+VERSION="0.7.2"
 IMAGE="ghcr.io/toposcope/toposcope:$VERSION"
 # The release files, checked against its SHA256SUMS. Tests point this at a stand-in on loopback.
 RELEASE="${TOPOSCOPE_RELEASE_URL:-https://github.com/toposcope/toposcope/releases/download/v$VERSION}"
