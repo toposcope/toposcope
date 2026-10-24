@@ -116,12 +116,13 @@ function Plot({ params, body, muted }: { params: EmbedParams; body: SeriesBody; 
   const reading = (body.series as { reading?: string } | null | undefined)?.reading;
   return (
     <div className={`flex min-h-0 flex-1 flex-col ${muted ? "opacity-40" : ""}`}>
-      {params.chart === "top" ? (
+      {params.chart === "top" || params.chart === "donut" ? (
         <HbarWidget
+          view={params.chart === "donut" ? "donut" : "bars"}
           split="service"
           attr={body.key ?? params.query.get("key")}
           values={body.values ?? []}
-          total={(body.values ?? []).reduce((sum, v) => sum + v.n, 0)}
+          total={body.total ?? (body.values ?? []).reduce((sum, v) => sum + v.n, 0)}
           n={Number(params.query.get("n") ?? 10) || 10}
           pct={false}
           loading={false}

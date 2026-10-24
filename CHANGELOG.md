@@ -10,6 +10,8 @@ An embedded panel is painted by the app's own panels, so it looks on the other s
 
 A metric panel draws as lines, bars or stacked bars, as frames 25a–25d draw it: Line · Bars · Stacked in its head, a bar per bucket, a split's bars side by side or stacked, its hover saying each part and the total. Stacked is offered only where parts add up (a counter, or a histogram's count or sum, with a split) and says why where they do not. The pick is saved with the panel (a `b` or `k` flag on its `w=` token, `metricChart` in a saved search's JSON) and an embed tag takes `chart=bars` or `chart=stacked`. [#237](https://github.com/toposcope/toposcope/issues/237)
 
+A Top-N panel can draw as a donut, as frames 25h–25j draw it: Bars · Donut in its head, the same top N values and an **other** slice for the rest of the window, the window's total in the centre (a hovered slice's share), and its legend opening Filter / Exclude as a bar does. Switching to a donut makes the default N 5; a chosen N stays. Saved with the panel (`donut` on its `w=` token, `topView` in JSON); the embed takes `chart=donut`, and `/share/v1/top` now answers the window's `total`. [#239](https://github.com/toposcope/toposcope/issues/239)
+
 ## 0.7.0
 
 **Before you upgrade:** every Toposcope page now refuses to be framed (`frame-ancestors 'none'`): a page that put Toposcope in an iframe stops showing it, and should embed a share's panel instead. Nothing changes in ClickHouse; SQLite gains a `shares` table that 0.6.3 leaves unread on a rollback.

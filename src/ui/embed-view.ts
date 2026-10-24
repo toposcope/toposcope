@@ -6,7 +6,7 @@
 export type EmbedTheme = "dark" | "light";
 
 /** What the frame draws (#235). Every kind reads only what `/share/v1` allows. */
-export const embedCharts = ["line", "bars", "stacked", "stat", "top"] as const;
+export const embedCharts = ["line", "bars", "stacked", "stat", "top", "donut"] as const;
 export type EmbedChart = (typeof embedCharts)[number];
 
 export type EmbedParams = {
@@ -33,7 +33,7 @@ export function parseEmbedParams(search: string): EmbedParams {
   const chartRaw = url.get("chart") ?? "line";
   const chart: EmbedChart = (embedCharts as readonly string[]).includes(chartRaw) ? (chartRaw as EmbedChart) : "line";
   const query = new URLSearchParams();
-  for (const key of chart === "top" ? topKeys : seriesKeys) {
+  for (const key of chart === "top" || chart === "donut" ? topKeys : seriesKeys) {
     const v = url.get(key);
     if (v) query.set(key, v);
   }
@@ -43,7 +43,7 @@ export function parseEmbedParams(search: string): EmbedParams {
     query.set("metric", `${reading}:${metric}`);
   }
   const name =
-    chart === "top" ? `top ${url.get("n") || "10"} by ${url.get("key") ?? ""}` : metric ? metric.replace(/^[a-z0-9]+:/, "") : `logs · ${url.get("agg") || "count"}`;
+    chart === "top" || chart === "donut" ? `top ${url.get("n") || "10"} by ${url.get("key") ?? ""}` : metric ? metric.replace(/^[a-z0-9]+:/, "") : `logs · ${url.get("agg") || "count"}`;
   const what = [name, reading ?? (metric?.includes(":") ? metric.split(":")[0] : null), url.get("split") ? `split ${url.get("split")}` : null]
     .filter(Boolean)
     .join(" · ");
@@ -51,7 +51,7 @@ export function parseEmbedParams(search: string): EmbedParams {
   return {
     ticket,
     chart,
-    path: chart === "top" ? "/share/v1/top" : "/share/v1/series",
+    path: chart === "top" || chart === "donut" ? "/share/v1/top" : "/share/v1/series",
     query,
     title: url.get("title") || name,
     what,

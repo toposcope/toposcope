@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "
 import { Plus } from "lucide-react";
 import { ExtraPanel, type EmbedAction } from "@/components/extra-panel";
 import { embedTag, shareCovering } from "../share-cover";
+import { defaultHbarN } from "../../shared/widgets";
 import { useShares } from "../use-shares";
 import { formatRangeToken, partsFromMs } from "../../query/relative";
 import { HistogramChart } from "@/components/histogram-chart";
@@ -19,6 +20,7 @@ import {
 } from "@/head-query";
 import { bucketStepLabel, TimeseriesSpark } from "@/components/timeseries-spark";
 import { MetricChartPicker, metricStackable } from "@/components/metric-spark";
+import { TopViewPicker } from "@/components/hbar-widget";
 import { printUnit } from "../metric-unit";
 import { seriesPickFromWidget } from "../agg-picker";
 import { metricReading, metricView } from "../series-list";
@@ -626,6 +628,7 @@ export function WidgetCanvas({
       case "hbar":
         return (
           <HbarWidget
+            view={widget.topView === "donut" ? "donut" : "bars"}
             split={widget.split}
             attr={widget.attr}
             values={data.values ?? []}
@@ -1064,7 +1067,20 @@ export function WidgetCanvas({
                   identity={extraIdentity(widget, data)}
                   embed={embedFor(widget)}
                   headControls={
-                    widget.kind === "timeseries" && widget.metric && !locked ? (
+                    widget.kind === "hbar" && !locked ? (
+                      <TopViewPicker
+                        value={widget.topView === "donut" ? "donut" : "bars"}
+                        onChange={(next) =>
+                          onWidgets(
+                            patchWidget(widgets, widget.id, {
+                              topView: next === "donut" ? "donut" : undefined,
+                              // 25i: a donut reads best at five slices and other; a custom N stays.
+                              ...(next === "donut" && widget.n === defaultHbarN ? { n: 5 } : {}),
+                            }),
+                          )
+                        }
+                      />
+                    ) : widget.kind === "timeseries" && widget.metric && !locked ? (
                       <MetricChartPicker
                         value={widget.metricChart ?? "line"}
                         stackable={metricStackable(data.agg, widget.metricSplit ?? null)}

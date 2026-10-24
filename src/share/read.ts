@@ -258,8 +258,12 @@ export async function shareTopRoute(c: Context): Promise<Response> {
     return window;
   }
   try {
-    const values = await topValues({ from: window.from, to: window.to, q }, key, n);
-    return done(c, { from: window.from ?? null, to: window.to ?? null, key, values });
+    // The window's total too (#239), so a donut's `other` is the rest of the whole; budgeted as volume is.
+    const [values, volume] = await Promise.all([
+      topValues({ from: window.from, to: window.to, q }, key, n),
+      search({ from: window.from, to: window.to, q, split: "none", events: "0" }),
+    ]);
+    return done(c, { from: window.from ?? null, to: window.to ?? null, key, values, total: volume.total });
   } catch (err) {
     return readError(c, err) ?? Promise.reject(err);
   }
