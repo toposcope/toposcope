@@ -81,7 +81,7 @@ export function StatHead({
           label={view.reading ?? "p99"}
           title="How this histogram is read"
           value={view.reading ?? "p99"}
-          items={histogramReadings.map((reading) => ({ value: reading, label: reading }))}
+          items={histogramReadings.filter((reading) => reading !== "heatmap").map((reading) => ({ value: reading, label: reading }))}
           onChange={(next) => {
             const reading = parseHistogramReading(next);
             if (reading) {

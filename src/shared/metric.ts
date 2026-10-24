@@ -38,7 +38,8 @@ export function requireMetricName(raw: string | null | undefined): string {
 }
 
 /** How a histogram is read. One reading is drawn at a time. */
-export const histogramReadings = ["count", "sum", "avg", "p50", "p90", "p99"] as const;
+/** `heatmap` (#238) is every bucket on the clock, with the p99 as its line. */
+export const histogramReadings = ["count", "sum", "avg", "p50", "p90", "p99", "heatmap"] as const;
 export type HistogramReading = (typeof histogramReadings)[number];
 export const defaultHistogramReading: HistogramReading = "p99";
 

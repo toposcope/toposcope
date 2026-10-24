@@ -78,6 +78,8 @@ export type SearchAggResult = {
   /** A metric split by one label: the label, and one line per value (8 and `other`). */
   split?: string;
   splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null }>;
+  /** A histogram read as a heatmap (#238): bounds rising, and per bar one count per bound. */
+  heat?: { le: number[]; cells: Array<{ t: string; n: number[] }> };
 };
 
 export type FacetValue = { v: string; n: number };

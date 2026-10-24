@@ -1080,7 +1080,7 @@ export function WidgetCanvas({
                           )
                         }
                       />
-                    ) : widget.kind === "timeseries" && widget.metric && !locked ? (
+                    ) : widget.kind === "timeseries" && widget.metric && !widget.metric.startsWith("heatmap:") && !locked ? (
                       <MetricChartPicker
                         value={widget.metricChart ?? "line"}
                         stackable={metricStackable(data.agg, widget.metricSplit ?? null)}

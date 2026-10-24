@@ -204,6 +204,9 @@ export async function searchMetricSeries(
       ...withUnit(await readingUnit(histogram.base, histogram.reading)),
       ...withDescription(await histogramDescription(histogram.base)),
     };
+    if (histogram.reading === "heatmap") {
+      return heatmapSeries(opts, histogram.base, told);
+    }
     const q = readingQuantile(histogram.reading);
     if (q !== null) {
       return quantileSeries(opts, histogram.base, q, told);
@@ -444,6 +447,59 @@ async function quantileSeries(
     rows.map((row) => ({ bucket: row.bucket, v: bucketQuantile(q, bucketSums(row.les, row.ns)) })),
     bucketQuantile(q, bucketSums(statRows[0]?.les, statRows[0]?.ns)),
   );
+}
+
+/**
+ * A histogram as a heatmap (#238): per bar, its bucket counts summed by bound across every series
+ * that matches, as the percentile reads them; the bounds are the union over the window. Its line is
+ * the p99 of each bar, so the panel can draw it over the cells. A split is not offered.
+ */
+async function heatmapSeries(opts: SeriesOpts, name: string, told: Told): Promise<SearchAggResult> {
+  const p99 = await quantileSeries({ ...opts, split: undefined }, name, 0.99, told);
+  const { rolled, overlay } = seriesWindows(opts);
+  const clock = rolled ? "minute" : "ts";
+  const source = rolled
+    ? "metric_buckets_by_minute"
+    : "metric_buckets ARRAY JOIN arrayPushBack(le, inf) AS bound, n AS observed";
+  const bound = rolled ? "le" : "bound";
+  const observed = rolled ? "sum(n)" : "sum(observed)";
+  const rows = await clickhouseQuery<{ bucket: string; les: unknown; ns: unknown }>(
+    `
+    SELECT bucket, groupArray(upper) AS les, groupArray(c) AS ns
+    FROM (
+      SELECT
+        toStartOfInterval(${clock}, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
+        ${bound} AS upper,
+        ${observed} AS c
+      FROM ${source}
+      WHERE ${overlay.sql} AND name = {metric_name:String}
+      GROUP BY bucket, upper
+    )
+    GROUP BY bucket
+    ORDER BY bucket
+  `,
+    { ...overlay.params, metric_name: name },
+  );
+  return { ...p99, heat: heatCells(rows.map((row) => ({ t: toIsoTimestamp(String(row.bucket)), sums: bucketSums(row.les, row.ns) }))) };
+}
+
+/** One grid from bars whose bounds may differ: the union of bounds, each bar's counts placed on it. */
+export function heatCells(bars: Array<{ t: string; sums: { le: number[]; n: number[] } }>): {
+  le: number[];
+  cells: Array<{ t: string; n: number[] }>;
+} {
+  const le = [...new Set(bars.flatMap((bar) => bar.sums.le))].sort((a, b) => a - b);
+  const at = new Map(le.map((bound, i) => [bound, i]));
+  return {
+    le,
+    cells: bars.map((bar) => {
+      const n = new Array<number>(le.length).fill(0);
+      bar.sums.le.forEach((bound, i) => {
+        n[at.get(bound)!]! += bar.sums.n[i] ?? 0;
+      });
+      return { t: bar.t, n };
+    }),
+  };
 }
 
 /** A split percentile: each value's bucket counts summed by bound, the percentile read off each sum. */

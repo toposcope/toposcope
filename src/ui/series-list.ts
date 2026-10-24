@@ -55,6 +55,7 @@ export const readingMenu: ReadonlyArray<{ reading: HistogramReading; words: stri
       p50: "median",
       p90: "90th percentile",
       p99: "99th percentile",
+      heatmap: "every bucket on the clock",
     }[reading],
   }),
 );
@@ -210,6 +211,7 @@ export function readingWords(
       p50: `median of ${bar}`,
       p90: `90th percentile of ${bar}`,
       p99: `99th percentile of ${bar}`,
+      heatmap: `every bucket of ${bar}, with its p99`,
     }[reading ?? defaultHistogramReading];
     return `histogram · ${what}`;
   }
