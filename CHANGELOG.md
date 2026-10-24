@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+## 0.7.2
+
 After an upgrade, the footer's version popover says how it went for an hour, not a day, and keeps **Check now** on its Up to date line meanwhile; it had no button while the note showed, so a release out the next day could not be found by hand.
 
 Saved searches named with ` · ` group as named with a colon: three or more that start `archive · …` fold into an **archive** group, as `archive: …` did. Names written by agental use the middle dot, so its list never grouped.

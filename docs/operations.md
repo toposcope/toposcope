@@ -4,7 +4,7 @@ Toposcope is a single-node deployment: one app instance plus one ClickHouse. It 
 
 Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.7.1` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.7.2` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
@@ -333,7 +333,7 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 
 From 0.6.1, `./upgrade.sh rollback --yes` goes back to the last backup the script took (see [With upgrade.sh](#with-upgradesh)). By hand: to roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
 
-`0.3.14` is the first public pin. Pin `0.7.0` to roll back application code from `0.7.1`.
+`0.3.14` is the first public pin. Pin `0.7.1` to roll back application code from `0.7.2`.
 
 SQLite migrations are add-column. Extra columns on a downgrade are unused, not a wipe. 0.6.0 also adds tables (`monitor_stretches`, `monitor_calls`, `monitor_http` and `monitor_results`); 0.5.7 ignores them, and a push or HTTP(S) monitor's rule, which has no saved search, does not run there. Pinning 0.6.0 again picks them up where they were. TCP and certificate monitors add `monitor_net`; a release before them ignores it, and does not run them (Watch lists each as a search monitor with no search, and one that was open stays open until they run again).
 
