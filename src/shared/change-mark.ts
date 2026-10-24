@@ -3,7 +3,11 @@ import { flattenAttrs } from "./attrs";
 export const changeMarkKinds = ["deploy", "flag", "incident", "note"] as const;
 export type ChangeMarkKind = (typeof changeMarkKinds)[number];
 
-export const maxChangeMarks = 500;
+/**
+ * The most marks one window lists, the newest kept (#252). A lane counts every mark it is sent,
+ * so this bounds the payload well past a busy fleet's 30 days; it is not a page.
+ */
+export const maxChangeMarks = 10_000;
 export const maxChangeMarkTitle = 500;
 export const maxChangeMarkId = 64;
 const markIdRe = /^[A-Za-z0-9._:-]{1,64}$/;

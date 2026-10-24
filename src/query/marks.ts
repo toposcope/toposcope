@@ -159,7 +159,7 @@ export async function getChangeMarkById(id: string): Promise<ChangeMark | null> 
   return unlabeled.map(mapRow).find((mark) => mark.id === trimmed) ?? null;
 }
 
-/** Marks with from <= ts < to, oldest first; the cut names them inside its sides. */
+/** Marks with from <= ts < to, oldest first; the cut names them inside its sides. Past the cap the newest are kept. */
 export async function changeMarksBetween(
   fromIso: string,
   toIso: string,
@@ -171,7 +171,7 @@ export async function changeMarksBetween(
     WHERE tenant_id = 'default'
       AND ts >= parseDateTime64BestEffort({from:String})
       AND ts < parseDateTime64BestEffort({to:String})
-    ORDER BY ts
+    ORDER BY ts DESC
     LIMIT ${maxChangeMarks}
     `,
     { from: fromIso, to: toIso },
@@ -196,6 +196,8 @@ export async function searchChangeMarks(filters: {
     to: window.to,
   };
   const extra = extraWhere(filters, params);
+  // The newest of the window when it holds more than the cap; `keepLatestChangeMarkPerId` puts
+  // them back oldest first.
   const [rows, beforeRows, afterRows] = await Promise.all([
     clickhouseQuery<MarkRow>(
       `
@@ -205,7 +207,7 @@ export async function searchChangeMarks(filters: {
         AND ts >= parseDateTime64BestEffort({from:String})
         AND ts <= parseDateTime64BestEffort({to:String})
         ${extra}
-      ORDER BY ts
+      ORDER BY ts DESC
       LIMIT ${maxChangeMarks}
       `,
       params,
