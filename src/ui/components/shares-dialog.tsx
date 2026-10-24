@@ -310,9 +310,14 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
         </DialogHeader>
         <div className="flex flex-col border-t border-white/[0.08]">
           {shares.length === 0 ? (
-            <p className="m-0 py-4 text-[13px] text-muted-foreground">
-              No shares yet. A share lets an admin console or a dashboard show a scope of numbers without the password.
-            </p>
+            <div className="my-3 flex flex-col items-center gap-2.5 rounded-[6.4px] border border-dashed border-white/12 px-4 py-7 text-center">
+              <span className="text-[13px] font-medium">No shares yet</span>
+              <span className="text-[13px] leading-[1.5] text-muted-foreground">
+                Start from the chart you want to show: <span className="text-foreground">Share…</span> in a panel's copy menu, or{" "}
+                <span className="text-foreground">Share panels…</span> on a board.
+              </span>
+              <span className="text-[12px] text-muted-foreground/70">This list is where you see how each share is used, change it, or revoke it.</span>
+            </div>
           ) : null}
           {shares.map((share) => {
             const live = shareIsLive(share, now);
@@ -403,7 +408,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
               setMode("new");
             }}
           >
-            New share
+            {shares.length === 0 ? "New share by hand" : "New share"}
           </Button>
         </DialogFooter>
       </DialogContent>

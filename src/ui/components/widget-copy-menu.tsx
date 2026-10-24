@@ -6,13 +6,15 @@ type Props = {
   disabled?: boolean;
   onCopy: (format: WidgetExportFormat) => void;
   footer?: (close: () => void) => ReactNode;
+  header?: (close: () => void) => ReactNode;
 };
 
-export function WidgetCopyMenu({ disabled, onCopy, footer }: Props) {
+export function WidgetCopyMenu({ disabled, onCopy, footer, header }: Props) {
   return (
     <WidgetFormatMenu
       disabled={disabled}
       footer={footer}
+      header={header}
       title="Copy this panel to the clipboard"
       ariaLabel="Copy this panel to the clipboard"
       onPick={onCopy}

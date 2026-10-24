@@ -31,9 +31,10 @@ describe("frame origins", () => {
     expect(parseShareEmbed({ ticket_ttl: "2d" })).toHaveProperty("error");
   });
 
-  test("an embed is framed by its share's origins only; with none, by nobody", () => {
-    expect(embedFrameHeaders(["https://a.example.com"])["content-security-policy"]).toBe("frame-ancestors https://a.example.com");
-    expect(embedFrameHeaders([])["content-security-policy"]).toBe("frame-ancestors 'none'");
+  test("an embed is framed by its share's origins and by Toposcope itself; with none, by no other site", () => {
+    expect(embedFrameHeaders(["https://a.example.com"])["content-security-policy"]).toBe("frame-ancestors 'self' https://a.example.com");
+    // Toposcope's own Share dialog previews a panel (#236); no other site frames a JSON-only share.
+    expect(embedFrameHeaders([])["content-security-policy"]).toBe("frame-ancestors 'self'");
     expect(embedFrameHeaders([])["referrer-policy"]).toBe("no-referrer");
   });
 });

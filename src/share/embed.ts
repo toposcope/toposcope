@@ -125,10 +125,13 @@ export function ticketShareRow(
   return want.length === got.length && timingSafeEqual(want, got) ? row : null;
 }
 
-/** The frame rules for `/embed`: the share's own origins, or none at all. */
+/**
+ * The frame rules for `/embed`: the share's own origins, and Toposcope itself, whose Share dialog
+ * shows the panel as the other site will (#236).
+ */
 export function embedFrameHeaders(frameAncestors: readonly string[]): Record<string, string> {
   return {
-    "content-security-policy": `frame-ancestors ${frameAncestors.length > 0 ? frameAncestors.join(" ") : "'none'"}`,
+    "content-security-policy": `frame-ancestors 'self'${frameAncestors.length > 0 ? ` ${frameAncestors.join(" ")}` : ""}`,
     "referrer-policy": "no-referrer",
     "cache-control": "no-store",
   };

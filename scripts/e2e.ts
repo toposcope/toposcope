@@ -4526,8 +4526,18 @@ async function main(): Promise<void> {
     if (minted.status !== 200 || !ticket?.startsWith("tst1_")) {
       throw new Error(`the secret should mint a ticket, got ${minted.status}`);
     }
+    // The Share dialog's preview (#236): signed in, a short ticket that reads like any other.
+    const preview = await fetch(`${APP_URL}/api/shares/${name}/ticket`, { method: "POST", headers: auth });
+    const previewTicket = ((await preview.json()) as { ticket?: string }).ticket;
+    const previewRead = await read(`/share/v1/names?range=1h&preview=${marker}`, { authorization: `Bearer ${previewTicket}` });
+    if (preview.status !== 200 || previewRead.status !== 200) {
+      throw new Error(`a signed-in preview ticket should read its share, got ${preview.status} ${previewRead.status}`);
+    }
+    if ((await fetch(`${APP_URL}/api/shares/${name}/ticket`, { method: "POST", headers: { authorization: `Bearer ${secret}` } })).status !== 401) {
+      throw new Error("a share's secret must not mint a preview ticket under /api");
+    }
     const byTicket = { authorization: `Bearer ${ticket}` };
-    const again = await fetch(`${APP_URL}/share/v1/tickets`, { method: "POST", headers: byTicket });
+    const again =await fetch(`${APP_URL}/share/v1/tickets`, { method: "POST", headers: byTicket });
     if (again.status !== 403) {
       throw new Error(`a ticket must not mint a ticket, got ${again.status}`);
     }
@@ -4541,7 +4551,7 @@ async function main(): Promise<void> {
       throw new Error("a ticket must open nothing under /api");
     }
     const page = await fetch(`${APP_URL}/embed?ticket=${encodeURIComponent(ticket)}&metric=fleet_${marker}&range=1h`);
-    if (page.status !== 200 || page.headers.get("content-security-policy") !== "frame-ancestors https://admin.example.com" || page.headers.get("www-authenticate")) {
+    if (page.status !== 200 || page.headers.get("content-security-policy") !== "frame-ancestors 'self' https://admin.example.com" || page.headers.get("www-authenticate")) {
       throw new Error(`/embed should be framed by the share's origins only, without a sign-in: ${page.status} ${page.headers.get("content-security-policy")}`);
     }
     const loader = await fetch(`${APP_URL}/embed.js`);

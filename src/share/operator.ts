@@ -216,6 +216,24 @@ export async function putShareRoute(c: Context): Promise<Response> {
   return writeShare(c, parseShareName(c.req.param("name")), body);
 }
 
+/**
+ * `POST /api/shares/:name/ticket` — signed in: a five-minute ticket for the Share dialog's live
+ * preview (#236, 24d), so the panel shows through the share as the other site will see it.
+ */
+export async function previewTicketRoute(c: Context): Promise<Response> {
+  const name = parseShareName(c.req.param("name"));
+  const share = name ? shareByName(name) : null;
+  if (!share || share.revoked_at !== null || share.expires_at <= Date.now()) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const hash = shareSecretHash(share.id);
+  if (!hash) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const minted = mintTicket(share, hash, "5m");
+  return c.json({ ticket: minted.ticket, expires_at: Math.min(minted.expires_at, share.expires_at) });
+}
+
 /** `DELETE /api/shares/:name` — revoke now: its secret and every read made with it stop. */
 export async function revokeShareRoute(c: Context): Promise<Response> {
   const name = parseShareName(c.req.param("name"));
