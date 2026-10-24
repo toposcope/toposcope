@@ -11,7 +11,7 @@ import { showsNoLogRows } from "../shared/widgets";
 export const filterPast = 8;
 /** Past this many, groups start closed (16c). */
 export const closedPast = 20;
-/** A group needs this many names that share the words before a colon (16b). */
+/** A group needs this many names that share the words before a colon or ` · ` (16b). */
 export const groupAtLeast = 3;
 
 /** What a saved search is, as the kind column draws it: a bell, sliders, squares, or nothing. */
@@ -31,14 +31,18 @@ export function savedKind(item: SavedSearch, alerts: readonly AlertRule[]): Save
   return null;
 }
 
-/** The words before the first colon, when there are words on both sides of it. */
+/**
+ * The words before the first colon or middle dot (`archive · env · Disk`), whichever comes first,
+ * when there are words on both sides of it.
+ */
 export function namePrefix(name: string): { prefix: string; rest: string } | null {
-  const at = name.indexOf(":");
-  if (at < 0) {
+  const at = [name.indexOf(":"), name.indexOf(" · ")].filter((i) => i >= 0);
+  if (at.length === 0) {
     return null;
   }
-  const prefix = name.slice(0, at).trim();
-  const rest = name.slice(at + 1).trim();
+  const cut = Math.min(...at);
+  const prefix = name.slice(0, cut).trim();
+  const rest = name.slice(cut + (name[cut] === ":" ? 1 : 3)).trim();
   return prefix && rest ? { prefix, rest } : null;
 }
 
