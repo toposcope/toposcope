@@ -99,6 +99,8 @@ export type WidgetDef = {
   metricSplit?: string | null;
   /** How a metric panel draws (#237); none is lines. */
   metricChart?: MetricChart;
+  /** A Top-N drawn as a donut (#239): its top N and `other`; none is bars. */
+  topView?: "donut";
   /** More metrics of the panel's unit, merged onto its one axis (#169): three at most beside its own. Never with a split. */
   lines?: MetricLine[];
   /** A name for each line (#169): `"0"`–`"3"` for merged lines (`"0"` is the panel's own metric), a label value for a split's. */
@@ -398,7 +400,7 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
   const names = widget.kind === "timeseries" && metric ? normalizeLineNames(widget.names) : {};
   const title = widget.kind === "timeseries" ? normalizePanelText(widget.title, maxPanelTitle) : undefined;
   const note = widget.kind === "timeseries" ? normalizePanelText(widget.note, maxPanelNote) : undefined;
-  const { lines: _lines, names: _names, title: _title, note: _note, metricChart: _chart, ...rest } = widget;
+  const { lines: _lines, names: _names, title: _title, note: _note, metricChart: _chart, topView: _view, ...rest } = widget;
   return {
     ...rest,
     ...(lines.length > 0 ? { lines } : {}),
@@ -425,6 +427,7 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
     ...(widget.kind === "timeseries" && metric && widget.metricChart && widget.metricChart !== "line" && metricCharts.includes(widget.metricChart)
       ? { metricChart: widget.metricChart }
       : {}),
+    ...(widget.kind === "hbar" && widget.topView === "donut" ? { topView: "donut" as const } : {}),
   };
 }
 
@@ -1146,6 +1149,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
   let metricLabels: Record<string, string> = {};
   let metricSplit: string | null = null;
   let metricChart: MetricChart | undefined;
+  let topView: "donut" | undefined;
   let words: Pick<WidgetDef, "lines" | "names" | "title" | "note"> = {};
   const rest = parts.slice(6);
   if (kind === "timeseries") {
@@ -1182,6 +1186,10 @@ function parseWidgetToken(raw: string): WidgetDef | null {
       agg = normalizeWidgetAgg("stat", rest[0]);
     }
   } else if (kind === "hbar") {
+    if (rest[rest.length - 1] === "donut") {
+      topView = "donut";
+      rest.pop();
+    }
     if (rest[rest.length - 1] === "pct") {
       pct = true;
       rest.pop();
@@ -1217,6 +1225,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     metricLabels,
     metricSplit,
     metricChart,
+    topView,
     ...words,
   });
 }
@@ -1359,6 +1368,9 @@ function formatWidgetToken(widget: WidgetDef): string {
       if (widget.pct) {
         parts.push("pct");
       }
+      if (widget.topView === "donut") {
+        parts.push("donut");
+      }
       return parts.join(".");
     }
     default: {
@@ -1453,6 +1465,7 @@ function parseSavedWidget(raw: unknown): WidgetDef | null {
     metricLabels: savedMetricLabels(rec.metricLabels),
     metricSplit: typeof rec.metricSplit === "string" ? rec.metricSplit : null,
     metricChart: (metricCharts as readonly string[]).includes(rec.metricChart as string) ? (rec.metricChart as MetricChart) : undefined,
+    topView: rec.topView === "donut" ? "donut" : undefined,
     // #169: a script sets these through the saved search's JSON, as agental sets its panels.
     lines: Array.isArray(rec.lines) ? (rec.lines as MetricLine[]) : undefined,
     names: rec.names && typeof rec.names === "object" ? (rec.names as Record<string, string>) : undefined,

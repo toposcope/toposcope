@@ -43,3 +43,30 @@ describe("metric bars (#237)", () => {
     expect(parseWidgetsParam("a.t.0.0.12.4.level.stacked.b")[0]!.metricChart).toBeUndefined();
   });
 });
+
+describe("Top-N donut (#239)", () => {
+  test("slices go round in proportion, other grey, from the top", async () => {
+    const { donutSlices } = await import("./components/hbar-widget");
+    const slices = donutSlices(
+      [
+        { key: "a", n: 3 },
+        { key: "other", n: 1 },
+      ],
+      () => "#123456",
+    );
+    expect(slices.map((s) => [s.key, s.share, s.color])).toEqual([
+      ["a", 0.75, "#123456"],
+      ["other", 0.25, "#94a3b8"],
+    ]);
+    expect(slices[0]!.offset).toBe(-0);
+    expect(slices[1]!.offset).toBeCloseTo(-0.75 * 2 * Math.PI * 60);
+    expect(donutSlices([], () => "#000")).toEqual([]);
+  });
+
+  test("the view is saved with the panel", () => {
+    const raw = "a.t.0.0.12.4.level.stacked~b.h.0.4.6.4.host.n5.donut";
+    const widgets = parseWidgetsParam(raw);
+    expect(widgets[1]).toMatchObject({ kind: "hbar", split: "host", n: 5, topView: "donut" });
+    expect(formatWidgetsParam(widgets)).toBe(raw);
+  });
+});
