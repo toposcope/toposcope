@@ -202,8 +202,9 @@ describe("a histogram", () => {
     expect(metricReading("histogram", "1m")).toBe("p99");
   });
 
-  test("the menu offers count, sum, avg and three percentiles, each in words", () => {
-    expect(readingMenu.map((row) => row.reading)).toEqual(["count", "sum", "avg", "p50", "p90", "p99"]);
+  test("the menu offers count, sum, avg, three percentiles and the heatmap (#238), each in words", () => {
+    expect(readingMenu.map((row) => row.reading)).toEqual(["count", "sum", "avg", "p50", "p90", "p99", "heatmap"]);
+    expect(readingMenu.find((row) => row.reading === "heatmap")!.words).toBe("every bucket on the clock");
     expect(readingMenu.find((row) => row.reading === "p50")!.words).toBe("median");
     expect(readingMenu.find((row) => row.reading === "count")!.words).toBe("how many were observed");
   });
