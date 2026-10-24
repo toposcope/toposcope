@@ -8,6 +8,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 After an upgrade, the footer's version popover says how it went for an hour, not a day, and keeps **Check now** on its Up to date line meanwhile; it had no button while the note showed, so a release out the next day could not be found by hand.
 
+Saved searches named with ` · ` group as named with a colon: three or more that start `archive · …` fold into an **archive** group, as `archive: …` did. Names written by agental use the middle dot, so its list never grouped.
+
 ## 0.7.1
 
 An embedded panel is painted by the app's own panels, so it looks on the other site as it does in Toposcope, light or dark, and every chart the app gains embeds as soon as it ships. The embed tag gains `chart`: `line` (the default, as before), `stat` for one number, and `top` with `key` and `n` for a Top-N through the share's `/share/v1/top`. [#235](https://github.com/toposcope/toposcope/issues/235)

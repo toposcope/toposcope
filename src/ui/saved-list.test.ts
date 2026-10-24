@@ -35,6 +35,23 @@ describe("names that share the words before a colon", () => {
     expect(namePrefix("Checkout errors")).toBeNull();
     expect(namePrefix(": nothing before")).toBeNull();
     expect(namePrefix("nothing after:")).toBeNull();
+    expect(namePrefix("archive · azure-01 · Disk · removed 2026-10-23")).toEqual({ prefix: "archive", rest: "azure-01 · Disk · removed 2026-10-23" });
+    expect(namePrefix("Shapes · CPU")).toEqual({ prefix: "Shapes", rest: "CPU" });
+    expect(namePrefix("a·b")).toBeNull();
+  });
+
+  test("names joined by ` · ` group too: agental's own list (0.7.0)", () => {
+    const names = [
+      "Toposcope update", "archive · azure-01 · Disk · removed 2026-10-23", "archive · azure-01 · Memory · removed 2026-10-23",
+      "archive · azure-01 · vCPU · removed 2026-10-23", "Disk · ovh-01", "Memory · ovh-01", "archive · env · Disk · removed 2026-10-22",
+      "archive · env · Memory · removed 2026-10-22", "archive · env · vCPU · removed 2026-10-22", "Disk · all boxes",
+      "Shapes · disk", "Shapes · memory", "Shapes · CPU",
+    ];
+    const groups = groupSaved(names.map((n) => saved(n))).filter((e) => e.type === "group");
+    expect(groups.map((g) => [g.prefix, g.type === "group" ? g.rows.length : 0])).toEqual([
+      ["archive", 6],
+      ["Shapes", 3],
+    ]);
   });
 
   test("three or more fold into a group named by those words, and their rows drop them", () => {
