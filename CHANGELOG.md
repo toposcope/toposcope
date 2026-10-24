@@ -12,6 +12,8 @@ A metric panel draws as lines, bars or stacked bars, as frames 25a–25d draw it
 
 A Top-N panel can draw as a donut, as frames 25h–25j draw it: Bars · Donut in its head, the same top N values and an **other** slice for the rest of the window, the window's total in the centre (a hovered slice's share), and its legend opening Filter / Exclude as a bar does. Switching to a donut makes the default N 5; a chosen N stays. Saved with the panel (`donut` on its `w=` token, `topView` in JSON); the embed takes `chart=donut`, and `/share/v1/top` now answers the window's `total`. [#239](https://github.com/toposcope/toposcope/issues/239)
 
+A histogram metric can be read as a heatmap, as frames 25e–25g draw it: **Heatmap** among its readings (`metric=heatmap:http.server.duration`), a column per bar and a row per bucket bound, shaded by count on a log scale, so a second slow mode after a deploy shows as its own band where a p99 line would only rise. Its p99 can be drawn over it, and hovering a cell says the bar, the bound range, its count and its share of the bar. The series answer gains `heat` (the bounds, and per bar a count per bound, from the same buckets the percentiles read); it reads through a share like any reading of the metric. [#238](https://github.com/toposcope/toposcope/issues/238)
+
 ## 0.7.0
 
 **Before you upgrade:** every Toposcope page now refuses to be framed (`frame-ancestors 'none'`): a page that put Toposcope in an iframe stops showing it, and should embed a share's panel instead. Nothing changes in ClickHouse; SQLite gains a `shares` table that 0.6.3 leaves unread on a rollback.

@@ -1384,6 +1384,20 @@ async function main(): Promise<void> {
       throw new Error(`expected ${metric} to read ${want} as ${reading}, got ${JSON.stringify(agg)}`);
     }
   }
+  // A heatmap (#238): every bucket on the clock, with the p99 as its line and stat.
+  const heatRes = await fetch(
+    `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", events: "0", metric: `heatmap:${otlpHistogram}` }).toString()}`,
+    { headers: { authorization: basicAuth() } },
+  );
+  const heatAgg = ((await heatRes.json()) as { agg?: { stat: number | null; reading?: string; heat?: { le: Array<number | null>; cells: Array<{ n: number[] }> } } }).agg;
+  if (
+    heatAgg?.reading !== "heatmap" ||
+    Math.abs((heatAgg.stat ?? Number.NaN) - 380) > 1e-6 ||
+    JSON.stringify(heatAgg.heat?.le.slice(0, 3)) !== "[100,200,400]" ||
+    (heatAgg.heat?.cells.flatMap((c) => c.n).reduce((a, b) => a + b, 0) ?? 0) !== 100
+  ) {
+    throw new Error(`a histogram read as a heatmap should carry its bounds and every count, got ${JSON.stringify(heatAgg)}`);
+  }
   const otlpNamesRes = await fetch(
     `${APP_URL}/api/metric-names?${new URLSearchParams({ range: "15m", find: `h${otlpMetricRun}` }).toString()}`,
     { headers: { authorization: basicAuth() } },

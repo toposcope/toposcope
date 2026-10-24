@@ -30,6 +30,8 @@ export type SearchAggResult = {
   /** A metric split by one label (#104): the label, and one line per value (8 and `other`). */
   split?: string;
   splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null }>;
+  /** A histogram read as a heatmap (#238): its bounds, rising, and per bar one count per bound (the last above them all). */
+  heat?: { le: number[]; cells: Array<{ t: string; n: number[] }> };
 };
 
 export class InvalidAggError extends Error {

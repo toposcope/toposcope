@@ -129,7 +129,24 @@ function clock(iso: string, seconds: boolean): string {
  * A metric panel's plot (#104): one line, or one per value of a split; its peak and 0 on the
  * axis with the unit; what it reads now; a hover that says each line's value.
  */
-export function MetricSpark({
+type SparkProps = {
+  times: string[];
+  result: SearchAggResult | null;
+  readingWord: string;
+  kindWord: string;
+  name: string;
+  window: string;
+  live: boolean;
+  namedLines?: boolean;
+  chart?: "line" | "bars" | "stacked";
+};
+
+/** A metric panel's plot: a histogram read as a heatmap (#238) paints its cells, anything else its lines or bars. */
+export function MetricSpark(props: SparkProps) {
+  return props.result?.heat ? <HeatSpark result={props.result} readingWord={props.readingWord} /> : <LineSpark {...props} />;
+}
+
+function LineSpark({
   times,
   result,
   readingWord,
@@ -471,4 +488,119 @@ export function metricStackable(result: { kind?: string; reading?: string } | nu
     return "Stacking adds parts up. An average's or a percentile's parts do not add up to anything, so this draws as lines or bars side by side.";
   }
   return split ? true : "Stacked needs a split: one part per value of a label.";
+}
+
+/** Where a value sits on a heatmap's rows, as a fraction from the bottom: inside the first bound at or above it. */
+export function heatRowFraction(le: readonly number[], v: number): number {
+  const rows = le.length;
+  const j = le.findIndex((bound) => v <= bound);
+  const row = j < 0 ? rows - 1 : j;
+  const lower = row === 0 ? 0 : le[row - 1]!;
+  const upper = Number.isFinite(le[row]!) ? le[row]! : lower * 2 || 1;
+  const within = upper > lower ? Math.min(1, Math.max(0, (v - lower) / (upper - lower))) : 0.5;
+  return (row + within) / rows;
+}
+
+function boundWord(b: number, unit: string | undefined): string {
+  return Number.isFinite(b) ? withUnit(formatAggStat(b), unit) : "above";
+}
+
+/**
+ * A histogram metric as a heatmap (#238, 25e, 25f): a column per bar, a row per bucket bound, the
+ * shade its count on a log scale; its p99 drawn over it; hover a cell for its bar, range and count.
+ */
+function HeatSpark({ result, readingWord }: { result: SearchAggResult; readingWord: string }) {
+  const theme = usePlotTheme();
+  const heat = result.heat!;
+  const unit = result.unit;
+  const [p99On, setP99On] = useState(true);
+  const [hover, setHover] = useState<{ i: number; j: number } | null>(null);
+  const cols = heat.cells.length;
+  const rows = heat.le.length;
+  const max = Math.max(1, ...heat.cells.flatMap((c) => c.n));
+  const hue = theme.name === "light" ? "37,99,235" : "56,189,248";
+  const shade = (c: number) => (c <= 0 ? 0.04 : 0.08 + 0.92 * (Math.log1p(c) / Math.log1p(max)));
+  const times = heat.cells.map((c) => c.t);
+  const p99 = alignAggBuckets(times, result.buckets);
+  const p99Points = p99
+    .map((v, i) => (v === null ? null : `${(((i + 0.5) / Math.max(1, cols)) * 100).toFixed(2)},${(100 - heatRowFraction(heat.le, v) * 100).toFixed(2)}`))
+    .filter((p): p is string => p !== null)
+    .join(" ");
+  const finiteLe = heat.le.filter((b) => Number.isFinite(b));
+  const cell = hover ? heat.cells[hover.i] : null;
+  const barTotal = cell ? cell.n.reduce((a, b) => a + b, 0) : 0;
+  const step = cols > 1 ? Date.parse(times[1]!) - Date.parse(times[0]!) : 60_000;
+  const clock = (iso: string) => iso.slice(11, step < 60_000 ? 19 : 16);
+
+  function onMove(e: PointerEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (cols === 0 || rows === 0 || rect.width <= 0) return;
+    const i = Math.min(cols - 1, Math.max(0, Math.floor(((e.clientX - rect.left) / rect.width) * cols)));
+    const j = Math.min(rows - 1, Math.max(0, rows - 1 - Math.floor(((e.clientY - rect.top) / rect.height) * rows)));
+    setHover({ i, j });
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 pb-1.5">
+      <div className="flex items-center gap-3 pl-12">
+        <span className="font-mono text-[10.5px] text-muted-foreground">{readingWord} · histogram · log shade</span>
+        <label className="flex items-center gap-1 text-[10.5px] text-muted-foreground">
+          <input type="checkbox" checked={p99On} onChange={(e) => setP99On(e.target.checked)} className="accent-[var(--color-plate)]" />
+          p99 over it
+        </label>
+      </div>
+      <div className="relative mt-1 flex min-h-0 flex-1">
+        <div className="flex w-12 shrink-0 flex-col justify-between pr-1.5 text-right font-mono text-[10px] leading-none whitespace-nowrap text-muted-foreground">
+          <span>{finiteLe.length ? `>${boundWord(finiteLe[finiteLe.length - 1]!, unit)}` : ""}</span>
+          <span>{finiteLe.length > 2 ? boundWord(finiteLe[Math.floor(finiteLe.length / 2)]!, unit) : ""}</span>
+          <span>{finiteLe.length ? boundWord(finiteLe[0]!, unit) : ""}</span>
+        </div>
+        <div className="relative min-w-0 flex-1" onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+          {cols === 0 ? (
+            <span className="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-[11.5px] text-amber-400">No buckets in this window.</span>
+          ) : (
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 block h-full w-full" aria-hidden>
+              {heat.cells.map((c, i) =>
+                c.n.map((count, j) => (
+                  <rect
+                    key={`${i}-${j}`}
+                    x={(i / cols) * 100}
+                    y={((rows - 1 - j) / rows) * 100}
+                    width={100 / cols - 0.15}
+                    height={100 / rows - 0.3}
+                    fill={`rgba(${hue},${shade(count).toFixed(3)})`}
+                    stroke={hover && hover.i === i && hover.j === j ? "var(--foreground)" : undefined}
+                    strokeWidth={0.4}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )),
+              )}
+              {p99On && p99Points ? (
+                <polyline points={p99Points} fill="none" stroke="#fbbf24" strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+              ) : null}
+            </svg>
+          )}
+          {cell && hover ? (
+            <div
+              role="status"
+              className="pointer-events-none absolute top-[6%] z-10 flex flex-col gap-0.5 rounded-[6.4px] border border-[var(--plot-axis)] bg-[var(--plot-pop)] px-2 py-1.5 font-mono text-[11px] leading-[17px] whitespace-nowrap shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
+              style={hover.i / cols > 0.55 ? { right: `calc(${100 - (hover.i / cols) * 100}% + 14px)` } : { left: `calc(${((hover.i + 1) / cols) * 100}% + 14px)` }}
+            >
+              <span className="text-muted-foreground">
+                {clock(cell.t)}–{clock(new Date(Date.parse(cell.t) + step).toISOString())}
+              </span>
+              <span>
+                {hover.j === 0 ? "0" : boundWord(heat.le[hover.j - 1]!, unit)} – {boundWord(heat.le[hover.j]!, unit)} ·{" "}
+                {formatAggStat(cell.n[hover.j] ?? 0)}
+              </span>
+              <span className="text-muted-foreground">
+                {barTotal > 0 ? `${Math.round(((cell.n[hover.j] ?? 0) / barTotal) * 100)}% of the bar` : "nothing in this bar"}
+                {p99[hover.i] !== null && p99[hover.i] !== undefined ? ` · p99 ${withUnit(formatAggStat(p99[hover.i]!), unit)}` : ""}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }
