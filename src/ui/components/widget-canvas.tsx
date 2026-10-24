@@ -18,6 +18,7 @@ import {
   usedCanvasSeriesValues,
 } from "@/head-query";
 import { bucketStepLabel, TimeseriesSpark } from "@/components/timeseries-spark";
+import { MetricChartPicker, metricStackable } from "@/components/metric-spark";
 import { printUnit } from "../metric-unit";
 import { seriesPickFromWidget } from "../agg-picker";
 import { metricReading, metricView } from "../series-list";
@@ -554,6 +555,12 @@ export function WidgetCanvas({
         const note = lines ? panelNote(widget, lines) : null;
         const spark = (
           <TimeseriesSpark
+            // A stack only where parts add up (#237): a saved Stacked on a gauge paints as bars.
+            metricChart={
+              widget.metricChart === "stacked" && metricStackable(data.agg, widget.metricSplit ?? null) !== true
+                ? "bars"
+                : (widget.metricChart ?? "line")
+            }
             buckets={data.histogram}
             split={widget.split}
             agg={widget.agg}
@@ -1056,6 +1063,15 @@ export function WidgetCanvas({
                   lockChrome={locked}
                   identity={extraIdentity(widget, data)}
                   embed={embedFor(widget)}
+                  headControls={
+                    widget.kind === "timeseries" && widget.metric && !locked ? (
+                      <MetricChartPicker
+                        value={widget.metricChart ?? "line"}
+                        stackable={metricStackable(data.agg, widget.metricSplit ?? null)}
+                        onChange={(next) => onWidgets(patchWidget(widgets, widget.id, { metricChart: next }))}
+                      />
+                    ) : null
+                  }
                   pct={widget.pct}
                   onPct={
                     widget.kind === "hbar"

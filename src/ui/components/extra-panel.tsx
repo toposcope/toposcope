@@ -38,6 +38,8 @@ type Props = {
   onMovePointerDown: (e: PointerEvent) => void;
   /** Copy embed on a metric panel (#228, 23k): the share that covers it, or why none does. */
   embed?: EmbedAction | null;
+  /** Controls a panel kind puts in its head, before the actions: a metric panel's chart (#237, 25a). */
+  headControls?: ReactNode;
   children: ReactNode;
 };
 
@@ -224,6 +226,7 @@ export function ExtraPanel({
   onExport,
   onMovePointerDown,
   embed,
+  headControls,
   children,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -297,7 +300,8 @@ export function ExtraPanel({
               )}
             </div>
             <span className="min-w-0 flex-1" />
-            <div className="flex shrink-0 items-center">
+            <div className="flex shrink-0 items-center gap-1">
+              {headControls}
               {collapsed ? (
                 <OverflowMenus
                   atCap={atCap}

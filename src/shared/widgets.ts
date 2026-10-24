@@ -69,6 +69,9 @@ export function extraOverflowAfterPick(
 export const pinnedHistogramId = "a";
 
 export const widgetKinds = ["timeseries", "stat", "hbar"] as const;
+/** How a metric panel draws (#237, frames 25a–25d): lines, a bar per bucket, or a split's bars stacked. */
+export const metricCharts = ["line", "bars", "stacked"] as const;
+export type MetricChart = (typeof metricCharts)[number];
 export type WidgetKind = (typeof widgetKinds)[number];
 
 export type WidgetDef = {
@@ -94,6 +97,8 @@ export type WidgetDef = {
   metricLabels: Record<string, string>;
   /** A metric timeseries split by one of its labels (#104): one line per value. */
   metricSplit?: string | null;
+  /** How a metric panel draws (#237); none is lines. */
+  metricChart?: MetricChart;
   /** More metrics of the panel's unit, merged onto its one axis (#169): three at most beside its own. Never with a split. */
   lines?: MetricLine[];
   /** A name for each line (#169): `"0"`–`"3"` for merged lines (`"0"` is the panel's own metric), a label value for a split's. */
@@ -393,7 +398,7 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
   const names = widget.kind === "timeseries" && metric ? normalizeLineNames(widget.names) : {};
   const title = widget.kind === "timeseries" ? normalizePanelText(widget.title, maxPanelTitle) : undefined;
   const note = widget.kind === "timeseries" ? normalizePanelText(widget.note, maxPanelNote) : undefined;
-  const { lines: _lines, names: _names, title: _title, note: _note, ...rest } = widget;
+  const { lines: _lines, names: _names, title: _title, note: _note, metricChart: _chart, ...rest } = widget;
   return {
     ...rest,
     ...(lines.length > 0 ? { lines } : {}),
@@ -417,6 +422,9 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
     metricLabels,
     // The pinned plot splits only a metric it draws by Replace (13a); an extra panel always draws its own.
     metricSplit,
+    ...(widget.kind === "timeseries" && metric && widget.metricChart && widget.metricChart !== "line" && metricCharts.includes(widget.metricChart)
+      ? { metricChart: widget.metricChart }
+      : {}),
   };
 }
 
@@ -1137,6 +1145,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
   let metric: string | null = null;
   let metricLabels: Record<string, string> = {};
   let metricSplit: string | null = null;
+  let metricChart: MetricChart | undefined;
   let words: Pick<WidgetDef, "lines" | "names" | "title" | "note"> = {};
   const rest = parts.slice(6);
   if (kind === "timeseries") {
@@ -1164,6 +1173,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     const flags = rest[0] ?? "";
     replaceY = flags.includes("y");
     logScale = flags.includes("z");
+    metricChart = flags.includes("k") ? "stacked" : flags.includes("b") ? "bars" : undefined;
   } else if (kind === "stat") {
     const source = consumeMetricSource(rest);
     metric = source.metric;
@@ -1206,12 +1216,14 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     metric,
     metricLabels,
     metricSplit,
+    metricChart,
     ...words,
   });
 }
 
+/** `y` replace-Y, `z` log scale, and a metric panel's `b` bars or `k` stacked (#237). */
 function isFlagToken(part: string | undefined): boolean {
-  return part === "y" || part === "z" || part === "yz";
+  return Boolean(part && /^(?=[yzbk]+$)y?z?[bk]?$/.test(part));
 }
 
 function consumeMetricSource(rest: string[]): {
@@ -1284,7 +1296,9 @@ function formatWidgetToken(widget: WidgetDef): string {
   const geo = `${widget.id}.${kindToken(widget.kind)}.${widget.x}.${widget.y}.${widget.w}.${widget.h}`;
   switch (widget.kind) {
     case "timeseries": {
-      const flags = `${widget.replaceY ? "y" : ""}${widget.logScale ? "z" : ""}`;
+      const flags = `${widget.replaceY ? "y" : ""}${widget.logScale ? "z" : ""}${
+        widget.metricChart === "stacked" ? "k" : widget.metricChart === "bars" ? "b" : ""
+      }`;
       const parts = [geo, widget.split, widget.chart];
       if (widget.metric) {
         parts.push(`m:${widget.metric}`);
@@ -1438,6 +1452,7 @@ function parseSavedWidget(raw: unknown): WidgetDef | null {
     metric: typeof rec.metric === "string" || rec.metric === null ? rec.metric : null,
     metricLabels: savedMetricLabels(rec.metricLabels),
     metricSplit: typeof rec.metricSplit === "string" ? rec.metricSplit : null,
+    metricChart: (metricCharts as readonly string[]).includes(rec.metricChart as string) ? (rec.metricChart as MetricChart) : undefined,
     // #169: a script sets these through the saved search's JSON, as agental sets its panels.
     lines: Array.isArray(rec.lines) ? (rec.lines as MetricLine[]) : undefined,
     names: rec.names && typeof rec.names === "object" ? (rec.names as Record<string, string>) : undefined,

@@ -43,6 +43,8 @@ type Props = {
   editor?: ReactNode;
   /** The panel's lines were given names (#169): a legend says them, not the line ends (17b). */
   namedLines?: boolean;
+  /** How a metric panel draws (#237). */
+  metricChart?: "line" | "bars" | "stacked";
 };
 
 /** The bar width of a card's series, as the plot would label it. Empty when there are not two bars to tell. */
@@ -71,6 +73,7 @@ export function TimeseriesSpark({
   updated = null,
   editor = null,
   namedLines = false,
+  metricChart = "line",
 }: Props) {
   const numeric = Boolean(agg || metric);
   const refused = aggResult?.source === "refused";
@@ -123,6 +126,7 @@ export function TimeseriesSpark({
             window={catalog.window}
             live={live}
             namedLines={namedLines}
+            chart={metricChart}
           />
         ) : numeric ? (
           <div className="relative min-h-0 flex-1">

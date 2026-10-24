@@ -6,7 +6,7 @@
 export type EmbedTheme = "dark" | "light";
 
 /** What the frame draws (#235). Every kind reads only what `/share/v1` allows. */
-export const embedCharts = ["line", "stat", "top"] as const;
+export const embedCharts = ["line", "bars", "stacked", "stat", "top"] as const;
 export type EmbedChart = (typeof embedCharts)[number];
 
 export type EmbedParams = {
