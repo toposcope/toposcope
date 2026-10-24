@@ -181,6 +181,16 @@ describe("Check now (#219)", () => {
     expect(buttons(html)).toHaveLength(1);
   });
 
+  test("under an upgrade's done too (22i)", () => {
+    const done = reply({
+      running: "0.6.1",
+      upgrader: { enabled: true, requested: null, log: [], status: { state: "done", to: "0.6.1", from: "0.6.0", started_at: "2026-10-21T09:59:37Z", finished_at: "2026-10-21T10:00:18Z", backup: null, message: null } },
+    });
+    const html = drawWith(done);
+    expect(text(html)).toContain("Upgraded from 0.6.0");
+    expect(buttons(html)).toHaveLength(1);
+  });
+
   test("no button without a handler, as the footer gives none while the check is off", () => {
     expect(buttons(draw(reply({})))).toHaveLength(0);
     expect(buttons(draw(reply({ check: "off", checked_at: null })))).toHaveLength(0);
@@ -241,8 +251,9 @@ describe("upgrade from here (#220)", () => {
     const t = text(drawUp(done));
     expect(t).toContain("Upgraded from 0.6.0 · took 41s · backup in backups/20261021T095940Z-0.6.0");
     expect(t).toContain("./upgrade.sh rollback --yes");
-    // Said for a day, then the popover is today's again.
-    expect(upgradeView(done, now + 25 * 3600_000)).toBeNull();
+    // Said for the hour it happened, then the popover is today's again.
+    expect(upgradeView(done, now + 50 * 60_000)).toBe("done");
+    expect(upgradeView(done, now + 61 * 60_000)).toBeNull();
   });
 
   test("failed and back on the old version: why, the log's tail, Try again (22j)", () => {

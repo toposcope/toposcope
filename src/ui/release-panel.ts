@@ -131,8 +131,8 @@ export function agoLabel(iso: string | null, now: number): string {
   return `on ${dayLabel(iso)}`;
 }
 
-/** How long an upgrade's "done" is said after the restart (22i). */
-const doneShownMs = 24 * 60 * 60_000;
+/** How long an upgrade's "done" is said after the restart (22i): the hour it happened, not the next day. */
+const doneShownMs = 60 * 60_000;
 
 /**
  * Which of the upgrade-from-here states the popover is in (#220): an upgrade asked for or running

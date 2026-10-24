@@ -364,6 +364,28 @@ function CheckNow({ checking, onCheck }: { checking: boolean; onCheck?: () => vo
   );
 }
 
+/** Up to date, checking, or not checked yet, with Check now (22a, 22b); also under an upgrade's done (22i). */
+function StatusLine({ reply, now, checking, onCheck }: { reply: VersionReply; now: number; checking: boolean; onCheck?: () => void }) {
+  return (
+    <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
+      {checking ? (
+        <>
+          <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+          <span className="min-w-0 flex-1">Checking GitHub for releases…</span>
+        </>
+      ) : reply.checked_at ? (
+        <>
+          <Check className="size-3.5 text-muted-foreground" aria-hidden="true" />
+          <span className="min-w-0 flex-1">Up to date · checked {agoLabel(reply.checked_at, now)}</span>
+        </>
+      ) : (
+        <span className="min-w-0 flex-1">Not checked yet: Toposcope looks a few minutes after it starts.</span>
+      )}
+      <CheckNow checking={checking} onCheck={onCheck} />
+    </div>
+  );
+}
+
 type PanelProps = {
   reply: VersionReply;
   now: number;
@@ -449,34 +471,14 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
               Going back: <code className="font-mono">./upgrade.sh rollback --yes</code> on the host restores that backup.
             </p>
           ) : null}
-          {reply.checked_at ? (
-            <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
-              <Check className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span className="min-w-0 flex-1">Up to date · checked {agoLabel(reply.checked_at, now)}</span>
-            </div>
-          ) : null}
+          <StatusLine reply={reply} now={now} checking={checking} onCheck={onCheck} />
         </div>
       );
     }
     return (
       <div className="flex flex-col gap-2.5">
         <Header title={`Toposcope ${running}`} link={<External href={tagUrl}>Release notes</External>} />
-        <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
-          {checking ? (
-            <>
-              <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
-              <span className="min-w-0 flex-1">Checking GitHub for releases…</span>
-            </>
-          ) : reply.checked_at ? (
-            <>
-              <Check className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span className="min-w-0 flex-1">Up to date · checked {agoLabel(reply.checked_at, now)}</span>
-            </>
-          ) : (
-            <span className="min-w-0 flex-1">Not checked yet: Toposcope looks a few minutes after it starts.</span>
-          )}
-          <CheckNow checking={checking} onCheck={onCheck} />
-        </div>
+        <StatusLine reply={reply} now={now} checking={checking} onCheck={onCheck} />
         <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
           Toposcope asks GitHub once a day whether a newer release is out, and sends nothing about this instance.{" "}
           <code className="font-mono text-zinc-300">TOPOSCOPE_UPDATE_CHECK=off</code> in <code className="font-mono">.env</code> stops it.
