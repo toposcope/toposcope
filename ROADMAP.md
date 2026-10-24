@@ -49,9 +49,10 @@ These need a drawing or an explicit choice before they are work:
 - CSV / table export matching promoted columns
 - Bound the syslog UDP queue and expose dropped-event accounting
 - `ee/` (the root `LICENSE` already reserves it)
+- A map, by a country or region the collector adds to each row (a local GeoIP lookup in Vector, as the enrich recipes do); Toposcope never looks up an address itself
 
 ## Will not
 
 Do not send these as PRs expecting a merge. They are a different product.
 
-PromQL, Grafana, pie / heatmap, Helm, k8s, S3 / cold volume, SSO, users / roles, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, an upgrade button or upgrading on its own.
+PromQL, Grafana, Helm, k8s, S3 / cold volume, SSO, users / roles, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, an upgrade button or upgrading on its own.
