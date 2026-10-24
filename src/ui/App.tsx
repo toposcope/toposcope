@@ -4520,6 +4520,7 @@ export function App() {
               <SeriesCatalogContext.Provider value={seriesCatalog}>
                 <HeldContext.Provider value={heldV}>
                 <WidgetCanvas
+                  query={q}
                   widgets={widgets}
                   logs={logsOn}
                   onLogs={(on) => {

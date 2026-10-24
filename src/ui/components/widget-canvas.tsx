@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Plus } from "lucide-react";
-import { ExtraPanel, type EmbedAction } from "@/components/extra-panel";
-import { embedTag, shareCovering } from "../share-cover";
+import { ExtraPanel } from "@/components/extra-panel";
+import { SharePanelsDialog } from "@/components/share-panels-dialog";
 import { defaultHbarN } from "../../shared/widgets";
-import { useShares } from "../use-shares";
-import { formatRangeToken, partsFromMs } from "../../query/relative";
+import { panelRange } from "../share-from-panel";
 import { HistogramChart } from "@/components/histogram-chart";
 import {
   HistogramMarksChip,
@@ -103,6 +102,8 @@ type Props = {
   attrKeys: string[];
   skipAttrKeys?: string[];
   spanMs: number;
+  /** The hunt's `q`: what a log panel shares (#236). */
+  query?: string;
   interval: HistogramIntervalId | null;
   onInterval: (next: HistogramIntervalId | null) => void;
   onWindow: (fromIso: string, toIso: string) => void;
@@ -199,6 +200,7 @@ export function WidgetCanvas({
   attrKeys,
   skipAttrKeys = [],
   spanMs,
+  query,
   interval,
   onInterval,
   onWindow,
@@ -218,7 +220,8 @@ export function WidgetCanvas({
   const ghostRef = useRef<Cell | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [compareLines, setCompareLines] = useState(1);
-  const shares = useShares();
+  // Share… (#236): the panels ticked when the dialog opens; null while it is shut.
+  const [sharing, setSharing] = useState<string[] | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [ghost, setGhost] = useState<Cell | null>(null);
   const [lift, setLift] = useState<{ dx: number; dy: number } | null>(null);
@@ -647,34 +650,6 @@ export function WidgetCanvas({
     }
   }
 
-  /** Copy embed (#228, 23k) for a metric panel: the share that covers it, or why none does. */
-  function embedFor(widget: WidgetDef): EmbedAction | null {
-    if (widget.kind !== "timeseries" || !widget.metric) {
-      return null;
-    }
-    const panel = { metric: widget.metric, labels: widget.metricLabels, split: widget.metricSplit ?? null };
-    const cover = shareCovering(shares, panel);
-    if (!cover) {
-      return null;
-    }
-    if ("why" in cover) {
-      return cover;
-    }
-    if ((widget.lines ?? []).length > 0) {
-      return { why: "an embed draws one metric; this panel merges several" };
-    }
-    const { count, unit } = partsFromMs(spanMs);
-    const tag = embedTag(window.location.origin, panel, { range: formatRangeToken(count, unit), title: widget.title ?? undefined });
-    return {
-      share: cover.share.name,
-      copy: () =>
-        void navigator.clipboard.writeText(tag).then(
-          () => toast.success(`Embed copied · ${cover.share.name} · mint a ticket for TICKET`),
-          () => toast.error("Copy failed"),
-        ),
-    };
-  }
-
   function extraIdentity(widget: WidgetDef, data: SeriesData): ReactNode {
     switch (widget.kind) {
       case "stat":
@@ -857,6 +832,16 @@ export function WidgetCanvas({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* 24g: share any of these panels at once. */}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-[26px] border-plate/50 bg-plate/10 px-2.5 text-[11.5px]"
+          onClick={() => setSharing(widgets.filter((w) => w.kind !== "timeseries" || w.metric || w.id !== "a").map((w) => w.id))}
+        >
+          Share panels…
+        </Button>
         <div className="flex h-[26px] items-center rounded-md border border-input p-0.5">
           <button
             type="button"
@@ -1065,7 +1050,7 @@ export function WidgetCanvas({
                   highlight={isFresh}
                   lockChrome={locked}
                   identity={extraIdentity(widget, data)}
-                  embed={embedFor(widget)}
+                  onShare={locked ? undefined : () => setSharing([widget.id])}
                   headControls={
                     widget.kind === "hbar" && !locked ? (
                       <TopViewPicker
@@ -1142,6 +1127,16 @@ export function WidgetCanvas({
           );
         })}
       </div>
+      <SharePanelsDialog
+        open={sharing !== null}
+        onOpenChange={(next) => {
+          if (!next) setSharing(null);
+        }}
+        panels={widgets.map((w) => ({ widget: w, title: w.title?.trim() || widgetTitle(w) }))}
+        picked={sharing ?? []}
+        query={query ?? ""}
+        range={panelRange(spanMs)}
+      />
     </div>
   );
 }

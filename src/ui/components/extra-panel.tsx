@@ -36,34 +36,26 @@ type Props = {
   onCopy: (format: WidgetExportFormat) => void;
   onExport: (format: WidgetExportFormat) => void;
   onMovePointerDown: (e: PointerEvent) => void;
-  /** Copy embed on a metric panel (#228, 23k): the share that covers it, or why none does. */
-  embed?: EmbedAction | null;
+  /** Share… on every panel (#236, 24a): opens the Share dialog for this panel. */
+  onShare?: () => void;
   /** Controls a panel kind puts in its head, before the actions: a metric panel's chart (#237, 25a). */
   headControls?: ReactNode;
   children: ReactNode;
 };
 
-export type EmbedAction = { share: string; copy: () => void } | { why: string };
-
-/** 23k: Copy embed, naming the share it uses; disabled, saying why, when none covers the panel. */
-function EmbedRow({ embed, close }: { embed: EmbedAction; close: () => void }) {
+/** 24a: Share…, leading the panel's copy menu or its ⋯, on every panel. */
+function ShareRow({ onShare, close }: { onShare: () => void; close: () => void }) {
   return (
     <button
       type="button"
-      className="flex min-h-10 w-full flex-col items-start justify-center gap-0.5 rounded-[3.4px] px-2 py-1 text-left text-[12.5px] hover:bg-accent disabled:cursor-not-allowed disabled:text-muted-foreground/70 disabled:hover:bg-transparent"
-      disabled={"why" in embed}
-      title={"why" in embed ? embed.why : "Copy the script tag that embeds this panel"}
+      className="flex min-h-10 w-full flex-col items-start justify-center gap-0.5 rounded-[3.4px] bg-plate/[0.08] px-2 py-1 text-left text-[12.5px] hover:bg-plate/15"
       onClick={() => {
-        if ("copy" in embed) {
-          embed.copy();
-          close();
-        }
+        close();
+        onShare();
       }}
     >
-      <span>Copy embed</span>
-      <span className={cn("text-[11px]", "share" in embed ? "font-mono text-muted-foreground" : "")}>
-        {"share" in embed ? embed.share : embed.why}
-      </span>
+      <span className="font-semibold">Share…</span>
+      <span className="text-[11px] text-muted-foreground">show it on another site</span>
     </button>
   );
 }
@@ -82,14 +74,14 @@ const overflowRow =
 function OverflowMenus({
   atCap,
   exportDisabled,
-  embed,
+  onShare,
   onDuplicate,
   onCopy,
   onExport,
 }: {
   atCap: boolean;
   exportDisabled?: boolean;
-  embed?: EmbedAction | null;
+  onShare?: () => void;
   onDuplicate: () => void;
   onCopy: (format: WidgetExportFormat) => void;
   onExport: (format: WidgetExportFormat) => void;
@@ -130,11 +122,17 @@ function OverflowMenus({
       <PopoverContent
         align="end"
         collisionPadding={8}
-        className={cn("bg-[#18181b] p-1", embed && page === "more" ? "w-[210px]" : "w-[168px]")}
+        className={cn("bg-[#18181b] p-1", onShare && page === "more" ? "w-[210px]" : "w-[168px]")}
         onPointerDown={(e) => e.stopPropagation()}
       >
         {page === "more" ? (
           <>
+            {onShare ? (
+              <>
+                <ShareRow onShare={onShare} close={close} />
+                <div className="my-1 h-px bg-white/[0.08]" />
+              </>
+            ) : null}
             <button
               type="button"
               className={overflowRow}
@@ -173,12 +171,6 @@ function OverflowMenus({
                 file
               </span>
             </button>
-            {embed ? (
-              <>
-                <div className="my-1 h-px bg-white/[0.08]" />
-                <EmbedRow embed={embed} close={close} />
-              </>
-            ) : null}
           </>
         ) : (
           widgetExportFormats.map((format) => (
@@ -225,7 +217,7 @@ export function ExtraPanel({
   onCopy,
   onExport,
   onMovePointerDown,
-  embed,
+  onShare,
   headControls,
   children,
 }: Props) {
@@ -306,7 +298,7 @@ export function ExtraPanel({
                 <OverflowMenus
                   atCap={atCap}
                   exportDisabled={exportDisabled}
-                  embed={embed}
+                  onShare={onShare}
                   onDuplicate={onDuplicate}
                   onCopy={onCopy}
                   onExport={onExport}
@@ -357,7 +349,7 @@ export function ExtraPanel({
                   <WidgetCopyMenu
                     disabled={exportDisabled}
                     onCopy={onCopy}
-                    footer={embed ? (close) => <EmbedRow embed={embed} close={close} /> : undefined}
+                    header={onShare ? (close) => <ShareRow onShare={onShare} close={close} /> : undefined}
                   />
                   <WidgetExportMenu disabled={exportDisabled} onExport={onExport} />
                 </>

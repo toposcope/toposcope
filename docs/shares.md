@@ -83,6 +83,8 @@ Only a share's secret opens `/share/v1`; the password and the ingest token do no
 
 A page that wants Toposcope to draw embeds a panel. The secret stays on the host's backend: it trades the secret for a **ticket** a page can hold, then puts the ticket in the page.
 
+The short way starts from the panel: **Share…** at the top of a panel's copy menu (its ⋯ when narrow), or **Share panels…** on the canvas for several. It proposes the scope from what the panels read (their metrics or every metric like them, their labels fixed, their split, the hunt's `q` for a log count or a Top-N), makes a share or adds them to one whose fixed labels agree, and gives the three things to paste: the secret, the ticket call, and a tag per panel, beside a live preview read through the share. A panel that merges several metrics, or reads a value from log lines, says why it cannot be shared as it is and offers what can. The steps below are what it does.
+
 1. On the share, list the origins that may frame it, and how long a ticket lasts:
 
    ```json
@@ -114,7 +116,7 @@ A panel takes `chart` (`line`, the default; `stat`, one number; `top`, a Top-N w
 
 `embed.js` is a loader, not a renderer: it places the iframe where the tag sits and draws nothing itself. When the frame has said nothing within 5 seconds, it puts one plain line, *Toposcope unreachable*, in an element with class `toposcope-fallback`, styled with zero specificity so the host's own CSS for that class wins; the frame stays, hidden, and takes its place back if Toposcope answers later. Loaded from Toposcope, the loader cannot help when Toposcope is down: it does not load either. It is the same small file for every share, so serve a copy from your own site and name Toposcope on the tag — `<script src="/js/embed.js" data-origin="https://logs.example.com" data-ticket=…>` — and the fallback shows whenever Toposcope is unreachable. A frame that loaded and then loses Toposcope keeps its last paint, muted, and says when it last read. The frame posts `{ type: "toposcope:ready" }`, `toposcope:stale` and `toposcope:expired` to its parent, with no data in them, for a host that wants its own handling.
 
-Framing rules stop framing, not reading: whoever holds a ticket can fetch its numbers. The scope and the limits are the security; `frame_ancestors` keeps Toposcope's panels off pages the operator did not choose. Every other Toposcope page refuses to be framed (`frame-ancestors 'none'`).
+Framing rules stop framing, not reading: whoever holds a ticket can fetch its numbers. The scope and the limits are the security; `frame_ancestors` keeps Toposcope's panels off pages the operator did not choose. Toposcope itself may frame `/embed`, for that preview; every other Toposcope page refuses to be framed (`frame-ancestors 'none'`).
 
 Answers are kept for a moment: until the panel's next bar starts, or 30 seconds, whichever is sooner, so twenty open consoles showing one panel cost one read. Answers served that way count as `cached` and do not count against the rate.
 

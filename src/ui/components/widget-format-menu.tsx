@@ -14,8 +14,10 @@ type Props = {
   ariaLabel: string;
   trigger: ReactNode;
   onPick: (format: WidgetExportFormat) => void;
-  /** Rows after the formats, under a rule (Copy embed, #228); given `close`. */
+  /** Rows after the formats, under a rule; given `close`. */
   footer?: (close: () => void) => ReactNode;
+  /** Rows before the formats, above a rule (Share…, #236); given `close`. */
+  header?: (close: () => void) => ReactNode;
 };
 
 export function WidgetFormatMenu({
@@ -25,6 +27,7 @@ export function WidgetFormatMenu({
   trigger,
   onPick,
   footer,
+  header,
 }: Props) {
   const [open, setOpen] = useState(false);
   return (
@@ -49,6 +52,12 @@ export function WidgetFormatMenu({
         className="min-w-[8rem] bg-[#18181b] p-1"
         onPointerDown={(e) => e.stopPropagation()}
       >
+        {header ? (
+          <>
+            {header(() => setOpen(false))}
+            <div className="my-1 h-px bg-white/[0.08]" />
+          </>
+        ) : null}
         {widgetExportFormats.map((format) => (
           <button
             key={format}
