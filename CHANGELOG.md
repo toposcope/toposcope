@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+## 0.7.1
+
 An embedded panel is painted by the app's own panels, so it looks on the other site as it does in Toposcope, light or dark, and every chart the app gains embeds as soon as it ships. The embed tag gains `chart`: `line` (the default, as before), `stat` for one number, and `top` with `key` and `n` for a Top-N through the share's `/share/v1/top`. [#235](https://github.com/toposcope/toposcope/issues/235)
 
 A metric panel draws as lines, bars or stacked bars, as frames 25a–25d draw it: Line · Bars · Stacked in its head, a bar per bucket, a split's bars side by side or stacked, its hover saying each part and the total. Stacked is offered only where parts add up (a counter, or a histogram's count or sum, with a split) and says why where they do not. The pick is saved with the panel (a `b` or `k` flag on its `w=` token, `metricChart` in a saved search's JSON) and an embed tag takes `chart=bars` or `chart=stacked`. [#237](https://github.com/toposcope/toposcope/issues/237)
