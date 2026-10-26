@@ -1842,15 +1842,17 @@ export function App() {
     };
   }, [profileView]);
 
+  // Live pauses while reading (#261, 26e): no polls while an event is open; the next poll's since= catches up.
+  const readingPaused = live && detailOpen && view === "search";
   useEffect(() => {
-    if (!live || view !== "search" || isReaderKind(wsKind)) {
+    if (!live || view !== "search" || isReaderKind(wsKind) || readingPaused) {
       return;
     }
     const id = setInterval(() => {
       void runSearch("poll");
     }, 2000);
     return () => clearInterval(id);
-  }, [live, view, wsKind, runSearch]);
+  }, [live, view, wsKind, runSearch, readingPaused]);
 
   useEffect(() => {
     if (!searching) {
@@ -3839,14 +3841,10 @@ export function App() {
                 >
                   <span
                     className={`size-1.5 rounded-full ${
-                      live && !searching
-                        ? "animate-pulse bg-emerald-400"
-                        : live
-                          ? "bg-emerald-400"
-                          : "bg-muted-foreground"
+                      readingPaused ? "bg-amber-400" : live && !searching ? "animate-pulse bg-emerald-400" : live ? "bg-emerald-400" : "bg-muted-foreground"
                     }`}
                   />
-                  {searching ? "Paused" : "Live"}
+                  {readingPaused ? <span className="text-amber-400">Paused while reading</span> : searching ? "Paused" : "Live"}
                 </Button>
             </div>
           ) : null}
@@ -4680,6 +4678,8 @@ export function App() {
                   metricNames={metricNames}
                   onGraph={onGraphField}
                   onFollow={onFollowField}
+                  marks={windowMarks}
+                  onFingerprints={openFingerprints}
                 />
               ) : null}
             </div>

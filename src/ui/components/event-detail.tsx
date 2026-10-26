@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Copy, Plus, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ChangeMarkKind } from "../../shared/change-mark";
+import type { ChangeMark, ChangeMarkKind } from "../../shared/change-mark";
 import { MarkGlyph } from "./histogram-marks";
 import {
   DropdownMenu,
@@ -18,7 +18,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { formatEventClock, useTimestampFormat } from "@/event-time";
-import { FollowIcon } from "@/components/follow-icon";
 import { levelVariant } from "@/level";
 import type { FieldRole } from "../../shared/fields";
 import { canFollowField, joinTraceRef } from "../../shared/ids";
@@ -59,6 +58,10 @@ type Props = {
   className?: string;
   fromMs: number;
   spanMs: number;
+  /** The marks on the clock (#261): the fingerprint line says which one came before first seen. */
+  marks?: ChangeMark[];
+  /** Opens the Fingerprints cut for the mark before first seen. */
+  onFingerprints?: (mark: ChangeMark) => void;
 };
 
 type Field = { k: string; v: string };
@@ -108,16 +111,27 @@ export function EventDetail({
   className,
   fromMs,
   spanMs,
+  marks = [],
+  onFingerprints,
 }: Props) {
-  const [tab, setTab] = useState<"fields" | "json">("fields");
+  const [tab, setTab] = useState<"fields" | "json" | "stack">("fields");
+  const stack = stackOf(event);
+  const fp = typeof event.attrs?.e1 === "string" ? (event.attrs.e1 as string) : null;
+  const seen = useFingerprintSeen(fp);
+  const followKey = followKeyOf(event, roles);
   const json = JSON.stringify(event, null, 2);
   const traceRef = joinTraceRef(event.attrs);
   const format = useTimestampFormat();
+  useEffect(() => {
+    if (tab === "stack" && !stack) {
+      setTab("fields");
+    }
+  }, [tab, stack]);
 
   return (
     <aside
       className={cn(
-        "flex w-[376px] max-w-[34%] shrink-0 flex-col border-l bg-[#0f0f11]",
+        "my-2 mr-3 ml-1 flex w-[560px] max-w-[40%] shrink-0 flex-col overflow-hidden rounded-[10px] border border-white/10 bg-[#121214]",
         className,
       )}
     >
@@ -148,9 +162,9 @@ export function EventDetail({
           ) : null}
         </button>
       ) : null}
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5">
+      <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-4">
         <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
-        <span className="truncate font-mono text-xs text-muted-foreground" title={event.ts}>
+        <span className="truncate font-mono text-[12.5px] text-foreground" title={event.ts}>
           {formatEventClock(event.ts, {
             format,
             fromMs,
@@ -158,53 +172,50 @@ export function EventDetail({
             precision: "ms",
           })}
         </span>
+        <span className="truncate font-mono text-[12px] text-muted-foreground">
+          {[event.service, event.host].filter(Boolean).join(" · ")}
+        </span>
         <div className="ml-auto flex items-center gap-1">
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            onClick={() => {
-              void navigator.clipboard.writeText(json);
-              toast.success("JSON copied");
-            }}
-          >
-            <Copy />
-          </Button>
           {hideClose ? null : (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              title={closeTitle}
-              onClick={onClose}
-            >
+            <Button type="button" size="icon" variant="ghost" title={closeTitle ?? "Close · Esc"} aria-label="Close the event" onClick={onClose}>
               <X />
             </Button>
           )}
         </div>
       </div>
-      <div className="flex shrink-0 gap-0.5 border-b px-2 py-1">
-        <Button
-          type="button"
-          size="sm"
-          variant={tab === "fields" ? "secondary" : "ghost"}
-          onClick={() => setTab("fields")}
-        >
-          Fields
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={tab === "json" ? "secondary" : "ghost"}
-          onClick={() => setTab("json")}
-        >
-          JSON
-        </Button>
+      <div className="shrink-0 border-b border-white/[0.06] px-4 py-3 font-mono text-[13px] leading-[1.5] break-words text-foreground">
+        {event.message}
+      </div>
+      {fp ? (
+        <FingerprintLine
+          hex={fp}
+          seen={seen}
+          marks={marks}
+          onFingerprints={onFingerprints}
+        />
+      ) : null}
+      <div className="flex shrink-0 gap-4 px-4 pt-2.5 text-[12.5px]" role="tablist">
+        {(["fields", "json", ...(stack ? (["stack"] as const) : [])] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            className={cn("border-b-2 pb-1.5", tab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}
+            onClick={() => setTab(t)}
+          >
+            {t === "fields" ? "Fields" : t === "json" ? "JSON" : "Stack"}
+          </button>
+        ))}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === "json" ? (
           <pre className="m-3 rounded-lg border bg-background/60 p-2.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
             {json}
+          </pre>
+        ) : tab === "stack" && stack ? (
+          <pre className="m-3 rounded-lg border bg-background/60 p-2.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-300">
+            {stack}
           </pre>
         ) : (
           <dl className="m-3 overflow-hidden rounded-lg border">
@@ -224,16 +235,14 @@ export function EventDetail({
                   {links[field.k] && onGraph ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
+                        <button
                           type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="size-[22px]"
+                          className="h-[22px] rounded-[4px] px-1.5 text-[11.5px] text-plate hover:bg-accent"
                           title={`Graph ${field.k}:${field.v}`}
                           aria-label={`Graph ${field.k}`}
                         >
-                          <GraphIcon />
-                        </Button>
+                          graph
+                        </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="min-w-[8rem] p-1">
                         {metricNames.length === 0 ? (
@@ -263,11 +272,9 @@ export function EventDetail({
                     />
                   ) : null}
                   {notFilterable.has(field.k) ? null : (
-                    <Button
+                    <button
                       type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="size-[22px] opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                      className="h-[22px] rounded-[4px] px-1.5 text-[11.5px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 disabled:opacity-40"
                       title={
                         filterDisabled
                           ? filterTitle
@@ -276,8 +283,8 @@ export function EventDetail({
                       disabled={filterDisabled}
                       onClick={() => onFilter(field.k, field.v)}
                     >
-                      <Plus />
-                    </Button>
+                      + filter
+                    </button>
                   )}
                 </div>
               </div>
@@ -285,31 +292,16 @@ export function EventDetail({
           </dl>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2 border-t bg-background/45 px-2.5 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.06] px-4 py-3">
         <Button
           type="button"
           size="sm"
           variant="outline"
           className="h-7 px-2.5 text-[12.5px]"
-          title={aroundTitle}
+          title={aroundTitle ?? "The rows around this one, on the same service and host"}
           disabled={aroundDisabled}
           onClick={() => onAround(event)}
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-          >
-            <path d="M4 8h5" />
-            <path d="M15 8h5" />
-            <path d="M4 16h5" />
-            <path d="M15 16h5" />
-            <circle cx="12" cy="12" r="2.4" />
-          </svg>
           Surroundings
         </Button>
         {traceRef && onTrace ? (
@@ -321,22 +313,34 @@ export function EventDetail({
             title={`Where time went in this request — joined on ${traceRef.key}:${traceRef.value}`}
             onClick={() => onTrace(event)}
           >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-            >
-              <path d="M3 5h13" />
-              <path d="M6 12h11" />
-              <path d="M9 19h8" />
-            </svg>
-            View trace
+            Trace <span className="font-mono">{shortId(traceRef.value)}</span>
           </Button>
         ) : null}
+        {followKey && onFollow ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 px-2.5 text-[12.5px]"
+            disabled={followDisabled && !existingFollow?.(followKey.k, followKey.v)}
+            title={followDisabled ? followCapTitle : `Follow ${formatFieldToken(followKey.k, followKey.v)} — every service, first to last seen within a day`}
+            onClick={() => void onFollow(followKey.k, followKey.v, event.ts)}
+          >
+            Follow <span className="font-mono">{followKey.k}</span>
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2.5 text-[12.5px] text-muted-foreground"
+          onClick={() => {
+            void navigator.clipboard.writeText(json);
+            toast.success("JSON copied");
+          }}
+        >
+          Copy JSON
+        </Button>
       </div>
     </aside>
   );
@@ -370,11 +374,9 @@ function FollowFieldButton({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
+        <button
           type="button"
-          size="icon"
-          variant="ghost"
-          className="size-[22px]"
+          className="h-[22px] rounded-[4px] px-1.5 text-[11.5px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
           title={
             disabled
               ? disabledTitle
@@ -383,8 +385,8 @@ function FollowFieldButton({
           aria-label="Follow this value"
           disabled={disabled}
         >
-          <FollowIcon />
-        </Button>
+          follow
+        </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[240px] bg-[#18181b] p-2">
         <div className="px-1.5 pb-1.5">
@@ -412,21 +414,79 @@ function FollowFieldButton({
   );
 }
 
-function GraphIcon() {
+/** A row's stack, when its exception carries one (Stack tab, 26e). */
+export function stackOf(event: LogEvent): string | null {
+  const raw = event.attrs?.["exception.stacktrace"];
+  return typeof raw === "string" && raw.trim() ? raw : null;
+}
+
+/** "8b3f…e1": a trace id short enough for a button. */
+export function shortId(id: string): string {
+  return id.length > 10 ? `${id.slice(0, 4)}…${id.slice(-2)}` : id;
+}
+
+/** The footer's Follow: the first id-shaped attr on the row a hunt would follow (request_id, …). */
+export function followKeyOf(event: LogEvent, roles: Record<string, FieldRole>): Field | null {
+  const attrs = Object.entries(event.attrs ?? {}).map(([k, v]) => ({ k, v: attrValue(v) }));
+  // A trace id has its own button (Trace …); a fingerprint has its own line.
+  const ok = (f: Field) => f.k !== "e1" && !/(^|[._])(trace|span)_?id$/i.test(f.k) && canFollowField(f.k, f.v, roles[f.k]);
+  return attrs.find((f) => ok(f) && (roles[f.k] === "lookup" || /(^|[._])(request|req|order|session|job)_?id$/i.test(f.k))) ?? null;
+}
+
+type Seen = { first_ts: string | null; count: number; hosts: number } | null;
+
+/** When this fingerprint was first seen in the last 7 days, and how often (`GET /api/fingerprints/:hex`). */
+function useFingerprintSeen(hex: string | null): Seen {
+  const [seen, setSeen] = useState<Seen>(null);
+  useEffect(() => {
+    setSeen(null);
+    if (!hex) {
+      return;
+    }
+    const ac = new AbortController();
+    void fetch(`/api/fingerprints/${encodeURIComponent(hex)}`, { signal: ac.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => setSeen(body as Seen))
+      .catch(() => undefined);
+    return () => ac.abort();
+  }, [hex]);
+  return seen;
+}
+
+/** The mark just before first seen, within an hour: "1 min after ▲ billing v0.9". */
+export function markBeforeFirstSeen(firstTs: string | null, marks: ChangeMark[]): { mark: ChangeMark; minutes: number } | null {
+  if (!firstTs) {
+    return null;
+  }
+  const t = Date.parse(firstTs);
+  const before = marks
+    .filter((m) => Date.parse(m.ts) <= t && t - Date.parse(m.ts) <= 60 * 60_000 && m.kind !== "note")
+    .sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts))[0];
+  return before ? { mark: before, minutes: Math.round((t - Date.parse(before.ts)) / 60_000) } : null;
+}
+
+function FingerprintLine({ hex, seen, marks, onFingerprints }: { hex: string; seen: Seen; marks: ChangeMark[]; onFingerprints?: (mark: ChangeMark) => void }) {
+  const after = markBeforeFirstSeen(seen?.first_ts ?? null, marks);
+  const first = seen?.first_ts ? new Date(seen.first_ts).toISOString().slice(11, 16) : null;
   return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M4 19h16" />
-      <path d="M5 15l4.2-5 3.3 3.2L19 6" />
-    </svg>
+    <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-[12.5px]">
+      <span className="font-mono text-plate">e1:{hex}</span>
+      <span className="min-w-0 flex-1 text-muted-foreground">
+        {seen === null
+          ? "reading when it was first seen…"
+          : seen.count === 0
+            ? "not seen in the last 7 days"
+            : [
+                `first seen ${first}${after ? `, ${after.minutes} min after ${after.mark.kind === "deploy" ? "▲" : after.mark.kind === "flag" ? "⚑" : "◆"} ${after.mark.title}` : ""}`,
+                `${seen.count.toLocaleString("en-US")} in 7 d`,
+                `${seen.hosts} host${seen.hosts === 1 ? "" : "s"}`,
+              ].join(" · ")}
+      </span>
+      {after && onFingerprints ? (
+        <button type="button" className="text-plate hover:text-white" onClick={() => onFingerprints(after.mark)}>
+          Fingerprints →
+        </button>
+      ) : null}
+    </div>
   );
 }
