@@ -215,15 +215,19 @@ describe("Watch's lanes (#175, frame 18c)", () => {
       }),
     );
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    expect(text).toContain("Watch All 3 Search 2 Fingerprints 1 24h 7d 30d New monitor");
-    expect(text).toContain("ci-box lines loud · open 22m search · host:ci-box · at least 1 line in 15m Open in Search");
-    expect(text).toContain("now 11:03");
-    // Lanes in order: the open one first.
-    expect(text.indexOf("ci-box lines loud search · at least 1 · 15m open 22m")).toBeGreaterThan(-1);
-    expect(text).toContain("api errors search · at least 50 · 15m ok 12");
-    expect(text).toContain("after a deploy fingerprints · 24h ok 1 sent");
-    expect(text).toContain("marks deploys and flags");
+    // 26g (#263): one row per monitor, state first, then what it is and its condition, checks, strip, last check, now.
+    expect(text).toContain("Watch 3 monitors · 1 open · webhooks to ntfy.sh All 3 Search 2 Fingerprints 1 24h 7d 30d New monitor");
+    expect(text).toContain("Monitor Checks Last 24h Last check Now");
+    // Rows in order: the open one first.
+    expect(text).toContain("ci-box lines loud open since 10:41 · 22m · search · host:ci-box · at least 1 line in 15m search · at least 1 · 15m 11:02 open 22m");
+    expect(text.indexOf("ci-box lines loud")).toBeLessThan(text.indexOf("api errors"));
+    expect(text).toContain("api errors ok · last open");
+    expect(text).toContain("search · at least 50 · 15m 11:02 12");
+    expect(text).toContain("after a deploy ok · fingerprints");
+    expect(text).toContain("marks deploys and flags on the same clock");
     expect(text).toContain("2 marks");
+    expect(text).toContain("What opened today 10:41 ● ci-box lines loud · still open sent ✓");
+    expect(text).toContain("Delivery ntfy.sh · 3 monitors not called yet");
     // One open stretch, bright; one resolved, dim.
     expect(html.match(/bottom-\[3px\] bg-red-500"/g)?.length).toBe(1);
     expect(html.match(/bottom-\[3px\] rounded-\[2px\] bg-red-500\/45/g)?.length).toBe(1);
@@ -522,7 +526,8 @@ describe("the marks row when deploys crowd (#212, frames 20b, 20c, 20f)", () => 
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
     expect(html).toContain('aria-label="10 marks, 10-19 19:53 – 21:34"');
     expect(html).toContain('aria-label="13 marks, 08:41 – 10:52"');
-    expect(html.match(/data-mark-wash=/g)?.length).toBe(2);
+    // 26g: the chips stay on the marks row; no wash runs through the monitor rows any more (#263).
+    expect(html.match(/data-mark-wash=/g)).toBeNull();
     expect(html.match(/data-mark=/g)?.length).toBe(20);
     expect(text).toContain("43 marks");
     expect(text).not.toContain("sha");
@@ -559,5 +564,16 @@ describe("the marks row when deploys crowd (#212, frames 20b, 20c, 20f)", () => 
       createElement(MarksLane, { groups, nowMs: now, hot: lone.key, open: null, onHot: () => {}, onOpenGroup: () => {} }),
     );
     expect(one.replace(/<[^>]+>/g, " ")).toContain("api sha0 · 10-19 13:02");
+  });
+});
+
+describe("Watch as a list (#263, 26g)", () => {
+  test("a monitor without its own webhook is not a delivery host", async () => {
+    const { deliveries } = await import("./watch");
+    const rows = deliveries([
+      { id: "a", name: "a", webhook_url: null, last_attempt_at: null, last_fired_at: null, last_error: null } as never,
+      { id: "b", name: "b", webhook_url: "https://ntfy.sh/alerts", last_attempt_at: 5, last_fired_at: 5, last_error: null } as never,
+    ]);
+    expect(rows).toEqual([{ host: "ntfy.sh", ok: true, lastAt: 5, monitors: 1 }]);
   });
 });

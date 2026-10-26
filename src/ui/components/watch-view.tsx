@@ -25,6 +25,12 @@ import {
   type LaneReadout,
   nowLabel,
   openCardLine,
+  openedToday,
+  deliveries,
+  lastCheckAt,
+  watchDot,
+  watchStateLine,
+  type WatchDot,
   sentDots,
   sortForWatch,
   sourceOf,
@@ -53,7 +59,32 @@ type Props = {
   onOpenMarks?: (fromMs: number, toMs: number) => void;
 };
 
-const lrow = "grid grid-cols-[210px_minmax(0,1fr)_118px] items-center gap-3 px-3 py-1";
+/** 26g: one row per monitor: state, what it is and its condition, what it checks, its strip, last check, now (#263). */
+const wrow = "grid grid-cols-[14px_minmax(0,1.6fr)_150px_minmax(160px,1fr)_84px_96px] items-center gap-4 border-b border-white/[0.06] px-4 py-2.5";
+const dotTone: Record<WatchDot, string> = { open: "text-red-300", ok: "text-emerald-300", warn: "text-amber-300", paused: "text-zinc-500" };
+
+function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; stretches: MonitorStretch[]; nowMs: number; onOpen: Props["onOpen"] }) {
+  const dot = watchDot(monitor);
+  return (
+    <>
+      <span className={cn("text-[12px]", dotTone[dot])} aria-label={dot}>
+        ●
+      </span>
+      <button
+        type="button"
+        className="flex min-w-0 flex-col items-start text-left"
+        title={`Open ${monitor.name} as a hunt · opens a new tab`}
+        onClick={() => onOpen(monitor, monitor.open ?? undefined)}
+      >
+        <span className={cn("max-w-full truncate text-[13px] font-medium hover:underline", dot === "paused" && "text-muted-foreground")}>{monitor.name}</span>
+        <span className="max-w-full truncate text-[12px] text-muted-foreground">
+          {watchStateLine(monitor, stretches, nowMs)} · <span className="font-mono">{openCardLine(monitor, nowMs)}</span>
+        </span>
+      </button>
+      <span className="truncate text-[12px] text-muted-foreground">{laneKind(monitor)}</span>
+    </>
+  );
+}
 /** 18f: push lanes on their own, taller, with when the next result is due under the state. */
 const prow = "grid grid-cols-[190px_minmax(0,1fr)_128px] items-center gap-3 border-b border-white/[0.06] px-3 py-1.5";
 
@@ -151,17 +182,10 @@ function Lane({
     source === "http" || source === "tcp" || source === "cert"
       ? httpLane(results, (monitor.http ?? monitor.net)?.every_ms ?? 30_000, fromMs, toMs)
       : null;
+  const checked = lastCheckAt(monitor, results);
   return (
-    <div className={lrow} data-monitor={monitor.id}>
-      <button
-        type="button"
-        className="flex min-w-0 flex-col items-start text-left"
-        title={`Open ${monitor.name} in Search · opens a new tab`}
-        onClick={() => onOpen(monitor)}
-      >
-        <span className="max-w-full truncate text-[12px] hover:underline">{monitor.name}</span>
-        <span className="max-w-full truncate font-mono text-[10.5px] text-muted-foreground">{laneKind(monitor)}</span>
-      </button>
+    <div className={wrow} data-monitor={monitor.id}>
+      <RowHead monitor={monitor} stretches={stretches} nowMs={nowMs} onOpen={onOpen} />
       <span
         className="relative h-[18px] overflow-hidden rounded-[3px] bg-[#0f0f11]"
         style={
@@ -209,13 +233,12 @@ function Lane({
           />
         ))}
       </span>
-      <span className="flex min-w-0 items-center gap-1.5">
-        <Badge tone={readout.tone}>{readout.badge}</Badge>
-        {readout.text ? (
-          <span className="truncate font-mono text-[10.5px] text-muted-foreground" title={readout.title}>
-            {readout.text}
-          </span>
-        ) : null}
+      <span className="font-mono text-[12px] text-muted-foreground">{checked ? clockAt(checked, nowMs) : "—"}</span>
+      <span
+        className={cn("truncate text-right font-mono text-[12px]", readout.tone === "red" ? "text-red-300" : readout.tone === "amber" ? "text-amber-300" : "text-muted-foreground")}
+        title={readout.title ?? readout.badge}
+      >
+        {readout.text || readout.badge}
       </span>
     </div>
   );
@@ -357,20 +380,22 @@ function PushLane({
   }
 
   return (
-    <div className={tall ? prow : lrow} data-monitor={monitor.id}>
-      <button
-        type="button"
-        className="flex min-w-0 flex-col items-start text-left"
-        title={`Open ${monitor.name} in Search · opens a new tab`}
-        onClick={() => onOpen(monitor)}
-      >
-        <span className={cn("max-w-full truncate text-[12px] hover:underline", paused && "text-muted-foreground")}>
-          {monitor.name}
-        </span>
-        <span className={cn("max-w-full truncate font-mono text-muted-foreground", tall ? "text-[11px]" : "text-[10.5px]")}>
-          {laneKind(monitor)}
-        </span>
-      </button>
+    <div className={tall ? prow : wrow} data-monitor={monitor.id}>
+      {tall ? (
+        <button
+          type="button"
+          className="flex min-w-0 flex-col items-start text-left"
+          title={`Open ${monitor.name} in Search · opens a new tab`}
+          onClick={() => onOpen(monitor)}
+        >
+          <span className={cn("max-w-full truncate text-[12px] hover:underline", paused && "text-muted-foreground")}>
+            {monitor.name}
+          </span>
+          <span className="max-w-full truncate font-mono text-[11px] text-muted-foreground">{laneKind(monitor)}</span>
+        </button>
+      ) : (
+        <RowHead monitor={monitor} stretches={stretches} nowMs={nowMs} onOpen={onOpen} />
+      )}
       <span className="relative">
         <span
           className={cn("relative block cursor-pointer overflow-hidden rounded-[3px] bg-[#0f0f11]", tall ? "h-[30px]" : "h-[18px]")}
@@ -420,10 +445,17 @@ function PushLane({
           ) : null}
         </span>
       ) : (
-        <span className="flex min-w-0 items-center gap-1.5">
-          <Badge tone={readout.tone}>{readout.badge}</Badge>
-          {value ? <span className="truncate font-mono text-[10.5px] text-muted-foreground">{value}</span> : null}
-        </span>
+        <>
+          <span className="font-mono text-[12px] text-muted-foreground">
+            {lastCheckAt(monitor, results) ? clockAt(lastCheckAt(monitor, results)!, nowMs) : "—"}
+          </span>
+          <span
+            className={cn("truncate text-right font-mono text-[12px]", readout.tone === "red" ? "text-red-300" : readout.tone === "amber" ? "text-amber-300" : "text-muted-foreground")}
+            title={readout.badge}
+          >
+            {value || readout.badge}
+          </span>
+        </>
       )}
     </div>
   );
@@ -618,6 +650,8 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
   const filters = watchFilters(monitors);
   const shown = sortForWatch(monitors).filter((m) => filter === "all" || sourceOf(m) === filter);
   const open = sortForWatch(monitors).filter((m) => m.state === "open" && m.open);
+  const deliveryRows = deliveries(monitors);
+  const today = openedToday(data?.stretches ?? [], monitors, nowMs);
   const ticks = watchTicks(fromMs, toMs, range);
   const onClock = watchMarks(marks, fromMs, toMs, range);
   const byMonitor = new Map<string, MonitorStretch[]>();
@@ -681,7 +715,12 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
     <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
       <div className="flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="m-0 text-[14px] font-semibold">Watch</h1>
+          <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Watch</h1>
+          <span className="text-[12px] text-muted-foreground">
+            {monitors.length} monitor{monitors.length === 1 ? "" : "s"}
+            {open.length > 0 ? <span className="text-red-300"> · {open.length} open</span> : null}
+            {deliveryRows.length > 0 ? ` · webhooks to ${deliveryRows.map((d) => d.host).join(" and ")}` : ""}
+          </span>
           <span className="inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]">
             {filters.map((f) => (
               <Seg key={f.id} on={filter === f.id} onClick={() => onFilter(f.id)}>
@@ -707,35 +746,6 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
           </Button>
         </div>
 
-        {open.length > 0 && !tall ? (
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-            {open.map((m) => (
-              <div
-                key={m.id}
-                className="flex items-center gap-3 rounded-[6.4px] border bg-card px-3 py-2"
-              >
-                <span className="size-2.5 shrink-0 rounded-full bg-red-500" />
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="truncate text-[13px]">
-                    {m.name}{" "}
-                    <span className="text-muted-foreground">· open {formatOpenFor(nowMs - m.open!.opened_at)}</span>
-                  </span>
-                  <span className="truncate font-mono text-[11px] text-muted-foreground">{openCardLine(m, nowMs)}</span>
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-[26px] text-[12px]"
-                  onClick={() => onOpen(m, m.open!)}
-                >
-                  Open in Search
-                </Button>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
         {monitors.length === 0 ? (
           <div className="rounded-[6.4px] border bg-card px-3 py-8 text-center">
             <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
@@ -752,26 +762,8 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
           </div>
         ) : (
           <div className="relative rounded-[6.4px] border bg-card py-1">
-            {tall || !onClock.washes ? null : (
-              // 20b: a train's wash runs up through the monitor rows, as Search's runs up through its plot.
-              <span aria-hidden className="pointer-events-none absolute top-6 right-[142px] bottom-1 left-[234px] z-[1]">
-                {onClock.groups
-                  .filter((g) => g.members.length > 1)
-                  .map((g) => (
-                    <span
-                      key={g.key}
-                      data-mark-wash={g.key}
-                      className="absolute inset-y-0"
-                      style={{
-                        left: pct(g.from),
-                        width: pct(Math.max(0.003, g.to - g.from)),
-                        background: markHot === g.key || markOpen === g.key ? "oklch(1 0 0 / 13%)" : "oklch(1 0 0 / 9%)",
-                      }}
-                    />
-                  ))}
-              </span>
-            )}
-            <div className={cn(tall ? prow : lrow, "border-b-0 py-[3px]")}>
+            {tall ? (
+            <div className={cn(prow, "border-b-0 py-[3px]")}>
               <span />
               <span className="relative h-3.5">
                 {ticks.map((t) => (
@@ -786,6 +778,16 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               </span>
               <span className="font-mono text-[10.5px] text-muted-foreground">{nowLabel(nowMs, range)}</span>
             </div>
+            ) : (
+              <div className={cn(wrow, "py-2 text-[11px] tracking-[0.04em] text-muted-foreground uppercase")}>
+                <span />
+                <span>Monitor</span>
+                <span>Checks</span>
+                <span>Last {range}</span>
+                <span>Last check</span>
+                <span className="text-right">Now</span>
+              </div>
+            )}
             {shown.map((m) =>
               sourceOf(m) === "push" ? (
                 <PushLane
@@ -818,11 +820,13 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               ),
             )}
             {tall ? null : (
-            <div className={lrow}>
+            <div className={wrow}>
+              <span />
               <span className="flex flex-col">
-                <span className="text-[12px]">marks</span>
-                <span className="font-mono text-[10.5px] text-muted-foreground">deploys and flags</span>
+                <span className="text-[13px]">marks</span>
+                <span className="text-[12px] text-muted-foreground">deploys and flags on the same clock</span>
               </span>
+              <span />
               <MarksLane
                 groups={onClock.groups}
                 nowMs={nowMs}
@@ -832,13 +836,49 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 onOpenGroup={setMarkOpen}
                 onOpenMarks={onOpenMarks}
               />
-              <span className="text-[11px] text-muted-foreground">
+              <span />
+              <span className="text-right font-mono text-[12px] text-muted-foreground">
                 {onClock.count} mark{onClock.count === 1 ? "" : "s"}
               </span>
             </div>
             )}
           </div>
         )}
+
+        {monitors.length > 0 && !tall ? (
+          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+            <section className="flex flex-col gap-2 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5">
+              <span className="text-[13.5px] font-medium">What opened today</span>
+              {today.length === 0 ? <span className="text-[12px] text-muted-foreground">Nothing opened since midnight UTC.</span> : null}
+              {today.slice(0, 6).map((t) => (
+                <div key={`${t.monitor}-${t.at}`} className="flex gap-3 text-[12px] text-muted-foreground">
+                  <span className="font-mono">{clockAt(t.at, nowMs)}</span>
+                  <span className={t.open ? "text-red-300" : "text-zinc-500"}>●</span>
+                  <span className="min-w-0 flex-1 truncate text-zinc-300">
+                    {t.monitor} · {t.open ? "still open" : `resolved ${t.resolvedAt ? clockAt(t.resolvedAt, nowMs) : ""}`}
+                  </span>
+                  <span className="font-mono">{t.call}</span>
+                </div>
+              ))}
+            </section>
+            <section className="flex flex-col gap-2 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5">
+              <span className="text-[13.5px] font-medium">Delivery</span>
+              {deliveryRows.length === 0 ? (
+                <span className="text-[12px] text-muted-foreground">No webhook yet: a monitor calls the default webhook in Settings, or its own.</span>
+              ) : null}
+              {deliveryRows.map((d) => (
+                <div key={d.host} className="flex gap-3 text-[12px] text-muted-foreground">
+                  <span className="min-w-0 flex-1 truncate text-zinc-300">
+                    {d.host} · {d.monitors} monitor{d.monitors === 1 ? "" : "s"}
+                  </span>
+                  <span className={d.ok === false ? "text-red-300" : d.ok ? "text-emerald-300" : ""}>{d.ok === false ? "failed" : d.ok ? "ok" : "not called yet"}</span>
+                  <span className="font-mono">{d.lastAt ? `last ${clockAt(d.lastAt, nowMs)}` : ""}</span>
+                </div>
+              ))}
+              <span className="text-[12px] text-muted-foreground">A monitor reminds while open and says when it resolves.</span>
+            </section>
+          </div>
+        ) : null}
       </div>
     </div>
   );

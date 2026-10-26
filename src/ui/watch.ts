@@ -843,3 +843,83 @@ export function pushHuntRange(m: Pick<MonitorView, "every_ms">): "1h" | "4h" | "
   const want = every * 6;
   return want <= hourMs ? "1h" : want <= 4 * hourMs ? "4h" : want <= dayMs ? "24h" : "7d";
 }
+
+/* Watch as a list (#263, frame 26g): one row per monitor, state first. */
+
+export type WatchDot = "open" | "ok" | "warn" | "paused";
+
+export function watchDot(m: MonitorView): WatchDot {
+  if (m.enabled === 0) {
+    return "paused";
+  }
+  if (m.state === "open" && m.open) {
+    return "open";
+  }
+  if (m.last_result === "warn" || m.last_result === "fail" || (m.last_status != null && m.last_status !== "ok" && m.last_status !== "200")) {
+    return "warn";
+  }
+  return "ok";
+}
+
+/** The row's first line under the name: "open since 12:51 · 35 min", "ok · last open yesterday 03:10 for 8 min", "paused". */
+export function watchStateLine(m: MonitorView, stretches: readonly MonitorStretch[], nowMs: number): string {
+  if (m.enabled === 0) {
+    return "paused";
+  }
+  if (m.state === "open" && m.open) {
+    return `open since ${clockAt(m.open.opened_at, nowMs)} · ${formatOpenFor(nowMs - m.open.opened_at)}`;
+  }
+  const last = [...stretches].filter((s) => s.resolved_at != null).sort((a, b) => b.opened_at - a.opened_at)[0];
+  if (last && last.resolved_at != null) {
+    return `ok · last open ${clockAt(last.opened_at, nowMs)} for ${formatOpenFor(last.resolved_at - last.opened_at)}`;
+  }
+  return "ok";
+}
+
+/** When it last checked: its newest result, else the monitor's own stamp. */
+export function lastCheckAt(m: MonitorView, results: readonly PushResultRow[]): number | null {
+  const fromResults = results.length ? Math.max(...results.map((r) => r.at)) : null;
+  return fromResults ?? m.last_result_at ?? m.last_attempt_at ?? null;
+}
+
+export type OpenedToday = { at: number; monitor: string; open: boolean; resolvedAt: number | null; call: string };
+
+/** "What opened today" (26g): every stretch opened since UTC midnight, newest first, and how its call went. */
+export function openedToday(stretches: readonly MonitorStretch[], monitors: readonly MonitorView[], nowMs: number): OpenedToday[] {
+  const d = new Date(nowMs);
+  const midnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const names = new Map(monitors.map((m) => [m.id, m.name]));
+  return stretches
+    .filter((s) => s.opened_at >= midnight && names.has(s.monitor_id))
+    .sort((a, b) => b.opened_at - a.opened_at)
+    .map((s) => ({
+      at: s.opened_at,
+      monitor: names.get(s.monitor_id)!,
+      open: s.resolved_at == null,
+      resolvedAt: s.resolved_at,
+      call: s.open_call === "sent" ? "sent ✓" : s.open_call === "failed" ? "failed" : s.open_call === "silenced" ? "silenced" : "—",
+    }));
+}
+
+export type DeliveryRow = { host: string; ok: boolean | null; lastAt: number | null; monitors: number };
+
+/** "Delivery" (26g): each webhook host the monitors call, its last result and when. */
+export function deliveries(monitors: readonly MonitorView[]): DeliveryRow[] {
+  const by = new Map<string, DeliveryRow>();
+  for (const m of monitors) {
+    // A monitor without its own URL calls the default webhook (Settings); it is not a host here.
+    const host = m.webhook_url ? callHost(m.webhook_url) : "";
+    if (!host || host === "—") {
+      continue;
+    }
+    const row = by.get(host) ?? { host, ok: null, lastAt: null, monitors: 0 };
+    row.monitors += 1;
+    const at = m.last_attempt_at ?? m.last_fired_at;
+    if (at != null && (row.lastAt == null || at > row.lastAt)) {
+      row.lastAt = at;
+      row.ok = m.last_error == null;
+    }
+    by.set(host, row);
+  }
+  return [...by.values()].sort((a, b) => a.host.localeCompare(b.host));
+}
