@@ -466,7 +466,7 @@ export function PasteDialog({
     <Dialog open={open} onOpenChange={(o) => (o ? undefined : onClose())}>
       <DialogContent className="max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Paste a key</DialogTitle>
+          <DialogTitle>Paste a link key</DialogTitle>
           <DialogDescription>
             {here ? "A key minted on another instance. Nothing is pulled until you confirm." : "Nothing is pulled until you confirm."}
           </DialogDescription>

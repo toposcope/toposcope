@@ -17,7 +17,7 @@ Logs read as a count or a rate only. A numeric attr's percentile or maximum can 
 
 ## Make one
 
-In the app: **Access › Let someone in › Reads aggregates**. Access lists each share with its scope in a line, when it expires, when it was last read, its reads and refusals today (a click on the refusals opens its rows as a hunt), and revokes in the row. The secret is shown once, with the ticket call and the script tag to paste. A share's row opens its page: its named panels, the fence, the raw-params switch, the tag and the panel as the page sees it.
+In the app: **Access › Let someone in › Share**. Access lists each share with its scope in a line, when it expires, when it was last read, its reads and refusals today (a click on the refusals opens its rows as a hunt), and revokes in the row. The secret is shown once, with the ticket call and the script tag to paste. A share's row opens its page: its named panels, the fence, the raw-params switch, the tag and the panel as the page sees it.
 
 On a panel, **Share…** adds it to a share as a named panel and hands out the tag that names it.
 
