@@ -7,7 +7,7 @@ describe("view routing", () => {
     expect(parseOperatorView(null)).toBe("search");
     expect(parseOperatorView("search")).toBe("search");
     expect(parseOperatorView("nonsense")).toBe("search");
-    for (const v of ["home", "watch", "fields", "links", "access"] as const) {
+    for (const v of ["home", "watch", "fields", "links", "access", "settings"] as const) {
       expect(parseOperatorView(v)).toBe(v);
     }
     expect(parseOperatorView("alerts")).toBe("watch");
@@ -30,5 +30,15 @@ describe("mark= in the URL", () => {
     expect(serializeSearchUrl({ ...state, mark: null })).not.toContain("mark=");
     expect(parseSearchUrl("?mark=mk_1").mark).toBe("mk_1");
     expect(parseSearchUrl("").mark).toBeNull();
+  });
+});
+
+describe("Settings is a page (#268)", () => {
+  test("view=settings round-trips", async () => {
+    const { bytes } = await import("./components/settings-page");
+    expect(parseSearchUrl("?view=settings").view).toBe("settings");
+    expect(bytes(4.9 * 1024 ** 3)).toBe("4.9 GB");
+    expect(bytes(80 * 1024 ** 2)).toBe("80 MB");
+    expect(bytes(null)).toBe("—");
   });
 });
