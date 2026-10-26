@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { formatCompactCount, formatFieldCount, setCountFormat, useCountFormat } from "@/count-format";
 import { formatEventClock, setTimestampFormat, useTimestampFormat } from "@/event-time";
-import { shareIsLive } from "@/share-cover";
-import { useShares } from "@/use-shares";
 
 type Props = {
   open: boolean;
@@ -23,15 +21,11 @@ type Props = {
   onRetentionDays?: (days: number) => void;
   /** The name changed: the header and the tab title follow. */
   onInstanceName?: (name: string | null) => void;
-  /** Settings → Shares (#228). */
-  onOpenShares?: () => void;
 };
 
 const previewN = 1240;
 
-export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstanceName, onOpenShares }: Props) {
-  const shares = useShares();
-  const liveShares = shares.filter((share) => shareIsLive(share)).length;
+export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstanceName }: Props) {
   const [days, setDays] = useState("30");
   // Empty: metrics follow Retention days.
   const [metricsDays, setMetricsDays] = useState("");
@@ -274,22 +268,6 @@ export function SettingsDialog({ open, onOpenChange, onRetentionDays, onInstance
               </button>
             </DialogControl>
           </DialogField>
-          {onOpenShares ? (
-            <DialogField label="Shares" help="Another app reads one scope of numbers, never events.">
-              <DialogControl>
-                <span className="min-w-0 flex-1 truncate font-mono text-[13px]">
-                  {liveShares === 0 ? "none" : `${liveShares} live`}
-                </span>
-                <button
-                  type="button"
-                  className="h-6 shrink-0 rounded-[2.4px] border border-input px-[9px] text-[11px] hover:bg-accent"
-                  onClick={onOpenShares}
-                >
-                  Open
-                </button>
-              </DialogControl>
-            </DialogField>
-          ) : null}
           <DialogFooter>
             <Button type="submit" disabled={saving} className="h-8">
               Save

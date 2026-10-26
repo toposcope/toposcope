@@ -94,6 +94,8 @@ import { shareNamesRoute, shareReadCache, shareSeriesRoute, shareTopRoute } from
 import { embedAssetRoute, embedJsRoute, embedPageRoute } from "./share/embed-page";
 import { noFraming } from "./share/embed";
 import { startShareUse } from "./share/use";
+import { noteAccessRefused, startAccessUse } from "./access/use";
+import { accessRoute } from "./access/list";
 
 requirePackagedSecrets();
 requirePublicUrl();
@@ -247,6 +249,9 @@ app.use("/*", async (c, next) => {
   const allowed = ingest
     ? checkBearer(header) || checkBasic(header) || (operatorMark && sessionExpiry(cookie, basicPassword()) !== null)
     : checkBasic(header) || sessionExpiry(cookie, basicPassword()) !== null;
+  if (!allowed && ingest && header?.startsWith("Bearer ")) {
+    noteAccessRefused("token", "unknown", "a token that matches none", c.req.path);
+  }
   if (!allowed) {
     // A sender holds an ingest token and nothing else. On a wrong path under the
     // ingest prefixes its token is good and its path is not, so say that.
@@ -388,6 +393,7 @@ app.get("/share/v1/*", shareReadCache);
 app.get("/share/v1/series", shareSeriesRoute);
 app.get("/share/v1/top", shareTopRoute);
 app.get("/share/v1/names", shareNamesRoute);
+app.get("/api/access", accessRoute);
 app.get("/api/api-tokens", listApiTokens);
 app.post("/api/api-tokens", createApiToken);
 app.delete("/api/api-tokens/:id", deleteApiToken);
@@ -469,6 +475,7 @@ async function startBoot(): Promise<void> {
     startLinkPuller();
     // Once a minute, each share that was read writes one use row (#226).
     startShareUse(insertEvents);
+    startAccessUse(insertEvents);
     // Once a day, a few minutes after boot: is a newer release out (#196)? Off with TOPOSCOPE_UPDATE_CHECK=off.
     startReleaseCheck(releaseCheckDeps);
     // A stubbed listener in tests returns nothing.

@@ -6,6 +6,7 @@ export type ApiToken = {
   id: string;
   name: string;
   created_at: number;
+  last_used_at?: number | null;
 };
 
 export function hashToken(token: string): string {
@@ -20,10 +21,30 @@ export function tokenHashExists(tokenHash: string): boolean {
   return Boolean(row);
 }
 
-function allTokens(): ApiToken[] {
+export function allTokens(): ApiToken[] {
   return getDb()
-    .query("SELECT id, name, created_at FROM api_tokens ORDER BY created_at DESC")
+    .query("SELECT id, name, created_at, last_used_at FROM api_tokens ORDER BY created_at DESC")
     .all() as ApiToken[];
+}
+
+/** The token a hash belongs to (#265): its use is counted under its name. */
+export function tokenByHash(tokenHash: string): { id: string; name: string } | null {
+  const row = getDb().query("SELECT id, name FROM api_tokens WHERE token_hash = ?").get(tokenHash) as { id: string; name: string } | null | undefined;
+  return row ?? null;
+}
+
+const lastUseWritten = new Map<string, number>();
+/** At most once a minute per token: the list's Last used. */
+export function noteTokenUsedAt(id: string, now = Date.now()): void {
+  if (now - (lastUseWritten.get(id) ?? 0) < 60_000) {
+    return;
+  }
+  lastUseWritten.set(id, now);
+  try {
+    getDb().query("UPDATE api_tokens SET last_used_at = ? WHERE id = ?").run(now, id);
+  } catch {
+    // a read-only moment is not worth failing an ingest over
+  }
 }
 
 export async function listApiTokens(c: Context): Promise<Response> {

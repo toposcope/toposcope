@@ -75,7 +75,7 @@ export function noteRefused(name: string, origin: string | undefined, path: stri
       service: "toposcope",
       level: "warn",
       message: `share ${name} refused: ${reason}`,
-      attrs: { share: name, status: "refused", path, reason, ...(origin ? { origin } : {}) },
+      attrs: { share: name, access: name, kind: "share", status: "refused", path, reason, ...(origin ? { origin } : {}) },
     });
   }
 }
@@ -96,6 +96,8 @@ export function drainUse(now = Date.now()): LogEvent[] {
       message: `share ${name}: ${t.reads} reads, ${t.cached} cached, ${t.refused} refused, ${t.limited} limited`,
       attrs: {
         share: name,
+        access: name,
+        kind: "share",
         status: "used",
         reads: t.reads,
         cached: t.cached,

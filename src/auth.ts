@@ -1,5 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
-import { hashToken, tokenHashExists } from "./control/tokens";
+import { hashToken, noteTokenUsedAt, tokenByHash } from "./control/tokens";
+import { noteAccessUsed } from "./access/use";
+
+/** The `.env` ingest token has no record; Access lists it under this name. */
+export const envIngestTokenName = "TOPOSCOPE_INGEST_TOKEN";
 import { envValue } from "./shared/env";
 import { instanceId, instanceName } from "./control/instance";
 
@@ -27,10 +31,16 @@ export function checkBearer(header: string | undefined): boolean {
   }
   const token = ingestToken();
   if (token && safeEqual(presented, token)) {
+    noteAccessUsed("token", envIngestTokenName);
     return true;
   }
   try {
-    return tokenHashExists(hashToken(presented));
+    const found = tokenByHash(hashToken(presented));
+    if (found) {
+      noteAccessUsed("token", found.name);
+      noteTokenUsedAt(found.id);
+    }
+    return found !== null;
   } catch {
     return false;
   }

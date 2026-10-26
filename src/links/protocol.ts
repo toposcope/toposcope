@@ -1,3 +1,4 @@
+import { noteAccessRefused, noteAccessUsed } from "../access/use";
 import type { Context } from "hono";
 import { instanceId, instanceName } from "../control/instance";
 import { getRetentionDays } from "../control/settings";
@@ -125,7 +126,14 @@ export async function claimRoute(c: Context): Promise<Response> {
 
 function linkFor(c: Context): LinkRecord | null {
   const secret = bearer(c);
-  return secret ? linkBySecret(secret) : null;
+  const link = secret ? linkBySecret(secret) : null;
+  // Access (#265): a pull is a use of that link; a key that matches no link is a refusal.
+  if (link) {
+    noteAccessUsed("link", link.peer_name || link.id);
+  } else if (secret) {
+    noteAccessRefused("link", "unknown", "a key that matches no link", new URL(c.req.url).pathname);
+  }
+  return link;
 }
 
 /** A puller reads its feed: the rows after where it stands that its link's filter matches. */
