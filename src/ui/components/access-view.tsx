@@ -297,16 +297,16 @@ function LetSomeoneIn(props: { onClose: () => void; onToken: () => void; onLink:
     <section aria-label="Let someone in" className="fixed top-[70px] left-1/2 z-40 flex w-[880px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-5 rounded-[12px] border border-zinc-700 bg-[#121214] px-7 py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
       <div className="flex items-baseline gap-3">
         <h2 className="m-0 text-[17px] font-semibold">Let someone in</h2>
-        <span className="text-[12.5px] text-muted-foreground">One door, three kinds. Each says what it lets through before you make it.</span>
+        <span className="text-[12.5px] text-muted-foreground">A token, a link or a share. Each says what it lets through before you make it.</span>
         <div className="flex-1" />
         <Button type="button" size="sm" variant="ghost" onClick={props.onClose}>
           Close
         </Button>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        {card("token", "↓", "#60a5fa", "Writes in", "An app, a collector or a hub sends logs, metrics, traces or marks. An ingest token. Nothing reads out.")}
-        {card("link", "⇄", "#e7e1d3", "Copies rows out", "Another Toposcope pulls raw rows within a filter, ids included, and keeps its place. A link. The other operator sees everything the filter lets through.")}
-        {card("share", "↑", "#2dd4bf", "Reads aggregates", "An app or a web page reads counts and series for its charts, never a row. A share. Usually made from a panel with Share…")}
+        {card("token", "↓", "#60a5fa", "Token", "Sends logs here. An app, a collector or a hub writes logs, metrics, traces or marks with it. Nothing reads out.")}
+        {card("link", "⇄", "#e7e1d3", "Link", "Copies rows between this instance and another Toposcope, either way, within a scope, ids included. Whoever copies from us sees everything the scope lets through.")}
+        {card("share", "↑", "#2dd4bf", "Share", "Shows charts on another web page: counts and series, never a row. Usually made from a panel with Share…")}
       </div>
       {kind === "token" ? (
         <form
@@ -345,18 +345,18 @@ function LetSomeoneIn(props: { onClose: () => void; onToken: () => void; onLink:
           <div className="flex flex-wrap gap-4 text-[13px]">
             <label className="inline-flex items-center gap-2">
               <input type="radio" checked={way === "offer"} onChange={() => setWay("offer")} />
-              They pull from here · rows leave
+              They copy from us · rows leave here
             </label>
             <label className="inline-flex items-center gap-2">
               <input type="radio" checked={way === "invite"} onChange={() => setWay("invite")} />
-              This instance pulls from them · rows arrive
+              We copy from them · rows come here
             </label>
           </div>
           <div className="flex items-center gap-2.5">
             <Button type="button" onClick={() => props.onLink(way)}>
               Choose the scope and make the key
             </Button>
-            <span className="text-[12px] text-muted-foreground">The key is shown once; it appears here as an invite until the other side pastes it.</span>
+            <span className="text-[12px] text-muted-foreground">The key is shown once; it appears under Links as key not used yet until the other side pastes it at Access › Paste a link key.</span>
           </div>
         </div>
       ) : null}

@@ -6,15 +6,15 @@ Toposcope is self-hosted, and everything it stores stays on the host unless one 
 
 `TOPOSCOPE_PASSWORD` in `.env` signs a browser in (a session cookie that lasts 30 days) and lets scripts read and write with HTTP Basic. It reads everything and changes settings. It is not listed in Access, since it is not a way someone else gets in; change it in `.env` and restart to end every session.
 
-## Writes in · ingest tokens
+## Tokens
 
-An app, a collector or a hub sends logs, metrics, traces, profiles, marks and check results with a bearer token: the `.env` token (`TOPOSCOPE_INGEST_TOKEN`) or one made in **Access › Let someone in › Writes in**. A token writes; it reads nothing out. A made token is revoked in its row; the `.env` token changes in `.env`.
+An app, a collector or a hub sends logs, metrics, traces, profiles, marks and check results with a bearer token: the `.env` token (`TOPOSCOPE_INGEST_TOKEN`) or one made in **Access › Let someone in › Token**. A token writes; it reads nothing out. A made token is revoked in its row; the `.env` token changes in `.env`.
 
-## Copies rows out · links
+## Links
 
-A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through. A key is minted in **Access › Let someone in › Copies rows out**, shown once, and listed as *key not used yet* until the other side pastes it; a link then reads *we copy from* or *copies from us*. Each link has a page: which way rows move, its scope, where it stands, **Pause** and **Revoke**. Change marks travel with a link. Rows pulled into this instance follow its retention. See [operations](operations.md#links).
+A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through. A key is minted in **Access › Let someone in › Link**, shown once, and listed as *key not used yet* until the other side pastes it; a link then reads *we copy from* or *copies from us*. Each link has a page: which way rows move, its scope, where it stands, **Pause** and **Revoke**. Change marks travel with a link. Rows pulled into this instance follow its retention. See [operations](operations.md#links).
 
-## Reads aggregates · shares
+## Shares
 
 A share lets an app or a web page read **counts and series** within a fence: never a log line, an event, a trace, a profile or a fingerprint, and never an id through a split or a narrowing the share does not list. A share holds named panels; the fence is derived from them; a page names one with `data-panel=`. With raw params off, a page can only name a panel and move its window. A share expires within a year and is revoked in its row. See [shares](shares.md).
 
