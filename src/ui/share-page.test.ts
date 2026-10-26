@@ -24,3 +24,32 @@ describe("a share's page (#266, 26k)", () => {
     expect(lines).toContainEqual(["framed by", "https://console.agental.io"]);
   });
 });
+
+import { addablePanels } from "./share-page";
+import { defaultTimeseries } from "../shared/widgets";
+
+describe("Add a panel… (#266)", () => {
+  const hunt = { id: "h1", name: "Errors on billing", query: "service:billing level:error", range: "1h" };
+  test("a saved hunt's own volume chart is a count of its rows, named after the hunt", () => {
+    const { options, why } = addablePanels([hunt], null);
+    expect(why).toBeNull();
+    expect(options.length).toBe(1);
+    expect(options[0]!.label).toBe("Errors on billing · count of logs · by level · 1h · line");
+    expect(options[0]!.panel).toMatchObject({ name: "Errors on billing", from: "the hunt Errors on billing" });
+    // A share with no logs yet takes the hunt's q as its logs.
+    expect(options[0]!.logs).toBe("service:billing level:error");
+  });
+  test("a log panel from another hunt says it counts the share's logs", () => {
+    const { options } = addablePanels([hunt], "service:toposcope");
+    expect(options[0]!.label).toContain("counts this share's logs (service:toposcope)");
+    expect(options[0]!.logs).toBeNull();
+  });
+  test("a panel of several metrics is offered one metric at a time", () => {
+    const widget = { ...defaultTimeseries({ metric: "disk_used", lines: [{ metric: "disk_free", labels: {} }] } as never) };
+    const { options } = addablePanels([{ ...hunt, id: "d", name: "Disk", widgets: { logs: false, widgets: [widget] } }], null);
+    expect(options.map((o) => o.panel.params.metric)).toEqual(["disk_used", "disk_free"]);
+  });
+  test("with nothing to add, it says why", () => {
+    expect(addablePanels([], null)).toEqual({ options: [], why: "Nothing to add yet: save a hunt, or use Share… on a panel." });
+  });
+});

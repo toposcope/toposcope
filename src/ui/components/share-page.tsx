@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { ShareView } from "../share-cover";
-import { namedPanelTag, panelNameFor, panelParams, panelRead } from "../share-from-panel";
-import { fenceLines, panelWords, type NamedPanel } from "../share-page";
-import { widgetTitle } from "../../shared/widgets";
+import { namedPanelTag, panelNameFor } from "../share-from-panel";
+import { addablePanels, fenceLines, panelWords, type NamedPanel } from "../share-page";
 import type { SavedSearch } from "../types";
 
 /**
@@ -51,22 +50,7 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
   }, [share, shown]);
 
   /** Every panel on a saved hunt or board that a share can hold, as an option to add. */
-  const addable = useMemo(() => {
-    const out: Array<{ id: string; label: string; panel: NamedPanel }> = [];
-    for (const s of saved) {
-      for (const w of s.widgets?.widgets ?? []) {
-        const r = panelRead(w);
-        if (!("reads" in r)) {
-          continue;
-        }
-        for (const read of r.reads) {
-          const title = widgetTitle(w) || read.title;
-          out.push({ id: `${s.id}:${w.id}:${read.title}`, label: `${s.name} · ${title}`, panel: { name: title, params: panelParams(read, s.range ?? "24h"), from: `${s.board ? "the board" : "the hunt"} ${s.name}` } });
-        }
-      }
-    }
-    return out;
-  }, [saved]);
+  const { options: addable, why: nothingToAdd } = useMemo(() => addablePanels(saved, share?.scope.logs ?? null), [saved, share]);
 
   async function put(body: Record<string, unknown>, ok: string) {
     if (!share) {
@@ -93,7 +77,7 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
     }
     const name = panelNameFor(opt.panel.name, panels.map((p) => p.name));
     // The fence follows the panels: no scope is sent, so the server derives it and says when it widens.
-    await put({ panels: [...panels, { ...opt.panel, name }], logs: share.scope.logs ?? undefined }, `${name} added; the fence follows it`);
+    await put({ panels: [...panels, { ...opt.panel, name }], logs: share.scope.logs ?? opt.logs ?? undefined }, `${name} added; the fence follows it`);
     setPicked(name);
   }
 
@@ -128,7 +112,15 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
           <span className="text-teal-400">↑</span> reads aggregates · share · {panels.length} panel{panels.length === 1 ? "" : "s"} · expires in {days} d
         </span>
         <div className="flex-1" />
-        <select aria-label="Add a panel" value="" onChange={(e) => void addPanel(e.target.value)} className="h-8 max-w-[300px] rounded-[7px] border border-white/10 bg-[#141416] px-2 text-[12.5px]">
+        {nothingToAdd ? <span className="text-[12px] text-muted-foreground">{nothingToAdd}</span> : null}
+        <select
+          aria-label="Add a panel"
+          value=""
+          disabled={addable.length === 0}
+          title={nothingToAdd ?? "A panel from a saved hunt or board, kept on this share under a name"}
+          onChange={(e) => void addPanel(e.target.value)}
+          className="h-8 max-w-[300px] rounded-[7px] border border-white/10 bg-[#141416] px-2 text-[12.5px] disabled:opacity-50"
+        >
           <option value="">Add a panel…</option>
           {addable.map((a) => (
             <option key={a.id} value={a.id}>
