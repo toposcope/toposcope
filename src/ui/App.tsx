@@ -2293,13 +2293,15 @@ export function App() {
       kind: "threshold",
       saved_search_id: id,
       threshold: input.threshold,
-      webhook_url: input.webhookUrl,
+      webhook_url: input.webhookUrls.find((u) => u !== "default") ?? "",
+      webhook_urls: input.webhookUrls,
+      measure: input.measure,
       body_kind: "default",
       body_template: "",
       resolved_body: null,
       remind_every: "window",
       opens_when: input.opensWhen,
-    });
+    } as MonitorInput);
     setWatchThisOpen(false);
     setView("watch");
   }

@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import { search } from "../query";
 import { parseSearchAgg } from "../query/agg";
 import { parseRangeMs } from "../query/relative";
-import { parseOpensWhen, type OpensWhen } from "../shared/monitor";
+import { parseMonitorMeasure, parseOpensWhen, type MonitorMeasure, type OpensWhen } from "../shared/monitor";
 import { readsFail } from "./monitor";
 
 /**
@@ -82,24 +82,39 @@ export function nextThreshold(series: PreviewPoint[], opensWhen: OpensWhen, thre
   return null;
 }
 
-export async function monitorPreview(input: { q: string; agg: string | null; opensWhen: OpensWhen; threshold: number; window: PreviewWindow; nowMs?: number }): Promise<MonitorPreview> {
+/** A share's bars (#279): each bar's matching rows over every row in it, in percent; a bar with no rows is left out. */
+export function shareSteps(matching: PreviewPoint[], all: PreviewPoint[]): PreviewPoint[] {
+  const total = new Map(all.map((p) => [p.t, p.v]));
+  return matching.flatMap((p) => {
+    const t = total.get(p.t) ?? 0;
+    return t > 0 ? [{ t: p.t, v: (100 * p.v) / t }] : [];
+  });
+}
+
+export async function monitorPreview(input: { q: string; agg: string | null; opensWhen: OpensWhen; threshold: number; window: PreviewWindow; measure?: MonitorMeasure; nowMs?: number }): Promise<MonitorPreview> {
   const nowMs = input.nowMs ?? Date.now();
   const stepMs = previewWindows[input.window];
-  const res = await search({
-    q: input.q,
-    from: new Date(nowMs - dayMs).toISOString(),
-    to: new Date(nowMs).toISOString(),
-    step: input.window,
-    events: "0",
-    split: "none",
-    ...(input.agg ? { agg: input.agg } : {}),
-  });
-  const refused = res.scan?.histogram ? res.scan.reason : input.agg && res.agg?.source === "refused" ? (res.agg.reason ?? "refused") : null;
-  const sparse: PreviewPoint[] = input.agg && res.agg && res.agg.source !== "refused"
+  const span = { from: new Date(nowMs - dayMs).toISOString(), to: new Date(nowMs).toISOString(), step: input.window, events: "0", split: "none" as const };
+  const share = input.measure === "share";
+  const [res, everything] = await Promise.all([
+    search({ q: input.q, ...span, ...(input.agg && !share ? { agg: input.agg } : {}) }),
+    share ? search({ q: "", ...span }) : Promise.resolve(null),
+  ]);
+  const refused = res.scan?.histogram
+    ? res.scan.reason
+    : everything?.scan?.histogram
+      ? everything.scan.reason
+      : input.agg && !share && res.agg?.source === "refused"
+        ? (res.agg.reason ?? "refused")
+        : null;
+  const sparse: PreviewPoint[] = input.agg && !share && res.agg && res.agg.source !== "refused"
     ? res.agg.buckets.map((b) => ({ t: b.t, v: b.v }))
     : res.histogram.map((b) => ({ t: b.t, v: b.n }));
   // A bar with no rows is a 0, not a gap: "fewer than" must see it (and a count reads 0 there).
-  const series = fillSteps(sparse, nowMs - dayMs, nowMs, stepMs, !input.agg);
+  const counted = fillSteps(sparse, nowMs - dayMs, nowMs, stepMs, !input.agg || share);
+  const series = share && everything
+    ? shareSteps(counted, fillSteps(everything.histogram.map((b) => ({ t: b.t, v: b.n })), nowMs - dayMs, nowMs, stepMs, true))
+    : counted;
   const opens = refused ? [] : stretchesOf(series, input.opensWhen, input.threshold, stepMs);
   const open_ms = opens.reduce((sum, s) => sum + ((s.to ? Date.parse(s.to) : nowMs) - Date.parse(s.from)), 0);
   return {
@@ -120,6 +135,10 @@ export async function monitorPreviewRoute(c: Context): Promise<Response> {
   const opensWhen = parseOpensWhen(c.req.query("opens_when") ?? "at_least");
   const threshold = Number(c.req.query("threshold"));
   const windowRaw = c.req.query("window") ?? "5m";
+  const measure = parseMonitorMeasure(c.req.query("measure") ?? "series");
+  if (!measure) {
+    return c.json({ error: "measure is series or share" }, 400);
+  }
   if (!opensWhen) {
     return c.json({ error: "opens_when is at_least or fewer_than" }, 400);
   }
@@ -133,7 +152,7 @@ export async function monitorPreviewRoute(c: Context): Promise<Response> {
     if (aggRaw) {
       parseSearchAgg(aggRaw);
     }
-    return c.json(await monitorPreview({ q, agg: aggRaw, opensWhen, threshold, window: windowRaw as PreviewWindow }));
+    return c.json(await monitorPreview({ q, agg: aggRaw, opensWhen, threshold, window: windowRaw as PreviewWindow, measure }));
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : "preview failed" }, 400);
   }

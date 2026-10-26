@@ -32,3 +32,14 @@ describe("the preview's bars", () => {
     expect(fillSteps([], t0, t0 + 4 * step, step, false)).toEqual([]);
   });
 });
+
+import { shareSteps } from "./preview";
+describe("a share's bars (#279)", () => {
+  test("each bar's matching rows over every row in it, in percent; a bar with no rows is left out", () => {
+    const t = (i: number) => new Date(t0 + i * step).toISOString();
+    expect(shareSteps([{ t: t(0), v: 2 }, { t: t(1), v: 0 }, { t: t(2), v: 1 }], [{ t: t(0), v: 100 }, { t: t(1), v: 0 }, { t: t(2), v: 4 }])).toEqual([
+      { t: t(0), v: 2 },
+      { t: t(2), v: 25 },
+    ]);
+  });
+});

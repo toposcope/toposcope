@@ -17,14 +17,30 @@ export type WatchThisInput = {
   threshold: number;
   opensWhen: OpensWhen;
   window: PreviewWindow;
-  webhookUrl: string;
+  /** Rows of this search, or their share of all rows in percent (#279). */
+  measure: "series" | "share";
+  /** Where it sends (#280): URLs, or `default` for the webhook in Settings. */
+  webhookUrls: string[];
 };
 
 const windows: PreviewWindow[] = ["5m", "15m", "1h"];
 
-export function watchThisName(savedName: string | null, q: string, opensWhen: OpensWhen, threshold: number): string {
+export function watchThisName(savedName: string | null, q: string, opensWhen: OpensWhen, threshold: number, measure: "series" | "share" = "series"): string {
   const what = savedName ?? (q.trim() || "All logs");
-  return `${what} ${opensWhen === "fewer_than" ? "below" : "above"} ${threshold}`;
+  return `${what} ${opensWhen === "fewer_than" ? "below" : "above"} ${threshold}${measure === "share" ? "%" : ""}`;
+}
+
+/** The webhooks a sheet can tick (26h): every URL a monitor already calls, newest kind first, once each. */
+export function knownTargets(monitors: Array<{ webhook_url: string | null; webhook_urls?: string[] | null }>): string[] {
+  const out: string[] = [];
+  for (const m of monitors) {
+    for (const u of m.webhook_urls && m.webhook_urls.length ? m.webhook_urls : [m.webhook_url ?? ""]) {
+      if (u && u !== "default" && /^https?:\/\//.test(u) && !out.includes(u)) {
+        out.push(u);
+      }
+    }
+  }
+  return out.slice(0, 8);
 }
 
 export function WatchThisSheet(props: {
@@ -43,14 +59,16 @@ export function WatchThisSheet(props: {
   const [threshold, setThreshold] = useState("10");
   const [win, setWin] = useState<PreviewWindow>(fixed ?? "5m");
   const [name, setName] = useState<string | null>(null);
+  const [measure, setMeasure] = useState<"series" | "share">("series");
   const [fallback, setFallback] = useState<string | null>(null);
-  const [own, setOwn] = useState(false);
-  const [ownUrl, setOwnUrl] = useState("");
+  const [known, setKnown] = useState<string[]>([]);
+  const [ticked, setTicked] = useState<string[]>([]);
+  const [adding, setAdding] = useState("");
   const [preview, setPreview] = useState<MonitorPreview | null>(null);
   const [busy, setBusy] = useState(false);
   const n = Number(threshold);
   const nOk = Number.isFinite(n) && n > 0;
-  const shownName = name ?? watchThisName(props.savedName, props.q, opensWhen, nOk ? n : 0);
+  const shownName = name ?? watchThisName(props.savedName, props.q, opensWhen, nOk ? n : 0, measure);
   const series = props.agg ? seriesLabel(props.agg).toLowerCase() : "rows of this search";
 
   useEffect(() => {
@@ -58,8 +76,14 @@ export function WatchThisSheet(props: {
       .then((res) => (res.ok ? (res.json() as Promise<{ default_webhook_url?: string | null }>) : null))
       .then((json) => {
         setFallback(json?.default_webhook_url ?? null);
-        setOwn(!json?.default_webhook_url);
+        if (json?.default_webhook_url) {
+          setTicked((t) => (t.length ? t : ["default"]));
+        }
       })
+      .catch(() => undefined);
+    void fetch("/api/monitors")
+      .then((res) => (res.ok ? (res.json() as Promise<{ monitors: Array<{ webhook_url: string | null; webhook_urls?: string[] | null }> }>) : null))
+      .then((json) => json && setKnown(knownTargets(json.monitors)))
       .catch(() => undefined);
   }, []);
 
@@ -69,8 +93,8 @@ export function WatchThisSheet(props: {
     }
     const ac = new AbortController();
     const t = setTimeout(() => {
-      const params = new URLSearchParams({ q: props.q, threshold: String(n), opens_when: opensWhen, window: win });
-      if (props.agg) {
+      const params = new URLSearchParams({ q: props.q, threshold: String(n), opens_when: opensWhen, window: win, measure });
+      if (props.agg && measure === "series") {
         params.set("agg", props.agg);
       }
       void fetch(`/api/monitors/preview?${params}`, { signal: ac.signal })
@@ -82,7 +106,7 @@ export function WatchThisSheet(props: {
       clearTimeout(t);
       ac.abort();
     };
-  }, [props.q, props.agg, n, nOk, opensWhen, win]);
+  }, [props.q, props.agg, n, nOk, opensWhen, win, measure]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -95,8 +119,18 @@ export function WatchThisSheet(props: {
   }, [props]);
 
   const peak = useMemo(() => Math.max(nOk ? n * 1.25 : 1, ...(preview?.series.map((p) => p.v) ?? [1])), [preview, n, nOk]);
-  const webhook = own ? ownUrl.trim() : "";
-  const canSave = nOk && shownName.trim().length > 0 && (!own || /^https?:\/\//.test(webhook)) && !busy;
+  const canSave = nOk && shownName.trim().length > 0 && ticked.length > 0 && !busy;
+  const toggle = (t: string) => setTicked((list) => (list.includes(t) ? list.filter((x) => x !== t) : [...list, t].slice(0, 5)));
+  function addTarget() {
+    const u = adding.trim();
+    if (!/^https?:\/\//.test(u)) {
+      toast.error("A webhook is an http(s) URL");
+      return;
+    }
+    setKnown((k) => (k.includes(u) ? k : [...k, u]));
+    setTicked((t) => (t.includes(u) ? t : [...t, u].slice(0, 5)));
+    setAdding("");
+  }
 
   async function save() {
     if (!canSave) {
@@ -104,7 +138,7 @@ export function WatchThisSheet(props: {
     }
     setBusy(true);
     try {
-      await props.onSave({ name: shownName.trim(), threshold: n, opensWhen, window: win, webhookUrl: webhook });
+      await props.onSave({ name: shownName.trim(), threshold: n, opensWhen, window: win, measure, webhookUrls: ticked });
     } catch {
       // the caller said why
     } finally {
@@ -113,17 +147,19 @@ export function WatchThisSheet(props: {
   }
 
   async function sendTest() {
-    const url = own ? webhook : fallback;
-    if (!url) {
-      toast.error("No webhook to call yet");
+    const urls = ticked.map((t) => (t === "default" ? fallback : t)).filter((u): u is string => Boolean(u));
+    if (urls.length === 0) {
+      toast.error("Tick a webhook to call");
       return;
     }
-    const res = await fetch("/api/alert-rules/test-call", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: shownName, kind: "threshold", saved_search_id: props.savedId, threshold: n, opens_when: opensWhen, webhook_url: url, body_kind: "default", body_template: "" }),
-    });
-    toast[res.ok ? "success" : "error"](res.ok ? `Test call sent to ${callHost(url)}` : `Test call failed (${res.status})`);
+    for (const url of urls) {
+      const res = await fetch("/api/alert-rules/test-call", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: shownName, kind: "threshold", saved_search_id: props.savedId, threshold: n, opens_when: opensWhen, webhook_url: url, body_kind: "default", body_template: "" }),
+      });
+      toast[res.ok ? "success" : "error"](res.ok ? `Test call sent to ${callHost(url)}` : `Test call to ${callHost(url)} failed (${res.status})`);
+    }
   }
 
   const lineY = 120 - Math.min(120, Math.round(((nOk ? n : 0) / peak) * 120));
@@ -156,7 +192,13 @@ export function WatchThisSheet(props: {
               <option value="fewer_than">fewer than</option>
             </select>
             <input aria-label="Amount" value={threshold} onChange={(e) => setThreshold(e.target.value)} className="h-[32px] w-[80px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2 text-right font-mono text-[13px] outline-none" />
-            <span>{props.agg ? "" : "rows"} in the last</span>
+            {props.agg ? null : (
+              <select aria-label="Rows or a share of all rows" value={measure} onChange={(e) => setMeasure(e.target.value as "series" | "share")} className="h-[32px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2 text-[13px]">
+                <option value="series">rows</option>
+                <option value="share">% of all rows</option>
+              </select>
+            )}
+            <span>in the last</span>
             {props.savedRange && !fixed ? (
               <span className="rounded-[7px] border border-white/10 px-2.5 py-1.5 font-mono">{props.savedRange}</span>
             ) : (
@@ -170,25 +212,42 @@ export function WatchThisSheet(props: {
             )}
           </div>
           <span className="text-[12px] text-muted-foreground">
-            {props.savedName ? "The saved hunt's own window is the monitor's." : "Saving keeps this hunt as a saved hunt with that window."} Fewer than is for silence.
+            {props.savedName ? "The saved hunt's own window is the monitor's." : "Saving keeps this hunt as a saved hunt with that window."} Fewer than is for silence; a share of all rows holds however busy the instance is.
           </span>
         </div>
         <div className="flex flex-col gap-1.5">
           <span className="text-[12px] text-muted-foreground">Sends to</span>
-          <div className="flex flex-wrap items-center gap-4 text-[13px]">
+          <div className="flex flex-wrap items-center gap-x-[18px] gap-y-2 text-[13px]">
             {fallback ? (
               <label className="inline-flex items-center gap-2">
-                <input type="radio" checked={!own} onChange={() => setOwn(false)} />
+                <input type="checkbox" checked={ticked.includes("default")} onChange={() => toggle("default")} />
                 the default webhook · {callHost(fallback)}
               </label>
             ) : null}
-            <label className="inline-flex items-center gap-2">
-              <input type="radio" checked={own} onChange={() => setOwn(true)} />
-              its own URL
-            </label>
-            {own ? (
-              <input aria-label="Webhook URL" value={ownUrl} onChange={(e) => setOwnUrl(e.target.value)} placeholder="https://ntfy.sh/…" className="h-[32px] min-w-[260px] flex-1 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12.5px] outline-none" />
-            ) : null}
+            {known.map((u) => (
+              <label key={u} className="inline-flex items-center gap-2" title={u}>
+                <input type="checkbox" checked={ticked.includes(u)} onChange={() => toggle(u)} />
+                {callHost(u)}
+              </label>
+            ))}
+            <span className="inline-flex items-center gap-1.5">
+              <input
+                aria-label="Another webhook URL"
+                value={adding}
+                onChange={(e) => setAdding(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTarget();
+                  }
+                }}
+                placeholder="https://…"
+                className="h-[30px] w-[220px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12px] outline-none"
+              />
+              <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={addTarget}>
+                + webhook
+              </button>
+            </span>
           </div>
           <span className="text-[12px] text-muted-foreground">Reminds every window while open · says when it resolves.</span>
         </div>
