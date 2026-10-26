@@ -212,6 +212,8 @@ export function migrateControlDb(db: Database): void {
       created_at INTEGER NOT NULL
     );
   `);
+  // Access (#265): when an ingest token was last used.
+  addColumnIfMissing(db, "api_tokens", "last_used_at", "INTEGER");
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,

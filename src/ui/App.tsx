@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Undo2 } from "lucide-react";
 import { HeaderField, HeaderTabs } from "@/components/operator-header";
-import { AccessPlaceholder } from "@/components/placeholder-pages";
+import { AccessView, type AccessFilter } from "@/components/access-view";
 import { HomeView } from "@/components/home-view";
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
@@ -37,7 +37,6 @@ import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
 import { VersionFooter } from "@/components/version-footer";
 import { TimeRangePicker } from "@/components/time-range-picker";
-import { TokensDialog } from "@/components/tokens-dialog";
 import { SharesDialog } from "@/components/shares-dialog";
 import { ThroughputMeter } from "@/components/throughput-meter";
 import { WidgetCanvas, type SeriesData } from "@/components/widget-canvas";
@@ -661,7 +660,10 @@ export function App() {
   const [chipInField, setChipInField] = useState(true);
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [tokensOpen, setTokensOpen] = useState(false);
+  // Access (#265): its filter; the Links tab is Access filtered to links.
+  const [accessFilter, setAccessFilter] = useState<AccessFilter>("all");
+  // A link's own page lands with #267; until then its Access row opens the 0.5 Links page.
+  const [linkPageOpen, setLinkPageOpen] = useState(false);
   const [sharesOpen, setSharesOpen] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
   const [saveUpdate, setSaveUpdate] = useState(false);
@@ -2127,7 +2129,7 @@ export function App() {
   }, [attrPrefixes, windowParams, wsKind]);
 
   const dialogOpen =
-    settingsOpen || tokensOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null || netDraft !== null;
+    settingsOpen || sharesOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null || netDraft !== null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -3973,8 +3975,31 @@ export function App() {
           onOpenAccess={() => setView("access")}
           onOpenBoard={(item) => openSavedTab(item)}
         />
-      ) : view === "access" ? (
-        <AccessPlaceholder onTokens={() => setTokensOpen(true)} onShares={() => setSharesOpen(true)} onLinks={() => setView("links")} />
+      ) : (view === "access" || view === "links") && !(view === "links" && linkPageOpen) ? (
+        <AccessView
+          filter={view === "links" ? "links" : accessFilter === "links" ? "all" : accessFilter}
+          onFilter={(f) => {
+            setLinkPageOpen(false);
+            if (f === "links") {
+              setView("links");
+            } else {
+              setAccessFilter(f);
+              setView("access");
+            }
+          }}
+          here={instance?.name ?? null}
+          retentionDays={retentionDays}
+          onOpenHunt={(hq) => {
+            setView("search");
+            addWorkspace({ ...blankSearchSnap(), kind: "search", q: hq, range: "24h", live: false }, true);
+          }}
+          onOpenLink={() => {
+            setView("links");
+            setLinkPageOpen(true);
+          }}
+          onOpenShare={() => setSharesOpen(true)}
+          onNewShare={() => setSharesOpen(true)}
+        />
       ) : view === "watch" ? (
         <WatchView
           data={monitors}
@@ -3992,7 +4017,18 @@ export function App() {
           onOpenMarks={openMarksStretch}
         />
       ) : view === "links" ? (
-        <LinksView onOpenSettings={() => setSettingsOpen(true)} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex shrink-0 items-center gap-2 px-6 pt-3 text-[13px]">
+            <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setLinkPageOpen(false); setView("access"); }}>
+              Access
+            </button>
+            <span className="text-zinc-600">›</span>
+            <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setLinkPageOpen(false)}>
+              Links
+            </button>
+          </div>
+          <LinksView onOpenSettings={() => setSettingsOpen(true)} />
+        </div>
       ) : view === "fields" ? (
         <FieldsView
           catalog={fields}
@@ -4818,12 +4854,7 @@ export function App() {
         onOpenChange={setSettingsOpen}
         onRetentionDays={setRetentionDays}
         onInstanceName={() => void loadInstance().catch(() => undefined)}
-        onOpenShares={() => {
-          setSettingsOpen(false);
-          setSharesOpen(true);
-        }}
       />
-      <TokensDialog open={tokensOpen} onOpenChange={setTokensOpen} />
       <SharesDialog
         open={sharesOpen}
         onOpenChange={setSharesOpen}
