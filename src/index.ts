@@ -33,6 +33,7 @@ import { instanceId, instanceName } from "./control/instance";
 import { setHereName } from "./shared/here";
 import { getHome, homeSaved, putHome } from "./control/home";
 import { homeSinceRoute } from "./control/home-since";
+import { monitorPreviewRoute } from "./alerts/preview";
 import { fingerprintSeenRoute } from "./query/fingerprint-seen";
 import { savedSearchUrl } from "./ui/search-url";
 import { createSession, endSession, sessionExpiry, sessionMs } from "./control/sessions";
@@ -368,6 +369,8 @@ app.put("/api/alert-rules/:id", updateMonitorRoute);
 app.delete("/api/alert-rules/:id", deleteAlertRule);
 // Monitors (#175); /api/alert-rules stays as their alias for 0.6.
 app.get("/api/monitors", listMonitors);
+// Watch this (#264): where a saved-search monitor would have opened over the last 24 h.
+app.get("/api/monitors/preview", monitorPreviewRoute);
 // The HTTP(S) editor's Send (#178): one request from this node, nothing stored.
 app.post("/api/monitors/send", sendHttpRoute);
 app.get("/api/monitors/:name", getMonitor);
