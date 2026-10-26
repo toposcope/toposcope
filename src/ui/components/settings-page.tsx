@@ -3,7 +3,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatCompactCount, formatFieldCount, setCountFormat, useCountFormat } from "@/count-format";
 import { setTimestampFormat, useTimestampFormat } from "@/event-time";
+import { fieldsCardFacts, namesLine, type FieldsCardFacts } from "../fields-card";
+import type { FieldsResponse } from "../../shared/fields";
 import { callHost } from "../watch";
+import { FIELDS_RANGE } from "./fields-view";
 import type { InstanceInfo } from "./instance-menu";
 import { signedInUntil } from "./instance-menu";
 
@@ -29,7 +32,7 @@ export function bytes(n: number | null | undefined): string {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
 }
 
-export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void }) {
+export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void }) {
   const [body, setBody] = useState<SettingsBody | null>(null);
   const [name, setName] = useState("");
   const [days, setDays] = useState("30");
@@ -37,13 +40,22 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
   const [webhook, setWebhook] = useState("");
   const [version, setVersion] = useState<VersionBody | null>(null);
   const [system, setSystem] = useState<SystemBody | null>(null);
+  const [fields, setFields] = useState<FieldsCardFacts | null>(null);
   const [busy, setBusy] = useState(false);
   const countFormat = useCountFormat();
   const timestampFormat = useTimestampFormat();
   const endpoint = typeof window === "undefined" ? "/v1/logs" : `${window.location.origin}/v1/logs`;
 
   const load = useCallback(async () => {
-    const [s, v, y] = await Promise.all([fetch("/api/settings"), fetch("/api/version"), fetch("/api/system")]);
+    const [s, v, y, f] = await Promise.all([
+      fetch("/api/settings"),
+      fetch("/api/version"),
+      fetch("/api/system"),
+      fetch(`/api/fields?range=${FIELDS_RANGE}&wave=keys`),
+    ]);
+    if (f.ok) {
+      setFields(fieldsCardFacts((await f.json()) as FieldsResponse));
+    }
     if (s.ok) {
       const json = (await s.json()) as SettingsBody;
       setBody(json);
@@ -109,6 +121,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
   const card = "flex flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5";
   const row = "flex items-center gap-3 text-[12.5px]";
   const k = "w-[110px] shrink-0 text-muted-foreground";
+  const fk = "w-[140px] shrink-0 text-muted-foreground";
   const input = "h-8 min-w-0 flex-1 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none";
   const session = props.instance?.session;
 
@@ -117,7 +130,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
       <div className="flex flex-col gap-3.5">
         <div className="flex flex-wrap items-baseline gap-3.5">
           <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Settings</h1>
-          <span className="text-[12px] text-muted-foreground">The instance itself. Who may read or write is under Access; what to watch is under Watch.</span>
+          <span className="text-[12px] text-muted-foreground">The instance itself, and what its log keys are for. Who may read or write is under Access; what to watch is under Watch.</span>
         </div>
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2 xl:grid-cols-3">
           <section className={card}>
@@ -272,6 +285,44 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               >
                 copy
               </button>
+            </div>
+          </section>
+          <section className={card}>
+            <h2 className="m-0 text-[13.5px] font-medium">Fields</h2>
+            <div className={row}>
+              <span className={fk}>Keys seen</span>
+              <span className="font-mono">{fields ? fields.keys : "—"}</span>
+              {fields ? (
+                <span className="text-[12px] text-muted-foreground">
+                  in the last 24 h · {fields.core} core, {fields.attrs} from attrs
+                </span>
+              ) : null}
+            </div>
+            <div className={row}>
+              <span className={fk}>Roles</span>
+              <span className="font-mono">
+                {fields ? `${fields.roles.chart} chart · ${fields.roles.lookup} lookup · ${fields.roles.ignore} ignore` : "—"}
+              </span>
+            </div>
+            <div className={row}>
+              <span className={fk}>New, no role chosen</span>
+              <span className="font-mono">{fields ? fields.unchosen.length : "—"}</span>
+              {fields && fields.unchosen.length > 0 ? (
+                <span className="text-[12px] text-muted-foreground">{namesLine(fields.unchosen)} · summarised as chart until chosen</span>
+              ) : null}
+            </div>
+            <div className={row}>
+              <span className={fk}>Metric links</span>
+              <span className="font-mono">{fields ? fields.links.length : "—"}</span>
+              {fields && fields.links.length > 0 ? (
+                <span className="text-[12px] text-muted-foreground">{namesLine(fields.links)} · Compare and shares read them as one</span>
+              ) : null}
+            </div>
+            <span className="text-[12px] text-muted-foreground">A role applies to new rows only.</span>
+            <div>
+              <Button type="button" size="sm" variant="outline" onClick={props.onOpenFields}>
+                Open fields →
+              </Button>
             </div>
           </section>
         </div>

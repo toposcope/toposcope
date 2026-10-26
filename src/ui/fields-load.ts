@@ -32,7 +32,7 @@ export function fieldsCatalogSlow(
 
 export function fieldsSlowAdvice(rangeLabel: string, keyCount: number): string {
   if (keyCount > 0) {
-    return `${rangeLabel} over ${keyCount} keys — a narrower range returns sooner`;
+    return `${rangeLabel} over ${keyCount} keys — still counting`;
   }
-  return `${rangeLabel} — a narrower range returns sooner`;
+  return `${rangeLabel} — still counting`;
 }
