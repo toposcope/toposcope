@@ -83,9 +83,9 @@ export function pushClock(m: MonitorView): PushClock {
 }
 
 /** "at least 50", "fewer than 1", "p99(duration_ms) at least 800": what opens a search monitor. */
-export function opensWhen(m: Pick<MonitorView, "threshold" | "saved" | "opens_when">): string {
+export function opensWhen(m: Pick<MonitorView, "threshold" | "saved" | "opens_when" | "measure">): string {
   const agg = m.saved?.agg ?? null;
-  return opensWhenWords(m.opens_when ?? "at_least", agg ? seriesLabel(agg) : null, m.threshold);
+  return opensWhenWords(m.opens_when ?? "at_least", agg ? seriesLabel(agg) : null, m.threshold, m.measure ?? "series");
 }
 
 /** A search monitor that opens when its search goes quiet (#176). */
@@ -202,6 +202,9 @@ export function laneKind(m: MonitorView): string {
 
 /** "at least 50 lines in 15m", "fewer than 1 line in 15m", "rate fewer than 0.5 in 15m". */
 export function opensWhenLine(m: MonitorView): string {
+  if (m.measure === "share") {
+    return `${opensWhen(m)} in ${m.saved?.range ?? "its window"}`;
+  }
   const agg = m.saved?.agg ?? null;
   const what = agg ? opensWhen(m) : `${opensWhen(m)} line${m.threshold === 1 ? "" : "s"}`;
   return `${what} in ${m.saved?.range ?? "its window"}`;

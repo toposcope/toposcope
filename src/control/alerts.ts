@@ -26,11 +26,13 @@ import {
   defaultRemind,
   fewerThanProblem,
   parseCantTell,
+  parseMonitorMeasure,
   parseOpensWhen,
   parseRemind,
   parseSource,
   sourceOfKind,
   type CantTell,
+  type MonitorMeasure,
   type MonitorResult,
   type MonitorSource,
   type MonitorState,
@@ -39,7 +41,7 @@ import {
 } from "../shared/monitor";
 
 const RULE_COLS =
-  "id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
+  "id, name, query, measure, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
 
 /** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
 export const alertKinds = ["threshold", "first_seen"] as const;
@@ -88,6 +90,8 @@ export type AlertRule = {
   last_result_at: number | null;
   /** A search monitor opens at least or fewer than its threshold (#176). */
   opens_when: OpensWhen;
+  /** What it compares (#279): its series, or its share of all rows in percent. */
+  measure: MonitorMeasure;
   /** Why a fewer-than monitor stayed shut on its last pass, when its reading said it would open. */
   cant_tell: CantTell | null;
   /** A push monitor (#177): when its next result is due, and how long past that before it opens. Null: by its results alone. */
@@ -104,8 +108,9 @@ export type AlertRule = {
 
 type RuleRow = Omit<
   AlertRule,
-  "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result" | "opens_when" | "cant_tell"
+  "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result" | "opens_when" | "cant_tell" | "measure"
 > & {
+  measure: string | null;
   kind: string | null;
   last_mark: string | null;
   body_kind: string | null;
@@ -212,6 +217,7 @@ function mapRule(row: RuleRow): AlertRule {
     last_value: row.last_value ?? null,
     last_result_at: row.last_result_at ?? null,
     opens_when: parseOpensWhen(row.opens_when) ?? "at_least",
+    measure: parseMonitorMeasure(row.measure) ?? "series",
     cant_tell: parseCantTell(row.cant_tell),
     every_ms: row.every_ms ?? null,
     grace_ms: row.grace_ms ?? null,
@@ -422,6 +428,7 @@ export type MonitorFields = {
   resolved_body: string | null;
   remind_every: RemindId;
   opens_when: OpensWhen;
+  measure: MonitorMeasure;
 };
 
 type FieldsError = { error: string; status: 400 | 404 };
@@ -509,7 +516,14 @@ export function readMonitorFields(
   if (saved.board) {
     return { error: boardWatchRefuse(saved), status: 400 };
   }
-  const fewerProblem = opensWhen === "fewer_than" ? fewerThanProblem(saved) : null;
+  const measure = rec.measure === undefined ? (existing?.measure ?? "series") : parseMonitorMeasure(rec.measure);
+  if (!measure) {
+    return { error: "measure must be series or share", status: 400 };
+  }
+  if (measure === "share" && (kind !== "threshold" || saved.agg)) {
+    return { error: "a share of all rows counts rows: its saved search must count rows, with no series", status: 400 };
+  }
+  const fewerProblem = opensWhen === "fewer_than" && measure === "series" ? fewerThanProblem(saved) : null;
   if (fewerProblem) {
     return { error: fewerProblem, status: 400 };
   }
@@ -523,6 +537,7 @@ export function readMonitorFields(
     ...body,
     remind_every: remind,
     opens_when: opensWhen,
+    measure,
   };
 }
 
@@ -544,8 +559,8 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
     .query(
       `INSERT INTO alert_rules
         (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
-         source, state, remind_every, resolved_body, opens_when)
-       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?)`,
+         source, state, remind_every, resolved_body, opens_when, measure)
+       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -562,6 +577,7 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
       fields.remind_every,
       fields.resolved_body,
       fields.opens_when,
+      fields.measure,
     );
   return getAlert(id)!;
 }
@@ -575,7 +591,7 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
     .query(
       `UPDATE alert_rules
        SET name = ?, query = ?, webhook_url = ?, saved_search_id = ?, threshold = ?, kind = ?, body_kind = ?, body_template = ?,
-           source = ?, remind_every = ?, resolved_body = ?, opens_when = ?
+           source = ?, remind_every = ?, resolved_body = ?, opens_when = ?, measure = ?
        WHERE id = ?`,
     )
     .run(
@@ -591,13 +607,15 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
       fields.remind_every,
       fields.resolved_body,
       fields.opens_when,
+      fields.measure,
       existing.id,
     );
   const readsAnew =
     fields.kind !== existing.kind ||
     fields.saved_search_id !== existing.saved_search_id ||
     fields.threshold !== existing.threshold ||
-    fields.opens_when !== existing.opens_when;
+    fields.opens_when !== existing.opens_when ||
+    fields.measure !== existing.measure;
   if (readsAnew && existing.state === "open") {
     closeByEdit(existing.id, now);
   }

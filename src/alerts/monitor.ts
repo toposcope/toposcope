@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { AlertRule } from "../control/alerts";
 import type { SavedSearch } from "../control/saved-searches";
 import { parseRangeMs } from "../query/relative";
-import {
+import { type MonitorMeasure,
   callRetryMs,
   fewerThanProblem,
   formatOpenFor,
@@ -57,7 +57,8 @@ export type CallDeps = {
 };
 
 export type SearchMonitorDeps = CallDeps & {
-  read: (saved: SavedSearch) => Promise<AlertSeries>;
+  /** The saved search's series, or with `share` its share of all rows (#279). */
+  read: (saved: SavedSearch, measure?: MonitorMeasure) => Promise<AlertSeries>;
   recordEval: (
     id: string,
     stamp: { at: number; status: "refused" | "error" | "ok"; error: string | null },
@@ -121,11 +122,11 @@ export async function passSearchMonitor(
   let reading: Reading | null = null;
   let expr: string | null = saved.agg;
   // The saved search may have changed under it: a p99 or a fixed from/to cannot read fewer than.
-  const problem = fewer ? fewerThanProblem(saved) : null;
+  const problem = fewer && (rule.measure ?? "series") === "series" ? fewerThanProblem(saved) : null;
   try {
     const series = problem
       ? { expr: saved.agg, count: 0, value: 0, refused: true, reason: problem }
-      : await deps.read(saved);
+      : await deps.read(saved, rule.measure ?? "series");
     expr = series.expr;
     if (series.refused) {
       deps.recordEval(rule.id, { at: now, status: "refused", error: series.reason ?? "refused" }, db);

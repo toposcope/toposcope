@@ -53,6 +53,29 @@ export function applyHistogramCountRefuse(
   return { ...series, refused: true, reason: scan.reason };
 }
 
+/**
+ * The share of all rows a saved search matches in its window, in percent (#279): its count over the
+ * count of every row in the same window. A window with no rows at all is no reading, not 0 %.
+ */
+export async function evaluateShareSeries(
+  saved: { query: string; range: string | null; from_ts: string | null; to_ts: string | null },
+  count_: (filters: { q: string; range?: string; from?: string; to?: string }) => Promise<number> = countLogs,
+): Promise<AlertSeries> {
+  const window = { range: saved.range ?? undefined, from: saved.from_ts ?? undefined, to: saved.to_ts ?? undefined };
+  try {
+    const [count, all] = await Promise.all([count_({ ...window, q: saved.query }), count_({ ...window, q: "" })]);
+    if (all === 0) {
+      return { expr: "share", count, value: 0, refused: true, reason: "no rows at all in the window" };
+    }
+    return { expr: "share", count, value: (100 * count) / all, refused: false };
+  } catch (err) {
+    if (err instanceof LogsScanBudgetError) {
+      return { expr: "share", count: 0, value: 0, refused: true, reason: err.message };
+    }
+    throw err;
+  }
+}
+
 export async function evaluateAlertSeries(saved: {
   query: string;
   range: string | null;
