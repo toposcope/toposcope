@@ -10,13 +10,17 @@ import {
 import { cn } from "@/lib/utils";
 import type { OperatorView } from "../search-url";
 
-/** The header's tabs, in order (frames 26a and 26d, #258; Fields moved under Settings in 28a, #292). Words, not icons. */
+/** The header's tabs, in order (frames 26a and 26d, #258; Fields moved under Settings in 28a, #292; Links into Access in 29a, #295). Words, not icons. */
 export const headerTabs: { view: OperatorView; label: string }[] = [
   { view: "home", label: "Home" },
   { view: "search", label: "Hunt" },
   { view: "watch", label: "Watch" },
-  { view: "links", label: "Links" },
 ];
+
+/** Access stays lit on its own page and on `?view=links`, which is Access filtered to links (29a, #295). */
+export function accessLit(view: OperatorView): boolean {
+  return view === "access" || view === "links";
+}
 
 /** Settings stays lit on its own page and on Fields, which lives under it (28b, #292). */
 export function settingsLit(view: OperatorView): boolean {

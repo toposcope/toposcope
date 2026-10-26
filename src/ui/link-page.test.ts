@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { behindWords, linkTitle, quarterBars, ratePerHour } from "./link-page";
+import { behindWords, linkKind, linkTitle, quarterBars, ratePerHour } from "./link-page";
 
 describe("a link's page words (#267)", () => {
   test("title, behind, rate", () => {
-    expect(linkTitle({ role: "pull", peer: "ci-box" })).toBe("ci-box → here");
-    expect(linkTitle({ role: "serve", peer: "ian-laptop" })).toBe("here → ian-laptop");
+    expect(linkTitle({ role: "pull", peer: "ci-box" })).toBe("ci-box");
+    expect(linkKind({ role: "pull" })).toEqual({ glyph: "←", words: "we copy from" });
+    expect(linkKind({ role: "serve" })).toEqual({ glyph: "→", words: "copies from us" });
+    expect(linkTitle({ role: "serve", peer: "ian-laptop" })).toBe("ian-laptop");
     expect(behindWords({ behind_rows: 4, position: 1, settled: 1, paused: false })).toEqual({ text: "4 rows", ok: true });
     expect(behindWords({ behind_rows: null, position: 5, settled: 5, paused: false })).toEqual({ text: "caught up", ok: true });
     expect(behindWords({ behind_rows: 0, position: 5, settled: 5, paused: true })).toEqual({ text: "paused", ok: false });

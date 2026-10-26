@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { headerTabs, settingsLit } from "./components/operator-header";
+import { accessLit, headerTabs, settingsLit } from "./components/operator-header";
 import { fieldsCardFacts, namesLine } from "./fields-card";
 import type { FieldCatalogRow } from "../shared/fields";
 
@@ -14,7 +14,13 @@ const row = (key: string, kind: "core" | "attr", roleable = kind === "attr"): Fi
 
 describe("Fields under Settings (28a, 28b, #292)", () => {
   test("the header has no Fields tab", () => {
-    expect(headerTabs.map((t) => t.label)).toEqual(["Home", "Hunt", "Watch", "Links"]);
+    expect(headerTabs.map((t) => t.label)).toEqual(["Home", "Hunt", "Watch"]);
+  });
+
+  test("Access is lit on Access and on view=links (29a, #295)", () => {
+    expect(accessLit("access")).toBe(true);
+    expect(accessLit("links")).toBe(true);
+    expect(accessLit("settings")).toBe(false);
   });
 
   test("Settings is lit on Settings and on Fields only", () => {
