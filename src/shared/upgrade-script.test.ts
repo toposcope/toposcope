@@ -409,7 +409,7 @@ describe("upgrade from here (#220)", () => {
   });
 });
 
-describe("upgrade.sh names only the settings a release adds to env.example (#255)", () => {
+describe("upgrade.sh names only the settings a release adds to env.example (#256)", () => {
   test("a release whose env.example names the same settings names none, though .env lacks its commented examples", async () => {
     // agental's 0.7.2 → 0.7.3: an .env from an older install holds only the values it sets.
     const r = await run(["0.6.2"]);
