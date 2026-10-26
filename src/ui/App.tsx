@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { Undo2 } from "lucide-react";
 import { HeaderField, HeaderTabs } from "@/components/operator-header";
 import { AccessView, type AccessFilter } from "@/components/access-view";
+import { SharePage } from "@/components/share-page";
 import { HomeView } from "@/components/home-view";
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
@@ -664,6 +665,8 @@ export function App() {
   const [accessFilter, setAccessFilter] = useState<AccessFilter>("all");
   // A link's own page lands with #267; until then its Access row opens the 0.5 Links page.
   const [linkPageOpen, setLinkPageOpen] = useState(false);
+  // A share's own page (#266), from its Access row.
+  const [sharePage, setSharePage] = useState<string | null>(null);
   const [sharesOpen, setSharesOpen] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
   const [saveUpdate, setSaveUpdate] = useState(false);
@@ -3975,6 +3978,15 @@ export function App() {
           onOpenAccess={() => setView("access")}
           onOpenBoard={(item) => openSavedTab(item)}
         />
+      ) : view === "access" && sharePage ? (
+        <SharePage
+          name={sharePage}
+          onBack={() => setSharePage(null)}
+          onOpenHunt={(hq) => {
+            setView("search");
+            addWorkspace({ ...blankSearchSnap(), kind: "search", q: hq, range: "24h", live: false }, true);
+          }}
+        />
       ) : (view === "access" || view === "links") && !(view === "links" && linkPageOpen) ? (
         <AccessView
           filter={view === "links" ? "links" : accessFilter === "links" ? "all" : accessFilter}
@@ -3997,7 +4009,10 @@ export function App() {
             setView("links");
             setLinkPageOpen(true);
           }}
-          onOpenShare={() => setSharesOpen(true)}
+          onOpenShare={(shareName) => {
+            setView("access");
+            setSharePage(shareName);
+          }}
           onNewShare={() => setSharesOpen(true)}
         />
       ) : view === "watch" ? (

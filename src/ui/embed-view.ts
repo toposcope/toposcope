@@ -33,14 +33,24 @@ export function parseEmbedParams(search: string): EmbedParams {
   const chartRaw = url.get("chart") ?? "line";
   const chart: EmbedChart = (embedCharts as readonly string[]).includes(chartRaw) ? (chartRaw as EmbedChart) : "line";
   const query = new URLSearchParams();
-  for (const key of chart === "top" || chart === "donut" ? topKeys : seriesKeys) {
-    const v = url.get(key);
-    if (v) query.set(key, v);
-  }
   const reading = url.get("reading");
   const metric = url.get("metric");
-  if (metric && reading && !metric.includes(":")) {
-    query.set("metric", `${reading}:${metric}`);
+  const panel = url.get("panel");
+  if (panel) {
+    // A named panel (#266): the server holds its params; the read names it and the window only.
+    query.set("panel", panel);
+    for (const key of ["range", "from", "to", "step"] as const) {
+      const v = url.get(key);
+      if (v) query.set(key, v);
+    }
+  } else {
+    for (const key of chart === "top" || chart === "donut" ? topKeys : seriesKeys) {
+      const v = url.get(key);
+      if (v) query.set(key, v);
+    }
+    if (metric && reading && !metric.includes(":")) {
+      query.set("metric", `${reading}:${metric}`);
+    }
   }
   const name =
     chart === "top" || chart === "donut" ? `top ${url.get("n") || "10"} by ${url.get("key") ?? ""}` : metric ? metric.replace(/^[a-z0-9]+:/, "") : `logs · ${url.get("agg") || "count"}`;
@@ -147,4 +157,22 @@ export function embedAggResult(body: SeriesBody): {
 /** What the frame tells its parent page, so a host can show its own fallback. */
 export function embedMessage(state: EmbedState): "toposcope:ready" | "toposcope:stale" | "toposcope:expired" | null {
   return state.kind === "expired" ? "toposcope:expired" : state.kind === "stale" ? "toposcope:stale" : state.kind === "loading" ? null : "toposcope:ready";
+}
+
+/**
+ * A tag that names a panel (#266) is drawn from the panel the share holds: its params under the
+ * page's own (the page may only move the window when raw params are off; the server enforces it).
+ */
+export function mergePanelSearch(search: string, panelParams: Record<string, string>): string {
+  const url = new URLSearchParams(search);
+  const out = new URLSearchParams();
+  for (const [k, v] of Object.entries(panelParams)) {
+    out.set(k, v);
+  }
+  for (const [k, v] of url) {
+    if (k === "ticket" || k === "theme" || k === "panel" || k === "range" || k === "from" || k === "to" || k === "step" || k === "title") {
+      out.set(k, v);
+    }
+  }
+  return `?${out.toString()}`;
 }

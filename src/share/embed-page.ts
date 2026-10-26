@@ -49,7 +49,7 @@ export async function embedJsRoute(_c: Context): Promise<Response> {
 }
 
 /** The panel params a tag may carry, each a `data-` attribute of the same name. */
-export const embedParams = ["ticket", "chart", "metric", "reading", "ml", "split", "agg", "key", "n", "range", "step", "title", "theme"] as const;
+export const embedParams = ["ticket", "panel", "chart", "metric", "reading", "ml", "split", "agg", "key", "n", "range", "step", "title", "theme"] as const;
 
 export function embedLoader(): string {
   return `(() => {

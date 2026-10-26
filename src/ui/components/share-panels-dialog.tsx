@@ -16,9 +16,11 @@ import { shareIsLive, type ShareView } from "@/share-cover";
 import {
   likePattern,
   mergeScope,
+  namedPanelTag,
+  panelNameFor,
+  panelParams,
   panelEmbedQuery,
   panelRead,
-  panelTag,
   proposeScope,
   proposedShareName,
   type PanelRead,
@@ -43,7 +45,7 @@ type Props = {
   range: string;
 };
 
-type Done = { share: string; secret: string | null; added: string[]; reads: PanelRead[] };
+type Done = { share: string; secret: string | null; added: string[]; reads: PanelRead[]; names: string[] };
 
 const section = "pt-1 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase";
 const codeBox =
@@ -139,10 +141,12 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
       toast.error(merged.why);
       return;
     }
+    // Share… adds each panel as a named panel on the share (#266); the tag names it.
+    const named = namePanels(reads, (share.panels ?? []).map((p) => p.name));
     const res = await fetch(`/api/shares/${encodeURIComponent(share.name)}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ expires_at: share.expires_at, scope: merged.scope, limits: share.limits, embed: share.embed }),
+      body: JSON.stringify({ expires_at: share.expires_at, scope: merged.scope, limits: share.limits, embed: share.embed, panels: [...(share.panels ?? []), ...named] }),
     });
     const json = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
@@ -150,7 +154,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
       return;
     }
     await reload();
-    setDone({ share: share.name, secret: null, added: merged.added, reads });
+    setDone({ share: share.name, secret: null, added: merged.added, reads, names: named.map((p) => p.name) });
     setStep("done");
   }
 
@@ -163,6 +167,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
         expires_at: until,
         scope,
         embed: { frame_ancestors: site.trim() ? [site.trim().replace(/\/$/, "")] : [] },
+        panels: namePanels(reads, []),
       }),
     });
     const json = (await res.json().catch(() => ({}))) as { error?: string; secret?: string };
@@ -171,8 +176,17 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
       return;
     }
     await reload();
-    setDone({ share: name.trim().toLowerCase(), secret: json.secret ?? null, added: [], reads });
+    setDone({ share: name.trim().toLowerCase(), secret: json.secret ?? null, added: [], reads, names: namePanels(reads, []).map((p) => p.name) });
     setStep("done");
+  }
+
+  function namePanels(rs: PanelRead[], taken: string[]) {
+    const out: Array<{ name: string; params: Record<string, string>; from: string }> = [];
+    for (const r of rs) {
+      const n = panelNameFor(r.title, [...taken, ...out.map((p) => p.name)]);
+      out.push({ name: n, params: panelParams(r, range), from: query.trim() ? `the hunt ${query.trim()}` : "a panel" });
+    }
+    return out;
   }
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
@@ -397,8 +411,8 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                     <span className="text-[12px] text-muted-foreground">as for its other panels</span>
                   </div>
                 ) : null}
-                <Step n="3" title="In the page, where the chart goes" onCopy={() => copy(done.reads.map((r) => panelTag(origin, r, range)).join("\n\n"), done.reads.length > 1 ? "Tags" : "Tag")}>
-                  <pre className={codeBox}>{done.reads.map((r) => panelTag(origin, r, range)).join("\n\n")}</pre>
+                <Step n="3" title="In the page, where the chart goes" onCopy={() => copy(done.names.map((n) => namedPanelTag(origin, n)).join("\n\n"), done.names.length > 1 ? "Tags" : "Tag")}>
+                  <pre className={codeBox}>{done.names.map((n) => namedPanelTag(origin, n)).join("\n\n")}</pre>
                   <span className="text-[11px] text-muted-foreground">Serve your own copy of embed.js, with data-origin, to keep a fallback when Toposcope is down.</span>
                 </Step>
               </div>
