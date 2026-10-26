@@ -1,7 +1,8 @@
 import type { Context, Next } from "hono";
 import { mintTicket, parseShareEmbed, ticketPrefix, ticketShareRow } from "./embed";
 import { parseShareLimits } from "./limits";
-import { formatShareScope, parseShareScope } from "./scope";
+import { formatShareScope, parseShareScope, type ShareScope } from "./scope";
+import { deriveShareScope, parseSharePanels, scopeGaps } from "./panels";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { dropShareCache } from "./cache";
 import { noteLimited, noteRead, pendingUse, takeRead } from "./use";
@@ -25,6 +26,8 @@ export function shareJson(share: ShareRecord): Record<string, unknown> {
     scope: formatShareScope(share.scope),
     limits: share.limits,
     embed: share.embed,
+    panels: share.panels,
+    raw_params: share.raw_params,
     expires_at: share.expires_at,
     revoked_at: share.revoked_at,
     created_at: share.created_at,
@@ -169,9 +172,34 @@ function writeShare(c: Context, name: string | null, body: Record<string, unknow
   if (!name) {
     return c.json({ error: "name: lower-case letters, digits, . _ -, up to 64" }, 400);
   }
-  const scope = parseShareScope(body.scope);
+  // Named panels (#266): the fence is derived from them unless a scope is given, which must cover them.
+  const panels = body.panels === undefined ? undefined : parseSharePanels(body.panels);
+  if (panels && "error" in panels) {
+    return c.json({ error: panels.error }, 400);
+  }
+  const liveNow = shareByName(name);
+  const keepNow = liveNow && liveNow.revoked_at === null ? liveNow : null;
+  const panelList = panels ?? keepNow?.panels ?? [];
+  let scope: ShareScope | { error: string };
+  if (body.scope !== undefined) {
+    scope = parseShareScope(body.scope);
+    if (!("error" in scope) && panelList.length) {
+      const gaps = scopeGaps(scope, panelList);
+      if (gaps.length) {
+        return c.json({ error: `the scope does not cover the panels: ${gaps.join("; ")}`, gaps }, 400);
+      }
+    }
+  } else if (panelList.length) {
+    const logs = typeof body.logs === "string" && body.logs.trim() ? body.logs.trim() : (keepNow?.scope.logs ?? null);
+    scope = deriveShareScope(panelList, logs);
+  } else {
+    scope = parseShareScope(body.scope);
+  }
   if ("error" in scope) {
     return c.json({ error: scope.error }, 400);
+  }
+  if (body.raw_params !== undefined && typeof body.raw_params !== "boolean") {
+    return c.json({ error: "raw_params is true or false" }, 400);
   }
   const expires = parseShareExpiry(body.expires_at);
   if (typeof expires !== "number") {
@@ -188,7 +216,15 @@ function writeShare(c: Context, name: string | null, body: Record<string, unknow
   if ("error" in embed) {
     return c.json({ error: embed.error }, 400);
   }
-  const { share, secret, created } = putShare({ name, scope, limits, embed, expires_at: expires });
+  const { share, secret, created } = putShare({
+    name,
+    scope,
+    limits,
+    embed,
+    ...(panels ? { panels } : {}),
+    ...(typeof body.raw_params === "boolean" ? { raw_params: body.raw_params } : {}),
+    expires_at: expires,
+  });
   dropShareCache(share.id);
   return c.json({ share: shareJson(share), ...(secret ? { secret } : {}) }, created ? 201 : 200);
 }

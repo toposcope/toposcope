@@ -305,6 +305,9 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "shares", "limits", "TEXT NOT NULL DEFAULT '{}'");
   // Who may frame a share's panels, and how long its tickets last (#227), as JSON.
   addColumnIfMissing(db, "shares", "embed", "TEXT NOT NULL DEFAULT '{}'");
+  // Named panels (#266), as JSON, and whether a page may still pass raw params within the fence.
+  addColumnIfMissing(db, "shares", "panels", "TEXT NOT NULL DEFAULT '[]'");
+  addColumnIfMissing(db, "shares", "raw_params", "INTEGER NOT NULL DEFAULT 1");
   const retention = db
     .query("SELECT value FROM settings WHERE key = 'retention_days'")
     .get() as { value: string } | undefined;

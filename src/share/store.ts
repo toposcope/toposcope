@@ -5,6 +5,7 @@ import { hashToken } from "../control/tokens";
 import { defaultShareEmbed, parseShareEmbed, type ShareEmbed } from "./embed";
 import { defaultShareLimits, parseShareLimits, type ShareLimits } from "./limits";
 import { formatShareScope, parseShareScope, type ShareScope } from "./scope";
+import { parseSharePanels, type SharePanel } from "./panels";
 
 /** A share (#225): a scope of data and a secret. The secret is kept only as its hash. */
 export type ShareRecord = {
@@ -13,6 +14,10 @@ export type ShareRecord = {
   scope: ShareScope;
   limits: ShareLimits;
   embed: ShareEmbed;
+  /** Named panels (#266): a page names one with `data-panel=`. */
+  panels: SharePanel[];
+  /** Whether a page may still pass its own params within the fence (#266, on by default). */
+  raw_params: boolean;
   /** Epoch ms. */
   expires_at: number;
   revoked_at: number | null;
@@ -20,7 +25,7 @@ export type ShareRecord = {
   updated_at: number;
 };
 
-type ShareRow = Omit<ShareRecord, "scope" | "limits" | "embed"> & { scope: string; limits: string; embed: string; secret_hash: string };
+type ShareRow = Omit<ShareRecord, "scope" | "limits" | "embed" | "panels" | "raw_params"> & { scope: string; limits: string; embed: string; panels: string; raw_params: number; secret_hash: string };
 
 export const shareSecretPrefix = "tss1_";
 /** A share lives a year at most. */
@@ -67,12 +72,15 @@ function fromRow(row: ShareRow): ShareRecord {
   }
   const limits = parseShareLimits(JSON.parse(row.limits));
   const embed = parseShareEmbed(JSON.parse(row.embed));
+  const panels = parseSharePanels(JSON.parse(row.panels || "[]"));
   return {
     id: row.id,
     name: row.name,
     scope,
     limits: "error" in limits ? defaultShareLimits : limits,
     embed: "error" in embed ? defaultShareEmbed : embed,
+    panels: "error" in panels ? [] : panels,
+    raw_params: row.raw_params !== 0,
     expires_at: row.expires_at,
     revoked_at: row.revoked_at,
     created_at: row.created_at,
@@ -80,7 +88,7 @@ function fromRow(row: ShareRow): ShareRecord {
   };
 }
 
-const columns = "id, name, scope, limits, embed, secret_hash, expires_at, revoked_at, created_at, updated_at";
+const columns = "id, name, scope, limits, embed, panels, raw_params, secret_hash, expires_at, revoked_at, created_at, updated_at";
 
 function storedScope(scope: ShareScope): string {
   return JSON.stringify(formatShareScope(scope));
@@ -125,16 +133,18 @@ export function shareBySecret(secret: string, now = Date.now(), db: Database = g
  * share of that name, gets a new secret, returned once; changing a live share keeps its secret.
  */
 export function putShare(
-  input: { name: string; scope: ShareScope; limits: ShareLimits; embed: ShareEmbed; expires_at: number },
+  input: { name: string; scope: ShareScope; limits: ShareLimits; embed: ShareEmbed; panels?: SharePanel[]; raw_params?: boolean; expires_at: number },
   now = Date.now(),
   db: Database = getDb(),
 ): { share: ShareRecord; secret: string | null; created: boolean } {
   const existing = shareByName(input.name, db);
   if (existing && existing.revoked_at === null) {
-    db.query("UPDATE shares SET scope = ?, limits = ?, embed = ?, expires_at = ?, updated_at = ? WHERE id = ?").run(
+    db.query("UPDATE shares SET scope = ?, limits = ?, embed = ?, panels = ?, raw_params = ?, expires_at = ?, updated_at = ? WHERE id = ?").run(
       storedScope(input.scope),
       JSON.stringify(input.limits),
       JSON.stringify(input.embed),
+      JSON.stringify(input.panels ?? existing.panels),
+      (input.raw_params ?? existing.raw_params) ? 1 : 0,
       input.expires_at,
       now,
       existing.id,
@@ -146,12 +156,14 @@ export function putShare(
     if (existing) {
       db.query("DELETE FROM shares WHERE id = ?").run(existing.id);
     }
-    db.query(`INSERT INTO shares (${columns}) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`).run(
+    db.query(`INSERT INTO shares (${columns}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`).run(
       crypto.randomUUID(),
       input.name,
       storedScope(input.scope),
       JSON.stringify(input.limits),
       JSON.stringify(input.embed),
+      JSON.stringify(input.panels ?? []),
+      (input.raw_params ?? true) ? 1 : 0,
       hashToken(secret),
       input.expires_at,
       now,

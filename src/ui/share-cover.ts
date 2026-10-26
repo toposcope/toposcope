@@ -12,6 +12,10 @@ export type ShareView = {
   };
   limits: { min_step: string; max_range: string; max_lookback: string; reads_per_minute: number };
   embed: { frame_ancestors: string[]; ticket_ttl: string };
+  /** Named panels (#266): a page names one with `data-panel=`. */
+  panels?: Array<{ name: string; params: Record<string, string>; from?: string }>;
+  /** Whether a page may still pass its own params within the fence (#266). */
+  raw_params?: boolean;
   expires_at: number;
   revoked_at: number | null;
   created_at: number;

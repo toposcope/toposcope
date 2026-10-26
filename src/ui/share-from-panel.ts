@@ -253,3 +253,25 @@ export function panelRange(spanMs: number): string {
   const { count, unit } = partsFromMs(spanMs);
   return formatRangeToken(count, unit);
 }
+
+/** A named panel's params (#266): the embed's own, without the page's theme. */
+export function panelParams(read: PanelRead, range: string): Record<string, string> {
+  const q = panelEmbedQuery(read, range);
+  q.delete("theme");
+  return Object.fromEntries(q.entries());
+}
+
+/** A panel name from its title, not one the share already has: `latency-p99`, `latency-p99-2`. */
+export function panelNameFor(title: string, taken: readonly string[]): string {
+  const base = title.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "panel";
+  let name = base;
+  for (let i = 2; taken.includes(name); i++) {
+    name = `${base}-${i}`;
+  }
+  return name;
+}
+
+/** The tag that names a panel (26k): one line says which; title, kind, range and split live on the share. */
+export function namedPanelTag(origin: string, name: string): string {
+  return `<script src="${origin}/embed.js"\n  data-ticket="\${ticket}"\n  data-panel="${name.replace(/"/g, "&quot;")}"></script>`;
+}

@@ -24,6 +24,7 @@ import { windowWithin } from "./limits";
 import { originOf, rateTurn } from "./operator";
 import { cacheMs, readShareCache, shareCacheKey, writeShareCache } from "./cache";
 import { noteRead, noteRefused } from "./use";
+import { panelReadParams, rawParamsUsed } from "./panels";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -36,13 +37,34 @@ declare module "hono" {
 type Refuse = { error: string; status: 400 | 404 };
 
 /** The window params every share read takes, as Search takes them. */
-function windowParams(c: Context): Pick<SearchFilters, "from" | "to" | "range" | "step"> {
-  return {
-    from: c.req.query("from") ?? undefined,
-    to: c.req.query("to") ?? undefined,
-    range: c.req.query("range") ?? undefined,
-    step: c.req.query("step") ?? undefined,
-  };
+function windowParams(p: Record<string, string | undefined>): Pick<SearchFilters, "from" | "to" | "range" | "step"> {
+  return { from: p.from || undefined, to: p.to || undefined, range: p.range || undefined, step: p.step || undefined };
+}
+
+/**
+ * The params a read uses (#266): a named panel's, with only the window left to the page; or the
+ * page's own while the share allows raw params. With them off, only a panel name and a window pass.
+ */
+function readParams(c: Context): Record<string, string | undefined> | Response {
+  const share = c.get("share");
+  const raw = c.req.query();
+  if (raw.panel) {
+    const panel = share.panels.find((p) => p.name === raw.panel);
+    if (!panel) {
+      return refuse(c, `this share has no panel named ${raw.panel}`, 404);
+    }
+    if (!share.raw_params) {
+      const extra = rawParamsUsed(raw);
+      if (extra.length) {
+        return refuse(c, `this share takes a panel name and a window only, not ${extra.join(", ")}`, 400);
+      }
+    }
+    return panelReadParams(panel, (k) => raw[k]);
+  }
+  if (!share.raw_params) {
+    return refuse(c, "this share answers its named panels only: name one with panel=", 400);
+  }
+  return raw;
 }
 
 /** Log reads through a share are counts: a numeric attr's percentile or max could be an id. */
@@ -143,8 +165,8 @@ function refuse(c: Context, error: string, status: 400 | 404): Response {
 }
 
 /** The read's window inside the share's limits, or the refusal to answer with. */
-function limitedWindow(c: Context): Pick<SearchFilters, "from" | "to" | "step"> | Response {
-  const window = windowWithin(c.get("share").limits, windowParams(c));
+function limitedWindow(c: Context, p: Record<string, string | undefined>): Pick<SearchFilters, "from" | "to" | "step"> | Response {
+  const window = windowWithin(c.get("share").limits, windowParams(p));
   return "error" in window ? refuse(c, window.error, 400) : window;
 }
 
@@ -196,15 +218,19 @@ export async function shareReadCache(c: Context, next: () => Promise<void>): Pro
 
 /** `GET /share/v1/series` — one metric series, or one log count or rate, inside the share's scope. */
 export async function shareSeriesRoute(c: Context): Promise<Response> {
-  const window = limitedWindow(c);
+  const p = readParams(c);
+  if (p instanceof Response) {
+    return p;
+  }
+  const window = limitedWindow(c, p);
   if (window instanceof Response) {
     return window;
   }
   const plan = planSeries(c.get("share").scope, {
-    metric: c.req.query("metric") ?? undefined,
-    agg: c.req.query("agg") ?? undefined,
-    ml: c.req.query("ml") ?? undefined,
-    split: c.req.query("split") ?? undefined,
+    metric: p.metric || undefined,
+    agg: p.agg || undefined,
+    ml: p.ml || undefined,
+    split: p.split || undefined,
     window,
   });
   if ("error" in plan) {
@@ -236,11 +262,15 @@ export async function shareSeriesRoute(c: Context): Promise<Response> {
 /** `GET /share/v1/top?key=` — the busiest values of a `split` key among the scope's log rows. */
 export async function shareTopRoute(c: Context): Promise<Response> {
   const scope = c.get("share").scope;
-  const key = (c.req.query("key") ?? "").trim().toLowerCase();
+  const p = readParams(c);
+  if (p instanceof Response) {
+    return p;
+  }
+  const key = (p.key ?? "").trim().toLowerCase();
   if (!scope.split.includes(key)) {
     return refuse(c, key ? `this share cannot count by ${key}` : "key is required", 400);
   }
-  const narrowing = parseNarrowing(scope, c.req.query("ml"));
+  const narrowing = parseNarrowing(scope, p.ml);
   if ("error" in narrowing) {
     return refuse(c, narrowing.error, 400);
   }
@@ -248,12 +278,12 @@ export async function shareTopRoute(c: Context): Promise<Response> {
   if (q === null) {
     return refuse(c, "this share reads no logs", 404);
   }
-  const nRaw = c.req.query("n");
+  const nRaw = p.n;
   const n = nRaw === undefined ? 10 : Number(nRaw);
   if (!Number.isInteger(n) || n < 1 || n > 50) {
     return refuse(c, "n is 1–50", 400);
   }
-  const window = limitedWindow(c);
+  const window = limitedWindow(c, p);
   if (window instanceof Response) {
     return window;
   }
@@ -350,7 +380,7 @@ async function namesUnderLabels(labels: Record<string, string>, from?: string, t
  */
 export async function shareNamesRoute(c: Context): Promise<Response> {
   const scope = c.get("share").scope;
-  const window = limitedWindow(c);
+  const window = limitedWindow(c, c.req.query());
   if (window instanceof Response) {
     return window;
   }
@@ -380,4 +410,13 @@ export async function shareNamesRoute(c: Context): Promise<Response> {
   } catch (err) {
     return readError(c, err) ?? Promise.reject(err);
   }
+}
+
+/** `GET /share/v1/panels/:name` — a named panel's definition, for the embed to draw it (#266). */
+export function sharePanelRoute(c: Context): Response {
+  const panel = c.get("share").panels.find((p) => p.name === c.req.param("name"));
+  if (!panel) {
+    return refuse(c, `this share has no panel named ${c.req.param("name") ?? ""}`, 404);
+  }
+  return c.json({ name: panel.name, params: panel.params, raw_params: c.get("share").raw_params });
 }
