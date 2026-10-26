@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 28a */
+[data-frame="28a"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="28a"] a:hover{color:#fff}
+[data-frame="28a"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="28a"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="28a"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="28a"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="28a"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="28a"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+[data-frame="28a"] .card h2{margin:0;font-size:14px;font-weight:500;color:#fafafa}
+[data-frame="28a"] .row{display:flex;align-items:center;gap:12px;font-size:13px}
+[data-frame="28a"] .row .k{width:150px;color:#8a8a93;flex:none}
+[data-frame="28a"] .in{height:32px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font:inherit;font-size:13px;outline:none;box-sizing:border-box}
+[data-frame="28a"] .sel{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font-size:13px}
+[data-frame="28a"] .btn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="28a"] .ok{color:#6ee7b7}
+  /* 28b */
+[data-frame="28b"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="28b"] a:hover{color:#fff}
+[data-frame="28b"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="28b"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="28b"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="28b"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="28b"] .r{display:grid;grid-template-columns:200px 90px 110px 300px 1fr;gap:14px;align-items:center;padding:9px 16px;border-bottom:1px solid #1c1c20;font-size:13px}
+[data-frame="28b"] .r:hover{background:#121214}
+[data-frame="28b"] .seg{display:inline-flex;border:1px solid #2a2a2e;border-radius:6px;overflow:hidden}
+[data-frame="28b"] .seg span{padding:4px 9px;font-size:11.5px;color:#8a8a93;border-right:1px solid #2a2a2e}
+[data-frame="28b"] .seg span:last-child{border-right:0}
+[data-frame="28b"] .seg span.on{color:#fafafa;background:#27272a}
+[data-frame="28b"] .lk{color:#8a8a93;font-size:12px}
+[data-frame="28b"] .lk.on{color:#2dd4bf}
+[data-frame="28b"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Fields In Settings</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 28a–28b · Fields moves under Settings · approved 2026-10-26</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Fields moves under Settings: the header drops the tab, Settings gains a Fields card, Fields opens under a Settings crumb</h2>
+
+    <div id="28a" data-frame="28a" data-screen-label="28a Settings · with a Fields card" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#28a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">28a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Settings · with a Fields card</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="28a" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a><a class="tab" href="Access.dc.html">Links</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="Access.dc.html">Access</a><a class="tab on" href="Settings.dc.html">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">Settings</h1>
+      <span class="sub">The instance itself, and what its log keys are for. Who may read or write is under <a href="Access.dc.html" style="color:#d4d4d8">Access</a>; what to watch is under Watch.</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+      <section class="card">
+        <h2>This instance</h2>
+        <div class="row"><span class="k">Name</span><input class="in" value="log-vm" style="flex:1" aria-label="Instance name"></div>
+        <div class="row"><span class="k">Shown</span><span class="sub">in the header, on sign-in, and on links as the source's name</span></div>
+        <div class="row"><span class="k">Address</span><span class="mono sub">https://logs.agental.io</span></div>
+        <div class="row"><span class="k">Signed in</span><span class="sub">this browser, until 25 Nov · <a href="#out" style="color:#a1a1aa">sign out</a></span></div>
+      </section>
+
+      <section class="card">
+        <h2>Retention</h2>
+        <div class="row"><span class="k">Logs</span><span class="sel">30 days ▾</span><span class="sub">4.1 GB now</span></div>
+        <div class="row"><span class="k">Metrics</span><span class="sel">90 days ▾</span><span class="sub">0.6 GB now</span></div>
+        <div class="row"><span class="k">Traces, profiles</span><span class="sel">7 days ▾</span><span class="sub">0.2 GB now</span></div>
+        <div class="row"><span class="k">Marks</span><span class="sub">kept for ever · newest 10 000 listed</span></div>
+        <span class="sub">Shortening applies at the next sweep, within the hour. Nothing comes back.</span>
+      </section>
+
+      <section class="card">
+        <h2>Time</h2>
+        <div class="row"><span class="k">Clock</span><span class="sel">UTC ▾</span><span class="sub">every window, mark and row</span></div>
+        <div class="row"><span class="k">Timestamps</span><span class="sel">Compact · 13:23:19 ▾</span></div>
+        <div class="row"><span class="k">Default window</span><span class="sel">Last 1h ▾</span></div>
+      </section>
+
+      <section class="card">
+        <h2>Delivery</h2>
+        <div class="row"><span class="k">ntfy</span><span class="mono" style="flex:1;overflow:hidden;text-overflow:ellipsis">agental-alerts-7f…</span><span class="ok">ok 12:51</span><a href="#edit" class="sub">edit</a></div>
+        <div class="row"><span class="k">Slack</span><span class="mono" style="flex:1">#ops</span><span class="ok">ok 12:51</span><a href="#edit" class="sub">edit</a></div>
+        <div class="row"><span class="k">Reminders</span><span class="sel">every 30 min while open ▾</span></div>
+        <button class="btn" style="align-self:flex-start">+ webhook</button>
+      </section>
+
+      <section class="card">
+        <h2>Release</h2>
+        <div class="row"><span class="k">Running</span><span class="mono">0.7.3</span><span class="sub">since 26 Oct 12:11</span></div>
+        <div class="row"><span class="k">Available</span><span class="mono">0.7.4</span><a href="#notes" class="sub">what's new</a></div>
+        <div class="row"><span class="k">Checks</span><span class="sub">daily · last 13:00 · <a href="#check" style="color:#a1a1aa">check now</a></span></div>
+        <span class="sub">Upgrade from the box: <span class="mono" style="color:#d4d4d8">./upgrade.sh 0.7.4</span>. A backup runs first unless you skip it.</span>
+      </section>
+
+      <section class="card">
+        <h2>Storage</h2>
+        <div class="row"><span class="k">ClickHouse</span><span class="mono">4.9 / 100 GB</span><span class="sub">on /var/lib/clickhouse</span></div>
+        <div class="row"><span class="k">App</span><span class="mono">80 / 512 MB</span></div>
+        <div class="row"><span class="k">Last backup</span><span class="sub">26 Oct 12:00 · 4.7 GB · before 0.7.3</span></div>
+      </section>
+      <section class="card">
+        <h2>Fields</h2>
+        <div class="row"><span class="k">Keys seen</span><span class="mono">14</span><span class="sub">in the last 24 h · 4 core, 10 from attrs</span></div>
+        <div class="row"><span class="k">Roles</span><span class="mono">7 chart · 3 lookup · 4 ignore</span></div>
+        <div class="row"><span class="k">New, no role chosen</span><span class="mono" style="color:#e7e1d3">2</span><span class="sub">client_ip, cart_id · summarised as chart until chosen</span></div>
+        <div class="row"><span class="k">Metric links</span><span class="mono">2</span><span class="sub">service, host · Compare and shares read them as one</span></div>
+        <span class="sub">A role applies to new rows only.</span>
+        <a href="#28b" class="btn" style="align-self:flex-start">Open fields →</a>
+      </section>
+    </div>
+  </main>
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93;margin-top:16px">
+    <span>ingest 312/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 80 / 512 MB</span><div style="flex:1"></div><span>0.7.3</span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+    <div id="28b" data-frame="28b" data-screen-label="28b Settings › Fields" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#28b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">28b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Settings › Fields</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="28b" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a><a class="tab" href="Access.dc.html">Links</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="Access.dc.html">Access</a><a class="tab on" href="#28a">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:-10px">
+      <a href="#28a" style="color:#8a8a93">Settings</a><span style="color:#3f3f46">›</span><span style="color:#fafafa;font-weight:500">Fields</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">Fields</h1>
+      <span class="sub">What each log key is for, and which key is the same thing as a metric label. 14 keys seen in the last 24 h.</span>
+      <div style="flex:1"></div>
+      <span class="sub mono">last 24 h · counts from the minute rollups</span>
+    </div>
+
+    <div style="border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden">
+      <div class="r" style="padding:8px 16px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8a8a93"><span>Key</span><span>Events</span><span>Values</span><span>Role</span><span>Same as the metric label</span></div>
+      <sc-for list="{{f28b_rows}}" as="f" hint-placeholder-count="12">
+        <div class="r">
+          <span class="mono" style="color:#fafafa">{{f.key}}</span>
+          <span class="mono sub">{{f.ev}}</span>
+          <span class="mono sub">{{f.vals}}</span>
+          <sc-if value="{{f.core}}" hint-placeholder-val="{{false}}"><span class="sub">{{f.role}}</span></sc-if>
+          <sc-if value="{{f.pick}}" hint-placeholder-val="{{true}}">
+            <span class="seg"><span style="color:{{f.c1}};background:{{f.b1}}">chart</span><span style="color:{{f.c2}};background:{{f.b2}}">lookup</span><span style="color:{{f.c3}};background:{{f.b3}}">ignore</span></span>
+          </sc-if>
+          <span class="lk" style="color:{{f.lc}}">{{f.link}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <section style="padding:12px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:500;color:#fafafa">chart</span>
+        <span class="sub" style="line-height:1.5">Numbers are summarised per bucket so a hunt can plot them as a series. Costs storage; applies to new rows only.</span>
+      </section>
+      <section style="padding:12px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:500;color:#fafafa">lookup</span>
+        <span class="sub" style="line-height:1.5">Exact match only, fast: ids and request ids. The value is never summarised and never a facet.</span>
+      </section>
+      <section style="padding:12px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:500;color:#fafafa">ignore</span>
+        <span class="sub" style="line-height:1.5">Stored with the row, shown in the detail, but no summary and no facet. The default for a key nobody chose.</span>
+      </section>
+    </div>
+    <span class="sub">Suggestions come from what the key looks like; Toposcope never writes a role on its own. A metric link makes <span class="mono">host</span> on a row and <span class="mono">host</span> on a metric one thing in Compare and in shares.</span>
+  </main>
+  <div style="height:16px"></div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f28b', new (class {
+  renderVals() {
+    const ON = "#fafafa", OFF = "#8a8a93", BG = "#27272a", NO = "transparent";
+    const pick = (key, ev, vals, role, link) => ({ key, ev, vals, core: false, pick: true, role: "", link: link || "link…", lc: link ? "#2dd4bf" : "#8a8a93",
+      c1: role === "chart" ? ON : OFF, b1: role === "chart" ? BG : NO, c2: role === "lookup" ? ON : OFF, b2: role === "lookup" ? BG : NO, c3: role === "ignore" ? ON : OFF, b3: role === "ignore" ? BG : NO });
+    const core = (key, ev, vals, role, link) => ({ key, ev, vals, core: true, pick: false, role, link: link || "—", lc: link ? "#2dd4bf" : "#8a8a93" });
+    return { rows: [
+      core("service", "18.6K", "4", "core column", "service"), core("host", "18.6K", "8", "core column", "host"), core("level", "18.6K", "5", "core column"), core("message", "18.6K", "—", "text"),
+      pick("duration_ms", "15.4K", "numeric", "chart"), pick("path", "15.4K", "7", "ignore"), pick("status", "15.4K", "numeric", "chart"),
+      pick("client_ip", "15.4K", "6.9K", "lookup"), pick("request_id", "15.4K", "9.51K", "lookup"), pick("user_id", "9.22K", "80", "lookup"),
+      pick("version", "3.15K", "1", "ignore", "version"), pick("e1", "1.34K", "9", "ignore"), pick("exception.type", "521", "3", "ignore"),
+    ] };
+  }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -98,6 +98,11 @@ Approved — the redesign (0.8, one cut), 2026-10-26. Drawn on the Design canvas
 
 The sheet carries each artboard's own styles scoped to its frame (`private/tools/canvas-export/merge-scoped.ts`), so it loads Inter and JetBrains Mono from Google Fonts; offline it falls back to system UI and Menlo.
 
+Approved — Fields under Settings, 2026-10-26. Drawn on the Design canvas "Toposcope reimagined" after the redesign shipped; Ian approved both frames as drawn. Part of 0.8.
+
+- [Toposcope Fields In Settings.dc.html](Toposcope%20Fields%20In%20Settings.dc.html) — frames 28a–28b: Settings with a Fields card (keys seen in the last 24 h, roles, new keys with no role chosen, metric links, Open fields →) and no Fields tab in the header; the Fields page under a Settings › Fields crumb, Settings lit, on a fixed last-24 h window with no clock
+- [fields-in-settings/](fields-in-settings/) — crops for issues (28a–28b)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
