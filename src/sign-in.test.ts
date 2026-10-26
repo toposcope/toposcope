@@ -92,7 +92,8 @@ describe("signing in from a browser that shows no Basic prompt (#102)", () => {
     expect(r.pageUnnamed!.type).toContain("text/html");
     expect(r.pageUnnamed!.challenge).toBeNull();
     expect(r.pageUnnamed!.body).toContain("Signing in to");
-    expect(r.pageUnnamed!.body).toContain("<h1 class=\"mono\">127.0.0.1:18080</h1>");
+    // 26o (#270): the name, or the address while there is none, is the page's one heading, in mono.
+    expect(r.pageUnnamed!.body).toContain("<h1>127.0.0.1:18080</h1>");
     expect(r.pageUnnamed!.body).toContain("This instance has no name yet.");
     expect(r.pageUnnamed!.body).toContain('name="next" value="/?q=level:error"');
   });
@@ -108,7 +109,8 @@ describe("signing in from a browser that shows no Basic prompt (#102)", () => {
 
   test("the page names the instance once it has a name", () => {
     expect(r.pageNamed!.body).toContain("<title>Sign in · agental-prod</title>");
-    expect(r.pageNamed!.body).toContain("<h1>agental-prod</h1><div class=\"addr\">logs.example.test</div>");
+    expect(r.pageNamed!.body).toMatch(/<h1>agental-prod<\/h1><div class="addr">logs\.example\.test · \d+\.\d+\.\d+<\/div>/);
+    expect(r.pageNamed!.body).toContain("the operator password from .env");
   });
 
   test("a wrong password is answered after a pause, on the page", () => {

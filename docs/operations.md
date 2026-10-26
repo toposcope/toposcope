@@ -8,6 +8,10 @@ The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.7.3` and should n
 
 For the initial deployment and first searchable event, follow the [README quick start](../README.md#quick-start). This guide covers the ongoing operation of that packaged stack.
 
+## Sign in
+
+A browser signs in on a page that names the instance, so two instances are never confused. The password is the operator password, `TOPOSCOPE_PASSWORD` in `.env` on the host. Forgot it: read it there. To change it, edit `.env` and restart the app container; every browser session ends with the old password. Scripts and agents keep sending Basic auth or a token, unchanged.
+
 ## TLS
 
 Terminate TLS on a reverse proxy you already run, such as Caddy, nginx, or Traefik on the host.
