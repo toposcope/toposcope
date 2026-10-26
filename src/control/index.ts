@@ -59,6 +59,8 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "saved_searches", "widgets", "TEXT");
   addColumnIfMissing(db, "saved_searches", "board", "TEXT");
   addColumnIfMissing(db, "saved_searches", "cols", "TEXT");
+  // Home's Pinned column (#259): a saved search or board the operator keeps at hand.
+  addColumnIfMissing(db, "saved_searches", "pinned", "INTEGER NOT NULL DEFAULT 0");
   addColumnIfMissing(db, "alert_rules", "saved_search_id", "TEXT");
   addColumnIfMissing(db, "alert_rules", "threshold", "REAL NOT NULL DEFAULT 1");
   addColumnIfMissing(db, "alert_rules", "enabled", "INTEGER NOT NULL DEFAULT 1");

@@ -14,6 +14,8 @@ export type SavedSearch = {
   widgets?: WidgetLayout | null;
   board?: BoardSlots | null;
   cols?: string[];
+  /** Home's Pinned column (#259). */
+  pinned?: boolean;
   created_at: number;
 };
 

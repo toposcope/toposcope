@@ -1,7 +1,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Copy, House, Menu, Undo2 } from "lucide-react";
 import { HeaderField, HeaderTabs } from "@/components/operator-header";
-import { AccessPlaceholder, HomePlaceholder } from "@/components/placeholder-pages";
+import { AccessPlaceholder } from "@/components/placeholder-pages";
+import { HomeView } from "@/components/home-view";
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
 import { NewMonitorDialog } from "@/components/new-monitor-dialog";
@@ -4029,16 +4030,24 @@ export function App() {
         </div>
       </header>
       {view === "home" ? (
-        <HomePlaceholder
-          homeName={homeId ? (saved.find((item) => item.id === homeId && !item.board)?.name ?? null) : null}
-          onOpenHome={() => {
-            const home = saved.find((item) => item.id === homeId && !item.board);
-            if (home) {
-              openSavedTab(home);
-            }
+        <HomeView
+          saved={saved}
+          monitors={alerts}
+          instanceName={instance?.name ?? null}
+          onOpenSaved={(item, win) => {
             setView("search");
+            addWorkspace(
+              { ...snapFromSaved(item, {}), range: "custom", from: toLocalInput(new Date(win.from)), to: toLocalInput(new Date(win.to)), live: false },
+              true,
+            );
           }}
-          onOpenHunt={() => setView("search")}
+          onOpenHunt={(q, win) => {
+            setView("search");
+            addWorkspace({ ...blankSearchSnap(), q, range: "custom", from: toLocalInput(new Date(win.from)), to: toLocalInput(new Date(win.to)), live: false }, true);
+          }}
+          onOpenWatch={() => setView("watch")}
+          onOpenAccess={() => setView("access")}
+          onOpenBoard={(item) => openSavedTab(item)}
         />
       ) : view === "access" ? (
         <AccessPlaceholder onTokens={() => setTokensOpen(true)} onShares={() => setSharesOpen(true)} onLinks={() => setView("links")} />

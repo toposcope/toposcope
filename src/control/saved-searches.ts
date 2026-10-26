@@ -35,6 +35,8 @@ export type SavedSearch = {
   widgets: WidgetLayout | null;
   board: BoardSlots | null;
   cols: string[];
+  /** Home's Pinned column (#259). */
+  pinned: boolean;
   created_at: number;
 };
 
@@ -49,6 +51,7 @@ type SavedRow = {
   widgets: string | null;
   board: string | null;
   cols: string | null;
+  pinned: number;
   created_at: number;
 };
 
@@ -62,21 +65,23 @@ type SavedFields = {
   widgets: WidgetLayout | null;
   board: BoardSlots | null;
   cols: string[];
+  pinned: boolean;
 };
 
 const savedSelect =
-  "SELECT id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, created_at FROM saved_searches";
+  "SELECT id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at FROM saved_searches";
 
 function fromRow(row: SavedRow): SavedSearch {
   return {
     ...row,
+    pinned: Boolean(row.pinned),
     widgets: parseSavedLayout(row.widgets),
     board: parseBoard(row.board),
     cols: parsePromotedCols(row.cols),
   };
 }
 
-function allSaved(): SavedSearch[] {
+export function allSaved(): SavedSearch[] {
   return (
     getDb()
       .query(`${savedSelect} ORDER BY created_at DESC`)
@@ -154,7 +159,8 @@ function parseSavedFields(
   if (!Array.isArray(cols)) {
     return cols;
   }
-  return { name, query, range, from_ts, to_ts, agg: agg ?? null, widgets, board, cols };
+  const pinned = typeof rec.pinned === "boolean" ? rec.pinned : (fallback?.pinned ?? false);
+  return { name, query, range, from_ts, to_ts, agg: agg ?? null, widgets, board, cols, pinned };
 }
 
 function parseSavedBoard(
@@ -274,7 +280,7 @@ export async function createSavedSearch(c: Context): Promise<Response> {
   };
   getDb()
     .query(
-      "INSERT INTO saved_searches (id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO saved_searches (id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .run(
       search.id,
@@ -287,6 +293,7 @@ export async function createSavedSearch(c: Context): Promise<Response> {
       formatSavedLayout(search.widgets ?? defaultLayout()),
       formatBoard(search.board),
       formatPromotedCols(search.cols),
+      search.pinned ? 1 : 0,
       search.created_at,
     );
   return c.json(search, 201);
@@ -315,7 +322,7 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
   }
   getDb()
     .query(
-      "UPDATE saved_searches SET name = ?, query = ?, from_ts = ?, to_ts = ?, range = ?, agg = ?, widgets = ?, board = ?, cols = ? WHERE id = ?",
+      "UPDATE saved_searches SET name = ?, query = ?, from_ts = ?, to_ts = ?, range = ?, agg = ?, widgets = ?, board = ?, cols = ?, pinned = ? WHERE id = ?",
     )
     .run(
       fields.name,
@@ -327,6 +334,7 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
       formatSavedLayout(fields.widgets ?? defaultLayout()),
       formatBoard(fields.board),
       formatPromotedCols(fields.cols),
+      fields.pinned ? 1 : 0,
       id,
     );
   getDb()
