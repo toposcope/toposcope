@@ -52,6 +52,13 @@ type Props = {
   ) => Promise<void>;
 };
 
+/** What each role changes, and from when (26l). */
+export const roleCards: Array<{ role: string; words: string }> = [
+  { role: "chart", words: "Values are summarised per bucket, so a hunt can count, facet and Top-N them. Costs storage; applies to new rows only." },
+  { role: "lookup", words: "Exact match only, fast: ids and request ids. The value is never summarised and never a facet." },
+  { role: "ignore", words: "Stored with the row and shown in the event, but no summary and no facet." },
+];
+
 export function FieldsView({
   catalog,
   wave,
@@ -130,14 +137,14 @@ export function FieldsView({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
-      <div className="mx-auto w-full max-w-[1040px]">
-        <div className="mb-3 flex items-end justify-between gap-2">
-          <div>
-            <h1 className="text-sm font-semibold">Fields</h1>
-            <p className="text-xs text-muted-foreground">
-              What each log field is for, and which log field is the same entity
-              as a metric label. Suggestions are never written on their own.
+    <div className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
+      <div className="w-full">
+        <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-3">
+          <div className="flex flex-wrap items-baseline gap-3.5">
+            <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Fields</h1>
+            <p className="m-0 text-[12px] text-muted-foreground">
+              What each log key is for, and which key is the same thing as a metric label.
+              {catalog ? ` ${catalog.keys.length} keys seen in this window.` : ""}
             </p>
           </div>
           <TimeRangePicker
@@ -222,7 +229,7 @@ export function FieldsView({
             ) : null}
             <div
               className={cn(
-                "relative overflow-hidden rounded-lg border bg-card transition-opacity duration-100",
+                "relative overflow-hidden rounded-[10px] border border-white/10 bg-[#131316] transition-opacity duration-100",
                 warm && wave
                   ? "pointer-events-none opacity-45"
                   : "opacity-100",
@@ -234,13 +241,13 @@ export function FieldsView({
                 </div>
               ) : null}
               <div
-                className={`${grid} border-b px-3 py-1.5 text-[11px] text-muted-foreground`}
+                className={`${grid} border-b px-4 py-2 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`}
               >
                 <span>Key</span>
                 <span>Events</span>
                 <span>Values</span>
                 <span>Role</span>
-                <span>Metric link</span>
+                <span>Same as the metric label</span>
               </div>
               {skel ? (
                 Array.from({ length: 12 }, (_, i) => (
@@ -295,9 +302,18 @@ export function FieldsView({
                 ))
               )}
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Roles apply to new ingest only — old chart summaries age out with
-              retention.
+            <div className="mt-3.5 grid grid-cols-1 gap-3.5 md:grid-cols-3">
+              {roleCards.map((c) => (
+                <section key={c.role} className="flex flex-col gap-1.5 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3">
+                  <span className="text-[13px] font-medium">{c.role}</span>
+                  <span className="text-[12px] leading-[1.5] text-muted-foreground">{c.words}</span>
+                </section>
+              ))}
+            </div>
+            <p className="mt-3 text-[12px] text-muted-foreground">
+              Suggestions come from what the key looks like; Toposcope never writes a role on its own. A metric link makes{" "}
+              <span className="font-mono">host</span> on a row and <span className="font-mono">host</span> on a metric one thing in Compare and in shares.
+              Roles apply to new rows only; old summaries age out with retention.
             </p>
           </>
         )}
@@ -453,8 +469,8 @@ function FieldRow({
         {!row.linkable ? (
           <span className="text-[11.5px] text-muted-foreground">—</span>
         ) : link ? (
-          <span className="inline-flex h-[22px] max-w-full items-center gap-1 rounded-md border border-input bg-secondary px-1.5 font-mono text-[11.5px]">
-            <span className="truncate">→ {link}</span>
+          <span className="inline-flex h-[22px] max-w-full items-center gap-1.5 font-mono text-[12px] text-teal-400">
+            <span className="truncate">{link}</span>
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground"
@@ -498,7 +514,7 @@ function FieldRow({
                   }
                   className="h-[22px] px-1.5 text-[11.5px] text-muted-foreground"
                 >
-                  Link…
+                  link…
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[8rem] p-1">
