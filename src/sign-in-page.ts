@@ -27,6 +27,8 @@ export type SignInPage = {
   next: string;
   wrong?: boolean;
   signedOut?: boolean;
+  /** The release running (#270, 26o): beside the address, so two instances read apart. */
+  version?: string;
 };
 
 /** A path on this instance, or "/": never another host. */
@@ -39,9 +41,10 @@ export function safeNext(raw: string | null | undefined): string {
 
 export function signInPageHtml(page: SignInPage): string {
   const label = page.name ?? page.address;
+  const addr = `${esc(page.address)}${page.version ? ` · ${esc(page.version)}` : ""}`;
   const heading = page.name
-    ? `<h1>${esc(page.name)}</h1><div class="addr">${esc(page.address)}</div>`
-    : `<h1 class="mono">${esc(page.address)}</h1><div class="note">This instance has no name yet. Give it one in Settings after signing in, so it can be told from another.</div>`;
+    ? `<h1>${esc(page.name)}</h1><div class="addr">${addr}</div>`
+    : `<h1>${esc(page.address)}</h1><div class="note">This instance has no name yet. Give it one in Settings after signing in, so it can be told from another.</div>`;
   const banner = page.signedOut
     ? `<div class="banner" role="status"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg><span>Signed out of ${esc(label)} on this browser.</span></div>`
     : "";
@@ -58,24 +61,28 @@ export function signInPageHtml(page: SignInPage): string {
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; background: #0d0d0f; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
   main { min-height: 100vh; padding: 48px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 28px; }
-  .brand { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; letter-spacing: -0.015em; }
+  form { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 18px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; letter-spacing: -0.015em; }
   .brand svg { color: #e7e1d3; }
   .who { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .who .to { font-size: 12px; color: #a1a1aa; }
-  h1 { margin: 0; font-size: 26px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+  .who .to { font-size: 12.5px; color: #8a8a93; }
+  /* The instance's name is the biggest thing on the page (26o), so two instances are never confused. */
+  h1 { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 30px; line-height: 36px; font-weight: 500; letter-spacing: -0.01em; overflow-wrap: anywhere; }
   .mono, .addr, input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .addr { font-size: 12px; color: #a1a1aa; overflow-wrap: anywhere; }
+  .addr { font-size: 12.5px; color: #8a8a93; overflow-wrap: anywhere; }
   .note, .stay { font-size: 12px; line-height: 18px; color: #a1a1aa; }
   .pw { display: flex; flex-direction: column; gap: 8px; }
   label { font-size: 12.5px; color: #a1a1aa; }
-  input { height: 36px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.15); background: #09090b; color: #fafafa; font-size: 13px; outline: none; }
+  input { height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid #2a2a2e; background: #141416; color: #fafafa; font-size: 13px; outline: none; }
   input:focus { border-color: rgba(255,255,255,0.35); }
   input[aria-invalid="true"] { border-color: #f87171; }
-  button { height: 36px; border-radius: 6.4px; border: 0; background: #e4e4e7; color: #18181b; font-size: 13px; font-weight: 500; cursor: pointer; }
-  button:hover { background: #fafafa; }
+  button { height: 40px; border-radius: 8px; border: 0; background: #e7e1d3; color: #0d0d0f; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  button:hover { background: #f3efe6; }
+  .foot { position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #8a8a93; }
+  .foot a { color: #a1a1aa; text-decoration: none; }
+  .foot a:hover { color: #fff; }
   .error { display: flex; gap: 6px; align-items: flex-start; font-size: 12.5px; line-height: 18px; color: #fca5a5; }
   .error svg, .banner svg { flex: none; margin-top: 2px; }
   .banner { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 6.4px; background: #18181b; border: 1px solid rgba(255,255,255,0.08); font-size: 12.5px; line-height: 18px; color: #e4e4e7; }
@@ -105,6 +112,7 @@ export function signInPageHtml(page: SignInPage): string {
   </div>
   <div class="stay">Stays signed in on this browser for 30 days.</div>
 </form>
+<div class="foot">the operator password from .env · <a href="https://github.com/toposcope/toposcope/blob/main/docs/operations.md#sign-in">forgot it?</a></div>
 </main>
 </body>
 </html>

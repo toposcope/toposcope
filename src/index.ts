@@ -33,6 +33,7 @@ import { instanceId, instanceName } from "./control/instance";
 import { setHereName } from "./shared/here";
 import { getHome, homeSaved, putHome } from "./control/home";
 import { homeSinceRoute } from "./control/home-since";
+import { version as runningVersionForSignIn } from "./shared/version";
 import { monitorPreviewRoute } from "./alerts/preview";
 import { fingerprintSeenRoute } from "./query/fingerprint-seen";
 import { savedSearchUrl } from "./ui/search-url";
@@ -177,6 +178,7 @@ function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?:
       next: opts.next ?? `${url.pathname}${url.search}`,
       wrong: opts.wrong,
       signedOut,
+      version: runningVersionForSignIn,
     }),
     opts.status ?? 401,
   );
