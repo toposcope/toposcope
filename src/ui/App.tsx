@@ -33,7 +33,7 @@ import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
 import { marksHuntWindow, monitorHuntRange, pushHuntRange, sourceOf, watchCounts, type WatchFilter, type WatchRange } from "./watch";
 import { monitorQuery } from "../shared/push";
-import { SettingsDialog } from "@/components/settings-dialog";
+import { SettingsPage } from "@/components/settings-page";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
 import { VersionFooter } from "@/components/version-footer";
@@ -660,7 +660,6 @@ export function App() {
   const [showFaults, setShowFaults] = useState(false);
   const [chipInField, setChipInField] = useState(true);
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   // Access (#265): its filter; the Links tab is Access filtered to links.
   const [accessFilter, setAccessFilter] = useState<AccessFilter>("all");
   // A link's own page (#267), from its Access row.
@@ -2132,7 +2131,7 @@ export function App() {
   }, [attrPrefixes, windowParams, wsKind]);
 
   const dialogOpen =
-    settingsOpen || sharesOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null || netDraft !== null;
+    sharesOpen || saveAsOpen || alertDraft !== null || newMonitor !== null || pushDraft !== null || httpDraft !== null || netDraft !== null;
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -3865,7 +3864,7 @@ export function App() {
         {instance ? (
           <InstanceMenu
             info={instance}
-            onRename={() => setSettingsOpen(true)}
+            onRename={() => setView("settings")}
             onSignOut={() => void signOut()}
           />
         ) : null}
@@ -3953,12 +3952,25 @@ export function App() {
           >
             Access
           </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={() => setSettingsOpen(true)}>
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "settings" ? "secondary" : "ghost"}
+            aria-current={view === "settings" ? "page" : undefined}
+            onClick={() => setView("settings")}
+          >
             Settings
           </Button>
         </div>
       </header>
-      {view === "home" ? (
+      {view === "settings" ? (
+        <SettingsPage
+          instance={instance}
+          onInstanceName={() => void loadInstance().catch(() => undefined)}
+          onRetentionDays={setRetentionDays}
+          onSignOut={() => void signOut()}
+        />
+      ) : view === "home" ? (
         <HomeView
           saved={saved}
           monitors={alerts}
@@ -4865,12 +4877,6 @@ export function App() {
         <SystemMeters />
         <VersionFooter />
       </StatusFooter>
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        onRetentionDays={setRetentionDays}
-        onInstanceName={() => void loadInstance().catch(() => undefined)}
-      />
       <SharesDialog
         open={sharesOpen}
         onOpenChange={setSharesOpen}

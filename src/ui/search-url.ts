@@ -31,11 +31,11 @@ import {
 export type RangeMode = "custom" | string;
 
 /** The header's pages: `search` is the hunt (no `view=` in the URL); `home` and `access` arrived with 0.8 (#258). */
-export type OperatorView = "search" | "home" | "watch" | "fields" | "links" | "access";
-export const operatorViews: readonly OperatorView[] = ["search", "home", "watch", "fields", "links", "access"];
+export type OperatorView = "search" | "home" | "watch" | "fields" | "links" | "access" | "settings";
+export const operatorViews: readonly OperatorView[] = ["search", "home", "watch", "fields", "links", "access", "settings"];
 
 export function parseOperatorView(raw: string | null): OperatorView {
-  if (raw === "home" || raw === "watch" || raw === "fields" || raw === "links" || raw === "access") {
+  if (raw === "home" || raw === "watch" || raw === "fields" || raw === "links" || raw === "access" || raw === "settings") {
     return raw;
   }
   // Alerts became Watch in 0.6 (#175); an old link still lands there.
