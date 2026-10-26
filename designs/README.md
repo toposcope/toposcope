@@ -103,6 +103,11 @@ Approved — Fields under Settings, 2026-10-26. Drawn on the Design canvas "Topo
 - [Toposcope Fields In Settings.dc.html](Toposcope%20Fields%20In%20Settings.dc.html) — frames 28a–28b: Settings with a Fields card (keys seen in the last 24 h, roles, new keys with no role chosen, metric links, Open fields →) and no Fields tab in the header; the Fields page under a Settings › Fields crumb, Settings lit, on a fixed last-24 h window with no clock
 - [fields-in-settings/](fields-in-settings/) — crops for issues (28a–28b)
 
+Approved — Access is the one door, 2026-10-26. Drawn on the Design canvas "Toposcope reimagined" as round 5; Ian approved both frames as drawn. Part of 0.8.
+
+- [Toposcope Access One Door.dc.html](Toposcope%20Access%20One%20Door.dc.html) — frames 29a–29b: the header without Links (Home · Hunt · Watch, then Access · Settings); Access grouped as Tokens, Links and Shares, each with one line on what it does, plain kinds (token, we copy from, copies from us, key not used yet, share), the filter All · Tokens · Links · Shares, Paste a link key on the Links group; a link's page under an Access › name crumb with Access lit and the direction as a chip
+- [access-one-door/](access-one-door/) — crops for issues (29a–29b)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.

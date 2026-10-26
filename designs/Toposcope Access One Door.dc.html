@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 29a */
+[data-frame="29a"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="29a"] a:hover{color:#fff}
+[data-frame="29a"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="29a"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="29a"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="29a"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="29a"] .up{color:#fca5a5}
+[data-frame="29a"] .ok{color:#6ee7b7}
+[data-frame="29a"] .mu{color:#8a8a93}
+[data-frame="29a"] .grp{border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden}
+[data-frame="29a"] .gh{display:flex;align-items:baseline;gap:10px;padding:10px 16px;border-bottom:1px solid #1c1c20}
+[data-frame="29a"] .gh h2{margin:0;font-size:13.5px;font-weight:500;color:#fafafa}
+[data-frame="29a"] .r{display:grid;grid-template-columns:120px 1fr 240px 110px 160px 90px 60px;gap:14px;align-items:center;padding:10px 16px;border-bottom:1px solid #1c1c20;font-size:13px}
+[data-frame="29a"] .r:last-child{border-bottom:0}
+[data-frame="29a"] .r:hover{background:#17171a}
+[data-frame="29a"] .kind{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;font-size:11.5px;border:1px solid #2a2a2e;color:#d4d4d8;white-space:nowrap;justify-self:start}
+[data-frame="29a"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="29a"] .btn.s{height:26px;font-size:12px;padding:0 10px}
+[data-frame="29a"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="29a"] .seg{display:inline-flex;border:1px solid #2a2a2e;border-radius:7px;overflow:hidden}
+[data-frame="29a"] .seg span{padding:6px 10px;font-size:12px;color:#8a8a93}
+[data-frame="29a"] .seg span.on{color:#fafafa;background:#27272a}
+[data-frame="29a"] .x{color:#8a8a93;font-size:12px}
+  /* 29b */
+[data-frame="29b"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="29b"] a:hover{color:#fff}
+[data-frame="29b"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="29b"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="29b"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="29b"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="29b"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="29b"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+[data-frame="29b"] .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:12.5px}
+[data-frame="29b"] .kv .k{color:#8a8a93}
+[data-frame="29b"] .btn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="29b"] .big{font-size:22px;font-weight:600;color:#fafafa;letter-spacing:-0.01em}
+[data-frame="29b"] .ev{display:grid;grid-template-columns:60px 1fr auto;gap:12px;padding:7px 0;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="29b"] .ev:last-child{border-bottom:0}
+[data-frame="29b"] .seg{flex:1 1 0;min-width:0}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Access One Door</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 29a–29b · Access is the one door · approved 2026-10-26</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Access is the one door: the header drops Links; tokens, links and shares are grouped on Access with plain kinds; a link opens under Access</h2>
+
+    <div id="29a" data-frame="29a" data-screen-label="29a Access · the one door, no Links tab" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#29a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">29a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Access · the one door, no Links tab</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="29a" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="Home.dc.html">Home</a>
+      <a class="tab" href="Hunt.dc.html">Hunt</a>
+      <a class="tab" href="Watch.dc.html">Watch</a>
+    </nav>
+    <div style="flex:1"></div>
+    <label for="29a-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
+    <div style="display:flex;align-items:center;gap:8px;width:360px;height:32px;padding:0 12px;border-radius:7px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="29a-q" class="mono" placeholder="key:value … opens a hunt" style="flex:1;background:transparent;border:0;outline:none;color:#fafafa;font-size:12.5px">
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+    <a class="tab on" href="#29a">Access</a>
+    <a class="tab" href="SettingsFields.dc.html">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">Access</h1>
+      <span class="sub">Everything that sends logs here, copies rows between instances, or shows charts elsewhere · 7 live · <span class="up">2 refused today</span></span>
+      <div style="flex:1"></div>
+      <span class="seg"><span class="on">All · 7</span><span>Tokens · 2</span><span>Links · 3</span><span>Shares · 2</span></span>
+      <a href="AccessNew.dc.html" class="btn p">Let someone in</a>
+    </div>
+
+    <section class="grp">
+      <div class="gh"><h2>Tokens</h2><span class="sub">send logs, metrics and marks here</span></div>
+      <div class="r">
+        <span class="kind"><span style="color:#60a5fa">↓</span>token</span>
+        <span><span style="color:#fafafa;font-weight:500">control-server</span> <span class="sub">· sends logs, metrics, marks</span></span>
+        <span class="mono sub">any</span>
+        <span class="sub">never expires</span>
+        <span class="mono sub">13:26 · 312/s</span>
+        <span class="mono ok">ok</span>
+        <a href="#revoke" class="x">revoke</a>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#60a5fa">↓</span>token</span>
+        <span><span style="color:#fafafa;font-weight:500">boxes</span> <span class="sub">· sends logs via the hub</span></span>
+        <span class="mono sub">any</span>
+        <span class="sub">never expires</span>
+        <span class="mono sub">13:26 · 41/s</span>
+        <span class="mono up">1 refused</span>
+        <a href="#revoke" class="x">revoke</a>
+      </div>
+    </section>
+
+    <section class="grp">
+      <div class="gh"><h2>Links</h2><span class="sub">rows copied between this instance and another; what this one pulls shows in every hunt</span><div style="flex:1"></div><button class="btn s">Paste a link key</button></div>
+      <div class="r">
+        <span class="kind"><span style="color:#e7e1d3">←</span>we copy from</span>
+        <span><span style="color:#fafafa;font-weight:500">ci-box</span> <span class="sub">· this instance pulls its rows every 10 s</span></span>
+        <span class="mono sub">service:ci*</span>
+        <span class="sub">—</span>
+        <span class="mono sub">13:25 · 4 rows behind</span>
+        <span class="mono ok">ok</span>
+        <a href="#29b" class="x">open</a>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#e7e1d3">→</span>copies from us</span>
+        <span><span style="color:#fafafa;font-weight:500">ian-laptop</span> <span class="sub">· pulls our rows when it is on</span></span>
+        <span class="mono sub">level:error OR level:fatal</span>
+        <span class="sub">—</span>
+        <span class="mono sub">yesterday 18:40</span>
+        <span class="mono mu">quiet</span>
+        <a href="#open" class="x">open</a>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#e7e1d3">→</span>key not used yet</span>
+        <span><span style="color:#fafafa;font-weight:500">edge-site-2</span> <span class="sub">· becomes a link once pasted there</span></span>
+        <span class="mono sub">host:edge-2*</span>
+        <span class="sub">in 29 d</span>
+        <span class="mono sub">never</span>
+        <span class="mono mu">—</span>
+        <a href="#revoke" class="x">revoke</a>
+      </div>
+    </section>
+
+    <section class="grp">
+      <div class="gh"><h2>Shares</h2><span class="sub">charts shown on another web page; counts only, never a row</span></div>
+      <div class="r">
+        <span class="kind"><span style="color:#2dd4bf">↑</span>share</span>
+        <span><span style="color:#fafafa;font-weight:500">agental-admin</span> <span class="sub">· 6 panels on console.agental.io</span></span>
+        <span class="mono sub">service:agental* · split box, level</span>
+        <span class="sub">in 341 d</span>
+        <span class="mono sub">13:26 · 2.1k reads</span>
+        <span class="mono up">1 refused</span>
+        <a href="ShareNamed.dc.html" class="x">open</a>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#2dd4bf">↑</span>share</span>
+        <span><span style="color:#fafafa;font-weight:500">status-page</span> <span class="sub">· 1 panel on status.agental.io</span></span>
+        <span class="mono sub">metric:up · split none</span>
+        <span class="sub">in 12 d <span class="up">· renew</span></span>
+        <span class="mono sub">13:20 · 180 reads</span>
+        <span class="mono ok">ok</span>
+        <a href="ShareNamed.dc.html" class="x">open</a>
+      </div>
+    </section>
+
+    <div style="display:flex;gap:16px;align-items:center" class="sub">
+      <span><span style="color:#d4d4d8">Refused today · 2</span> · 11:02 agental-admin asked to split by <span class="mono">sandbox</span> · 09:41 boxes sent 140 rows with no <span class="mono">box</span> attr</span>
+      <div style="flex:1"></div>
+      <a href="Hunt.dc.html" class="sub mono">service:toposcope access:* status:refused →</a>
+    </div>
+  </main>
+
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93;margin-top:12px">
+    <span>ingest 312/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 80 / 512 MB</span><div style="flex:1"></div><span>0.7.3</span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+    <div id="29b" data-frame="29b" data-screen-label="29b Access › a link" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#29b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">29b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Access › a link</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="29b" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab on" href="#29a">Access</a><a class="tab" href="SettingsFields.dc.html">Settings</a>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 24px 0;font-size:13px">
+    <a href="#29a" style="color:#8a8a93">Access</a><span style="color:#3f3f46">›</span>
+    <span style="color:#fafafa;font-weight:500">ci-box</span>
+    <span class="kind" style="display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:6px;font-size:11.5px;border:1px solid #2a2a2e;color:#d4d4d8;margin-left:4px"><span style="color:#e7e1d3">←</span>we copy from</span>
+    <span class="sub" style="margin-left:6px">this instance pulls ci-box's rows · since 2026-10-19</span>
+    <div style="flex:1"></div>
+    <button class="btn">Pause pulling</button><button class="btn">Change scope</button><button class="btn" style="color:#fca5a5">Revoke</button>
+  </div>
+
+  <main style="flex:1;min-height:0;padding:16px 24px 0;display:grid;grid-template-columns:420px 1fr;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <section class="card">
+        <span class="lab">Which way, and what</span>
+        <div class="kv">
+          <span class="k">from</span><span class="mono">ci-box <span class="sub">· 10.38.0.12:8080 · 0.7.3</span></span>
+          <span class="k">pulled by</span><span class="mono">this instance <span class="sub">· asks every 10 s</span></span>
+          <span class="k">scope</span><span class="mono">service:ci*</span>
+          <span class="k">rows carry</span><span class="sub">everything the scope lets through, ids included; stamped <span class="mono">from:ci-box</span></span>
+          <span class="k">key</span><span class="sub">pasted here 2026-10-19 · never shown again · revoke to end it</span>
+        </div>
+      </section>
+      <section class="card">
+        <span class="lab">Where its rows show</span>
+        <span class="sub" style="line-height:1.5">In Search as a <span class="mono" style="color:#d4d4d8">From · ci-box</span> group above Saved, and on every hunt that matches them. A gap in pulling is drawn as a floor under the bars, so a quiet hour is never mistaken for a lost one.</span>
+        <a href="Hunt.dc.html" class="btn" style="align-self:flex-start">Open as a hunt · from:ci-box</a>
+      </section>
+      <section class="card" style="flex:1">
+        <span class="lab">Events · last 7 days</span>
+        <div class="ev"><span class="mono sub">13:25</span><span>pulled 1 204 rows</span><span class="mono sub">seq 1 204 311</span></div>
+        <div class="ev"><span class="mono sub">09:14</span><span style="color:#fbbf24">source unreachable for 6 min · floor drawn</span><span class="mono sub">seq 1 198 002</span></div>
+        <div class="ev"><span class="mono sub">Sat</span><span>backlog of 120k rows caught up in 4 min</span><span class="mono sub">seq 1 070 440</span></div>
+        <div class="ev"><span class="mono sub">Oct 19</span><span>key pasted · first pull</span><span class="mono sub">seq 1</span></div>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;min-height:0">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+        <section class="card"><span class="lab">Position</span><span class="big mono">1 204 311</span><span class="sub">sequence pulled · source is at 1 204 315</span></section>
+        <section class="card"><span class="lab">Behind</span><span class="big mono">4 rows</span><span class="sub">about 1 s · ok</span></section>
+        <section class="card"><span class="lab">Last pull</span><span class="big mono">13:25:52</span><span class="sub">1 204 rows · 180 ms</span></section>
+        <section class="card"><span class="lab">Rate</span><span class="big mono">2.1K/h</span><span class="sub">last 24 h · no duplicates</span></section>
+      </div>
+      <section class="card" style="flex:1;min-height:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab">Rows pulled · last 24 h · gaps as floors</span><span class="sub">1 gap · 6 min at 09:14</span></div>
+        <div style="position:relative;flex:1;min-height:200px;border-bottom:1px solid #2a2a2e">
+          <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px">
+            <sc-for list="{{f29b_bars}}" as="b" hint-placeholder-count="96"><div class="seg" style="height:{{b.h}}px;background:{{b.c}}"></div></sc-for>
+          </div>
+          <div style="position:absolute;left:{{f29b_gapX}}%;width:{{f29b_gapW}}%;bottom:0;height:200px;background:repeating-linear-gradient(135deg,rgba(251,191,36,.18) 0 4px,transparent 4px 9px);border-left:1px dashed #fbbf24;border-right:1px dashed #fbbf24"></div>
+          <span class="mono" style="position:absolute;left:{{f29b_gapX}}%;top:4px;font-size:10.5px;color:#fbbf24;padding-left:6px">unreachable · 6 min</span>
+        </div>
+        <div class="mono sub" style="display:flex;justify-content:space-between;font-size:10.5px"><span>yesterday 13:30</span><span>now</span></div>
+      </section>
+    </div>
+  </main>
+  <div style="height:16px"></div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f29b', new (class {
+  renderVals() {
+    const bars = [];
+    for (let i = 0; i < 96; i++) { const gap = i >= 79 && i < 80; bars.push({ h: gap ? 0 : Math.round(90 + 70 * Math.abs(Math.sin(i * .35))), c: "#2f6fa3" }); }
+    return { bars, gapX: (79 / 96 * 100).toFixed(2), gapW: (1 / 96 * 100).toFixed(2) };
+  }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>
