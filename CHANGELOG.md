@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+## 0.7.3
+
 Watch's 30d marks lane and Search's lane over a long window list every mark again, today's included. `GET /api/marks` kept the oldest 500 marks in a window and dropped the rest, so at 43 deploys a day the 30d lane drew its first 11 days, left the last 18 empty and read "500 marks". It now keeps the newest, still listed oldest first, and holds up to 10,000 in a window, so a chip's count and the lane's total are every mark there. [#252](https://github.com/toposcope/toposcope/issues/252)
 
 Watch's marks row can be read on a busy day. It joined marks closer than 3% of the clock into one label and kept labels only off each other, so with 43 deploys in a day it wrote four names, each across the marks after it, and named neither train. At 24h it now folds marks the way Search's lane does: marks less than 1.6% of the clock apart chain into a chip, "▲ 10" (or the count and a dot per kind when deploys and flags mix), whose wash runs up through the monitor rows. A lone mark keeps its triangle, and its name only with nothing else within 12% of the clock, cut short before the next mark at any width. At 7d and 30d a chip is the marks between two ticks, one a day or one per five days, with no wash, since a chain would fuse days. Hovering a chip gives its span, the newest two names and how many more; clicking it pins its list below the lane, newest first, with a way to open that stretch in a new Search tab, every service. Hovering a lone triangle names it. As frames 20b, 20c and 20f draw it. [#212](https://github.com/toposcope/toposcope/issues/212)
