@@ -26,6 +26,7 @@ import { WorkspaceStrip } from "@/components/workspace-strip";
 import { FacetChips } from "@/components/facet-chips";
 import { HuntCrumb } from "@/components/hunt-crumb";
 import { MarksPanel } from "@/components/marks-panel";
+import { WatchThisSheet, type WatchThisInput } from "@/components/watch-this-sheet";
 import { BoardInputs } from "@/components/board-inputs";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
@@ -567,6 +568,8 @@ export function App() {
   const [detailOpen, setDetailOpen] = useState(false);
   // The marks panel (#262) takes the event panel's slot: one at a time.
   const [marksPanelOpen, setMarksPanelOpen] = useState(false);
+  // Watch this (#264): the sheet over the rows.
+  const [watchThisOpen, setWatchThisOpen] = useState(false);
   const [pinnedEvent, setPinnedEvent] = useState<LogEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanRefuse, setScanRefuse] = useState<SearchScan | null>(null);
@@ -2265,6 +2268,42 @@ export function App() {
       saved.find((item) => item.id === savedId)?.name ?? "Untitled",
       null,
     );
+  }
+
+  /** Watch this (#264): the hunt becomes a saved hunt if it is not one, then a monitor on it. */
+  async function saveWatchThis(input: WatchThisInput) {
+    let id = activeSaved && !activeSaved.board ? activeSaved.id : null;
+    if (!id) {
+      const res = await fetch("/api/saved-searches", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: input.name, query: q, range: input.window, agg: pinnedSeries?.metric ? null : (pinnedSeries?.agg ?? agg ?? null) }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(json?.error ?? `Saving the hunt failed (${res.status})`);
+        throw new Error("save failed");
+      }
+      id = ((await res.json()) as SavedSearch).id;
+      setSavedId(id);
+      await loadSaved().catch(() => undefined);
+    }
+    await createAlert({
+      name: input.name,
+      kind: "threshold",
+      saved_search_id: id,
+      threshold: input.threshold,
+      webhook_url: input.webhookUrls.find((u) => u !== "default") ?? "",
+      webhook_urls: input.webhookUrls,
+      measure: input.measure,
+      body_kind: "default",
+      body_template: "",
+      resolved_body: null,
+      remind_every: "window",
+      opens_when: input.opensWhen,
+    } as MonitorInput);
+    setWatchThisOpen(false);
+    setView("watch");
   }
 
   async function togglePinned(item: SavedSearch) {
@@ -3980,7 +4019,18 @@ export function App() {
             onDuplicate={onDuplicateWorkspace}
           />
           <div className="flex min-h-0 min-w-0 flex-1">
-          <div ref={plotRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div ref={plotRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+            {watchThisOpen && !isSurr && !boardOn ? (
+              <WatchThisSheet
+                q={q}
+                agg={pinnedSeries?.metric ? null : (pinnedSeries?.agg ?? agg ?? null)}
+                savedName={activeSaved && !activeSaved.board ? activeSaved.name : null}
+                savedId={activeSaved && !activeSaved.board ? activeSaved.id : null}
+                savedRange={activeSaved && !activeSaved.board ? activeSaved.range : null}
+                onSave={saveWatchThis}
+                onCancel={() => setWatchThisOpen(false)}
+              />
+            ) : null}
             {isSurr ? (
               activeInspect ? (
                 <>
@@ -4145,11 +4195,7 @@ export function App() {
               }}
               onPin={activeSaved ? () => void togglePinned(activeSaved) : null}
               onDelete={activeSaved ? () => void onDelete(activeSaved.id) : null}
-              onWatch={() =>
-                activeSaved && !activeSaved.board
-                  ? setNewMonitor({ savedSearchId: activeSaved.id, lockSearch: true })
-                  : openNewAlert()
-              }
+              onWatch={() => setWatchThisOpen(true)}
               onShare={() => void copyLink()}
             />
             <form
