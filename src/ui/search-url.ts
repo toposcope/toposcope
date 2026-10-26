@@ -53,6 +53,8 @@ export type SearchUrlState = {
   live: boolean;
   saved: string | null;
   view: OperatorView;
+  /** The selected mark (#260): the Compare fold is open under it and the crumb carries it. */
+  mark?: string | null;
   split: HistogramSplit;
   chart: HistogramChartKind;
   logScale: boolean;
@@ -112,6 +114,7 @@ export function defaultSearchUrlState(): SearchUrlState {
     live: false,
     saved: null,
     view: "search",
+    mark: null,
     split: "level",
     chart: "stacked",
     logScale: false,
@@ -163,6 +166,7 @@ export function parseSearchUrl(search: string): SearchUrlState {
     live: params.get("live") === "1",
     saved: params.get("saved"),
     view: parseOperatorView(params.get("view")),
+    mark: params.get("mark")?.trim() || null,
     split: primary?.split ?? split,
     chart: primary?.chart ?? chart,
     logScale: primary?.logScale ?? logScale,
@@ -262,6 +266,9 @@ export function serializeSearchUrl(state: SearchUrlState): string {
   }
   if (state.view !== "search") {
     params.set("view", state.view);
+  }
+  if (state.mark) {
+    params.set("mark", state.mark);
   }
   if (state.split !== "level") {
     params.set("split", state.split);

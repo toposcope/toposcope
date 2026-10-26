@@ -21,3 +21,14 @@ describe("view routing", () => {
     expect(parseSearchUrl("?view=access").view).toBe("access");
   });
 });
+
+// #260: the selected mark rides in the URL, so a link lands with the Compare fold open under it.
+describe("mark= in the URL", () => {
+  test("round-trips and is left out when no mark is selected", () => {
+    const state = defaultSearchUrlState();
+    expect(serializeSearchUrl({ ...state, mark: "mk_1" })).toContain("mark=mk_1");
+    expect(serializeSearchUrl({ ...state, mark: null })).not.toContain("mark=");
+    expect(parseSearchUrl("?mark=mk_1").mark).toBe("mk_1");
+    expect(parseSearchUrl("").mark).toBeNull();
+  });
+});
