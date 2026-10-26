@@ -1,8 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { rmSync } from "node:fs";
 import { getAlert, parseTargets, recordEvalAttempt, recordWebhookAttempt, type AlertRule } from "../control/alerts";
 import { migrateControlDb } from "../control/index";
 import type { SavedSearch } from "../control/saved-searches";
@@ -14,7 +12,6 @@ import type { AlertSeries } from "./series";
 
 const minute = 60_000;
 const t0 = Date.parse("2026-10-20T10:41:00.000Z");
-const iso = (ms: number) => new Date(ms).toISOString();
 
 const saved = {
   id: "saved-1",
