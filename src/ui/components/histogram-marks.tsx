@@ -464,6 +464,17 @@ export function HistogramMarkLane({
     overlay.mutedIds,
   );
   const clusters = clusterChangeMarks(visible, spanMs);
+  // A chip's name needs room in pixels, not a share of the clock (#260): measure the rail.
+  const [laneW, setLaneW] = useState(0);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const ro = new ResizeObserver(([entry]) => setLaneW(entry?.contentRect.width ?? 0));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const next = new Set<string>();
@@ -568,9 +579,14 @@ export function HistogramMarkLane({
             const kinds = clusterKinds(cluster);
             const mixed = kinds.length > 1;
             const head = newestFirst(cluster.members)[0]!;
-            const label = clusterHasLaneLabel(cluster, clusters, spanMs)
-              ? formatChangeMarkLabel(head)
-              : null;
+            const named = formatChangeMarkLabel(head);
+            const label =
+              cluster.members.length === 1 &&
+              (laneW > 0
+                ? railLabelFits(named, frac, clusters.map((c) => markFrac((c.fromMs + c.toMs) / 2, fromMs, plotSpanMs)).filter((f) => f !== frac), laneW)
+                : clusterHasLaneLabel(cluster, clusters, spanMs))
+                ? named
+                : null;
             const selected =
               selectedCluster === key ||
               (selectedId != null &&
@@ -820,6 +836,22 @@ export function HistogramMarkLane({
       ) : null}
     </div>
   );
+}
+
+/** A chip without its name is about this wide: glyph, HH:MM, padding. */
+const railChipBareW = 72;
+
+/**
+ * Whether a named chip at `frac` fits between its neighbours on a rail `laneW` px wide (#260):
+ * its half-width with the name must clear each neighbour's bare half-width, and the rail's ends.
+ */
+export function railLabelFits(label: string, frac: number, others: number[], laneW: number): boolean {
+  const half = (Math.min(260, label.length * 6.8) + railChipBareW) / 2;
+  const x = frac * laneW;
+  if (x - half < 0 || x + half > laneW) {
+    return false;
+  }
+  return others.every((f) => Math.abs(f * laneW - x) >= half + railChipBareW / 2 + 4);
 }
 
 function InspectRow({ k, v }: { k: string; v: string }) {
