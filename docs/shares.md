@@ -17,9 +17,9 @@ Logs read as a count or a rate only. A numeric attr's percentile or maximum can 
 
 ## Make one
 
-In the app: Settings → Shares → **New share** (frames 23g–23j). The list says each share's scope and limits in a line, when it was last read, its reads and refusals over 24 hours (a click on the refusals opens its `share:<name>` rows as a hunt), and lets you edit or revoke it; a revoke is confirmed in the row. The secret is shown once, with the ticket call and the script tag to paste.
+In the app: **Access › Let someone in › Reads aggregates**. Access lists each share with its scope in a line, when it expires, when it was last read, its reads and refusals today (a click on the refusals opens its rows as a hunt), and revokes in the row. The secret is shown once, with the ticket call and the script tag to paste. A share's row opens its page: its named panels, the fence, the raw-params switch, the tag and the panel as the page sees it.
 
-On a metric panel, **Copy embed** (in its copy menu, or its ⋯ when the panel is narrow; frame 23k) copies the script tag for that panel with the first share that covers it, `data-ticket="TICKET"` for the host's backend to fill; when shares exist but none covers the panel it says why.
+On a panel, **Share…** adds it to a share as a named panel and hands out the tag that names it.
 
 Or over the API, signed in (the operator password or a session):
 
@@ -46,6 +46,37 @@ The answer carries `secret` (`tss1_…`) once, when the share is made. It is sto
 - `expires_at` — required, at most a year out.
 - `limits` — see below; a field left out takes its default, or keeps what the share had.
 
+## Named panels
+
+A share carries named panels (0.8, frame 26k). A panel is the embed tag's own params kept under a name, so a page names it in one line and its title, kind, range and split live on the share:
+
+```html
+<script src="https://logs.example.com/embed.js"
+  data-ticket="${ticket}"
+  data-panel="latency-p99"></script>
+```
+
+Edit the panel on the share and every page that names it follows.
+
+```bash
+curl -u :$TOPOSCOPE_PASSWORD -X PUT https://logs.example.com/api/shares/agental-console \
+  -H 'content-type: application/json' \
+  -d '{
+    "expires_at": "2027-10-23",
+    "logs": "service:agental",
+    "panels": [
+      { "name": "latency-p99", "params": { "metric": "p99:fleet_latency", "ml": "service:agental", "split": "host", "range": "24h" } },
+      { "name": "errors-by-level", "params": { "agg": "count", "split": "level", "range": "7d" } }
+    ],
+    "raw_params": true
+  }'
+```
+
+- A panel's `params` are the tag's: `chart`, `metric`, `reading`, `ml`, `split`, `agg`, `key`, `n`, `range`, `step`, `title`. A panel has no `q` of its own; log panels read the share's `logs`.
+- With no `scope` sent, the fence is **derived from the panels**: the metric names they read, the labels they all read under, the keys they split or count by. A `scope` that is sent must cover the panels, or the answer names what is outside.
+- `raw_params` (on by default) still lets a page pass its own params within the fence. Off, a read may only name a panel and move its window (`range`, `from`, `to`, `step`); anything else is refused with a use row.
+- `GET /share/v1/series` and `/share/v1/top` take `panel=`; `GET /share/v1/panels/<name>` gives the embed a panel's definition.
+
 ## Limits
 
 A scope alone would still let a holder pull a fine-grained copy of everything in it, a few hundred bars at a time. Every share has four limits:
@@ -61,7 +92,7 @@ A refused read never reaches ClickHouse. The scan budget that guards `logs` read
 
 ## What a share was used for
 
-Once a minute, each share that was read writes one row: `service:toposcope share:<name> status:used` with `reads`, `cached`, `refused`, `limited` and the distinct page origins it was read from. Every refused read also writes its own row (`status:refused`, `reason`, `path`). No viewer addresses. Search, chart or watch them like any rows: a monitor on `service:toposcope share:agental-console status:refused` pages when a page asks for more than its share allows. `GET /api/shares` gives each share's last read and its reads and refusals over 24 hours.
+Once a minute, each share that was read writes one row: `service:toposcope access:<name> kind:share status:used` (the row keeps `share:<name>` too) with `reads`, `cached`, `refused`, `limited` and the distinct page origins it was read from. Every refused read also writes its own row (`status:refused`, `reason`, `path`). No viewer addresses. Search, chart or watch them like any rows: a monitor on `service:toposcope share:agental-console status:refused` pages when a page asks for more than its share allows. `GET /api/shares` gives each share's last read and its reads and refusals over 24 hours.
 
 ## Read with one
 
