@@ -6,7 +6,9 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
-**Before you upgrade:** 0.8 is the redesign, in one release. The header is words: Home · Hunt · Watch, then Access · Settings, with Fields under Settings and links in Access. The Tokens button and Settings › Shares become Access; the sidebar goes, with saved hunts on Home; the saved search marked Home becomes a pin. Each piece lands as its own paragraph below.
+## 0.8.0
+
+**Before you upgrade:** 0.8 is the redesign, in one release. The header is words: Home · Hunt · Watch, then Access · Settings, with Fields under Settings and links in Access. The Tokens button and Settings › Shares become Access; the sidebar goes, with saved hunts on Home; the saved search marked Home becomes a pin. Each piece lands as its own paragraph below. Nothing changes in ClickHouse. SQLite gains columns only (saved searches `pinned`; monitors `measure` and `webhook_urls`; tokens `last_used_at`; links `paused`; shares `panels` and `raw_params`), which 0.7.3 leaves unread on a rollback; `upgrade.sh` takes its backup first as usual.
 
 The docs follow the redesign: a new page, [What leaves this instance](docs/access.md), says in prose what each row of Access lets through and what Toposcope itself calls out to; `docs/shares.md` gains **Named panels** and makes shares in Access; `docs/operations.md` makes links in Access, with a link's page, and makes monitors with Watch this; `docs/query.md` and `docs/ARCHITECTURE.md` describe the named-marks rail, the facet chips, Home and Access, and no sidebar; the README's first steps end on Home, Watch this and Access; the roadmap's Today names the redesign. [#271](https://github.com/toposcope/toposcope/issues/271)
 
