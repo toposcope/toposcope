@@ -32,6 +32,7 @@ import { effectiveMetricsRetentionDays, getRetentionDays, getSettings, putSettin
 import { instanceId, instanceName } from "./control/instance";
 import { setHereName } from "./shared/here";
 import { getHome, homeSaved, putHome } from "./control/home";
+import { homeSinceRoute } from "./control/home-since";
 import { savedSearchUrl } from "./ui/search-url";
 import { createSession, endSession, sessionExpiry, sessionMs } from "./control/sessions";
 import { safeNext, signInPageHtml } from "./sign-in-page";
@@ -238,9 +239,11 @@ app.use("/*", async (c, next) => {
       c.req.path === "/v1/profiles" ||
       c.req.path === "/v1development/profiles") &&
     c.req.method === "POST";
-  const cookie = ingest ? undefined : readCookie(c.req.header("cookie"), sessionCookieName());
+  // A note mark is the one write the operator makes from the app (#259): the session may post one.
+  const operatorMark = c.req.path === "/v1/marks" && c.req.method === "POST";
+  const cookie = ingest && !operatorMark ? undefined : readCookie(c.req.header("cookie"), sessionCookieName());
   const allowed = ingest
-    ? checkBearer(header) || checkBasic(header)
+    ? checkBearer(header) || checkBasic(header) || (operatorMark && sessionExpiry(cookie, basicPassword()) !== null)
     : checkBasic(header) || sessionExpiry(cookie, basicPassword()) !== null;
   if (!allowed) {
     // A sender holds an ingest token and nothing else. On a wrong path under the
@@ -348,6 +351,7 @@ app.post("/api/version/upgrade", async (c) => {
   return c.json(answer.body, answer.status);
 });
 app.get("/api/home", getHome);
+app.get("/api/home/since", homeSinceRoute);
 app.put("/api/home", putHome);
 app.get("/api/saved-searches", listSavedSearches);
 app.post("/api/saved-searches", createSavedSearch);
