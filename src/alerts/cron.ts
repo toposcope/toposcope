@@ -13,7 +13,7 @@ import { incMetric } from "../metrics";
 import { clipError, postWebhook } from "./delivery";
 import { publicUrl } from "../shared/public-url";
 import { cantTellNow, markStarted } from "./cant-tell";
-import { callUrl, passSearchMonitor, type CallDeps } from "./monitor";
+import { callUrls, passSearchMonitor, type CallDeps } from "./monitor";
 import { passPushMonitor } from "./push";
 import { closeByEdit, pruneResults, recordCall } from "./monitor-store";
 import { pingWatchdog } from "./watchdog";
@@ -52,12 +52,12 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
     }
     if (rule.kind === "first_seen") {
       // It never opens, so it has no state to keep: with nobody to call it is not read.
-      const url = callUrl(rule, calls);
-      if (!url) {
+      const urls = callUrls(rule, calls);
+      if (urls.length === 0) {
         continue;
       }
       try {
-        await evaluateFirstSeenRule({ ...rule, webhook_url: url }, saved, now, {
+        await evaluateFirstSeenRule({ ...rule, webhook_url: urls[0]!, webhook_urls: urls }, saved, now, {
           ...firstSeenDeps(postWebhook),
           // Each call is kept with the monitor, outside any stretch: it never opens.
           recordWebhook: (ruleId, attempt) => {

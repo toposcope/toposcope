@@ -24,6 +24,7 @@ const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
   id: "rule-1",
   name: "new bugs after a deploy",
   measure: "series",
+  webhook_urls: null,
   kind: "first_seen",
   last_mark: null,
   body_kind: "default",

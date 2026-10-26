@@ -116,6 +116,8 @@ export type AlertRule = {
   /** #279: its series, or its search's share of all rows in percent. */
   measure?: "series" | "share";
   webhook_url: string | null;
+  /** #280: every delivery target, URLs or `default`. */
+  webhook_urls?: string[] | null;
   last_fired_at: number | null;
   last_attempt_at: number | null;
   last_status: string | null;

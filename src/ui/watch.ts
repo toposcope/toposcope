@@ -910,8 +910,10 @@ export type DeliveryRow = { host: string; ok: boolean | null; lastAt: number | n
 export function deliveries(monitors: readonly MonitorView[]): DeliveryRow[] {
   const by = new Map<string, DeliveryRow>();
   for (const m of monitors) {
-    // A monitor without its own URL calls the default webhook (Settings); it is not a host here.
-    const host = m.webhook_url ? callHost(m.webhook_url) : "";
+    // Every URL it calls (#280); the default webhook (Settings) is not a host here.
+    const urls = (m.webhook_urls && m.webhook_urls.length ? m.webhook_urls : [m.webhook_url ?? ""]).filter((u) => u && u !== "default");
+    for (const u of urls) {
+    const host = callHost(u);
     if (!host || host === "—") {
       continue;
     }
@@ -923,6 +925,7 @@ export function deliveries(monitors: readonly MonitorView[]): DeliveryRow[] {
       row.ok = m.last_error == null;
     }
     by.set(host, row);
+  }
   }
   return [...by.values()].sort((a, b) => a.host.localeCompare(b.host));
 }

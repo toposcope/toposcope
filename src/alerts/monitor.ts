@@ -72,8 +72,27 @@ export type SearchMonitorDeps = CallDeps & {
 };
 
 /** Where a monitor's calls go: its own webhook, else the default from Settings, else nowhere. */
-export function callUrl(rule: Pick<AlertRule, "webhook_url">, deps: Pick<CallDeps, "defaultWebhook">): string | null {
-  return rule.webhook_url || deps.defaultWebhook?.() || null;
+export function callUrl(rule: Pick<AlertRule, "webhook_url"> & { webhook_urls?: string[] | null }, deps: Pick<CallDeps, "defaultWebhook">): string | null {
+  return callUrls(rule, deps)[0] ?? null;
+}
+
+/** The most delivery targets one monitor has (#280). */
+export const maxCallTargets = 5;
+
+/**
+ * Every place a monitor's calls go (#280): its targets, each a URL or `default` (the webhook in
+ * Settings, followed when it changes); without a list, its own webhook, else the default.
+ */
+export function callUrls(rule: Pick<AlertRule, "webhook_url"> & { webhook_urls?: string[] | null }, deps: Pick<CallDeps, "defaultWebhook">): string[] {
+  const listed = rule.webhook_urls && rule.webhook_urls.length ? rule.webhook_urls : [rule.webhook_url || "default"];
+  const out: string[] = [];
+  for (const t of listed) {
+    const url = t === "default" ? (deps.defaultWebhook?.() ?? null) : t;
+    if (url && !out.includes(url)) {
+      out.push(url);
+    }
+  }
+  return out.slice(0, maxCallTargets);
 }
 
 export function searchWindowMs(saved: Pick<SavedSearch, "range">): number {
@@ -199,27 +218,37 @@ export async function passCalls(
   deps: CallDeps,
 ): Promise<void> {
   const db = deps.db;
-  const url = callUrl(rule, deps);
+  const urls = callUrls(rule, deps);
+  const url = urls[0] ?? null;
   const silenced = rule.silenced_until != null && now < rule.silenced_until;
+  /** One call to every target (#280): each its own record; taken when at least one target took it. */
   const send = async (what: Exclude<CallWhat, "sent">, stretch: MonitorStretch): Promise<WebhookOutcome> => {
-    const outcome = await deps.post(url!, plan.payload(what, stretch, url!));
-    deps.recordWebhook(rule.id, { at: now, ...outcome }, db);
-    recordCall(
-      {
-        monitor_id: rule.id,
-        stretch_id: stretch.id,
-        at: now,
-        what,
-        status: outcome.status,
-        ok: outcome.ok,
-        error: outcome.error,
-      },
-      db,
-    );
-    if (outcome.ok) {
+    let first: WebhookOutcome | null = null;
+    let taken: WebhookOutcome | null = null;
+    for (const target of urls) {
+      const outcome = await deps.post(target, plan.payload(what, stretch, target));
+      deps.recordWebhook(rule.id, { at: now, ...outcome }, db);
+      recordCall(
+        {
+          monitor_id: rule.id,
+          stretch_id: stretch.id,
+          at: now,
+          what,
+          status: outcome.status,
+          ok: outcome.ok,
+          error: outcome.error,
+        },
+        db,
+      );
+      first ??= outcome;
+      if (outcome.ok) {
+        taken ??= outcome;
+      }
+    }
+    if (taken) {
       deps.onSent?.();
     }
-    return outcome;
+    return taken ?? first!;
   };
   const keptBack = (what: CallWhat, stretch: MonitorStretch) =>
     recordCall(
