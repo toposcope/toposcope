@@ -8,6 +8,10 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 **Before you upgrade:** 0.8 is the redesign, in one release. The header is words: Home · Hunt · Watch · Fields · Links, then Access · Settings. The Tokens button and Settings › Shares become Access; the sidebar goes, with saved hunts on Home; the saved search marked Home becomes a pin. Each piece lands as its own paragraph below.
 
+**Changes stored data:** monitors gain `webhook_urls`.
+
+A monitor can call **several targets**: `webhook_urls` holds up to five, each an http(s) URL or `default` (the webhook in Settings, followed when it changes), and `webhook_url` stays as the first URL among them for older scripts. Every call, open, reminder, resolved and new fingerprints, goes to each target with the body that target expects (Slack's for a Slack URL), and each target's result is its own call record. An open or resolved call counts as sent once a target took it; a target that failed is recorded and not called again for that call. Watch's Delivery card lists every host. `POST` and `PUT /api/alert-rules` take `webhook_urls`; a monitor that sends only to `default` needs no URL of its own. [#280](https://github.com/toposcope/toposcope/issues/280)
+
 **Changes stored data:** monitors gain `measure`.
 
 A saved-search monitor can open on its search's **share of all rows**: `measure: share` compares 100 × the rows its search matches over every row in the same window with a threshold in percent, so "at least 2 % of all rows in 5 min" opens when errors are 2 % of everything, however busy the instance is. It needs a saved search that counts rows; a window with no rows at all is no reading, not 0 %. The reading (`share of all rows 4.8% ≥ 2%`), the webhook's `value` and Watch's sentence say percent. `POST` and `PUT /api/alert-rules` take `measure` (`series`, the default, or `share`). [#279](https://github.com/toposcope/toposcope/issues/279)

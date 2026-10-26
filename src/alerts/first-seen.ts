@@ -221,18 +221,25 @@ export async function evaluateFirstSeenRule(
       continue;
     }
     attempted = true;
-    const payload = await firstSeenPayload({
-      rule: { ...rule, webhook_url: rule.webhook_url },
-      saved,
-      mark,
-      windows: cut.windows,
-      fresh,
-      compiled,
-      now,
-      deps,
-    });
-    const outcome = await deps.post(rule.webhook_url, payload);
-    deps.recordWebhook(rule.id, { at: now, ...outcome });
+    // Every target (#280), each with the body it expects; sent when at least one took it.
+    const targets = rule.webhook_urls && rule.webhook_urls.length ? rule.webhook_urls : [rule.webhook_url];
+    let anyOk = false;
+    for (const target of targets) {
+      const payload = await firstSeenPayload({
+        rule: { ...rule, webhook_url: target },
+        saved,
+        mark,
+        windows: cut.windows,
+        fresh,
+        compiled,
+        now,
+        deps,
+      });
+      const sent = await deps.post(target, payload);
+      deps.recordWebhook(rule.id, { at: now, ...sent });
+      anyOk ||= sent.ok;
+    }
+    const outcome = { ok: anyOk };
     if (outcome.ok) {
       // Sent for every mark each fingerprint was new after, so no other mark pages it.
       const sentFor = new Map<string, string[]>();

@@ -41,7 +41,7 @@ import {
 } from "../shared/monitor";
 
 const RULE_COLS =
-  "id, name, query, measure, webhook_url, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
+  "id, name, query, measure, webhook_url, webhook_urls, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
 
 /** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
 export const alertKinds = ["threshold", "first_seen"] as const;
@@ -69,6 +69,8 @@ export type AlertRule = {
   body_template: string | null;
   query: string;
   webhook_url: string | null;
+  /** Every delivery target (#280): URLs or `default`; null for the one `webhook_url`. */
+  webhook_urls: string[] | null;
   saved_search_id: string | null;
   threshold: number;
   enabled: number;
@@ -108,9 +110,10 @@ export type AlertRule = {
 
 type RuleRow = Omit<
   AlertRule,
-  "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result" | "opens_when" | "cant_tell" | "measure"
+  "kind" | "last_mark" | "body_kind" | "source" | "state" | "remind_every" | "last_result" | "opens_when" | "cant_tell" | "measure" | "webhook_urls"
 > & {
   measure: string | null;
+  webhook_urls: string | null;
   kind: string | null;
   last_mark: string | null;
   body_kind: string | null;
@@ -218,6 +221,7 @@ function mapRule(row: RuleRow): AlertRule {
     last_result_at: row.last_result_at ?? null,
     opens_when: parseOpensWhen(row.opens_when) ?? "at_least",
     measure: parseMonitorMeasure(row.measure) ?? "series",
+    webhook_urls: parseStoredTargets(row.webhook_urls),
     cant_tell: parseCantTell(row.cant_tell),
     every_ms: row.every_ms ?? null,
     grace_ms: row.grace_ms ?? null,
@@ -387,6 +391,39 @@ export function getAlert(id: string, db: Database = getDb()): AlertRule | null {
   return row ? mapRule(row) : null;
 }
 
+function parseStoredTargets(raw: string | null): string[] | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const list = JSON.parse(raw) as unknown;
+    return Array.isArray(list) && list.every((t) => typeof t === "string") && list.length ? (list as string[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A monitor's delivery targets (#280): 1–5, each an http(s) URL or `default`. */
+export function parseTargets(value: unknown): string[] | { error: string } {
+  if (!Array.isArray(value) || value.length === 0) {
+    return { error: "webhook_urls is a list of 1 to 5 targets" };
+  }
+  if (value.length > 5) {
+    return { error: "a monitor calls 5 targets at most" };
+  }
+  const out: string[] = [];
+  for (const raw of value) {
+    const t = typeof raw === "string" ? raw.trim() : "";
+    if (t !== "default" && !/^https?:\/\//.test(t)) {
+      return { error: "each of webhook_urls is an http(s) URL, or default for the webhook in Settings" };
+    }
+    if (!out.includes(t)) {
+      out.push(t);
+    }
+  }
+  return out;
+}
+
 export function parseWebhook(value: unknown): string | { error: string } {
   const webhook = typeof value === "string" ? value.trim() : "";
   if (webhook.length === 0 || !/^https?:\/\//.test(webhook)) {
@@ -422,6 +459,7 @@ export type MonitorFields = {
   saved_search_id: string;
   query: string;
   webhook_url: string;
+  webhook_urls: string[] | null;
   threshold: number;
   body_kind: AlertBodyKind;
   body_template: string | null;
@@ -473,14 +511,24 @@ export function readMonitorFields(
   if (savedSearchId.length === 0) {
     return { error: "saved_search_id is required", status: 400 };
   }
-  const webhook =
-    rec.webhook_url === undefined && existing
+  // Several targets (#280): webhook_urls, with webhook_url the first URL among them for older readers.
+  let targets: string[] | null = rec.webhook_urls === undefined ? (rec.webhook_url === undefined ? (existing?.webhook_urls ?? null) : null) : null;
+  if (rec.webhook_urls !== undefined && rec.webhook_urls !== null) {
+    const parsedTargets = parseTargets(rec.webhook_urls);
+    if (!Array.isArray(parsedTargets)) {
+      return { error: parsedTargets.error, status: 400 };
+    }
+    targets = parsedTargets;
+  }
+  const webhook = targets
+    ? (targets.find((t) => t !== "default") ?? "")
+    : rec.webhook_url === undefined && existing
       ? (existing.webhook_url ?? "")
       : parseWebhook(rec.webhook_url);
   if (typeof webhook !== "string") {
     return { error: webhook.error, status: 400 };
   }
-  if (webhook.length === 0) {
+  if (webhook.length === 0 && !targets) {
     return { error: "webhook_url must be http(s)", status: 400 };
   }
   const parsed =
@@ -533,6 +581,7 @@ export function readMonitorFields(
     saved_search_id: savedSearchId,
     query: saved.query,
     webhook_url: webhook,
+    webhook_urls: targets,
     threshold,
     ...body,
     remind_every: remind,
@@ -559,8 +608,8 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
     .query(
       `INSERT INTO alert_rules
         (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
-         source, state, remind_every, resolved_body, opens_when, measure)
-       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?, ?)`,
+         source, state, remind_every, resolved_body, opens_when, measure, webhook_urls)
+       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -578,6 +627,7 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
       fields.resolved_body,
       fields.opens_when,
       fields.measure,
+      fields.webhook_urls ? JSON.stringify(fields.webhook_urls) : null,
     );
   return getAlert(id)!;
 }
@@ -591,7 +641,7 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
     .query(
       `UPDATE alert_rules
        SET name = ?, query = ?, webhook_url = ?, saved_search_id = ?, threshold = ?, kind = ?, body_kind = ?, body_template = ?,
-           source = ?, remind_every = ?, resolved_body = ?, opens_when = ?, measure = ?
+           source = ?, remind_every = ?, resolved_body = ?, opens_when = ?, measure = ?, webhook_urls = ?
        WHERE id = ?`,
     )
     .run(
@@ -608,6 +658,7 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
       fields.resolved_body,
       fields.opens_when,
       fields.measure,
+      fields.webhook_urls ? JSON.stringify(fields.webhook_urls) : null,
       existing.id,
     );
   const readsAnew =
@@ -628,7 +679,7 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
     forgetSentFingerprints(existing.id);
     getDb().query("UPDATE alert_rules SET last_mark = NULL WHERE id = ?").run(existing.id);
   }
-  if (fields.webhook_url !== (existing.webhook_url ?? "")) {
+  if (fields.webhook_url !== (existing.webhook_url ?? "") || JSON.stringify(fields.webhook_urls) !== JSON.stringify(existing.webhook_urls)) {
     getDb()
       .query(
         `UPDATE alert_rules SET

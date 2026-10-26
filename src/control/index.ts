@@ -92,6 +92,8 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "opens_when", "TEXT NOT NULL DEFAULT 'at_least'");
   // #279: a monitor compares its series, or its search's share of all rows.
   addColumnIfMissing(db, "alert_rules", "measure", "TEXT NOT NULL DEFAULT 'series'");
+  // #280: every delivery target, as JSON; null keeps the one webhook_url.
+  addColumnIfMissing(db, "alert_rules", "webhook_urls", "TEXT");
   addColumnIfMissing(db, "alert_rules", "cant_tell", "TEXT");
   // A push monitor (#177): its keyed URL, when its next result is due and how long past that it
   // waits, when its due time counts from, the run started and not yet ended, its last ok, and
