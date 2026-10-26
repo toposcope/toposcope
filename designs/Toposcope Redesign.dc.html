@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 26a */
+[data-frame="26a"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26a"] a:hover{color:#fff}
+[data-frame="26a"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26a"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26a"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26a"] .card{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid #27272a;border-radius:10px;background:#131316;color:inherit;min-height:150px;box-sizing:border-box}
+[data-frame="26a"] .card:hover{border-color:#71717a}
+[data-frame="26a"] .name{font-size:13.5px;font-weight:500;color:#fafafa}
+[data-frame="26a"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26a"] .big{font-size:24px;font-weight:600;letter-spacing:-0.01em;color:#fafafa}
+[data-frame="26a"] .up{color:#fca5a5}
+[data-frame="26a"] .ok{color:#6ee7b7}
+[data-frame="26a"] .sp{display:flex;align-items:flex-end;gap:1px;height:36px;position:relative;margin-top:auto}
+[data-frame="26a"] .sp div{flex:1 1 0;min-width:0}
+[data-frame="26a"] .ml{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #1f1f23;font-size:12.5px}
+[data-frame="26a"] .ml:last-child{border-bottom:0}
+[data-frame="26a"] .mk{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:7px;border:1px solid #27272a;background:#131316;font-size:12.5px;color:#d4d4d8;white-space:nowrap;cursor:pointer;font:inherit}
+[data-frame="26a"] .mk b{font-weight:400;color:#8a8a93;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+[data-frame="26a"] .mk.on{border-color:#e7e1d3;color:#fafafa;background:#1d1d21}
+  /* 26b */
+[data-frame="26b"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26b"] a:hover{color:#fff}
+[data-frame="26b"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26b"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26b"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26b"] .card{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid #27272a;border-radius:10px;background:#131316;color:inherit;min-height:150px;box-sizing:border-box}
+[data-frame="26b"] .name{font-size:13.5px;font-weight:500;color:#fafafa}
+[data-frame="26b"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26b"] .big{font-size:24px;font-weight:600;letter-spacing:-0.01em;color:#fafafa}
+[data-frame="26b"] .ok{color:#6ee7b7}
+[data-frame="26b"] .sp{display:flex;align-items:flex-end;gap:1px;height:36px;position:relative;margin-top:auto}
+[data-frame="26b"] .sp div{flex:1 1 0;min-width:0}
+[data-frame="26b"] .ml{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #1f1f23;font-size:12.5px}
+[data-frame="26b"] .ml:last-child{border-bottom:0}
+[data-frame="26b"] .mk{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:7px;border:1px solid #27272a;background:#131316;font-size:12.5px;color:#d4d4d8;white-space:nowrap;cursor:pointer;font:inherit}
+[data-frame="26b"] .mk b{font-weight:400;color:#8a8a93;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+[data-frame="26b"] .mk.on{border-color:#a1a1aa;color:#fafafa;background:#1d1d21}
+  /* 26c */
+[data-frame="26c"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26c"] a:hover{color:#fff}
+[data-frame="26c"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26c"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26c"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26c"] .step{display:grid;grid-template-columns:44px 1fr;gap:0 18px;padding:22px 24px;border:1px solid #27272a;border-radius:10px;background:#131316}
+[data-frame="26c"] .step.done{border-color:#1f1f23;color:#8a8a93}
+[data-frame="26c"] .num{width:30px;height:30px;border-radius:50%;border:1px solid #3f3f46;display:flex;align-items:center;justify-content:center;font-size:13px;color:#d4d4d8}
+[data-frame="26c"] .num.done{background:#1d1d21;border-color:#1d1d21;color:#6ee7b7}
+[data-frame="26c"] .num.now{border-color:#e7e1d3;color:#e7e1d3}
+[data-frame="26c"] .name{font-size:15px;font-weight:500;color:#fafafa}
+[data-frame="26c"] .sub{font-size:12.5px;color:#8a8a93}
+[data-frame="26c"] pre{margin:12px 0 0;padding:12px 14px;border-radius:7px;background:#0d0d0f;border:1px solid #27272a;font-size:12px;line-height:1.6;color:#d4d4d8;white-space:pre-wrap;overflow:hidden}
+[data-frame="26c"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #3f3f46;background:#1d1d21;color:#fafafa;font-size:12.5px;font:inherit;cursor:pointer}
+  /* 26d */
+[data-frame="26d"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26d"] a:hover{color:#fff}
+[data-frame="26d"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26d"] .seg{display:flex;flex-direction:column-reverse;flex:1 1 0;min-width:0;gap:1px}
+[data-frame="26d"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26d"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26d"] .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:6px;border:1px solid #2a2a2e;background:#141416;font-size:12px;color:#d4d4d8;white-space:nowrap}
+[data-frame="26d"] .chip b{font-weight:500;color:#8a8a93;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+[data-frame="26d"] .row{display:grid;grid-template-columns:84px 18px 70px 76px 1fr;gap:12px;align-items:center;height:30px;padding:0 16px;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="26d"] .row .t{color:#8a8a93}
+[data-frame="26d"] .row .svc{color:#a1a1aa}
+[data-frame="26d"] .lv{width:4px;height:16px;border-radius:2px;background:#3f3f46}
+  /* 26e */
+[data-frame="26e"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26e"] a:hover{color:#fff}
+[data-frame="26e"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26e"] .seg{display:flex;flex-direction:column-reverse;flex:1 1 0;min-width:0;gap:1px}
+[data-frame="26e"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26e"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26e"] .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:6px;border:1px solid #2a2a2e;background:#141416;font-size:12px;color:#d4d4d8;white-space:nowrap}
+[data-frame="26e"] .chip b{font-weight:500;color:#8a8a93;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+[data-frame="26e"] .row{display:grid;grid-template-columns:84px 18px 1fr;gap:12px;align-items:center;height:30px;padding:0 16px;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="26e"] .row .t{color:#8a8a93}
+[data-frame="26e"] .lv{width:4px;height:16px;border-radius:2px;background:#3f3f46}
+[data-frame="26e"] .f{display:grid;grid-template-columns:112px 1fr auto;gap:10px;align-items:center;min-height:28px;padding:3px 0;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="26e"] .f .k{color:#8a8a93}
+[data-frame="26e"] .f .a{color:#8a8a93;font-size:11px;display:flex;gap:8px}
+[data-frame="26e"] .f .a a{color:#8a8a93}
+[data-frame="26e"] .btn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+  /* 26f */
+[data-frame="26f"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26f"] a:hover{color:#fff}
+[data-frame="26f"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26f"] .seg{display:flex;flex-direction:column-reverse;flex:1 1 0;min-width:0;gap:1px}
+[data-frame="26f"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26f"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26f"] .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:6px;border:1px solid #2a2a2e;background:#141416;font-size:12px;color:#d4d4d8;white-space:nowrap}
+[data-frame="26f"] .chip b{font-weight:500;color:#8a8a93;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+[data-frame="26f"] .row{display:grid;grid-template-columns:84px 18px 1fr;gap:12px;align-items:center;height:30px;padding:0 16px;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="26f"] .row .t{color:#8a8a93}
+[data-frame="26f"] .lv{width:4px;height:16px;border-radius:2px;background:#3f3f46}
+[data-frame="26f"] .m{display:grid;grid-template-columns:44px 18px 1fr auto;gap:10px;align-items:center;padding:9px 16px;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="26f"] .m .t{color:#8a8a93;font-size:11.5px}
+[data-frame="26f"] .m.on{background:#1d1d21}
+[data-frame="26f"] .btn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="26f"] .btn.p{border-color:#e7e1d3;color:#fafafa}
+[data-frame="26f"] .kind{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:6px;border:1px solid #2a2a2e;font-size:11.5px;color:#a1a1aa}
+[data-frame="26f"] .kind.on{color:#fafafa;border-color:#71717a;background:#1d1d21}
+  /* 26g */
+[data-frame="26g"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26g"] a:hover{color:#fff}
+[data-frame="26g"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26g"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26g"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26g"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26g"] .up{color:#fca5a5}
+[data-frame="26g"] .ok{color:#6ee7b7}
+[data-frame="26g"] .mu{color:#8a8a93}
+[data-frame="26g"] .r{display:grid;grid-template-columns:18px 1fr 260px 300px 110px 90px;gap:14px;align-items:center;padding:12px 16px;border-bottom:1px solid #1c1c20;font-size:13px;color:inherit}
+[data-frame="26g"] .r:hover{background:#121214}
+[data-frame="26g"] .r.open{background:#15110f}
+[data-frame="26g"] .hist{display:flex;gap:1px;height:16px;align-items:stretch}
+[data-frame="26g"] .hist div{flex:1 1 0;min-width:0;border-radius:1px}
+[data-frame="26g"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="26g"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="26g"] .seg{display:inline-flex;border:1px solid #2a2a2e;border-radius:7px;overflow:hidden}
+[data-frame="26g"] .seg span{padding:6px 10px;font-size:12px;color:#8a8a93}
+[data-frame="26g"] .seg span.on{color:#fafafa;background:#27272a}
+  /* 26h */
+[data-frame="26h"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26h"] a:hover{color:#fff}
+[data-frame="26h"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26h"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26h"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26h"] .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:6px;border:1px solid #2a2a2e;background:#141416;font-size:12px;color:#d4d4d8;white-space:nowrap}
+[data-frame="26h"] .chip b{font-weight:500;color:#8a8a93;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+[data-frame="26h"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26h"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="26h"] .in{height:34px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font:inherit;font-size:13px;outline:none;box-sizing:border-box}
+[data-frame="26h"] .sel{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font-size:13px}
+[data-frame="26h"] .btn{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:13px;font:inherit;cursor:pointer}
+[data-frame="26h"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="26h"] .row{display:grid;grid-template-columns:84px 18px 1fr;gap:12px;align-items:center;height:30px;padding:0 16px;border-bottom:1px solid #1c1c20;font-size:12.5px;opacity:.35}
+[data-frame="26h"] .lv{width:4px;height:16px;border-radius:2px}
+[data-frame="26h"] .seg{display:flex;flex-direction:column-reverse;flex:1 1 0;min-width:0}
+[data-frame="26h"] .ck{display:inline-flex;align-items:center;gap:8px;font-size:13px}
+[data-frame="26h"] .ck span.b{width:16px;height:16px;border-radius:4px;border:1px solid #3f3f46;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#0d0d0f}
+[data-frame="26h"] .ck span.b.on{background:#e7e1d3;border-color:#e7e1d3}
+  /* 26i */
+[data-frame="26i"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26i"] a:hover{color:#fff}
+[data-frame="26i"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26i"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26i"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26i"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26i"] .up{color:#fca5a5}
+[data-frame="26i"] .ok{color:#6ee7b7}
+[data-frame="26i"] .mu{color:#8a8a93}
+[data-frame="26i"] .r{display:grid;grid-template-columns:96px 1fr 250px 150px 110px 90px 70px;gap:14px;align-items:center;padding:11px 16px;border-bottom:1px solid #1c1c20;font-size:13px}
+[data-frame="26i"] .r:hover{background:#121214}
+[data-frame="26i"] .kind{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;font-size:11.5px;border:1px solid #2a2a2e;color:#d4d4d8;white-space:nowrap}
+[data-frame="26i"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="26i"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="26i"] .seg{display:inline-flex;border:1px solid #2a2a2e;border-radius:7px;overflow:hidden}
+[data-frame="26i"] .seg span{padding:6px 10px;font-size:12px;color:#8a8a93}
+[data-frame="26i"] .seg span.on{color:#fafafa;background:#27272a}
+[data-frame="26i"] .x{color:#8a8a93;font-size:12px}
+  /* 26j */
+[data-frame="26j"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26j"] a:hover{color:#fff}
+[data-frame="26j"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26j"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26j"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26j"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26j"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="26j"] .in{height:34px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font:inherit;font-size:13px;outline:none;box-sizing:border-box}
+[data-frame="26j"] .sel{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font-size:13px}
+[data-frame="26j"] .btn{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:13px;font:inherit;cursor:pointer}
+[data-frame="26j"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="26j"] .k{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid #2a2a2e;border-radius:10px;background:#0d0d0f;cursor:pointer;color:inherit}
+[data-frame="26j"] .k.on{border-color:#e7e1d3;background:#1a1a1e}
+[data-frame="26j"] .k .t{font-size:13.5px;font-weight:500;color:#fafafa;display:flex;align-items:center;gap:8px}
+[data-frame="26j"] .r{display:grid;grid-template-columns:96px 1fr 250px 150px;gap:14px;align-items:center;padding:11px 16px;border-bottom:1px solid #1c1c20;font-size:13px;opacity:.35}
+[data-frame="26j"] .kind{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:6px;font-size:11.5px;border:1px solid #2a2a2e;color:#d4d4d8;white-space:nowrap}
+  /* 26k */
+[data-frame="26k"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26k"] a:hover{color:#fff}
+[data-frame="26k"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26k"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26k"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26k"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26k"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="26k"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+[data-frame="26k"] .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:12.5px}
+[data-frame="26k"] .kv .k{color:#8a8a93}
+[data-frame="26k"] .btn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="26k"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="26k"] pre{margin:0;padding:10px 12px;border-radius:7px;background:#0d0d0f;border:1px solid #27272a;font-size:11.5px;line-height:1.55;color:#d4d4d8;white-space:pre-wrap}
+[data-frame="26k"] .hl{color:#e7e1d3}
+[data-frame="26k"] .p{display:grid;grid-template-columns:150px 1fr 90px 60px;gap:12px;align-items:center;padding:9px 12px;border:1px solid #27272a;border-radius:8px;background:#0d0d0f;font-size:12.5px}
+[data-frame="26k"] .p.on{border-color:#e7e1d3}
+[data-frame="26k"] .mini{display:flex;align-items:flex-end;gap:1px;height:26px;width:150px}
+[data-frame="26k"] .mini div{flex:1 1 0;min-width:0;background:#2f6fa3}
+[data-frame="26k"] .sw{display:inline-flex;align-items:center;gap:8px;font-size:12.5px}
+[data-frame="26k"] .sw i{width:30px;height:16px;border-radius:9px;background:#e7e1d3;position:relative;display:inline-block}
+[data-frame="26k"] .sw i::after{content:"";position:absolute;right:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#0d0d0f}
+  /* 26l */
+[data-frame="26l"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26l"] a:hover{color:#fff}
+[data-frame="26l"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26l"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26l"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26l"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26l"] .r{display:grid;grid-template-columns:200px 90px 110px 300px 1fr;gap:14px;align-items:center;padding:9px 16px;border-bottom:1px solid #1c1c20;font-size:13px}
+[data-frame="26l"] .r:hover{background:#121214}
+[data-frame="26l"] .seg{display:inline-flex;border:1px solid #2a2a2e;border-radius:6px;overflow:hidden}
+[data-frame="26l"] .seg span{padding:4px 9px;font-size:11.5px;color:#8a8a93;border-right:1px solid #2a2a2e}
+[data-frame="26l"] .seg span:last-child{border-right:0}
+[data-frame="26l"] .seg span.on{color:#fafafa;background:#27272a}
+[data-frame="26l"] .lk{color:#8a8a93;font-size:12px}
+[data-frame="26l"] .lk.on{color:#2dd4bf}
+[data-frame="26l"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+  /* 26m */
+[data-frame="26m"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26m"] a:hover{color:#fff}
+[data-frame="26m"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26m"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26m"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26m"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26m"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="26m"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+[data-frame="26m"] .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:12.5px}
+[data-frame="26m"] .kv .k{color:#8a8a93}
+[data-frame="26m"] .btn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="26m"] .big{font-size:22px;font-weight:600;color:#fafafa;letter-spacing:-0.01em}
+[data-frame="26m"] .ev{display:grid;grid-template-columns:60px 1fr auto;gap:12px;padding:7px 0;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="26m"] .ev:last-child{border-bottom:0}
+[data-frame="26m"] .seg{flex:1 1 0;min-width:0}
+  /* 26n */
+[data-frame="26n"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="26n"] a:hover{color:#fff}
+[data-frame="26n"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26n"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="26n"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="26n"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="26n"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="26n"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+[data-frame="26n"] .card h2{margin:0;font-size:14px;font-weight:500;color:#fafafa}
+[data-frame="26n"] .row{display:flex;align-items:center;gap:12px;font-size:13px}
+[data-frame="26n"] .row .k{width:150px;color:#8a8a93;flex:none}
+[data-frame="26n"] .in{height:32px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font:inherit;font-size:13px;outline:none;box-sizing:border-box}
+[data-frame="26n"] .sel{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font-size:13px}
+[data-frame="26n"] .btn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="26n"] .ok{color:#6ee7b7}
+  /* 26o */
+[data-frame="26o"] a{color:#a1a1aa;text-decoration:none}
+[data-frame="26o"] a:hover{color:#fff}
+[data-frame="26o"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26o"] .sub{font-size:12.5px;color:#8a8a93}
+  /* 26p */
+[data-frame="26p"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="26p"] .p{display:flex;flex-direction:column;gap:8px;padding:18px 20px;border:1px solid #27272a;border-radius:10px;background:#131316}
+[data-frame="26p"] .p h2{margin:0;font-size:15px;font-weight:600;color:#fafafa;display:flex;align-items:center;gap:10px}
+[data-frame="26p"] .p h2 span{color:#e7e1d3;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500}
+[data-frame="26p"] .p p{margin:0;font-size:12.5px;line-height:1.55;color:#a1a1aa}
+[data-frame="26p"] .p p b{color:#e4e4e7;font-weight:500}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Redesign</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 26a–26p · one app: Home since a mark, the hunt on one clock, Watch, Access, named panels on shares · approved 2026-10-26</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Home: since a mark, a quiet day, first run · the hunt opened from a card</h2>
+
+    <div id="26a" data-frame="26a" data-screen-label="26a Home · since a mark" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Home · since a mark</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26a" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab on" href="#26a">Home</a>
+      <a class="tab" href="#26d">Hunt</a>
+      <a class="tab" href="#26g" style="display:inline-flex;align-items:center;gap:6px">Watch <span style="width:6px;height:6px;border-radius:50%;background:#ef4444"></span></a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <label for="26a-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
+    <div style="display:flex;align-items:center;gap:8px;width:360px;height:32px;padding:0 12px;border-radius:7px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26a-q" class="mono" placeholder="key:value … opens a hunt" style="flex:1;background:transparent;border:0;outline:none;color:#fafafa;font-size:12.5px">
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+    <a class="tab" href="#tokens">Tokens</a>
+    <a class="tab" href="#settings">Settings</a>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:14px 24px 0">
+    <span class="sub" style="margin-right:4px">Since</span>
+    <button class="mk on"><span style="color:#e7e1d3">▲</span>billing v0.9<b>12:48</b></button>
+    <button class="mk"><span style="color:#2dd4bf">⚑</span>new-pricing on<b>11:30</b></button>
+    <button class="mk"><span style="color:#e7e1d3">▲</span>api v2.14.0<b>09:12</b></button>
+    <button class="mk"><span style="color:#8a8a93">○</span>raised api rate limit<b>08:40</b></button>
+    <button class="mk" style="color:#8a8a93">yesterday · 4 more</button>
+    <div style="flex:1"></div>
+    <button class="mk" style="color:#8a8a93">last hour instead</button>
+    <button class="mk" style="color:#8a8a93">+ note</button>
+  </div>
+
+  <div style="display:flex;flex:1;min-height:0">
+    <main style="flex:1;min-width:0;padding:20px 28px 0 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">What changed since <span style="color:#e7e1d3">billing v0.9</span></h1>
+        <span class="mono" style="font-size:12.5px;color:#8a8a93">12:48 UTC · 38 min ago · 30 min before → 30 min after</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+        <sc-for list="{{f26a_cards}}" as="c" hint-placeholder-count="6">
+          <a href="#26d" class="card">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="name">{{c.name}}</span><span class="sub mono">{{c.kind}}</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span class="big">{{c.after}}</span><span class="mono" style="font-size:12.5px;color:{{c.dc}}">{{c.delta}}</span><span class="sub">was {{c.before}}</span></div>
+            <div class="sp">
+              <sc-for list="{{c.sp}}" as="s" hint-placeholder-count="40"><div style="height:{{s.h}}px;background:{{s.c}}"></div></sc-for>
+              <div style="position:absolute;top:-4px;bottom:0;left:50%;width:1px;background:#e7e1d3"></div>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <section class="card" style="min-height:0">
+          <div style="display:flex;justify-content:space-between"><span class="name">New fingerprints · 3</span><a href="#26d" class="sub">open as a hunt →</a></div>
+          <div class="ml"><span class="mono" style="color:#e7e1d3">e1:a91f2c</span><span style="flex:1">charge failed card_declined <span class="sub">billing</span></span><span class="mono">412</span></div>
+          <div class="ml"><span class="mono" style="color:#e7e1d3">e1:0c77be</span><span style="flex:1">panic: nil pointer in settle() <span class="sub">billing</span></span><span class="mono">96</span></div>
+          <div class="ml"><span class="mono" style="color:#e7e1d3">e1:7d20aa</span><span style="flex:1">upstream 502 from billing-1 <span class="sub">api · worker</span></span><span class="mono">61</span></div>
+          <div class="ml" style="color:#8a8a93"><span class="mono">e1:3b9e10</span><span style="flex:1">cache miss on warm key · stopped</span><span class="mono">0</span></div>
+        </section>
+        <section class="card" style="min-height:0">
+          <div style="display:flex;justify-content:space-between"><span class="name">Monitors · 1 open</span><a href="#26g" class="sub">all 6 →</a></div>
+          <div class="ml"><span class="up">●</span><span style="flex:1">Errors on billing above 2% <span class="sub">open since 12:51</span></span><span class="mono up">4.8%</span></div>
+          <div class="ml"><span class="ok">●</span><span style="flex:1">api.example.io certificate <span class="sub">checked 13:20</span></span><span class="mono sub">41 d</span></div>
+          <div class="ml"><span class="ok">●</span><span style="flex:1">Fewer than 10 logins in 5m <span class="sub">checked 13:25</span></span><span class="mono sub">ok</span></div>
+          <div class="ml"><span class="ok">●</span><span style="flex:1">tcp billing-1:5432 <span class="sub">checked 13:25</span></span><span class="mono sub">ok</span></div>
+        </section>
+      </div>
+    </main>
+
+    <aside style="width:300px;flex:none;box-sizing:border-box;padding:20px 24px 0;border-left:1px solid #1c1c20;display:flex;flex-direction:column;gap:12px">
+      <span class="name">Saved hunts · 5</span>
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:13px">
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;background:#1d1d21;display:flex;justify-content:space-between"><span>Errors on billing</span><span class="mono sub">1.89K</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>5xx on api</span><span class="mono sub">612</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Worker upstream 502s</span><span class="mono sub">61</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Fatal anywhere</span><span class="mono sub">293</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Checkout latency</span><span class="mono sub">p95</span></a>
+      </div>
+      <span class="name" style="margin-top:12px">Pinned</span>
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:13px">
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>All logs</span><span class="mono sub">18.6K/h</span></a>
+        <a href="#board" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Ops board</span><span class="mono sub">6 panels</span></a>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93">
+    <span>ingest 312/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 80 / 512 MB</span><div style="flex:1"></div><span>0.7.3 · <a href="#release" style="color:#a1a1aa">0.7.4 available</a></span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+    <div id="26b" data-frame="26b" data-screen-label="26b Home · quiet day" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Home · quiet day</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26b" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab on" href="#26a">Home</a>
+      <a class="tab" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <label for="26b-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
+    <div style="display:flex;align-items:center;gap:8px;width:360px;height:32px;padding:0 12px;border-radius:7px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26b-q" class="mono" placeholder="key:value … opens a hunt" style="flex:1;background:transparent;border:0;outline:none;color:#fafafa;font-size:12.5px">
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+    <a class="tab" href="#tokens">Tokens</a>
+    <a class="tab" href="#settings">Settings</a>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:14px 24px 0">
+    <span class="sub" style="margin-right:4px">Since</span>
+    <button class="mk on">the last hour<b>12:26 → 13:26</b></button>
+    <span class="sub">no mark in the last 24 h ·</span>
+    <button class="mk"><span style="color:#e7e1d3">▲</span>api v2.13.4<b>yesterday 16:02</b></button>
+    <button class="mk" style="color:#8a8a93">older marks</button>
+    <div style="flex:1"></div>
+    <button class="mk" style="color:#8a8a93">+ note</button>
+  </div>
+
+  <div style="display:flex;flex:1;min-height:0">
+    <main style="flex:1;min-width:0;padding:20px 28px 0 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:14px">
+        <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">The last hour, against the hour before</h1>
+        <span class="mono" style="font-size:12.5px;color:#8a8a93">11:26 → 12:26 · 12:26 → 13:26 · UTC</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+        <sc-for list="{{f26b_cards}}" as="c" hint-placeholder-count="6">
+          <a href="#26d" class="card">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="name">{{c.name}}</span><span class="sub mono">{{c.kind}}</span></div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span class="big">{{c.after}}</span><span class="mono" style="font-size:12.5px;color:#8a8a93">{{c.delta}}</span><span class="sub">was {{c.before}}</span></div>
+            <div class="sp">
+              <sc-for list="{{c.sp}}" as="s" hint-placeholder-count="40"><div style="height:{{s.h}}px;background:#3f3f46"></div></sc-for>
+              <div style="position:absolute;top:-4px;bottom:0;left:50%;width:1px;background:#3f3f46"></div>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <section class="card" style="min-height:0">
+          <div style="display:flex;justify-content:space-between"><span class="name">New fingerprints · none</span><a href="#26d" class="sub">all fingerprints →</a></div>
+          <p class="sub" style="margin:0;line-height:1.5">Nothing new in the last hour. The 9 known fingerprints ran at their usual rate; the loudest is <span class="mono" style="color:#d4d4d8">e1:3b9e10</span> cache miss on warm key, 18/h.</p>
+        </section>
+        <section class="card" style="min-height:0">
+          <div style="display:flex;justify-content:space-between"><span class="name">Monitors · all ok</span><a href="#26g" class="sub">all 6 →</a></div>
+          <div class="ml"><span class="ok">●</span><span style="flex:1">Errors on billing above 2% <span class="sub">checked 13:25</span></span><span class="mono sub">0.9%</span></div>
+          <div class="ml"><span class="ok">●</span><span style="flex:1">api.example.io certificate <span class="sub">checked 13:20</span></span><span class="mono sub">41 d</span></div>
+          <div class="ml"><span class="ok">●</span><span style="flex:1">Fewer than 10 logins in 5m <span class="sub">checked 13:25</span></span><span class="mono sub">ok</span></div>
+          <div class="ml"><span class="ok">●</span><span style="flex:1">tcp billing-1:5432 <span class="sub">checked 13:25</span></span><span class="mono sub">ok</span></div>
+        </section>
+      </div>
+    </main>
+
+    <aside style="width:300px;flex:none;box-sizing:border-box;padding:20px 24px 0;border-left:1px solid #1c1c20;display:flex;flex-direction:column;gap:12px">
+      <span class="name">Saved hunts · 5</span>
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:13px">
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Errors on billing</span><span class="mono sub">171</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>5xx on api</span><span class="mono sub">52</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Worker upstream 502s</span><span class="mono sub">0</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Fatal anywhere</span><span class="mono sub">2</span></a>
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Checkout latency</span><span class="mono sub">p95</span></a>
+      </div>
+      <span class="name" style="margin-top:12px">Pinned</span>
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:13px">
+        <a href="#26d" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>All logs</span><span class="mono sub">17.1K/h</span></a>
+        <a href="#board" style="padding:7px 10px;border-radius:6px;display:flex;justify-content:space-between"><span>Ops board</span><span class="mono sub">6 panels</span></a>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93">
+    <span>ingest 284/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 78 / 512 MB</span><div style="flex:1"></div><span>0.7.3</span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+    <div id="26c" data-frame="26c" data-screen-label="26c Home · first run" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Home · first run</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26c" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">127.0.0.1:8080</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab on" href="#26a">Home</a>
+      <a class="tab" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <label for="26c-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
+    <div style="display:flex;align-items:center;gap:8px;width:360px;height:32px;padding:0 12px;border-radius:7px;background:#141416;border:1px solid #2a2a2e;opacity:.5">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26c-q" class="mono" placeholder="nothing to search yet" style="flex:1;background:transparent;border:0;outline:none;color:#fafafa;font-size:12.5px">
+    </div>
+    <a class="tab" href="#tokens">Tokens</a>
+    <a class="tab" href="#settings">Settings</a>
+  </header>
+
+  <main style="flex:1;display:flex;flex-direction:column;gap:14px;padding:40px 0 0;width:820px;margin:0 auto;box-sizing:border-box">
+    <h1 style="margin:0 0 4px;font-size:22px;font-weight:600;letter-spacing:-0.01em">This instance has no logs yet</h1>
+    <p class="sub" style="margin:0 0 14px;font-size:13.5px;line-height:1.5">Three steps. Each one becomes a card on this page as it is done, so the home never changes shape under you.</p>
+
+    <div class="step done">
+      <div class="num done">✓</div>
+      <div>
+        <div class="name" style="color:#a1a1aa">Give the instance a name</div>
+        <div class="sub">Named <span class="mono" style="color:#d4d4d8">log-vm</span> · the sign-in page says it now</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num now">2</div>
+      <div>
+        <div class="name">Send something</div>
+        <div class="sub">An app with an OpenTelemetry exporter sends straight in. Or paste one line to see a first event arrive.</div>
+<pre class="mono">curl -X POST http://127.0.0.1:8080/api/ingest \
+  -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" \
+  -d '{"service":"smoke","level":"info","message":"hello from the shell"}'</pre>
+        <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
+          <button class="btn">Copy</button>
+          <a href="#tokens" class="btn" style="background:transparent">Make an ingest token</a>
+          <span class="sub">Vector, Fluent Bit and Alloy configs are in the ingest guide.</span>
+          <div style="flex:1"></div>
+          <span class="sub" style="display:inline-flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:#3f3f46"></span>waiting for the first event</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" style="opacity:.6">
+      <div class="num">3</div>
+      <div>
+        <div class="name">Save a first hunt and post a mark</div>
+        <div class="sub">A saved hunt is a card here. A deploy mark from CI is what the cards compare against.</div>
+<pre class="mono">curl -X POST http://127.0.0.1:8080/v1/marks -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" \
+  -d '{"kind":"deploy","label":"deployed: api v1.0","attrs":{"version":"v1.0"}}'</pre>
+      </div>
+    </div>
+  </main>
+
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93">
+    <span>ingest 0/s</span><span>clickhouse 0.0 / 4 GB</span><span>app 61 / 512 MB</span><div style="flex:1"></div><span>0.7.3</span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">The hunt: an event open, the marks panel</h2>
+
+    <div id="26d" data-frame="26d" data-screen-label="26d Hunt · opened from a card" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Hunt · opened from a card</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26d" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 20px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px;letter-spacing:-0.01em">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a>
+      <a class="tab on" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#a1a1aa">
+      <span style="display:inline-flex;align-items:center;gap:6px;color:#6ee7b7"><span style="width:7px;height:7px;border-radius:50%;background:#34d399"></span>Live</span>
+      <span style="color:#3f3f46">·</span>
+      <button class="tab" style="color:#e4e4e7">Last 1h ▾</button>
+      <span style="color:#3f3f46">·</span>
+      <a class="tab" href="#tokens">Tokens</a>
+      <a class="tab" href="#settings">Settings</a>
+    </div>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 20px 0;font-size:13px">
+    <a href="#26a" style="color:#8a8a93">Home</a>
+    <span style="color:#3f3f46">›</span>
+    <span style="color:#fafafa;font-weight:500">Errors on billing</span>
+    <span class="chip" style="height:24px;margin-left:6px;border-color:#e7e1d3"><span style="color:#e7e1d3">▲</span>since billing v0.9<b>12:48</b></span>
+    <div style="flex:1"></div>
+    <span class="mono" style="font-size:11.5px;color:#8a8a93">saved · edited</span>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Save</button>
+    <a class="tab" href="#26h" style="border:1px solid #2a2a2e;color:#e4e4e7">Watch this</a>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Share</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 20px 0">
+    <label for="26d-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Query</label>
+    <div style="flex:1;display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:8px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26d-q" class="mono" value="service:billing (level:error OR level:fatal)" style="flex:1;background:transparent;border:0;color:#fafafa;font-size:13.5px;outline:none">
+      <span class="mono" style="font-size:11px;color:#8a8a93">37 ms</span>
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+  </div>
+
+  <section aria-label="The clock" style="padding:16px 20px 0">
+    <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
+      <span style="font-size:20px;font-weight:600;letter-spacing:-0.01em">1.89K</span>
+      <span style="font-size:13px;color:#a1a1aa">matching</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93">12:26 → 13:26 · UTC · 1m bars</span>
+      <div style="flex:1"></div>
+      <span style="font-size:12px;color:#8a8a93">split by</span>
+      <span class="chip" style="height:24px">Level ▾</span>
+      <span class="chip" style="height:24px;color:#8a8a93">+ series</span>
+    </div>
+
+    <div style="position:relative;height:26px;margin:0 0 6px">
+      <div class="chip" style="position:absolute;left:{{f26d_markLeft}}px;top:0;background:#1f1f23;border-color:#e7e1d3;color:#fafafa"><span style="color:#e7e1d3">▲</span>deployed: billing v0.9<b>12:48</b></div>
+      <div class="chip" style="position:absolute;left:{{f26d_incLeft}}px;top:0;border-color:#7f1d1d;color:#fca5a5"><span style="color:#ef4444">◆</span>INC-238 checkout 5xx<b>13:02 · 12m</b></div>
+      <a href="#26f" class="chip" style="position:absolute;right:0;top:0;color:#8a8a93">marks · 6 today</a>
+    </div>
+
+    <div style="position:relative;height:140px;border-bottom:1px solid #2a2a2e">
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px">
+        <sc-for list="{{f26d_bars}}" as="b" hint-placeholder-count="60">
+          <div class="seg" style="height:140px;justify-content:flex-start">
+            <div style="height:{{b.error}}px;background:#c2410c"></div>
+            <div style="height:{{b.fatal}}px;background:#ef4444"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="position:absolute;top:0;bottom:0;left:{{f26d_markX}}px;width:1px;background:#e7e1d3;opacity:.9"></div>
+      <div style="position:absolute;top:0;bottom:0;left:{{f26d_incX}}px;width:{{f26d_incW}}px;background:rgba(239,68,68,.08);border-left:1px dashed #ef4444;border-right:1px dashed #ef4444"></div>
+      <div class="mono" style="position:absolute;right:0;top:0;font-size:10.5px;color:#8a8a93">62</div>
+      <div class="mono" style="position:absolute;right:0;top:66px;font-size:10.5px;color:#8a8a93">31</div>
+    </div>
+    <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:#8a8a93;padding-top:6px">
+      <span>12:26</span><span>12:41</span><span>12:56</span><span>13:11</span><span>13:26</span>
+    </div>
+
+    <div style="margin-top:12px;display:grid;grid-template-columns:220px 1fr 1fr 1fr 1fr 1fr;border:1px solid #2a2a2e;border-radius:8px;background:#121214;overflow:hidden;font-size:12.5px">
+      <div style="padding:10px 14px;border-right:1px solid #2a2a2e;display:flex;flex-direction:column;gap:2px">
+        <span style="color:#fafafa;font-weight:500">Compare · ▲ billing v0.9</span>
+        <span class="mono" style="font-size:11px;color:#8a8a93">30m before → 30m after · <a href="#split" style="color:#a1a1aa">split by host</a></span>
+      </div>
+      <sc-for list="{{f26d_compare}}" as="c" hint-placeholder-count="5">
+        <div style="padding:10px 14px;border-right:1px solid #1c1c20;display:flex;flex-direction:column;gap:3px">
+          <span style="color:#a1a1aa">{{c.name}}</span>
+          <span class="mono" style="font-size:12.5px;color:#fafafa">{{c.before}} → {{c.after}} <span style="color:{{c.color}}">{{c.delta}}</span></span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <div style="display:flex;gap:8px;padding:12px 20px 0;flex-wrap:wrap">
+    <span class="chip" style="border-color:#c2410c">error<b>1.6K</b></span>
+    <span class="chip" style="border-color:#ef4444">fatal<b>293</b></span>
+    <span style="width:1px;background:#2a2a2e;margin:0 4px"></span>
+    <span class="chip" style="border-color:#71717a">billing<b>1.89K</b></span>
+    <span style="width:1px;background:#2a2a2e;margin:0 4px"></span>
+    <span class="chip">billing-1<b>1.89K</b></span>
+    <span style="width:1px;background:#2a2a2e;margin:0 4px"></span>
+    <span class="chip">e1:a91f2c<b>412</b></span>
+    <span class="chip">e1:0c77be<b>96</b></span>
+    <span class="chip">e1:7d20aa<b>61</b></span>
+    <span class="chip" style="color:#8a8a93">+ 6 e1</span>
+    <span class="chip" style="color:#8a8a93;border-style:dashed">+ facet</span>
+  </div>
+
+  <section aria-label="Rows" style="flex:1;margin:12px 20px 0;border-top:1px solid #2a2a2e;overflow:hidden">
+    <div class="row" style="height:26px;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.04em;font-weight:500"><span>Time</span><span></span><span>Service</span><span>Host</span><span>Message</span></div>
+    <sc-for list="{{f26d_rows}}" as="r" hint-placeholder-count="6">
+      <a href="#26e" class="row">
+        <span class="mono t">{{r.t}}</span>
+        <span class="lv" style="background:{{r.lv}}"></span>
+        <span class="svc">billing</span>
+        <span class="svc">billing-1</span>
+        <span class="mono" style="color:#fca5a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.msg}}</span>
+      </a>
+    </sc-for>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="26e" data-frame="26e" data-screen-label="26e Hunt · an event open" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26e" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26e</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Hunt · an event open</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26e" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 20px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px;letter-spacing:-0.01em">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a>
+      <a class="tab on" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#a1a1aa">
+      <span style="display:inline-flex;align-items:center;gap:6px;color:#fbbf24"><span style="width:7px;height:7px;border-radius:50%;background:#fbbf24"></span>Paused while reading</span>
+      <span style="color:#3f3f46">·</span>
+      <button class="tab" style="color:#e4e4e7">Last 1h ▾</button>
+      <span style="color:#3f3f46">·</span>
+      <a class="tab" href="#tokens">Tokens</a>
+      <a class="tab" href="#settings">Settings</a>
+    </div>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 20px 0;font-size:13px">
+    <a href="#26a" style="color:#8a8a93">Home</a>
+    <span style="color:#3f3f46">›</span>
+    <span style="color:#fafafa;font-weight:500">Errors on billing</span>
+    <span class="chip" style="height:24px;margin-left:6px;border-color:#e7e1d3"><span style="color:#e7e1d3">▲</span>since billing v0.9<b>12:48</b></span>
+    <div style="flex:1"></div>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Save</button>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Watch this</button>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Share</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 20px 0">
+    <label for="26e-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Query</label>
+    <div style="flex:1;display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:8px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26e-q" class="mono" value="service:billing (level:error OR level:fatal)" style="flex:1;background:transparent;border:0;color:#fafafa;font-size:13.5px;outline:none">
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+  </div>
+
+  <section aria-label="The clock" style="padding:16px 20px 0">
+    <div style="position:relative;height:26px;margin:0 0 6px">
+      <span class="mono" style="position:absolute;left:0;top:4px;font-size:12px;color:#8a8a93"><span style="color:#fafafa;font-weight:600;font-size:14px">1.89K</span> matching · 12:26 → 13:26 · 1m bars</span>
+      <div class="chip" style="position:absolute;left:{{f26e_markLeft}}px;top:0;background:#1f1f23;border-color:#e7e1d3;color:#fafafa"><span style="color:#e7e1d3">▲</span>billing v0.9<b>12:48</b></div>
+      <div class="chip" style="position:absolute;left:{{f26e_incLeft}}px;top:0;border-color:#7f1d1d;color:#fca5a5"><span style="color:#ef4444">◆</span>INC-238<b>13:02</b></div>
+      <a href="#26f" class="chip" style="position:absolute;right:0;top:0;color:#8a8a93">marks · 6</a>
+    </div>
+    <div style="position:relative;height:90px;border-bottom:1px solid #2a2a2e">
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px">
+        <sc-for list="{{f26e_bars}}" as="b" hint-placeholder-count="60">
+          <div class="seg" style="height:90px;justify-content:flex-start">
+            <div style="height:{{b.error}}px;background:#c2410c"></div>
+            <div style="height:{{b.fatal}}px;background:#ef4444"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="position:absolute;top:0;bottom:0;left:{{f26e_markX}}px;width:1px;background:#e7e1d3"></div>
+      <div style="position:absolute;top:0;bottom:0;left:{{f26e_rowX}}px;width:1px;background:#fafafa;opacity:.6"></div>
+      <div style="position:absolute;top:0;bottom:0;left:{{f26e_incX}}px;width:{{f26e_incW}}px;background:rgba(239,68,68,.08);border-left:1px dashed #ef4444;border-right:1px dashed #ef4444"></div>
+    </div>
+    <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:#8a8a93;padding-top:6px">
+      <span>12:26</span><span>12:41</span><span>12:56</span><span>13:11</span><span>13:26</span>
+    </div>
+  </section>
+
+  <div style="display:flex;flex:1;min-height:0;margin-top:12px">
+    <section aria-label="Rows" style="flex:1;min-width:0;margin:0 0 0 20px;border-top:1px solid #2a2a2e;overflow:hidden">
+      <div class="row" style="height:26px;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.04em;font-weight:500"><span>Time</span><span></span><span>Message</span></div>
+      <sc-for list="{{f26e_rows}}" as="r" hint-placeholder-count="12">
+        <div class="row" style="background:{{r.bg}}">
+          <span class="mono t">{{r.t}}</span>
+          <span class="lv" style="background:{{r.lv}}"></span>
+          <span class="mono" style="color:#fca5a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.msg}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <aside aria-label="Event" style="width:560px;flex:none;box-sizing:border-box;margin:0 20px 0 16px;border:1px solid #2a2a2e;border-radius:10px;background:#121214;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #1c1c20">
+        <span style="font-size:10.5px;font-weight:600;letter-spacing:.06em;padding:2px 6px;border-radius:4px;background:#c2410c;color:#fff">ERROR</span>
+        <span class="mono" style="font-size:12.5px;color:#fafafa">13:23:19.576</span>
+        <span class="mono" style="font-size:12px;color:#8a8a93">billing · billing-1</span>
+        <div style="flex:1"></div>
+        <a href="#prev" class="tab" style="padding:4px 6px">↑</a><a href="#next" class="tab" style="padding:4px 6px">↓</a>
+        <a href="#26d" class="tab" aria-label="Close" style="padding:4px 8px">×</a>
+      </div>
+      <div class="mono" style="padding:12px 16px;font-size:13px;color:#fafafa;line-height:1.5;border-bottom:1px solid #1c1c20">charge failed card_declined</div>
+      <div style="display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid #1c1c20;align-items:center;font-size:12.5px">
+        <span class="mono" style="color:#e7e1d3">e1:a91f2c</span>
+        <span style="color:#8a8a93">first seen 12:49, 1 min after ▲ billing v0.9 · 412 so far · 3 hosts</span>
+        <div style="flex:1"></div>
+        <a href="#cut" style="color:#e7e1d3">Fingerprints →</a>
+      </div>
+      <div style="display:flex;gap:16px;padding:10px 16px 0;font-size:12.5px"><span style="color:#fafafa;border-bottom:2px solid #fafafa;padding-bottom:6px">Fields</span><span style="color:#8a8a93">JSON</span><span style="color:#8a8a93">Stack</span></div>
+      <div style="padding:6px 16px;flex:1;overflow:hidden">
+        <sc-for list="{{f26e_fields}}" as="f" hint-placeholder-count="9">
+          <div class="f">
+            <span class="mono k">{{f.k}}</span>
+            <span class="mono" style="color:#e4e4e7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{f.v}}</span>
+            <span class="a"><a href="#add">+ filter</a><a href="#follow">follow</a></span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #1c1c20">
+        <button class="btn">Surroundings ±5m</button>
+        <button class="btn">Trace 8b3f…e1</button>
+        <button class="btn">Follow request_id</button>
+        <div style="flex:1"></div>
+        <button class="btn" style="color:#8a8a93">Copy JSON</button>
+      </div>
+    </aside>
+  </div>
+  <div style="height:16px"></div>
+</div>
+      </div>
+    </div>
+
+    <div id="26f" data-frame="26f" data-screen-label="26f Hunt · the marks panel" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26f" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26f</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Hunt · the marks panel</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26f" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 20px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px;letter-spacing:-0.01em">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a>
+      <a class="tab on" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#a1a1aa">
+      <span style="display:inline-flex;align-items:center;gap:6px;color:#6ee7b7"><span style="width:7px;height:7px;border-radius:50%;background:#34d399"></span>Live</span>
+      <span style="color:#3f3f46">·</span>
+      <button class="tab" style="color:#e4e4e7">Last 1h ▾</button>
+      <span style="color:#3f3f46">·</span>
+      <a class="tab" href="#tokens">Tokens</a>
+      <a class="tab" href="#settings">Settings</a>
+    </div>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 20px 0;font-size:13px">
+    <a href="#26a" style="color:#8a8a93">Home</a>
+    <span style="color:#3f3f46">›</span>
+    <span style="color:#fafafa;font-weight:500">Errors on billing</span>
+    <span class="chip" style="height:24px;margin-left:6px;border-color:#e7e1d3"><span style="color:#e7e1d3">▲</span>since billing v0.9<b>12:48</b></span>
+    <div style="flex:1"></div>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Save</button>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Watch this</button>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Share</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 20px 0">
+    <label for="26f-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Query</label>
+    <div style="flex:1;display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:8px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26f-q" class="mono" value="service:billing (level:error OR level:fatal)" style="flex:1;background:transparent;border:0;color:#fafafa;font-size:13.5px;outline:none">
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+  </div>
+
+  <section aria-label="The clock" style="padding:16px 20px 0">
+    <div style="position:relative;height:26px;margin:0 0 6px">
+      <span class="mono" style="position:absolute;left:0;top:4px;font-size:12px;color:#8a8a93"><span style="color:#fafafa;font-weight:600;font-size:14px">1.89K</span> matching · 12:26 → 13:26 · 1m bars</span>
+      <div class="chip" style="position:absolute;left:{{f26f_markLeft}}px;top:0;background:#1f1f23;border-color:#e7e1d3;color:#fafafa"><span style="color:#e7e1d3">▲</span>billing v0.9<b>12:48</b></div>
+      <div class="chip" style="position:absolute;left:{{f26f_incLeft}}px;top:0;border-color:#7f1d1d;color:#fca5a5"><span style="color:#ef4444">◆</span>INC-238<b>13:02</b></div>
+      <a href="#26d" class="chip" style="position:absolute;right:0;top:0;border-color:#71717a;color:#fafafa">marks · 6 ×</a>
+    </div>
+    <div style="position:relative;height:90px;border-bottom:1px solid #2a2a2e">
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px">
+        <sc-for list="{{f26f_bars}}" as="b" hint-placeholder-count="60">
+          <div class="seg" style="height:90px;justify-content:flex-start">
+            <div style="height:{{b.error}}px;background:#c2410c"></div>
+            <div style="height:{{b.fatal}}px;background:#ef4444"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="position:absolute;top:0;bottom:0;left:{{f26f_markX}}px;width:1px;background:#e7e1d3"></div>
+      <div style="position:absolute;top:0;bottom:0;left:{{f26f_incX}}px;width:{{f26f_incW}}px;background:rgba(239,68,68,.08);border-left:1px dashed #ef4444;border-right:1px dashed #ef4444"></div>
+    </div>
+    <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:#8a8a93;padding-top:6px">
+      <span>12:26</span><span>12:41</span><span>12:56</span><span>13:11</span><span>13:26</span>
+    </div>
+  </section>
+
+  <div style="display:flex;flex:1;min-height:0;margin-top:12px">
+    <section aria-label="Rows" style="flex:1;min-width:0;margin:0 0 0 20px;border-top:1px solid #2a2a2e;overflow:hidden">
+      <div class="row" style="height:26px;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.04em;font-weight:500"><span>Time</span><span></span><span>Message</span></div>
+      <sc-for list="{{f26f_rows}}" as="r" hint-placeholder-count="12">
+        <div class="row">
+          <span class="mono t">{{r.t}}</span>
+          <span class="lv" style="background:{{r.lv}}"></span>
+          <span class="mono" style="color:#fca5a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.msg}}</span>
+        </div>
+      </sc-for>
+    </section>
+
+    <aside aria-label="Marks" style="width:560px;flex:none;box-sizing:border-box;margin:0 20px 0 16px;border:1px solid #2a2a2e;border-radius:10px;background:#121214;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #1c1c20">
+        <span style="font-size:13.5px;font-weight:500;color:#fafafa">Marks · today</span>
+        <span class="mono" style="font-size:11.5px;color:#8a8a93">6 · 2 in the window</span>
+        <div style="flex:1"></div>
+        <span class="kind on"><span style="color:#e7e1d3">▲</span>deploy</span>
+        <span class="kind on"><span style="color:#2dd4bf">⚑</span>flag</span>
+        <span class="kind on"><span style="color:#ef4444">◆</span>incident</span>
+        <span class="kind on"><span style="color:#8a8a93">○</span>note</span>
+      </div>
+
+      <div style="flex:1;overflow:hidden">
+        <div class="m"><span class="mono t">13:14</span><span style="color:#ef4444">◆</span><span>INC-238 resolved <span style="color:#8a8a93">· 12 min</span></span><span class="mono t">pagerduty</span></div>
+        <div class="m"><span class="mono t">13:02</span><span style="color:#ef4444">◆</span><span>INC-238 checkout 5xx</span><span class="mono t">pagerduty</span></div>
+        <div class="m on" style="grid-template-columns:44px 18px 1fr auto;padding-bottom:0">
+          <span class="mono t">12:48</span><span style="color:#e7e1d3">▲</span><span style="color:#fafafa">deployed: billing v0.9</span><span class="mono t">ci · sha 4f9c1e</span>
+          <div style="grid-column:3/5;display:flex;flex-direction:column;gap:10px;padding:8px 0 12px">
+            <span class="mono" style="font-size:11.5px;color:#8a8a93">version=v0.9 · service=billing · by github-actions</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn p">Compare 30m around it</button>
+              <button class="btn">Fingerprints since it</button>
+              <button class="btn">Focus in logs</button>
+              <button class="btn" style="color:#8a8a93">Hide for this hunt</button>
+            </div>
+          </div>
+        </div>
+        <div class="m"><span class="mono t">11:30</span><span style="color:#2dd4bf">⚑</span><span>flag: new-pricing on <span style="color:#8a8a93">· checkout</span></span><span class="mono t">launchdarkly</span></div>
+        <div class="m"><span class="mono t">09:12</span><span style="color:#e7e1d3">▲</span><span>deployed: api v2.14.0</span><span class="mono t">ci · sha b02e77</span></div>
+        <div class="m"><span class="mono t">08:40</span><span style="color:#8a8a93">○</span><span>note: raised api rate limit <span style="color:#8a8a93">· ian</span></span><span class="mono t">here</span></div>
+        <div style="padding:10px 16px;font-size:12px;color:#8a8a93">Yesterday · 4 marks · <a href="#older" style="color:#a1a1aa">show</a></div>
+      </div>
+
+      <form style="display:flex;flex-direction:column;gap:8px;padding:12px 16px;border-top:1px solid #1c1c20;margin:0">
+        <label for="26f-note" style="font-size:12px;color:#8a8a93">Write a note mark at now</label>
+        <div style="display:flex;gap:8px">
+          <input id="26f-note" placeholder="what you did, in one line" style="flex:1;height:32px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font:inherit;font-size:12.5px;outline:none">
+          <button type="button" class="btn">○ Add</button>
+        </div>
+      </form>
+    </aside>
+  </div>
+  <div style="height:16px"></div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Watch, Access, and a share with named panels</h2>
+
+    <div id="26g" data-frame="26g" data-screen-label="26g Watch · every monitor" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26g" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26g</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Watch · every monitor</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26g" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a>
+      <a class="tab" href="#26d">Hunt</a>
+      <a class="tab on" href="#26g" style="display:inline-flex;align-items:center;gap:6px">Watch <span style="width:6px;height:6px;border-radius:50%;background:#ef4444"></span></a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <label for="26g-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
+    <div style="display:flex;align-items:center;gap:8px;width:360px;height:32px;padding:0 12px;border-radius:7px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26g-q" class="mono" placeholder="key:value … opens a hunt" style="flex:1;background:transparent;border:0;outline:none;color:#fafafa;font-size:12.5px">
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+    <a class="tab" href="#tokens">Tokens</a>
+    <a class="tab" href="#settings">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">Watch</h1>
+      <span class="sub">6 monitors · <span class="up">1 open</span> · checked every minute · webhooks to ntfy and Slack</span>
+      <div style="flex:1"></div>
+      <span class="seg"><span class="on">24h</span><span>7d</span><span>30d</span></span>
+      <button class="btn">Deliveries</button>
+      <button class="btn p">New monitor</button>
+    </div>
+
+    <div style="border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden">
+      <div class="r" style="padding:8px 16px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8a8a93"><span></span><span>Monitor</span><span>Checks</span><span>Last 24h</span><span>Last check</span><span style="text-align:right">Now</span></div>
+
+      <a href="#26d" class="r open">
+        <span class="up">●</span>
+        <span><span style="color:#fafafa;font-weight:500">Errors on billing above 2%</span><br><span class="sub">open since 12:51 · 35 min · reminded twice · <span class="mono">service:billing level:error</span> ≥ 2% of rows in 5m</span></span>
+        <span class="sub">saved hunt · rate</span>
+        <span class="hist"><sc-for list="{{f26g_h1}}" as="s" hint-placeholder-count="48"><div style="background:{{s.c}}"></div></sc-for></span>
+        <span class="mono sub">13:25</span>
+        <span class="mono up" style="text-align:right">4.8%</span>
+      </a>
+      <a href="#26d" class="r">
+        <span class="ok">●</span>
+        <span><span style="color:#fafafa;font-weight:500">Fewer than 10 logins in 5 min</span><br><span class="sub">ok · last open yesterday 03:10 for 8 min · <span class="mono">message:"user login"</span> &lt; 10 rows in 5m</span></span>
+        <span class="sub">saved hunt · count</span>
+        <span class="hist"><sc-for list="{{f26g_h2}}" as="s" hint-placeholder-count="48"><div style="background:{{s.c}}"></div></sc-for></span>
+        <span class="mono sub">13:25</span>
+        <span class="mono mu" style="text-align:right">184</span>
+      </a>
+      <a href="#26d" class="r">
+        <span class="ok">●</span>
+        <span><span style="color:#fafafa;font-weight:500">Fatal anywhere</span><br><span class="sub">ok · opened at 13:02 for 12 min (INC-238) · <span class="mono">level:fatal</span> ≥ 5 rows in 5m</span></span>
+        <span class="sub">saved hunt · count</span>
+        <span class="hist"><sc-for list="{{f26g_h3}}" as="s" hint-placeholder-count="48"><div style="background:{{s.c}}"></div></sc-for></span>
+        <span class="mono sub">13:25</span>
+        <span class="mono mu" style="text-align:right">2</span>
+      </a>
+      <a href="#m4" class="r">
+        <span class="ok">●</span>
+        <span><span style="color:#fafafa;font-weight:500">api.example.io</span><br><span class="sub">ok · up for 41 d · <span class="mono">GET https://api.example.io/health</span> answers 200 within 2 s</span></span>
+        <span class="sub">url · liveness</span>
+        <span class="hist"><sc-for list="{{f26g_h4}}" as="s" hint-placeholder-count="48"><div style="background:{{s.c}}"></div></sc-for></span>
+        <span class="mono sub">13:25</span>
+        <span class="mono mu" style="text-align:right">212 ms</span>
+      </a>
+      <a href="#m5" class="r">
+        <span class="ok">●</span>
+        <span><span style="color:#fafafa;font-weight:500">api.example.io certificate</span><br><span class="sub">ok · expires in 41 d · opens 14 d before</span></span>
+        <span class="sub">certificate</span>
+        <span class="hist"><sc-for list="{{f26g_h4}}" as="s" hint-placeholder-count="48"><div style="background:{{s.c}}"></div></sc-for></span>
+        <span class="mono sub">13:20</span>
+        <span class="mono mu" style="text-align:right">41 d</span>
+      </a>
+      <a href="#m6" class="r">
+        <span class="ok">●</span>
+        <span><span style="color:#fafafa;font-weight:500">billing-1:5432</span><br><span class="sub">ok · up for 9 d · <span class="mono">tcp billing-1:5432</span> accepts within 1 s</span></span>
+        <span class="sub">port · liveness</span>
+        <span class="hist"><sc-for list="{{f26g_h4}}" as="s" hint-placeholder-count="48"><div style="background:{{s.c}}"></div></sc-for></span>
+        <span class="mono sub">13:25</span>
+        <span class="mono mu" style="text-align:right">3 ms</span>
+      </a>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13.5px;font-weight:500;color:#fafafa">What opened today</span>
+        <div class="sub" style="display:flex;gap:12px"><span class="mono">12:51</span><span class="up">●</span><span style="flex:1;color:#d4d4d8">Errors on billing above 2% · still open</span><span class="mono">ntfy ✓ · slack ✓</span></div>
+        <div class="sub" style="display:flex;gap:12px"><span class="mono">13:02</span><span class="mu">●</span><span style="flex:1;color:#d4d4d8">Fatal anywhere · resolved 13:14</span><span class="mono">ntfy ✓ · slack ✓</span></div>
+        <div class="sub" style="display:flex;gap:12px"><span class="mono">09:14</span><span class="mu">●</span><span style="flex:1;color:#d4d4d8">api.example.io · one failed check, not opened</span><span class="mono">—</span></div>
+      </section>
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13.5px;font-weight:500;color:#fafafa">Delivery</span>
+        <div class="sub" style="display:flex;gap:12px"><span style="flex:1;color:#d4d4d8">ntfy · agental-alerts-…</span><span class="ok">ok</span><span class="mono">last 12:51</span></div>
+        <div class="sub" style="display:flex;gap:12px"><span style="flex:1;color:#d4d4d8">Slack · #ops</span><span class="ok">ok</span><span class="mono">last 12:51</span></div>
+        <div class="sub">Reminders while open: every 30 min · a monitor says when it resolves.</div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93;margin-top:16px">
+    <span>ingest 312/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 80 / 512 MB</span><div style="flex:1"></div><span>0.7.3</span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+    <div id="26h" data-frame="26h" data-screen-label="26h Watch this · from the hunt" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26h" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26h</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Watch this · from the hunt</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26h" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden;position:relative">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 20px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px;letter-spacing:-0.01em">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a>
+      <a class="tab on" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#links">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#a1a1aa">
+      <span style="display:inline-flex;align-items:center;gap:6px;color:#6ee7b7"><span style="width:7px;height:7px;border-radius:50%;background:#34d399"></span>Live</span>
+      <span style="color:#3f3f46">·</span>
+      <button class="tab" style="color:#e4e4e7">Last 1h ▾</button>
+      <span style="color:#3f3f46">·</span>
+      <a class="tab" href="#tokens">Tokens</a>
+      <a class="tab" href="#settings">Settings</a>
+    </div>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 20px 0;font-size:13px">
+    <a href="#26a" style="color:#8a8a93">Home</a>
+    <span style="color:#3f3f46">›</span>
+    <span style="color:#fafafa;font-weight:500">Errors on billing</span>
+    <span class="chip" style="height:24px;margin-left:6px;border-color:#e7e1d3"><span style="color:#e7e1d3">▲</span>since billing v0.9<b>12:48</b></span>
+    <div style="flex:1"></div>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Save</button>
+    <button class="tab" style="border:1px solid #71717a;color:#fafafa;background:#27272a">Watch this</button>
+    <button class="tab" style="border:1px solid #2a2a2e;color:#e4e4e7">Share</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 20px 0">
+    <label for="26h-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Query</label>
+    <div style="flex:1;display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:8px;background:#141416;border:1px solid #2a2a2e">
+      <input id="26h-q" class="mono" value="service:billing (level:error OR level:fatal)" style="flex:1;background:transparent;border:0;color:#fafafa;font-size:13.5px;outline:none">
+    </div>
+  </div>
+
+  <div style="padding:16px 20px 0;opacity:.35">
+    <div style="position:relative;height:90px;border-bottom:1px solid #2a2a2e">
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px">
+        <sc-for list="{{f26h_bars}}" as="b" hint-placeholder-count="60"><div class="seg" style="height:90px"><div style="height:{{b.h}}px;background:#c2410c"></div></div></sc-for>
+      </div>
+    </div>
+  </div>
+  <div style="flex:1;margin:12px 20px 0;border-top:1px solid #2a2a2e;overflow:hidden">
+    <sc-for list="{{f26h_rows}}" as="r" hint-placeholder-count="10"><div class="row"><span class="mono" style="color:#8a8a93">{{r.t}}</span><span class="lv" style="background:#c2410c"></span><span class="mono" style="color:#fca5a5">{{r.msg}}</span></div></sc-for>
+  </div>
+
+  <section aria-label="Watch this" style="position:absolute;left:0;right:0;bottom:0;height:470px;box-sizing:border-box;padding:22px 28px;background:#121214;border-top:1px solid #3f3f46;box-shadow:0 -24px 60px rgba(0,0,0,.6);display:grid;grid-template-columns:1fr 420px;gap:28px">
+    <form style="display:flex;flex-direction:column;gap:18px;margin:0">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <h2 style="margin:0;font-size:17px;font-weight:600">Watch this hunt</h2>
+        <span class="sub">Toposcope checks it every minute and opens a monitor while the condition holds.</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label class="lab" for="26h-name">Name</label>
+        <input id="26h-name" class="in" value="Errors on billing above 2%" style="width:420px">
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="lab">Opens when</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px">
+          <span class="sel">rows of this search ▾</span>
+          <span>are</span>
+          <span class="sel">at least ▾</span>
+          <label for="26h-pct" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Amount</label>
+          <input id="26h-pct" class="in mono" value="2" style="width:70px;text-align:right">
+          <span class="sel">% of all rows ▾</span>
+          <span>in the last</span>
+          <span class="sel">5 min ▾</span>
+        </div>
+        <span class="sub">Or: a count of rows · a metric linked to a field · fewer than, for silence.</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="lab">Sends to</span>
+        <div style="display:flex;gap:18px">
+          <span class="ck"><span class="b on">✓</span>ntfy · agental-alerts-…</span>
+          <span class="ck"><span class="b on">✓</span>Slack · #ops</span>
+          <span class="ck"><span class="b"></span>PagerDuty</span>
+          <a href="#webhooks" class="sub">+ webhook</a>
+        </div>
+        <span class="sub">Reminds every 30 min while open · says when it resolves.</span>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:auto">
+        <a href="#26g" class="btn p">Save and watch</a>
+        <button type="button" class="btn">Send a test</button>
+        <a href="#26d" class="btn" style="border-color:transparent;color:#8a8a93">Cancel</a>
+      </div>
+    </form>
+
+    <aside style="display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid #27272a;border-radius:10px;background:#0d0d0f">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;font-weight:500;color:#fafafa">Would have opened · last 24 h</span><span class="mono sub">2 times · 47 min open</span></div>
+      <div style="position:relative;height:120px;border-bottom:1px solid #2a2a2e">
+        <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:1px">
+          <sc-for list="{{f26h_day}}" as="d" hint-placeholder-count="96"><div class="seg" style="height:120px"><div style="height:{{d.h}}px;background:{{d.c}}"></div></div></sc-for>
+        </div>
+        <div style="position:absolute;left:0;right:0;top:{{f26h_lineY}}px;border-top:1px dashed #e7e1d3"></div>
+        <span class="mono" style="position:absolute;right:0;top:{{f26h_lineLabelY}}px;font-size:10.5px;color:#e7e1d3;background:#0d0d0f;padding:0 3px">2%</span>
+      </div>
+      <div class="mono sub" style="display:flex;justify-content:space-between;font-size:10.5px"><span>yesterday 13:30</span><span>now</span></div>
+      <div class="sub" style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+        <span><span style="color:#fca5a5">●</span> 12:51 → now · 35 min · after ▲ billing v0.9</span>
+        <span><span style="color:#8a8a93">●</span> yesterday 21:04 → 21:16 · 12 min</span>
+      </div>
+      <span class="sub" style="margin-top:auto">Raise the threshold to 4% and it would have opened once.</span>
+    </aside>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="26i" data-frame="26i" data-screen-label="26i Access · tokens, links and shares in one list" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26i" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26i</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Access · tokens, links and shares in one list</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26i" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a>
+      <a class="tab" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#26i">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <label for="26i-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search</label>
+    <div style="display:flex;align-items:center;gap:8px;width:360px;height:32px;padding:0 12px;border-radius:7px;background:#141416;border:1px solid #2a2a2e">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a93" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="26i-q" class="mono" placeholder="key:value … opens a hunt" style="flex:1;background:transparent;border:0;outline:none;color:#fafafa;font-size:12.5px">
+      <kbd class="mono" style="font-size:10.5px;color:#8a8a93;border:1px solid #2a2a2e;border-radius:4px;padding:1px 5px">/</kbd>
+    </div>
+    <a class="tab on" href="#26i">Access</a>
+    <a class="tab" href="#settings">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">Access</h1>
+      <span class="sub">Every way in or out of this instance, other than the operator password · 7 live · <span class="up">2 refusals today</span></span>
+      <div style="flex:1"></div>
+      <span class="seg"><span class="on">All 7</span><span>Writes in · 2</span><span>Links · 3</span><span>Shares · 2</span></span>
+      <a href="#26j" class="btn p">Let someone in</a>
+    </div>
+
+    <div style="border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden">
+      <div class="r" style="padding:8px 16px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8a8a93"><span>Kind</span><span>Name · what it lets through</span><span>Scope</span><span>Expires</span><span>Last used</span><span>Today</span><span></span></div>
+
+      <div class="r">
+        <span class="kind"><span style="color:#60a5fa">↓</span>writes in</span>
+        <span><span style="color:#fafafa;font-weight:500">control-server</span> <span class="sub">· ingest token · logs, metrics, marks</span></span>
+        <span class="mono sub">any</span>
+        <span class="sub">never</span>
+        <span class="mono sub">13:26 · 312/s</span>
+        <span class="mono ok">ok</span>
+        <span class="x"><a href="#revoke" class="x">revoke</a></span>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#60a5fa">↓</span>writes in</span>
+        <span><span style="color:#fafafa;font-weight:500">boxes</span> <span class="sub">· ingest token · logs via the hub, box attr set by the hub</span></span>
+        <span class="mono sub">any</span>
+        <span class="sub">never</span>
+        <span class="mono sub">13:26 · 41/s</span>
+        <span class="mono up">1 refused</span>
+        <span class="x"><a href="#revoke" class="x">revoke</a></span>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#e7e1d3">⇄</span>copies rows out</span>
+        <span><span style="color:#fafafa;font-weight:500">ci-box → here</span> <span class="sub">· link, pulled by this instance · raw rows within the scope</span></span>
+        <span class="mono sub">service:ci*</span>
+        <span class="sub">—</span>
+        <span class="mono sub">13:25 · seq 1 204 311</span>
+        <span class="mono ok">ok</span>
+        <span class="x"><a href="#open" class="x">open</a></span>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#e7e1d3">⇄</span>copies rows out</span>
+        <span><span style="color:#fafafa;font-weight:500">here → ian-laptop</span> <span class="sub">· link, pulled by the other side · raw rows within the scope</span></span>
+        <span class="mono sub">level:error OR level:fatal</span>
+        <span class="sub">—</span>
+        <span class="mono sub">yesterday 18:40</span>
+        <span class="mono mu">quiet</span>
+        <span class="x"><a href="#open" class="x">open</a></span>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#e7e1d3">⇄</span>invite</span>
+        <span><span style="color:#fafafa;font-weight:500">edge-site-2</span> <span class="sub">· link key, not yet pasted on the other side</span></span>
+        <span class="mono sub">host:edge-2*</span>
+        <span class="sub">in 29 d</span>
+        <span class="mono sub">never</span>
+        <span class="mono mu">—</span>
+        <span class="x"><a href="#revoke" class="x">revoke</a></span>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#2dd4bf">↑</span>reads aggregates</span>
+        <span><span style="color:#fafafa;font-weight:500">agental-admin</span> <span class="sub">· share · 6 panels, shown on console.agental.io</span></span>
+        <span class="mono sub">service:agental* · split box, level</span>
+        <span class="sub">in 341 d</span>
+        <span class="mono sub">13:26 · 2.1k reads</span>
+        <span class="mono up">1 refused</span>
+        <span class="x"><a href="#open" class="x">open</a></span>
+      </div>
+      <div class="r">
+        <span class="kind"><span style="color:#2dd4bf">↑</span>reads aggregates</span>
+        <span><span style="color:#fafafa;font-weight:500">status-page</span> <span class="sub">· share · 1 panel, shown on status.agental.io</span></span>
+        <span class="mono sub">metric:up · split none</span>
+        <span class="sub">in 12 d <span class="up">· renew</span></span>
+        <span class="mono sub">13:20 · 180 reads</span>
+        <span class="mono ok">ok</span>
+        <span class="x"><a href="#open" class="x">open</a></span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:500;color:#fafafa">Refused today · 2</span><a href="#26d" class="sub mono">service:toposcope access:* status:refused →</a></div>
+        <div class="sub" style="display:flex;gap:12px"><span class="mono">11:02</span><span style="flex:1;color:#d4d4d8">agental-admin asked to split by <span class="mono">sandbox</span>, not on its list</span><span class="mono">share</span></div>
+        <div class="sub" style="display:flex;gap:12px"><span class="mono">09:41</span><span style="flex:1;color:#d4d4d8">boxes sent 140 rows with no <span class="mono">box</span> attr</span><span class="mono">token</span></div>
+        <div class="sub">A monitor can page on any refused access, like any other hunt.</div>
+      </section>
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:13.5px;font-weight:500;color:#fafafa">What leaves this instance</span>
+        <div class="sub" style="line-height:1.55"><span style="color:#d4d4d8">Raw rows</span> go only to <span class="mono">ian-laptop</span>, errors and fatals. <span style="color:#d4d4d8">Aggregates</span> go to two web pages, never with an id in them. Nothing else reads out. Every row of this list is a line on the docs page of the same name.</div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93;margin-top:16px">
+    <span>ingest 312/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 80 / 512 MB</span><div style="flex:1"></div><span>0.7.3</span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+    <div id="26j" data-frame="26j" data-screen-label="26j Access · letting someone in" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26j" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26j</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Access · letting someone in</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26j" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden;position:relative">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a>
+      <a class="tab" href="#26d">Hunt</a>
+      <a class="tab" href="#26g">Watch</a>
+      <a class="tab" href="#fields">Fields</a>
+      <a class="tab" href="#26i">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <a class="tab on" href="#26i">Access</a>
+    <a class="tab" href="#settings">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:16px;opacity:.35">
+    <div style="display:flex;align-items:center;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600">Access</h1>
+      <span class="sub">7 live</span>
+    </div>
+    <div style="border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden">
+      <div class="r"><span class="kind">writes in</span><span>control-server</span><span class="mono sub">any</span><span class="sub">never</span></div>
+      <div class="r"><span class="kind">writes in</span><span>boxes</span><span class="mono sub">any</span><span class="sub">never</span></div>
+      <div class="r"><span class="kind">copies rows out</span><span>ci-box → here</span><span class="mono sub">service:ci*</span><span class="sub">—</span></div>
+      <div class="r"><span class="kind">reads aggregates</span><span>agental-admin</span><span class="mono sub">service:agental*</span><span class="sub">in 341 d</span></div>
+    </div>
+  </main>
+
+  <section aria-label="Let someone in" style="position:absolute;top:70px;left:50%;transform:translateX(-50%);width:880px;box-sizing:border-box;padding:24px 28px;background:#121214;border:1px solid #3f3f46;border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <h2 style="margin:0;font-size:17px;font-weight:600">Let someone in</h2>
+      <span class="sub">One door, three kinds. Each says what it lets through before you make it.</span>
+      <div style="flex:1"></div>
+      <a href="#26i" class="tab" aria-label="Close">×</a>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+      <a href="#token" class="k">
+        <span class="t"><span style="color:#60a5fa">↓</span>Writes in</span>
+        <span class="sub">An app, a collector or a hub sends logs, metrics, traces or marks. An ingest token. Nothing reads out.</span>
+      </a>
+      <a href="#link" class="k on">
+        <span class="t"><span style="color:#e7e1d3">⇄</span>Copies rows out</span>
+        <span class="sub">Another Toposcope pulls raw rows within a filter, ids included, and keeps its place. A link. The other operator sees everything the filter lets through.</span>
+      </a>
+      <a href="#share" class="k">
+        <span class="t"><span style="color:#2dd4bf">↑</span>Reads aggregates</span>
+        <span class="sub">An app or a web page reads counts and series for its charts, never a row. A share. Usually made from a panel with Share…</span>
+      </a>
+    </div>
+
+    <form style="display:flex;flex-direction:column;gap:16px;margin:0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label class="lab" for="26j-name">Name · who the other side is</label>
+          <input id="26j-name" class="in" value="edge-site-2">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label class="lab" for="26j-dir">Which way</label>
+          <span class="sel" id="26j-dir">They pull from here · rows leave ▾</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label class="lab" for="26j-scope">Scope · only rows matching this leave</label>
+        <input id="26j-scope" class="in mono" value="host:edge-2* level:error OR level:fatal">
+        <span class="sub">Same syntax as the bar. Empty means every row, which the other operator will see in full.</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span class="lab">Key is good for</span>
+          <span class="sel">30 days ▾</span>
+          <span class="sub">The invite expires; the link made with it does not.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span class="lab">Shown once, after you make it</span>
+          <div class="mono" style="height:34px;display:flex;align-items:center;padding:0 10px;border-radius:7px;border:1px dashed #3f3f46;color:#8a8a93;font-size:12.5px">tsl_••••••••••••••••••••••  · copy · paste on edge-site-2 › Links › Paste a key</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <a href="#26i" class="btn p">Make the key</a>
+        <a href="#26i" class="btn" style="border-color:transparent;color:#8a8a93">Cancel</a>
+        <div style="flex:1"></div>
+        <span class="sub">It appears in the Access list as an invite until the other side pastes it.</span>
+      </div>
+    </form>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="26k" data-frame="26k" data-screen-label="26k A share · named panels + raw switch" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26k" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26k</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">A share · named panels + raw switch</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26k" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span>
+      <span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px">
+      <a class="tab" href="#26a">Home</a><a class="tab" href="#26d">Hunt</a><a class="tab" href="#26g">Watch</a><a class="tab" href="#fields">Fields</a><a class="tab" href="#26i">Links</a>
+    </nav>
+    <div style="flex:1"></div>
+    <a class="tab on" href="#26i">Access</a>
+    <a class="tab" href="#settings">Settings</a>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 24px 0;font-size:13px">
+    <a href="#26i" style="color:#8a8a93">Access</a><span style="color:#3f3f46">›</span>
+    <span style="color:#fafafa;font-weight:500">agental-admin</span>
+    <span class="sub" style="margin-left:6px"><span style="color:#2dd4bf">↑</span> reads aggregates · share · 6 panels · expires in 341 d</span>
+    <div style="flex:1"></div>
+    <button class="btn p">Add a panel</button><button class="btn">New ticket call</button><button class="btn" style="color:#fca5a5">Revoke</button>
+  </div>
+
+  <main style="flex:1;min-height:0;padding:16px 24px 0;display:grid;grid-template-columns:1fr 440px;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:14px;min-height:0">
+      <section class="card" style="flex:1;min-height:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab">Panels · designed here, named for the page</span><span class="sub">a page names one; edit here and every page follows</span></div>
+        <div class="p on"><span class="mono hl">latency-p99</span><span>p99 fleet_latency · by host · 24h · line <span class="sub">· from the Ops board</span></span><span class="mini"><sc-for list="{{f26k_m1}}" as="b" hint-placeholder-count="24"><div style="height:{{b.h}}px"></div></sc-for></span><a href="#edit" class="sub">edit</a></div>
+        <div class="p"><span class="mono hl">cpu-all-boxes</span><span>fleet_cpu_seconds · stacked by host · 24h</span><span class="mini"><sc-for list="{{f26k_m2}}" as="b" hint-placeholder-count="24"><div style="height:{{b.h}}px"></div></sc-for></span><a href="#edit" class="sub">edit</a></div>
+        <div class="p"><span class="mono hl">errors-by-level</span><span>count of logs · split level · 7d · line <span class="sub">· from the hunt "Errors on agental"</span></span><span class="mini"><sc-for list="{{f26k_m3}}" as="b" hint-placeholder-count="24"><div style="height:{{b.h}}px"></div></sc-for></span><a href="#edit" class="sub">edit</a></div>
+        <div class="p"><span class="mono hl">memory-sold</span><span>fleet_memory_sold · stat · now</span><span class="mono" style="font-size:16px;color:#fafafa">71%</span><a href="#edit" class="sub">edit</a></div>
+        <div class="p"><span class="mono hl">top-pools</span><span>top 5 pool by log rows · 24h · donut</span><span class="mini"><sc-for list="{{f26k_m2}}" as="b" hint-placeholder-count="24"><div style="height:{{b.h}}px"></div></sc-for></span><a href="#edit" class="sub">edit</a></div>
+        <div class="p"><span class="mono hl">boxes-up</span><span>metric up · split host · 24h · bars</span><span class="mini"><sc-for list="{{f26k_m1}}" as="b" hint-placeholder-count="24"><div style="height:{{b.h}}px"></div></sc-for></span><a href="#edit" class="sub">edit</a></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+          <span class="sub">Add from</span><button class="btn">a panel on a board</button><button class="btn">a saved hunt</button><button class="btn">a metric</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="lab">The fence · derived from the panels</span>
+          <span class="sw"><i aria-hidden="true"></i>Also allow raw params within it</span>
+        </div>
+        <div class="kv">
+          <span class="k">metrics</span><span class="mono">fleet_latency · fleet_cpu_seconds · fleet_memory_sold · up <span class="sub">← what the panels read</span></span>
+          <span class="k">labels</span><span class="mono">service:agental</span>
+          <span class="k">logs</span><span class="mono">service:agental</span>
+          <span class="k">may split by</span><span class="mono">host · pool · level <span class="sub">← what the panels split by</span></span>
+          <span class="k">limits</span><span class="mono">1m bars · 7d window · 30d back · 120 reads/min</span>
+          <span class="k">framed by</span><span class="mono">https://console.agental.io</span>
+        </div>
+        <span class="sub">Adding a panel that needs more widens the fence and says so. With the switch off, a tag may only name a panel.</span>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;min-height:0">
+      <section class="card">
+        <span class="lab">The tag, now</span>
+<pre class="mono">&lt;script src="/js/embed.js"
+  data-origin="https://logs.agental.io"
+  data-ticket="tst1_…"
+  <span class="hl">data-panel="latency-p99"</span>&gt;&lt;/script&gt;</pre>
+        <span class="sub">One line names the panel. Title, kind, range and split come from here. A page may still pass <span class="mono">data-range</span> to override the window within the limits.</span>
+      </section>
+      <section class="card" style="flex:1;min-height:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab">latency-p99 · as the page sees it</span><span class="sub">preview through this share</span></div>
+        <div style="border:1px solid #27272a;border-radius:8px;background:#0d0d0f;padding:10px 12px;display:flex;flex-direction:column;gap:6px;flex:1">
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span style="color:#fafafa">Latency p99 · by host</span><span class="mono sub">24h · 15m bars</span></div>
+          <div style="position:relative;flex:1;min-height:120px;border-bottom:1px solid #2a2a2e">
+            <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px">
+              <sc-for list="{{f26k_bars}}" as="b" hint-placeholder-count="48"><div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column-reverse;height:100%"><div style="height:{{b.a}}px;background:#2f6fa3"></div><div style="height:{{b.b}}px;background:#7c5a1a"></div></div></sc-for>
+            </div>
+          </div>
+          <div class="mono sub" style="display:flex;gap:12px;font-size:10.5px"><span><span style="color:#2f6fa3">■</span> ovh-01</span><span><span style="color:#7c5a1a">■</span> hz-02</span><span style="flex:1"></span><span>toposcope</span></div>
+        </div>
+        <div class="sub">Shown on console.agental.io · 612 reads today · last 13:26</div>
+      </section>
+      <section class="card">
+        <span class="lab">What this buys and costs</span>
+        <span class="sub" style="line-height:1.5"><span style="color:#d4d4d8">Buys:</span> one place to change a chart; Access lists real panels; a page cannot ask for a chart the operator never meant. <span style="color:#d4d4d8">Costs:</span> a host cannot compose a new view without the operator, unless the switch is on.</span>
+      </section>
+    </div>
+  </main>
+  <div style="height:16px"></div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Fields, a link, Settings, sign in, and the twelve principles</h2>
+
+    <div id="26l" data-frame="26l" data-screen-label="26l Fields" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26l" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26l</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Fields</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26l" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="#26a">Home</a><a class="tab" href="#26d">Hunt</a><a class="tab" href="#26g">Watch</a><a class="tab on" href="#26l">Fields</a><a class="tab" href="#26i">Links</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="#26i">Access</a><a class="tab" href="#26n">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">Fields</h1>
+      <span class="sub">What each log key is for, and which key is the same thing as a metric label. 14 keys seen in the last hour.</span>
+      <div style="flex:1"></div>
+      <span class="btn">Last 1h ▾</span>
+    </div>
+
+    <div style="border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden">
+      <div class="r" style="padding:8px 16px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8a8a93"><span>Key</span><span>Events</span><span>Values</span><span>Role</span><span>Same as the metric label</span></div>
+      <sc-for list="{{f26l_rows}}" as="f" hint-placeholder-count="12">
+        <div class="r">
+          <span class="mono" style="color:#fafafa">{{f.key}}</span>
+          <span class="mono sub">{{f.ev}}</span>
+          <span class="mono sub">{{f.vals}}</span>
+          <sc-if value="{{f.core}}" hint-placeholder-val="{{false}}"><span class="sub">{{f.role}}</span></sc-if>
+          <sc-if value="{{f.pick}}" hint-placeholder-val="{{true}}">
+            <span class="seg"><span style="color:{{f.c1}};background:{{f.b1}}">chart</span><span style="color:{{f.c2}};background:{{f.b2}}">lookup</span><span style="color:{{f.c3}};background:{{f.b3}}">ignore</span></span>
+          </sc-if>
+          <span class="lk" style="color:{{f.lc}}">{{f.link}}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <section style="padding:12px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:500;color:#fafafa">chart</span>
+        <span class="sub" style="line-height:1.5">Numbers are summarised per bucket so a hunt can plot them as a series. Costs storage; applies to new rows only.</span>
+      </section>
+      <section style="padding:12px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:500;color:#fafafa">lookup</span>
+        <span class="sub" style="line-height:1.5">Exact match only, fast: ids and request ids. The value is never summarised and never a facet.</span>
+      </section>
+      <section style="padding:12px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:500;color:#fafafa">ignore</span>
+        <span class="sub" style="line-height:1.5">Stored with the row, shown in the detail, but no summary and no facet. The default for a key nobody chose.</span>
+      </section>
+    </div>
+    <span class="sub">Suggestions come from what the key looks like; Toposcope never writes a role on its own. A metric link makes <span class="mono">host</span> on a row and <span class="mono">host</span> on a metric one thing in Compare and in shares.</span>
+  </main>
+  <div style="height:16px"></div>
+</div>
+      </div>
+    </div>
+
+    <div id="26m" data-frame="26m" data-screen-label="26m A link · from Access" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26m" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26m</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">A link · from Access</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26m" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="#26a">Home</a><a class="tab" href="#26d">Hunt</a><a class="tab" href="#26g">Watch</a><a class="tab" href="#26l">Fields</a><a class="tab on" href="#26i">Links</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="#26i">Access</a><a class="tab" href="#26n">Settings</a>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:12px 24px 0;font-size:13px">
+    <a href="#26i" style="color:#8a8a93">Access</a><span style="color:#3f3f46">›</span><a href="#26i" style="color:#8a8a93">Links</a><span style="color:#3f3f46">›</span>
+    <span style="color:#fafafa;font-weight:500">ci-box → here</span>
+    <span class="sub" style="margin-left:6px"><span style="color:#e7e1d3">⇄</span> copies rows out of ci-box · pulled by this instance · since 2026-10-19</span>
+    <div style="flex:1"></div>
+    <button class="btn">Pause pulling</button><button class="btn">Change scope</button><button class="btn" style="color:#fca5a5">Revoke</button>
+  </div>
+
+  <main style="flex:1;min-height:0;padding:16px 24px 0;display:grid;grid-template-columns:420px 1fr;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <section class="card">
+        <span class="lab">Which way, and what</span>
+        <div class="kv">
+          <span class="k">source</span><span class="mono">ci-box <span class="sub">· 10.38.0.12:8080 · 0.7.3</span></span>
+          <span class="k">puller</span><span class="mono">here <span class="sub">· this instance asks every 10 s</span></span>
+          <span class="k">scope</span><span class="mono">service:ci*</span>
+          <span class="k">rows carry</span><span class="sub">everything the scope lets through, ids included; stamped <span class="mono">from:ci-box</span></span>
+          <span class="k">key</span><span class="sub">pasted here 2026-10-19 · never shown again · revoke to end it</span>
+        </div>
+      </section>
+      <section class="card">
+        <span class="lab">Where its rows show</span>
+        <span class="sub" style="line-height:1.5">In Search as a <span class="mono" style="color:#d4d4d8">From · ci-box</span> group above Saved, and on every hunt that matches them. A gap in pulling is drawn as a floor under the bars, so a quiet hour is never mistaken for a lost one.</span>
+        <a href="#26d" class="btn" style="align-self:flex-start">Open as a hunt · from:ci-box</a>
+      </section>
+      <section class="card" style="flex:1">
+        <span class="lab">Events · last 7 days</span>
+        <div class="ev"><span class="mono sub">13:25</span><span>pulled 1 204 rows</span><span class="mono sub">seq 1 204 311</span></div>
+        <div class="ev"><span class="mono sub">09:14</span><span style="color:#fbbf24">source unreachable for 6 min · floor drawn</span><span class="mono sub">seq 1 198 002</span></div>
+        <div class="ev"><span class="mono sub">Sat</span><span>backlog of 120k rows caught up in 4 min</span><span class="mono sub">seq 1 070 440</span></div>
+        <div class="ev"><span class="mono sub">Oct 19</span><span>key pasted · first pull</span><span class="mono sub">seq 1</span></div>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;min-height:0">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+        <section class="card"><span class="lab">Position</span><span class="big mono">1 204 311</span><span class="sub">sequence pulled · source is at 1 204 315</span></section>
+        <section class="card"><span class="lab">Behind</span><span class="big mono">4 rows</span><span class="sub">about 1 s · ok</span></section>
+        <section class="card"><span class="lab">Last pull</span><span class="big mono">13:25:52</span><span class="sub">1 204 rows · 180 ms</span></section>
+        <section class="card"><span class="lab">Rate</span><span class="big mono">2.1K/h</span><span class="sub">last 24 h · no duplicates</span></section>
+      </div>
+      <section class="card" style="flex:1;min-height:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="lab">Rows pulled · last 24 h · gaps as floors</span><span class="sub">1 gap · 6 min at 09:14</span></div>
+        <div style="position:relative;flex:1;min-height:200px;border-bottom:1px solid #2a2a2e">
+          <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px">
+            <sc-for list="{{f26m_bars}}" as="b" hint-placeholder-count="96"><div class="seg" style="height:{{b.h}}px;background:{{b.c}}"></div></sc-for>
+          </div>
+          <div style="position:absolute;left:{{f26m_gapX}}%;width:{{f26m_gapW}}%;bottom:0;height:200px;background:repeating-linear-gradient(135deg,rgba(251,191,36,.18) 0 4px,transparent 4px 9px);border-left:1px dashed #fbbf24;border-right:1px dashed #fbbf24"></div>
+          <span class="mono" style="position:absolute;left:{{f26m_gapX}}%;top:4px;font-size:10.5px;color:#fbbf24;padding-left:6px">unreachable · 6 min</span>
+        </div>
+        <div class="mono sub" style="display:flex;justify-content:space-between;font-size:10.5px"><span>yesterday 13:30</span><span>now</span></div>
+      </section>
+    </div>
+  </main>
+  <div style="height:16px"></div>
+</div>
+      </div>
+    </div>
+
+    <div id="26n" data-frame="26n" data-screen-label="26n Settings" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26n" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26n</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Settings</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26n" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span>
+    </div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="#26a">Home</a><a class="tab" href="#26d">Hunt</a><a class="tab" href="#26g">Watch</a><a class="tab" href="#26l">Fields</a><a class="tab" href="#26i">Links</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="#26i">Access</a><a class="tab on" href="#26n">Settings</a>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em">Settings</h1>
+      <span class="sub">The instance itself. Who may read or write is under <a href="#26i" style="color:#d4d4d8">Access</a>; what to watch is under Watch.</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+      <section class="card">
+        <h2>This instance</h2>
+        <div class="row"><span class="k">Name</span><input class="in" value="log-vm" style="flex:1" aria-label="Instance name"></div>
+        <div class="row"><span class="k">Shown</span><span class="sub">in the header, on sign-in, and on links as the source's name</span></div>
+        <div class="row"><span class="k">Address</span><span class="mono sub">https://logs.agental.io</span></div>
+        <div class="row"><span class="k">Signed in</span><span class="sub">this browser, until 25 Nov · <a href="#out" style="color:#a1a1aa">sign out</a></span></div>
+      </section>
+
+      <section class="card">
+        <h2>Retention</h2>
+        <div class="row"><span class="k">Logs</span><span class="sel">30 days ▾</span><span class="sub">4.1 GB now</span></div>
+        <div class="row"><span class="k">Metrics</span><span class="sel">90 days ▾</span><span class="sub">0.6 GB now</span></div>
+        <div class="row"><span class="k">Traces, profiles</span><span class="sel">7 days ▾</span><span class="sub">0.2 GB now</span></div>
+        <div class="row"><span class="k">Marks</span><span class="sub">kept for ever · newest 10 000 listed</span></div>
+        <span class="sub">Shortening applies at the next sweep, within the hour. Nothing comes back.</span>
+      </section>
+
+      <section class="card">
+        <h2>Time</h2>
+        <div class="row"><span class="k">Clock</span><span class="sel">UTC ▾</span><span class="sub">every window, mark and row</span></div>
+        <div class="row"><span class="k">Timestamps</span><span class="sel">Compact · 13:23:19 ▾</span></div>
+        <div class="row"><span class="k">Default window</span><span class="sel">Last 1h ▾</span></div>
+      </section>
+
+      <section class="card">
+        <h2>Delivery</h2>
+        <div class="row"><span class="k">ntfy</span><span class="mono" style="flex:1;overflow:hidden;text-overflow:ellipsis">agental-alerts-7f…</span><span class="ok">ok 12:51</span><a href="#edit" class="sub">edit</a></div>
+        <div class="row"><span class="k">Slack</span><span class="mono" style="flex:1">#ops</span><span class="ok">ok 12:51</span><a href="#edit" class="sub">edit</a></div>
+        <div class="row"><span class="k">Reminders</span><span class="sel">every 30 min while open ▾</span></div>
+        <button class="btn" style="align-self:flex-start">+ webhook</button>
+      </section>
+
+      <section class="card">
+        <h2>Release</h2>
+        <div class="row"><span class="k">Running</span><span class="mono">0.7.3</span><span class="sub">since 26 Oct 12:11</span></div>
+        <div class="row"><span class="k">Available</span><span class="mono">0.7.4</span><a href="#notes" class="sub">what's new</a></div>
+        <div class="row"><span class="k">Checks</span><span class="sub">daily · last 13:00 · <a href="#check" style="color:#a1a1aa">check now</a></span></div>
+        <span class="sub">Upgrade from the box: <span class="mono" style="color:#d4d4d8">./upgrade.sh 0.7.4</span>. A backup runs first unless you skip it.</span>
+      </section>
+
+      <section class="card">
+        <h2>Storage</h2>
+        <div class="row"><span class="k">ClickHouse</span><span class="mono">4.9 / 100 GB</span><span class="sub">on /var/lib/clickhouse</span></div>
+        <div class="row"><span class="k">App</span><span class="mono">80 / 512 MB</span></div>
+        <div class="row"><span class="k">Last backup</span><span class="sub">26 Oct 12:00 · 4.7 GB · before 0.7.3</span></div>
+      </section>
+    </div>
+  </main>
+  <footer class="mono" style="height:30px;display:flex;align-items:center;gap:16px;padding:0 24px;border-top:1px solid #1c1c20;font-size:11px;color:#8a8a93;margin-top:16px">
+    <span>ingest 312/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 80 / 512 MB</span><div style="flex:1"></div><span>0.7.3</span>
+  </footer>
+</div>
+      </div>
+    </div>
+
+    <div id="26o" data-frame="26o" data-screen-label="26o Sign in" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26o" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26o</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Sign in</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26o" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;position:relative">
+  <form style="width:360px;display:flex;flex-direction:column;gap:18px;margin:0">
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg>
+      <span style="font-weight:600;font-size:15px">toposcope</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span class="sub">Signing in to</span>
+      <span class="mono" style="font-size:30px;font-weight:500;color:#fafafa;letter-spacing:-0.01em">log-vm</span>
+      <span class="mono sub">logs.agental.io · 0.7.3</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <label for="26o-pw" style="font-size:12.5px;color:#a1a1aa">Password</label>
+      <input id="26o-pw" type="password" value="" style="height:40px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font:inherit;font-size:14px;outline:none">
+    </div>
+    <button type="button" style="height:40px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer">Sign in</button>
+    <span class="sub">Stays signed in on this browser for 30 days.</span>
+  </form>
+  <span class="mono sub" style="position:absolute;bottom:20px;font-size:11px">the operator password from .env · <a href="#docs">forgot it?</a></span>
+</div>
+      </div>
+    </div>
+
+    <div id="26p" data-frame="26p" data-screen-label="26p The principles" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#26p" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">26p</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">The principles</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="26p" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;padding:36px 40px;display:flex;flex-direction:column;gap:20px">
+  <div style="display:flex;align-items:baseline;gap:14px">
+    <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Toposcope · the principles behind the boards</h1>
+    <span class="mono" style="font-size:12px;color:#8a8a93">2026-10-26 · round 3 · every screen not drawn follows these</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;flex:1">
+    <section class="p"><h2><span>01</span>The mark is the spine</h2><p>The first question is <b>since what?</b>, not <b>what matches?</b>. Home answers it with cards; the hunt keeps the same mark selected; a quiet day falls back to the hour before, said plainly.</p></section>
+    <section class="p"><h2><span>02</span>One clock, full width</h2><p>The histogram is the spine of the hunt and the same plot at every size: card sparkline, hunt clock, embed. Marks sit on their own rail with names, never as unlabeled glyphs in a 22px lane.</p></section>
+    <section class="p"><h2><span>03</span>Headline features in the open</h2><p>Compare is a fold under the mark, Fingerprints a line on the event and chips in the slice, Watch this a button on the hunt. Nothing a release note brags about lives in a popover.</p></section>
+    <section class="p"><h2><span>04</span>Words, not icons</h2><p>Tabs, actions and kinds are words: Access, not a key glyph; <b>copies rows out</b>, not an arrow. An icon only beside a word. Tooltips explain nothing that matters.</p></section>
+    <section class="p"><h2><span>05</span>One row per thing, same columns everywhere</h2><p>Monitors, ways in, marks, fields: a list with the same shape, state first, then what it is, then where it stands, then one action. Open or refused rows come first.</p></section>
+    <section class="p"><h2><span>06</span>Facts first, controls second</h2><p>A card says what is true (4.8% now, was 0.9%; expires in 341 d; behind by 4 rows) before it offers a button. Numbers are mono; the biggest number is the one that decides.</p></section>
+    <section class="p"><h2><span>07</span>The bar stays copy-pasteable</h2><p><span class="mono">key:value</span> in one field, prefilled by cards and crumbs, never replaced by a builder. Scope on a share, a link or a monitor uses the same syntax.</p></section>
+    <section class="p"><h2><span>08</span>Panels narrow, never cover</h2><p>An event, the marks panel, a sheet: they take width from the rows and leave the clock in view. Live pauses while reading and says so. Esc always goes back one step.</p></section>
+    <section class="p"><h2><span>09</span>The fence is on the server, the chart is named</h2><p>A share holds named panels and a derived scope; a page names a panel. Raw params stay allowed within the fence. Rows never leave through a share; ids never leave through aggregates.</p></section>
+    <section class="p"><h2><span>10</span>Colour means one thing</h2><p>Plate white is the mark and the primary action. Red is open, refused, fatal. Amber is paused or slow. Blue and orange are the level stack. Teal is a flag or a share. Nothing else is coloured.</p></section>
+    <section class="p"><h2><span>11</span>Empty states are the setup</h2><p>No data, no marks, no monitors: the page shows the three steps that would fill it, in the layout it will have when full. The page never swaps for a different one.</p></section>
+    <section class="p"><h2><span>12</span>Every number is a hunt away</h2><p>A refusal count, a monitor's value, a link's rate: each is a link to the rows behind it with the query filled in. Toposcope stores projections; the rows stay the proof.</p></section>
+  </div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f26a', new (class {
+  renderVals() {
+    const sp = (lo, hi, jump) => {
+      const a = [];
+      for (let i = 0; i < 40; i++) {
+        const after = i >= 20;
+        const v = (after ? hi : lo) * (0.75 + 0.25 * Math.sin(i * 1.3 + lo));
+        a.push({ h: Math.max(2, Math.round(v)), c: after && jump ? "#c2410c" : "#3f3f46" });
+      }
+      return a;
+    };
+    const cards = [
+      { name: "Errors on billing", kind: "rate · 5m", before: "0.9%", after: "9.1%", delta: "+8.2", dc: "#fca5a5", sp: sp(6, 30, true) },
+      { name: "5xx on api", kind: "rate · 5m", before: "0.3%", after: "1.4%", delta: "+1.1", dc: "#fca5a5", sp: sp(5, 14, true) },
+      { name: "Checkout latency p95", kind: "metric · ms", before: "412", after: "1 380", delta: "+968", dc: "#fca5a5", sp: sp(10, 28, true) },
+      { name: "Worker upstream 502s", kind: "count · 5m", before: "0", after: "61", delta: "new", dc: "#fca5a5", sp: sp(2, 16, true) },
+      { name: "Logins", kind: "count · 5m", before: "188", after: "184", delta: "−4", dc: "#a1a1aa", sp: sp(24, 24, false) },
+      { name: "Fatal anywhere", kind: "count · 5m", before: "2", after: "11", delta: "+9", dc: "#fca5a5", sp: sp(3, 12, true) },
+    ];
+    return { cards };
+  }
+})().renderVals()),
+      ...pre('f26b', new (class {
+  renderVals() {
+    const sp = (lo) => { const a = []; for (let i = 0; i < 40; i++) a.push({ h: Math.max(2, Math.round(lo * (0.75 + 0.25 * Math.sin(i * 1.3 + lo)))) }); return a; };
+    const cards = [
+      { name: "Errors on billing", kind: "rate · 5m", before: "1.0%", after: "0.9%", delta: "−0.1", sp: sp(8) },
+      { name: "5xx on api", kind: "rate · 5m", before: "0.3%", after: "0.3%", delta: "±0", sp: sp(6) },
+      { name: "Checkout latency p95", kind: "metric · ms", before: "418", after: "402", delta: "−16", sp: sp(14) },
+      { name: "Worker upstream 502s", kind: "count · 5m", before: "0", after: "0", delta: "±0", sp: sp(2) },
+      { name: "Logins", kind: "count · 5m", before: "181", after: "188", delta: "+7", sp: sp(24) },
+      { name: "Fatal anywhere", kind: "count · 5m", before: "1", after: "2", delta: "+1", sp: sp(3) },
+    ];
+    return { cards };
+  }
+})().renderVals()),
+      ...pre('f26d', new (class {
+  renderVals() {
+    const n = 60, W = 1400, bw = W / n, bars = [];
+    for (let i = 0; i < n; i++) {
+      const after = i >= 22, inc = i >= 36 && i < 48, dip = i > 23 && i < 26 ? .45 : 1;
+      const base = (0.86 + 0.14 * Math.sin(i * 0.9)) * dip;
+      bars.push({ error: ((after ? 70 : 12) * base + (inc ? 40 : 0)).toFixed(1), fatal: (after ? 10 : 2) + (inc ? 14 : 0) });
+    }
+    const compare = [
+      { name: "error rate · billing", before: "0.9%", after: "9.1%", delta: "+8.2", color: "#fca5a5" },
+      { name: "fatal", before: "2", after: "11", delta: "+9", color: "#fca5a5" },
+      { name: "new fingerprints", before: "—", after: "3", delta: "e1", color: "#e7e1d3" },
+      { name: "stopped", before: "1", after: "—", delta: "e1", color: "#a1a1aa" },
+      { name: "rows", before: "238", after: "1 652", delta: "×6.9", color: "#fca5a5" },
+    ];
+    const O = "#c2410c", R = "#ef4444";
+    const rows = [
+      { t: "13:23:19", lv: O, msg: "charge failed e1=a91f2c card_declined path=/v1/charge status=502" },
+      { t: "13:23:17", lv: R, msg: "panic: nil pointer in settle() e1=0c77be version=v0.9" },
+      { t: "13:23:15", lv: O, msg: "charge failed e1=a91f2c card_declined path=/v1/charge status=502" },
+      { t: "13:23:11", lv: R, msg: "panic: nil pointer in settle() e1=0c77be version=v0.9" },
+      { t: "13:23:09", lv: O, msg: "charge failed e1=a91f2c card_declined path=/v1/charge status=502" },
+      { t: "13:23:08", lv: O, msg: "settle timeout after 3000ms e1=7d20aa" },
+    ];
+    return { bars, compare, rows, markLeft: Math.round(bw * 22) - 6, incLeft: Math.round(bw * 36) - 6, markX: Math.round(bw * 22), incX: Math.round(bw * 36), incW: Math.round(bw * 12) };
+  }
+})().renderVals()),
+      ...pre('f26e', new (class {
+  renderVals() {
+    const n = 60, W = 1400, bw = W / n, bars = [];
+    for (let i = 0; i < n; i++) {
+      const after = i >= 22, inc = i >= 36 && i < 48, dip = i > 23 && i < 26 ? .45 : 1;
+      const base = (0.86 + 0.14 * Math.sin(i * 0.9)) * dip;
+      bars.push({ error: ((after ? 44 : 8) * base + (inc ? 26 : 0)).toFixed(1), fatal: (after ? 7 : 1) + (inc ? 9 : 0) });
+    }
+    const O = "#c2410c", R = "#ef4444";
+    const rows = [
+      { t: "13:23:19", lv: O, msg: "charge failed e1=a91f2c card_declined", bg: "#1d1d21" },
+      { t: "13:23:17", lv: R, msg: "panic: nil pointer in settle() e1=0c77be", bg: "transparent" },
+      { t: "13:23:15", lv: O, msg: "charge failed e1=a91f2c card_declined", bg: "transparent" },
+      { t: "13:23:11", lv: R, msg: "panic: nil pointer in settle() e1=0c77be", bg: "transparent" },
+      { t: "13:23:09", lv: O, msg: "charge failed e1=a91f2c card_declined", bg: "transparent" },
+      { t: "13:23:08", lv: O, msg: "settle timeout after 3000ms e1=7d20aa", bg: "transparent" },
+      { t: "13:23:04", lv: O, msg: "charge failed e1=a91f2c card_declined", bg: "transparent" },
+      { t: "13:23:01", lv: O, msg: "charge failed e1=a91f2c card_declined", bg: "transparent" },
+      { t: "13:22:58", lv: R, msg: "panic: nil pointer in settle() e1=0c77be", bg: "transparent" },
+      { t: "13:22:55", lv: O, msg: "settle timeout after 3000ms e1=7d20aa", bg: "transparent" },
+      { t: "13:22:51", lv: O, msg: "charge failed e1=a91f2c card_declined", bg: "transparent" },
+      { t: "13:22:49", lv: O, msg: "charge failed e1=a91f2c card_declined", bg: "transparent" },
+    ];
+    const fields = [
+      { k: "ts", v: "2026-10-26T13:23:19.576Z" }, { k: "level", v: "error" }, { k: "service", v: "billing" }, { k: "host", v: "billing-1" },
+      { k: "version", v: "v0.9" }, { k: "path", v: "/v1/charge" }, { k: "status", v: "502" }, { k: "user_id", v: "4471" },
+      { k: "request_id", v: "r-7f20c3a1" }, { k: "duration_ms", v: "3004" }, { k: "exception.type", v: "CardDeclined" },
+    ];
+    return { bars, rows, fields, markLeft: Math.round(bw * 22) + 210, incLeft: Math.round(bw * 36) + 210, markX: Math.round(bw * 22), incX: Math.round(bw * 36), incW: Math.round(bw * 12), rowX: Math.round(bw * 57) };
+  }
+})().renderVals()),
+      ...pre('f26f', new (class {
+  renderVals() {
+    const n = 60, W = 1400, bw = W / n, bars = [];
+    for (let i = 0; i < n; i++) {
+      const after = i >= 22, inc = i >= 36 && i < 48, dip = i > 23 && i < 26 ? .45 : 1;
+      const base = (0.86 + 0.14 * Math.sin(i * 0.9)) * dip;
+      bars.push({ error: ((after ? 44 : 8) * base + (inc ? 26 : 0)).toFixed(1), fatal: (after ? 7 : 1) + (inc ? 9 : 0) });
+    }
+    const O = "#c2410c", R = "#ef4444";
+    const rows = [
+      { t: "13:23:19", lv: O, msg: "charge failed e1=a91f2c card_declined" },
+      { t: "13:23:17", lv: R, msg: "panic: nil pointer in settle() e1=0c77be" },
+      { t: "13:23:15", lv: O, msg: "charge failed e1=a91f2c card_declined" },
+      { t: "13:23:11", lv: R, msg: "panic: nil pointer in settle() e1=0c77be" },
+      { t: "13:23:09", lv: O, msg: "charge failed e1=a91f2c card_declined" },
+      { t: "13:23:08", lv: O, msg: "settle timeout after 3000ms e1=7d20aa" },
+      { t: "13:23:04", lv: O, msg: "charge failed e1=a91f2c card_declined" },
+      { t: "13:23:01", lv: O, msg: "charge failed e1=a91f2c card_declined" },
+      { t: "13:22:58", lv: R, msg: "panic: nil pointer in settle() e1=0c77be" },
+      { t: "13:22:55", lv: O, msg: "settle timeout after 3000ms e1=7d20aa" },
+      { t: "13:22:51", lv: O, msg: "charge failed e1=a91f2c card_declined" },
+      { t: "13:22:49", lv: O, msg: "charge failed e1=a91f2c card_declined" },
+    ];
+    return { bars, rows, markLeft: Math.round(bw * 22) + 210, incLeft: Math.round(bw * 36) + 210, markX: Math.round(bw * 22), incX: Math.round(bw * 36), incW: Math.round(bw * 12) };
+  }
+})().renderVals()),
+      ...pre('f26g', new (class {
+  renderVals() {
+    const strip = (f) => { const a = []; for (let i = 0; i < 48; i++) a.push({ c: f(i) }); return a; };
+    const OK = "#1f3b30", OPEN = "#c2410c", NONE = "#27272a";
+    return {
+      h1: strip(i => i >= 46 ? OPEN : OK),
+      h2: strip(i => OK),
+      h3: strip(i => i === 46 ? OPEN : OK),
+      h4: strip(i => i === 18 ? "#7c5a1a" : OK),
+    };
+  }
+})().renderVals()),
+      ...pre('f26h', new (class {
+  renderVals() {
+    const bars = []; for (let i = 0; i < 60; i++) bars.push({ h: ((i >= 22 ? 44 : 8) * (0.86 + 0.14 * Math.sin(i * 0.9))).toFixed(1) });
+    const rows = []; for (let i = 0; i < 10; i++) rows.push({ t: "13:23:" + (19 - i * 2).toString().padStart(2, "0"), msg: i % 3 === 1 ? "panic: nil pointer in settle() e1=0c77be" : "charge failed e1=a91f2c card_declined" });
+    const day = [];
+    for (let i = 0; i < 96; i++) {
+      const pct = i >= 93 ? 9 : (i >= 30 && i < 31 ? 3.2 : 0.6 + 0.5 * Math.abs(Math.sin(i * 0.8)));
+      day.push({ h: Math.min(120, Math.round(pct * 12)), c: pct >= 2 ? "#c2410c" : "#3f3f46" });
+    }
+    return { bars, rows, day, lineY: 120 - 24, lineLabelY: 120 - 24 - 14 };
+  }
+})().renderVals()),
+      ...pre('f26k', new (class {
+  renderVals() {
+    const mk = (f) => { const a = []; for (let i = 0; i < 24; i++) a.push({ h: Math.max(2, Math.round(f(i))) }); return a; };
+    const bars = []; for (let i = 0; i < 48; i++) bars.push({ a: Math.round(30 + 25 * Math.abs(Math.sin(i * .5))), b: Math.round(14 + 10 * Math.abs(Math.cos(i * .7))) });
+    return { bars, m1: mk(i => 10 + 14 * Math.abs(Math.sin(i * .5))), m2: mk(i => 8 + 16 * Math.abs(Math.cos(i * .4))), m3: mk(i => 6 + 18 * Math.abs(Math.sin(i * .9))) };
+  }
+})().renderVals()),
+      ...pre('f26l', new (class {
+  renderVals() {
+    const ON = "#fafafa", OFF = "#8a8a93", BG = "#27272a", NO = "transparent";
+    const pick = (key, ev, vals, role, link) => ({ key, ev, vals, core: false, pick: true, role: "", link: link || "link…", lc: link ? "#2dd4bf" : "#8a8a93",
+      c1: role === "chart" ? ON : OFF, b1: role === "chart" ? BG : NO, c2: role === "lookup" ? ON : OFF, b2: role === "lookup" ? BG : NO, c3: role === "ignore" ? ON : OFF, b3: role === "ignore" ? BG : NO });
+    const core = (key, ev, vals, role, link) => ({ key, ev, vals, core: true, pick: false, role, link: link || "—", lc: link ? "#2dd4bf" : "#8a8a93" });
+    return { rows: [
+      core("service", "18.6K", "4", "core column", "service"), core("host", "18.6K", "8", "core column", "host"), core("level", "18.6K", "5", "core column"), core("message", "18.6K", "—", "text"),
+      pick("duration_ms", "15.4K", "numeric", "chart"), pick("path", "15.4K", "7", "ignore"), pick("status", "15.4K", "numeric", "chart"),
+      pick("client_ip", "15.4K", "6.9K", "lookup"), pick("request_id", "15.4K", "9.51K", "lookup"), pick("user_id", "9.22K", "80", "lookup"),
+      pick("version", "3.15K", "1", "ignore", "version"), pick("e1", "1.34K", "9", "ignore"), pick("exception.type", "521", "3", "ignore"),
+    ] };
+  }
+})().renderVals()),
+      ...pre('f26m', new (class {
+  renderVals() {
+    const bars = [];
+    for (let i = 0; i < 96; i++) { const gap = i >= 79 && i < 80; bars.push({ h: gap ? 0 : Math.round(90 + 70 * Math.abs(Math.sin(i * .35))), c: "#2f6fa3" }); }
+    return { bars, gapX: (79 / 96 * 100).toFixed(2), gapW: (1 / 96 * 100).toFixed(2) };
+  }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>

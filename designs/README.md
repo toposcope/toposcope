@@ -91,6 +91,13 @@ Locked — charts, and share from a panel (0.7.1), 2026-10-24:
 - [Toposcope Charts.dc.html](Toposcope%20Charts.dc.html) — frames 25a–25d: Line · Bars · Stacked on a metric panel, stacked refused for an average · 25e–25g: a histogram metric as a heatmap, with its p99, and among its readings · 25h–25j: Bars · Donut on Top-N, top N + other · 25k: the same charts embedded
 - [charts/](charts/) — crops for issues (25a–25k)
 
+Approved — the redesign (0.8, one cut), 2026-10-26. Drawn on the Design canvas "Toposcope reimagined" in three rounds; Ian picked A (one clock) and D (what changed) in round 1, 3f (named panels on a share, with the raw-params switch) over 3e, and approved rounds 2–3 as drawn. The round-1 boards A and D became 26d and 26a and are not exported. Not in a cut yet; drafts in `private/issues/v0.8-redesign/`.
+
+- [Toposcope Redesign.dc.html](Toposcope%20Redesign.dc.html) — frames 26a–26p: Home since a mark (the strip of recent marks is the one control; cards per saved hunt and monitor with before → after on equal windows and a sparkline; new fingerprints and open monitors as cards; saved hunts in a right column), a quiet day (no mark in 24 h: the last hour against the hour before, grey deltas), first run (three steps that become cards); the hunt opened from a card (crumb Home › hunt with the mark carried, the key:value bar, a full-width clock with a named-marks rail, the Compare fold open under the selected mark, facet chips including e1 fingerprints, rows, no sidebar), an event open (a right panel narrows the rows; Fields / JSON / Stack; the fingerprint line with first seen; Live pauses while reading), the marks panel (every mark of the day, kind filters, actions in words, a note form); Watch (every monitor with state, checks, a 24 h strip, last check, value; what opened today; delivery), Watch this (a sheet on the hunt: one-sentence condition, would-have-opened plot, webhooks); Access (ingest tokens, link keys, links and shares in one list: kind in words, scope, expiry, last used, refusals, revoke), Let someone in (three kinds as cards, the link-key form, the secret shown once); a share with named panels and the raw-params switch; Fields; a link's page (direction, scope, position, behind, last pull, rate, gaps as floors); Settings (instance, retention, time, delivery, release, storage); sign in; the twelve principles
+- [redesign/](redesign/) — crops for issues (26a–26p)
+
+The sheet carries each artboard's own styles scoped to its frame (`private/tools/canvas-export/merge-scoped.ts`), so it loads Inter and JetBrains Mono from Google Fonts; offline it falls back to system UI and Menlo.
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
