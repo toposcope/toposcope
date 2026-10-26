@@ -1,5 +1,4 @@
 import { CountText } from "@/components/count-text";
-import { TimeRangePicker } from "@/components/time-range-picker";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,13 +19,11 @@ import {
   type FieldsResponse,
   type FieldsWave,
 } from "../../shared/fields";
-import { rangeDurationMs } from "../fill-histogram";
 import {
   fieldsCatalogSlow,
   fieldsSlowAdvice,
   fieldsWaveLabel,
 } from "../fields-load";
-import type { RangeMode } from "../search-url";
 import { formatSearchElapsed, scanningRangeLabel } from "../time-range";
 
 const grid =
@@ -40,11 +37,7 @@ type Props = {
   warm: boolean;
   elapsedMs: number;
   failed: boolean;
-  range: RangeMode;
-  from: string;
-  to: string;
-  liveWindowMs: number;
-  onRangeChange: (range: RangeMode) => void;
+  onSettings: () => void;
   onStop: () => void;
   onSave: (
     roles: Record<string, FieldRole>,
@@ -59,17 +52,16 @@ export const roleCards: Array<{ role: string; words: string }> = [
   { role: "ignore", words: "Stored with the row and shown in the event, but no summary and no facet." },
 ];
 
+/** Fields reads a fixed window under Settings (28b, #292); it has no clock. */
+export const FIELDS_RANGE = "24h" as const;
+
 export function FieldsView({
   catalog,
   wave,
   warm,
   elapsedMs,
   failed,
-  range,
-  from,
-  to,
-  liveWindowMs,
-  onRangeChange,
+  onSettings,
   onStop,
   onSave,
 }: Props) {
@@ -90,11 +82,8 @@ export function FieldsView({
     !wave && catalog !== null && catalog.events <= 0 && keys.length === 0;
   const emptyKeys =
     !wave && !emptyEvents && !failed && attrCount === 0 && keys.length > 0;
-  const rangeLabel = scanningRangeLabel(range);
-  const spanMs =
-    range === "custom"
-      ? rangeDurationMs(from, to)
-      : (parseRangeMs(range) ?? liveWindowMs);
+  const rangeLabel = scanningRangeLabel(FIELDS_RANGE);
+  const spanMs = parseRangeMs(FIELDS_RANGE) ?? 86_400_000;
   const slow = fieldsCatalogSlow(spanMs, elapsedMs, wave);
   const fresh = Boolean(wave) && !warm;
   const skel = fresh && wave === "keys";
@@ -139,38 +128,33 @@ export function FieldsView({
   return (
     <div className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
       <div className="w-full">
+        <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-[13px]">
+          <button type="button" className="text-[#8a8a93] hover:text-foreground" onClick={onSettings}>
+            Settings
+          </button>
+          <span className="text-[#3f3f46]">›</span>
+          <span className="font-medium text-foreground" aria-current="page">
+            Fields
+          </span>
+        </nav>
         <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-3">
           <div className="flex flex-wrap items-baseline gap-3.5">
             <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Fields</h1>
             <p className="m-0 text-[12px] text-muted-foreground">
               What each log key is for, and which key is the same thing as a metric label.
-              {catalog ? ` ${catalog.keys.length} keys seen in this window.` : ""}
+              {catalog ? ` ${catalog.keys.length} keys seen in the last 24 h.` : ""}
             </p>
           </div>
-          <TimeRangePicker
-            range={range}
-            from={from}
-            to={to}
-            live={false}
-            liveWindowMs={liveWindowMs}
-            hideAbsolute
-            onRangeChange={onRangeChange}
-          />
+          <span className="font-mono text-[12px] text-muted-foreground">last 24 h · counts from the minute rollups</span>
         </div>
 
         {failed && !catalog ? (
           <div className="rounded-lg border bg-card px-3 py-8 text-center">
-            <p className="text-sm">Could not load fields for this window.</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Same window as Search — try a shorter range.
-            </p>
+            <p className="text-sm">Could not load fields for the last 24 h.</p>
           </div>
         ) : emptyEvents && !skel ? (
           <div className="rounded-lg border bg-card px-3 py-8 text-center">
-            <p className="text-sm">No events in this range.</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Same window as Search.
-            </p>
+            <p className="text-sm">No events in the last 24 h.</p>
           </div>
         ) : (
           <>
@@ -224,7 +208,7 @@ export function FieldsView({
             </div>
             {emptyKeys ? (
               <p className="mb-2 text-[11.5px] text-muted-foreground">
-                No attr keys in this range.
+                No attr keys in the last 24 h.
               </p>
             ) : null}
             <div

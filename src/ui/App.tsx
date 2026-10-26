@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Undo2 } from "lucide-react";
-import { HeaderField, HeaderTabs } from "@/components/operator-header";
+import { HeaderField, HeaderTabs, settingsLit } from "@/components/operator-header";
 import { AccessView, type AccessFilter } from "@/components/access-view";
 import { SharePage } from "@/components/share-page";
 import { LinkPage } from "@/components/link-page";
@@ -14,7 +14,7 @@ import { NetMonitorDialog, type NetDraft, type NetMonitorInput } from "@/compone
 import { WatchView } from "@/components/watch-view";
 import { MonitorRail } from "@/components/monitor-rail";
 import type { MonitorBand } from "@/components/monitor-band";
-import { FieldsView } from "@/components/fields-view";
+import { FIELDS_RANGE, FieldsView } from "@/components/fields-view";
 import { SpanDetail } from "@/components/span-detail";
 import { ContextTabs } from "@/components/context-tabs";
 import { ContextView, type ContextMode } from "@/components/context-view";
@@ -728,22 +728,8 @@ export function App() {
     setWatchMarkList(Array.isArray(body.marks) ? body.marks : []);
   }, []);
 
-  const fieldsQuery = useCallback(() => {
-    const params = new URLSearchParams();
-    if (range !== "custom") {
-      params.set("range", range);
-    } else {
-      const fromIso = isoFromLocal(from);
-      const toIso = isoFromLocal(to);
-      if (fromIso) {
-        params.set("from", fromIso);
-      }
-      if (toIso) {
-        params.set("to", toIso);
-      }
-    }
-    return params.toString();
-  }, [range, from, to]);
+  // Fields reads a fixed last 24 h under Settings, not the hunt's clock (28b, #292).
+  const fieldsQuery = useCallback(() => `range=${FIELDS_RANGE}`, []);
 
   const loadFieldConfig = useCallback(async () => {
     const res = await fetch("/api/fields");
@@ -2566,13 +2552,6 @@ export function App() {
     });
   }
 
-  function onFieldsRangeChange(next: RangeMode) {
-    setExplore(null);
-    setLive(false);
-    setRange(next);
-    void runSearch("replace", { range: next, live: false });
-  }
-
   function onGraphField(field: string, value: string, metric: string) {
     const labels = graphMetricLabels(fieldLinks, field, value);
     if (!labels) {
@@ -3955,8 +3934,8 @@ export function App() {
           <Button
             type="button"
             size="sm"
-            variant={view === "settings" ? "secondary" : "ghost"}
-            aria-current={view === "settings" ? "page" : undefined}
+            variant={settingsLit(view) ? "secondary" : "ghost"}
+            aria-current={settingsLit(view) ? "page" : undefined}
             onClick={() => setView("settings")}
           >
             Settings
@@ -3969,6 +3948,7 @@ export function App() {
           onInstanceName={() => void loadInstance().catch(() => undefined)}
           onRetentionDays={setRetentionDays}
           onSignOut={() => void signOut()}
+          onOpenFields={() => setView("fields")}
         />
       ) : view === "home" ? (
         <HomeView
@@ -4064,11 +4044,7 @@ export function App() {
           warm={fieldsWarm}
           elapsedMs={fieldsElapsedMs}
           failed={fieldsFailed}
-          range={range}
-          from={from}
-          to={to}
-          liveWindowMs={liveWindowMs.current}
-          onRangeChange={onFieldsRangeChange}
+          onSettings={() => setView("settings")}
           onStop={cancelFields}
           onSave={saveFields}
         />

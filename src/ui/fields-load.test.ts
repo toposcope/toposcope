@@ -24,10 +24,10 @@ describe("fields catalog load chrome", () => {
       ),
     ).toBe(true);
     expect(fieldsSlowAdvice("7d", 15)).toBe(
-      "7d over 15 keys — a narrower range returns sooner",
+      "7d over 15 keys — still counting",
     );
     expect(fieldsSlowAdvice("7d", 0)).toBe(
-      "7d — a narrower range returns sooner",
+      "7d — still counting",
     );
   });
 });
