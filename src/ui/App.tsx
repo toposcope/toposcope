@@ -1,5 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Copy, House, KeyRound, Menu, Settings, Undo2 } from "lucide-react";
+import { ChevronDown, Copy, House, Menu, Undo2 } from "lucide-react";
+import { HeaderField, HeaderTabs } from "@/components/operator-header";
+import { AccessPlaceholder, HomePlaceholder } from "@/components/placeholder-pages";
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
 import { NewMonitorDialog } from "@/components/new-monitor-dialog";
@@ -3969,41 +3971,18 @@ export function App() {
             onSignOut={() => void signOut()}
           />
         ) : null}
-        <nav className="flex items-center gap-0.5">
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "search" ? "secondary" : "ghost"}
-            onClick={() => setView("search")}
-          >
-            Search
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "watch" ? "secondary" : "ghost"}
-            onClick={() => setView("watch")}
-          >
-            Watch
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "fields" ? "secondary" : "ghost"}
-            onClick={() => setView("fields")}
-          >
-            Fields
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={view === "links" ? "secondary" : "ghost"}
-            onClick={() => setView("links")}
-          >
-            Links
-          </Button>
-        </nav>
-        <div className="ml-auto flex items-center gap-1">
+        <HeaderTabs view={view} watchOpen={watching.open > 0} onView={setView} />
+        <div className="ml-auto flex items-center gap-2">
+          {view !== "search" ? (
+            <HeaderField
+              onHunt={(q) => {
+                if (q !== null) {
+                  addWorkspace({ ...blankSearchSnap(), q }, true);
+                }
+                setView("search");
+              }}
+            />
+          ) : null}
           {watching.open > 0 || watching.late > 0 || watching.warn > 0 ? (
             // 18c: what is open, in the header on every view.
             <button
@@ -4035,15 +4014,35 @@ export function App() {
               ) : null}
             </button>
           ) : null}
-          <Button type="button" size="icon" variant="outline" onClick={() => setTokensOpen(true)}>
-            <KeyRound />
+          <Button
+            type="button"
+            size="sm"
+            variant={view === "access" ? "secondary" : "ghost"}
+            aria-current={view === "access" ? "page" : undefined}
+            onClick={() => setView("access")}
+          >
+            Access
           </Button>
-          <Button type="button" size="icon" variant="outline" onClick={() => setSettingsOpen(true)}>
-            <Settings />
+          <Button type="button" size="sm" variant="ghost" onClick={() => setSettingsOpen(true)}>
+            Settings
           </Button>
         </div>
       </header>
-      {view === "watch" ? (
+      {view === "home" ? (
+        <HomePlaceholder
+          homeName={homeId ? (saved.find((item) => item.id === homeId && !item.board)?.name ?? null) : null}
+          onOpenHome={() => {
+            const home = saved.find((item) => item.id === homeId && !item.board);
+            if (home) {
+              openSavedTab(home);
+            }
+            setView("search");
+          }}
+          onOpenHunt={() => setView("search")}
+        />
+      ) : view === "access" ? (
+        <AccessPlaceholder onTokens={() => setTokensOpen(true)} onShares={() => setSharesOpen(true)} onLinks={() => setView("links")} />
+      ) : view === "watch" ? (
         <WatchView
           data={monitors}
           canCreate
