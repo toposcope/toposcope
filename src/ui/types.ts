@@ -113,6 +113,8 @@ export type AlertRule = {
   body_template: string | null;
   saved_search_id: string | null;
   threshold: number;
+  /** #279: its series, or its search's share of all rows in percent. */
+  measure?: "series" | "share";
   webhook_url: string | null;
   last_fired_at: number | null;
   last_attempt_at: number | null;

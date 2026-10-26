@@ -474,6 +474,9 @@ export function readingMessage(
   if (opensWhen === "fewer_than" && !agg && value === 0 && range) {
     return `no line for ${range}`;
   }
+  if (agg === "share") {
+    return `share of all rows ${plainNumber(Number(value.toFixed(2)))}% ${value >= threshold ? "≥" : "<"} ${plainNumber(threshold)}%`;
+  }
   return `${seriesLabel(agg)} ${plainNumber(value)} ${value >= threshold ? "≥" : "<"} ${plainNumber(threshold)}`;
 }
 

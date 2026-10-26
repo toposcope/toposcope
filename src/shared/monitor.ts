@@ -36,6 +36,17 @@ export type MonitorState = "ok" | "open";
 export const opensWhenIds = ["at_least", "fewer_than"] as const;
 export type OpensWhen = (typeof opensWhenIds)[number];
 
+/**
+ * What a search monitor compares (#279): its saved search's series (a count, or its `agg`), or the
+ * share of all rows its search matches in the window, in percent.
+ */
+export const monitorMeasures = ["series", "share"] as const;
+export type MonitorMeasure = (typeof monitorMeasures)[number];
+
+export function parseMonitorMeasure(value: unknown): MonitorMeasure | null {
+  return typeof value === "string" && (monitorMeasures as readonly string[]).includes(value) ? (value as MonitorMeasure) : null;
+}
+
 export function parseOpensWhen(value: unknown): OpensWhen | null {
   return typeof value === "string" && (opensWhenIds as readonly string[]).includes(value)
     ? (value as OpensWhen)
@@ -149,8 +160,11 @@ export const keptStretches = 200;
 export const laneColumns = 240;
 
 /** "fewer than 1", "rate fewer than 0.5", "p99(duration_ms) at least 800": what opens it, in words. */
-export function opensWhenWords(opensWhen: OpensWhen, series: string | null, threshold: number): string {
+export function opensWhenWords(opensWhen: OpensWhen, series: string | null, threshold: number, measure: MonitorMeasure = "series"): string {
   const n = Number.isInteger(threshold) ? threshold.toLocaleString("en-US") : String(Number(threshold.toPrecision(6)));
+  if (measure === "share") {
+    return `${opensWhen === "fewer_than" ? "fewer than" : "at least"} ${n}% of all rows`;
+  }
   return `${series ? `${series} ` : ""}${opensWhen === "fewer_than" ? "fewer than" : "at least"} ${n}`;
 }
 

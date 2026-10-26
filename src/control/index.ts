@@ -90,6 +90,8 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "last_result_at", "INTEGER");
   // A search monitor opens at least or fewer than its threshold, and says why it could not tell (#176).
   addColumnIfMissing(db, "alert_rules", "opens_when", "TEXT NOT NULL DEFAULT 'at_least'");
+  // #279: a monitor compares its series, or its search's share of all rows.
+  addColumnIfMissing(db, "alert_rules", "measure", "TEXT NOT NULL DEFAULT 'series'");
   addColumnIfMissing(db, "alert_rules", "cant_tell", "TEXT");
   // A push monitor (#177): its keyed URL, when its next result is due and how long past that it
   // waits, when its due time counts from, the run started and not yet ended, its last ok, and

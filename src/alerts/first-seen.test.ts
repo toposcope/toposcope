@@ -23,6 +23,7 @@ const mark = (id: string, over: Partial<ChangeMark> = {}): ChangeMark => ({
 const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
   id: "rule-1",
   name: "new bugs after a deploy",
+  measure: "series",
   kind: "first_seen",
   last_mark: null,
   body_kind: "default",
