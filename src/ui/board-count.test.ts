@@ -1,7 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { OperatorSidebar } from "./components/operator-sidebar";
 import type { SavedSearch } from "./types";
 
 // A board's sidebar count read 0: `GET /api/saved-searches/:id/run` refuses a board (400),
@@ -18,40 +15,7 @@ const board: SavedSearch = {
 };
 const plain: SavedSearch = { ...board, id: "p1", name: "box commands", board: null };
 
-const noop = () => {};
-
-function sidebar(counts: Record<string, number>): string {
-  const props = {
-    saved: [board, plain],
-    alerts: [],
-    counts,
-    activeSavedId: null,
-    elsewhere: {},
-    facets: { level: [], service: [], host: [] },
-    activeFacets: {},
-    facetsLoading: false,
-    attrPins: [],
-    attrFacetValues: {},
-    attrFacetsLoading: false,
-    attrPrefixes: {},
-    attrKeys: [],
-    attrKeysLoading: false,
-    onToggleFacet: noop,
-    onOnlyFacet: noop,
-    onClearFacet: noop,
-    onAddAttrFacet: noop,
-    onRemoveAttrFacet: noop,
-    onAttrPrefix: noop,
-    onOpenAddFacet: noop,
-    onApplySaved: noop,
-    onTest: noop,
-    onAlert: noop,
-    onDeleteSaved: noop,
-  };
-  return renderToStaticMarkup(createElement(OperatorSidebar, props as never));
-}
-
-describe("a board's sidebar count", () => {
+describe("a board's saved count", () => {
   test("is not read from a refused run, so it is not 0", async () => {
     // The run route answers a board with 400, as it does today.
     const fetchRun = async (url: string) =>
@@ -64,13 +28,4 @@ describe("a board's sidebar count", () => {
     expect("b1" in counts).toBe(false);
   });
 
-  test("shows no count: the sliders say it is a board, and its ⋯ says why it cannot be watched (#168, 16j)", () => {
-    const html = sidebar({ p1: 14 });
-    const boardRow = html.slice(html.indexOf("fleet · box"), html.indexOf("box commands"));
-    expect(boardRow).not.toMatch(/>0<\/span>/);
-    expect(boardRow).not.toMatch(/>—<\/span>/);
-    expect(html).toMatch(/aria-label="A board"/);
-    expect(html).toMatch(/title="Boards cannot be watched[^"]*"[^>]*aria-label="More for fleet · box"/);
-    expect(html).toMatch(/>14<\/span>/);
-  });
 });

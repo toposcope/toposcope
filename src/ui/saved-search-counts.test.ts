@@ -32,11 +32,9 @@ describe("saved-search count fan-out", () => {
     expect(replaceSearchRunRequests(appSource, 10)).toBe(0);
   });
 
-  test("sidebar counts refresh on their own clock", () => {
+  test("the hunt reads no per-saved-search counts: Home reads its own, every 30 s (#260)", () => {
     expect(SAVED_COUNT_REFRESH_MS).toBe(30_000);
-    expect(appSource).toContain("SAVED_COUNT_REFRESH_MS");
-    expect(appSource).toMatch(
-      /setInterval\(\(\) => \{\s*void loadCounts\(saved\);\s*\}, SAVED_COUNT_REFRESH_MS\)/,
-    );
+    expect(appSource).not.toContain("loadCounts(");
+    expect(appSource).not.toContain("loadSavedCounts");
   });
 });

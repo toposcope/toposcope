@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Copy, House, Menu, Undo2 } from "lucide-react";
+import { Undo2 } from "lucide-react";
 import { HeaderField, HeaderTabs } from "@/components/operator-header";
 import { AccessPlaceholder } from "@/components/placeholder-pages";
 import { HomeView } from "@/components/home-view";
@@ -23,10 +23,11 @@ import { TraceWaterfall } from "@/components/trace-waterfall";
 import { SpanFlamegraph } from "@/components/span-flamegraph";
 import { EventTable } from "@/components/event-table";
 import { WorkspaceStrip } from "@/components/workspace-strip";
-import { OperatorSidebar } from "@/components/operator-sidebar";
+import { FacetChips } from "@/components/facet-chips";
+import { HuntCrumb } from "@/components/hunt-crumb";
+import { BoardInputs } from "@/components/board-inputs";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
-import { loadSavedCounts } from "./saved-counts";
 import { marksHuntWindow, monitorHuntRange, pushHuntRange, sourceOf, watchCounts, type WatchFilter, type WatchRange } from "./watch";
 import { monitorQuery } from "../shared/push";
 import { SettingsDialog } from "@/components/settings-dialog";
@@ -41,15 +42,7 @@ import { WidgetCanvas, type SeriesData } from "@/components/widget-canvas";
 import { BoardEmpty } from "@/components/board-inputs";
 import type { HbarCommand } from "@/components/hbar-widget";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { CountText } from "@/components/count-text";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type {
   AlertRule,
@@ -69,8 +62,6 @@ import { BrandMark } from "./brand-mark";
 import { eventKey, indexOfEventKey } from "./event-key";
 import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
-import { SAVED_COUNT_REFRESH_MS } from "./saved-search-counts";
-import { clampSidebar, sidebarDefault } from "./saved-list";
 import { joinTraceRef } from "../shared/ids";
 import {
   formatChangeMarkLabel,
@@ -136,7 +127,6 @@ import {
   mergeAggSplits,
   parseSearchAgg,
   refusedAgg,
-  seriesLabel,
   rateFromHistogram,
   windowSeconds,
 } from "../query/agg";
@@ -198,7 +188,7 @@ import {
   surroundingMaxN,
   surroundingStepN,
 } from "../query/surrounding";
-import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, removeFieldToken, activeFacetValues, queryFieldKeys, toggleFingerprintCutFilter } from "./query-tokens";
+import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, queryFieldKeys, toggleFingerprintCutFilter } from "./query-tokens";
 import {
   histogramTotal,
   livePageSize,
@@ -233,9 +223,8 @@ import {
   type FollowSpan,
 } from "../shared/follow-span";
 import { FollowOpenedChip } from "@/components/follow-opened-chip";
-import { ToposcopeGroup } from "@/components/toposcope-group";
 import { HeldContext } from "./held-context";
-import { heldView, savedWindow } from "./held-view";
+import { heldView } from "./held-view";
 import { HeldPill, ScopeChipView } from "@/components/held-tells";
 import { useHeld } from "./use-held";
 import {
@@ -445,58 +434,7 @@ export function App() {
     () => parseSearchUrl(typeof window === "undefined" ? "" : window.location.search),
     [],
   );
-  // The sidebar's width (#168, 16l): dragged between 240 and 400, remembered in this browser.
-  const [sideW, setSideW] = useState(() => {
-    try {
-      const stored = Number(localStorage.getItem("toposcope.sidebarWidth"));
-      return Number.isFinite(stored) && stored >= sidebarDefault ? stored : sidebarDefault;
-    } catch {
-      return sidebarDefault;
-    }
-  });
   const plotRef = useRef<HTMLDivElement>(null);
-  const keepSideW = (width: number) => {
-    setSideW(width);
-    try {
-      localStorage.setItem("toposcope.sidebarWidth", String(width));
-    } catch {
-      // A browser that keeps nothing starts at 240 next time.
-    }
-  };
-  const sideWFor = (wanted: number, from: number, plotNow: number) => clampSidebar(wanted, from, plotNow);
-  const onSideEdgeDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) {
-      return;
-    }
-    event.preventDefault();
-    const edge = event.currentTarget;
-    edge.setPointerCapture(event.pointerId);
-    const startX = event.clientX;
-    const startW = sideW;
-    const startPlot = plotRef.current?.getBoundingClientRect().width ?? Infinity;
-    let width = startW;
-    const move = (e: PointerEvent) => {
-      width = sideWFor(startW + (e.clientX - startX), startW, startPlot);
-      setSideW(width);
-    };
-    const up = () => {
-      edge.removeEventListener("pointermove", move);
-      edge.removeEventListener("pointerup", up);
-      edge.removeEventListener("pointercancel", up);
-      keepSideW(width);
-    };
-    edge.addEventListener("pointermove", move);
-    edge.addEventListener("pointerup", up);
-    edge.addEventListener("pointercancel", up);
-  };
-  const onSideEdgeKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const step = event.key === "ArrowRight" ? 16 : event.key === "ArrowLeft" ? -16 : 0;
-    if (step === 0) {
-      return;
-    }
-    event.preventDefault();
-    keepSideW(sideWFor(sideW + step, sideW, plotRef.current?.getBoundingClientRect().width ?? Infinity));
-  };
   const [from, setFrom] = useState(boot.from);
   const [to, setTo] = useState(boot.to);
   const [range, setRange] = useState<RangeMode>(boot.range);
@@ -578,6 +516,10 @@ export function App() {
   const pendingCutRef = useRef<string | null>(
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("cut"),
   );
+  // `mark=<id>` (#260): the hunt lands with the Compare fold open under that mark.
+  const pendingMarkRef = useRef<string | null>(
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("mark"),
+  );
   const [markBefore, setMarkBefore] = useState<ChangeMark | null>(null);
   const [markAfter, setMarkAfter] = useState<ChangeMark | null>(null);
   const [marksOff, setMarksOff] = useState<ChangeMarkKind[]>([]);
@@ -641,20 +583,6 @@ export function App() {
     void loadHome().catch(() => undefined);
   }, [loadHome]);
 
-  async function setHome(id: string | null) {
-    const res = await fetch("/api/home", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ saved_id: id }),
-    });
-    const json = (await res.json().catch(() => null)) as { saved_id?: string | null; error?: string } | null;
-    if (!res.ok) {
-      toast.error(json?.error ?? `Home failed (${res.status})`);
-      return;
-    }
-    setHomeId(json?.saved_id ?? null);
-    toast.success(id ? "The bare address opens on this search" : "The bare address opens on All logs");
-  }
 
   const loadInstance = useCallback(async () => {
     const res = await fetch("/api/instance");
@@ -693,7 +621,6 @@ export function App() {
     await fetch("/api/sign-out", { method: "POST" }).catch(() => undefined);
     window.location.assign("/?signed_out=1");
   }
-  const [counts, setCounts] = useState<Record<string, number>>({});
   const [alerts, setAlerts] = useState<MonitorView[]>([]);
   /** Watch (#175): every monitor, and its stretches on Watch's clock. */
   const [monitors, setMonitors] = useState<MonitorsResponse | null>(null);
@@ -730,7 +657,6 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tokensOpen, setTokensOpen] = useState(false);
   const [sharesOpen, setSharesOpen] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [saveAsOpen, setSaveAsOpen] = useState(false);
   const [saveUpdate, setSaveUpdate] = useState(false);
   const [alertDraft, setAlertDraft] = useState<AlertDraft | null>(null);
@@ -947,11 +873,6 @@ export function App() {
     setFieldsWarm(false);
   }
 
-  const loadCounts = useCallback(async (searches: SavedSearch[]) => {
-    const { counts: next } = await loadSavedCounts(searches);
-    setCounts(next);
-  }, []);
-
   const loadSaved = useCallback(async () => {
     const res = await fetch("/api/saved-searches");
     if (res.status === 401) {
@@ -963,8 +884,7 @@ export function App() {
     }
     const json = (await res.json()) as { searches: SavedSearch[] };
     setSaved(json.searches);
-    await loadCounts(json.searches);
-  }, [loadCounts]);
+  }, []);
 
   const loadFacets = useCallback(async (query: string) => {
     const gen = viewGenRef.current;
@@ -1815,7 +1735,6 @@ export function App() {
         }
         const json = (await res.json()) as { searches: SavedSearch[] };
         setSaved(json.searches);
-        await loadCounts(json.searches);
         const item = boot.saved
           ? json.searches.find((row) => row.id === boot.saved)
           : undefined;
@@ -1934,16 +1853,6 @@ export function App() {
   }, [live, view, wsKind, runSearch]);
 
   useEffect(() => {
-    if (view !== "search" || saved.length === 0) {
-      return;
-    }
-    const id = setInterval(() => {
-      void loadCounts(saved);
-    }, SAVED_COUNT_REFRESH_MS);
-    return () => clearInterval(id);
-  }, [view, saved, loadCounts]);
-
-  useEffect(() => {
     if (!searching) {
       setSearchElapsedMs(0);
       return;
@@ -2004,6 +1913,7 @@ export function App() {
       live,
       saved: savedId,
       view,
+      mark: compare?.mark.id ?? null,
       split,
       chart,
       logScale,
@@ -2032,7 +1942,7 @@ export function App() {
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [q, range, from, to, live, savedId, view, split, chart, logScale, step, attrFacets, cols, agg, replaceY, logsOn, widgets, bind, saved]);
+  }, [q, range, from, to, live, savedId, view, compare, split, chart, logScale, step, attrFacets, cols, agg, replaceY, logsOn, widgets, bind, saved]);
 
   useEffect(() => {
     function onPop() {
@@ -2352,6 +2262,20 @@ export function App() {
     );
   }
 
+  async function togglePinned(item: SavedSearch) {
+    const res = await fetch(`/api/saved-searches/${item.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ pinned: !item.pinned }),
+    });
+    if (!res.ok) {
+      toast.error(`Pin failed (${res.status})`);
+      return;
+    }
+    toast.success(item.pinned ? `${item.name} unpinned from Home` : `${item.name} pinned to Home`);
+    await loadSaved().catch(() => undefined);
+  }
+
   async function onDelete(id: string) {
     const res = await fetch(`/api/saved-searches/${id}`, { method: "DELETE" });
     if (res.status === 409) {
@@ -2368,29 +2292,6 @@ export function App() {
     await loadSaved();
   }
 
-  async function onTest(id: string) {
-    const res = await fetch(`/api/saved-searches/${id}/test`, { method: "POST" });
-    if (!res.ok) {
-      toast.error(`Test failed (${res.status})`);
-      return;
-    }
-    const json = (await res.json()) as {
-      count: number;
-      value?: number;
-      refused?: boolean;
-      agg?: string | null;
-      reason?: string;
-    };
-    if (json.refused) {
-      toast.message(json.reason ?? "This series cannot be evaluated");
-      return;
-    }
-    if (json.agg) {
-      toast.message(`${seriesLabel(json.agg)} ${json.value ?? json.count}`);
-      return;
-    }
-    toast.message(`${json.count} match${json.count === 1 ? "" : "es"}`);
-  }
 
   async function createAlert(input: MonitorInput | HttpMonitorInput | NetMonitorInput) {
     const res = await fetch("/api/alert-rules", {
@@ -2483,7 +2384,6 @@ export function App() {
   function openMonitor(monitor: MonitorView, stretch?: Pick<MonitorStretch, "opened_at" | "resolved_at">) {
     if (sourceOf(monitor) === "push") {
       // 18i: its results are rows (`monitor:<name>`), with how each went and how long it ran.
-      setSheetOpen(false);
       setView("search");
       const id = wsSeq + 1;
       const at = stretch ?? monitor.open;
@@ -2505,7 +2405,6 @@ export function App() {
     }
     if (sourceOf(monitor) === "http" || sourceOf(monitor) === "tcp" || sourceOf(monitor) === "cert") {
       // Its results are its rows (#178, #180).
-      setSheetOpen(false);
       setView("search");
       const tab = wsSeq + 1;
       addWorkspace(
@@ -2520,7 +2419,6 @@ export function App() {
       toast.error("This monitor's saved search is gone");
       return;
     }
-    setSheetOpen(false);
     setView("search");
     const id = wsSeq + 1;
     addWorkspace({ ...snapFromSaved(item, {}), ...monitorHuntWindow(stretch ?? monitor.open) }, true);
@@ -2530,7 +2428,6 @@ export function App() {
   /** #212, 20c: a chip's stretch of marks, every service, in a new Search tab. */
   function openMarksStretch(fromMs: number, toMs: number) {
     const pick = marksHuntWindow(Date.now(), fromMs, toMs);
-    setSheetOpen(false);
     setView("search");
     addWorkspace(
       {
@@ -2583,7 +2480,6 @@ export function App() {
   }
 
   function openSavedTab(item: SavedSearch) {
-    setSheetOpen(false);
     setView("search");
     addWorkspace(snapFromSaved(item, {}), true);
   }
@@ -2984,6 +2880,38 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowMarks]);
 
+  // Esc closes the Compare fold when nothing nearer is open (#260; principle 08: Esc goes back one step).
+  useEffect(() => {
+    if (!compare) {
+      return;
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape" || e.defaultPrevented || isTypingTarget(e.target) || detailOpen) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"], [role="menu"]')) {
+        return;
+      }
+      setCompare(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [compare, detailOpen]);
+
+  useEffect(() => {
+    const id = pendingMarkRef.current;
+    if (!id) {
+      return;
+    }
+    const mark = windowMarks.find((m) => m.id === id);
+    if (!mark) {
+      return;
+    }
+    pendingMarkRef.current = null;
+    openCompare(mark);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windowMarks]);
+
   function openCompare(mark: ChangeMark) {
     const openedAt = live
       ? new Date().toISOString()
@@ -3336,6 +3264,7 @@ export function App() {
       live,
       saved: savedId,
       view,
+      mark: compare?.mark.id ?? null,
       split,
       chart,
       logScale,
@@ -3436,13 +3365,7 @@ export function App() {
     applyQuery(toggleFieldToken(q, field, value));
   }
 
-  function onOnlyFacet(field: string, value: string) {
-    applyQuery(setFieldToken(q, field, value));
-  }
 
-  function onClearFacet(field: string) {
-    applyQuery(removeFieldToken(q, field));
-  }
 
   function onAddAttrFacet(key: string) {
     if (!isChartSummaryKey(key, fieldRoles)) {
@@ -3858,88 +3781,6 @@ export function App() {
           : null,
       };
 
-  const sidebar = (
-    <OperatorSidebar
-      saved={saved}
-      alerts={alerts}
-      counts={counts}
-      activeSavedId={savedId}
-      homeId={homeId}
-      onSetHome={(id) => void setHome(id)}
-      elsewhere={elsewhere}
-      facets={facets}
-      activeFacets={activeFacets}
-      facetsLoading={facetsLoading}
-      attrPins={attrFacets}
-      attrFacetValues={displayAttrFacets}
-      attrFacetsLoading={attrFacetsLoading}
-      attrPrefixes={attrPrefixes}
-      attrKeys={chartAttrKeyOptions}
-      attrKeysLoading={attrKeysLoading}
-      onToggleFacet={onToggleFacet}
-      onOnlyFacet={onOnlyFacet}
-      onClearFacet={onClearFacet}
-      onAddAttrFacet={onAddAttrFacet}
-      onRemoveAttrFacet={onRemoveAttrFacet}
-      onAttrPrefix={(key, prefix) =>
-        setAttrPrefixes((prev) => ({ ...prev, [key]: prefix }))
-      }
-      onOpenAddFacet={() => void onOpenAddFacet()}
-      onApplySaved={openSavedTab}
-      onTest={(id) => void onTest(id)}
-      onAlert={(item) => {
-        if (item.board) {
-          return;
-        }
-        setNewMonitor({ savedSearchId: item.id, lockSearch: true });
-      }}
-      onDeleteSaved={(id) => void onDelete(id)}
-      toposcope={
-        heldV ? (
-          <ToposcopeGroup
-            sources={held.sources}
-            counts={heldCounts}
-            floorFor={(name) => heldV.facetFloor("toposcope", name)}
-            checked={activeFacetValues(q, ["toposcope"]).toposcope ?? []}
-            now={held.now}
-            live={live}
-            mode={isSurr ? "frozen" : wsKind === "follow" ? "follow" : boardOn ? "board" : "search"}
-            onToggle={(name) => onToggleFacet("toposcope", name)}
-            onOpenLinks={() => setView("links")}
-          />
-        ) : null
-      }
-      facetFloor={heldV?.facetFloor}
-      savedFloor={
-        heldV
-          ? (item) => {
-              const win = savedWindow(item, held.now);
-              return win !== null && heldV.countGaps(item.query, win).length > 0;
-            }
-          : undefined
-      }
-      frozen={isSurr}
-      frozenNote="Carried in from the tab this was opened from. The facets below report it; Saved still opens a new Search tab."
-      templateLocked={boardOn}
-      board={
-        activeSaved?.board
-          ? {
-              capLabel: `${boardSlotCount(activeSaved.board)} of 4`,
-              fields: activeSaved.board.keys.map((key) => ({
-                key,
-                value: bind[key] ?? null,
-                values: boardBindValues[key] ?? [],
-              })),
-              windowLabel: activeSaved.board.win
-                ? rangeTriggerLabel(range, from, to)
-                : null,
-              onPick: onPickBind,
-              onWindow: () => clockRef.current?.click(),
-            }
-          : null
-      }
-    />
-  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -3974,6 +3815,41 @@ export function App() {
         ) : null}
         <HeaderTabs view={view} watchOpen={watching.open > 0} onView={setView} />
         <div className="ml-auto flex items-center gap-2">
+          {view === "search" && !isSurr ? (
+            <div className="flex items-center gap-1.5">
+              <TimeRangePicker
+                  ref={clockRef}
+                  range={range}
+                  from={from}
+                  to={to}
+                  live={live}
+                  liveWindowMs={liveWindowMs.current}
+                  lockAbsolute={boardOn}
+                  disabled={boardOn && !activeSaved?.board?.win}
+                  onRangeChange={onRangeChange}
+                  onCustomRange={onCustomRange}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={live ? "secondary" : "outline"}
+                  aria-pressed={live}
+                  className={boardOn ? "pointer-events-none opacity-50" : undefined}
+                  onClick={() => onLiveChange(!live)}
+                >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      live && !searching
+                        ? "animate-pulse bg-emerald-400"
+                        : live
+                          ? "bg-emerald-400"
+                          : "bg-muted-foreground"
+                    }`}
+                  />
+                  {searching ? "Paused" : "Live"}
+                </Button>
+            </div>
+          ) : null}
           {view !== "search" ? (
             <HeaderField
               onHunt={(q) => {
@@ -3989,7 +3865,8 @@ export function App() {
             <button
               type="button"
               className={cn(
-                "inline-flex h-[26px] items-center gap-1.5 rounded-md border px-3 text-[12px]",
+                // The Watch tab's dot says it at any width (26a); the counts in words need the room.
+                "hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-[12px] xl:inline-flex",
                 watching.open > 0 ? "border-red-500/50" : "border-white/15",
               )}
               title="Open Watch"
@@ -4095,27 +3972,7 @@ export function App() {
             onDuplicate={onDuplicateWorkspace}
           />
           <div className="flex min-h-0 min-w-0 flex-1">
-          <aside
-            className="hidden min-h-0 min-w-0 max-w-[34%] shrink-0 overflow-x-hidden overflow-y-auto border-r bg-[#0f0f11] md:block"
-            style={{ width: sideW }}
-          >
-            {sidebar}
-          </aside>
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Sidebar width"
-            aria-valuemin={sidebarDefault}
-            aria-valuemax={400}
-            aria-valuenow={sideW}
-            tabIndex={0}
-            title={`${sideW} px · drag · double-click for ${sidebarDefault}`}
-            onPointerDown={onSideEdgeDown}
-            onDoubleClick={() => keepSideW(sidebarDefault)}
-            onKeyDown={onSideEdgeKey}
-            className="relative z-10 -ml-[3px] hidden w-[5px] shrink-0 cursor-col-resize outline-none hover:bg-plate/70 focus-visible:bg-plate/70 md:block"
-          />
-          <div ref={plotRef} className="-ml-[2px] flex min-h-0 min-w-0 flex-1 flex-col">
+          <div ref={plotRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
             {isSurr ? (
               activeInspect ? (
                 <>
@@ -4264,8 +4121,31 @@ export function App() {
               )
             ) : (
             <>
+            <HuntCrumb
+              name={activeSaved?.name ?? null}
+              board={boardOn}
+              dirty={dirty}
+              pinned={Boolean(activeSaved?.pinned)}
+              mark={compare?.mark ?? null}
+              saveDisabled={qErrOn}
+              onHome={() => setView("home")}
+              onCloseMark={() => setCompare(null)}
+              onSave={onSaveClick}
+              onSaveAs={() => {
+                setSaveUpdate(false);
+                setSaveAsOpen(true);
+              }}
+              onPin={activeSaved ? () => void togglePinned(activeSaved) : null}
+              onDelete={activeSaved ? () => void onDelete(activeSaved.id) : null}
+              onWatch={() =>
+                activeSaved && !activeSaved.board
+                  ? setNewMonitor({ savedSearchId: activeSaved.id, lockSearch: true })
+                  : openNewAlert()
+              }
+              onShare={() => void copyLink()}
+            />
             <form
-              className="relative flex shrink-0 flex-wrap items-center gap-1.5 border-b px-3 py-2"
+              className="relative flex shrink-0 flex-wrap items-center gap-1.5 px-3 py-2"
               onSubmit={onSubmit}
             >
               {searching ? (
@@ -4273,14 +4153,6 @@ export function App() {
                   <div className="h-full w-1/3 animate-toposcope-indeterminate rounded-full bg-gradient-to-r from-transparent via-primary to-transparent" />
                 </div>
               ) : null}
-              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button type="button" size="icon" variant="outline" className="md:hidden">
-                    <Menu />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent>{sidebar}</SheetContent>
-              </Sheet>
               <SearchQueryField
                 value={q}
                 onChange={setQ}
@@ -4340,90 +4212,6 @@ export function App() {
                   {lastMs} ms
                 </span>
               ) : null}
-              <TimeRangePicker
-                ref={clockRef}
-                range={range}
-                from={from}
-                to={to}
-                live={live}
-                liveWindowMs={liveWindowMs.current}
-                lockAbsolute={boardOn}
-                disabled={boardOn && !activeSaved?.board?.win}
-                onRangeChange={onRangeChange}
-                onCustomRange={onCustomRange}
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant={live ? "secondary" : "outline"}
-                aria-pressed={live}
-                className={boardOn ? "pointer-events-none opacity-50" : undefined}
-                onClick={() => onLiveChange(!live)}
-              >
-                <span
-                  className={`size-1.5 rounded-full ${
-                    live && !searching
-                      ? "animate-pulse bg-emerald-400"
-                      : live
-                        ? "bg-emerald-400"
-                        : "bg-muted-foreground"
-                  }`}
-                />
-                {searching ? "Paused" : "Live"}
-              </Button>
-              <div className={`flex ${qErrOn && !boardOn ? "pointer-events-none opacity-45" : ""}`}>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="rounded-r-none border-r-0"
-                  title={
-                    boardOn
-                      ? "Edit this board — its template, window and inputs"
-                      : undefined
-                  }
-                  disabled={qErrOn && !boardOn}
-                  onClick={onSaveClick}
-                >
-                  Save
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-8 w-7 rounded-l-none px-0 text-muted-foreground"
-                      disabled={qErrOn}
-                    >
-                      <ChevronDown />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        setSaveUpdate(false);
-                        setSaveAsOpen(true);
-                      }}
-                    >
-                      Save as…
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="size-8"
-                    onClick={() => void copyLink()}
-                  >
-                    <Copy />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Copy link</TooltipContent>
-              </Tooltip>
             </form>
             <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-[7px] border-b px-3 py-[9px]">
               {unauthorized ? (
@@ -4485,38 +4273,6 @@ export function App() {
                     Reset to {histogramExploreResetLabel(explore.range)}
                   </button>
                 </>
-              ) : null}
-              {activeSaved ? (
-                <span
-                  title={
-                    boardOn
-                      ? "Board · its inputs are live, its template is locked"
-                      : undefined
-                  }
-                  className={cn(
-                    "inline-flex items-center gap-1 truncate rounded-md border px-1.5 py-0.5 text-xs text-muted-foreground",
-                    activeSaved.id === homeId ? "max-w-60" : "max-w-40",
-                    activeSaved.id === homeId && dirty && "border-dashed",
-                  )}
-                >
-                  {activeSaved.id === homeId ? (
-                    <>
-                      <House className="size-3 shrink-0" />
-                      Home ·{" "}
-                    </>
-                  ) : null}
-                  {activeSaved.name}
-                  {dirty ? " · edited" : ""}
-                </span>
-              ) : null}
-              {activeSaved && activeSaved.id === homeId && dirty ? (
-                <button
-                  type="button"
-                  className="inline-flex h-6 items-center rounded-md bg-accent px-2 text-[12px] text-foreground hover:bg-accent/70"
-                  onClick={() => applySnap(snapFromSaved(activeSaved, {}), true)}
-                >
-                  Back to Home
-                </button>
               ) : null}
             </div>
             {boardUnbound && activeSaved?.board ? (
@@ -4655,6 +4411,32 @@ export function App() {
                 </HeldContext.Provider>
               </SeriesCatalogContext.Provider>
             </div>
+            {activeSaved?.board ? (
+              <div className="px-3 pt-2">
+                <BoardInputs
+                  capLabel={`${boardSlotCount(activeSaved.board)} of 4`}
+                  fields={activeSaved.board.keys.map((key) => ({ key, value: bind[key] ?? null, values: boardBindValues[key] ?? [] }))}
+                  windowLabel={activeSaved.board.win ? rangeTriggerLabel(range, from, to) : null}
+                  onPick={onPickBind}
+                  onWindow={() => clockRef.current?.click()}
+                />
+              </div>
+            ) : null}
+            <FacetChips
+              facets={facets}
+              activeFacets={activeFacets}
+              loading={facetsLoading || attrFacetsLoading}
+              attrPins={attrFacets}
+              attrFacetValues={displayAttrFacets}
+              attrKeys={chartAttrKeyOptions}
+              attrKeysLoading={attrKeysLoading}
+              onToggle={onToggleFacet}
+              onAddAttrFacet={onAddAttrFacet}
+              onRemoveAttrFacet={onRemoveAttrFacet}
+              onOpenAddFacet={() => void onOpenAddFacet()}
+              floorFor={heldV?.facetFloor}
+              locked={boardOn}
+            />
             {logsOn ? (
               <>
             <ContextTabs

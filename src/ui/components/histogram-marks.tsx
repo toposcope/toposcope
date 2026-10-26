@@ -21,7 +21,8 @@ import {
 } from "../change-marks";
 import { MonitorBandRow, monitorBandH, type MonitorBand } from "./monitor-band";
 
-export const MARK_LANE_H = 22;
+/** The named-marks rail above the plot (#260, frame 26d): named chips, not glyphs in a 22px lane. */
+export const MARK_LANE_H = 28;
 
 const VISUAL: Record<
   ChangeMarkKind,
@@ -542,7 +543,7 @@ export function HistogramMarkLane({
       style={{ height: MARK_LANE_H + monitorBandH(overlay.monitors) }}
     >
       <div
-        className="relative h-[22px]"
+        className="relative h-[28px]"
         onPointerEnter={() => onLaneHover(true)}
         onPointerLeave={() => {
           onLaneHover(false);
@@ -580,13 +581,12 @@ export function HistogramMarkLane({
                 key={key}
                 type="button"
                 className={cn(
-                  "absolute top-1/2 z-[3] flex h-[18px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-sm whitespace-nowrap px-1 text-[11px] text-foreground/80",
-                  cluster.members.length > 1 || hovered || selected
-                    ? "border border-white/18 bg-accent/70"
+                  "absolute top-1/2 z-[3] flex h-[24px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-[6.4px] border border-white/12 bg-[#141416] whitespace-nowrap px-[9px] text-[12px] text-zinc-300",
+                  hovered || selected ? "border-white/25 text-foreground" : "",
+                  overlay.compareMarkId != null && cluster.members.some((m) => m.id === overlay.compareMarkId)
+                    ? "border-plate bg-[#1f1f23] text-foreground"
                     : "",
-                  selected
-                    ? "shadow-[0_0_0_1px_color-mix(in_oklab,var(--ring)_50%,transparent)]"
-                    : "",
+                  head.kind === "incident" ? "border-red-900 text-red-300" : "",
                   rings.has(head.id)
                     ? "shadow-[0_0_0_1px_rgba(34,197,94,0.55)]"
                     : "",
@@ -603,13 +603,19 @@ export function HistogramMarkLane({
                     );
                     return;
                   }
+                  // A named chip selects its mark: Compare opens as a fold under it (#260).
+                  if (overlay.onCompare) {
+                    overlay.onCompare(head);
+                    return;
+                  }
                   inspect(head);
                 }}
               >
                 {cluster.members.length === 1 ? (
                   <>
                     <MarkGlyph kind={head.kind} />
-                    {label ? <span>{label}</span> : null}
+                    {label ? <span className="max-w-[260px] truncate">{label}</span> : null}
+                    <b className="font-mono text-[11px] font-medium text-muted-foreground">{head.ts.slice(11, 16)}</b>
                   </>
                 ) : mixed ? (
                   <>
@@ -651,7 +657,7 @@ export function HistogramMarkLane({
                       key="cluster-pop"
                       className="absolute z-[9] w-[266px] rounded-md border bg-popover shadow-lg"
                       style={{
-                        bottom: 22,
+                        bottom: 28,
                         left: `${(frac * 100).toFixed(3)}%`,
                         transform:
                           frac > 0.6 ? "translateX(-100%)" : "translateX(8px)",
@@ -675,7 +681,14 @@ export function HistogramMarkLane({
                             className="flex items-center gap-1.5 rounded-sm px-1.5 py-1 text-left"
                             onMouseEnter={() => setRowHover(row.id)}
                             onMouseLeave={() => setRowHover(null)}
-                            onClick={() => inspect(row)}
+                            onClick={() => {
+                              if (overlay.onCompare) {
+                                overlay.onCompare(row);
+                                setOpen(null);
+                                return;
+                              }
+                              inspect(row);
+                            }}
                           >
                             <MarkGlyph kind={row.kind} />
                             <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/85">
@@ -710,7 +723,7 @@ export function HistogramMarkLane({
             <div
               className="absolute z-[9] w-[254px] rounded-md border bg-popover p-2.5 shadow-lg"
               style={{
-                bottom: 22,
+                bottom: 28,
                 left: `${(markFrac(Date.parse(inspectMark.ts), fromMs, plotSpanMs) * 100).toFixed(3)}%`,
                 transform:
                   markFrac(Date.parse(inspectMark.ts), fromMs, plotSpanMs) > 0.6
@@ -743,22 +756,6 @@ export function HistogramMarkLane({
                   overlay.onMute(inspectMark.id);
                   setOpen(null);
                 }}
-                onFingerprints={
-                  overlay.onFingerprints
-                    ? () => {
-                        overlay.onFingerprints?.(inspectMark);
-                        setOpen(null);
-                      }
-                    : undefined
-                }
-                onCompare={
-                  overlay.onCompare
-                    ? () => {
-                        overlay.onCompare?.(inspectMark);
-                        setOpen(null);
-                      }
-                    : undefined
-                }
                 compareActive={overlay.compareMarkId === inspectMark.id}
                 onFocusLogs={
                   overlay.onFocusLogs

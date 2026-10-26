@@ -89,7 +89,7 @@ export type FacetValue = { v: string; n: number };
 export type FacetField = "level" | "service" | "host";
 
 /** `toposcope` comes only when asked for (`fields=toposcope`): Search asks when something is linked (#139). */
-export type Facets = Record<FacetField, FacetValue[]> & { toposcope?: FacetValue[] };
+export type Facets = Record<FacetField, FacetValue[]> & { toposcope?: FacetValue[]; e1?: FacetValue[] };
 
 export type AlertKind = "threshold" | "first_seen";
 

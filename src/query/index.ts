@@ -701,6 +701,20 @@ export async function facets(
   return result;
 }
 
+/** The sidebar's read plus the loudest fingerprints in the window (#260): `e1` chips cost no second read. */
+export async function facetsWithFingerprints(
+  filters: SearchFilters,
+  limit?: number,
+  omitSelf = true,
+  extra: FacetField[] = [],
+): Promise<Facets & { e1: FacetValue[] }> {
+  const [core, e1] = await Promise.all([
+    facets(filters, limit, omitSelf, extra),
+    attrFacets(filters, ["e1"], 10, false).then((r) => r.e1 ?? []).catch(() => [] as FacetValue[]),
+  ]);
+  return { ...core, e1 };
+}
+
 /**
  * One field's values by count in the window, following the whole `q` (nothing omitted): a
  * share's Top-N (#225). Core fields read their rollup as the sidebar does; any other key is an attr.
@@ -1256,7 +1270,7 @@ export async function facetsRoute(c: Context): Promise<Response> {
       .split(",")
       .map((f) => f.trim())
       .filter((f): f is FacetField => f === "toposcope");
-    return c.json(await facets(searchFiltersFrom(c), limit, omitSelf, extra));
+    return c.json(await facetsWithFingerprints(searchFiltersFrom(c), limit, omitSelf, extra));
   } catch (err) {
     return queryHttpError(c, err) ?? Promise.reject(err);
   }
