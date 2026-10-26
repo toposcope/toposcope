@@ -17,10 +17,11 @@ const sha = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest
 
 const vector = "sources: {}\n";
 const composeFor = (v: string) => `name: toposcope\nservices:\n  app:\n    image: ghcr.io/toposcope/toposcope:${v}\n`;
-function releaseFiles(v: string): Record<string, string> {
+const example = `TOPOSCOPE_PASSWORD=\nTOPOSCOPE_INGEST_TOKEN=\n# TOPOSCOPE_UPDATE_CHECK=off\n# Local \`bun run dev\` only.\n# PORT=8080\n`;
+function releaseFiles(v: string, envExample = example): Record<string, string> {
   const files: Record<string, string> = {
     "compose.yml": composeFor(v),
-    "env.example": `TOPOSCOPE_PASSWORD=\nTOPOSCOPE_INGEST_TOKEN=\n# TOPOSCOPE_UPDATE_CHECK=off\n`,
+    "env.example": envExample,
     "vector.yaml": vector,
     LICENSE: "MIT\n",
     "toposcope.sh": "#!/usr/bin/env bash\n",
@@ -175,7 +176,8 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     expect(log.indexOf("pull -q app")).toBeLessThan(log.indexOf(" stop"));
     expect(log.indexOf(" stop")).toBeLessThan(log.indexOf("--entrypoint tar"));
     expect(r.all).not.toContain(token);
-    expect(r.all).toContain("New settings in env.example that .env does not have: TOPOSCOPE_UPDATE_CHECK");
+    // 0.6.2's env.example names the same settings as 0.6.1's.
+    expect(r.all).not.toContain("New settings");
   });
 
   test("Before you upgrade is the paragraph that starts with it, not a mention of it in another", async () => {
@@ -404,5 +406,34 @@ describe("upgrade from here (#220)", () => {
     expect(r.code).toBe(0);
     expect(calls()).not.toContain("pull");
     expect(calls()).not.toContain(" stop");
+  });
+});
+
+describe("upgrade.sh names only the settings a release adds to env.example (#256)", () => {
+  test("a release whose env.example names the same settings names none, though .env lacks its commented examples", async () => {
+    // agental's 0.7.2 → 0.7.3: an .env from an older install holds only the values it sets.
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(0);
+    expect(r.all).not.toContain("New settings");
+    expect(r.all).not.toContain("PORT");
+  });
+
+  test("a setting the release adds is named, commented or not, unless .env already has it", async () => {
+    releases["0.6.2"] = releaseFiles(
+      "0.6.2",
+      `${example}# TOPOSCOPE_WATCHDOG_URL=https://hc-ping.com/your-check-uuid\n# TOPOSCOPE_PUBLIC_URL=https://toposcope.example.com\nTOPOSCOPE_NEW_KEY=\n`,
+    );
+    writeFileSync(join(install, ".env"), `TOPOSCOPE_PASSWORD=operator-secret\nTOPOSCOPE_INGEST_TOKEN=${token}\nTOPOSCOPE_PUBLIC_URL=https://logs.example\n`);
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(0);
+    expect(r.all).toContain("New settings in env.example that .env does not have: TOPOSCOPE_NEW_KEY TOPOSCOPE_WATCHDOG_URL (each is described there).");
+  });
+
+  test("the env.example beside .env is the running release's, and is what the new one is compared with", async () => {
+    // An env.example from before the release check: 0.6.2 brings TOPOSCOPE_UPDATE_CHECK to this install.
+    writeFileSync(join(install, "env.example"), `TOPOSCOPE_PASSWORD=\nTOPOSCOPE_INGEST_TOKEN=\n`);
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(0);
+    expect(r.all).toContain("New settings in env.example that .env does not have: PORT TOPOSCOPE_UPDATE_CHECK (each is described there).");
   });
 });

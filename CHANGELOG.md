@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+`upgrade.sh` names only the settings a release adds to `env.example`. It compared the new `env.example` with `.env`, commented-out examples included, so an `.env` that holds only the values it sets was told on every upgrade of ten "new settings" that were examples, most of them for `bun run dev` only. It now compares the new `env.example` with the running release's (the one beside `.env`, or the release's own from GitHub) and names what that adds and `.env` lacks, commented or not. The target release's own script prints this line, so the fix shows from the next release on. [#256](https://github.com/toposcope/toposcope/issues/256)
+
 ## 0.7.3
 
 Watch's 30d marks lane and Search's lane over a long window list every mark again, today's included. `GET /api/marks` kept the oldest 500 marks in a window and dropped the rest, so at 43 deploys a day the 30d lane drew its first 11 days, left the last 18 empty and read "500 marks". It now keeps the newest, still listed oldest first, and holds up to 10,000 in a window, so a chip's count and the lane's total are every mark there. [#252](https://github.com/toposcope/toposcope/issues/252)

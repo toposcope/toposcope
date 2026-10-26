@@ -254,17 +254,33 @@ restore_backup() {
   cp "$dir/compose.yml" "$ROOT/compose.yml"
 }
 
-# Names settings the new env.example has that .env does not.
+# The settings an env.example describes, set or commented out; from stdin without a file.
+example_keys() { sed -n 's/^#* *\([A-Z][A-Z0-9_]*\)=.*/\1/p' ${1:+"$1"} | sort -u; }
+
+# Names the settings the new env.example adds to the running release's that .env does not have,
+# commented examples too, since each is described there. Without the old env.example, only the
+# ones the new one sets (#256).
 new_settings() {
-  local example="$1" key missing=""
-  for key in $(sed -n 's/^#* *\([A-Z][A-Z0-9_]*\)=.*/\1/p' "$example" | sort -u); do
+  local example="$1" old_keys="$2" keys key missing=""
+  if [ -n "$old_keys" ]; then
+    keys="$(example_keys "$example" | grep -vxF -e "$old_keys" || true)"
+  else
+    keys="$(sed -n 's/^\([A-Z][A-Z0-9_]*\)=.*/\1/p' "$example" | sort -u)"
+  fi
+  for key in $keys; do
     grep -Eq "^#* *$key=" "$ROOT/.env" || missing="$missing $key"
   done
   [ -z "$missing" ] || say "New settings in env.example that .env does not have:$missing (each is described there)."
 }
 
 swap_files() {
-  local from="$1" to="$2" dir="$ROOT/releases/$2" old_vector="$ROOT/releases/$1/vector.yaml" file
+  local from="$1" to="$2" dir="$ROOT/releases/$2" old_vector="$ROOT/releases/$1/vector.yaml" file old_keys=""
+  # The running release's settings, before its env.example is replaced.
+  if [ -f "$ROOT/env.example" ]; then
+    old_keys="$(example_keys "$ROOT/env.example")"
+  else
+    old_keys="$(curl -fsSL -m 10 "$RELEASES/v$from/env.example" 2>/dev/null | example_keys)" || old_keys=""
+  fi
   cp "$ROOT/compose.yml" "$ROOT/compose.yml.$from"
   for file in compose.yml env.example LICENSE toposcope.sh upgrade.sh; do
     cp "$dir/$file" "$ROOT/.$file.new" && mv -f "$ROOT/.$file.new" "$ROOT/$file"
@@ -277,7 +293,7 @@ swap_files() {
     cp "$dir/vector.yaml" "$ROOT/vector.yaml.new"
     say "vector.yaml was edited here, so it was kept; the $to one is vector.yaml.new beside it."
   fi
-  new_settings "$ROOT/env.example"
+  new_settings "$ROOT/env.example" "$old_keys"
 }
 
 cmd_upgrade() {
