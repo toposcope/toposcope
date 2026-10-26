@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { knownTargets, WatchThisSheet, watchThisName } from "./components/watch-this-sheet";
+import { knownTargets, targetLabel, WatchThisSheet, watchThisName } from "./components/watch-this-sheet";
 
 describe("Watch this (#264, 26h)", () => {
   test("the name says the hunt and the condition", () => {
@@ -35,5 +35,7 @@ describe("Sends to, as checkboxes (#280, 26h)", () => {
         { webhook_url: null },
       ]),
     ).toEqual(["https://ntfy.sh/ops", "https://hooks.slack.com/x"]);
+    expect(targetLabel("http://127.0.0.1:9/unused")).toBe("127.0.0.1:9/unused");
+    expect(targetLabel("https://hooks.slack.com/services/T000/B000/XXXXXXXXXXXX")).toBe("hooks.slack.com/se…XXXXXXXXXXXX");
   });
 });

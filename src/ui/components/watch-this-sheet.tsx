@@ -30,6 +30,12 @@ export function watchThisName(savedName: string | null, q: string, opensWhen: Op
   return `${what} ${opensWhen === "fewer_than" ? "below" : "above"} ${threshold}${measure === "share" ? "%" : ""}`;
 }
 
+/** "ntfy.sh/ops", "hooks.slack.com/…/x": a target told apart from another on the same host. */
+export function targetLabel(url: string): string {
+  const bare = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return bare.length > 32 ? `${bare.slice(0, 18)}…${bare.slice(-12)}` : bare;
+}
+
 /** The webhooks a sheet can tick (26h): every URL a monitor already calls, newest kind first, once each. */
 export function knownTargets(monitors: Array<{ webhook_url: string | null; webhook_urls?: string[] | null }>): string[] {
   const out: string[] = [];
@@ -225,9 +231,9 @@ export function WatchThisSheet(props: {
               </label>
             ) : null}
             {known.map((u) => (
-              <label key={u} className="inline-flex items-center gap-2" title={u}>
+              <label key={u} className="inline-flex max-w-[260px] items-center gap-2" title={u}>
                 <input type="checkbox" checked={ticked.includes(u)} onChange={() => toggle(u)} />
-                {callHost(u)}
+                <span className="truncate">{targetLabel(u)}</span>
               </label>
             ))}
             <span className="inline-flex items-center gap-1.5">
