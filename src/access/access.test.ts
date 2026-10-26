@@ -52,7 +52,7 @@ describe("GET /api/access (#265)", () => {
     expect(bearer.created).toBe(true);
     const env = listed.rows.find((r) => r.name === "TOPOSCOPE_INGEST_TOKEN")!;
     const made = listed.rows.find((r) => r.name === "collector")!;
-    expect(env.verb).toBe("writes in");
+    expect(env.verb).toBe("token");
     expect(env.revoke).toBeNull();
     expect(made.revoke).toBe("/api/api-tokens/t1");
     // The minute not yet written counts: ClickHouse is unreachable here, so pending use is all there is.

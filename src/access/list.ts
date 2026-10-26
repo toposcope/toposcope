@@ -14,8 +14,10 @@ import { accessKey, pendingAccessUse, type AccessKind } from "./use";
 export type AccessRowKind = "token" | "invite" | "link" | "share";
 export type AccessRow = {
   kind: AccessRowKind;
-  /** What it lets through, in the list's words. */
-  verb: "writes in" | "copies rows out" | "invite" | "reads aggregates";
+  /** Its kind in plain words (29a): which way rows move, from this instance's side. */
+  verb: "token" | "we copy from" | "copies from us" | "key not used yet" | "share";
+  /** Which way rows move: in to here, out from here (a key says the way it will move once pasted). */
+  direction: "in" | "out";
   id: string;
   name: string;
   lets_through: string;
@@ -85,24 +87,24 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
   if (ingestToken()) {
     const u = use("token", envIngestTokenName);
     rows.push({
-      kind: "token", verb: "writes in", id: "env", name: envIngestTokenName,
-      lets_through: "ingest token from .env · logs, metrics, traces, marks",
+      kind: "token", verb: "token", direction: "in", id: "env", name: envIngestTokenName,
+      lets_through: "from .env · sends logs, metrics, traces, marks",
       scope: "any", expires_at: null, last_used_at: u.last, today: { used: u.used, refused: u.refused }, revoke: null, open: null,
     });
   }
   for (const t of allTokens()) {
     const u = use("token", t.name);
     rows.push({
-      kind: "token", verb: "writes in", id: t.id, name: t.name,
-      lets_through: "ingest token · logs, metrics, traces, marks",
+      kind: "token", verb: "token", direction: "in", id: t.id, name: t.name,
+      lets_through: "sends logs, metrics, traces, marks",
       scope: "any", expires_at: null, last_used_at: u.last ?? t.last_used_at ?? null, today: { used: u.used, refused: u.refused },
       revoke: `/api/api-tokens/${encodeURIComponent(t.id)}`, open: null,
     });
   }
   for (const k of openLinkKeys(now)) {
     rows.push({
-      kind: "invite", verb: "invite", id: k.kid, name: kidLabel(k.kid),
-      lets_through: k.kind === "offer" ? "link key, not yet pasted · rows leave here once it is" : "link key, not yet pasted · this instance pulls once it is",
+      kind: "invite", verb: "key not used yet", direction: k.kind === "offer" ? "out" : "in", id: k.kid, name: kidLabel(k.kid),
+      lets_through: k.kind === "offer" ? "becomes a link once pasted there · it will copy from us" : "becomes a link once pasted there · we will copy from it",
       scope: k.q || "every row", expires_at: k.until, last_used_at: null, today: { used: 0, refused: 0 },
       revoke: `/api/links/keys/${encodeURIComponent(k.kid)}`, open: null,
     });
@@ -111,9 +113,9 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
     const peer = l.peer_name || l.peer_url;
     const u = use("link", l.peer_name || l.id);
     rows.push({
-      kind: "link", verb: "copies rows out", id: l.id,
-      name: l.role === "pull" ? `${peer} → here` : `here → ${peer}`,
-      lets_through: l.role === "pull" ? "link, pulled by this instance · raw rows within the scope" : "link, pulled by the other side · raw rows within the scope",
+      kind: "link", verb: l.role === "pull" ? "we copy from" : "copies from us", direction: l.role === "pull" ? "in" : "out", id: l.id,
+      name: peer,
+      lets_through: l.role === "pull" ? "this instance pulls its rows" : "pulls our rows within the scope",
       scope: l.q || "every row", expires_at: null, last_used_at: l.last_contact_at, today: { used: u.used, refused: u.refused },
       revoke: `/api/links/${encodeURIComponent(l.id)}`, open: `?view=access&link=${encodeURIComponent(l.id)}`,
     });
@@ -125,8 +127,8 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
     const u = use("share", s.name);
     const origins = s.embed.frame_ancestors.map((o) => o.replace(/^https?:\/\//, ""));
     rows.push({
-      kind: "share", verb: "reads aggregates", id: s.id, name: s.name,
-      lets_through: `share${origins.length ? ` · shown on ${origins.join(", ")}` : " · JSON only"}`,
+      kind: "share", verb: "share", direction: "out", id: s.id, name: s.name,
+      lets_through: origins.length ? `shown on ${origins.join(", ")}` : "JSON only",
       scope: shareScopeWords(s.scope), expires_at: s.expires_at, last_used_at: u.last, today: { used: u.used, refused: u.refused },
       revoke: `/api/shares/${encodeURIComponent(s.name)}`, open: `?view=access&share=${encodeURIComponent(s.name)}`,
     });

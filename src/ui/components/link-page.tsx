@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { behindWords, linkTitle, quarterBars, ratePerHour, type LinkPageData } from "../link-page";
+import { behindWords, linkKind, linkTitle, quarterBars, ratePerHour, type LinkPageData } from "../link-page";
 import { clockAt } from "../watch";
 
 /**
@@ -10,7 +10,7 @@ import { clockAt } from "../watch";
  * stands, the rows it pulled over a day with any gap drawn as a floor, pause and revoke. The key is
  * never shown again.
  */
-export function LinkPage(props: { id: string; onBack: () => void; onBackToLinks: () => void; onOpenHunt: (q: string) => void }) {
+export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q: string) => void }) {
   const [link, setLink] = useState<LinkPageData | null>(null);
   const [missing, setMissing] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -74,13 +74,13 @@ export function LinkPage(props: { id: string; onBack: () => void; onBackToLinks:
           Access
         </button>
         <span className="text-zinc-600">›</span>
-        <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onBackToLinks}>
-          Links
-        </button>
-        <span className="text-zinc-600">›</span>
         <span className="font-medium text-foreground">{linkTitle(link)}</span>
+        <span className="ml-1 inline-flex h-[22px] items-center gap-1.5 rounded-[6px] border border-white/10 px-2 text-[11.5px] whitespace-nowrap text-zinc-300">
+          <span className="text-plate">{linkKind(link).glyph}</span>
+          {linkKind(link).words}
+        </span>
         <span className="ml-1.5 text-[12px] text-muted-foreground">
-          <span className="text-plate">⇄</span> copies rows out of {link.role === "pull" ? link.peer : "here"} · pulled by {link.role === "pull" ? "this instance" : link.peer} · since {new Date(link.created_at).toISOString().slice(0, 10)}
+          {link.role === "pull" ? `this instance pulls ${link.peer}'s rows` : `${link.peer} pulls our rows`} · since {new Date(link.created_at).toISOString().slice(0, 10)}
         </span>
         <div className="flex-1" />
         <Button type="button" size="sm" variant="outline" onClick={() => void put({ paused: !link.paused }, link.paused ? "Resumed" : "Paused: the link stays and keeps its place")}>
@@ -106,10 +106,10 @@ export function LinkPage(props: { id: string; onBack: () => void; onBackToLinks:
           <section className={card}>
             <span className="text-[12px] text-muted-foreground">Which way, and what</span>
             <div className={kv}>
-              <span className="text-muted-foreground">source</span>
+              <span className="text-muted-foreground">from</span>
               <span className="truncate font-mono">{link.role === "pull" ? `${link.peer} · ${link.peer_url}` : "here"}</span>
-              <span className="text-muted-foreground">puller</span>
-              <span className="truncate font-mono">{link.role === "pull" ? "here" : link.peer}</span>
+              <span className="text-muted-foreground">pulled by</span>
+              <span className="truncate font-mono">{link.role === "pull" ? "this instance" : link.peer}</span>
               <span className="text-muted-foreground">scope</span>
               {editing !== null ? (
                 <form
@@ -132,7 +132,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onBackToLinks:
               <span className="text-muted-foreground">key</span>
               <span className="text-muted-foreground">never shown again · revoke to end it</span>
             </div>
-            {!link.scope_here ? <span className="text-[12px] text-muted-foreground">The source holds this link's scope: change it there.</span> : null}
+            {!link.scope_here ? <span className="text-[12px] text-muted-foreground">The other instance holds this link's scope: change it there.</span> : null}
           </section>
           {link.role === "pull" ? (
             <section className={card}>

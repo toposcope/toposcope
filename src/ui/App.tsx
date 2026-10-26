@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Undo2 } from "lucide-react";
-import { HeaderField, HeaderTabs, settingsLit } from "@/components/operator-header";
+import { accessLit, HeaderField, HeaderTabs, settingsLit } from "@/components/operator-header";
 import { AccessView, type AccessFilter } from "@/components/access-view";
 import { SharePage } from "@/components/share-page";
 import { LinkPage } from "@/components/link-page";
@@ -3925,8 +3925,8 @@ export function App() {
           <Button
             type="button"
             size="sm"
-            variant={view === "access" ? "secondary" : "ghost"}
-            aria-current={view === "access" ? "page" : undefined}
+            variant={accessLit(view) ? "secondary" : "ghost"}
+            aria-current={accessLit(view) ? "page" : undefined}
             onClick={() => setView("access")}
           >
             Access
@@ -3985,10 +3985,6 @@ export function App() {
           onBack={() => {
             setLinkPageId(null);
             setView("access");
-          }}
-          onBackToLinks={() => {
-            setLinkPageId(null);
-            setView("links");
           }}
           onOpenHunt={(hq) => {
             setView("search");

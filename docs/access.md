@@ -1,6 +1,6 @@
 # What leaves this instance
 
-Toposcope is self-hosted, and everything it stores stays on the host unless one of the ways below lets it out. **Access** in the app lists each of them, one row each, with what it lets through, its scope, when it expires, when it was last used, and today's use and refusals. This page says the same in prose.
+Toposcope is self-hosted, and everything it stores stays on the host unless one of the ways below lets it out. **Access** in the app lists each of them under Tokens, Links and Shares, one row each, with its kind in plain words, what it does, its scope, when it expires, when it was last used, and today's use and refusals. This page says the same in prose.
 
 ## The operator password
 
@@ -12,7 +12,7 @@ An app, a collector or a hub sends logs, metrics, traces, profiles, marks and ch
 
 ## Copies rows out · links
 
-A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through. A key is minted in **Access › Let someone in › Copies rows out**, shown once, and listed as an invite until the other side pastes it. Each link has a page: which way rows move, its scope, where it stands, **Pause** and **Revoke**. Change marks travel with a link. Rows pulled into this instance follow its retention. See [operations](operations.md#links).
+A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through. A key is minted in **Access › Let someone in › Copies rows out**, shown once, and listed as *key not used yet* until the other side pastes it; a link then reads *we copy from* or *copies from us*. Each link has a page: which way rows move, its scope, where it stands, **Pause** and **Revoke**. Change marks travel with a link. Rows pulled into this instance follow its retention. See [operations](operations.md#links).
 
 ## Reads aggregates · shares
 

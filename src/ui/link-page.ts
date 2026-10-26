@@ -20,9 +20,14 @@ export type LinkPageData = {
   pulled_24h: number;
 };
 
-/** "ci-box → here" or "here → ian-laptop". */
+/** The link's name in the crumb is the other instance (29b). */
 export function linkTitle(l: Pick<LinkPageData, "role" | "peer">): string {
-  return l.role === "pull" ? `${l.peer} → here` : `here → ${l.peer}`;
+  return l.peer;
+}
+
+/** The kind chip (29b): which way rows move, in the words Access uses. */
+export function linkKind(l: Pick<LinkPageData, "role">): { glyph: string; words: string } {
+  return l.role === "pull" ? { glyph: "←", words: "we copy from" } : { glyph: "→", words: "copies from us" };
 }
 
 /** "Behind 4 rows", "caught up", "behind, how far unknown": where it stands. */
