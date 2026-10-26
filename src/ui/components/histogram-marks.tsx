@@ -150,6 +150,8 @@ export type MarksOverlay = {
   cut?: MarksCutWash | null;
   /** Stretches of the monitors on this saved search, under the marks (#175, 18o). */
   monitors?: MonitorBand | null;
+  /** The rail's `marks · N` chip opens the marks panel (#262, 26f) instead of its popover. */
+  onOpenPanel?: () => void;
 };
 
 type Open =
@@ -932,7 +934,7 @@ export function HistogramMarksChip({
           placement === "bar" ? "h-[26px] px-2.5" : "h-5",
           hidden ? "border-amber-400/40 text-amber-400" : "text-muted-foreground",
         )}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => (overlay.onOpenPanel ? overlay.onOpenPanel() : setOpen((prev) => !prev))}
       >
         <svg
           width="11"

@@ -25,6 +25,7 @@ import { EventTable } from "@/components/event-table";
 import { WorkspaceStrip } from "@/components/workspace-strip";
 import { FacetChips } from "@/components/facet-chips";
 import { HuntCrumb } from "@/components/hunt-crumb";
+import { MarksPanel } from "@/components/marks-panel";
 import { BoardInputs } from "@/components/board-inputs";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
@@ -564,6 +565,8 @@ export function App() {
   const [saved, setSaved] = useState<SavedSearch[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [detailOpen, setDetailOpen] = useState(false);
+  // The marks panel (#262) takes the event panel's slot: one at a time.
+  const [marksPanelOpen, setMarksPanelOpen] = useState(false);
   const [pinnedEvent, setPinnedEvent] = useState<LogEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanRefuse, setScanRefuse] = useState<SearchScan | null>(null);
@@ -3772,6 +3775,13 @@ export function App() {
         onCompare: isSurr ? undefined : openCompare,
         compareMarkId: compare?.mark.id ?? null,
         monitors: monitorBand,
+        onOpenPanel: isSurr
+          ? undefined
+          : () => {
+              setDetailOpen(false);
+              setPinnedEvent(null);
+              setMarksPanelOpen((open) => !open);
+            },
         cut: washWindows
           ? {
               markId: washWindows.markId,
@@ -4289,7 +4299,8 @@ export function App() {
             <div
               className={cn(
                 "px-3 pt-2 pb-2.5 transition-opacity",
-                activeInspect
+                // A Results tab, an open event or the marks panel shrinks the clock (26e, 26f): the rows and the panel need the room.
+                activeInspect || (logsOn && (detailOpen || marksPanelOpen))
                   ? "max-h-[32%] min-h-0 overflow-auto"
                   : logsOn
                     ? "max-h-[55%] min-h-0 overflow-auto"
@@ -4547,6 +4558,8 @@ export function App() {
                         setSelectedIndex(i);
                         if (cut) {
                           setDetailOpen(true);
+                        setMarksPanelOpen(false);
+                          setMarksPanelOpen(false);
                         } else {
                           setDetailOpen(
                             i !== selectedIndex ? true : !detailOpen,
@@ -4560,6 +4573,7 @@ export function App() {
                       onOpenDetail={() => {
                         setPinnedEvent(null);
                         setDetailOpen(true);
+                        setMarksPanelOpen(false);
                       }}
                       onCloseDetail={() => {
                         setDetailOpen(false);
@@ -4659,6 +4673,23 @@ export function App() {
                   crumb={spanBackCrumb}
                   onClose={() => setSpanSel(null)}
                   onViewProfiles={openProfile}
+                />
+              ) : marksPanelOpen && !isSurr ? (
+                <MarksPanel
+                  fromMs={windowFromMs}
+                  toMs={windowToMs}
+                  selectedId={compare?.mark.id ?? null}
+                  offKinds={marksOff}
+                  onToggleKind={(kind) =>
+                    setMarksOff((prev) => (prev.includes(kind) ? prev.filter((item) => item !== kind) : [...prev, kind]))
+                  }
+                  onSelect={() => undefined}
+                  onCompare={(mark) => openCompare(mark)}
+                  onFingerprints={(mark) => openFingerprints(mark)}
+                  onFocusLogs={(mark) => focusMarkInLogs(mark)}
+                  onHide={(mark) => setMarksMuted((prev) => (prev.includes(mark.id) ? prev : [...prev, mark.id]))}
+                  onClose={() => setMarksPanelOpen(false)}
+                  onWritten={() => void runSearch("replace")}
                 />
               ) : selectedEvent ? (
                 <EventDetail
