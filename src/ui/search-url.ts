@@ -30,7 +30,20 @@ import {
 
 export type RangeMode = "custom" | string;
 
-export type OperatorView = "search" | "watch" | "fields" | "links";
+/** The header's pages: `search` is the hunt (no `view=` in the URL); `home` and `access` arrived with 0.8 (#258). */
+export type OperatorView = "search" | "home" | "watch" | "fields" | "links" | "access";
+export const operatorViews: readonly OperatorView[] = ["search", "home", "watch", "fields", "links", "access"];
+
+export function parseOperatorView(raw: string | null): OperatorView {
+  if (raw === "home" || raw === "watch" || raw === "fields" || raw === "links" || raw === "access") {
+    return raw;
+  }
+  // Alerts became Watch in 0.6 (#175); an old link still lands there.
+  if (raw === "alerts") {
+    return "watch";
+  }
+  return "search";
+}
 
 export type SearchUrlState = {
   q: string;
@@ -203,17 +216,6 @@ function parseBindCandidates(params: URLSearchParams): Record<string, string> {
   return out;
 }
 
-function parseOperatorView(raw: string | null): OperatorView {
-  if (raw === "watch" || raw === "fields" || raw === "links") {
-    return raw;
-  }
-  // Alerts became Watch in 0.6 (#175); an old link still lands there.
-  if (raw === "alerts") {
-    return "watch";
-  }
-  return "search";
-}
-
 function parseAggParam(raw: string | null): string | null {
   if (!raw) {
     return null;
@@ -258,7 +260,7 @@ export function serializeSearchUrl(state: SearchUrlState): string {
   if (state.saved) {
     params.set("saved", state.saved);
   }
-  if (state.view === "watch" || state.view === "fields" || state.view === "links") {
+  if (state.view !== "search") {
     params.set("view", state.view);
   }
   if (state.split !== "level") {
