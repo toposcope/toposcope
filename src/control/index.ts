@@ -271,6 +271,8 @@ export function migrateControlDb(db: Database): void {
       removed_at INTEGER
     );
   `);
+  // A link's page (#267): a paused link is kept and not pulled or served.
+  addColumnIfMissing(db, "links", "paused", "INTEGER NOT NULL DEFAULT 0");
   // A hole's ends in time (#139): where reading stopped, and the start of the oldest day the source kept.
   addColumnIfMissing(db, "links", "gone_from_at", "TEXT");
   addColumnIfMissing(db, "links", "gone_to_at", "TEXT");

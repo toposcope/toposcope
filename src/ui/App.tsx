@@ -3,6 +3,7 @@ import { Undo2 } from "lucide-react";
 import { HeaderField, HeaderTabs } from "@/components/operator-header";
 import { AccessView, type AccessFilter } from "@/components/access-view";
 import { SharePage } from "@/components/share-page";
+import { LinkPage } from "@/components/link-page";
 import { HomeView } from "@/components/home-view";
 import { toast } from "sonner";
 import { AlertRuleDialog, type AlertDraft, type MonitorInput } from "@/components/alert-rule-dialog";
@@ -14,7 +15,6 @@ import { WatchView } from "@/components/watch-view";
 import { MonitorRail } from "@/components/monitor-rail";
 import type { MonitorBand } from "@/components/monitor-band";
 import { FieldsView } from "@/components/fields-view";
-import { LinksView } from "@/components/links-view";
 import { SpanDetail } from "@/components/span-detail";
 import { ContextTabs } from "@/components/context-tabs";
 import { ContextView, type ContextMode } from "@/components/context-view";
@@ -663,8 +663,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Access (#265): its filter; the Links tab is Access filtered to links.
   const [accessFilter, setAccessFilter] = useState<AccessFilter>("all");
-  // A link's own page lands with #267; until then its Access row opens the 0.5 Links page.
-  const [linkPageOpen, setLinkPageOpen] = useState(false);
+  // A link's own page (#267), from its Access row.
+  const [linkPageId, setLinkPageId] = useState<string | null>(null);
   // A share's own page (#266), from its Access row.
   const [sharePage, setSharePage] = useState<string | null>(null);
   const [sharesOpen, setSharesOpen] = useState(false);
@@ -3987,11 +3987,27 @@ export function App() {
             addWorkspace({ ...blankSearchSnap(), kind: "search", q: hq, range: "24h", live: false }, true);
           }}
         />
-      ) : (view === "access" || view === "links") && !(view === "links" && linkPageOpen) ? (
+      ) : (view === "access" || view === "links") && linkPageId ? (
+        <LinkPage
+          id={linkPageId}
+          onBack={() => {
+            setLinkPageId(null);
+            setView("access");
+          }}
+          onBackToLinks={() => {
+            setLinkPageId(null);
+            setView("links");
+          }}
+          onOpenHunt={(hq) => {
+            setView("search");
+            addWorkspace({ ...blankSearchSnap(), kind: "search", q: hq, range: "24h", live: false }, true);
+          }}
+        />
+      ) : view === "access" || view === "links" ? (
         <AccessView
           filter={view === "links" ? "links" : accessFilter === "links" ? "all" : accessFilter}
           onFilter={(f) => {
-            setLinkPageOpen(false);
+            setLinkPageId(null);
             if (f === "links") {
               setView("links");
             } else {
@@ -4005,10 +4021,7 @@ export function App() {
             setView("search");
             addWorkspace({ ...blankSearchSnap(), kind: "search", q: hq, range: "24h", live: false }, true);
           }}
-          onOpenLink={() => {
-            setView("links");
-            setLinkPageOpen(true);
-          }}
+          onOpenLink={(id) => setLinkPageId(id)}
           onOpenShare={(shareName) => {
             setView("access");
             setSharePage(shareName);
@@ -4031,19 +4044,7 @@ export function App() {
           onOpen={openMonitor}
           onOpenMarks={openMarksStretch}
         />
-      ) : view === "links" ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center gap-2 px-6 pt-3 text-[13px]">
-            <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => { setLinkPageOpen(false); setView("access"); }}>
-              Access
-            </button>
-            <span className="text-zinc-600">›</span>
-            <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setLinkPageOpen(false)}>
-              Links
-            </button>
-          </div>
-          <LinksView onOpenSettings={() => setSettingsOpen(true)} />
-        </div>
+
       ) : view === "fields" ? (
         <FieldsView
           catalog={fields}

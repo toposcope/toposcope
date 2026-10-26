@@ -1,3 +1,4 @@
+import { isPaused } from "./page";
 import { instanceId, instanceName } from "../control/instance";
 
 function instanceNameOrEmpty(): string {
@@ -174,7 +175,7 @@ export async function pullPass(deps: PullDeps = defaultDeps): Promise<void> {
   running = true;
   try {
     for (const link of activeLinks()) {
-      if (link.connects !== "we") {
+      if (link.connects !== "we" || isPaused(link)) {
         continue;
       }
       if (link.role === "pull") {
