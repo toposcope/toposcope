@@ -96,6 +96,7 @@ import { noFraming } from "./share/embed";
 import { startShareUse } from "./share/use";
 import { noteAccessRefused, startAccessUse } from "./access/use";
 import { accessRoute } from "./access/list";
+import { linkPageRoute, updateLinkRoute } from "./links/page";
 
 requirePackagedSecrets();
 requirePublicUrl();
@@ -315,6 +316,8 @@ app.get("/api/feeds", listFeedsRoute);
 app.post("/api/feeds", createFeedRoute);
 app.get("/api/feeds/:id", readFeedRoute);
 app.get("/api/links", listLinksRoute);
+app.get("/api/links/:id", linkPageRoute);
+app.put("/api/links/:id", updateLinkRoute);
 app.post("/api/links/offer", offerRoute);
 app.post("/api/links/invite", inviteRoute);
 app.post("/api/links/preview", previewRoute);

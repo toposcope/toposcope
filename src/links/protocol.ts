@@ -1,3 +1,4 @@
+import { isPaused } from "./page";
 import { noteAccessRefused, noteAccessUsed } from "../access/use";
 import type { Context } from "hono";
 import { instanceId, instanceName } from "../control/instance";
@@ -141,6 +142,10 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
   const link = linkFor(c);
   if (!link || link.role !== "serve") {
     return c.json({ error: "Unauthorized" }, 401);
+  }
+  // Paused here (#267): the link stays; the puller is told why and keeps its place.
+  if (isPaused(link)) {
+    return c.json({ error: "paused at the source" }, 409);
   }
   const after = Number(c.req.query("after") ?? "0");
   if (!Number.isSafeInteger(after) || after < 0) {
