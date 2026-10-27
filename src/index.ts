@@ -23,6 +23,7 @@ import {
   signInWaitMs,
   useOwnerLink,
   inviteFor,
+  useInviteWithProvider,
   pendingMs,
   sessionAtStage,
   setSessionStage,
@@ -71,7 +72,9 @@ import { monitorPreviewRoute } from "./alerts/preview";
 import { fingerprintSeenRoute } from "./query/fingerprint-seen";
 import { savedSearchUrl } from "./ui/search-url";
 import { joinPageHtml, ownerSetupPageHtml, safeNext, signInPageHtml, twoStepPageHtml, type TwoStepPageBody } from "./sign-in-page";
-import { beginSetup, checkSecondStep, confirmSetup, groupedKey, hasTwoStep, makeBackupCodes, otpauthUri, twoStepRequired } from "./control/two-step";
+import { beginSetup, checkSecondStep, confirmSetup, groupedKey, hasTwoStep, makeBackupCodes, otpauthUri, twoStepFor, twoStepRequired, writeTwoStepFor } from "./control/two-step";
+import { finishSignIn, oidcConfig, passwordsOn, signInSettings, startSignIn, writeSignInSettings } from "./control/oidc";
+import { stampSetting } from "./control/actors";
 import { qrSvg } from "./shared/qr";
 import {
   createApiToken,
@@ -218,7 +221,7 @@ function wantsPage(c: Context): boolean {
   );
 }
 
-function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?: 200 | 401 | 429; email?: string; wait?: number }): Response {
+function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?: 200 | 401 | 429; email?: string; wait?: number; providerError?: string; passwordsOff?: boolean }): Response {
   const url = new URL(c.req.url);
   const signedOut = url.searchParams.get("signed_out") === "1";
   if (url.searchParams.has("signed_out")) {
@@ -235,6 +238,9 @@ function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?:
       email: opts.email,
       waitSeconds: opts.wait,
       noOwner: liveOwnerCount() === 0,
+      provider: oidcConfig() ? { label: oidcConfig()!.label, domain: oidcConfig()!.allowed_domain } : null,
+      passwords: passwordsOn(),
+      providerError: opts.providerError,
     }),
     opts.status ?? 401,
   );
@@ -264,6 +270,41 @@ function setupPage(c: Context, person: Person, error?: string): Response {
   const account = person.email ?? person.name;
   return twoStepPage(c, { stage: "setup", email: account, secretGrouped: groupedKey(secret), qr: qrSvg(otpauthUri(secret, account, instanceName() ?? openedAddress(c)), 6), error }, error ? 400 : 200);
 }
+
+function redirectUri(c: Context): string {
+  const env = process.env.TOPOSCOPE_PUBLIC_URL?.replace(/\/+$/, "");
+  return `${env ?? `${overHttps(c) ? "https" : "http"}://${openedAddress(c)}`}/auth/callback`;
+}
+
+// #310: sign in with the provider. The browser goes there and comes back to /auth/callback.
+app.get("/auth/start", async (c) => {
+  const next = safeNext(c.req.query("next") ?? "/");
+  const invite = c.req.query("invite") ?? null;
+  try {
+    return c.redirect(await startSignIn(redirectUri(c), next, invite), 302);
+  } catch (err) {
+    return signInPage(c, { next, providerError: err instanceof Error ? err.message : String(err), status: 200 });
+  }
+});
+
+app.get("/auth/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  if (!code || !state) {
+    const why = c.req.query("error_description") ?? c.req.query("error") ?? "the provider sent no code";
+    return signInPage(c, { providerError: `Sign-in did not finish: ${why}`, status: 401 });
+  }
+  const done = await finishSignIn({ code, state, redirectUri: redirectUri(c) }, (token, person) => useInviteWithProvider(token, person));
+  if (!done.ok) {
+    noteAccessRefused("person", "provider", done.error, c.req.path);
+    return signInPage(c, { providerError: done.error, status: 401 });
+  }
+  noteAccessUsed("person", done.person.email ?? done.person.name);
+  // The provider is the second step for people it signs in (its own MFA applies).
+  const session = createSession(done.person);
+  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
+  return c.redirect(safeNext(done.next), 303);
+});
 
 // 32b–32d: the second step, and setting it up.
 app.get("/two-step", (c) => {
@@ -368,6 +409,9 @@ app.post("/api/sign-in", async (c) => {
   if (!looksLikeEmail(email) || !password) {
     return json ? c.json({ error: "Expected an email and a password" }, 400) : signInPage(c, { wrong: true, next: nextPath, email });
   }
+  if (!passwordsOn()) {
+    return json ? c.json({ error: "Passwords are off here: sign in with the provider" }, 401) : signInPage(c, { next: nextPath, status: 401 });
+  }
   const wait = signInWaitMs(email);
   if (wait > 0) {
     const seconds = Math.ceil(wait / 1000);
@@ -415,6 +459,8 @@ app.get("/join/:token", (c) => {
       name: instanceName(),
       address: openedAddress(c),
       token: c.req.param("token"),
+      provider: oidcConfig() ? { label: oidcConfig()!.label, domain: oidcConfig()!.allowed_domain } : null,
+      passwords: passwordsOn(),
       invite: invite ? { who: invite.who, role: invite.role, inviter: actorName(invite.created_by)?.name ?? null, daysLeft: Math.max(1, Math.ceil((invite.expires_at - Date.now()) / 86_400_000)) } : null,
     }),
     invite ? 200 : 410,
@@ -532,6 +578,7 @@ app.use("/*", async (c, next) => {
   }
   // 32a: the owner link's page and form answer before anyone can sign in.
   if (
+    c.req.path.startsWith("/auth/") ||
     c.req.path.startsWith("/setup/") ||
     c.req.path.startsWith("/join/") ||
     c.req.path === "/two-step" ||
@@ -743,6 +790,34 @@ app.post("/api/me/two-step/backup-codes", newBackupCodesRoute);
 app.get("/api/me/tokens", myTokensRoute);
 app.post("/api/me/tokens", createMyTokenRoute);
 app.delete("/api/me/tokens/:id", revokeTokenRoute);
+app.get("/api/sign-in-settings", (c) => c.json({ ...signInSettings(), redirect_uri: redirectUri(c), two_step_for: twoStepFor() }));
+
+app.put("/api/sign-in-settings", async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  if (!body || typeof body !== "object") {
+    return c.json({ error: "Expected an object" }, 400);
+  }
+  const rec = body as Record<string, unknown>;
+  if (rec.two_step_for !== undefined) {
+    if (rec.two_step_for !== "everyone" && rec.two_step_for !== "owners") {
+      return c.json({ error: "two_step_for is everyone or owners" }, 400);
+    }
+    writeTwoStepFor(rec.two_step_for);
+    stampSetting("two_step_for");
+  }
+  const out = writeSignInSettings(rec);
+  if ("error" in out) {
+    return c.json({ error: out.error }, 400);
+  }
+  stampSetting("sign_in");
+  return c.json({ ...out, redirect_uri: redirectUri(c), two_step_for: twoStepFor() });
+});
+
 app.get("/api/settings", getSettings);
 app.put("/api/settings", putSettings);
 app.get("/api/fields", getFields);

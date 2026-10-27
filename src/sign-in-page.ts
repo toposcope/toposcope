@@ -35,7 +35,16 @@ export type SignInPage = {
   waitSeconds?: number;
   /** No Owner yet (32a left): nobody can sign in until one is made on the host. */
   noOwner?: boolean;
+  /** The OIDC provider, when one is set up (30c): its button leads. */
+  provider?: { label: string; domain: string | null } | null;
+  /** Passwords on (default) or off, when only the provider signs in. */
+  passwords?: boolean;
+  providerError?: string;
 };
+
+function providerButton(provider: { label: string; domain: string | null }, href: string, account?: string): string {
+  return `<a class="prov" href="${esc(href)}"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"></circle></svg>Continue with ${esc(provider.label)}${account ? ` as ${esc(account)}` : provider.domain ? ` · ${esc(provider.domain)}` : ""}</a>`;
+}
 
 /** A path on this instance, or "/": never another host. */
 export function safeNext(raw: string | null | undefined): string {
@@ -93,6 +102,11 @@ const shellStyle = `<style>
   .step.on { color: #fafafa; } .step.on i { border-color: #e7e1d3; color: #e7e1d3; }
   .fixed { height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid #2a2a2e; background: #141416; display: flex; align-items: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: #d4d4d8; }
   .error.wait { color: #fbbf24; }
+  a.prov { display: flex; align-items: center; justify-content: center; gap: 10px; height: 42px; border-radius: 8px; background: #e7e1d3; color: #0d0d0f; font-size: 14px; font-weight: 500; text-decoration: none; }
+  a.prov:hover { background: #f3efe6; }
+  .or { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #8a8a93; }
+  .or span { flex: 1; height: 1px; background: #27272a; }
+  button.second { background: #141416; color: #e4e4e7; border: 1px solid #2a2a2e; }
 </style>`;
 
 export function signInPageHtml(page: SignInPage): string {
@@ -183,15 +197,18 @@ export function signInPageHtml(page: SignInPage): string {
   <div class="brand">${mark}<span>toposcope</span></div>
   ${banner}
   <div class="who"><div class="to">Signing in to</div>${heading}</div>
-  <div class="pw">
+  ${page.providerError ? `<div class="error" role="alert"><span>${esc(page.providerError)}</span></div>` : ""}
+  ${page.provider ? providerButton(page.provider, `/auth/start?next=${encodeURIComponent(safeNext(page.next))}`) : ""}
+  ${page.provider && page.passwords !== false ? `<div class="or"><span></span>or with a password<span></span></div>` : ""}
+  ${page.passwords === false ? "" : `<div class="pw">
     <label for="em">Email</label>
-    <input id="em" name="email" type="email" autocomplete="username" required value="${esc(page.email ?? "")}"${page.email ? "" : " autofocus"}>
+    <input id="em" name="email" type="email" autocomplete="username" required value="${esc(page.email ?? "")}"${page.email || page.provider ? "" : " autofocus"}>
     <label for="pw">Password</label>
     <input id="pw" name="password" type="password" autocomplete="current-password"${page.email ? " autofocus" : ""} required${page.wrong || page.waitSeconds ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>
     ${error}
     <input type="hidden" name="next" value="${esc(safeNext(page.next))}">
-    <button type="submit">Sign in</button>
-  </div>
+    <button type="submit"${page.provider ? ' class="second"' : ""}>Sign in</button>
+  </div>`}
   <div class="stay">Stays signed in on this browser for 30 days.</div>
 </form>
 <div class="foot">forgot it? an Owner resets it, or <a href="https://github.com/toposcope/toposcope/blob/main/docs/people.md#locked-out">owner-link on the host</a></div>
@@ -269,6 +286,8 @@ export type JoinPage = {
   name: string | null;
   address: string;
   token: string;
+  provider?: { label: string; domain: string | null } | null;
+  passwords?: boolean;
   /** The invite the link holds, or null when it is used, cancelled or expired. */
   invite: { who: string; role: string; inviter: string | null; daysLeft: number } | null;
   error?: string;
@@ -300,7 +319,9 @@ export function joinPageHtml(page: JoinPage): string {
   <div class="cap">From an invite link</div>
   <div class="brand">${mark}<span>toposcope</span></div>
   <div class="who"><div class="to">${invite.inviter ? `${esc(invite.inviter)} invited you to` : "You are invited to"}</div><h1>${esc(label)}</h1><div class="to">as ${roleName === "Operator" || roleName === "Owner" ? "an" : "a"} <b style="color:#fafafa;font-weight:500">${esc(roleName)}</b>: ${roleSentence[invite.role] ?? ""}</div></div>
-  <div class="pw">
+  ${page.provider ? providerButton(page.provider, `/auth/start?invite=${encodeURIComponent(page.token)}`, byEmail ? invite.who : undefined) : ""}
+  ${page.provider && page.passwords !== false ? `<div class="or"><span></span>or set a password<span></span></div>` : ""}
+  ${page.passwords === false ? "" : `<div class="pw">
     ${byEmail ? `<span class="to">Email</span><div class="fixed">${esc(invite.who)}</div>` : `<label for="em">Your email</label>
     <input id="em" name="email" type="email" autocomplete="username" required value="${esc(page.typedEmail ?? "")}">`}
     <label for="nm">Your name</label>
@@ -309,8 +330,8 @@ export function joinPageHtml(page: JoinPage): string {
     <input id="np" name="password" type="password" autocomplete="new-password" minlength="12" required${page.error ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>
     ${error}
     <input type="hidden" name="token" value="${esc(page.token)}">
-    <button type="submit">Join ${esc(label)}</button>
-  </div>
+    <button type="submit"${page.provider ? ' class="second"' : ""}>Join ${esc(label)}</button>
+  </div>`}
   <div class="stay">The link works once and expires in ${invite.daysLeft} day${invite.daysLeft === 1 ? "" : "s"}.</div>
 </form>`);
 }

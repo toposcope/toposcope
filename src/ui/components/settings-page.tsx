@@ -32,7 +32,7 @@ export function bytes(n: number | null | undefined): string {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
 }
 
-export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void }) {
+export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void; onOpenSignIn: () => void }) {
   const [body, setBody] = useState<SettingsBody | null>(null);
   const [name, setName] = useState("");
   const [days, setDays] = useState("30");
@@ -285,6 +285,17 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               >
                 copy
               </button>
+            </div>
+          </section>
+          <section className={card}>
+            <h2 className="m-0 text-[13.5px] font-medium">Sign-in and roles</h2>
+            <span className="text-[12px] leading-[1.5] text-muted-foreground">
+              Who signs in and how: one provider (Google, Entra, Okta, Keycloak, Authentik), passwords with two-step, and what an Owner, an Operator and a Viewer may do.
+            </span>
+            <div>
+              <Button type="button" size="sm" variant="outline" onClick={props.onOpenSignIn}>
+                Open sign-in →
+              </Button>
             </div>
           </section>
           <section className={card}>

@@ -145,6 +145,8 @@ export const routeActions: Route[] = [
   ["GET", "/api/me/tokens", "any signed in"],
   ["POST", "/api/me/tokens", "any signed in"],
   ["DELETE", "/api/me/tokens/:id", "any signed in"],
+  ["GET", "/api/sign-in-settings", "change instance settings"],
+  ["PUT", "/api/sign-in-settings", "change instance settings"],
   ["PUT", "/api/settings", "change instance settings"],
   ["POST", "/api/version/check", "change instance settings"],
   ["POST", "/api/version/upgrade", "change instance settings"],
