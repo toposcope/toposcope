@@ -5,6 +5,8 @@ import {
   toClickHouseDateTime,
 } from "../shared/clickhouse";
 import type { Span } from "../shared/span";
+import { hereName } from "../shared/here";
+import { withArrivalSeq } from "./arrival-seq";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import {
   insertErrorMessage,
@@ -25,13 +27,13 @@ function ingestFail(c: Context, err: unknown): Response {
   return c.json({ error: insertErrorMessage(err) }, 503);
 }
 
-async function insertSpans(spans: Span[]): Promise<number> {
+export async function insertSpans(spans: Span[]): Promise<number> {
   if (spans.length === 0) {
     return 0;
   }
-  return withInsertSlot(async () => {
+  return withInsertSlot(() => withArrivalSeq(spans.length, async (from, arrived) => {
     const body = spans
-      .map((span) =>
+      .map((span, i) =>
         JSON.stringify({
           tenant_id: "default",
           trace_id: span.trace_id,
@@ -43,12 +45,15 @@ async function insertSpans(spans: Span[]): Promise<number> {
           duration_ms: span.duration_ms,
           status: span.status,
           attrs: span.attrs,
+          seq: from + i,
+          arrived,
+          toposcope: hereName(),
         }),
       )
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "spans");
     return spans.length;
-  });
+  }));
 }
 
 export async function otlpTracesRoute(c: Context): Promise<Response> {

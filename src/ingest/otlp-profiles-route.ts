@@ -5,6 +5,8 @@ import {
   toClickHouseDateTime,
 } from "../shared/clickhouse";
 import type { ProfileSample } from "../shared/profile";
+import { hereName } from "../shared/here";
+import { withArrivalSeq } from "./arrival-seq";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import {
   insertErrorMessage,
@@ -25,13 +27,13 @@ function ingestFail(c: Context, err: unknown): Response {
   return c.json({ error: insertErrorMessage(err) }, 503);
 }
 
-async function insertProfileSamples(samples: ProfileSample[]): Promise<number> {
+export async function insertProfileSamples(samples: ProfileSample[]): Promise<number> {
   if (samples.length === 0) {
     return 0;
   }
-  return withInsertSlot(async () => {
+  return withInsertSlot(() => withArrivalSeq(samples.length, async (from, arrived) => {
     const body = samples
-      .map((sample) =>
+      .map((sample, i) =>
         JSON.stringify({
           tenant_id: "default",
           profile_id: sample.profile_id,
@@ -46,12 +48,15 @@ async function insertProfileSamples(samples: ProfileSample[]): Promise<number> {
           span_id: sample.span_id,
           frames: sample.frames,
           value: sample.value,
+          seq: from + i,
+          arrived,
+          toposcope: hereName(),
         }),
       )
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "profile_samples");
     return samples.length;
-  });
+  }));
 }
 
 export async function otlpProfilesRoute(c: Context): Promise<Response> {

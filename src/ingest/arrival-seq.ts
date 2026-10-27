@@ -5,13 +5,23 @@ import {
 } from "../shared/clickhouse";
 
 /**
- * The arrival sequence (#133): a per-instance counter stamped on each log row at ingest, in the
- * order rows arrive. It is reserved this far ahead in `arrival_seq`, so a restart starts above
+ * The arrival sequence (#133, #324): one per-instance counter stamped on every row of every kind at
+ * ingest (logs, marks, spans, metric points and buckets, profile samples), in the order rows arrive. It is reserved this far ahead in `arrival_seq`, so a restart starts above
  * every number handed out before it, even after retention has aged out every row.
  */
 export const arrivalSeqBlock = 100_000;
 
 export type ArrivalSeqRange = { from: number; to: number };
+
+/** Every table whose rows take a position from the counter. */
+export const positionedTables = [
+  "logs",
+  "change_marks",
+  "spans",
+  "metrics",
+  "metric_buckets",
+  "profile_samples",
+] as const;
 
 let next = 0;
 let reservedTo = 0;
@@ -21,7 +31,9 @@ const inflight = new Set<ArrivalSeqRange>();
 
 async function load(): Promise<void> {
   const [stored, reserved] = await Promise.all([
-    clickhouseQuery<{ n: string | number }>("SELECT max(seq) AS n FROM logs"),
+    clickhouseQuery<{ n: string | number }>(
+      `SELECT max(n) AS n FROM (${positionedTables.map((t) => `SELECT max(seq) AS n FROM ${t}`).join(" UNION ALL ")})`,
+    ),
     clickhouseQuery<{ n: string | number }>("SELECT max(reserved) AS n FROM arrival_seq"),
   ]);
   const top = Math.max(Number(stored[0]?.n ?? 0) || 0, Number(reserved[0]?.n ?? 0) || 0);
@@ -85,6 +97,22 @@ export function arrivalSeqSettled(): number {
     lowest = Math.min(lowest, range.from);
   }
   return lowest - 1;
+}
+
+/**
+ * Numbers a batch of `n` rows and stamps when it arrived, for the length of one insert: the
+ * numbers hold back what is settled until `insert` ends, stored or not.
+ */
+export async function withArrivalSeq<T>(
+  n: number,
+  insert: (from: number, arrived: string) => Promise<T>,
+): Promise<T> {
+  const seq = await allocateArrivalSeq(n);
+  try {
+    return await insert(seq.from, toClickHouseDateTime(new Date().toISOString()));
+  } finally {
+    releaseArrivalSeq(seq);
+  }
 }
 
 /** Tests only: forget the loaded counter, as a restart would. */

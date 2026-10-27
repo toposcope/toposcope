@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { forgetMetricKinds } from "../shared/metric-kinds";
 import { forgetMetricDescriptions } from "../shared/metric-descriptions";
 import { forgetMetricUnits } from "../shared/metric-units";
+import { resetArrivalSeqForTests } from "./arrival-seq";
 import { MAX_BATCH } from "./index";
 import { ingestMetricsRoute } from "./metrics";
 import { mapOtlpMetrics } from "./otlp-metrics";
@@ -615,10 +616,18 @@ describe("POST /v1/metrics", () => {
     forgetMetricKinds();
     forgetMetricUnits();
     forgetMetricDescriptions();
+    resetArrivalSeqForTests();
     globalThis.fetch = Object.assign(
       async (input: string | URL | Request, init?: RequestInit) => {
         const query = new URL(String(input)).searchParams.get("query") ?? "";
+        // Points take a position (#324): the counter reads where it stands before the first insert.
+        if (!query && String(init?.body ?? "").startsWith("SELECT max(")) {
+          return Response.json({ data: [{ n: 0 }] });
+        }
         const table = query.match(/^INSERT INTO (\w+) /)?.[1];
+        if (table === "arrival_seq") {
+          return new Response("");
+        }
         if (!table) {
           throw new Error(`Unexpected fetch: ${String(input)}`);
         }
