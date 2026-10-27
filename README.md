@@ -1,6 +1,6 @@
 # toposcope
 
-Toposcope is a lightweight, self-hosted log manager for searching live logs with `key:value` queries, saved searches, monitors, histograms, and linked traces and profiles.
+Toposcope is self-hosted observability for the question after a deploy: what changed? It puts logs, metrics, traces and profiles on one clock, compares equal windows before and after each deploy, and lists the errors that are new.
 
 It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability.
 
@@ -65,13 +65,14 @@ The deployment pins `ghcr.io/toposcope/toposcope:0.9.0`; it never uses `:latest`
 
 ## What Toposcope does
 
-- Searches logs with copyable `key:value` queries, boolean operators, prefix matching, and numeric comparisons.
-- Tails a moving Live window while keeping older loaded rows available.
-- Provides histograms, facets, promoted columns, saved searches, boards, and monitors that open, remind and resolve through a webhook: on a saved search, or on an HTTP(S), TCP or certificate check with conditions, run from this node.
-- Opens surrounding events or follows identifiers without replacing the current investigation.
-- Links logs to OTLP trace waterfalls and profile icicles when matching IDs are present.
-- Pulls rows and change marks from another Toposcope instance over a link, through any `q`, and says on Search when a source is short.
-- Overlays ingested metrics or log-derived rate and numeric series on log volume.
+- **Home** opens on the latest deploy, flag or incident. Every saved hunt you can see (your own, and the ones Operators share) is a card, before and after on equal windows (each side is the time since the mark, cut at the next one, between 5 minutes and an hour). Below them are the error fingerprints first seen since, and the monitors that are open.
+- **Hunt** searches with copyable `key:value` queries on one clock, with named marks on a rail above it. Compare folds open under a mark, one row per level, service or host; fingerprints are `e1:` chips. It tails a Live window, opens surrounding events, follows identifiers without replacing the current investigation, and links logs to OTLP trace waterfalls and profile icicles when matching IDs are present. Histograms, facets, promoted columns and boards stay; ingested metrics or log-derived rate and numeric series overlay log volume.
+- **Watch** lists every monitor with a strip of its day:
+  - **On a saved search:** rows, a share of all rows, or a value (rate, avg or p99 of a field).
+  - **Checks:** HTTP(S), TCP and certificate checks run from this node, plus push monitors.
+
+  Each monitor opens, reminds and resolves through up to five webhooks. **Watch this** on a hunt shows where a monitor would have opened in the last 24 hours.
+- **Access** lists every way in or out: people and their invites, tokens (ingest, personal and service account), links (another Toposcope pulls rows and change marks through any `q`, and Hunt says when a source is short), and shares (named panels, aggregates only, embedded on a page with `data-panel=`).
 
 Logs, ingested metrics, spans, profile samples, and change marks are stored in ClickHouse. Saved searches, monitors, tokens, and settings are stored in SQLite inside the Toposcope application.
 
@@ -80,6 +81,16 @@ Logs, ingested metrics, spans, profile samples, and change marks are stored in C
 An app speaks OpenTelemetry to Toposcope: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional — add one for a disk buffer or enrichment. Vector is the canonical collector; Fluent Bit and Alloy are supported alternatives. Collectors own buffering, parsing, sampling, and enrichment. The ingest guide says [what an app sends](docs/ingest.md#what-an-app-sends).
 
 A coding agent can do this for an app: the [toposcope skill](skills/toposcope/SKILL.md) stands up one local instance, gets the app’s errors into it, and checks that they arrive with a stack fingerprint.
+
+Record each deploy from CI; Home and Compare measure from these marks:
+
+```bash
+curl -X POST http://127.0.0.1:8080/v1/marks -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"kind":"deploy","title":"v1.0","service":"api","id":"deploy-api-v1.0","attrs":{"version":"v1.0"}}'
+```
+
+An error row with `exception.type` and frames or a stack gets an `e1` fingerprint; one without hashes its type and message. A span keeps the same `e1` as the log row for the exception it recorded.
 
 | Input | Endpoint | Notes |
 | --- | --- | --- |
@@ -98,7 +109,7 @@ HTTP ingest accepts `Authorization: Bearer <TOPOSCOPE_INGEST_TOKEN>` as well as 
 
 ## Search
 
-The search bar accepts queries such as:
+The search bar on Hunt accepts queries such as:
 
 ```text
 level:error service:api
