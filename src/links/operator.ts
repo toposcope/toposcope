@@ -1,3 +1,4 @@
+import { ensureSourceProjections, kindsOf, kindsText, parseLinkKinds } from "./kinds";
 import { mismatchWords, versionHeaders, versionRefusal } from "./version";
 import type { Context } from "hono";
 import { instanceId, instanceName, parseInstanceName, writeInstanceName } from "../control/instance";
@@ -96,6 +97,7 @@ export function listLinksRoute(c: Context): Response {
     label: kidLabel(key.kid),
     kind: key.kind,
     q: key.q,
+    kinds: kindsOf(key.kinds),
     until: key.until,
     uses: key.uses,
     created_at: key.created_at,
@@ -110,6 +112,11 @@ async function mint(c: Context, kind: LinkKeyKind): Promise<Response> {
     return c.json(name, 409);
   }
   const q = typeof body.q === "string" ? body.q.trim() : "";
+  // The kinds the link will carry (#329): all, unless some are left unticked.
+  const kinds = parseLinkKinds(body.kinds);
+  if ("error" in kinds) {
+    return c.json({ error: kinds.error }, 400);
+  }
   const compiled = compileQuery(q);
   if (compiled.faults.length > 0) {
     return c.json({ error: compiled.faults[0]?.msg ?? "q does not compile", faults: compiled.faults }, 400);
@@ -132,9 +139,9 @@ async function mint(c: Context, kind: LinkKeyKind): Promise<Response> {
     kid = newKid();
   }
   const secret = newSecret();
-  saveLinkKey({ kid, kind, q, secret, until });
-  const key: LinkKey = { kind, name, url: addressOf(c), kid, q, until, secret };
-  return c.json({ key: encodeLinkKey(key), kid, label: kidLabel(kid), kind, q, until }, 201);
+  saveLinkKey({ kid, kind, q, secret, until, kinds: kindsText(kinds) });
+  const key: LinkKey = { kind, name, url: addressOf(c), kid, q, until, secret, kinds };
+  return c.json({ key: encodeLinkKey(key), kid, label: kidLabel(kid), kind, q, until, kinds }, 201);
 }
 
 export function offerRoute(c: Context): Promise<Response> {
@@ -205,7 +212,7 @@ export async function confirmRoute(c: Context): Promise<Response> {
   if (typeof name !== "string") {
     return c.json(name, 409);
   }
-  let claim: { link: string; secret: string; minter: { id: string; name: string }; q: string; kind: LinkKeyKind };
+  let claim: { link: string; secret: string; minter: { id: string; name: string }; q: string; kind: LinkKeyKind; kinds: string };
   try {
     const res = await fetch(`${decoded.url.replace(/\/+$/, "")}/link/v1/claim`, {
       method: "POST",
@@ -239,7 +246,12 @@ export async function confirmRoute(c: Context): Promise<Response> {
     secret: claim.secret,
     secret_hash: null,
     created_at: Date.now(),
+    // The minter's set is the link's; the paste cannot widen it.
+    kinds: kindsText(kindsOf(claim.kinds)),
   });
+  if (link.role === "serve") {
+    await ensureSourceProjections(kindsOf(link.kinds));
+  }
   pullSoon(link.id);
   return c.json(view(link), 201);
 }

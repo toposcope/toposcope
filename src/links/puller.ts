@@ -1,3 +1,6 @@
+import { feedKinds, kindsOf } from "./kinds";
+import { noteWire } from "./volume";
+import { effectiveMetricsRetentionDays } from "../control/settings";
 import { mismatchWords, versionHeaders, versionRefusal } from "./version";
 import { isPaused } from "./page";
 import { instanceId, instanceName } from "../control/instance";
@@ -81,6 +84,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
     const result = await insertPulled(reply.rows, source, deps.hereId());
     await insertPulledMarks(reply.marks ?? [], source, hereName());
     stored += result.stored + (await insertPulledBlocks(wire, { id: reply.source?.id || link.peer_id, name: source.name }, deps.hereId()));
+    noteWire(link.id, wire, deps.now());
     after = reply.through;
     if (reply.gone) {
       // A hole never closes: it only grows if retention passes more before it is read.
@@ -142,8 +146,8 @@ export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps):
     }
     const reply = await readFeed({
       positionsOnly: true,
-    // Logs and marks until a link carries its kinds (#329).
-    kinds: ["logs", "marks"],
+    kinds: feedKinds(kindsOf(link.kinds)),
+      metricsRetentionDays: effectiveMetricsRetentionDays(),
       id: link.id,
       q: link.q,
       after: ask.after,
@@ -155,7 +159,10 @@ export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps):
       const res = await deps.fetch(`${base}/link/v1/rows`, {
         method: "POST",
         headers: { ...headers, "content-type": "application/x-toposcope-feed" },
-        body: (await encodeFeed(reply, deps.hereId(), { source: { id: deps.hereId(), name: instanceNameOrEmpty() } })) as unknown as BodyInit,
+        body: (await encodeFeed(reply, deps.hereId(), { source: { id: deps.hereId(), name: instanceNameOrEmpty() } }).then((b) => {
+          noteWire(link.id, b, deps.now());
+          return b;
+        })) as unknown as BodyInit,
         signal: AbortSignal.timeout(30_000),
       });
       if (!res.ok && res.status !== 409) {

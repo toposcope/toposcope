@@ -1,3 +1,4 @@
+import { parseLinkKinds, type LinkKind } from "./kinds";
 /**
  * A link key (#136): one long line the reachable side mints and the other pastes. Its prefix
  * says the direction before anything else is read: `tsl1_o` an offer (rows leave the minter),
@@ -15,6 +16,8 @@ export type LinkKey = {
   /** Epoch ms after which the key does not work; null for a single-use key. */
   until: number | null;
   secret: string;
+  /** The kinds the link carries (#329). */
+  kinds: LinkKind[];
 };
 
 export const linkKeyNotAKey = "Not a link key.";
@@ -44,6 +47,7 @@ export function encodeLinkKey(key: LinkKey): string {
     b64u(key.q),
     key.until === null ? "-" : String(key.until),
     key.secret,
+    key.kinds.join(","),
   ].join(".");
 }
 
@@ -53,10 +57,11 @@ export function decodeLinkKey(text: string): LinkKey | { error: string } {
     return { error: linkKeyOlder };
   }
   const parts = text.trim().split(".");
-  if (parts.length !== 7) {
+  if (parts.length !== 8) {
     return { error: linkKeyNotAKey };
   }
-  const [prefix, name, url, kid, q, until, secret] = parts as [string, string, string, string, string, string, string];
+  const [prefix, name, url, kid, q, until, secret, kindList] = parts as [string, string, string, string, string, string, string, string];
+  const kinds = parseLinkKinds(kindList);
   const kind = prefix === "tsl2_o" ? "offer" : prefix === "tsl2_i" ? "invite" : null;
   const decodedName = unb64u(name);
   const decodedUrl = unb64u(url);
@@ -69,7 +74,8 @@ export function decodeLinkKey(text: string): LinkKey | { error: string } {
     decodedQ === null ||
     !/^k[0-9a-f]{4}$/.test(kid) ||
     (untilMs !== null && !Number.isSafeInteger(untilMs)) ||
-    !/^[A-Za-z0-9_-]{32,}$/.test(secret)
+    !/^[A-Za-z0-9_-]{32,}$/.test(secret) ||
+    "error" in kinds
   ) {
     return { error: linkKeyNotAKey };
   }
@@ -81,7 +87,7 @@ export function decodeLinkKey(text: string): LinkKey | { error: string } {
   } catch {
     return { error: linkKeyNotAKey };
   }
-  return { kind, name: decodedName, url: decodedUrl, kid, q: decodedQ, until: untilMs, secret };
+  return { kind, name: decodedName, url: decodedUrl, kid, q: decodedQ, until: untilMs, secret, kinds: kinds as LinkKind[] };
 }
 
 export function newKid(): string {

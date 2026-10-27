@@ -3,7 +3,7 @@ import { filterWords, keyPositionWords, linkClock, linkPositionWords, type LinkI
 
 const now = Date.parse("2026-10-17T14:02:30Z");
 const link = (over: Partial<LinkItem> = {}): LinkItem => ({
-  id: "l_1", role: "pull", connects: "we", peer_id: "p", peer_name: "prod-eu", peer_url: "http://x", q: "service:checkout level:error",
+  id: "l_1", role: "pull", connects: "we", peer_id: "p", peer_name: "prod-eu", peer_url: "http://x", q: "service:checkout level:error", kinds: "logs,marks",
   kid: "k7f3a", position: 100, settled: 100, arrived_at: "2026-10-17T14:02:11Z", behind_rows: null, gone_from: null, gone_to: null, gone_from_at: null, gone_to_at: null,
   last_contact_at: now - 3_000, last_error: null, created_at: now - 86_400_000, ...over,
 });
@@ -29,8 +29,8 @@ describe("where a link stands (#136, 6b)", () => {
   test("clock, keys and filters", () => {
     expect(linkClock(Date.parse("2026-10-17T14:02:11Z"), now)).toBe("14:02:11");
     expect(linkClock(Date.parse("2026-10-06T09:12:00Z"), now)).toBe("Oct 6 09:12");
-    expect(keyPositionWords({ kid: "k2d18", label: "k-2d18", kind: "invite", q: "env:staging", until: null, uses: 0, created_at: 0 })).toBe("single use · not pasted yet");
-    expect(keyPositionWords({ kid: "k91c0", label: "k-91c0", kind: "invite", q: "", until: Date.parse("2026-10-20T00:00:00Z"), uses: 2, created_at: 0 })).toBe("until Oct 20 · used by 2");
+    expect(keyPositionWords({ kid: "k2d18", label: "k-2d18", kind: "invite", q: "env:staging", kinds: ["logs", "marks"], until: null, uses: 0, created_at: 0 })).toBe("single use · not pasted yet");
+    expect(keyPositionWords({ kid: "k91c0", label: "k-91c0", kind: "invite", q: "", kinds: ["logs", "marks"], until: Date.parse("2026-10-20T00:00:00Z"), uses: 2, created_at: 0 })).toBe("until Oct 20 · used by 2");
     expect(filterWords("")).toBe("Every row — no filter");
   });
 });

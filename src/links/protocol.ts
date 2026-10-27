@@ -1,3 +1,6 @@
+import { ensureSourceProjections, feedKinds, kindsOf } from "./kinds";
+import { noteWire } from "./volume";
+import { effectiveMetricsRetentionDays } from "../control/settings";
 import { refuseOtherVersion, versionHeaders } from "./version";
 import { decodeFeed, encodeFeed, insertPulledBlocks, type WireFeed } from "../feed/wire";
 import { isPaused } from "./page";
@@ -124,7 +127,11 @@ export async function claimRoute(c: Context): Promise<Response> {
     secret: null,
     secret_hash: hashSecret(secret),
     created_at: Date.now(),
+    kinds: key.kinds,
   });
+  if (link.role === "serve") {
+    await ensureSourceProjections(kindsOf(link.kinds));
+  }
   useLinkKey(key.kid);
   return c.json({
     link: link.id,
@@ -132,6 +139,7 @@ export async function claimRoute(c: Context): Promise<Response> {
     minter: { id: instanceId(), name: instanceName() ?? "" },
     q: key.q,
     kind: key.kind,
+    kinds: key.kinds,
   });
 }
 
@@ -168,8 +176,8 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
   const limitRaw = c.req.query("limit");
   const reply = await readFeed({
     positionsOnly: true,
-    // Logs and marks until a link carries its kinds (#329).
-    kinds: ["logs", "marks"],
+    kinds: feedKinds(kindsOf(link.kinds)),
+    metricsRetentionDays: effectiveMetricsRetentionDays(),
     id: link.id,
     q: link.q,
     after,
@@ -187,6 +195,7 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
     last_error: null,
   });
   const body = await encodeFeed(reply, instanceId(), { source: { id: instanceId(), name: instanceName() ?? "" } });
+  noteWire(link.id, body);
   return new Response(body as unknown as BodyInit, {
     headers: { "content-type": "application/x-toposcope-feed", ...versionHeaders() },
   });
@@ -238,6 +247,7 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
   const stored = await insertPulled(reply.rows, source, instanceId());
   await insertPulledMarks(reply.marks ?? [], source, hereName());
   await insertPulledBlocks(wire, { id: reply.source?.id || link.peer_id, name: source.name }, instanceId());
+  noteWire(link.id, wire);
   const gone =
     reply.gone && link.gone_from !== null && link.gone_to !== null
       ? { from: Math.min(link.gone_from, reply.gone.from), to: Math.max(link.gone_to, reply.gone.to) }

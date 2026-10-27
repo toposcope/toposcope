@@ -12,6 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import { compileQuery } from "../../query/compile";
 import type { SavedSearch } from "@/types";
+import { andList, kindTitle, kindsOf, kindsWithScope, linkKinds, type LinkKind } from "../link-kinds";
+import { KindBoxes, KindChips } from "./kind-boxes";
 import { InstanceToken } from "./instance-token";
 import { QueryText } from "./query-text";
 
@@ -108,7 +110,29 @@ function NameField({ value, onChange, who }: { value: string; onChange: (v: stri
   );
 }
 
-type Minted = { key: string; label: string; q: string; until: number | null };
+/** "logs, marks and traces", or "every kind". */
+function kindWords(kinds: readonly LinkKind[]): string {
+  if (kinds.length === linkKinds.length) return "every kind";
+  return andList(kinds.map((k) => kindTitle[k].toLowerCase()));
+}
+
+/** The ticked kinds a scope can send (#326): `level:error` sends logs and marks, not spans. */
+function sentWith(q: string, kinds: readonly LinkKind[]): LinkKind[] {
+  const sends = new Set(kindsWithScope(q).filter((l) => l.sends).map((l) => l.kind));
+  return kinds.filter((k) => sends.has(k));
+}
+
+type Minted = { key: string; label: string; q: string; until: number | null; kinds: LinkKind[] };
+
+/** The kinds a key carries, as the minted key and the paste preview show them (33a). */
+function KindsShown({ q, kinds, label }: { q: string; kinds: readonly LinkKind[]; label: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[13px] font-medium">{label}</span>
+      <KindChips q={q} kinds={kinds} />
+    </div>
+  );
+}
 
 /** Offer rows from here (7a) or invite a source here (7b): pick the filter, mint, copy once. */
 export function MintDialog({
@@ -128,6 +152,7 @@ export function MintDialog({
   const [saved, setSaved] = useState<SavedSearch[]>([]);
   const [many, setMany] = useState(false);
   const [until, setUntil] = useState("");
+  const [kinds, setKinds] = useState<LinkKind[]>([...linkKinds]);
   const [minted, setMinted] = useState<Minted | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -139,6 +164,7 @@ export function MintDialog({
     setQ("");
     setSavedId("");
     setMany(false);
+    setKinds([...linkKinds]);
     setMinted(null);
     const d = new Date(Date.now() + 14 * 86_400_000);
     setUntil(`${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T00:00`);
@@ -160,14 +186,14 @@ export function MintDialog({
       const res = await fetch(`/api/links/${kind}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ q, name: here ? undefined : name, until: !offer && many ? untilMs : null }),
+        body: JSON.stringify({ q, kinds, name: here ? undefined : name, until: !offer && many ? untilMs : null }),
       });
       const json = (await res.json()) as Minted & { error?: string };
       if (!res.ok) {
         toast.error(json.error ?? `Mint failed (${res.status})`);
         return;
       }
-      setMinted(json);
+      setMinted({ ...json, kinds: kindsOf(json.kinds ?? kinds) });
       onMinted();
     } finally {
       setBusy(false);
@@ -189,7 +215,7 @@ export function MintDialog({
 
   return (
     <Dialog open={kind !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent className="max-w-[480px]">
+      <DialogContent className="max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{offer ? "Offer rows from here" : "Invite a source here"}</DialogTitle>
           <DialogDescription>
@@ -209,6 +235,7 @@ export function MintDialog({
                 <FilterShown q={minted.q} />
               </CopyField>
             </div>
+            <KindsShown q={minted.q} kinds={minted.kinds} label={offer ? "What leaves · fixed for this link" : "What comes here · fixed"} />
             {!offer ? (
               <div className="flex flex-col gap-1">
                 <span className="text-[13px] font-medium">The key works</span>
@@ -274,10 +301,12 @@ export function MintDialog({
                 <span className="text-[11.5px] text-muted-foreground">
                   {offer
                     ? "Pick a saved search or type key:value. Empty means every row. Fixed once minted."
-                    : "Empty: every row the source has, message text included."}
+                    : "Empty: every row the source has, message text included."}{" "}
+                  It runs on each kind by the fields that kind has; a kind it cannot decide is not sent.
                 </span>
               )}
             </div>
+            <KindBoxes q={faults.length > 0 ? "" : q} ticked={kinds} onChange={setKinds} legend={offer ? "What leaves" : "What comes here"} />
             {!offer ? (
               <div className="flex flex-col gap-1.5">
                 <span className="text-[13px] font-medium">The key works</span>
@@ -313,10 +342,10 @@ export function MintDialog({
             {offer ? (
               <p className="rounded-[4.4px] bg-white/[0.04] px-3 py-2 text-[13px]">
                 {q.trim() === "" ? (
-                  <>Every row on {me}, message text included, will leave this instance for whoever pastes the key.</>
+                  <>Every row of {kindWords(kinds)} on {me}, message text included, will leave this instance for whoever pastes the key.</>
                 ) : (
                   <>
-                    Rows matching <QueryText q={q.trim()} />, message text included, will leave this instance for whoever pastes the key.
+                    Rows of {kindWords(sentWith(q, kinds))} matching <QueryText q={q.trim()} />, message text included, will leave this instance for whoever pastes the key.
                   </>
                 )}
               </p>
@@ -325,11 +354,14 @@ export function MintDialog({
               <Button
                 type="button"
                 size="sm"
-                disabled={busy || faults.length > 0 || !untilOk || (!here && !name.trim())}
+                disabled={busy || faults.length > 0 || !untilOk || (!here && !name.trim()) || kinds.length === 0}
                 onClick={() => void mint()}
               >
                 Mint key
               </Button>
+              <span className="min-w-0 flex-1 px-3 text-[11.5px] text-muted-foreground">
+                {kinds.length === 0 ? "Tick at least one kind." : "The other side sees these kinds when it pastes, and cannot widen them."}
+              </span>
               <Button type="button" size="sm" variant="ghost" onClick={onClose}>
                 Cancel
               </Button>
@@ -347,6 +379,7 @@ type Preview = {
   url: string;
   kid: string;
   q: string;
+  kinds?: string[];
   until: number | null;
   label: string;
   expired: boolean;
@@ -464,7 +497,7 @@ export function PasteDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? undefined : onClose())}>
-      <DialogContent className="max-w-[480px]">
+      <DialogContent className="max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Paste a link key</DialogTitle>
           <DialogDescription>
@@ -511,15 +544,20 @@ export function PasteDialog({
                   <FilterShown q={p.q} />
                 </CopyField>
               </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11.5px] text-muted-foreground">Kinds, chosen by {p.name}</span>
+                <KindChips q={p.q} kinds={kindsOf(p.kinds ?? null)} />
+                <span className="text-[11.5px] text-muted-foreground">These are the kinds this link carries; pasting cannot widen them.</span>
+              </div>
               {offer ? (
                 <p className="text-[11.5px] text-muted-foreground">Pulled rows follow this instance’s retention, {retentionDays} days.</p>
               ) : (
                 <p className="rounded-[4.4px] bg-white/[0.04] px-3 py-2 text-[13px]">
                   {p.q.trim() === "" ? (
-                    <>Every row on {me}, message text included, will leave for {p.name}.</>
+                    <>Every row of {kindWords(kindsOf(p.kinds ?? null))} on {me}, message text included, will leave for {p.name}.</>
                   ) : (
                     <>
-                      Rows matching <QueryText q={p.q} />, message text included, will leave for {p.name}.
+                      Rows of {kindWords(sentWith(p.q, kindsOf(p.kinds ?? null)))} matching <QueryText q={p.q} />, message text included, will leave for {p.name}.
                     </>
                   )}
                 </p>

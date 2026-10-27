@@ -9,6 +9,8 @@ export type LinkItem = {
   peer_name: string;
   peer_url: string;
   q: string;
+  /** The kinds it carries, `logs,marks,traces` (#329). */
+  kinds: string;
   kid: string;
   position: number;
   settled: number;
@@ -28,6 +30,8 @@ export type LinkKeyItem = {
   label: string;
   kind: "offer" | "invite";
   q: string;
+  /** The kinds the link it makes will carry (#329). */
+  kinds: string[];
   until: number | null;
   uses: number;
   created_at: number;

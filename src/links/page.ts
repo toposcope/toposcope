@@ -3,7 +3,8 @@ import type { Context } from "hono";
 import { compileQuery } from "../query/compile";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { getDb } from "../control/index";
-import { getLink, type LinkRecord } from "./store";
+import { getLink, volumeDay, type LinkRecord } from "./store";
+import { feedKinds, kindsOf, kindsText, linkKinds, parseLinkKinds, type LinkKind } from "./kinds";
 
 /**
  * A link's own page (#267, frame 26m): which way rows move, its scope, where it stands, the rows
@@ -30,7 +31,53 @@ export type LinkPage = {
   /** Rows that entered at the peer, per 15 minutes over 24 h (a pull link's rows only). */
   pulled: Array<{ t: string; n: number }>;
   pulled_24h: number;
+  /** A line per kind (#329, frame 33b): on one position, each with its own state and volume. */
+  kinds: KindLine[];
 };
+
+export type KindLine = {
+  kind: LinkKind;
+  ticked: boolean;
+  state: "caught up" | "behind" | "a hole" | "not sent" | "unticked at the source" | "paused";
+  not_sent?: string;
+  gone?: { from: number; to: number };
+  rows_day: number;
+  bytes_day: number;
+};
+
+/** Each kind's line, from the link's kinds, its last word per kind and its volume over a day. */
+export function kindLines(link: LinkRecord, paused: boolean, now = Date.now()): KindLine[] {
+  const ticked = new Set(kindsOf(link.kinds));
+  const state = JSON.parse(link.kind_state ?? "{}") as Record<string, { gone?: { from: number; to: number }; not_sent?: string }>;
+  const volume = volumeDay(link.id, now);
+  const behind = link.position < link.settled;
+  return linkKinds.map((kind) => {
+    const feed = feedKinds([kind]);
+    const words = feed.map((k) => state[k]).find((s) => s?.not_sent) ?? feed.map((k) => state[k]).find((s) => s?.gone);
+    const rows = feed.reduce((n, k) => n + (volume[k]?.rows ?? 0), 0);
+    const bytes = feed.reduce((n, k) => n + (volume[k]?.bytes ?? 0), 0);
+    const line: KindLine = {
+      kind,
+      ticked: ticked.has(kind),
+      state: !ticked.has(kind)
+        ? "unticked at the source"
+        : paused
+          ? "paused"
+          : words?.not_sent
+            ? "not sent"
+            : words?.gone
+              ? "a hole"
+              : behind
+                ? "behind"
+                : "caught up",
+      rows_day: rows,
+      bytes_day: bytes,
+    };
+    if (ticked.has(kind) && words?.not_sent) line.not_sent = words.not_sent;
+    if (ticked.has(kind) && words?.gone) line.gone = words.gone;
+    return line;
+  });
+}
 
 export function isPaused(link: Pick<LinkRecord, "id">): boolean {
   const row = getDb().query("SELECT paused FROM links WHERE id = ?").get(link.id) as { paused: number } | null | undefined;
@@ -71,6 +118,7 @@ export async function linkPage(id: string): Promise<LinkPage | null> {
     holes: link.gone_from_at && link.gone_to_at ? [{ from: link.gone_from_at, to: link.gone_to_at }] : [],
     pulled,
     pulled_24h: pulled.reduce((n, b) => n + b.n, 0),
+    kinds: kindLines(link, isPaused(link)),
   };
 }
 
@@ -86,9 +134,25 @@ export async function updateLinkRoute(c: Context): Promise<Response> {
   if (!link || link.removed_at !== null) {
     return c.json({ error: "no such link" }, 404);
   }
-  const body = (await c.req.json().catch(() => null)) as { paused?: unknown; q?: unknown } | null;
+  const body = (await c.req.json().catch(() => null)) as { paused?: unknown; q?: unknown; kinds?: unknown } | null;
   if (!body || typeof body !== "object") {
     return c.json({ error: "Expected an object" }, 400);
+  }
+  // Kinds are checked before anything is saved, so a refused change leaves the link as it was (#329).
+  let nextKinds: LinkKind[] | null = null;
+  if (body.kinds !== undefined) {
+    if (link.role !== "serve") {
+      return c.json({ error: "the source holds which kinds this link carries: change them there" }, 409);
+    }
+    const kinds = parseLinkKinds(body.kinds);
+    if ("error" in kinds) {
+      return c.json({ error: kinds.error }, 400);
+    }
+    const had = new Set(kindsOf(link.kinds));
+    if (kinds.some((k) => !had.has(k))) {
+      return c.json({ error: "A kind is never added to a key already used: to send it too, make a new key" }, 409);
+    }
+    nextKinds = kinds;
   }
   if (body.paused !== undefined) {
     if (typeof body.paused !== "boolean") {
@@ -109,6 +173,10 @@ export async function updateLinkRoute(c: Context): Promise<Response> {
       return c.json({ error: compiled.faults[0]?.msg ?? "q does not compile", faults: compiled.faults }, 400);
     }
     getDb().query("UPDATE links SET q = ? WHERE id = ?").run(body.q.trim(), link.id);
+    stampUpdated("links", link.id);
+  }
+  if (nextKinds) {
+    getDb().query("UPDATE links SET kinds = ? WHERE id = ?").run(kindsText(nextKinds), link.id);
     stampUpdated("links", link.id);
   }
   return c.json(await linkPage(link.id));

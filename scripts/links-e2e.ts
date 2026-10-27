@@ -108,6 +108,25 @@ const backConfirm = await call(A, "/api/links/confirm", { method: "POST", json: 
 check(backConfirm.status === 201, "A pulls every row from B", backConfirm.body);
 await ingest(B, service, [{ level: "warn", message: `${tag} from edge` }]);
 await until("A holds B's own row", async () => (await count(A, `toposcope:${nameB} service:${service}`)) === 1);
+// Every kind comes with a link (#329): B's spans and metric points reach A over the same link.
+check(Array.isArray(backConfirm.body.kinds ? backConfirm.body.kinds.split(",") : null) && backConfirm.body.kinds.includes("traces"), "the link carries every kind by default", backConfirm.body.kinds);
+const traceId = Array.from({ length: 32 }, (_, i) => "0123456789abcdef"[(i * 7 + tag.length) % 16]).join("");
+const nano = `${Date.now()}000000`;
+const otlp = async (path: string, body: unknown) => {
+  const res = await fetch(`${B}${path}`, { method: "POST", headers: { authorization: `Bearer ${ingestToken}`, "content-type": "application/json" }, body: JSON.stringify(body) });
+  check(res.ok, `OTLP ${path} on B`);
+};
+const resource = { attributes: [{ key: "service.name", value: { stringValue: service } }, { key: "host.name", value: { stringValue: "edge-host" } }] };
+await otlp("/v1/traces", { resourceSpans: [{ resource, scopeSpans: [{ spans: [{ traceId, spanId: "00f067aa0ba902b7", name: "GET /pay", kind: 2, startTimeUnixNano: nano, endTimeUnixNano: nano, status: {} }] }] }] });
+await otlp("/v1/metrics", { resourceMetrics: [{ resource, scopeMetrics: [{ metrics: [{ name: `pay.requests.${tag}`, gauge: { dataPoints: [{ timeUnixNano: nano, asDouble: 7 }] } }] }] }] });
+await until("A holds B's span, under B's name", async () => {
+  const t = await call(A, `/api/traces/${traceId}`);
+  return t.status === 200 && Array.isArray(t.body.spans) && t.body.spans.some((sp: any) => sp.name === "GET /pay");
+});
+await until("A holds B's metric point", async () => {
+  const names = await call(A, "/api/metric-names?range=15m");
+  return JSON.stringify(names.body).includes(`pay.requests.${tag}`);
+});
 await Bun.sleep(6_000);
 check((await count(A, `service:${service}`)) === 6, "A holds its own five and B's one: its errors did not come back twice");
 
