@@ -1,3 +1,4 @@
+import { hasTwoStep, makeBackupCodes, resetTwoStep, twoStepState } from "./two-step";
 import type { Context } from "hono";
 import { actorOf } from "../actor-context";
 import { actorName } from "./actors";
@@ -42,6 +43,10 @@ function personJson(p: Person, meId: string | null) {
     invited_by: p.created_by === "owner-link" ? null : actorName(p.created_by)?.name ?? null,
     first_owner: p.created_by === "owner-link",
     tokens: tokensOf(p.id).map(tokenJson),
+    two_step: (() => {
+      const t = twoStepState(p);
+      return { ...t, reset_by: actorName(t.reset_by)?.name ?? null };
+    })(),
   };
 }
 
@@ -177,6 +182,25 @@ export async function createServiceTokenRoute(c: Context): Promise<Response> {
   }
   const { token, row } = createPersonToken(account.id, { ...input, created_by: actorOf(c)?.person.id ?? null });
   return c.json({ token, ...tokenJson(row) }, 201);
+}
+
+/** `DELETE /api/people/:id/two-step` (32e): an Owner resets a lost phone; set up again at the next sign-in. */
+export function resetTwoStepRoute(c: Context): Response {
+  const person = personById(c.req.param("id") ?? "");
+  if (!person || person.revoked_at !== null || person.kind !== "person") {
+    return c.json({ error: "No such person" }, 404);
+  }
+  resetTwoStep(person.id, actorOf(c)?.person.id ?? null);
+  return c.json({ ok: true });
+}
+
+/** `POST /api/me/two-step/backup-codes`: ten new codes for me, shown once; the old ten stop working. */
+export function newBackupCodesRoute(c: Context): Response {
+  const actor = actorOf(c);
+  if (!actor || actor.via !== "session" || !hasTwoStep(actor.person.id)) {
+    return c.json({ error: "Two-step is not set up for you" }, 400);
+  }
+  return c.json({ backup_codes: makeBackupCodes(actor.person.id) });
 }
 
 /** `GET /api/me/tokens`: my own tokens. */

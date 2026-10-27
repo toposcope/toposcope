@@ -252,10 +252,10 @@ export async function useOwnerLink(
   const passwordHash = await Bun.password.hash(input.password, { algorithm: "argon2id" });
   db.query("UPDATE owner_links SET used_at = ? WHERE id = ?").run(now, link.id);
   if (link.person) {
-    db.query("UPDATE people SET password_hash = ?, session_epoch = session_epoch + 1, revoked_at = NULL WHERE id = ?").run(
-      passwordHash,
-      link.person.id,
-    );
+    // The way back in for a locked-out Owner: a new password and a new second step (32g).
+    db.query(
+      "UPDATE people SET password_hash = ?, session_epoch = session_epoch + 1, revoked_at = NULL, totp_secret = NULL, totp_pending = NULL, totp_last_step = NULL, backup_codes = NULL WHERE id = ?",
+    ).run(passwordHash, link.person.id);
     return { person: personById(link.person.id, db)! };
   }
   const name = input.name.trim() || link.email.split("@")[0]!;
@@ -333,16 +333,28 @@ export async function setPassword(personId: string, password: string, db: Databa
 
 // ---- Sessions ----
 
-export function createSession(person: Person, now = Date.now(), db: Database = getDb()): { value: string; expiresAt: number } {
+export type SessionStage = "full" | "verify" | "setup" | "codes";
+/** A password alone opens only the second step, or its setup, for 15 minutes (#309). */
+export const pendingMs = 15 * 60_000;
+
+export function createSession(
+  person: Person,
+  now = Date.now(),
+  db: Database = getDb(),
+  stage: SessionStage = "full",
+  next: string | null = null,
+): { value: string; expiresAt: number } {
   const id = randomBytes(24).toString("base64url");
-  const expiresAt = now + sessionMs;
-  db.query("INSERT INTO sessions (id, person_id, epoch, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)").run(
+  const expiresAt = now + (stage === "full" ? sessionMs : pendingMs);
+  db.query("INSERT INTO sessions (id, person_id, epoch, created_at, expires_at, last_seen_at, stage, next) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
     id,
     person.id,
     person.session_epoch,
     now,
     expiresAt,
     now,
+    stage,
+    next,
   );
   db.query("DELETE FROM sessions WHERE expires_at <= ?").run(now);
   return { value: `${id}.${sign(id, db)}`, expiresAt };
@@ -350,6 +362,42 @@ export function createSession(person: Person, now = Date.now(), db: Database = g
 
 function sign(id: string, db: Database): string {
   return createHmac("sha256", sessionSecret(db)).update(id).digest("base64url");
+}
+
+/** A session at any stage: the second-step pages read one that is still waiting (#309). */
+export function sessionAtStage(
+  value: string | undefined,
+  now = Date.now(),
+  db: Database = getDb(),
+): { id: string; person: Person; stage: SessionStage; next: string | null; expiresAt: number } | null {
+  if (!value) {
+    return null;
+  }
+  const dot = value.indexOf(".");
+  if (dot <= 0) {
+    return null;
+  }
+  const id = value.slice(0, dot);
+  if (!safeEqual(value.slice(dot + 1), sign(id, db))) {
+    return null;
+  }
+  const row = db.query("SELECT person_id, epoch, expires_at, stage, next FROM sessions WHERE id = ?").get(id) as
+    | { person_id: string; epoch: number; expires_at: number; stage: SessionStage; next: string | null }
+    | null;
+  if (!row || row.expires_at <= now) {
+    return null;
+  }
+  const person = personById(row.person_id, db);
+  if (!person || person.revoked_at !== null || person.session_epoch !== row.epoch) {
+    return null;
+  }
+  return { id, person, stage: row.stage, next: row.next, expiresAt: row.expires_at };
+}
+
+/** Moves a waiting session on; a full one gets its 30 days from now. */
+export function setSessionStage(id: string, stage: SessionStage, now = Date.now(), db: Database = getDb()): void {
+  const expiresAt = now + (stage === "full" ? sessionMs : pendingMs);
+  db.query("UPDATE sessions SET stage = ?, expires_at = ?, last_seen_at = ? WHERE id = ?").run(stage, expiresAt, now, id);
 }
 
 /** The person a session cookie belongs to, and when it ends; it slides forward once an hour. */
@@ -369,10 +417,11 @@ export function sessionPerson(
   if (!safeEqual(value.slice(dot + 1), sign(id, db))) {
     return null;
   }
-  const row = db.query("SELECT person_id, epoch, expires_at, last_seen_at FROM sessions WHERE id = ?").get(id) as
-    | { person_id: string; epoch: number; expires_at: number; last_seen_at: number }
+  const row = db.query("SELECT person_id, epoch, expires_at, last_seen_at, stage FROM sessions WHERE id = ?").get(id) as
+    | { person_id: string; epoch: number; expires_at: number; last_seen_at: number; stage: SessionStage }
     | null;
-  if (!row || row.expires_at <= now) {
+  // Only a session past its second step signs anything in.
+  if (!row || row.expires_at <= now || row.stage !== "full") {
     return null;
   }
   const person = personById(row.person_id, db);

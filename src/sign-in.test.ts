@@ -54,14 +54,33 @@ beforeAll(async () => {
     await go("setupAgain", "/setup/" + link.token, { headers: page });
     await go("setupReuse", "/api/setup", setup(link.token, "Ian", "correct horse battery"));
     const first = made.cookie.split(";")[0];
+    const helpers = await import(root + "/control/owner-for-tests.ts");
+    // #309: an Owner sets up two-step before the session signs anything in.
+    await go("pendingApi", "/api/me", { headers: { cookie: first } });
+    await go("setupStep", "/two-step", { headers: { ...page, cookie: first } });
+    out.codes = await helpers.passTwoStepSetup(app.fetch, first);
     await go("rename", "/api/settings", { method: "PUT", headers: { cookie: first, "content-type": "application/json" }, body: JSON.stringify({ instance_name: "  agental-prod " }) });
     await go("me", "/api/me", { headers: { cookie: first } });
     await go("pageNamed", "/", { headers: { ...page, host: "logs.example.test" } });
     await go("wrong", "/api/sign-in", form("ian@agental.io", "nope nope nope", "/?q=x"));
     await go("noSuchEmail", "/api/sign-in", form("who@agental.io", "correct horse battery"));
     const ok = await go("right", "/api/sign-in", form("IAN@agental.io", "correct horse battery", "/?q=level:error"));
-    await go("offsite", "/api/sign-in", form("ian@agental.io", "correct horse battery", "//evil.example/"));
     const cookie = ok.cookie.split(";")[0];
+    const ianId = JSON.parse(out.me.body).id;
+    await go("beforeCode", "/api/saved-searches", { headers: { cookie } });
+    await go("verifyPage", "/two-step", { headers: { ...page, cookie } });
+    const urlenc2 = (body) => ({ method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", cookie }, body: new URLSearchParams(body).toString() });
+    await go("wrongCode", "/api/two-step/verify", urlenc2({ code: "000000" }));
+    // Setup took this 30 s step, and a step is never accepted twice: the next one, as the app shows it soon after.
+    const code = await helpers.currentCode(ianId, 1);
+    await go("rightCode", "/api/two-step/verify", urlenc2({ code }));
+    const off = await go("offsite", "/api/sign-in", form("ian@agental.io", "correct horse battery", "//evil.example/"));
+    const offCookie = off.cookie.split(";")[0];
+    await go("replay", "/api/two-step/verify", { method: "POST", headers: { "content-type": "application/json", cookie: offCookie }, body: JSON.stringify({ code }) });
+    await go("backupUsed", "/api/two-step/verify", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", cookie: offCookie }, body: new URLSearchParams({ backup: out.codes[0].toLowerCase() }).toString() });
+    await go("backupAgain", "/api/sign-in", form("ian@agental.io", "correct horse battery"));
+    const again = out.backupAgain.cookie.split(";")[0];
+    await go("backupReused", "/api/two-step/verify", { method: "POST", headers: { "content-type": "application/json", cookie: again }, body: JSON.stringify({ backup: out.codes[0] }) });
     await go("withCookie", "/api/saved-searches", { headers: { cookie } });
     await go("instance", "/api/instance", { headers: { cookie, host: "logs.example.test" } });
     await go("appPage", "/", { headers: { ...page, cookie } });
@@ -74,6 +93,8 @@ beforeAll(async () => {
     await go("afterReset", "/api/saved-searches", { headers: { cookie } });
     await go("oldPassword", "/api/sign-in", form("ian@agental.io", "correct horse battery"));
     const now = reset.cookie.split(";")[0];
+    // The owner link gives a new second step too.
+    await helpers.passTwoStepSetup(app.fetch, now);
     await go("newCookie", "/api/saved-searches", { headers: { cookie: now } });
     // A service account's token reads with Bearer; the ingest token does not.
     const bearer = (await import(root + "/control/owner-for-tests.ts")).ownerBearer("ci");
@@ -137,7 +158,14 @@ describe("people sign in, and there is no shared password (#305)", () => {
     expect(r.setupShort!.status).toBe(400);
     expect(r.setupShort!.body).toContain("12 characters or more");
     expect(r.setupDone!.status).toBe(303);
-    expect(r.setupDone!.cookie).toMatch(/^toposcope_session_[0-9a-f]{8}=[^;]+; Path=\/; Max-Age=2592000; HttpOnly; SameSite=Strict$/);
+    expect(r.setupDone!.location).toBe("/two-step");
+    // Waiting on two-step: 15 minutes, and it signs nothing in until set up (#309).
+    expect(r.setupDone!.cookie).toMatch(/^toposcope_session_[0-9a-f]{8}=[^;]+; Path=\/; Max-Age=900; HttpOnly; SameSite=Strict$/);
+    expect(r.pendingApi!.status).toBe(401);
+    expect(r.setupStep!.status).toBe(200);
+    expect(r.setupStep!.body).toContain("Add a second step to your password");
+    expect(r.setupStep!.body).toContain('aria-label="QR code for the authenticator app"');
+    expect((r as unknown as Record<string, string[]>).codes).toHaveLength(10);
     expect(r.setupAgain!.status).toBe(410);
     expect(r.setupAgain!.body).toContain("This link no longer works");
     expect(r.setupReuse!.status).toBe(410);
@@ -163,10 +191,15 @@ describe("people sign in, and there is no shared password (#305)", () => {
     expect(r.noSuchEmail!.body).toContain("That email and password do not sign in");
   });
 
-  test("the right one, in any case, sets a 30-day cookie and goes back where it was", () => {
+  test("the right one, in any case, asks for the six digits, then goes back where it was", () => {
     expect(r.right!.status).toBe(303);
-    expect(r.right!.location).toBe("/?q=level:error");
-    expect(r.offsite!.location).toBe("/");
+    expect(r.right!.location).toBe("/two-step");
+    expect(r.beforeCode!.status).toBe(401);
+    expect(r.verifyPage!.body).toContain("The six digits from your authenticator app");
+    expect(r.wrongCode!.status).toBe(400);
+    expect(r.wrongCode!.body).toContain("That code was not right.");
+    expect(r.rightCode!.status).toBe(303);
+    expect(r.rightCode!.location).toBe("/?q=level:error");
     expect(r.withCookie!.status).toBe(200);
     expect(r.appPage!.status).toBe(200);
     expect(r.appPage!.body).toContain("the app");
@@ -175,6 +208,13 @@ describe("people sign in, and there is no shared password (#305)", () => {
     expect(info.session.kind).toBe("cookie");
     expect(info.session.expires_at).toBeGreaterThan(Date.now() + 29 * 24 * 3600_000);
     expect(r.badCookie!.status).toBe(401);
+  });
+
+  test("a code works once; a backup code works once and says how many are left", () => {
+    expect(r.replay!.status).toBe(401);
+    expect(r.backupUsed!.status).toBe(200);
+    expect(r.backupUsed!.body).toContain("Signed in with a backup code. 9 are left.");
+    expect(r.backupReused!.status).toBe(401);
   });
 
   test("owner-link for an Owner is the way back in: a new password, and their old sessions end", () => {

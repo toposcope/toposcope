@@ -3648,6 +3648,12 @@ async function main(): Promise<void> {
     const link = createOwnerLink(email);
     const made = await fetch(`${APP_URL}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: link.token, name: "E2E", password }) });
     if (!made.ok) throw new Error(`the owner link should make an Owner, got ${made.status} ${await made.text()}`);
+    // #309: an Owner sets up two-step before anything signs in.
+    const { currentCode, passTwoStepSetup } = await import("../src/control/owner-for-tests");
+    const setupCookie = (made.headers.get("set-cookie") ?? "").split(";")[0]!;
+    const waiting = await fetch(`${APP_URL}/api/me`, { headers: { cookie: setupCookie } });
+    if (waiting.status !== 401) throw new Error(`a session waiting on two-step should sign nothing in, got ${waiting.status}`);
+    await passTwoStepSetup((req) => fetch(req), setupCookie, APP_URL);
     const again = await fetch(`${APP_URL}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: link.token, name: "E2E", password }) });
     if (again.status !== 410) throw new Error(`an owner link works once, got ${again.status}`);
     const wrong = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password: `${password}-not` }) });
@@ -3656,6 +3662,9 @@ async function main(): Promise<void> {
     const setCookie = right.headers.get("set-cookie") ?? "";
     if (!right.ok || !/HttpOnly; SameSite=Strict/.test(setCookie)) throw new Error(`sign-in should set a cookie, got ${right.status} ${setCookie}`);
     const cookie = setCookie.split(";")[0]!;
+    const meId = ((await (await fetch(`${APP_URL}/api/me`, { headers: { cookie: setupCookie } })).json()) as { id: string }).id;
+    const verified = await fetch(`${APP_URL}/api/two-step/verify`, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ code: await currentCode(meId, 1) }) });
+    if (!verified.ok) throw new Error(`the six digits should finish signing in, got ${verified.status} ${await verified.text()}`);
     const me = (await (await fetch(`${APP_URL}/api/me`, { headers: { cookie } })).json()) as { role?: string; email?: string };
     if (me.role !== "owner" || me.email !== email) throw new Error(`the cookie should be the Owner, got ${JSON.stringify(me)}`);
     await fetch(`${APP_URL}/api/sign-out`, { method: "POST", headers: { cookie } });

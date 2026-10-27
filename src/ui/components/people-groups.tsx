@@ -24,7 +24,26 @@ export type PersonRow = {
   invited_by: string | null;
   first_owner: boolean;
   tokens: PersonTokenRow[];
+  two_step?: { state: "on" | "not set up" | "reset" | "provider" | "none"; codes_left: number; reset_by: string | null; reset_at: number | null };
 };
+
+/** What People says about a person's second step (32e). */
+export function twoStepWords(p: PersonRow, nowMs: number): { text: string; tone: "ok" | "warn" | "muted" } {
+  const t = p.two_step;
+  if (!t || t.state === "none") {
+    return { text: "—", tone: "muted" };
+  }
+  if (t.state === "provider") {
+    return { text: "not needed · their provider does it", tone: "muted" };
+  }
+  if (t.state === "on") {
+    return { text: `● on · ${t.codes_left} backup code${t.codes_left === 1 ? "" : "s"}${t.codes_left <= 3 ? " left" : ""}`, tone: "ok" };
+  }
+  if (t.state === "reset") {
+    return { text: `● set up again at next sign-in${t.reset_by ? ` · reset by ${t.reset_by}` : ""}${t.reset_at ? ` ${clockAt(t.reset_at, nowMs)}` : ""}`, tone: "warn" };
+  }
+  return { text: "● not set up · asked at next sign-in", tone: "warn" };
+}
 export type InviteRow = { id: string; who: string; role: Role; created_at: number; expires_at: number; invited_by: string | null };
 export type PeopleBody = { people: PersonRow[]; service_accounts: PersonRow[]; invites: InviteRow[] };
 
@@ -64,7 +83,7 @@ function tone(id: string): string {
   return avatarTone[n % avatarTone.length]!;
 }
 
-const peopleCol = "grid grid-cols-[36px_minmax(0,1fr)_120px_170px_130px_150px_72px] items-center gap-3";
+const peopleCol = "grid grid-cols-[36px_minmax(0,1fr)_110px_120px_230px_110px_150px_96px] items-center gap-3";
 
 export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: boolean; onChanged: () => void }) {
   const [armed, setArmed] = useState<string | null>(null);
@@ -92,6 +111,7 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
         <span>Name</span>
         <span>Role</span>
         <span>Signs in with</span>
+        <span>Two-step</span>
         <span>Last seen</span>
         <span>Invited by</span>
         <span />
@@ -127,9 +147,29 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
             </span>
           )}
           <span className="truncate text-[12px] text-muted-foreground">{p.signs_in_with}</span>
+          {(() => {
+            const w = twoStepWords(p, props.nowMs);
+            return <span className={cn("truncate text-[12px]", w.tone === "ok" ? "text-emerald-300" : w.tone === "warn" ? "text-amber-300" : "text-muted-foreground")}>{w.text}</span>;
+          })()}
           <span className="truncate font-mono text-[12px] text-muted-foreground">{p.you ? "now" : p.last_seen_at ? clockAt(p.last_seen_at, props.nowMs) : "never"}</span>
           <span className="truncate text-[12px] text-muted-foreground">{p.first_owner ? "first Owner, from the setup link" : p.invited_by ? `${p.invited_by} · ${clockAt(p.created_at, props.nowMs)}` : "—"}</span>
-          <span className="text-right">
+          <span className="flex flex-col items-end gap-0.5 text-right">
+            {props.isOwner && !p.you && p.two_step?.state === "on" ? (
+              armed === `2s:${p.id}` ? (
+                <button
+                  type="button"
+                  className="text-[12px] text-plate hover:underline"
+                  title="Their sessions end now, their backup codes stop working, and they set up two-step again the next time they sign in."
+                  onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}/two-step`, { method: "DELETE" }, `${p.name}'s two-step is reset`)}
+                >
+                  sure? reset two-step
+                </button>
+              ) : (
+                <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(`2s:${p.id}`)}>
+                  reset two-step
+                </button>
+              )
+            ) : null}
             {props.isOwner && !p.you ? (
               armed === p.id ? (
                 <button type="button" className="text-[12px] text-red-300 hover:underline" onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}`, { method: "DELETE" }, `${p.name} revoked`)}>
@@ -152,6 +192,7 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
             <span className="text-muted-foreground"> · invite not used yet · expires {expiresIn(i.expires_at, props.nowMs)}</span>
           </span>
           <span className="inline-flex h-6 w-fit items-center rounded-[6px] border border-white/10 px-2 text-[11.5px] text-zinc-300">{roleName[i.role]}</span>
+          <span className="text-[12px] text-muted-foreground">—</span>
           <span className="text-[12px] text-muted-foreground">—</span>
           <span className="font-mono text-[12px] text-muted-foreground">never</span>
           <span className="truncate text-[12px] text-muted-foreground">{i.invited_by ? `${i.invited_by} · ${clockAt(i.created_at, props.nowMs)}` : "—"}</span>
