@@ -1,3 +1,4 @@
+import { stampUpdated } from "../control/actors";
 import type { Context } from "hono";
 import { compileQuery } from "../query/compile";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
@@ -94,6 +95,7 @@ export async function updateLinkRoute(c: Context): Promise<Response> {
       return c.json({ error: "paused is true or false" }, 400);
     }
     getDb().query("UPDATE links SET paused = ? WHERE id = ?").run(body.paused ? 1 : 0, link.id);
+    stampUpdated("links", link.id);
   }
   if (body.q !== undefined) {
     if (typeof body.q !== "string") {
@@ -107,6 +109,7 @@ export async function updateLinkRoute(c: Context): Promise<Response> {
       return c.json({ error: compiled.faults[0]?.msg ?? "q does not compile", faults: compiled.faults }, 400);
     }
     getDb().query("UPDATE links SET q = ? WHERE id = ?").run(body.q.trim(), link.id);
+    stampUpdated("links", link.id);
   }
   return c.json(await linkPage(link.id));
 }

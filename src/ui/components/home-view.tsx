@@ -10,6 +10,8 @@ import type { MonitorView, SavedSearch } from "../types";
 export type HomeWindow = { from: string; to: string };
 
 type Props = {
+  /** The person looking (#307): their own hunts read "yours". */
+  meId?: string | null;
   saved: SavedSearch[];
   monitors: MonitorView[];
   instanceName: string | null;
@@ -243,7 +245,7 @@ export function HomeView(props: Props) {
               {data.cards.map((card) => {
                 const item = props.saved.find((s) => s.id === card.saved_id);
                 return (
-                  <Card key={card.saved_id} card={card} quiet={since.kind === "hour"} onClick={() => item && props.onOpenSaved(item, window, selectedId)} />
+                  <Card key={card.saved_id} card={card} meId={props.meId ?? null} quiet={since.kind === "hour"} onClick={() => item && props.onOpenSaved(item, window, selectedId)} />
                 );
               })}
             </div>
@@ -362,7 +364,16 @@ function MarkChip({ on, glyph, color, label, time, onClick }: { on: boolean; gly
   );
 }
 
-function Card({ card, quiet, onClick }: { card: HomeCard; quiet: boolean; onClick: () => void }) {
+/** "Maya K." → "MK", as the header does (#305). */
+export function initialsOf(name: string): string {
+  const words = name.replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return "?";
+  }
+  return words.length === 1 ? words[0]!.slice(0, 2).toUpperCase() : (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase();
+}
+
+function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; onClick: () => void; meId: string | null }) {
   const delta = deltaText(card.before, card.after, card.kind);
   const up = !quiet && delta.up;
   const peak = Math.max(1, ...card.spark);
@@ -391,6 +402,12 @@ function Card({ card, quiet, onClick }: { card: HomeCard; quiet: boolean; onClic
         ))}
         <div className="absolute -top-1 bottom-0 w-px" style={{ left: `${card.spark.length ? (card.split_at / card.spark.length) * 100 : 50}%`, background: quiet ? "#3f3f46" : "#e7e1d3" }} />
       </div>
+      {card.saved_by ? (
+        <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+          <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-[#27272a] text-[9px] font-semibold text-zinc-300">{initialsOf(card.saved_by.name)}</span>
+          {card.saved_by.id === meId ? (card.shared ? "yours" : "yours · only you see it") : `saved by ${card.saved_by.name}`}
+        </span>
+      ) : null}
     </button>
   );
 }

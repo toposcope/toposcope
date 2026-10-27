@@ -1,3 +1,4 @@
+import { actorOf } from "../actor-context";
 import { allocateArrivalSeq, releaseArrivalSeq } from "./arrival-seq";
 import { hereName } from "../shared/here";
 import type { Context } from "hono";
@@ -125,6 +126,13 @@ export async function ingestMarksRoute(c: Context): Promise<Response> {
     }
   }
 
+  // #307: a note written in the app names the person who wrote it.
+  const writer = actorOf(c);
+  if (writer) {
+    for (const row of parsed) {
+      row.mark.attrs = { ...row.mark.attrs, by: writer.person.name, by_id: writer.person.id };
+    }
+  }
   try {
     const existing = await lookupChangeMarkStates(
       parsed.filter((row) => row.idProvided).map((row) => row.mark.id),

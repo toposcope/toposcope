@@ -6,6 +6,10 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+**Changes stored data:** saved searches, monitors, shares, links, link keys and ingest tokens gain `created_by` and `updated_by`; settings keep who last changed each.
+
+Every write records who made it (frames 30a and 30e). Each request runs as its person, service account or ingest token, and what it makes or changes is stamped with it: saved hunts, monitors and their holds, shares, links and link keys, ingest tokens, retention, the default webhook, the instance's name and Fields. A note written in the app carries `by` with its writer's name. The API names them: `saved_by` on saved hunts, `made_by` on monitors and Access rows, `changed_by` on settings. Home's cards say "saved by Maya K." or "yours", with "only you see it" for a hunt that is not shared, and Watch names who made each monitor. What a revoked person made stays under their name. Everything made before 0.9 passes to the first Owner. [#307](https://github.com/toposcope/toposcope/issues/307)
+
 **Changes stored data:** saved searches gain `owner_id` and `shared`, and pins move to `person_pins`, one set per person.
 
 What each role may do is enforced on every route (frame 30d). A Viewer reads Home, Hunt, Watch, traces and profiles, exports rows and saves their own hunts; an Operator also writes notes, makes and changes monitors and webhooks, changes Fields and adds panels to an existing share, within its fence; an Owner also invites people, makes or revokes tokens, links and shares, and changes retention, sign-in and the instance. Every `/api` route names its row of the table, and a test fails on one that does not. A refusal is 403 with a sentence that says who may (`A Viewer may not make or change monitors and webhooks: ask an Operator`) and a refused use row. A Viewer's saved hunt is theirs alone; an Operator's is shared, on everyone's Home, unless they say otherwise; hunts saved before 0.9 stay shared and pass, with Home's pins, to the first Owner. Pins are each person's own. A read-only personal token acts as a Viewer. [#306](https://github.com/toposcope/toposcope/issues/306)

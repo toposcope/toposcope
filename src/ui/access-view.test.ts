@@ -4,7 +4,7 @@ import { accessGlyph, accessGroups, expiryWords, inFilter } from "./components/a
 
 const now = Date.parse("2026-10-26T13:26:00Z");
 const row = (over: Partial<AccessRow>): AccessRow => ({
-  kind: "token", verb: "token", direction: "in", id: "x", name: "x", lets_through: "", scope: "any", expires_at: null, last_used_at: null, today: { used: 0, refused: 0 }, revoke: null, open: null, ...over,
+  kind: "token", verb: "token", direction: "in", id: "x", name: "x", lets_through: "", scope: "any", expires_at: null, last_used_at: null, today: { used: 0, refused: 0 }, revoke: null, open: null, made_by: null, ...over,
 });
 
 describe("Access (#265, 26i; the one door, 29a, #295)", () => {

@@ -1,3 +1,4 @@
+import { stampCreated, stampUpdated } from "./actors";
 import type { Context } from "hono";
 import { closeByEdit } from "../alerts/monitor-store";
 import { sendNetCheck } from "../alerts/net-monitor";
@@ -200,6 +201,7 @@ export function insertNetMonitor(fields: NetFields, now = Date.now()): AlertRule
     );
     insertNet(id, fields.write, now, db);
   })();
+  stampCreated("alert_rules", id);
   return getAlert(id)!;
 }
 
@@ -231,6 +233,7 @@ export function applyNetFields(existing: AlertRule, net: NetSettings, fields: Ne
       fields.resolved_body,
       existing.id,
     );
+      stampUpdated("alert_rules", existing.id);
     updateNet(existing.id, w, { nextRunAt, restart: readsAnew }, db);
   })();
   if (readsAnew && existing.state === "open") {

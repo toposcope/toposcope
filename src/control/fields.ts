@@ -1,3 +1,4 @@
+import { stampSetting } from "./actors";
 import type { Context } from "hono";
 import type { Database } from "bun:sqlite";
 import {
@@ -174,6 +175,7 @@ export async function putFields(c: Context): Promise<Response> {
     return c.json({ error: links.error }, 400);
   }
   const stored = writeFieldConfig(roles, links);
+  stampSetting("fields");
   await syncFieldRoleSkip(skipKeysFromRoles(roles));
   return c.json(stored);
 }

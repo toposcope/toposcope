@@ -22,24 +22,30 @@ export function ingestToken(): string | undefined {
 }
 
 export function checkBearer(header: string | undefined): boolean {
+  return ingestTokenName(header) !== null;
+}
+
+/** The ingest token a bearer header holds, by name (its use counted), or null. */
+export function ingestTokenName(header: string | undefined): string | null {
   const presented = bearerToken(header);
   if (!presented) {
-    return false;
+    return null;
   }
   const token = ingestToken();
   if (token && safeEqual(presented, token)) {
     noteAccessUsed("token", envIngestTokenName);
-    return true;
+    return envIngestTokenName;
   }
   try {
     const found = tokenByHash(hashToken(presented));
     if (found) {
       noteAccessUsed("token", found.name);
       noteTokenUsedAt(found.id);
+      return found.name;
     }
-    return found !== null;
+    return null;
   } catch {
-    return false;
+    return null;
   }
 }
 

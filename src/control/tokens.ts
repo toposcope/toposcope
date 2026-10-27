@@ -1,3 +1,4 @@
+import { stampCreated } from "./actors";
 import { createHash, randomBytes } from "node:crypto";
 import type { Context } from "hono";
 import { getDb } from "./index";
@@ -7,6 +8,7 @@ export type ApiToken = {
   name: string;
   created_at: number;
   last_used_at?: number | null;
+  created_by?: string | null;
 };
 
 export function hashToken(token: string): string {
@@ -23,7 +25,7 @@ export function tokenHashExists(tokenHash: string): boolean {
 
 export function allTokens(): ApiToken[] {
   return getDb()
-    .query("SELECT id, name, created_at, last_used_at FROM api_tokens ORDER BY created_at DESC")
+    .query("SELECT id, name, created_at, last_used_at, created_by FROM api_tokens ORDER BY created_at DESC")
     .all() as ApiToken[];
 }
 
@@ -74,6 +76,7 @@ export async function createApiToken(c: Context): Promise<Response> {
       "INSERT INTO api_tokens (id, name, token_hash, created_at) VALUES (?, ?, ?, ?)",
     )
     .run(id, name, hashToken(token), created_at);
+  stampCreated("api_tokens", id);
   return c.json({ id, name, token, created_at }, 201);
 }
 

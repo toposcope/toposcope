@@ -1,3 +1,4 @@
+import { stampCreated, stampUpdated } from "./actors";
 import type { Context } from "hono";
 import { sendHttpCheck } from "../alerts/http-monitor";
 import { runHttpRequest } from "../alerts/http-request";
@@ -278,6 +279,7 @@ export function insertHttpMonitor(fields: HttpFields, now = Date.now()): AlertRu
     );
     insertHttp(id, fields.write, now, db);
   })();
+  stampCreated("alert_rules", id);
   return getAlert(id)!;
 }
 
@@ -317,6 +319,7 @@ export function applyHttpFields(existing: AlertRule, http: HttpSettings, fields:
       fields.resolved_body,
       existing.id,
     );
+      stampUpdated("alert_rules", existing.id);
     updateHttp(existing.id, w, { nextRunAt, restart: readsAnew }, db);
   })();
   if (readsAnew && existing.state === "open") {

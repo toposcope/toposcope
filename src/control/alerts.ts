@@ -1,3 +1,4 @@
+import { stampCreated, stampUpdated } from "./actors";
 import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import { nextDelivery, nextEvalAttempt } from "../alerts/delivery";
@@ -41,7 +42,7 @@ import {
 } from "../shared/monitor";
 
 const RULE_COLS =
-  "id, name, query, measure, webhook_url, webhook_urls, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at";
+  "id, name, query, measure, webhook_url, webhook_urls, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at, created_by, updated_by";
 
 /** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
 export const alertKinds = ["threshold", "first_seen"] as const;
@@ -60,6 +61,9 @@ export type AlertLastMark = {
 };
 
 export type AlertRule = {
+  /** Who made it and who last changed it (#307): a person, a service account or `token:<name>`. */
+  created_by?: string | null;
+  updated_by?: string | null;
   id: string;
   name: string;
   kind: AlertKind;
@@ -629,6 +633,7 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
       fields.measure,
       fields.webhook_urls ? JSON.stringify(fields.webhook_urls) : null,
     );
+  stampCreated("alert_rules", id);
   return getAlert(id)!;
 }
 
@@ -637,6 +642,7 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
  * its threshold) while it is open, the stretch closes without a call.
  */
 export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, now = Date.now()): void {
+  stampUpdated("alert_rules", existing.id);
   getDb()
     .query(
       `UPDATE alert_rules
@@ -695,6 +701,7 @@ export function applyMonitorFields(existing: AlertRule, fields: MonitorFields, n
 
 /** Silence (`silence_for`, `silenced_until`) and pause (`enabled`): what an operator does to a monitor, not what it is. */
 export function applyMonitorHold(existing: AlertRule, rec: Record<string, unknown>, now = Date.now()): void {
+  stampUpdated("alert_rules", existing.id);
   let silencedUntil = existing.silenced_until;
   const silenceFor = parseSilenceFor(rec.silence_for);
   if (silenceFor) {

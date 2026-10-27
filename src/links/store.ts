@@ -1,3 +1,4 @@
+import { stampCreated, stampUpdated } from "../control/actors";
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
 import { hashSecret, type LinkKeyKind } from "./key";
@@ -60,6 +61,7 @@ export function saveLinkKey(
   db.query(
     "INSERT INTO link_keys (kid, kind, q, secret_hash, until, uses, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)",
   ).run(key.kid, key.kind, key.q, hashSecret(key.secret), key.until, now);
+  stampCreated("link_keys", key.kid, db);
 }
 
 export function getLinkKey(kid: string, db: Database = getDb()): LinkKeyRecord | null {
@@ -131,6 +133,7 @@ export function saveLink(
     link.secret_hash,
     link.created_at,
   );
+  stampCreated("links", link.id, db);
   return getLink(link.id, db)!;
 }
 
@@ -152,6 +155,7 @@ export function activeLinks(db: Database = getDb()): LinkRecord[] {
 
 export function removeLink(id: string, now = Date.now(), db: Database = getDb()): LinkRecord | null {
   db.query("UPDATE links SET removed_at = ? WHERE id = ? AND removed_at IS NULL").run(now, id);
+  stampUpdated("links", id, db);
   return getLink(id, db);
 }
 

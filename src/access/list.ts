@@ -1,3 +1,5 @@
+import { actorName } from "../control/actors";
+import { getDb } from "../control";
 import type { Context } from "hono";
 import { envIngestTokenName, ingestToken } from "../auth";
 import { allTokens } from "../control/tokens";
@@ -29,6 +31,8 @@ export type AccessRow = {
   revoke: string | null;
   /** Where its own page is, when it has one. */
   open: string | null;
+  /** Who made it (#307), by name; null for the `.env` token or a row Toposcope made itself. */
+  made_by: string | null;
 };
 export type AccessRefusal = { ts: string; kind: string; name: string; reason: string };
 
@@ -80,6 +84,11 @@ function shareScopeWords(scope: { metric_names: string[]; metric_labels: Record<
   return parts.join(" · ");
 }
 
+function shareMaker(id: string): string | null {
+  const row = getDb().query("SELECT created_by FROM shares WHERE id = ?").get(id) as { created_by: string | null } | null;
+  return row?.created_by ?? null;
+}
+
 export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[]; refusals: AccessRefusal[] }> {
   const { by, refusals } = await useToday();
   const use = (kind: AccessKind, name: string) => by.get(accessKey(kind, name)) ?? { used: 0, refused: 0, last: null };
@@ -89,7 +98,7 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
     rows.push({
       kind: "token", verb: "token", direction: "in", id: "env", name: envIngestTokenName,
       lets_through: "from .env · sends logs, metrics, traces, marks",
-      scope: "any", expires_at: null, last_used_at: u.last, today: { used: u.used, refused: u.refused }, revoke: null, open: null,
+      scope: "any", expires_at: null, last_used_at: u.last, today: { used: u.used, refused: u.refused }, revoke: null, open: null, made_by: null,
     });
   }
   for (const t of allTokens()) {
@@ -98,7 +107,7 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
       kind: "token", verb: "token", direction: "in", id: t.id, name: t.name,
       lets_through: "sends logs, metrics, traces, marks",
       scope: "any", expires_at: null, last_used_at: u.last ?? t.last_used_at ?? null, today: { used: u.used, refused: u.refused },
-      revoke: `/api/api-tokens/${encodeURIComponent(t.id)}`, open: null,
+      revoke: `/api/api-tokens/${encodeURIComponent(t.id)}`, open: null, made_by: actorName(t.created_by)?.name ?? null,
     });
   }
   for (const k of openLinkKeys(now)) {
@@ -106,7 +115,7 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
       kind: "invite", verb: "key not used yet", direction: k.kind === "offer" ? "out" : "in", id: k.kid, name: kidLabel(k.kid),
       lets_through: k.kind === "offer" ? "becomes a link once pasted there · it will copy from us" : "becomes a link once pasted there · we will copy from it",
       scope: k.q || "every row", expires_at: k.until, last_used_at: null, today: { used: 0, refused: 0 },
-      revoke: `/api/links/keys/${encodeURIComponent(k.kid)}`, open: null,
+      revoke: `/api/links/keys/${encodeURIComponent(k.kid)}`, open: null, made_by: actorName((k as { created_by?: string | null }).created_by)?.name ?? null,
     });
   }
   for (const l of activeLinks()) {
@@ -117,7 +126,7 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
       name: peer,
       lets_through: l.role === "pull" ? "this instance pulls its rows" : "pulls our rows within the scope",
       scope: l.q || "every row", expires_at: null, last_used_at: l.last_contact_at, today: { used: u.used, refused: u.refused },
-      revoke: `/api/links/${encodeURIComponent(l.id)}`, open: `?view=access&link=${encodeURIComponent(l.id)}`,
+      revoke: `/api/links/${encodeURIComponent(l.id)}`, open: `?view=access&link=${encodeURIComponent(l.id)}`, made_by: actorName((l as { created_by?: string | null }).created_by)?.name ?? null,
     });
   }
   for (const s of listShares()) {
@@ -130,7 +139,7 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
       kind: "share", verb: "share", direction: "out", id: s.id, name: s.name,
       lets_through: origins.length ? `shown on ${origins.join(", ")}` : "JSON only",
       scope: shareScopeWords(s.scope), expires_at: s.expires_at, last_used_at: u.last, today: { used: u.used, refused: u.refused },
-      revoke: `/api/shares/${encodeURIComponent(s.name)}`, open: `?view=access&share=${encodeURIComponent(s.name)}`,
+      revoke: `/api/shares/${encodeURIComponent(s.name)}`, open: `?view=access&share=${encodeURIComponent(s.name)}`, made_by: actorName(shareMaker(s.id))?.name ?? null,
     });
   }
   // Refused today first, then invites waiting to be pasted, then the rest by last use.

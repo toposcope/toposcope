@@ -81,7 +81,10 @@ function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; 
           {watchStateLine(monitor, stretches, nowMs)} · <span className="font-mono">{openCardLine(monitor, nowMs)}</span>
         </span>
       </button>
-      <span className="truncate text-[12px] text-muted-foreground">{laneKind(monitor)}</span>
+      <span className="truncate text-[12px] text-muted-foreground">
+        {laneKind(monitor)}
+        {monitor.made_by ? <span title={`made by ${monitor.made_by.name}`}> · {monitor.made_by.name}</span> : null}
+      </span>
     </>
   );
 }

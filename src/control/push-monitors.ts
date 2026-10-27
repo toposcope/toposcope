@@ -1,3 +1,4 @@
+import { stampCreated, stampUpdated } from "./actors";
 import type { Database } from "bun:sqlite";
 import { closeByEdit } from "../alerts/monitor-store";
 import type { AlertBodyKind } from "../shared/alert-body";
@@ -155,6 +156,7 @@ export function insertPushMonitor(
     fields.grace_ms,
     now,
   );
+  stampCreated("alert_rules", id, db);
   return getAlert(id, db)!;
 }
 
@@ -183,6 +185,7 @@ export function applyPushFields(
   now = Date.now(),
   db: Database = getDb(),
 ): { error: string } | null {
+  stampUpdated("alert_rules", existing.id, db);
   if (fields.key && fields.key !== pingKeyOf(existing.id, db)) {
     const key = freshKey(fields.key, db);
     if (typeof key !== "string") {

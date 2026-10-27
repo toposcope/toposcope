@@ -1,3 +1,4 @@
+import { settingStamp, stampSetting } from "./actors";
 import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import {
@@ -123,6 +124,10 @@ function settingsBody(extra: { retention_days: number; instance_name: string | n
     ...extra,
     metrics_retention_days: getMetricsRetentionDays(),
     default_webhook_url: getDefaultWebhook(),
+    // #307: who last changed each, and when.
+    changed_by: Object.fromEntries(
+      ["retention_days", "metrics_retention_days", "default_webhook_url", "instance_name", "fields"].map((k) => [k, settingStamp(k)]),
+    ),
   };
 }
 
@@ -171,18 +176,26 @@ export async function putSettings(c: Context): Promise<Response> {
   }
   if (webhook !== undefined) {
     writeDefaultWebhook(webhook);
+    stampSetting("default_webhook_url");
+  }
+  if (name !== undefined) {
+    stampSetting("instance_name");
   }
   const savedName = name === undefined ? instanceName() : writeInstanceName(name);
   // Rows ingested from now on are stamped with the new name; rows stored keep the old one.
   setHereName(savedName);
   if (metricsDays !== undefined) {
     writeMetricsRetentionDays(metricsDays);
+    stampSetting("metrics_retention_days");
   }
   if (typeof rec.retention_days !== "number" && !hasMetrics) {
     return c.json(settingsBody({ retention_days: getRetentionDays(), instance_name: savedName }));
   }
   const days =
     typeof rec.retention_days === "number" ? writeRetentionDays(rec.retention_days) : getRetentionDays();
+  if (typeof rec.retention_days === "number") {
+    stampSetting("retention_days");
+  }
   try {
     await applyRetentionDays(days, effectiveMetricsRetentionDays());
   } catch (err) {
