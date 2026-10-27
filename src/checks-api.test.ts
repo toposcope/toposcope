@@ -54,6 +54,8 @@ beforeAll(async () => {
     const basic = { authorization: (await import(root + "/control/owner-for-tests.ts")).ownerBearer(), "content-type": "application/json" };
     const bearer = { authorization: "Bearer ingest-only", "content-type": "application/json" };
     const go = async (key, path, method = "GET", body, headers = basic) => {
+      // Every monitor names its service (#335): a fixture that does not name one is about "api".
+      if (body && typeof body === "object" && !("service" in body) && (method === "PUT" || method === "POST") && (path.startsWith("/api/monitors/") || path.startsWith("/api/alert-rules"))) body = { service: "api", ...body };
       const res = await app.fetch(new Request("http://app.test" + path, { method, headers, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) }));
       const text = await res.text();
       out[key] = { status: res.status, body: text.startsWith("{") || text.startsWith("[") ? JSON.parse(text) : text, text };

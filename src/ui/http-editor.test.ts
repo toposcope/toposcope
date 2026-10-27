@@ -9,6 +9,7 @@ import {
   goodLines,
   headerContains,
   headersText,
+  hostFromUrl,
   jsonRows,
   nameFromUrl,
   offeredLines,
@@ -108,11 +109,27 @@ describe("the stored lines (18r)", () => {
   });
 });
 
+describe("an HTTP(S) monitor's host (#335)", () => {
+  test("is its URL's host, as the server takes it", () => {
+    expect(hostFromUrl("https://api.example.com/health")).toBe("api.example.com");
+    expect(hostFromUrl("  http://127.0.0.1:8080/ ")).toBe("127.0.0.1");
+    expect(hostFromUrl("https://API.Example.com:8443/x?y=1")).toBe("api.example.com");
+  });
+
+  test("is nothing while the URL is half typed", () => {
+    expect(hostFromUrl("")).toBe("");
+    expect(hostFromUrl("api.example.com/health")).toBe("");
+    expect(hostFromUrl("https://")).toBe("");
+  });
+});
+
 const now = Date.parse("2026-10-20T11:03:00.000Z");
 
 const httpMonitor = (over: Partial<MonitorView> = {}): MonitorView => ({
   id: "m-health",
   name: "api /health",
+  service: "api",
+  host: "api.agental.dev",
   kind: "threshold",
   last_mark: null,
   body_kind: "default",

@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { MonitorPlaceFields, serviceMissing, serviceOk, useSeenServices } from "@/components/monitor-place-fields";
 import { cn } from "@/lib/utils";
 import {
   formatSpan,
@@ -27,6 +28,10 @@ export type PushInput = {
   grace: string | null;
   webhook_url: string | null;
   key?: string;
+  /** The service it is about (#335): required. */
+  service: string;
+  /** May be empty: each result carries the host that pushes it. */
+  host: string;
 };
 
 type Props = {
@@ -146,6 +151,9 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
   const [page, setPage] = useState<MonitorPage | null>(null);
   const [fallback, setFallback] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [service, setService] = useState("");
+  const [host, setHost] = useState("");
+  const seenServices = useSeenServices(open);
 
   useEffect(() => {
     if (!open || !draft) {
@@ -159,12 +167,16 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
       setGrace(draft.rule.grace_ms != null ? formatSpan(draft.rule.grace_ms) : "");
       setOwn(Boolean(draft.rule.webhook_url));
       setOwnUrl(draft.rule.webhook_url ?? "");
+      setService(draft.rule.service ?? "");
+      setHost(draft.rule.host ?? "");
     } else {
       setName("");
       setEvery("");
       setGrace("");
       setOwn(false);
       setOwnUrl("");
+      setService("");
+      setHost("");
     }
     void fetch("/api/settings")
       .then((res) => (res.ok ? (res.json() as Promise<{ default_webhook_url?: string | null }>) : null))
@@ -245,11 +257,13 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!nameOk || everyBad || graceBad || !urlOk || taken) {
+    if (!nameOk || everyBad || graceBad || !urlOk || taken || !serviceOk(service)) {
       return;
     }
     const input: PushInput = {
       name: name.trim(),
+      service: service.trim(),
+      host: host.trim(),
       every: every.trim() || null,
       grace: grace.trim() || null,
       webhook_url: own ? ownUrl.trim() : null,
@@ -330,6 +344,17 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
                 ) : null}
               </span>
             </div>
+
+            <MonitorPlaceFields
+              kind="push"
+              service={service}
+              onService={setService}
+              host={host}
+              onHost={setHost}
+              seen={seenServices}
+              layout="field"
+              labelClassName="grid-cols-[110px_minmax(0,1fr)]"
+            />
 
             <div className={fld}>
               <span className={lab}>Expect a result</span>
@@ -416,6 +441,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
           <div className="flex items-center gap-2 border-t px-[18px] py-3">
             <span className="text-[12.5px] text-muted-foreground">A warn shows on Watch and calls nobody. A fail opens it.</span>
             <span className="flex-1" />
+            {serviceOk(service) ? null : <span className="text-[12px] text-muted-foreground">{serviceMissing}</span>}
             {editing ? (
               <Button type="button" variant="ghost" className="h-8 text-destructive" disabled={busy} onClick={() => void remove()}>
                 Delete
@@ -424,9 +450,15 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
             <Button type="button" variant="outline" className="h-8" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="h-8" disabled={busy || !nameOk || everyBad || graceBad || !urlOk || Boolean(taken)}>
-              {editing ? "Save" : "Create"}
-            </Button>
+            <span title={serviceOk(service) ? undefined : serviceMissing}>
+              <Button
+                type="submit"
+                className="h-8"
+                disabled={busy || !nameOk || everyBad || graceBad || !urlOk || Boolean(taken) || !serviceOk(service)}
+              >
+                {editing ? "Save" : "Create"}
+              </Button>
+            </span>
           </div>
         </form>
       </DialogContent>

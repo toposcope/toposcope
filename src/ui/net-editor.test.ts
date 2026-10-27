@@ -5,6 +5,7 @@ import { MonitorRail } from "./components/monitor-rail";
 import { WatchView } from "./components/watch-view";
 import { addLine, editorLines, goodLines, setTimeLimit, timeLine } from "./http-editor";
 import {
+  hostFromTarget,
   nameFromTarget,
   netModeOf,
   netSourceOf,
@@ -75,9 +76,24 @@ describe("the TCP · certificate editor (#180, as 18r)", () => {
   });
 });
 
+describe("a TCP or certificate monitor's host (#335)", () => {
+  test("is its address's host", () => {
+    expect(hostFromTarget("db.internal:5432")).toBe("db.internal");
+    expect(hostFromTarget("SMTP.example.com:587")).toBe("smtp.example.com");
+    expect(hostFromTarget("[::1]:993")).toBe("::1");
+  });
+
+  test("is nothing until the address reads", () => {
+    expect(hostFromTarget("db.internal")).toBe("");
+    expect(hostFromTarget("")).toBe("");
+  });
+});
+
 const netMonitor = (over: Partial<MonitorView> = {}): MonitorView => ({
   id: "m-db",
   name: "db port",
+  service: "db",
+  host: "db.internal",
   kind: "threshold",
   last_mark: null,
   body_kind: "default",

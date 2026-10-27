@@ -121,6 +121,7 @@ export async function applyPushResult(rule: AlertRule, result: PushResult, now: 
       message: result.message,
       host: result.from,
       via: result.via,
+      service: rule.service ?? "",
     });
   }
 }

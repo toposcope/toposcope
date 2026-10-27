@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { serviceMissing, serviceOk, useSeenServices } from "@/components/monitor-place-fields";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { MonitorPreview, PreviewWindow } from "../../alerts/preview";
@@ -21,7 +22,17 @@ export type WatchThisInput = {
   measure: "series" | "share";
   /** Where it sends (#280): URLs, or `default` for the webhook in Settings. */
   webhookUrls: string[];
+  /** The service it is about (#335): required. */
+  service: string;
+  /** The host it is about; may be empty. */
+  host: string;
 };
+
+/** api from `service:api level:error`: the service a hunt names, to start the monitor's from. */
+export function serviceOfQuery(q: string): string {
+  const m = /(?:^|\s)service:(?:"([^"]+)"|([^\s"()]+))/.exec(q);
+  return (m?.[1] ?? m?.[2] ?? "").trim();
+}
 
 const windows: PreviewWindow[] = ["5m", "15m", "1h"];
 
@@ -72,6 +83,9 @@ export function WatchThisSheet(props: {
   const [adding, setAdding] = useState("");
   const [preview, setPreview] = useState<MonitorPreview | null>(null);
   const [busy, setBusy] = useState(false);
+  const [service, setService] = useState(() => serviceOfQuery(props.q));
+  const [host, setHost] = useState("");
+  const seenServices = useSeenServices(true);
   const n = Number(threshold);
   const nOk = Number.isFinite(n) && n > 0;
   const shownName = name ?? watchThisName(props.savedName, props.q, opensWhen, nOk ? n : 0, measure);
@@ -125,7 +139,7 @@ export function WatchThisSheet(props: {
   }, [props]);
 
   const peak = useMemo(() => Math.max(nOk ? n * 1.25 : 1, ...(preview?.series.map((p) => p.v) ?? [1])), [preview, n, nOk]);
-  const canSave = nOk && shownName.trim().length > 0 && ticked.length > 0 && !busy;
+  const canSave = nOk && shownName.trim().length > 0 && ticked.length > 0 && serviceOk(service) && !busy;
   const toggle = (t: string) => setTicked((list) => (list.includes(t) ? list.filter((x) => x !== t) : [...list, t].slice(0, 5)));
   function addTarget() {
     const u = adding.trim();
@@ -144,7 +158,7 @@ export function WatchThisSheet(props: {
     }
     setBusy(true);
     try {
-      await props.onSave({ name: shownName.trim(), threshold: n, opensWhen, window: win, measure, webhookUrls: ticked });
+      await props.onSave({ name: shownName.trim(), threshold: n, opensWhen, window: win, measure, webhookUrls: ticked, service: service.trim(), host: host.trim() });
     } catch {
       // the caller said why
     } finally {
@@ -182,11 +196,30 @@ export function WatchThisSheet(props: {
           <h2 className="m-0 text-[17px] font-semibold">Watch this hunt</h2>
           <span className="text-[12.5px] text-muted-foreground">Toposcope checks it every minute and opens a monitor while the condition holds.</span>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="watch-name" className="text-[12px] text-muted-foreground">
-            Name
-          </label>
-          <input id="watch-name" value={shownName} onChange={(e) => setName(e.target.value)} className="h-[34px] w-[420px] max-w-full rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[13px] outline-none" />
+        <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="watch-name" className="text-[12px] text-muted-foreground">
+              Name
+            </label>
+            <input id="watch-name" value={shownName} onChange={(e) => setName(e.target.value)} className="h-[34px] w-[420px] max-w-full rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[13px] outline-none" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="watch-service" className="text-[12px] text-muted-foreground">
+              Service *
+            </label>
+            <input id="watch-service" aria-required list="watch-services" value={service} placeholder={seenServices[0] ?? "api"} spellCheck={false} autoComplete="off" onChange={(e) => setService(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[13px] outline-none placeholder:text-muted-foreground" />
+            <datalist id="watch-services">
+              {seenServices.map((v) => (
+                <option key={v} value={v} />
+              ))}
+            </datalist>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="watch-host" className="text-[12px] text-muted-foreground">
+              Host · optional
+            </label>
+            <input id="watch-host" value={host} placeholder="optional" spellCheck={false} autoComplete="off" onChange={(e) => setHost(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[13px] outline-none placeholder:text-muted-foreground" />
+          </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <span className="text-[12px] text-muted-foreground">Opens when</span>
@@ -257,16 +290,19 @@ export function WatchThisSheet(props: {
           </div>
           <span className="text-[12px] text-muted-foreground">Reminds every window while open · says when it resolves.</span>
         </div>
-        <div className="mt-auto flex gap-2.5">
-          <Button type="submit" disabled={!canSave}>
-            Save and watch
-          </Button>
+        <div className="mt-auto flex items-center gap-2.5">
+          <span title={serviceOk(service) ? undefined : serviceMissing}>
+            <Button type="submit" disabled={!canSave}>
+              Save and watch
+            </Button>
+          </span>
           <Button type="button" variant="outline" disabled={!props.savedId} title={props.savedId ? undefined : "A test call reads a saved hunt: save this one first"} onClick={() => void sendTest()}>
             Send a test
           </Button>
           <Button type="button" variant="ghost" className="text-muted-foreground" onClick={props.onCancel}>
             Cancel
           </Button>
+          {serviceOk(service) ? null : <span className="text-[12px] text-muted-foreground">{serviceMissing}</span>}
         </div>
       </form>
       <aside className="flex flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#0d0d0f] p-4">

@@ -31,6 +31,8 @@ const stretch = (over: Partial<MonitorStretch> = {}): MonitorStretch => ({
 const quiet = (over: Partial<MonitorView> = {}): MonitorView => ({
   id: "m-quiet",
   name: "ci-box went quiet",
+  service: "ci",
+  host: "ci-box",
   kind: "threshold",
   source: "search",
   state: "ok",

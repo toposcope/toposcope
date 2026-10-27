@@ -36,6 +36,8 @@ beforeAll(async () => {
     const out = {};
     const auth = { authorization: (await import(root + "/control/owner-for-tests.ts")).ownerBearer(), "content-type": "application/json" };
     const go = async (key, path, method = "GET", body) => {
+      // Every monitor names its service (#335): a fixture that does not name one is about "api".
+      if (body && typeof body === "object" && !("service" in body) && (method === "PUT" || method === "POST") && (path.startsWith("/api/monitors/") || path.startsWith("/api/alert-rules"))) body = { service: "api", ...body };
       const res = await app.fetch(new Request("http://app.test" + path, { method, headers: auth, body: body === undefined ? undefined : JSON.stringify(body) }));
       const text = await res.text();
       out[key] = { status: res.status, body: text.startsWith("{") ? JSON.parse(text) : text };
@@ -52,6 +54,9 @@ beforeAll(async () => {
     await go("declare", "/api/monitors/ci-box%20went%20quiet", "PUT", { source: "search", saved_search: "api errors search", threshold: 1, webhook_url: hook });
     await go("redeclare", "/api/monitors/ci-box%20went%20quiet", "PUT", { source: "search", saved_search_id: saved.id, threshold: 3, webhook_url: hook, remind_every: "off" });
     await go("noSource", "/api/monitors/x", "PUT", { saved_search_id: saved.id, threshold: 1, webhook_url: hook });
+    await go("noService", "/api/monitors/x", "PUT", { service: "", source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
+    await go("named", "/api/monitors/named", "PUT", { service: "billing", source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
+    await go("namedGone", "/api/monitors/named", "DELETE");
     await go("noSearch", "/api/monitors/x", "PUT", { source: "search", saved_search: "no such search", threshold: 1, webhook_url: hook });
     await go("fpResolved", "/api/monitors/x", "PUT", { source: "fingerprints", saved_search_id: saved.id, threshold: 1, webhook_url: hook, body_kind: "text", body_template: "{{alert.name}}", resolved_body: "{{alert.name}} resolved" });
     await go("badResolved", "/api/monitors/x", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook, body_kind: "text", body_template: "{{alert.name}}", resolved_body: "{{mark.kind}} resolved" });
@@ -187,6 +192,10 @@ describe("PUT /api/monitors/<name> (#175)", () => {
   });
 
   test("says what is wrong with a declaration", () => {
+    // Every monitor names its service (#335), and says it back.
+    expect(r.noService!.status).toBe(400);
+    expect(r.noService!.body.error).toBe("A monitor names its service: the service it is about");
+    expect(r.named!.body).toMatchObject({ service: "billing", host: "" });
     expect(r.noSource!.status).toBe(400);
     expect(r.noSource!.body.error).toBe("source is required: search, fingerprints, push, http, tcp or cert");
     expect(r.noSearch!.status).toBe(404);

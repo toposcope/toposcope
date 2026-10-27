@@ -2324,6 +2324,8 @@ export function App() {
       resolved_body: null,
       remind_every: "window",
       opens_when: input.opensWhen,
+      service: input.service,
+      host: input.host,
     } as MonitorInput);
     setWatchThisOpen(false);
     setView("watch");

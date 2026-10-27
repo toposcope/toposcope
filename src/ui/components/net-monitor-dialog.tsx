@@ -14,10 +14,18 @@ import {
   type RunCallsSet,
   type RunCallsState,
 } from "@/components/check-editor-parts";
+import {
+  MonitorPlaceFields,
+  serviceMissing,
+  serviceOk,
+  useMonitorHost,
+  useSeenServices,
+} from "@/components/monitor-place-fields";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { addLine, editorLines, goodLines, offeredTimeLimit, setTimeLimit, timeLine } from "@/http-editor";
 import {
+  hostFromTarget,
   nameFromTarget,
   netModeAbout,
   netModeExample,
@@ -55,6 +63,10 @@ export type NetMonitorInput = {
   body_template: string;
   resolved_body: string | null;
   remind_every: RemindId;
+  /** The service it is about (#335): required. */
+  service: string;
+  /** The host it checks: the address's unless changed. */
+  host: string;
 };
 
 type Props = {
@@ -134,6 +146,9 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
   const [bodyKind, setBodyKind] = useState<AlertBodyKind>("default");
   const [bodyTemplate, setBodyTemplate] = useState("");
   const [resolvedBody, setResolvedBody] = useState("");
+  const [service, setService] = useState("");
+  const place = useMonitorHost(hostFromTarget(target));
+  const seenServices = useSeenServices(open);
   const [open_, setOpen_] = useState<{ run: boolean; calls: boolean }>({ run: false, calls: false });
   const [result, setResult] = useState<NetSendResult | null>(null);
   const [sending, setSending] = useState(false);
@@ -195,6 +210,9 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
       setBodyKind(m.body_kind ?? "default");
       setBodyTemplate(m.body_template ?? "");
       setResolvedBody(m.resolved_body ?? "");
+      setService(m.service ?? "");
+      // A host that is the address's follows the address; one typed by hand is kept.
+      place.reset(m.host && m.host !== hostFromTarget(n.target) ? m.host : null);
       return;
     }
     setMode("tcp");
@@ -209,6 +227,8 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
     setBodyKind("default");
     setBodyTemplate("");
     setResolvedBody("");
+    setService("");
+    place.reset(null);
   }, [open, draft]);
 
   const parsedTarget = target.trim() ? parseNetTarget(target) : null;
@@ -309,6 +329,9 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
     if (bodyProblem || resolvedProblem) {
       return (bodyProblem ?? resolvedProblem)!;
     }
+    if (!serviceOk(service)) {
+      return serviceMissing;
+    }
     return {
       source,
       name: n,
@@ -322,6 +345,8 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
       body_template: bodyTemplate,
       resolved_body: bodyKind === "default" || !resolvedBody.trim() ? null : resolvedBody,
       remind_every: remind,
+      service: service.trim(),
+      host: place.host.trim(),
     };
   }
 
@@ -601,6 +626,17 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                   series: verdict?.why ?? "",
                 }}
                 canLink={canLink}
+                afterName={
+                  <MonitorPlaceFields
+                    kind="net"
+                    service={service}
+                    onService={setService}
+                    host={place.host}
+                    onHost={place.setHost}
+                    seen={seenServices}
+                    layout="row"
+                  />
+                }
                 testDraft={() =>
                   (/^https?:\/\//.test(webhook.trim()) || (!webhook.trim() && fallback)) && !bodyProblem
                     ? {
@@ -646,6 +682,9 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
               )}
             </span>
             <span className="ml-auto flex shrink-0 gap-2">
+              {serviceOk(service) ? null : (
+                <span className="self-center text-[12px] text-muted-foreground">{serviceMissing}</span>
+              )}
               {editing ? (
                 <button type="button" className={cn(btn2, "border-transparent text-red-300")} disabled={busy} onClick={() => void remove()}>
                   Delete
@@ -654,9 +693,11 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
               <button type="button" className={btn2} onClick={() => onOpenChange(false)}>
                 Cancel
               </button>
-              <button type="submit" className={btn} disabled={busy}>
-                {editing ? "Save" : "Create"}
-              </button>
+              <span title={serviceOk(service) ? undefined : serviceMissing}>
+                <button type="submit" className={btn} disabled={busy || !serviceOk(service)}>
+                  {editing ? "Save" : "Create"}
+                </button>
+              </span>
             </span>
           </div>
         </form>
