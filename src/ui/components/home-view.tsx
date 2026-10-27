@@ -12,6 +12,8 @@ export type HomeWindow = { from: string; to: string };
 type Props = {
   /** The person looking (#307): their own hunts read "yours". */
   meId?: string | null;
+  /** A Viewer (30e): monitors are read-only, and the card says who to ask. */
+  readOnly?: boolean;
   saved: SavedSearch[];
   monitors: MonitorView[];
   instanceName: string | null;
@@ -184,7 +186,7 @@ export function HomeView(props: Props) {
             last hour instead
           </button>
         ) : null}
-        {note === null ? (
+        {props.readOnly ? null : note === null ? (
           <button type="button" className="h-[30px] rounded-[7px] border border-white/10 px-[11px] text-[12.5px] text-muted-foreground hover:text-foreground" onClick={() => setNote("")}>
             + note
           </button>
@@ -294,7 +296,8 @@ export function HomeView(props: Props) {
                   </span>
                 </div>
               ))}
-              {monitors.length === 0 ? <p className="m-0 text-[12px] text-muted-foreground">Watch this on a hunt makes the first one.</p> : null}
+              {props.readOnly ? <p className="m-0 text-[12px] text-muted-foreground">read-only for you · ask an Operator to change one</p> : null}
+              {monitors.length === 0 && !props.readOnly ? <p className="m-0 text-[12px] text-muted-foreground">Watch this on a hunt makes the first one.</p> : null}
             </section>
           </div>
         </main>

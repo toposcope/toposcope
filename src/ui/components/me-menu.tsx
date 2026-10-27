@@ -17,6 +17,8 @@ export type Me = {
   role: "viewer" | "operator" | "owner";
   via: "session" | "token";
   initials: string;
+  /** Owners by name, so "ask an Owner" names someone (30e). */
+  owners?: string[];
 };
 
 const roleWords: Record<Me["role"], string> = { viewer: "Viewer", operator: "Operator", owner: "Owner" };
@@ -51,6 +53,11 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           <span className="truncate text-[13px] font-semibold">{me.name}</span>
           {me.email ? <span className="truncate font-mono text-[11.5px] text-muted-foreground">{me.email}</span> : null}
           <span className="text-[11.5px] text-muted-foreground">{roleWords[me.role]}</span>
+          {me.role !== "owner" && me.owners?.length ? (
+            <span className="text-[11.5px] text-muted-foreground">
+              {me.role === "viewer" ? "Need to change a monitor?" : "Need someone let in?"} Owners: {me.owners.join(", ")}
+            </span>
+          ) : null}
         </div>
         {me.via === "session" && me.kind === "person" ? (
           <DropdownMenuItem className="mt-1 h-8 text-[13px]" onSelect={() => void newCodes()}>
