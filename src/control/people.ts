@@ -729,3 +729,29 @@ export function revokePerson(personId: string, now = Date.now(), db: Database = 
   endSessionsOf(personId, db);
   return null;
 }
+
+/** Joins from an invite through the provider (#310): no password; the invite's email must match. */
+export function useInviteWithProvider(token: string, input: { name: string; email: string; sub: string }, now = Date.now(), db: Database = getDb()): Person | { error: string } {
+  const invite = inviteFor(token, now, db);
+  if (!invite) {
+    return { error: "This invite has been used, cancelled, or has expired. Ask whoever invited you for a new one." };
+  }
+  if (looksLikeEmail(invite.who) && normalEmail(invite.who) !== normalEmail(input.email)) {
+    return { error: `This invite is for ${invite.who}; you signed in as ${normalEmail(input.email)}` };
+  }
+  if (personByEmail(input.email, db)) {
+    return { error: `${normalEmail(input.email)} can already sign in here` };
+  }
+  const id = randomUUID();
+  db.query("INSERT INTO people (id, kind, name, email, role, oidc_sub, created_at, created_by) VALUES (?, 'person', ?, ?, ?, ?, ?, ?)").run(
+    id,
+    input.name,
+    normalEmail(input.email),
+    invite.role,
+    input.sub,
+    now,
+    invite.created_by,
+  );
+  db.query("UPDATE invites SET used_at = ?, used_by = ? WHERE id = ?").run(now, id, invite.id);
+  return personById(id, db)!;
+}

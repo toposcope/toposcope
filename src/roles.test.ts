@@ -105,6 +105,15 @@ describe("the role table on every route (#306, 30d)", () => {
     expect(missing).toEqual([]);
   });
 
+  test("no /api route but the public ones is registered ahead of the sign-in middleware", () => {
+    const index = readFileSync(join(root, "index.ts"), "utf8");
+    const gate = index.indexOf('app.use("/*", async (c, next) => {\n  if (\n    c.req.path === "/api/health"');
+    expect(gate).toBeGreaterThan(0);
+    const early = [...index.slice(0, gate).matchAll(/app\.(get|post|put|delete)\("(\/api\/[^"]*)"/g)].map((m) => `${m[1]!.toUpperCase()} ${m[2]}`);
+    const open = ["GET /api/health", "GET /api/metrics", "POST /api/sign-in", "POST /api/setup", "POST /api/join", "POST /api/two-step/verify", "POST /api/two-step/setup", "POST /api/two-step/finish"];
+    expect(early.filter((route) => !open.includes(route))).toEqual([]);
+  });
+
   test("a fixed path wins over a :param on the same prefix", () => {
     expect(actionFor("GET", "/api/monitors/preview")).toBe("read");
     expect(actionFor("PUT", "/api/monitors/quiet-api")).toBe("change monitors");

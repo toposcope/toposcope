@@ -7,7 +7,7 @@ describe("view routing", () => {
     expect(parseOperatorView(null)).toBe("search");
     expect(parseOperatorView("search")).toBe("search");
     expect(parseOperatorView("nonsense")).toBe("search");
-    for (const v of ["home", "watch", "fields", "links", "access", "settings"] as const) {
+    for (const v of ["home", "watch", "fields", "sign-in", "links", "access", "settings"] as const) {
       expect(parseOperatorView(v)).toBe(v);
     }
     expect(parseOperatorView("alerts")).toBe("watch");

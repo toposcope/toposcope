@@ -1,6 +1,7 @@
 import { migratePeople } from "./people";
 import { migrateActors } from "./actors";
 import { migrateTwoStep } from "./two-step";
+import { migrateOidc } from "./oidc";
 import { mkdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { pingClickHouse } from "../shared/clickhouse";
@@ -326,6 +327,7 @@ export function migrateControlDb(db: Database): void {
   }
   migrateActors(db, addColumnIfMissing);
   migrateTwoStep(db, addColumnIfMissing);
+  migrateOidc(db, addColumnIfMissing);
 }
 
 type SqliteColumn = { name: string };

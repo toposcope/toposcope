@@ -35,6 +35,7 @@ import { marksHuntWindow, monitorHuntRange, pushHuntRange, sourceOf, watchCounts
 import { monitorQuery } from "../shared/push";
 import { SettingsPage } from "@/components/settings-page";
 import { MeMenu, type Me } from "@/components/me-menu";
+import { SignInSettings } from "@/components/sign-in-settings";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
 import { VersionFooter } from "@/components/version-footer";
@@ -3957,6 +3958,7 @@ export function App() {
           onRetentionDays={setRetentionDays}
           onSignOut={() => void signOut()}
           onOpenFields={() => setView("fields")}
+          onOpenSignIn={() => setView("sign-in")}
         />
       ) : view === "home" ? (
         <HomeView
@@ -4043,6 +4045,8 @@ export function App() {
           onOpenMarks={openMarksStretch}
         />
 
+      ) : view === "sign-in" ? (
+        <SignInSettings onSettings={() => setView("settings")} />
       ) : view === "fields" ? (
         <FieldsView
           catalog={fields}
