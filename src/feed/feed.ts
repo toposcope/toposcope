@@ -198,6 +198,11 @@ export async function readFeed(input: {
   metricsRetentionDays?: number;
   /** The kinds to read; absent, every kind. */
   kinds?: readonly FeedKind[];
+  /**
+   * Read only the positions of the kinds other than logs and marks (#327): a link sends their
+   * rows as Native blocks read once the range is known, so the rows are not read twice.
+   */
+  positionsOnly?: boolean;
   now?: number;
   /** This instance's id: the origin of its own rows. */
   hereId?: string;
@@ -291,7 +296,7 @@ export async function readFeed(input: {
       where.push(filter.sql);
     }
     const krows = await clickhouseQuery<Record<string, unknown> & { seq: string | number }>(
-      `SELECT * EXCEPT (tenant_id) FROM ${kind} WHERE ${where.join(" AND ")} ORDER BY seq LIMIT {limit:UInt32}`,
+      `SELECT ${input.positionsOnly ? "seq" : "* EXCEPT (tenant_id)"} FROM ${kind} WHERE ${where.join(" AND ")} ORDER BY seq LIMIT {limit:UInt32}`,
       kparams,
     );
     const first = await clickhouseQuery<{ n: string | number; t: string | null; c: string | number }>(

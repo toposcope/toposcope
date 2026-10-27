@@ -1,10 +1,11 @@
-import { refuseOtherVersion } from "./version";
+import { refuseOtherVersion, versionHeaders } from "./version";
+import { decodeFeed, encodeFeed, insertPulledBlocks, type WireFeed } from "../feed/wire";
 import { isPaused } from "./page";
 import { noteAccessRefused, noteAccessUsed } from "../access/use";
 import type { Context } from "hono";
 import { instanceId, instanceName } from "../control/instance";
 import { getRetentionDays } from "../control/settings";
-import { readFeed, type FeedReply } from "../feed/feed";
+import { readFeed } from "../feed/feed";
 import { insertPulled, insertPulledMarks } from "../ingest/pulled";
 import { hereName } from "../shared/here";
 import { hashSecret, newSecret } from "./key";
@@ -166,6 +167,7 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
   }
   const limitRaw = c.req.query("limit");
   const reply = await readFeed({
+    positionsOnly: true,
     // Logs and marks until a link carries its kinds (#329).
     kinds: ["logs", "marks"],
     id: link.id,
@@ -184,7 +186,10 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
     behind_rows: link.q.trim() === "" ? Math.max(0, reply.settled - reply.through) : null,
     last_error: null,
   });
-  return c.json({ ...reply, source: { id: instanceId(), name: instanceName() ?? "" } });
+  const body = await encodeFeed(reply, instanceId(), { source: { id: instanceId(), name: instanceName() ?? "" } });
+  return new Response(body as unknown as BodyInit, {
+    headers: { "content-type": "application/x-toposcope-feed", ...versionHeaders() },
+  });
 }
 
 /**
@@ -215,8 +220,14 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
   if (!link || link.role !== "pull" || link.connects !== "they") {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  const reply = (await jsonBody(c)) as (FeedReply & { source?: { id: string; name: string } }) | null;
-  if (!reply || !Array.isArray(reply.rows) || !Number.isSafeInteger(reply.after) || !Number.isSafeInteger(reply.through)) {
+  let wire: WireFeed;
+  try {
+    wire = decodeFeed(new Uint8Array(await c.req.arrayBuffer()));
+  } catch {
+    return c.json({ error: "Expected a feed body" }, 400);
+  }
+  const reply = wire.header as WireFeed["header"] & { source?: { id: string; name: string } };
+  if (!Array.isArray(reply.rows) || !Number.isSafeInteger(reply.after) || !Number.isSafeInteger(reply.through)) {
     return c.json({ error: "Expected a feed reply" }, 400);
   }
   // A range that does not start where we stand is stale (a retry after we moved on): ask again.
@@ -226,6 +237,7 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
   const source = { name: reply.source?.name || link.peer_name };
   const stored = await insertPulled(reply.rows, source, instanceId());
   await insertPulledMarks(reply.marks ?? [], source, hereName());
+  await insertPulledBlocks(wire, { id: reply.source?.id || link.peer_id, name: source.name }, instanceId());
   const gone =
     reply.gone && link.gone_from !== null && link.gone_to !== null
       ? { from: Math.min(link.gone_from, reply.gone.from), to: Math.max(link.gone_to, reply.gone.to) }

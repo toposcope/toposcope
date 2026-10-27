@@ -139,7 +139,8 @@ await ingest(B, warnService, [
   { level: "info", message: `${tag} i1` },
   { level: "warn", message: `${tag} w2` },
 ]);
-await until("A holds B's two warnings, delivered down B's call", async () => (await count(A, `toposcope:${nameB} service:${warnService}`)) === 2);
+// A's every-row link from B (step 2) is still on, so B's info row reaches A too; count the warnings.
+await until("A holds B's two warnings, once each, as B calls", async () => (await count(A, `toposcope:${nameB} service:${warnService} level:warn`)) === 2);
 const pullOnA = (await call(A, "/api/links")).body.links.find((l: any) => l.role === "pull" && l.connects === "they" && l.peer_name === nameB);
 check(Boolean(pullOnA) && pullOnA.position > 0 && pullOnA.last_error === null, "A's list: pulling from edge-fra, they call us", pullOnA);
 // Each side moves its position after the other answers, so the two agree once a call settles.
