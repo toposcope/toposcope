@@ -12,7 +12,7 @@ An app, a collector or a hub sends logs, metrics, traces, profiles, marks and ch
 
 ## Links
 
-A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through. A key is minted in **Access › Let someone in › Link**, shown once, and listed as *key not used yet* until the other side pastes it; a link then reads *we copy from* or *copies from us*. Each link has a page: which way rows move, its scope, where it stands, **Pause** and **Revoke**. Change marks travel with a link. Rows pulled into this instance follow its retention. See [operations](operations.md#links).
+A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through. A key is minted with **Make a link key** on the Links group, or in **Access › Let someone in › Link** (the same step), shown once, and listed as *key not used yet* until the other side pastes it; a link then reads *we copy from* or *copies from us*. Each link has a page: which way rows move, its scope, where it stands, **Pause** and **Revoke**. Change marks travel with a link. Rows pulled into this instance follow its retention. See [operations](operations.md#links).
 
 ## Shares
 

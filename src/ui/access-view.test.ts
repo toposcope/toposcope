@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import type { AccessRow } from "../access/list";
-import { accessGlyph, accessGroups, expiryWords, inFilter } from "./components/access-view";
+import { AccessView, accessGlyph, accessGroups, expiryWords, inFilter, LetSomeoneIn } from "./components/access-view";
 
 const now = Date.parse("2026-10-26T13:26:00Z");
 const row = (over: Partial<AccessRow>): AccessRow => ({
@@ -30,5 +32,40 @@ describe("Access (#265, 26i; the one door, 29a, #295)", () => {
     expect(accessGlyph(row({ kind: "link", direction: "out" })).glyph).toBe("→");
     expect(accessGlyph(row({ kind: "invite", direction: "out" })).glyph).toBe("→");
     expect(accessGlyph(row({ kind: "share", direction: "out" })).glyph).toBe("↑");
+  });
+});
+
+describe("Links makes a key as well as pasting one", () => {
+  const noop = () => undefined;
+  const view = (filter: "all" | "links", role: "owner" | "operator" = "owner") =>
+    renderToStaticMarkup(
+      createElement(AccessView, { filter, onFilter: noop, here: null, retentionDays: 30, onOpenHunt: noop, onOpenLink: noop, onOpenShare: noop, onNewShare: noop, me: { id: "p1", name: "Maya K.", role } }),
+    );
+  test("an Owner's Links group shows Make a link key beside Paste a link key, under All while empty and under Links", () => {
+    for (const filter of ["all", "links"] as const) {
+      const html = view(filter);
+      expect(html).toContain('aria-label="Links"');
+      expect(html).toContain("Make a link key");
+      expect(html).toContain("Paste a link key");
+      expect(html.indexOf("Make a link key")).toBeLessThan(html.indexOf("Paste a link key"));
+    }
+  });
+  test("an Operator's Links group offers neither, as 0.9 has it for Paste a link key", () => {
+    const html = view("links", "operator");
+    expect(html).toContain('aria-label="Links"');
+    expect(html).not.toContain("Make a link key");
+    expect(html).not.toContain("Paste a link key");
+  });
+  test("Make a link key opens Let someone in on Link, with the way to choose and the key hint", () => {
+    const html = renderToStaticMarkup(createElement(LetSomeoneIn, { initial: "link", onClose: noop, onToken: noop, onLink: noop, onShare: noop }));
+    expect(html).toContain("Which way");
+    expect(html).toContain("They copy from us · rows leave here");
+    expect(html).toContain("We copy from them · rows come here");
+    expect(html).toContain("Choose the scope and make the key");
+    expect(html).toContain("appears under Links as key not used yet until the other side pastes it");
+  });
+  test("the top door still opens on no kind", () => {
+    const html = renderToStaticMarkup(createElement(LetSomeoneIn, { onClose: noop, onToken: noop, onLink: noop, onShare: noop }));
+    expect(html).not.toContain("Which way");
   });
 });

@@ -66,7 +66,7 @@ export function AccessView(props: {
 }) {
   const [data, setData] = useState<{ rows: AccessRow[]; refusals: AccessRefusal[] } | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
-  const [door, setDoor] = useState(false);
+  const [door, setDoor] = useState<"any" | "link" | null>(null);
   const [mint, setMint] = useState<"offer" | "invite" | null>(null);
   const [paste, setPaste] = useState(false);
   const [people, setPeople] = useState<PeopleBody | null>(null);
@@ -209,7 +209,7 @@ export function AccessView(props: {
               Invite someone
             </Button>
           ) : isOwner ? (
-            <Button type="button" size="sm" onClick={() => setDoor(true)}>
+            <Button type="button" size="sm" onClick={() => setDoor("any")}>
               Let someone in
             </Button>
           ) : null}
@@ -237,11 +237,7 @@ export function AccessView(props: {
                   <h2 className="m-0 text-[13.5px] font-medium">{g.title}</h2>
                   <span className="text-[12px] text-muted-foreground">{g.words}</span>
                   <div className="flex-1" />
-                  {g.filter === "links" && isOwner ? (
-                    <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={() => setPaste(true)}>
-                      Paste a link key
-                    </Button>
-                  ) : null}
+                  {g.filter === "links" && isOwner ? <LinkKeyButtons onMake={() => setDoor("link")} onPaste={() => setPaste(true)} /> : null}
                   {g.filter === "tokens" && props.me ? (
                     <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={() => setMaking(true)}>
                       Make a token
@@ -288,14 +284,15 @@ export function AccessView(props: {
       ) : null}
       {door ? (
         <LetSomeoneIn
-          onClose={() => setDoor(false)}
+          initial={door === "link" ? "link" : null}
+          onClose={() => setDoor(null)}
           onToken={() => void load()}
           onLink={(kind) => {
-            setDoor(false);
+            setDoor(null);
             setMint(kind);
           }}
           onShare={() => {
-            setDoor(false);
+            setDoor(null);
             props.onNewShare();
           }}
         />
@@ -306,9 +303,23 @@ export function AccessView(props: {
   );
 }
 
-/** "Let someone in" (26j): one door, three kinds, each saying what it lets through before it is made. */
-function LetSomeoneIn(props: { onClose: () => void; onToken: () => void; onLink: (kind: "offer" | "invite") => void; onShare: () => void }) {
-  const [kind, setKind] = useState<"token" | "link" | null>(null);
+/** The Links group's two ways in: make a key here (Let someone in, on Link) or paste one made elsewhere. */
+export function LinkKeyButtons(props: { onMake: () => void; onPaste: () => void }) {
+  return (
+    <>
+      <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={props.onMake}>
+        Make a link key
+      </Button>
+      <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={props.onPaste}>
+        Paste a link key
+      </Button>
+    </>
+  );
+}
+
+/** "Let someone in" (26j): one door, three kinds, each saying what it lets through before it is made. Links' Make a link key opens it on Link. */
+export function LetSomeoneIn(props: { initial?: "link" | null; onClose: () => void; onToken: () => void; onLink: (kind: "offer" | "invite") => void; onShare: () => void }) {
+  const [kind, setKind] = useState<"token" | "link" | null>(props.initial ?? null);
   const [name, setName] = useState("");
   const [secret, setSecret] = useState<string | null>(null);
   const [way, setWay] = useState<"offer" | "invite">("offer");
