@@ -1,6 +1,6 @@
 # Shares
 
-A share lets another app — an admin console, an internal dashboard — read Toposcope's numbers without the operator password and without seeing anything outside one scope.
+A share lets another app — an admin console, an internal dashboard — read Toposcope's numbers without signing in and without seeing anything outside one scope.
 
 A share is a **scope of data** and a **secret**. It is not tied to one panel: one share feeds every panel a page needs. Toposcope adds the scope to every read made with the share, on the server; the caller never states it and cannot widen it.
 
@@ -21,10 +21,10 @@ In the app: **Access › Let someone in › Share**. Access lists each share wit
 
 On a panel, **Share…** adds it to a share as a named panel and hands out the tag that names it.
 
-Or over the API, signed in (the operator password or a session):
+Or over the API, as an Owner (a personal or service account token, see [People and roles](people.md#tokens)):
 
 ```bash
-curl -u :$TOPOSCOPE_PASSWORD -X PUT https://logs.example.com/api/shares/agental-console \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT https://logs.example.com/api/shares/agental-console \
   -H 'content-type: application/json' \
   -d '{
     "expires_at": "2027-10-23",
@@ -59,7 +59,7 @@ A share carries named panels (0.8, frame 26k). A panel is the embed tag's own pa
 Edit the panel on the share and every page that names it follows.
 
 ```bash
-curl -u :$TOPOSCOPE_PASSWORD -X PUT https://logs.example.com/api/shares/agental-console \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT https://logs.example.com/api/shares/agental-console \
   -H 'content-type: application/json' \
   -d '{
     "expires_at": "2027-10-23",
@@ -108,7 +108,7 @@ curl -H "Authorization: Bearer $TOPOSCOPE_SHARE" \
 - `GET /share/v1/top?key=host&n=10` — the busiest values of a split key among the scope's log rows.
 - `GET /share/v1/names` — the metric names the share can read in the window, with kind and unit, and the values of its split and narrow keys.
 
-Only a share's secret opens `/share/v1`; the password and the ingest token do not, and a share's secret opens nothing else. A refusal is `401` with no Basic prompt.
+Only a share's secret opens `/share/v1`; a person's session or token and the ingest token do not, and a share's secret opens nothing else. A refusal is `401` with no Basic prompt.
 
 ## Embed a panel
 

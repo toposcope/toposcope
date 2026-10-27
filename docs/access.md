@@ -1,14 +1,14 @@
 # What leaves this instance
 
-Toposcope is self-hosted, and everything it stores stays on the host unless one of the ways below lets it out. **Access** in the app lists each of them under Tokens, Links and Shares, one row each, with its kind in plain words, what it does, its scope, when it expires, when it was last used, and today's use and refusals. This page says the same in prose.
+Toposcope is self-hosted, and everything it stores stays on the host unless one of the ways below lets it out. **Access** in the app lists each of them under People, Tokens, Links and Shares, one row each, with its kind in plain words, what it does, its scope, when it expires, when it was last used, and today's use and refusals. This page says the same in prose.
 
-## The operator password
+## People
 
-`TOPOSCOPE_PASSWORD` in `.env` signs a browser in (a session cookie that lasts 30 days) and lets scripts read and write with HTTP Basic. It reads everything and changes settings. It is not listed in Access, since it is not a way someone else gets in; change it in `.env` and restart to end every session.
+Each person signs in as themselves, with a role: Viewer, Operator or Owner ([People and roles](people.md)). Access lists them under **People**, with how they sign in, whether two-step is on, when they were last seen and who invited them; an Owner invites, changes roles and revokes there. A personal token acts as its person, and a service account's as its role; both are listed with the tokens. There is no shared password.
 
 ## Tokens
 
-An app, a collector or a hub sends logs, metrics, traces, profiles, marks and check results with a bearer token: the `.env` token (`TOPOSCOPE_INGEST_TOKEN`) or one made in **Access › Let someone in › Token**. A token writes; it reads nothing out. A made token is revoked in its row; the `.env` token changes in `.env`.
+An app, a collector or a hub sends logs, metrics, traces, profiles, marks and check results with a bearer token: one made in **Access › Make a token** or **Let someone in › Token**, or `env (imported)`, the `.env` token 0.9 took in once. A token writes; it reads nothing out. Each is revoked in its row.
 
 ## Links
 

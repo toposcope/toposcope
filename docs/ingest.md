@@ -76,10 +76,10 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
 
 ## Create an ingest token
 
-Create a named token from the HTTP API. The token value is shown once.
+Create a named token in **Access › Make a token › Sending logs in**, or from the HTTP API with an Owner's personal or service account token (see [People and roles](people.md#tokens)). The token value is shown once.
 
 ```bash
-curl -u "toposcope:${TOPOSCOPE_PASSWORD}" -X POST http://127.0.0.1:8080/api/api-tokens \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X POST http://127.0.0.1:8080/api/api-tokens \
   -H 'content-type: application/json' \
   -d '{"name":"vector"}'
 ```
@@ -97,7 +97,7 @@ Successful requests return the number of ingested records. An OTLP request is an
 Use this path when you want to post events directly.
 
 ```bash
-curl -u "toposcope:${TOPOSCOPE_PASSWORD}" -X POST http://127.0.0.1:8080/api/ingest \
+curl -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" -X POST http://127.0.0.1:8080/api/ingest \
   -H 'content-type: application/x-ndjson' \
   --data-binary '{"service":"api","level":"error","message":"timeout"}'
 ```
@@ -310,7 +310,7 @@ curl -X POST http://127.0.0.1:8080/v1/probes \
 ```
 
 ```bash
-curl -u "toposcope:${TOPOSCOPE_PASSWORD}" \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" \
   "http://127.0.0.1:8080/api/probes?range=1h&service=billing"
 ```
 
