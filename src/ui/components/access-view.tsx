@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { AccessRefusal, AccessRow } from "../../access/list";
 import { clockAt } from "../watch";
 import { MintDialog, PasteDialog } from "./link-dialogs";
+import { InviteSheet, MakeTokenSheet, PeopleCards, PeopleGroup, PersonTokenRows, ServiceAccountsGroup, type PeopleBody, type Role } from "./people-groups";
 
 /**
  * Access (#265, frames 26i and 26j; the one door since 29a, #295): every way in or out of this
@@ -12,7 +13,7 @@ import { MintDialog, PasteDialog } from "./link-dialogs";
  * kind in plain words, what it does, its scope, expiry, last use, today, and one action. "Let someone
  * in" is the one door to make another.
  */
-export type AccessFilter = "all" | "tokens" | "links" | "shares";
+export type AccessFilter = "all" | "people" | "tokens" | "links" | "shares";
 
 /** The chip's arrow: down for a token, toward here or away for a link or key, up for a share. */
 export function accessGlyph(row: Pick<AccessRow, "kind" | "direction">): { glyph: string; color: string } {
@@ -26,11 +27,14 @@ export function accessGlyph(row: Pick<AccessRow, "kind" | "direction">): { glyph
 }
 
 export function inFilter(row: AccessRow, filter: AccessFilter): boolean {
+  if (filter === "people") {
+    return false;
+  }
   return filter === "all" || (filter === "tokens" ? row.kind === "token" : filter === "links" ? row.kind === "link" || row.kind === "invite" : row.kind === "share");
 }
 
 /** The three groups, in order, each with its one line (29a). */
-export const accessGroups: Array<{ filter: Exclude<AccessFilter, "all">; title: string; words: string }> = [
+export const accessGroups: Array<{ filter: Exclude<AccessFilter, "all" | "people">; title: string; words: string }> = [
   { filter: "tokens", title: "Tokens", words: "send logs, metrics and marks here" },
   { filter: "links", title: "Links", words: "rows copied between this instance and another; what this one pulls shows in every hunt" },
   { filter: "shares", title: "Shares", words: "charts shown on another web page; counts only, never a row" },
@@ -57,13 +61,28 @@ export function AccessView(props: {
   onOpenLink: (id: string) => void;
   onOpenShare: (name: string) => void;
   onNewShare: () => void;
+  /** Who is looking (#308): an Owner invites, changes roles and makes service accounts. */
+  me?: { id: string; name: string; role: Role } | null;
 }) {
   const [data, setData] = useState<{ rows: AccessRow[]; refusals: AccessRefusal[] } | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
   const [door, setDoor] = useState(false);
   const [mint, setMint] = useState<"offer" | "invite" | null>(null);
   const [paste, setPaste] = useState(false);
+  const [people, setPeople] = useState<PeopleBody | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [making, setMaking] = useState(false);
+  const isOwner = props.me?.role === "owner";
   const nowMs = Date.now();
+  const loadPeople = useCallback(async () => {
+    const res = await fetch("/api/people");
+    if (res.ok) {
+      setPeople((await res.json()) as PeopleBody);
+    }
+  }, []);
+  useEffect(() => {
+    void loadPeople().catch(() => undefined);
+  }, [loadPeople]);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/access");
@@ -92,9 +111,12 @@ export function AccessView(props: {
   }
 
   const rows = data?.rows ?? [];
+  const personTokens = people ? [...people.people, ...people.service_accounts].reduce((n, p) => n + p.tokens.length, 0) : 0;
+  const peopleCount = people ? people.people.length + people.invites.length : 0;
   const counts = {
-    all: rows.length,
-    tokens: rows.filter((r) => inFilter(r, "tokens")).length,
+    all: rows.length + peopleCount + personTokens,
+    people: peopleCount,
+    tokens: rows.filter((r) => inFilter(r, "tokens")).length + personTokens,
     links: rows.filter((r) => inFilter(r, "links")).length,
     shares: rows.filter((r) => inFilter(r, "shares")).length,
   };
@@ -169,7 +191,7 @@ export function AccessView(props: {
             {refusedToday > 0 ? <span className="text-red-300"> · {refusedToday} refused today</span> : null}
           </span>
           <span className="inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]">
-            {(["all", "tokens", "links", "shares"] as const).map((f) => (
+            {(["all", "people", "tokens", "links", "shares"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
@@ -177,22 +199,36 @@ export function AccessView(props: {
                 className={cn("h-[26px] rounded-[5px] px-2.5 text-[12px]", props.filter === f ? "bg-[#27272a] text-foreground" : "text-muted-foreground hover:text-foreground")}
                 onClick={() => props.onFilter(f)}
               >
-                {f === "all" ? "All" : f === "tokens" ? "Tokens" : f === "links" ? "Links" : "Shares"} · {counts[f]}
+                {f === "all" ? "All" : f === "people" ? "People" : f === "tokens" ? "Tokens" : f === "links" ? "Links" : "Shares"} · {counts[f]}
               </button>
             ))}
           </span>
           <div className="flex-1" />
-          <Button type="button" size="sm" onClick={() => setDoor(true)}>
-            Let someone in
-          </Button>
+          {isOwner && props.filter === "people" ? (
+            <Button type="button" size="sm" onClick={() => setInviting(true)}>
+              Invite someone
+            </Button>
+          ) : isOwner ? (
+            <Button type="button" size="sm" onClick={() => setDoor(true)}>
+              Let someone in
+            </Button>
+          ) : null}
         </div>
+
+        {people && (props.filter === "all" || props.filter === "people") ? (
+          <PeopleGroup body={people} nowMs={nowMs} isOwner={isOwner} onChanged={() => void loadPeople()} />
+        ) : null}
+        {props.filter === "people" ? <PeopleCards /> : null}
+        {people && (props.filter === "all" || props.filter === "tokens") ? (
+          <ServiceAccountsGroup accounts={people.service_accounts} nowMs={nowMs} isOwner={isOwner} onChanged={() => void loadPeople()} />
+        ) : null}
 
         {data && rows.length === 0 ? <p className="text-[12.5px] text-muted-foreground">Nothing here yet. Let someone in makes the first.</p> : null}
         {accessGroups
           .filter((g) => props.filter === "all" || props.filter === g.filter)
           .map((g) => {
             const groupRows = shown.filter((r) => inFilter(r, g.filter));
-            if (props.filter === "all" && groupRows.length === 0 && g.filter !== "links") {
+            if (props.filter === "all" && groupRows.length === 0 && g.filter !== "links" && !(g.filter === "tokens" && personTokens > 0)) {
               return null;
             }
             return (
@@ -201,14 +237,22 @@ export function AccessView(props: {
                   <h2 className="m-0 text-[13.5px] font-medium">{g.title}</h2>
                   <span className="text-[12px] text-muted-foreground">{g.words}</span>
                   <div className="flex-1" />
-                  {g.filter === "links" ? (
+                  {g.filter === "links" && isOwner ? (
                     <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={() => setPaste(true)}>
                       Paste a link key
                     </Button>
                   ) : null}
+                  {g.filter === "tokens" && props.me ? (
+                    <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={() => setMaking(true)}>
+                      Make a token
+                    </Button>
+                  ) : null}
                 </div>
-                {groupRows.length === 0 ? <p className="px-4 py-2.5 text-[12.5px] text-muted-foreground">None yet.</p> : null}
+                {groupRows.length === 0 && !(g.filter === "tokens" && personTokens > 0) ? <p className="px-4 py-2.5 text-[12.5px] text-muted-foreground">None yet.</p> : null}
                 {groupRows.map((r) => row(r))}
+                {g.filter === "tokens" && people ? (
+                  <PersonTokenRows body={people} nowMs={nowMs} meId={props.me?.id ?? null} isOwner={isOwner} onChanged={() => void loadPeople()} />
+                ) : null}
               </section>
             );
           })}
@@ -229,6 +273,19 @@ export function AccessView(props: {
         </div>
       </div>
 
+      {inviting ? <InviteSheet onClose={() => setInviting(false)} onInvited={() => void loadPeople()} /> : null}
+      {making && props.me ? (
+        <MakeTokenSheet
+          me={props.me}
+          accounts={people?.service_accounts ?? []}
+          isOwner={isOwner}
+          onClose={() => setMaking(false)}
+          onMade={() => {
+            void loadPeople();
+            void load();
+          }}
+        />
+      ) : null}
       {door ? (
         <LetSomeoneIn
           onClose={() => setDoor(false)}

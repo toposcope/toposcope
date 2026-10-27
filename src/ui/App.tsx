@@ -4024,6 +4024,7 @@ export function App() {
             setSharePage(shareName);
           }}
           onNewShare={() => setSharesOpen(true)}
+          me={me ? { id: me.id, name: me.name, role: me.role } : null}
         />
       ) : view === "watch" ? (
         <WatchView

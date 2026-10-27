@@ -98,7 +98,7 @@ afterAll(() => rmSync(fixture, { recursive: true, force: true }));
 describe("the role table on every route (#306, 30d)", () => {
   test("every /api route the app registers is in the table", () => {
     const index = readFileSync(join(root, "index.ts"), "utf8");
-    const open = new Set(["POST /api/sign-in", "POST /api/setup", "GET /api/health", "GET /api/metrics", "POST /api/ingest"]);
+    const open = new Set(["POST /api/sign-in", "POST /api/setup", "POST /api/join", "GET /api/health", "GET /api/metrics", "POST /api/ingest"]);
     const routes = [...index.matchAll(/app\.(get|post|put|delete)\("(\/api\/[^"]*)"/g)].map((m) => `${m[1]!.toUpperCase()} ${m[2]}`);
     expect(routes.length).toBeGreaterThan(60);
     const missing = routes.filter((route) => !open.has(route) && !routeActions.some(([m, p]) => `${m} ${p}` === route));

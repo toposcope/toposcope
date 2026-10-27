@@ -11,6 +11,36 @@ export type ApiToken = {
   created_by?: string | null;
 };
 
+/** The name the `.env` ingest token takes in Access when 0.9 imports it (#308). */
+export const importedTokenName = "env (imported)";
+
+/**
+ * Takes `TOPOSCOPE_INGEST_TOKEN` into Access once, as an ingest token named `env (imported)`, so
+ * collectors keep sending; from then the `.env` line is never read again (#308). Returns whether
+ * it imported now.
+ */
+export function importEnvIngestToken(value: string | undefined, now = Date.now()): boolean {
+  const db = getDb();
+  if (db.query("SELECT value FROM settings WHERE key = 'env_ingest_token_imported'").get()) {
+    return false;
+  }
+  db.query("INSERT INTO settings (key, value) VALUES ('env_ingest_token_imported', ?)").run(String(now));
+  if (!value) {
+    return false;
+  }
+  const hash = hashToken(value);
+  if (db.query("SELECT id FROM api_tokens WHERE token_hash = ?").get(hash)) {
+    return false;
+  }
+  db.query("INSERT INTO api_tokens (id, name, token_hash, created_at, created_by) VALUES (?, ?, ?, ?, 'env')").run(
+    crypto.randomUUID(),
+    importedTokenName,
+    hash,
+    now,
+  );
+  return true;
+}
+
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }

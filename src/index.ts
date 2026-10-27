@@ -22,8 +22,24 @@ import {
   sessionMs,
   signInWaitMs,
   useOwnerLink,
+  inviteFor,
+  useInvite,
 } from "./control/people";
+import { actorName } from "./control/actors";
 import { getDb, getHealth } from "./control";
+import { importEnvIngestToken } from "./control/tokens";
+import {
+  cancelInviteRoute,
+  createInviteRoute,
+  createMyTokenRoute,
+  createServiceAccountRoute,
+  createServiceTokenRoute,
+  listPeopleRoute,
+  myTokensRoute,
+  putPersonRoute,
+  revokePersonRoute,
+  revokeTokenRoute,
+} from "./control/people-routes";
 import {
   createAlertRule,
   deleteAlertRule,
@@ -47,7 +63,7 @@ import { version as runningVersionForSignIn } from "./shared/version";
 import { monitorPreviewRoute } from "./alerts/preview";
 import { fingerprintSeenRoute } from "./query/fingerprint-seen";
 import { savedSearchUrl } from "./ui/search-url";
-import { ownerSetupPageHtml, safeNext, signInPageHtml } from "./sign-in-page";
+import { joinPageHtml, ownerSetupPageHtml, safeNext, signInPageHtml } from "./sign-in-page";
 import {
   createApiToken,
   deleteApiToken,
@@ -269,6 +285,59 @@ app.get("/setup/:token", (c) => {
   );
 });
 
+// 30c right: the page an invite link opens.
+app.get("/join/:token", (c) => {
+  const invite = inviteFor(c.req.param("token"));
+  return c.html(
+    joinPageHtml({
+      name: instanceName(),
+      address: openedAddress(c),
+      token: c.req.param("token"),
+      invite: invite ? { who: invite.who, role: invite.role, inviter: actorName(invite.created_by)?.name ?? null, daysLeft: Math.max(1, Math.ceil((invite.expires_at - Date.now()) / 86_400_000)) } : null,
+    }),
+    invite ? 200 : 410,
+  );
+});
+
+app.post("/api/join", async (c) => {
+  const json = (c.req.header("content-type") ?? "").includes("application/json");
+  let token = "";
+  let name = "";
+  let email = "";
+  let password = "";
+  try {
+    const body = json ? ((await c.req.json()) as Record<string, unknown>) : await c.req.parseBody();
+    token = typeof body.token === "string" ? body.token : "";
+    name = typeof body.name === "string" ? body.name : "";
+    email = typeof body.email === "string" ? body.email : "";
+    password = typeof body.password === "string" ? body.password : "";
+  } catch {
+    return c.json({ error: "Expected the invite's token, a name and a password" }, 400);
+  }
+  const invite = inviteFor(token);
+  const done = await useInvite(token, { name, email, password });
+  if ("error" in done) {
+    if (json) {
+      return c.json({ error: done.error }, invite ? 400 : 410);
+    }
+    return c.html(
+      joinPageHtml({
+        name: instanceName(),
+        address: openedAddress(c),
+        token,
+        invite: invite ? { who: invite.who, role: invite.role, inviter: actorName(invite.created_by)?.name ?? null, daysLeft: Math.max(1, Math.ceil((invite.expires_at - Date.now()) / 86_400_000)) } : null,
+        error: done.error,
+        typedName: name,
+        typedEmail: email,
+      }),
+      invite ? 400 : 410,
+    );
+  }
+  const session = createSession(done.person);
+  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
+  return json ? c.json({ ok: true, id: done.person.id }) : c.redirect("/", 303);
+});
+
 app.post("/api/setup", async (c) => {
   const json = (c.req.header("content-type") ?? "").includes("application/json");
   let token = "";
@@ -336,7 +405,11 @@ app.use("/*", async (c, next) => {
     return next();
   }
   // 32a: the owner link's page and form answer before anyone can sign in.
-  if (c.req.path.startsWith("/setup/") || (c.req.path === "/api/setup" && c.req.method === "POST")) {
+  if (
+    c.req.path.startsWith("/setup/") ||
+    c.req.path.startsWith("/join/") ||
+    ((c.req.path === "/api/setup" || c.req.path === "/api/join") && c.req.method === "POST")
+  ) {
     return next();
   }
   const header = c.req.header("authorization");
@@ -529,6 +602,17 @@ app.get("/api/access", accessRoute);
 app.get("/api/api-tokens", listApiTokens);
 app.post("/api/api-tokens", createApiToken);
 app.delete("/api/api-tokens/:id", deleteApiToken);
+app.get("/api/people", listPeopleRoute);
+app.post("/api/people/invites", createInviteRoute);
+app.delete("/api/people/invites/:id", cancelInviteRoute);
+app.post("/api/people/service-accounts", createServiceAccountRoute);
+app.put("/api/people/:id", putPersonRoute);
+app.delete("/api/people/:id", revokePersonRoute);
+app.post("/api/people/:id/tokens", createServiceTokenRoute);
+app.delete("/api/people/:id/tokens/:tid", revokeTokenRoute);
+app.get("/api/me/tokens", myTokensRoute);
+app.post("/api/me/tokens", createMyTokenRoute);
+app.delete("/api/me/tokens/:id", revokeTokenRoute);
 app.get("/api/settings", getSettings);
 app.put("/api/settings", putSettings);
 app.get("/api/fields", getFields);
@@ -598,6 +682,10 @@ async function startBoot(): Promise<void> {
     await loadArrivalSeq().catch((err) => console.error("arrival sequence not loaded yet", err));
     bootPhase = "repair";
     getDb();
+    // #308: the .env ingest token becomes a token in Access once; it is never read from .env again.
+    if (importEnvIngestToken(process.env.TOPOSCOPE_INGEST_TOKEN)) {
+      console.warn("Imported TOPOSCOPE_INGEST_TOKEN from .env as the ingest token \"env (imported)\" in Access; .env is not read for it again.");
+    }
     setHereName(instanceName());
     await syncFieldRoleSkip(storedSkipKeys());
     await applyRetentionDays(getRetentionDays(), effectiveMetricsRetentionDays());

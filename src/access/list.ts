@@ -1,7 +1,6 @@
 import { actorName } from "../control/actors";
 import { getDb } from "../control";
 import type { Context } from "hono";
-import { envIngestTokenName, ingestToken } from "../auth";
 import { allTokens } from "../control/tokens";
 import { kidLabel } from "../links/key";
 import { activeLinks, openLinkKeys } from "../links/store";
@@ -93,14 +92,6 @@ export async function accessRows(now = Date.now()): Promise<{ rows: AccessRow[];
   const { by, refusals } = await useToday();
   const use = (kind: AccessKind, name: string) => by.get(accessKey(kind, name)) ?? { used: 0, refused: 0, last: null };
   const rows: AccessRow[] = [];
-  if (ingestToken()) {
-    const u = use("token", envIngestTokenName);
-    rows.push({
-      kind: "token", verb: "token", direction: "in", id: "env", name: envIngestTokenName,
-      lets_through: "from .env · sends logs, metrics, traces, marks",
-      scope: "any", expires_at: null, last_used_at: u.last, today: { used: u.used, refused: u.refused }, revoke: null, open: null, made_by: null,
-    });
-  }
   for (const t of allTokens()) {
     const u = use("token", t.name);
     rows.push({

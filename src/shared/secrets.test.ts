@@ -16,7 +16,9 @@ describe("packagedSecretsError", () => {
   });
 
   test("refuses missing, empty, and demo values", () => {
-    expect(packagedSecretsError({})).toContain("TOPOSCOPE_INGEST_TOKEN");
+    expect(packagedSecretsError({})).toContain("CLICKHOUSE_PASSWORD");
+    // #308: the ingest token is imported once into Access and may then leave .env.
+    expect(packagedSecretsError({ CLICKHOUSE_PASSWORD: "not-demo-ch" })).toBeNull();
     expect(
       packagedSecretsError({
         ...generated,

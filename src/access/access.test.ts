@@ -28,7 +28,8 @@ beforeAll(() => {
     const root = ${JSON.stringify(import.meta.dir)} + "/..";
     const { checkBearer } = await import(root + "/auth.ts");
     const { getDb } = await import(root + "/control/index.ts");
-    const { hashToken } = await import(root + "/control/tokens.ts");
+    const { hashToken, importEnvIngestToken } = await import(root + "/control/tokens.ts");
+    importEnvIngestToken(process.env.TOPOSCOPE_INGEST_TOKEN);
     const { accessRows } = await import(root + "/access/list.ts");
     getDb().query("INSERT INTO api_tokens (id, name, token_hash, created_at) VALUES (?, ?, ?, ?)").run("t1", "collector", hashToken("created-token-value"), 1);
     const created = checkBearer("Bearer created-token-value");
@@ -48,12 +49,13 @@ beforeAll(() => {
 });
 
 describe("GET /api/access (#265)", () => {
-  test("the .env token and a created token are rows that write in; use is counted by name", () => {
+  test("the imported .env token and a created token are rows that write in; use is counted by name", () => {
     expect(bearer.created).toBe(true);
-    const env = listed.rows.find((r) => r.name === "TOPOSCOPE_INGEST_TOKEN")!;
+    // #308: imported once into Access, revocable there like any other.
+    const env = listed.rows.find((r) => r.name === "env (imported)")!;
     const made = listed.rows.find((r) => r.name === "collector")!;
     expect(env.verb).toBe("token");
-    expect(env.revoke).toBeNull();
+    expect(env.revoke).toMatch(/^\/api\/api-tokens\//);
     expect(made.revoke).toBe("/api/api-tokens/t1");
     // The minute not yet written counts: ClickHouse is unreachable here, so pending use is all there is.
     expect(made.today.used).toBe(1);
