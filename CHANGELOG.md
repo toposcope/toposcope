@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+For an Owner, the Links group in Access carries **Make a link key** beside **Paste a link key**, so a key to share this instance's rows (or to pull another's) is made where links are listed. It opens Let someone in on Link: pick *They copy from us* or *We copy from them*, then the scope; the key appears under Links as *key not used yet*. `docs/access.md` names the button.
+
 ## 0.9.0
 
 **Before you upgrade:** 0.9 has people instead of one shared password. After the upgrade every browser is signed out and `TOPOSCOPE_PASSWORD` no longer signs anyone in: run `./toposcope.sh owner-link <email>` on the host and open the link it prints within the hour to make the first Owner, with an authenticator app for the second step (`upgrade.sh` says so at the end). Everything made before is theirs. HTTP Basic is refused: give each script a personal token, or a service account's, from Access. Collectors keep sending: `TOPOSCOPE_INGEST_TOKEN` is imported once as the ingest token `env (imported)`, and made tokens are unchanged. Delete `TOPOSCOPE_PASSWORD` from `.env`. SQLite gains tables and columns; to roll back to 0.8.0, put the password back. [People and roles](docs/people.md#upgrading-from-08) has the steps.
