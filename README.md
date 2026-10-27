@@ -57,7 +57,9 @@ Make the first Owner. There is no shared password: this prints a link that works
 ./toposcope.sh owner-link you@example.com
 ```
 
-Open the link, choose your name and a password, and you are signed in; a browser stays signed in for 30 days. Name the instance in Settings so two of them can be told apart. A script sends `Authorization: Bearer` with a personal or service account token; HTTP Basic is not accepted. Search for `service:smoke` and save the search: it becomes a card on **Home**, and **Watch this** on the hunt makes a monitor from it. **Access** lists every way in or out of the instance, and [What leaves this instance](docs/access.md) says the same in prose.
+Open the link, choose your name and a password, set up two-step with any authenticator app, and keep the ten backup codes somewhere safe; a browser then stays signed in for 30 days. Name the instance in Settings so two of them can be told apart. Search for `service:smoke` and save the search: it becomes a card on **Home**, and **Watch this** on the hunt makes a monitor from it. **Access** lists every way in or out of the instance, and [What leaves this instance](docs/access.md) says the same in prose.
+
+Then let the others in: **Access › People › Invite someone** gives a link that works once, with a role, Viewer, Operator or Owner, and **Settings › Sign-in and roles** can add Google, Entra, Okta, Keycloak or any other OIDC provider. A script sends `Authorization: Bearer` with a personal or service account token from **Access › Make a token**; HTTP Basic is not accepted. [People and roles](docs/people.md) has the details, and what to do when upgrading from 0.8.
 
 The deployment pins `ghcr.io/toposcope/toposcope:0.8.0`; it never uses `:latest`. Anonymous image pulls need no registry login.
 

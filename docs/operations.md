@@ -2,7 +2,7 @@
 
 Toposcope is a single-node deployment: one app instance plus one ClickHouse. It does not provide high availability.
 
-Auth is required except `GET /api/health` and `GET /api/metrics`. There is no default password or ingest token. `TOPOSCOPE_PASSWORD` is a shared operator credential with write access, including retention changes; there is no read-only role.
+Auth is required except `GET /api/health` and `GET /api/metrics`. There is no shared password: people sign in as themselves with one of three roles, scripts send a personal or service account token, and machines that send logs use ingest tokens. [People and roles](people.md) covers the first Owner, invites, two-step, the provider and tokens.
 
 The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.8.0` and should not be replaced with `:latest`. Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
@@ -10,7 +10,7 @@ For the initial deployment and first searchable event, follow the [README quick 
 
 ## Sign in
 
-A browser signs in on a page that names the instance, so two instances are never confused. The password is the operator password, `TOPOSCOPE_PASSWORD` in `.env` on the host. Forgot it: read it there. To change it, edit `.env` and restart the app container; every browser session ends with the old password. Scripts and agents keep sending Basic auth or a token, unchanged.
+A browser signs in on a page that names the instance, so two instances are never confused: with an email and a password and then the six digits from an authenticator app, or with the provider when one is set up. A new instance has no Owner until `./toposcope.sh owner-link <email>` on the host makes one. Forgot a password: an Owner resets your two-step, or sends a new invite; a locked-out Owner runs `owner-link` again. See [People and roles](people.md).
 
 ## TLS
 
@@ -53,10 +53,10 @@ A **push monitor** takes results instead of reading a search: a cron job, a back
 A script or an agent can declare one without the UI, by name; the same name replaces it:
 
 ```bash
-curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-errors \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT http://127.0.0.1:8080/api/monitors/api-errors \
   -H 'content-type: application/json' \
   -d '{"source": "search", "saved_search": "api errors", "threshold": 50, "webhook_url": "https://ntfy.sh/my-topic", "remind_every": "4h"}'
-curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/ci-box-went-quiet \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT http://127.0.0.1:8080/api/monitors/ci-box-went-quiet \
   -H 'content-type: application/json' \
   -d '{"source": "search", "saved_search": "ci-box lines", "opens_when": "fewer_than", "threshold": 1, "webhook_url": "https://ntfy.sh/my-topic"}'
 ```
@@ -79,7 +79,7 @@ cert > 14d
 Headers are kept as webhook addresses are, in SQLite; they are sent, and never shown back, in Watch or in the editor (`Authorization: ••••` keeps the stored value). Declare one from a script:
 
 ```bash
-curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-health \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT http://127.0.0.1:8080/api/monitors/api-health \
   -H 'content-type: application/json' \
   -d '{"source": "http", "url": "https://api.example.com/health", "every": "30s", "conditions": ["status == 200", "$.db == \"ok\"", "time < 300ms warn"], "headers": {"Authorization": "Bearer …"}, "webhook_url": "https://ntfy.sh/my-topic"}'
 ```
@@ -87,10 +87,10 @@ curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/api-h
 A **TCP monitor** and a **certificate monitor** (**New monitor → TCP · certificate**) run from this node on the same clock, every 30s to 1h, with a 10s timeout. A TCP monitor connects to `host:port` and closes the connection; nothing is sent. Its lines are `connected` and `time < 200ms` (dns and connect); with none, connecting passes. A certificate monitor does the TLS handshake at `host:port` and reads the certificate: from the first byte (**TLS**: 443, 465, 993, 995, a TLS-terminated port), or after STARTTLS on **SMTP** (25, 587), **IMAP** (143) or **POP3** (110). Its lines are `cert > 14d` (days left) and `cert name == mail.example.com` (the certificate is for that name, as a client checks it: one of its names, `*.` standing for one label), and `connected` and `time < 200ms` as a TCP monitor's (the time to the certificate); with none, a trusted certificate for its host passes. A certificate this node would not trust (expired, self-signed, signed by a CA it does not know) fails the run, whatever its lines, and so does one not for its host, unless a `cert name ==` line names the one it must be for (a target given by address, say). A certificate signed by a CA of your own is trusted once the app is: mount the CA's PEM into the app container and set `NODE_EXTRA_CA_CERTS` to its path. Not connecting, or a server that refuses STARTTLS, fails the run with what happened (`connect ECONNREFUSED`, `timeout after 10s`, `STARTTLS refused: 502 5.5.1 …`). Both open after 2 failed runs in a row and resolve on the next passing one, call as an HTTP(S) monitor does, and their editor sends one run from this node and shows how it answered (`connected · TLS 1.3 via STARTTLS`), where the time went, and the certificate (when it expires, its name, its issuer), a chip clicked becoming a line. Every run is a log row (`monitor:<name> status:ok|warn|fail source:tcp|cert`, with `target`, `duration_ms`, `line`, `error`, and for a certificate `starttls`, `cert.subject`, `cert.valid_to` and `cert.days_left`), and a run that got as far as it goes keeps its time as `monitor_duration_ms`. ICMP, DNS and UDP are not checked; anything else is a push monitor.
 
 ```bash
-curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/db-port \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT http://127.0.0.1:8080/api/monitors/db-port \
   -H 'content-type: application/json' \
   -d '{"source": "tcp", "target": "db.internal:5432", "conditions": ["connected", "time < 200ms warn"]}'
-curl -u op:"$TOPOSCOPE_PASSWORD" -X PUT http://127.0.0.1:8080/api/monitors/mail-certificate \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT http://127.0.0.1:8080/api/monitors/mail-certificate \
   -H 'content-type: application/json' \
   -d '{"source": "cert", "target": "smtp.example.com:587", "starttls": "smtp", "every": "1h", "conditions": ["cert > 14d", "cert name == smtp.example.com"]}'
 ```
@@ -101,7 +101,7 @@ A monitor sends its default body unless it is given one of its own in the monito
 
 A body is written with fill-ins, listed beside it in the dialog: `{{alert.name}}`, `{{series}}`, `{{value}}`, `{{threshold}}`, `{{query}}`, `{{fired_at}}`, `{{link}}`, `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}` and `{{message}}` (the result that opened it) for a saved-search monitor; `{{alert.name}}`, `{{query}}`, `{{mark.kind}}`, `{{mark.version}}`, `{{mark.at}}`, `{{fingerprints.count}}`, `{{fingerprints.first}}`, `{{fingerprints}}`, `{{more}}` and `{{link}}` for a new-fingerprints one; `{{alert.name}}`, `{{url}}`, `{{status}}`, `{{duration_ms}}`, `{{message}}`, `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}`, `{{fired_at}}` and `{{link}}` for an HTTP(S) one; the same with `{{target}}` for `{{url}}` and no `{{status}}` for a TCP or certificate one. `{{link}}` is empty unless `TOPOSCOPE_PUBLIC_URL` is set. In a JSON body every fill-in is a string, escaped to sit inside quotes, so it goes between `"…"`; a body that does not parse is refused with its line and column. A saved-search monitor with a body of its own sends a resolved call only when it is given a second body, **When it resolves**; left empty, it sends none, so a message written for “it opened” never arrives when it ended. **Send a test call** sends the body now, filled in from the last evaluation (or the last mark the monitor watched), then the resolved body when there is one, and shows the status, the time and the reply's first 200 characters.
 
-A body is kept as the webhook address is, in SQLite, and anyone with the operator password can read it in the dialog; Watch does not print it.
+A body is kept as the webhook address is, in SQLite, and any Operator or Owner can read it in the dialog; Watch does not print it.
 
 Pushover takes JSON with its own fields, at `https://api.pushover.net/1/messages.json`:
 
@@ -154,7 +154,7 @@ Neither notices a webhook target that is down: Toposcope does not page about its
 
 A link is one instance pulling rows from another, made from **Access › Let someone in › Link** and listed under **Links** on Access, with **Paste a link key** on that group; a link pulled by this instance reads *we copy from*, one pulled by the other side *copies from us*, and a key not yet pasted *key not used yet*. Each link has a page from its Access row (Access › its name): which way rows move, its scope, its position, how far behind, its last pull, its rate over a day with any gap drawn as a floor, **Pause** (the link and its place stay; nothing is pulled or served) and, where rows leave this instance, **Change scope**. The instance the other can reach mints a key; the other pastes it, and the side that pasted connects. **Offer rows from here** mints a single-use key for one filter: whoever pastes it pulls the rows that match. **Invite a source here** mints a key that lets this instance pull from whoever pastes it, once or for many until a date (30 days at most). A key carries this instance's address, its name, a short id, the filter and a secret; it is shown once and stored hashed. On the first paste the two instances swap it for a secret of their own, and that secret reads the link's feed and nothing else.
 
-The address in a key is `TOPOSCOPE_PUBLIC_URL` when it is set, else the address the browser opened. The other instance has to reach `/link/v1/` there: behind a reverse proxy, forward it like the rest of the app. Those routes do not take the operator password; each proves a key's or a link's secret. The operator password never travels between instances.
+The address in a key is `TOPOSCOPE_PUBLIC_URL` when it is set, else the address the browser opened. The other instance has to reach `/link/v1/` there: behind a reverse proxy, forward it like the rest of the app. Those routes do not take a person's sign-in; each proves a key's or a link's secret. No one's sign-in travels between instances.
 
 The puller asks every 5 seconds for what arrived after where it stands, stores the rows as they were (the source's `e1`, its `toposcope` name) and keeps its position, so a restart of either side picks up where it stopped. A row is never stored twice, across retries, links with overlapping filters, or a row that left and came back. Pulled rows follow this instance's retention. Removing a link stops it and deletes nothing.
 
@@ -245,7 +245,7 @@ From 0.6.3 the footer's version popover can upgrade too, once the host allows it
 sudo ./upgrade.sh enable-ui
 ```
 
-That installs `toposcope-upgrade-<project>.path`, which watches the request file, and `toposcope-upgrade-<project>.service`, which runs `./upgrade.sh ui-run` here, as root. The volume is the app's to write, so `ui-run` never opens a path in it: every read and write there runs in a throwaway container that mounts only that volume, with no network, so a link the app put there cannot name a host path. `ui-run` takes the request first, accepts only a bare `X.Y.Z`, and runs `./upgrade.sh X.Y.Z` exactly as above, backup and way back included; it writes how it went to `upgrade/status.json` and the output to `upgrade/last.log`, both in the app's volume, and the popover shows them. Only a release the release check knows as newer can be asked for, one at a time, and a request the host has not taken within 2 minutes is dropped. Anyone with the operator password can then start an upgrade to a published release; rollback stays on the host. `sudo ./upgrade.sh disable-ui` removes both units.
+That installs `toposcope-upgrade-<project>.path`, which watches the request file, and `toposcope-upgrade-<project>.service`, which runs `./upgrade.sh ui-run` here, as root. The volume is the app's to write, so `ui-run` never opens a path in it: every read and write there runs in a throwaway container that mounts only that volume, with no network, so a link the app put there cannot name a host path. `ui-run` takes the request first, accepts only a bare `X.Y.Z`, and runs `./upgrade.sh X.Y.Z` exactly as above, backup and way back included; it writes how it went to `upgrade/status.json` and the output to `upgrade/last.log`, both in the app's volume, and the popover shows them. Only a release the release check knows as newer can be asked for, one at a time, and a request the host has not taken within 2 minutes is dropped. Any Owner can then start an upgrade to a published release; rollback stays on the host. `sudo ./upgrade.sh disable-ui` removes both units.
 
 ### By hand
 
@@ -336,6 +336,8 @@ Compose may warn that `toposcope_ch_data` already exists and was not created by 
 ## Rollback
 
 From 0.6.1, `./upgrade.sh rollback --yes` goes back to the last backup the script took (see [With upgrade.sh](#with-upgradesh)). By hand: to roll back a packaged install, pin a previous published image tag in `compose.yml` and run `docker compose up -d`.
+
+0.9 replaces the shared password with people (see [Upgrading from 0.8](people.md#upgrading-from-08)). Pinning 0.8.0 again needs `TOPOSCOPE_PASSWORD` back in `.env`; 0.8.0 ignores `people`, `person_tokens`, `invites`, `owner_links`, `oidc_states` and the new columns, and nobody can sign in there as a person. Ingest tokens made or imported on 0.9 keep working on 0.8.0, since they live in `api_tokens`.
 
 `0.3.14` is the first public pin. Pin `0.7.3` to roll back application code from `0.8.0`. 0.8.0 adds columns only: `saved_searches.pinned`, `alert_rules.measure` and `webhook_urls`, `api_tokens.last_used_at`, `links.paused`, and `shares.panels` and `raw_params`. 0.7.3 leaves them unread: a pin is not Home on 0.7.3, a monitor calls only its first webhook and compares its series (a share-of-all-rows monitor reads as a count), a paused link pulls again, and a share serves its scope with raw params whatever its panels. Pinning 0.8.0 again picks them up where they were.
 
