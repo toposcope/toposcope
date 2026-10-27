@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+## 0.9.0
+
 **Before you upgrade:** 0.9 has people instead of one shared password. After the upgrade every browser is signed out and `TOPOSCOPE_PASSWORD` no longer signs anyone in: run `./toposcope.sh owner-link <email>` on the host and open the link it prints within the hour to make the first Owner, with an authenticator app for the second step (`upgrade.sh` says so at the end). Everything made before is theirs. HTTP Basic is refused: give each script a personal token, or a service account's, from Access. Collectors keep sending: `TOPOSCOPE_INGEST_TOKEN` is imported once as the ingest token `env (imported)`, and made tokens are unchanged. Delete `TOPOSCOPE_PASSWORD` from `.env`. SQLite gains tables and columns; to roll back to 0.8.0, put the password back. [People and roles](docs/people.md#upgrading-from-08) has the steps.
 
 The docs follow: a new page, [People and roles](docs/people.md), covers the first Owner and the way back in, the three roles and what each may do, invites, two-step, signing in with a provider (with the issuer for Google, Entra, Okta, Keycloak and Authentik), the three kinds of token, and upgrading from 0.8. Operations, What leaves this instance, Ingest, Shares, the architecture and the README's first steps no longer mention a shared password, and their `curl` examples send a token. [#312](https://github.com/toposcope/toposcope/issues/312)
