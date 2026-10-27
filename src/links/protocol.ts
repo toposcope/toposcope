@@ -1,3 +1,4 @@
+import { refuseOtherVersion } from "./version";
 import { isPaused } from "./page";
 import { noteAccessRefused, noteAccessUsed } from "../access/use";
 import type { Context } from "hono";
@@ -55,6 +56,10 @@ function provenKey(body: Record<string, unknown> | null) {
 
 /** A paste's one lookup before confirm: is the key still unused, and used by how many. */
 export async function lookupRoute(c: Context): Promise<Response> {
+  const otherVersion = refuseOtherVersion(c);
+  if (otherVersion) {
+    return otherVersion;
+  }
   const key = provenKey(await jsonBody(c));
   if (!key) {
     return c.json({ error: "No such key here" }, 404);
@@ -84,6 +89,10 @@ function peerFrom(body: Record<string, unknown> | null): PeerInfo | null {
  * it is the side that connects.
  */
 export async function claimRoute(c: Context): Promise<Response> {
+  const otherVersion = refuseOtherVersion(c);
+  if (otherVersion) {
+    return otherVersion;
+  }
   const body = await jsonBody(c);
   const key = provenKey(body);
   if (!key) {
@@ -139,6 +148,10 @@ function linkFor(c: Context): LinkRecord | null {
 
 /** A puller reads its feed: the rows after where it stands that its link's filter matches. */
 export async function linkFeedRoute(c: Context): Promise<Response> {
+  const otherVersion = refuseOtherVersion(c);
+  if (otherVersion) {
+    return otherVersion;
+  }
   const link = linkFor(c);
   if (!link || link.role !== "serve") {
     return c.json({ error: "Unauthorized" }, 401);
@@ -180,6 +193,10 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
  * keeps the position; the source's own store is still the buffer.
  */
 export async function linkAskRoute(c: Context): Promise<Response> {
+  const otherVersion = refuseOtherVersion(c);
+  if (otherVersion) {
+    return otherVersion;
+  }
   const link = linkFor(c);
   if (!link || link.role !== "pull" || link.connects !== "they") {
     return c.json({ error: "Unauthorized" }, 401);
@@ -190,6 +207,10 @@ export async function linkAskRoute(c: Context): Promise<Response> {
 
 /** The range the source read for us: stored as it came, and the position moves to its end. */
 export async function linkRowsRoute(c: Context): Promise<Response> {
+  const otherVersion = refuseOtherVersion(c);
+  if (otherVersion) {
+    return otherVersion;
+  }
   const link = linkFor(c);
   if (!link || link.role !== "pull" || link.connects !== "they") {
     return c.json({ error: "Unauthorized" }, 401);
@@ -226,6 +247,10 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
 
 /** The other side removed the link: stop here too. Rows already moved stay where they are. */
 export async function linkRemoveRoute(c: Context): Promise<Response> {
+  const otherVersion = refuseOtherVersion(c);
+  if (otherVersion) {
+    return otherVersion;
+  }
   const link = linkFor(c);
   if (!link) {
     return c.json({ error: "Unauthorized" }, 401);

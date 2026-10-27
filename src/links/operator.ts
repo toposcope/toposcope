@@ -1,3 +1,4 @@
+import { mismatchWords, versionHeaders, versionRefusal } from "./version";
 import type { Context } from "hono";
 import { instanceId, instanceName, parseInstanceName, writeInstanceName } from "../control/instance";
 import { compileQuery } from "../query/compile";
@@ -9,6 +10,7 @@ import {
   kidLabel,
   linkKeyMaxDays,
   linkKeyNotAKey,
+  linkKeyOlder,
   newKid,
   newSecret,
   type LinkKey,
@@ -149,7 +151,7 @@ async function lookup(key: LinkKey): Promise<Lookup | null> {
   try {
     const res = await fetch(`${key.url.replace(/\/+$/, "")}/link/v1/lookup`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...versionHeaders() },
       body: JSON.stringify({ kid: key.kid, secret: key.secret }),
       signal: AbortSignal.timeout(5_000),
     });
@@ -171,7 +173,9 @@ export async function previewRoute(c: Context): Promise<Response> {
   const decoded = decodeLinkKey(typeof body.key === "string" ? body.key : "");
   if ("error" in decoded) {
     return c.json(
-      { error: linkKeyNotAKey, detail: "Link keys start with tsl1_ and are one unbroken line. Ingest tokens are not link keys." },
+      decoded.error === linkKeyOlder
+        ? { error: linkKeyOlder }
+        : { error: linkKeyNotAKey, detail: "Link keys start with tsl2_ and are one unbroken line. Ingest tokens are not link keys." },
       400,
     );
   }
@@ -192,7 +196,7 @@ export async function confirmRoute(c: Context): Promise<Response> {
   const body = await jsonBody(c);
   const decoded = decodeLinkKey(typeof body.key === "string" ? body.key : "");
   if ("error" in decoded) {
-    return c.json({ error: linkKeyNotAKey }, 400);
+    return c.json({ error: decoded.error === linkKeyOlder ? linkKeyOlder : linkKeyNotAKey }, 400);
   }
   if (decoded.until !== null && Date.now() > decoded.until) {
     return c.json({ error: "The key has expired", state: "expired" }, 409);
@@ -205,10 +209,14 @@ export async function confirmRoute(c: Context): Promise<Response> {
   try {
     const res = await fetch(`${decoded.url.replace(/\/+$/, "")}/link/v1/claim`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...versionHeaders() },
       body: JSON.stringify({ kid: decoded.kid, secret: decoded.secret, peer: { id: instanceId(), name, url: addressOf(c) } }),
       signal: AbortSignal.timeout(10_000),
     });
+    const other = await versionRefusal(res);
+    if (other) {
+      return c.json({ error: mismatchWords(decoded.name, other), state: "versions differ" }, 409);
+    }
     if (!res.ok) {
       const reason = (await res.json().catch(() => ({}))) as { error?: string; state?: string };
       return c.json({ error: reason.error ?? `${decoded.name} answered ${res.status}`, state: reason.state }, 409);
@@ -247,7 +255,7 @@ export async function removeLinkRoute(c: Context): Promise<Response> {
   if (link.connects === "we" && link.secret) {
     void fetch(`${link.peer_url.replace(/\/+$/, "")}/link/v1/remove`, {
       method: "POST",
-      headers: { authorization: `Bearer ${link.secret}` },
+      headers: { authorization: `Bearer ${link.secret}`, ...versionHeaders() },
       signal: AbortSignal.timeout(5_000),
     }).catch(() => undefined);
   }

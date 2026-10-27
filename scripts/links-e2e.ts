@@ -73,7 +73,7 @@ const service = `linked-${tag}`;
 
 // 1. A offers its errors; B pastes and pulls.
 const offer = await call(A, "/api/links/offer", { method: "POST", json: { q: "level:error" } });
-check(offer.status === 201 && offer.body.key.startsWith("tsl1_o."), "A mints an offer key", offer.body);
+check(offer.status === 201 && offer.body.key.startsWith("tsl2_o."), "A mints an offer key", offer.body);
 const preview = await call(B, "/api/links/preview", { method: "POST", json: { key: offer.body.key } });
 check(
   preview.status === 200 && preview.body.kind === "offer" && preview.body.name === nameA && preview.body.q === "level:error" && preview.body.lookup?.state === "unused",
@@ -130,7 +130,7 @@ await until("B's link says the source refused it", async () => {
 });
 // 6. A invites a source (#137); B pastes and calls out, so B needs no inbound port.
 const invite = await call(A, "/api/links/invite", { method: "POST", json: { q: "level:warn" } });
-check(invite.status === 201 && invite.body.key.startsWith("tsl1_i."), "A mints an invite key", invite.body);
+check(invite.status === 201 && invite.body.key.startsWith("tsl2_i."), "A mints an invite key", invite.body);
 const invited = await call(B, "/api/links/confirm", { method: "POST", json: { key: invite.body.key } });
 check(invited.status === 201 && invited.body.role === "serve" && invited.body.connects === "we", "B pastes it: rows leave B, B calls A", invited.body);
 const warnService = `called-${tag}`;

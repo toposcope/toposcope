@@ -479,7 +479,7 @@ export function PasteDialog({
               setKey(e.target.value);
               void check(e.target.value);
             }}
-            placeholder="tsl1_…"
+            placeholder="tsl2_…"
             spellCheck={false}
             className="h-9 rounded-[4.4px] border border-white/15 bg-transparent px-2.5 font-mono text-[12.5px] outline-none focus:border-ring"
           />
