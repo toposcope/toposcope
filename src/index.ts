@@ -5,6 +5,7 @@ import { startAlertCron } from "./alerts/cron";
 import { startHttpMonitors } from "./alerts/http-cron";
 import { checkBearer, isBasic, readCookie, resolveActor, sessionCookieHeader, sessionCookieName, sessionEnd } from "./auth";
 import { actorOf, setActor } from "./actor-context";
+import { actionFor, actionRole, refusalWords } from "./control/roles";
 import {
   checkPassword,
   clearSignInFailures,
@@ -14,6 +15,7 @@ import {
   liveOwnerCount,
   looksLikeEmail,
   meBody,
+  roleAtLeast,
   noteSignInFailure,
   ownerLinkFor,
   sessionMs,
@@ -359,6 +361,13 @@ app.use("/*", async (c, next) => {
   const actor = !ingest || operatorMark ? resolveActor(header, c.req.header("cookie")) : null;
   if (actor) {
     setActor(c, actor);
+    // #306: the role table (30d) on every route.
+    const action = actionFor(c.req.method, c.req.path);
+    if (action && !roleAtLeast(actor.role, actionRole[action])) {
+      const words = refusalWords(actor.role, action);
+      noteAccessRefused("person", actor.person.email ?? actor.person.name, words, c.req.path);
+      return c.json({ error: words, need: actionRole[action] }, 403);
+    }
     return next();
   }
   if (ingest && header?.startsWith("Bearer ")) {
