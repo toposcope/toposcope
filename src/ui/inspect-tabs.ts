@@ -10,6 +10,10 @@ export type InspectTab =
       service: string;
       name: string;
       ts: string;
+      /** The span's length and where it entered (#332): whether its profile may still be on its way. */
+      duration_ms?: number;
+      toposcope?: string;
+      pulled_at?: string | null;
     };
 
 function profileTabLabel(spanId: string): string {

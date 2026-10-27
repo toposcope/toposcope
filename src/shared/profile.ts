@@ -13,6 +13,9 @@ export type ProfileSample = {
   span_id: string;
   frames: string[];
   value: number;
+  /** The instance the sample entered at (#332), and when it was pulled here; null when it entered here. */
+  toposcope?: string;
+  pulled_at?: string | null;
 };
 
 export type ProfileStack = {
@@ -30,6 +33,10 @@ export type ProfileResponse = {
   stacks: ProfileStack[];
   total_samples: number;
   total_profiles: number;
+  /** Where the profile entered (#332): this instance's name, or the source's it was copied from with its span. */
+  toposcope: string;
+  /** When it was pulled here over a link; null for a profile that entered here, or none found. */
+  pulled_at: string | null;
 };
 
 export const emptyProfileResponse: ProfileResponse = {
@@ -42,6 +49,8 @@ export const emptyProfileResponse: ProfileResponse = {
   stacks: [],
   total_samples: 0,
   total_profiles: 0,
+  toposcope: "",
+  pulled_at: null,
 };
 
 export function stackKey(frames: string[]): string {
@@ -132,5 +141,7 @@ export function buildProfileResponse(samples: ProfileSample[]): ProfileResponse 
     stacks: capped.stacks,
     total_samples: folded.length,
     total_profiles: picked.totalProfiles,
+    toposcope: first.toposcope ?? "",
+    pulled_at: first.pulled_at ?? null,
   };
 }

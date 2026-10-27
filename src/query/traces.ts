@@ -19,6 +19,9 @@ type SpanRow = {
   duration_ms: string | number;
   status: string;
   attrs: Record<string, string> | string;
+  toposcope: string;
+  pulled: number | string | boolean;
+  arrived: string;
 };
 
 type LinkRow = {
@@ -66,11 +69,26 @@ function mapRow(row: SpanRow): Span {
     duration_ms: Number(row.duration_ms),
     status: parseStatus(row.status),
     attrs: parseAttrs(row.attrs),
+    toposcope: row.toposcope ?? "",
+    pulled_at: pulledAt(row.pulled, row.arrived),
   };
 }
 
+/** A row with an origin elsewhere was pulled over a link, at the time it arrived here (#330). */
+export function pulledAt(pulled: number | string | boolean, arrived: string): string | null {
+  if (!(pulled === true || Number(pulled) === 1) || !arrived) {
+    return null;
+  }
+  try {
+    return toIsoTimestamp(arrived);
+  } catch {
+    return null;
+  }
+}
+
 const spanSelect = `
-  SELECT trace_id, span_id, parent_span_id, service, name, ts, duration_ms, status, attrs
+  SELECT trace_id, span_id, parent_span_id, service, name, ts, duration_ms, status, attrs,
+    toposcope, src_id != '' AS pulled, arrived
   FROM spans
   WHERE tenant_id = 'default' AND trace_id = {id:String}
 `;

@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ProfileResponse } from "../../shared/profile";
 import { PROFILE_STACK_CAP } from "../../shared/profile";
+import type { HeldSource } from "../../shared/held";
+import { enteredRow, profileHeld } from "../trace-held";
+import { SourceChip } from "./trace-waterfall";
 import {
   flamePinLit,
   formatProfileShare,
@@ -20,6 +23,10 @@ type Props = {
   failed: boolean;
   canBackToTrace: boolean;
   onBack: () => void;
+  /** The span the profile belongs to: where it entered, and how long it ran (#332). */
+  span?: { duration_ms?: number; toposcope?: string; pulled_at?: string | null };
+  /** What this instance holds (#139): where each source it pulls from stands, and its own name. */
+  held?: { sources: HeldSource[]; now: number; here: string };
 };
 
 export function SpanFlamegraph({
@@ -32,6 +39,8 @@ export function SpanFlamegraph({
   failed,
   canBackToTrace,
   onBack,
+  span,
+  held,
 }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [hover, setHover] = useState<{
@@ -55,6 +64,18 @@ export function SpanFlamegraph({
     result && result.duration_ms > 0
       ? `${Math.round(result.duration_ms / 1000)}s window`
       : "";
+  const sources = held?.sources ?? [];
+  const heldNow = held?.now ?? Date.now();
+  const here = held?.here ?? "";
+  const where = profileHeld({
+    profile: loading || failed || !result ? null : result,
+    span: { ts, ...span },
+    sources,
+    now: heldNow,
+    here,
+  });
+  const found = !!result && stacks.length > 0;
+  const rail = where.entered && found ? enteredRow(result, sources, heldNow, here) : null;
   const depths = layout.frames.reduce((max, frame) => Math.max(max, frame.depth), 0);
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((frac) => ({
     frac,
@@ -62,9 +83,10 @@ export function SpanFlamegraph({
   }));
 
   return (
+    <div className="flex min-h-0 min-w-0 flex-1">
     <div
       data-screen-label="Span flamegraph"
-      className="flex min-h-0 flex-1 flex-col px-3 pb-3"
+      className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-3"
     >
       <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-[6.4px] border border-b-0 border-white/10 bg-card px-2.5">
         <span className="truncate text-[13px] font-medium">
@@ -84,6 +106,11 @@ export function SpanFlamegraph({
           </span>
         ) : null}
         <div className="min-w-2 flex-1" />
+        {where.entered ? (
+          <span className="flex shrink-0 items-center gap-1.5 text-[11.5px] whitespace-nowrap text-muted-foreground">
+            entered at <SourceChip name={where.entered.name} /> · {where.entered.note}
+          </span>
+        ) : null}
         <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
           span_id:{spanId}
         </span>
@@ -103,13 +130,25 @@ export function SpanFlamegraph({
             </div>
           ) : null}
           <div className="flex flex-col items-center gap-1 rounded-b-[6.4px] border border-white/10 bg-card px-5 py-14">
-            <span className="text-[13px]">
-              {failed ? "Could not load this profile" : "No profile samples for this span"}
+            <span className={cn("text-[13px]", !failed && where.notHereYet && "text-amber-300")}>
+              {failed
+                ? "Could not load this profile"
+                : where.notHereYet
+                  ? "Its profile is not here yet"
+                  : "No profile samples for this span"}
             </span>
             <span className="max-w-[440px] text-center text-xs leading-relaxed text-pretty text-muted-foreground">
-              {failed
-                ? "The request failed."
-                : "No samples linked to this span yet — they may not have been attached, exported, or arrived."}
+              {failed ? (
+                "The request failed."
+              ) : where.notHereYet ? (
+                where.notHereYet.map((part, i) => (
+                  <span key={i} className={part.mono ? "font-mono" : undefined}>
+                    {part.text}
+                  </span>
+                ))
+              ) : (
+                "No samples linked to this span yet — they may not have been attached, exported, or arrived."
+              )}
             </span>
             <button
               type="button"
@@ -252,6 +291,34 @@ export function SpanFlamegraph({
           ) : null}
         </>
       )}
+    </div>
+    {rail ? (
+      <aside
+        aria-label="Profile"
+        className="@container flex w-[300px] max-w-[30%] shrink-0 flex-col border-l bg-[#0f0f11]"
+      >
+        <div className="mx-3 mt-3 mb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+          Where it entered
+        </div>
+        <dl className="mx-3 overflow-hidden rounded-lg border">
+          {[
+            ["toposcope", rail.value, rail.note],
+            ["with span", name, null],
+          ].map(([k, v, note]) => (
+            <div
+              key={k}
+              className="grid min-h-7 grid-cols-[84px_minmax(0,1fr)] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-[5px] last:border-0"
+            >
+              <dt className="truncate font-mono text-[11px] leading-4 text-muted-foreground">{k}</dt>
+              <dd className="font-mono text-xs break-words">
+                {v}
+                {note ? <span className="font-sans text-muted-foreground"> · {note}</span> : null}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </aside>
+    ) : null}
     </div>
   );
 }

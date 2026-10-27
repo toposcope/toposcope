@@ -6,7 +6,7 @@ import {
   type ProfileResponse,
   type ProfileSample,
 } from "../shared/profile";
-import { requireSpanId, requireTraceId } from "./traces";
+import { pulledAt, requireSpanId, requireTraceId } from "./traces";
 
 type SampleRow = {
   profile_id: string;
@@ -21,6 +21,9 @@ type SampleRow = {
   span_id: string;
   frames: string[] | string;
   value: string | number;
+  toposcope: string;
+  pulled: number | string | boolean;
+  arrived: string;
 };
 
 function parseFrames(raw: SampleRow["frames"]): string[] {
@@ -54,6 +57,8 @@ function mapRow(row: SampleRow): ProfileSample {
     span_id: row.span_id,
     frames: parseFrames(row.frames),
     value: Number(row.value),
+    toposcope: row.toposcope ?? "",
+    pulled_at: pulledAt(row.pulled, row.arrived),
   };
 }
 
@@ -65,7 +70,8 @@ export async function searchProfile(
     `
     SELECT
       profile_id, service, ts, duration_ms, sample_type, sample_unit,
-      period_type, period_unit, trace_id, span_id, frames, value
+      period_type, period_unit, trace_id, span_id, frames, value,
+      toposcope, src_id != '' AS pulled, arrived
     FROM profile_samples
     WHERE tenant_id = 'default'
       AND trace_id = {trace:String}

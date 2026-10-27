@@ -13,6 +13,13 @@ export type Span = {
   duration_ms: number;
   status: SpanStatus;
   attrs: Record<string, string>;
+  /**
+   * The instance the span entered at (#330): this instance's name for its own, the source's for
+   * one pulled over a link. `GET /api/traces` always says it; a span being ingested need not.
+   */
+  toposcope?: string;
+  /** When it was pulled here over a link; null for a span that entered here. */
+  pulled_at?: string | null;
 };
 
 export type TraceResponse = {

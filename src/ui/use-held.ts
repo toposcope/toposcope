@@ -10,7 +10,10 @@ export const heldPollMs = 5_000;
  * failed read keeps the last answer: Search never flickers chrome on a poll. In Live a short
  * source's age ticks each second, like Live's own.
  */
-export function useHeld(enabled: boolean, live: boolean): { sources: HeldSource[]; now: number } {
+export function useHeld(
+  enabled: boolean,
+  live: boolean,
+): { sources: HeldSource[]; now: number; links: LinksList["links"] } {
   const [links, setLinks] = useState<LinksList["links"]>([]);
   const [now, setNow] = useState(() => Date.now());
   const busy = useRef(false);
@@ -56,5 +59,5 @@ export function useHeld(enabled: boolean, live: boolean): { sources: HeldSource[
     return () => clearInterval(timer);
   }, [ticking]);
 
-  return { sources, now };
+  return { sources, now, links };
 }

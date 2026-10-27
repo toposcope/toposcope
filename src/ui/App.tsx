@@ -578,6 +578,11 @@ export function App() {
   const [retentionDays, setRetentionDays] = useState(30);
   const [unauthorized, setUnauthorized] = useState(false);
   const [instance, setInstance] = useState<InstanceInfo | null>(null);
+  // Where a trace's spans and a profile entered (#330, #332), against what this instance holds.
+  const heldHere = useMemo(
+    () => ({ sources: held.sources, now: held.now, here: instance?.name ?? "" }),
+    [held.sources, held.now, instance?.name],
+  );
   const [homeId, setHomeId] = useState<string | null>(null);
 
   const loadHome = useCallback(async () => {
@@ -1809,13 +1814,29 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // While a source is short, an open trace or profile is read again on each read of the links, and
+  // once more when it catches up, so spans and profiles that arrive are drawn (#330, #332).
+  const [heldTick, setHeldTick] = useState(0);
+  const heldWasShort = useRef(false);
+  useEffect(() => {
+    const short = held.sources.some((s) => s.state.kind !== "caught-up");
+    const refresh = short || heldWasShort.current;
+    heldWasShort.current = short;
+    if (refresh) {
+      setHeldTick((n) => n + 1);
+    }
+  }, [held.links]);
+
   useEffect(() => {
     if (!traceView) {
       return;
     }
     const value = traceView.value;
     let cancelled = false;
-    setTraceLoad({ value, result: null, loading: true, failed: false });
+    // A re-read keeps what is drawn until the answer comes; a new trace starts from loading.
+    setTraceLoad((prev) =>
+      prev.value === value && prev.result ? prev : { value, result: null, loading: true, failed: false },
+    );
     void fetch(`/api/traces/${encodeURIComponent(value)}`)
       .then(async (res) => {
         if (!res.ok) {
@@ -1830,13 +1851,15 @@ export function App() {
       })
       .catch(() => {
         if (!cancelled) {
-          setTraceLoad({ value, result: null, loading: false, failed: true });
+          setTraceLoad((prev) =>
+            prev.value === value && prev.result ? prev : { value, result: null, loading: false, failed: true },
+          );
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [traceView]);
+  }, [traceView, heldTick]);
 
   useEffect(() => {
     if (!profileView) {
@@ -1848,7 +1871,9 @@ export function App() {
       span_id: profileView.span_id,
     });
     let cancelled = false;
-    setProfileLoad({ key, result: null, loading: true, failed: false });
+    setProfileLoad((prev) =>
+      prev.key === key && prev.result ? prev : { key, result: null, loading: true, failed: false },
+    );
     void fetch(`/api/profiles?${params.toString()}`)
       .then(async (res) => {
         if (!res.ok) {
@@ -1863,13 +1888,15 @@ export function App() {
       })
       .catch(() => {
         if (!cancelled) {
-          setProfileLoad({ key, result: null, loading: false, failed: true });
+          setProfileLoad((prev) =>
+            prev.key === key && prev.result ? prev : { key, result: null, loading: false, failed: true },
+          );
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [profileView]);
+  }, [profileView, heldTick]);
 
   // Live pauses while reading (#261, 26e): no polls while an event is open; the next poll's since= catches up.
   const readingPaused = live && detailOpen && view === "search";
@@ -3301,9 +3328,22 @@ export function App() {
       service: span.service,
       name: span.name,
       ts: span.ts || traceView.ts,
+      duration_ms: span.duration_ms,
+      toposcope: span.toposcope,
+      pulled_at: span.pulled_at,
     };
     setInspectTabs((tabs) => upsertInspectTab(tabs, tab));
     setActiveInspect(tab);
+  }
+
+  /** A short source's link page, from the trace's amber line (#330). */
+  function openSourceLink(source: string) {
+    const link = held.links.find((item) => item.role === "pull" && item.peer_name === source);
+    if (!link) {
+      return;
+    }
+    setLinkPageId(link.id);
+    setView("links");
   }
 
   function backFromProfile() {
@@ -4158,6 +4198,8 @@ export function App() {
                           tab.value === profileView.trace_id,
                       )}
                       onBack={backFromProfile}
+                      span={profileView}
+                      held={heldHere}
                     />
                   ) : traceView ? (
                     <div className="flex min-h-0 min-w-0 flex-1">
@@ -4186,6 +4228,8 @@ export function App() {
                       }}
                       selected={selectedSpanId}
                       onSelect={onSelectSpan}
+                      held={heldHere}
+                      onOpenSourceLink={openSourceLink}
                     />
                     {pickedSpan ? (
                       <SpanDetail
@@ -4194,6 +4238,7 @@ export function App() {
                         startMs={pickedSpanStartMs}
                         onClose={() => setSpanSel(null)}
                         onViewProfiles={openProfile}
+                        held={heldHere}
                       />
                     ) : null}
                     </div>
@@ -4613,6 +4658,8 @@ export function App() {
                       tab.kind === "trace" && tab.value === profileView.trace_id,
                   )}
                   onBack={backFromProfile}
+                  span={profileView}
+                  held={heldHere}
                 />
               ) : traceView ? (
                 <TraceWaterfall
@@ -4636,6 +4683,8 @@ export function App() {
                   }}
                   selected={selectedSpanId}
                   onSelect={onSelectSpan}
+                  held={heldHere}
+                  onOpenSourceLink={openSourceLink}
                 />
               ) : (
                 <div
@@ -4769,6 +4818,7 @@ export function App() {
                         }
                         onClose={() => setSpanSel(null)}
                         onViewProfiles={openProfile}
+                        held={heldHere}
                       />
                     </div>
                   ) : railSurface === "detail" && selectedEvent ? (
@@ -4804,6 +4854,7 @@ export function App() {
                   crumb={spanBackCrumb}
                   onClose={() => setSpanSel(null)}
                   onViewProfiles={openProfile}
+                  held={heldHere}
                 />
               ) : marksPanelOpen && !isSurr ? (
                 <MarksPanel
