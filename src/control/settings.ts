@@ -1,3 +1,4 @@
+import { twoStepFor, writeTwoStepFor } from "./two-step";
 import { settingStamp, stampSetting } from "./actors";
 import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
@@ -124,6 +125,7 @@ function settingsBody(extra: { retention_days: number; instance_name: string | n
     ...extra,
     metrics_retention_days: getMetricsRetentionDays(),
     default_webhook_url: getDefaultWebhook(),
+    two_step_for: twoStepFor(),
     // #307: who last changed each, and when.
     changed_by: Object.fromEntries(
       ["retention_days", "metrics_retention_days", "default_webhook_url", "instance_name", "fields"].map((k) => [k, settingStamp(k)]),
@@ -149,7 +151,7 @@ export async function putSettings(c: Context): Promise<Response> {
   const hasName = "instance_name" in rec;
   const hasWebhook = "default_webhook_url" in rec;
   const hasMetrics = "metrics_retention_days" in rec;
-  if (rec.retention_days === undefined && !hasName && !hasWebhook && !hasMetrics) {
+  if (rec.retention_days === undefined && !hasName && !hasWebhook && !hasMetrics && rec.two_step_for === undefined) {
     return c.json({ error: "retention_days is required" }, 400);
   }
   if (rec.retention_days !== undefined && typeof rec.retention_days !== "number") {
@@ -173,6 +175,14 @@ export async function putSettings(c: Context): Promise<Response> {
   const metricsDays = hasMetrics ? parseMetricsRetentionDays(rec.metrics_retention_days) : undefined;
   if (metricsDays && typeof metricsDays === "object") {
     return c.json({ error: metricsDays.error }, 400);
+  }
+  // #309: who must have a second step: everyone with a password, or Owners only.
+  if (rec.two_step_for !== undefined) {
+    if (rec.two_step_for !== "everyone" && rec.two_step_for !== "owners") {
+      return c.json({ error: "two_step_for is everyone or owners" }, 400);
+    }
+    writeTwoStepFor(rec.two_step_for);
+    stampSetting("two_step_for");
   }
   if (webhook !== undefined) {
     writeDefaultWebhook(webhook);

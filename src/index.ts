@@ -23,6 +23,11 @@ import {
   signInWaitMs,
   useOwnerLink,
   inviteFor,
+  pendingMs,
+  sessionAtStage,
+  setSessionStage,
+  type Person,
+  type SessionStage,
   useInvite,
 } from "./control/people";
 import { actorName } from "./control/actors";
@@ -39,6 +44,8 @@ import {
   putPersonRoute,
   revokePersonRoute,
   revokeTokenRoute,
+  resetTwoStepRoute,
+  newBackupCodesRoute,
 } from "./control/people-routes";
 import {
   createAlertRule,
@@ -63,7 +70,9 @@ import { version as runningVersionForSignIn } from "./shared/version";
 import { monitorPreviewRoute } from "./alerts/preview";
 import { fingerprintSeenRoute } from "./query/fingerprint-seen";
 import { savedSearchUrl } from "./ui/search-url";
-import { joinPageHtml, ownerSetupPageHtml, safeNext, signInPageHtml } from "./sign-in-page";
+import { joinPageHtml, ownerSetupPageHtml, safeNext, signInPageHtml, twoStepPageHtml, type TwoStepPageBody } from "./sign-in-page";
+import { beginSetup, checkSecondStep, confirmSetup, groupedKey, hasTwoStep, makeBackupCodes, otpauthUri, twoStepRequired } from "./control/two-step";
+import { qrSvg } from "./shared/qr";
 import {
   createApiToken,
   deleteApiToken,
@@ -231,6 +240,117 @@ function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?:
   );
 }
 
+/**
+ * Starts a session after a password (#309): straight in, or waiting on the second step, or on
+ * setting it up when this person must have one and has none yet.
+ */
+function beginSession(c: Context, person: Person, next: string): { stage: SessionStage; expiresAt: number } {
+  const stage: SessionStage = hasTwoStep(person.id) ? "verify" : twoStepRequired(person) ? "setup" : "full";
+  const session = createSession(person, Date.now(), undefined, stage, next);
+  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor((stage === "full" ? sessionMs : pendingMs) / 1000), overHttps(c)));
+  return { stage, expiresAt: session.expiresAt };
+}
+
+function twoStepPage(c: Context, page: TwoStepPageBody, status: 200 | 400 | 429 = 200): Response {
+  return c.html(twoStepPageHtml({ ...page, name: instanceName(), address: openedAddress(c) }), status);
+}
+
+function waitingSession(c: Context) {
+  return sessionAtStage(readCookie(c.req.header("cookie"), sessionCookieName()));
+}
+
+function setupPage(c: Context, person: Person, error?: string): Response {
+  const secret = beginSetup(person.id);
+  const account = person.email ?? person.name;
+  return twoStepPage(c, { stage: "setup", email: account, secretGrouped: groupedKey(secret), qr: qrSvg(otpauthUri(secret, account, instanceName() ?? openedAddress(c)), 6), error }, error ? 400 : 200);
+}
+
+// 32b–32d: the second step, and setting it up.
+app.get("/two-step", (c) => {
+  const waiting = waitingSession(c);
+  if (!waiting || waiting.stage === "full") {
+    return c.redirect("/", 303);
+  }
+  if (waiting.stage === "setup") {
+    return setupPage(c, waiting.person);
+  }
+  if (waiting.stage === "codes") {
+    // Shown once: a reload before Finish makes ten new ones, and the earlier ten stop working.
+    return twoStepPage(c, { stage: "codes", email: waiting.person.email ?? waiting.person.name, codes: makeBackupCodes(waiting.person.id) });
+  }
+  return twoStepPage(c, { stage: "verify", email: waiting.person.email ?? waiting.person.name, backup: c.req.query("backup") === "1" });
+});
+
+async function formOrJson(c: Context): Promise<{ json: boolean; body: Record<string, unknown> }> {
+  const json = (c.req.header("content-type") ?? "").includes("application/json");
+  try {
+    return { json, body: json ? ((await c.req.json()) as Record<string, unknown>) : ((await c.req.parseBody()) as Record<string, unknown>) };
+  } catch {
+    return { json, body: {} };
+  }
+}
+
+app.post("/api/two-step/verify", async (c) => {
+  const { json, body } = await formOrJson(c);
+  const waiting = waitingSession(c);
+  if (!waiting || waiting.stage !== "verify") {
+    return json ? c.json({ error: "Sign in again" }, 401) : c.redirect("/", 303);
+  }
+  const email = waiting.person.email ?? waiting.person.name;
+  const wait = signInWaitMs(email);
+  if (wait > 0) {
+    const seconds = Math.ceil(wait / 1000);
+    return json
+      ? c.json({ error: `Try again in ${seconds} seconds`, retry_after: seconds }, 429)
+      : twoStepPage(c, { stage: "verify", email, backup: typeof body.backup === "string", waitSeconds: seconds }, 429);
+  }
+  const code = typeof body.code === "string" ? body.code : undefined;
+  const backup = typeof body.backup === "string" ? body.backup : undefined;
+  const result = checkSecondStep(waiting.person.id, { code, backup });
+  if (!result.ok) {
+    noteSignInFailure(email);
+    noteAccessRefused("person", email, "a second step that was not right", c.req.path);
+    const nextWait = Math.ceil(signInWaitMs(email) / 1000);
+    return json
+      ? c.json({ error: "That code was not right" }, 401)
+      : twoStepPage(c, { stage: "verify", email, backup: backup !== undefined, wrong: true, waitSeconds: nextWait || undefined }, 400);
+  }
+  clearSignInFailures(email);
+  setSessionStage(waiting.id, "full");
+  const next = safeNext(waiting.next ?? "/");
+  if (result.via === "backup") {
+    return json ? c.json({ ok: true, backup_codes_left: result.left }) : twoStepPage(c, { stage: "backup-used", email, left: result.left, next });
+  }
+  return json ? c.json({ ok: true }) : c.redirect(next, 303);
+});
+
+app.post("/api/two-step/setup", async (c) => {
+  const { json, body } = await formOrJson(c);
+  const waiting = waitingSession(c);
+  if (!waiting || waiting.stage !== "setup") {
+    return json ? c.json({ error: "Sign in again" }, 401) : c.redirect("/", 303);
+  }
+  const codes = confirmSetup(waiting.person.id, typeof body.code === "string" ? body.code : "");
+  if (!codes) {
+    return json ? c.json({ error: "That code was not right" }, 400) : setupPage(c, waiting.person, "That code was not right. Type the six digits your app shows now.");
+  }
+  setSessionStage(waiting.id, "codes");
+  return json ? c.json({ ok: true, backup_codes: codes }) : twoStepPage(c, { stage: "codes", email: waiting.person.email ?? waiting.person.name, codes });
+});
+
+app.post("/api/two-step/finish", async (c) => {
+  const { json, body } = await formOrJson(c);
+  const waiting = waitingSession(c);
+  if (!waiting || waiting.stage !== "codes") {
+    return json ? c.json({ error: "Sign in again" }, 401) : c.redirect("/", 303);
+  }
+  if (!json && body.saved !== "on") {
+    return twoStepPage(c, { stage: "codes", email: waiting.person.email ?? waiting.person.name, codes: makeBackupCodes(waiting.person.id), error: "Tick the box once the codes are somewhere safe. These are ten new ones; the earlier ten no longer work." }, 400);
+  }
+  setSessionStage(waiting.id, "full");
+  return json ? c.json({ ok: true }) : c.redirect(safeNext(waiting.next ?? "/"), 303);
+});
+
 // #305: a person signs in with their email and password; there is no shared password.
 app.post("/api/sign-in", async (c) => {
   const json = (c.req.header("content-type") ?? "").includes("application/json");
@@ -263,9 +383,11 @@ app.post("/api/sign-in", async (c) => {
   }
   clearSignInFailures(email);
   noteAccessUsed("person", person.email ?? person.name);
-  const session = createSession(person);
-  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
-  return json ? c.json({ ok: true, expires_at: session.expiresAt }) : c.redirect(nextPath, 303);
+  const started = beginSession(c, person, nextPath);
+  if (started.stage !== "full") {
+    return json ? c.json({ ok: true, next: "two-step", stage: started.stage }) : c.redirect("/two-step", 303);
+  }
+  return json ? c.json({ ok: true, expires_at: started.expiresAt }) : c.redirect(nextPath, 303);
 });
 
 // 32a: the page an owner link opens. The link is printed by `toposcope.sh owner-link <email>` on
@@ -333,8 +455,10 @@ app.post("/api/join", async (c) => {
       invite ? 400 : 410,
     );
   }
-  const session = createSession(done.person);
-  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
+  const started = beginSession(c, done.person, "/");
+  if (started.stage !== "full") {
+    return json ? c.json({ ok: true, id: done.person.id, next: "two-step", stage: started.stage }) : c.redirect("/two-step", 303);
+  }
   return json ? c.json({ ok: true, id: done.person.id }) : c.redirect("/", 303);
 });
 
@@ -371,8 +495,10 @@ app.post("/api/setup", async (c) => {
       link ? 400 : 410,
     );
   }
-  const session = createSession(done.person);
-  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
+  const started = beginSession(c, done.person, "/");
+  if (started.stage !== "full") {
+    return json ? c.json({ ok: true, id: done.person.id, next: "two-step", stage: started.stage }) : c.redirect("/two-step", 303);
+  }
   return json ? c.json({ ok: true, id: done.person.id }) : c.redirect("/", 303);
 });
 
@@ -408,6 +534,8 @@ app.use("/*", async (c, next) => {
   if (
     c.req.path.startsWith("/setup/") ||
     c.req.path.startsWith("/join/") ||
+    c.req.path === "/two-step" ||
+    (c.req.path.startsWith("/api/two-step/") && c.req.method === "POST") ||
     ((c.req.path === "/api/setup" || c.req.path === "/api/join") && c.req.method === "POST")
   ) {
     return next();
@@ -610,6 +738,8 @@ app.put("/api/people/:id", putPersonRoute);
 app.delete("/api/people/:id", revokePersonRoute);
 app.post("/api/people/:id/tokens", createServiceTokenRoute);
 app.delete("/api/people/:id/tokens/:tid", revokeTokenRoute);
+app.delete("/api/people/:id/two-step", resetTwoStepRoute);
+app.post("/api/me/two-step/backup-codes", newBackupCodesRoute);
 app.get("/api/me/tokens", myTokensRoute);
 app.post("/api/me/tokens", createMyTokenRoute);
 app.delete("/api/me/tokens/:id", revokeTokenRoute);

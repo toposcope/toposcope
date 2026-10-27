@@ -259,7 +259,7 @@ export function ownerSetupPageHtml(page: OwnerSetupPage): string {
     <input id="pw" name="password" type="password" autocomplete="new-password" minlength="12" required${page.resets ? " autofocus" : ""}${page.error ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>
     ${error}
     <input type="hidden" name="token" value="${esc(page.token)}">
-    <button type="submit">Continue</button>
+    <button type="submit">Continue to two-step</button>
   </div>
   <div class="stay">The link dies when you finish or in ${page.minutesLeft} minute${page.minutesLeft === 1 ? "" : "s"}.</div>
 </form>`);
@@ -312,5 +312,115 @@ export function joinPageHtml(page: JoinPage): string {
     <button type="submit">Join ${esc(label)}</button>
   </div>
   <div class="stay">The link works once and expires in ${invite.daysLeft} day${invite.daysLeft === 1 ? "" : "s"}.</div>
+</form>`);
+}
+
+export type TwoStepPage = { name: string | null; address: string } & TwoStepPageBody;
+
+export type TwoStepPageBody = {
+  email: string;
+} & (
+  | { stage: "verify"; backup?: boolean; wrong?: boolean; waitSeconds?: number }
+  | { stage: "setup"; secretGrouped: string; qr: string; error?: string }
+  | { stage: "codes"; codes: string[]; error?: string }
+  | { stage: "backup-used"; left: number; next: string }
+);
+
+function steps(on: 1 | 2 | 3): string {
+  const step = (n: number, label: string) =>
+    `<span class="step${n === on ? " on" : n < on ? " done" : ""}"><i>${n < on ? "✓" : n}</i>${label}</span>`;
+  return `<div class="steps">${step(1, "You")}${step(2, "Two-step")}${step(3, "Backup codes")}</div>`;
+}
+
+const twoStepStyle = `<style>
+  .wide { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 22px; }
+  .lead2 { margin: 0; font-size: 14.5px; line-height: 1.55; color: #a1a1aa; }
+  h2.big { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em; font-family: ui-sans-serif, system-ui, sans-serif; }
+  .setup { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: start; }
+  .setup svg { border-radius: 8px; max-width: 100%; height: auto; }
+  .key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; letter-spacing: .08em; color: #fafafa; overflow-wrap: anywhere; }
+  .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 22px; letter-spacing: .4em; text-align: center; height: 56px; }
+  .codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 28px; padding: 20px 24px; border: 1px dashed #e7e1d3; border-radius: 10px; background: #0a0a0c; }
+  .codes span { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; color: #fafafa; letter-spacing: .06em; }
+  .codes i { font-style: normal; color: #52525b; font-size: 12px; margin-right: 10px; display: inline-block; width: 18px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .ghost { height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid #2a2a2e; background: #141416; color: #e4e4e7; font-size: 13.5px; cursor: pointer; }
+  .tick { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #d4d4d8; }
+  .tick input { height: 16px; width: 16px; }
+  .good { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid #1f3b30; border-radius: 8px; background: #0f1a15; font-size: 13px; color: #d4d4d8; }
+  .step.done i { border-color: #1f3b30; background: #1f3b30; color: #6ee7b7; }
+  a.alt { color: #d4d4d8; font-size: 12.5px; }
+  @media (max-width: 640px) { .setup { grid-template-columns: 1fr; } .codes { grid-template-columns: 1fr; } }
+</style>`;
+
+/** 32b setup, 32c backup codes, 32d the second step at sign-in. */
+export function twoStepPageHtml(page: TwoStepPage): string {
+  const label = page.name ?? page.address;
+  const brand = `<div class="brand">${mark}<span>toposcope</span><span class="addr" style="margin-left:6px">${esc(label)}</span></div>`;
+  const shell = (body: string) => pageShell(`Two-step · ${esc(label)}`, `${twoStepStyle}${body}`);
+  if (page.stage === "setup") {
+    return shell(`<form class="wide" method="post" action="/api/two-step/setup">
+  ${brand}
+  ${steps(2)}
+  <div><h2 class="big">Add a second step to your password</h2><p class="lead2">Everyone who signs in with a password on ${esc(label)} needs one. Any authenticator app works: 1Password, Google Authenticator, Authy, the one on your phone.</p></div>
+  <div class="setup">
+    ${page.qr}
+    <div class="pw">
+      <span class="to">1 · Scan it, or type this key</span>
+      <span class="key">${esc(page.secretGrouped)}</span>
+      <span class="to">Account: <span class="mono">${esc(page.email)} · ${esc(label)}</span></span>
+      <label for="code" style="margin-top:10px">2 · Type the six digits it shows</label>
+      <input id="code" name="code" class="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus${page.error ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>
+      ${page.error ? `<div id="pw-error" class="error" role="alert"><span>${esc(page.error)}</span></div>` : ""}
+    </div>
+  </div>
+  <div class="row"><button type="submit" style="width:220px">Check and continue</button><span class="stay">A wrong code says so and lets you try again; nothing is saved until one is right.</span></div>
+</form>`);
+  }
+  if (page.stage === "codes") {
+    const rows = page.codes.map((code, i) => `<span><i>${i + 1}</i>${esc(code)}</span>`).join("");
+    const text = page.codes.map((code, i) => `${i + 1}. ${code}`).join("\\n");
+    return shell(`<form class="wide" method="post" action="/api/two-step/finish" style="max-width:640px">
+  ${brand}
+  ${steps(3)}
+  <div><h2 class="big">Ten codes for the day you lose your phone</h2><p class="lead2">Each works once, in place of the six digits. They are shown now and never again. Keep them where your passwords are, not on the same phone.</p></div>
+  <div class="codes">${rows}</div>
+  <div class="row">
+    <a class="ghost" style="display:inline-flex;align-items:center;text-decoration:none" download="toposcope-backup-codes-${esc(label)}.txt" href="data:text/plain;charset=utf-8,${encodeURIComponent(`Toposcope backup codes · ${label} · ${page.email}\n${page.codes.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n`)}">Download as text</a>
+    <span class="stay" data-copy="${esc(text)}">Each line is one code; spaces and dashes do not matter.</span>
+  </div>
+  ${page.error ? `<div class="error" role="alert"><span>${esc(page.error)}</span></div>` : ""}
+  <label class="tick"><input type="checkbox" name="saved" required> I have put these somewhere safe</label>
+  <div class="row"><button type="submit" style="width:240px">Finish and open ${esc(label)}</button><span class="stay">New codes can be made later from your menu, which ends these.</span></div>
+</form>`);
+  }
+  if (page.stage === "backup-used") {
+    return shell(`<div class="col">
+  ${brand}
+  <div class="who"><div class="to">${esc(page.email)} signed in to</div><h1>${esc(label)}</h1></div>
+  <div class="good"><span>Signed in with a backup code. ${page.left} ${page.left === 1 ? "is" : "are"} left.</span><span class="stay">${page.left <= 3 ? "Make new ones from your menu soon." : "Make new ones from your menu whenever you like."}</span></div>
+  <a href="${esc(page.next)}"><button type="button" style="width:100%">Continue</button></a>
+</div>`);
+  }
+  const wait = page.waitSeconds
+    ? `<div id="pw-error" class="error wait" role="alert"><span>${page.wrong ? "That code was not right. " : ""}Try again in ${page.waitSeconds} seconds. Each miss waits a little longer; the account is never locked.</span></div>`
+    : page.wrong
+      ? `<div id="pw-error" class="error" role="alert"><span>That code was not right.</span></div>`
+      : "";
+  return shell(`<form class="col" method="post" action="/api/two-step/verify">
+  <div class="cap">${page.backup ? "A backup code" : "After the password"}</div>
+  <div class="brand">${mark}<span>toposcope</span></div>
+  <div class="who"><div class="to">${esc(page.email)} signing in to</div><h1>${esc(label)}</h1></div>
+  <div class="pw">
+    ${
+      page.backup
+        ? `<label for="backup">One of your ten backup codes</label><input id="backup" name="backup" autocomplete="off" required autofocus${page.wrong ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>`
+        : `<label for="code">The six digits from your authenticator app</label><input id="code" name="code" class="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus${page.wrong ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>`
+    }
+    ${wait}
+    <button type="submit">Sign in</button>
+  </div>
+  <a class="alt" href="/two-step${page.backup ? "" : "?backup=1"}">${page.backup ? "Use the six digits instead" : "Use a backup code instead"}</a>
+  <div class="stay">Lost the phone and the codes? Ask an Owner to reset your two-step.</div>
 </form>`);
 }

@@ -140,6 +140,8 @@ export const routeActions: Route[] = [
   ["DELETE", "/api/people/:id", "let people in"],
   ["POST", "/api/people/:id/tokens", "make tokens, links, shares"],
   ["DELETE", "/api/people/:id/tokens/:tid", "make tokens, links, shares"],
+  ["DELETE", "/api/people/:id/two-step", "let people in"],
+  ["POST", "/api/me/two-step/backup-codes", "any signed in"],
   ["GET", "/api/me/tokens", "any signed in"],
   ["POST", "/api/me/tokens", "any signed in"],
   ["DELETE", "/api/me/tokens/:id", "any signed in"],

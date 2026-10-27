@@ -40,6 +40,8 @@ beforeAll(async () => {
     // The first Owner, as owner-link makes them.
     const link = people.createOwnerLink("ian@example.test");
     const ian = (await go("ian", "/api/setup", { method: "POST", body: JSON.stringify({ token: link.token, name: "Ian", password: "ian's long password" }) })).cookie.split(";")[0];
+    const helpers = await import(root + "/control/owner-for-tests.ts");
+    await helpers.passTwoStepSetup(app.fetch, ian);
     // The .env ingest token was imported once at boot, and still sends; .env is not read for it again.
     await go("envSends", "/api/ingest", { method: "POST", headers: { authorization: "Bearer imported-ingest-token-308" }, body: "[]" });
     await go("access", "/api/access", as(ian));
@@ -49,16 +51,29 @@ beforeAll(async () => {
     const tokenOf = (url) => url.slice(url.indexOf("/join/") + 6);
     await go("joinPage", "/join/" + tokenOf(inv.body.link), { headers: { accept: "text/html" } });
     const sam = (await go("join", "/api/join", { method: "POST", body: JSON.stringify({ token: tokenOf(inv.body.link), name: "Sam", password: "sam's long password" }) })).cookie.split(";")[0];
+    // Two-step is required for everyone with a password, so Sam sets it up first.
+    await go("samBeforeTwoStep", "/api/me", as(sam));
+    await helpers.passTwoStepSetup(app.fetch, sam);
+    await go("listedTwoStep", "/api/people", as(ian));
+    // An Owner resets a lost phone (32e): sessions end, and setup comes again at the next sign-in.
+    const samIdEarly = (await go("samMeEarly", "/api/me", as(sam))).body.id;
+    await go("resetTwoStep", "/api/people/" + samIdEarly + "/two-step", { method: "DELETE", headers: { cookie: ian } });
+    await go("samAfterReset", "/api/me", as(sam));
+    await go("listedReset", "/api/people", as(ian));
+    const samAgain = (await go("samSignsIn", "/api/sign-in", { method: "POST", body: JSON.stringify({ email: "sam@contractor.dev", password: "sam's long password" }) })).cookie.split(";")[0];
+    out.samStage = out.samSignsIn.body.stage;
+    await helpers.passTwoStepSetup(app.fetch, samAgain);
+    const sam2 = samAgain;
     await go("joinAgain", "/api/join", { method: "POST", body: JSON.stringify({ token: tokenOf(inv.body.link), name: "Sam", password: "sam's long password" }) });
-    await go("samMe", "/api/me", as(sam));
-    await go("samInvites", "/api/people/invites", { method: "POST", headers: { cookie: sam }, body: JSON.stringify({ who: "x@y.z", role: "owner" }) });
+    await go("samMe", "/api/me", as(sam2));
+    await go("samInvites", "/api/people/invites", { method: "POST", headers: { cookie: sam2 }, body: JSON.stringify({ who: "x@y.z", role: "owner" }) });
     // A personal token, read only.
-    const tok = await go("samToken", "/api/me/tokens", { method: "POST", headers: { cookie: sam }, body: JSON.stringify({ name: "laptop scripts", read_only: true }) });
+    const tok = await go("samToken", "/api/me/tokens", { method: "POST", headers: { cookie: sam2 }, body: JSON.stringify({ name: "laptop scripts", read_only: true }) });
     await go("samTokenReads", "/api/saved-searches", { headers: { authorization: "Bearer " + tok.body.token } });
     // Roles change; the last Owner stays an Owner.
     const samId = out.samMe.body.id;
     await go("promote", "/api/people/" + samId, { method: "PUT", headers: { cookie: ian }, body: JSON.stringify({ role: "operator" }) });
-    await go("samMeAfter", "/api/me", as(sam));
+    await go("samMeAfter", "/api/me", as(sam2));
     await go("demoteLast", "/api/people/" + out.ian.body?.id, { method: "PUT", headers: { cookie: ian }, body: JSON.stringify({ role: "viewer" }) });
     const ianId = (await go("ianMe", "/api/me", as(ian))).body.id;
     await go("demoteLastOwner", "/api/people/" + ianId, { method: "PUT", headers: { cookie: ian }, body: JSON.stringify({ role: "viewer" }) });
@@ -69,13 +84,17 @@ beforeAll(async () => {
     await go("serviceSignsIn", "/api/sign-in", { method: "POST", body: JSON.stringify({ email: "agental-boards", password: "anything at all" }) });
     // Revoke: sessions and tokens end on the next request.
     await go("revoke", "/api/people/" + samId, { method: "DELETE", headers: { cookie: ian } });
-    await go("samAfterRevoke", "/api/me", as(sam));
+    await go("samAfterRevoke", "/api/me", as(sam2));
     await go("samTokenAfterRevoke", "/api/saved-searches", { headers: { authorization: "Bearer " + tok.body.token } });
     // An invite by name asks for the email; cancel takes an invite away.
     const byName = await go("inviteByName", "/api/people/invites", { method: "POST", headers: { cookie: ian }, body: JSON.stringify({ who: "Jo", role: "operator", days: 1 }) });
     await go("cancel", "/api/people/invites/" + byName.body.id, { method: "DELETE", headers: { cookie: ian } });
     await go("cancelledJoin", "/join/" + tokenOf(byName.body.link), { headers: { accept: "text/html" } });
     await go("listedAfter", "/api/people", as(ian));
+    // Owners only: a Viewer who joins now goes straight in.
+    await go("ownersOnly", "/api/settings", { method: "PUT", headers: { cookie: ian }, body: JSON.stringify({ two_step_for: "owners" }) });
+    const jo = await go("inviteJo", "/api/people/invites", { method: "POST", headers: { cookie: ian }, body: JSON.stringify({ who: "jo@example.test", role: "viewer" }) });
+    await go("joJoins", "/api/join", { method: "POST", body: JSON.stringify({ token: tokenOf(jo.body.link), name: "Jo", password: "jo's long password" }) });
     console.log(JSON.stringify(out));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
@@ -110,6 +129,25 @@ describe("people in Access (#308)", () => {
     expect(r.joinAgain!.status).toBe(410);
     expect(r.samMe!.body).toMatchObject({ name: "Sam", email: "sam@contractor.dev", role: "viewer" });
     expect(r.samInvites!.status).toBe(403);
+  });
+
+  test("two-step is required for everyone with a password; an Owner resets a lost phone (#309)", () => {
+    expect(r.join!.body.next).toBe("two-step");
+    expect(r.samBeforeTwoStep!.status).toBe(401);
+    const sam = r.listedTwoStep!.body.people.find((p: { name: string }) => p.name === "Sam");
+    expect(sam.two_step).toMatchObject({ state: "on", codes_left: 10 });
+    expect(r.resetTwoStep!.status).toBe(200);
+    expect(r.samAfterReset!.status).toBe(401);
+    const reset = r.listedReset!.body.people.find((p: { name: string }) => p.name === "Sam");
+    expect(reset.two_step).toMatchObject({ state: "reset", reset_by: "Ian" });
+    expect((r as unknown as Record<string, string>).samStage).toBe("setup");
+  });
+
+  test("Owners only lets everyone else in with a password alone", () => {
+    expect(r.ownersOnly!.status).toBe(200);
+    expect(r.ownersOnly!.body.two_step_for).toBe("owners");
+    expect(r.joJoins!.status).toBe(200);
+    expect(r.joJoins!.body.next).toBeUndefined();
   });
 
   test("a read-only personal token reads as its person", () => {

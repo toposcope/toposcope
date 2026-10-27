@@ -1,5 +1,6 @@
 import { migratePeople } from "./people";
 import { migrateActors } from "./actors";
+import { migrateTwoStep } from "./two-step";
 import { mkdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { pingClickHouse } from "../shared/clickhouse";
@@ -324,6 +325,7 @@ export function migrateControlDb(db: Database): void {
     db.run("INSERT INTO settings (key, value) VALUES ('retention_days', '30')");
   }
   migrateActors(db, addColumnIfMissing);
+  migrateTwoStep(db, addColumnIfMissing);
 }
 
 type SqliteColumn = { name: string };
