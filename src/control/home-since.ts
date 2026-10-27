@@ -6,7 +6,9 @@ import { search } from "../query";
 import { seriesLabel } from "../query/agg";
 import { searchFingerprintCut } from "../query/fingerprint-cut";
 import { changeMarksBetween, getChangeMarkById } from "../query/marks";
-import { allSaved } from "./saved-searches";
+import { allSaved, visibleSaved } from "./saved-searches";
+import { actorOf } from "../actor-context";
+import type { Actor } from "./people";
 
 /**
  * Home: what changed since a mark (#259, frames 26a–26c). Locked 2026-10-26:
@@ -110,7 +112,7 @@ async function anyIngested(): Promise<boolean> {
   return rows.length > 0;
 }
 
-export async function computeHomeSince(input: { markId: string | null; hour: boolean; nowMs?: number }): Promise<HomeSince | { error: string; status: 404 }> {
+export async function computeHomeSince(input: { markId: string | null; hour: boolean; nowMs?: number; actor?: Actor | null }): Promise<HomeSince | { error: string; status: 404 }> {
   const nowMs = input.nowMs ?? Date.now();
   const marks = await changeMarksBetween(new Date(nowMs - dayMs).toISOString(), new Date(nowMs + 60_000).toISOString());
   let mark: ChangeMark | null = null;
@@ -124,9 +126,10 @@ export async function computeHomeSince(input: { markId: string | null; hour: boo
     mark = pickHomeMark(marks, nowMs);
     auto = true;
   }
-  const saved = allSaved().filter((s) => !s.board);
+  // #306: the hunts this person sees, shared ones and their own.
+  const saved = (input.actor === undefined ? allSaved() : visibleSaved(input.actor)).filter((s) => !s.board);
   // The cache turns over every 30 s and whenever a saved hunt is added or edited.
-  const key = `${mark?.id ?? "hour"}:${Math.floor(nowMs / cacheMs)}:${saved.map((s) => `${s.id}=${s.query}|${s.agg ?? ""}`).join(",")}`;
+  const key = `${input.actor?.person.id ?? "all"}:${mark?.id ?? "hour"}:${Math.floor(nowMs / cacheMs)}:${saved.map((s) => `${s.id}=${s.query}|${s.agg ?? ""}`).join(",")}`;
   const hit = cache.get(key);
   if (hit) {
     return hit.value;
@@ -177,7 +180,7 @@ export async function computeHomeSince(input: { markId: string | null; hour: boo
 export async function homeSinceRoute(c: Context): Promise<Response> {
   const markId = c.req.query("mark")?.trim() || null;
   const hour = c.req.query("since") === "hour";
-  const out = await computeHomeSince({ markId, hour });
+  const out = await computeHomeSince({ markId, hour, actor: actorOf(c) });
   if ("error" in out) {
     return c.json({ error: out.error }, out.status);
   }

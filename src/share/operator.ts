@@ -1,3 +1,5 @@
+import { actorOf } from "../actor-context";
+import { roleAtLeast } from "../control/people";
 import type { Context, Next } from "hono";
 import { mintTicket, parseShareEmbed, ticketPrefix, ticketShareRow } from "./embed";
 import { parseShareLimits } from "./limits";
@@ -248,6 +250,21 @@ export async function putShareRoute(c: Context): Promise<Response> {
   const body = await shareBody(c);
   if (!body) {
     return c.json({ error: "Expected an object" }, 400);
+  }
+  // #306: an Operator adds panels to a share that exists, inside the fence it already has; making
+  // a share, or changing its scope, expiry, origins or limits, takes an Owner.
+  const actor = actorOf(c);
+  if (actor && !roleAtLeast(actor.role, "owner")) {
+    const name = parseShareName(c.req.param("name"));
+    const live = name ? shareByName(name) : null;
+    if (!live || live.revoked_at !== null) {
+      return c.json({ error: "An Operator may not make a share: ask an Owner", need: "owner" }, 403);
+    }
+    const beyond = Object.keys(body).filter((k) => k !== "panels" && k !== "name");
+    if (beyond.length) {
+      return c.json({ error: `An Operator may only add panels to a share: ${beyond.join(", ")} takes an Owner`, need: "owner" }, 403);
+    }
+    return writeShare(c, name, { panels: body.panels, scope: formatShareScope(live.scope), expires_at: live.expires_at });
   }
   return writeShare(c, parseShareName(c.req.param("name")), body);
 }

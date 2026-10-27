@@ -1,3 +1,5 @@
+import { actorOf } from "../actor-context";
+import { roleAtLeast, type Actor } from "./people";
 import type { Context } from "hono";
 import { evaluateAlertSeries, seriesFromSearch, applyHistogramCountRefuse } from "../alerts/series";
 import { QueryCompileError } from "../query/compile";
@@ -35,9 +37,13 @@ export type SavedSearch = {
   widgets: WidgetLayout | null;
   board: BoardSlots | null;
   cols: string[];
-  /** Home's Pinned column (#259). */
+  /** Home's Pinned column (#259): pinned by the person asking (#306). */
   pinned: boolean;
   created_at: number;
+  /** Who saved it (#306); null for a hunt saved before 0.9 that no Owner has taken yet. */
+  owner_id: string | null;
+  /** On everyone's Home, or only its owner's (#306). */
+  shared: boolean;
 };
 
 type SavedRow = {
@@ -53,6 +59,8 @@ type SavedRow = {
   cols: string | null;
   pinned: number;
   created_at: number;
+  owner_id: string | null;
+  shared: number;
 };
 
 type SavedFields = {
@@ -69,12 +77,13 @@ type SavedFields = {
 };
 
 const savedSelect =
-  "SELECT id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at FROM saved_searches";
+  "SELECT id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at, owner_id, shared FROM saved_searches";
 
 function fromRow(row: SavedRow): SavedSearch {
   return {
     ...row,
     pinned: Boolean(row.pinned),
+    shared: row.shared !== 0,
     widgets: parseSavedLayout(row.widgets),
     board: parseBoard(row.board),
     cols: parsePromotedCols(row.cols),
@@ -256,8 +265,52 @@ export function getSaved(id: string): SavedSearch | null {
   return row ? fromRow(row) : null;
 }
 
+/** Who may see a hunt: everyone when it is shared, else only the person who saved it. */
+export function canSee(saved: SavedSearch, actor: Actor | null): boolean {
+  return saved.shared || (actor !== null && saved.owner_id === actor.person.id);
+}
+
+function pinsOf(personId: string): Set<string> {
+  const rows = getDb().query("SELECT saved_id FROM person_pins WHERE person_id = ?").all(personId) as Array<{ saved_id: string }>;
+  return new Set(rows.map((r) => r.saved_id));
+}
+
+/** The hunts this person sees, each with their own pin (#306). */
+export function visibleSaved(actor: Actor | null): SavedSearch[] {
+  const pins = actor ? pinsOf(actor.person.id) : new Set<string>();
+  return allSaved()
+    .filter((s) => canSee(s, actor))
+    .map((s) => ({ ...s, pinned: pins.has(s.id) }));
+}
+
+function withPin(saved: SavedSearch, actor: Actor | null): SavedSearch {
+  return { ...saved, pinned: actor ? pinsOf(actor.person.id).has(saved.id) : false };
+}
+
+function setPin(personId: string, savedId: string, pinned: boolean): void {
+  if (pinned) {
+    getDb().query("INSERT OR IGNORE INTO person_pins (person_id, saved_id) VALUES (?, ?)").run(personId, savedId);
+  } else {
+    getDb().query("DELETE FROM person_pins WHERE person_id = ? AND saved_id = ?").run(personId, savedId);
+  }
+}
+
+/** A Viewer saves only their own hunts; an Operator may share one (30d, 30e). */
+function sharedFor(rec: Record<string, unknown>, actor: Actor | null, fallback: boolean): boolean | { error: string } {
+  if (rec.shared === undefined) {
+    return fallback;
+  }
+  if (typeof rec.shared !== "boolean") {
+    return { error: "shared is true or false" };
+  }
+  if (rec.shared && actor && !roleAtLeast(actor.role, "operator")) {
+    return { error: "A Viewer may not share a hunt: ask an Operator" };
+  }
+  return rec.shared;
+}
+
 export async function listSavedSearches(c: Context): Promise<Response> {
-  return c.json({ searches: allSaved() });
+  return c.json({ searches: visibleSaved(actorOf(c)) });
 }
 
 export async function createSavedSearch(c: Context): Promise<Response> {
@@ -273,14 +326,21 @@ export async function createSavedSearch(c: Context): Promise<Response> {
   if (mixed) {
     return c.json({ error: mixed }, 400);
   }
+  const actor = actorOf(c);
+  const shared = sharedFor(rec, actor, actor ? roleAtLeast(actor.role, "operator") : true);
+  if (typeof shared === "object") {
+    return c.json({ error: shared.error }, 403);
+  }
   const search: SavedSearch = {
     id: crypto.randomUUID(),
     ...fields,
     created_at: Date.now(),
+    owner_id: actor?.person.id ?? null,
+    shared,
   };
   getDb()
     .query(
-      "INSERT INTO saved_searches (id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO saved_searches (id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at, owner_id, shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .run(
       search.id,
@@ -293,9 +353,14 @@ export async function createSavedSearch(c: Context): Promise<Response> {
       formatSavedLayout(search.widgets ?? defaultLayout()),
       formatBoard(search.board),
       formatPromotedCols(search.cols),
-      search.pinned ? 1 : 0,
+      0,
       search.created_at,
+      search.owner_id,
+      search.shared ? 1 : 0,
     );
+  if (actor && search.pinned) {
+    setPin(actor.person.id, search.id, true);
+  }
   return c.json(search, 201);
 }
 
@@ -304,13 +369,28 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
   if (!id) {
     return c.json({ error: "id required" }, 400);
   }
-  const existing = getSaved(id);
-  if (!existing) {
+  const actor = actorOf(c);
+  const found = getSaved(id);
+  if (!found || !canSee(found, actor)) {
     return c.json({ error: "Saved search not found" }, 404);
   }
+  const existing = withPin(found, actor);
   const rec = await readJsonObject(c);
   if (rec instanceof Response) {
     return rec;
+  }
+  const mine = actor === null || existing.owner_id === actor.person.id;
+  const onlyPin = Object.keys(rec).every((k) => k === "pinned");
+  // Pinning is each person's own; changing a hunt someone else saved takes an Operator.
+  if (!mine && !onlyPin && actor && !roleAtLeast(actor.role, "operator")) {
+    return c.json({ error: "A Viewer may change only their own hunts: ask an Operator", need: "operator" }, 403);
+  }
+  const shared = sharedFor(rec, actor, existing.shared);
+  if (typeof shared === "object") {
+    return c.json({ error: shared.error }, 403);
+  }
+  if (actor && typeof rec.pinned === "boolean") {
+    setPin(actor.person.id, id, rec.pinned);
   }
   const fields = parseSavedFields(rec, existing);
   if ("error" in fields) {
@@ -322,7 +402,7 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
   }
   getDb()
     .query(
-      "UPDATE saved_searches SET name = ?, query = ?, from_ts = ?, to_ts = ?, range = ?, agg = ?, widgets = ?, board = ?, cols = ?, pinned = ? WHERE id = ?",
+      "UPDATE saved_searches SET name = ?, query = ?, from_ts = ?, to_ts = ?, range = ?, agg = ?, widgets = ?, board = ?, cols = ?, shared = ? WHERE id = ?",
     )
     .run(
       fields.name,
@@ -334,7 +414,7 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
       formatSavedLayout(fields.widgets ?? defaultLayout()),
       formatBoard(fields.board),
       formatPromotedCols(fields.cols),
-      fields.pinned ? 1 : 0,
+      shared ? 1 : 0,
       id,
     );
   getDb()
@@ -356,7 +436,7 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
     }
   }
   const updated = getSaved(id);
-  return c.json(updated);
+  return c.json(updated ? withPin(updated, actor) : null);
 }
 
 export async function deleteSavedSearch(c: Context): Promise<Response> {
@@ -364,9 +444,14 @@ export async function deleteSavedSearch(c: Context): Promise<Response> {
   if (!id) {
     return c.json({ error: "id required" }, 400);
   }
+  const actor = actorOf(c);
   const existing = getSaved(id);
-  if (!existing) {
+  if (!existing || !canSee(existing, actor)) {
     return c.json({ error: "Saved search not found" }, 404);
+  }
+  // A shared hunt is deleted by whoever saved it, or an Owner.
+  if (actor && existing.owner_id !== actor.person.id && !roleAtLeast(actor.role, "owner")) {
+    return c.json({ error: "Only whoever saved this hunt, or an Owner, may delete it", need: "owner" }, 403);
   }
   const refs = getDb()
     .query("SELECT count(*) AS n FROM alert_rules WHERE saved_search_id = ?")
@@ -375,6 +460,7 @@ export async function deleteSavedSearch(c: Context): Promise<Response> {
     return c.json({ error: "Saved search is used by an alert rule" }, 409);
   }
   getDb().query("DELETE FROM saved_searches WHERE id = ?").run(id);
+  getDb().query("DELETE FROM person_pins WHERE saved_id = ?").run(id);
   getDb().query("DELETE FROM settings WHERE key = 'home_saved_id' AND value = ?").run(id);
   return c.json({ ok: true });
 }
@@ -385,7 +471,7 @@ export async function runSavedSearch(c: Context): Promise<Response> {
     return c.json({ error: "id required" }, 400);
   }
   const saved = getSaved(id);
-  if (!saved) {
+  if (!saved || !canSee(saved, actorOf(c))) {
     return c.json({ error: "Saved search not found" }, 404);
   }
   if (saved.board) {
@@ -432,7 +518,7 @@ export async function testSavedSearch(c: Context): Promise<Response> {
     return c.json({ error: "id required" }, 400);
   }
   const saved = getSaved(id);
-  if (!saved) {
+  if (!saved || !canSee(saved, actorOf(c))) {
     return c.json({ error: "Saved search not found" }, 404);
   }
   if (saved.board) {

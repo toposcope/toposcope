@@ -245,10 +245,23 @@ export async function useOwnerLink(
   }
   const name = input.name.trim() || link.email.split("@")[0]!;
   const id = randomUUID();
+  const first = firstOwner(db) === null;
   db.query(
     "INSERT INTO people (id, kind, name, email, role, password_hash, created_at, created_by) VALUES (?, 'person', ?, ?, 'owner', ?, ?, 'owner-link')",
   ).run(id, name, link.email, passwordHash, now);
+  if (first) {
+    adoptUnowned(id, db);
+  }
   return { person: personById(id, db)! };
+}
+
+/**
+ * Everything made before 0.9 passes to the first Owner (#306, #307): saved hunts (still shared)
+ * and the pins Home had, which become theirs.
+ */
+export function adoptUnowned(personId: string, db: Database = getDb()): void {
+  db.query("INSERT OR IGNORE INTO person_pins (person_id, saved_id) SELECT ?, id FROM saved_searches WHERE pinned = 1 AND owner_id IS NULL").run(personId);
+  db.query("UPDATE saved_searches SET owner_id = ? WHERE owner_id IS NULL").run(personId);
 }
 
 // ---- Passwords: slow down, never lock ----
