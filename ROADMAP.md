@@ -9,7 +9,7 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 | | |
 | --- | --- |
 | **Today** | [0.8.0](https://github.com/toposcope/toposcope/releases/tag/v0.8.0) — what changed since a mark, the hunt on one clock, fingerprints, change marks, compare, OpenTelemetry logs, traces and metrics, links between instances, monitors, shares with named panels, charts, Access |
-| **v0.x** | What changed after a deploy, on one clock |
+| **v0.x** | What changed after a deploy, on one clock, for a team: people with three fixed roles, two-step sign-in and OIDC in 0.9 |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
 ## Today — 0.8.0
@@ -48,11 +48,15 @@ These need a drawing or an explicit choice before they are work:
 - Histogram-chip catch-up
 - CSV / table export matching promoted columns
 - Bound the syslog UDP queue and expose dropped-event accounting
-- `ee/` (the root `LICENSE` already reserves it)
+- Enterprise under `ee/` (the root `LICENSE` already reserves it): SAML, SCIM with directory groups to roles, roles with a data fence, an audit log — after an HA design, since a team that needs these needs an instance that survives a node
 - A map, by a country or region the collector adds to each row (a local GeoIP lookup in Vector, as the enrich recipes do); Toposcope never looks up an address itself
+
+## People and roles
+
+One shared password fitted one operator on one box. It stopped fitting once links joined instances, shares put panels on other teams' pages, and teams wanted to hand someone a read-only view without handing them the password. So from 0.9 Toposcope has people, in the open-source edition: named users invited by a one-time link and revoked one by one; three fixed roles, Owner, Operator and Viewer; two-step sign-in with an authenticator app; sign-in with one OIDC provider, on purpose, so single sign-on is not a paid extra; and every write records who made it. There is no shared password any more: the first Owner comes from a setup link, scripts use personal tokens or a service account's, and machines that send logs keep ingest tokens.
 
 ## Will not
 
 Do not send these as PRs expecting a merge. They are a different product.
 
-PromQL, Grafana, Helm, k8s, S3 / cold volume, SSO, users / roles, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, an upgrade button or upgrading on its own.
+PromQL, Grafana, Helm, k8s, S3 / cold volume, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, an upgrade button or upgrading on its own.
