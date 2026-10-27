@@ -62,14 +62,20 @@ export function panelLines(
         leftOff.push({ name, metric: query.metric ?? "", unit: printUnit(result.unit) || result.unit });
         return;
       }
-      const key = unique(name, taken);
-      splits.push({ key, buckets: result.buckets, stat: result.stat });
-      legend.push({
-        key,
-        metric: query.metric ?? "",
-        labels: formatMetricLabels(query.metricLabels),
-        description: result.description ?? null,
-      });
+      // #331: a line whose points came in more than one unit is its lines, each named for its unit.
+      const parts = result.units_differ && result.splits
+        ? result.splits.map((part) => ({ ...part, key: `${name} · ${part.key}` }))
+        : [{ key: name, buckets: result.buckets, stat: result.stat }];
+      for (const part of parts) {
+        const key = unique(part.key, taken);
+        splits.push({ ...part, key });
+        legend.push({
+          key,
+          metric: query.metric ?? "",
+          labels: formatMetricLabels(query.metricLabels),
+          description: result.description ?? null,
+        });
+      }
     });
     return { agg: { ...own, splits }, leftOff, description, legend };
   }

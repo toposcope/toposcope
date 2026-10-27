@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { insertMetricPoints } from "../ingest/metrics";
 import { pingClickHouse } from "../shared/clickhouse";
-import { forgetMetricKinds, metricKind, rememberMetricKinds } from "../shared/metric-kinds";
+import { forgetMetricKinds, metricKind } from "../shared/metric-kinds";
 import { migrateStore } from "../shared/migrate";
 import { metricNames, searchMetricSeries } from "./metric-series";
 
@@ -35,8 +35,8 @@ beforeAll(async () => {
     { ts: iso(first + 30_000), name, value: 7, labels },
     { ts: iso(second + 1_000), name, value: 4, labels },
   ];
-  await rememberMetricKinds(new Map([[counter, "counter"], [gauge, "gauge"]]));
-  await insertMetricPoints([...points(counter), ...points(gauge), ...points(plain)]);
+  // The points carry their kinds (#331); a plain JSON point has none.
+  await insertMetricPoints([...points(counter), ...points(gauge), ...points(plain)], { kinds: new Map([[counter, "counter"], [gauge, "gauge"]]) });
 });
 
 /** The two bars the points fall in, and the window's one number. */
@@ -104,7 +104,8 @@ describe("a metric is read by the kind it came as", () => {
     forgetMetricKinds();
     expect(await metricKind(counter)).toBe("counter");
     expect(await metricKind(plain)).toBeNull();
-    await rememberMetricKinds(new Map([[counter, "gauge"]]));
+    // A newer point sent as a gauge (#331): the kind is read off the newest point that has one.
+    await insertMetricPoints([{ ts: new Date(Date.now() + 1_000).toISOString(), name: counter, value: 1, labels: {} }], { kinds: new Map([[counter, "gauge"]]) });
     forgetMetricKinds();
     expect(await metricKind(counter)).toBe("gauge");
   });

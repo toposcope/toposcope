@@ -1,4 +1,4 @@
-import { clickhouseInsertJsonEachRow, clickhouseQuery } from "./clickhouse";
+import { clickhouseQuery } from "./clickhouse";
 import { metricUnitOf } from "./metric";
 
 /** What this process has seen or looked up. Ingest and query share it. */
@@ -14,13 +14,6 @@ export async function rememberMetricUnits(units: ReadonlyMap<string, string>): P
   if (changed.length === 0) {
     return;
   }
-  const seen = new Date().toISOString().replace("T", " ").replace("Z", "");
-  await clickhouseInsertJsonEachRow(
-    changed
-      .map(([name, unit]) => JSON.stringify({ tenant_id: "default", name, unit, seen }))
-      .join("\n"),
-    "metric_units",
-  );
   for (const [name, unit] of changed) {
     known.set(name, unit);
   }
@@ -33,12 +26,15 @@ export async function metricUnit(name: string): Promise<string | null> {
     return cached;
   }
   const rows = await clickhouseQuery<{ unit: string }>(
-    `SELECT argMax(unit, seen) AS unit
-     FROM metric_units
-     WHERE tenant_id = {tenant_id:String} AND name = {metric_name:String}
-     HAVING count() > 0`,
+    // Read off the points themselves (#331): the newest that came with one, point or bucket.
+    `SELECT unit FROM (
+       SELECT unit, ts FROM metrics WHERE tenant_id = {tenant_id:String} AND name = {metric_name:String} AND unit != '' ORDER BY ts DESC LIMIT 1
+       UNION ALL
+       SELECT unit, ts FROM metric_buckets WHERE tenant_id = {tenant_id:String} AND name = {metric_name:String} AND unit != '' ORDER BY ts DESC LIMIT 1
+     ) ORDER BY ts DESC LIMIT 1`,
     { tenant_id: "default", metric_name: name },
   );
+
   const found = metricUnitOf(rows[0]?.unit);
   known.set(name, found);
   return found;

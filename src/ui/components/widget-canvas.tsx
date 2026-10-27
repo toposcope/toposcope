@@ -20,11 +20,12 @@ import {
 import { bucketStepLabel, TimeseriesSpark } from "@/components/timeseries-spark";
 import { MetricChartPicker, metricStackable } from "@/components/metric-spark";
 import { TopViewPicker } from "@/components/hbar-widget";
-import { printUnit } from "../metric-unit";
+import { printUnit, unitsDifferWords } from "../metric-unit";
+import { metricPanelHeld, useHeldView } from "../held-context";
 import { seriesPickFromWidget } from "../agg-picker";
 import { metricReading, metricView } from "../series-list";
 import { FitName } from "@/components/fit-name";
-import { PanelNote, PanelNoteField, PanelTitle, PanelTitleField } from "@/components/panel-words";
+import { PanelNote, PanelNoteField, PanelTells, PanelTitle, PanelTitleField } from "@/components/panel-words";
 import { PanelEditor } from "@/components/panel-editor";
 import { panelLines, panelNote, type PanelLines } from "../panel-lines";
 import { WidgetUpdated } from "@/components/widget-updated";
@@ -228,6 +229,7 @@ export function WidgetCanvas({
   const [armed, setArmed] = useState<string | null>(null);
   /** The panel being edited (#169, 17c–17d): its title and note are fields, its lines open under it. */
   const [editingId, setEditingId] = useState<string | null>(null);
+  const held = useHeldView();
   const [fresh, setFresh] = useState<string | null>(null);
   widgetsRef.current = widgets;
   dragRef.current = drag;
@@ -558,6 +560,10 @@ export function WidgetCanvas({
       case "timeseries": {
         const lines = linesOf(widget);
         const note = lines ? panelNote(widget, lines) : null;
+        // #331: a source short inside the window, and points sent in more than one unit, said on the panel.
+        const metricShort = widget.metric ? metricPanelHeld(held, data.agg, widget.metricLabels) : null;
+        const unitsNote = widget.metric ? unitsDifferWords(data.agg?.units_differ) : null;
+        const tells = metricShort || unitsNote ? <PanelTells held={metricShort?.pill ?? null} units={unitsNote} /> : null;
         const spark = (
           <TimeseriesSpark
             // A stack only where parts add up (#237): a saved Stacked on a gauge paints as bars.
@@ -600,10 +606,11 @@ export function WidgetCanvas({
             updated={updated}
             editor={editorFor(widget)}
             namedLines={Boolean(lines?.legend.length)}
+            held={metricShort}
           />
         );
         const editing = editingId === widget.id;
-        if (!editing && !note && !lines?.leftOff.length) {
+        if (!editing && !note && !lines?.leftOff.length && !tells) {
           return spark;
         }
         return (
@@ -613,6 +620,7 @@ export function WidgetCanvas({
             ) : (
               <PanelNote note={note} leftOff={lines?.leftOff ?? []} />
             )}
+            {tells}
             {spark}
           </div>
         );
@@ -623,6 +631,7 @@ export function WidgetCanvas({
             total={data.total}
             agg={widget.agg}
             metric={widget.metric}
+            metricLabels={widget.metricLabels}
             aggResult={data.agg}
             loading={loading}
             updated={updated}

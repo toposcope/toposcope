@@ -16,6 +16,7 @@ import { metricReading, metricView } from "../series-list";
 import { formatSpanShort } from "../time-range";
 import { SeriesPicker, SeriesReading } from "./series-picker";
 import { MetricSpark, MetricSplitPicker, sparkTimes } from "./metric-spark";
+import type { MetricHeld } from "../held-view";
 
 const LINE = "#a78bfa";
 
@@ -45,6 +46,8 @@ type Props = {
   namedLines?: boolean;
   /** How a metric panel draws (#237). */
   metricChart?: "line" | "bars" | "stacked";
+  /** A source short inside the window (#331): its span hatched, an average or percentile named partial. */
+  held?: MetricHeld | null;
 };
 
 /** The bar width of a card's series, as the plot would label it. Empty when there are not two bars to tell. */
@@ -74,6 +77,7 @@ export function TimeseriesSpark({
   editor = null,
   namedLines = false,
   metricChart = "line",
+  held = null,
 }: Props) {
   const numeric = Boolean(agg || metric);
   const refused = aggResult?.source === "refused";
@@ -127,6 +131,7 @@ export function TimeseriesSpark({
             live={live}
             namedLines={namedLines}
             chart={metricChart}
+            held={held}
           />
         ) : numeric ? (
           <div className="relative min-h-0 flex-1">

@@ -55,6 +55,13 @@ function parseBody(text: string, contentType: string): unknown[] {
   }
 }
 
+/** A name's kind, unit and description, as one request sent them (#331). */
+export type MetricMeta = {
+  kinds?: ReadonlyMap<string, string>;
+  units?: ReadonlyMap<string, string>;
+  descriptions?: ReadonlyMap<string, string>;
+};
+
 export async function insertMetricPoints(
   points: Array<{
     ts: string;
@@ -62,6 +69,7 @@ export async function insertMetricPoints(
     value: number;
     labels: Record<string, string>;
   }>,
+  meta: MetricMeta = {},
 ): Promise<number> {
   if (points.length === 0) {
     return 0;
@@ -75,6 +83,9 @@ export async function insertMetricPoints(
           name: point.name,
           value: point.value,
           labels: point.labels,
+          kind: meta.kinds?.get(point.name) ?? "",
+          unit: meta.units?.get(point.name) ?? "",
+          description: meta.descriptions?.get(point.name) ?? "",
           seq: from + i,
           arrived,
           toposcope: hereName(),
@@ -87,7 +98,7 @@ export async function insertMetricPoints(
 }
 
 /** A histogram's buckets. `n` carries one more count than `le` has bounds. */
-export async function insertMetricBuckets(buckets: readonly MetricBuckets[]): Promise<void> {
+export async function insertMetricBuckets(buckets: readonly MetricBuckets[], meta: MetricMeta = {}): Promise<void> {
   if (buckets.length === 0) {
     return;
   }
@@ -101,6 +112,9 @@ export async function insertMetricBuckets(buckets: readonly MetricBuckets[]): Pr
           labels: row.labels,
           le: row.le,
           n: row.n,
+          kind: "histogram",
+          unit: meta.units?.get(row.name) ?? "",
+          description: meta.descriptions?.get(row.name) ?? "",
           seq: from + i,
           arrived,
           toposcope: hereName(),
@@ -147,8 +161,8 @@ async function otlpMetrics(c: Context, payload: unknown): Promise<Response> {
     await rememberMetricDescriptions(mapped.descriptions);
     // Buckets before the counts: a retry after a failure in between repeats a bar's
     // buckets, which leaves its percentiles where they were, and no count twice.
-    await insertMetricBuckets(mapped.buckets);
-    const ingested = await insertMetricPoints(mapped.points);
+    await insertMetricBuckets(mapped.buckets, mapped);
+    const ingested = await insertMetricPoints(mapped.points, mapped);
     incMetric("ingest_metrics", ingested);
     return otlpReply(c, "metrics", ingested, losses);
   } catch (err) {
@@ -225,7 +239,7 @@ export async function ingestMetricsRoute(c: Context): Promise<Response> {
   try {
     await rememberMetricUnits(units);
     await rememberMetricDescriptions(descriptions);
-    const ingested = await insertMetricPoints(points);
+    const ingested = await insertMetricPoints(points, { units, descriptions });
     incMetric("ingest_metrics", ingested);
     return c.json({ ingested });
   } catch (err) {

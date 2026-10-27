@@ -1,3 +1,4 @@
+import { HeldPill } from "@/components/held-tells";
 import { cn } from "@/lib/utils";
 import { maxPanelNote, maxPanelTitle, type WidgetDef } from "../../shared/widgets";
 import type { PanelLines } from "../panel-lines";
@@ -67,6 +68,30 @@ export function PanelNote({
           panel&apos;s unit, or once it is removed.
         </p>
       ))}
+    </div>
+  );
+}
+
+/**
+ * What a metric panel says about its sources (#331, 33e): the pill naming a source short inside
+ * the window, as Search's counts carry it, and the one grey line when its points came in more than
+ * one unit or kind. Grey, as the scope chip is: nothing is missing, it is split.
+ */
+export function PanelTells({ held, units }: { held: string | null; units: string | null }) {
+  if (!held && !units) {
+    return null;
+  }
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3 pt-1.5">
+      {held ? <HeldPill text={held} /> : null}
+      {units ? (
+        <span
+          className="inline-flex items-center rounded-[4px] border border-white/12 px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground"
+          title="One name, sent with more than one unit or kind: split and said, never summed or converted."
+        >
+          {units}
+        </span>
+      ) : null}
     </div>
   );
 }

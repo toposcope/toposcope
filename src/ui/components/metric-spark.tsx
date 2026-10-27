@@ -7,6 +7,8 @@ import { alignAggBuckets } from "../../query/agg";
 import { useSeriesCatalog } from "../series-catalog";
 import { withUnit } from "../metric-unit";
 import { darkPlotTheme, usePlotTheme, type PlotTheme } from "../plot-theme";
+import type { MetricHeld } from "../held-view";
+import { HeldHatch } from "./held-hatch";
 
 /** One line per value of a split (frames 13e, 13g); the sixth colour is not `other`'s grey. */
 export const splitPalette = darkPlotTheme.palette;
@@ -14,13 +16,22 @@ export const otherColor = darkPlotTheme.other;
 /** Up to this many lines are named at their ends; more get a legend (13g). */
 export const endLabelMax = 3;
 
-export type SparkLine = { key: string; color: string; dashed: boolean; vals: Array<number | null> };
+export type SparkLine = {
+  key: string;
+  color: string;
+  dashed: boolean;
+  vals: Array<number | null>;
+  /** A line split out by its unit (#331): its own, over the panel's. */
+  unit?: string;
+};
 
 /** The lines a metric result draws, on the panel's bars. */
 export function sparkLines(
   times: readonly string[],
   result: SearchAggResult | null,
   theme: PlotTheme = darkPlotTheme,
+  /** The first line's place in the palette: a panel drawn as one plot per unit keeps each line's colour. */
+  offset = 0,
 ): SparkLine[] {
   if (!result || result.source === "refused") {
     return [];
@@ -28,9 +39,10 @@ export function sparkLines(
   if (result.splits) {
     return result.splits.map((s, i) => ({
       key: s.key,
-      color: s.key === "other" ? theme.other : theme.palette[i % theme.palette.length]!,
+      color: s.key === "other" ? theme.other : theme.palette[(i + offset) % theme.palette.length]!,
       dashed: s.key === "other",
       vals: alignAggBuckets(times, s.buckets),
+      ...(s.unit ? { unit: s.unit } : {}),
     }));
   }
   return [{ key: "", color: theme.line, dashed: false, vals: alignAggBuckets(times, result.buckets) }];
@@ -139,11 +151,46 @@ type SparkProps = {
   live: boolean;
   namedLines?: boolean;
   chart?: "line" | "bars" | "stacked";
+  /** A source short inside the window (#331). */
+  held?: MetricHeld | null;
 };
+
+/**
+ * A result whose lines came in more than one unit (#331, 33e), as one plot per unit, each on its
+ * own axis: ms and s never share one. Null when its lines share a unit.
+ */
+export function unitPlots(result: SearchAggResult | null): Array<{ result: SearchAggResult; offset: number }> | null {
+  if (!result?.units_differ || !result.splits) {
+    return null;
+  }
+  const units = [...new Set(result.splits.map((s) => s.unit ?? ""))];
+  if (units.length < 2) {
+    return null;
+  }
+  return units.map((unit) => {
+    const offset = result.splits!.findIndex((s) => (s.unit ?? "") === unit);
+    const splits = result.splits!.filter((s) => (s.unit ?? "") === unit);
+    const { unit: _panel, ...rest } = result;
+    return { result: { ...rest, ...(unit ? { unit } : {}), splits }, offset };
+  });
+}
 
 /** A metric panel's plot: a histogram read as a heatmap (#238) paints its cells, anything else its lines or bars. */
 export function MetricSpark(props: SparkProps) {
-  return props.result?.heat ? <HeatSpark result={props.result} readingWord={props.readingWord} /> : <LineSpark {...props} />;
+  if (props.result?.heat) {
+    return <HeatSpark result={props.result} readingWord={props.readingWord} />;
+  }
+  const plots = unitPlots(props.result);
+  if (plots) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        {plots.map((plot) => (
+          <LineSpark key={plot.result.unit ?? ""} {...props} result={plot.result} offset={plot.offset} />
+        ))}
+      </div>
+    );
+  }
+  return <LineSpark {...props} />;
 }
 
 function LineSpark({
@@ -156,6 +203,8 @@ function LineSpark({
   live,
   namedLines = false,
   chart = "line",
+  held = null,
+  offset = 0,
 }: {
   times: string[];
   result: SearchAggResult | null;
@@ -169,9 +218,13 @@ function LineSpark({
   namedLines?: boolean;
   /** Lines, bars, or a split's bars stacked (#237). */
   chart?: "line" | "bars" | "stacked";
+  /** A source short inside the window (#331): its span hatched; an average or a percentile named partial. */
+  held?: MetricHeld | null;
+  /** The first line's place in the palette, when the panel draws one plot per unit. */
+  offset?: number;
 }) {
   const theme = usePlotTheme();
-  const lines = useMemo(() => sparkLines(times, result, theme), [times, result, theme]);
+  const lines = useMemo(() => sparkLines(times, result, theme, offset), [times, result, theme, offset]);
   const unit = result?.unit;
   const finite = lines.flatMap((l) => l.vals.filter((v): v is number => v !== null));
   const quiet = finite.length === 0;
@@ -218,11 +271,17 @@ function LineSpark({
 
   const single = lines[0];
   const now = single ? lastValue(single.vals) : null;
+  const partial = held && !held.floor ? ["partial"] : [];
   const tag = quiet
     ? [readingWord, kindWord, "no points"].join(" · ")
     : split
-      ? [readingWord, kindWord].join(" · ")
-      : [readingWord, kindWord, kindWord === "gauge" ? `now ${withUnit(formatAggStat(now), unit)}` : `peak ${withUnit(formatAggStat(peak), unit)}`].join(" · ");
+      ? [readingWord, kindWord, ...partial].join(" · ")
+      : [
+          readingWord,
+          kindWord,
+          kindWord === "gauge" ? `now ${withUnit(formatAggStat(now), unit)}` : `peak ${withUnit(formatAggStat(peak), unit)}`,
+          ...partial,
+        ].join(" · ");
 
   const labelYs = named
     ? spreadLabels(
@@ -273,6 +332,9 @@ function LineSpark({
               ))}
             </svg>
           )}
+          {held && held.hatches.length > 0 && n > 0 ? (
+            <HeldHatch spans={held.hatches} fromMs={Date.parse(times[0]!)} plotSpanMs={n * step} />
+          ) : null}
           {named
             ? lines.map((l, i) => (
                 <span
@@ -318,7 +380,7 @@ function LineSpark({
                     <span key={l.key} className="flex items-center gap-2">
                       <span className="h-0 w-2.5 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />
                       <span className="w-16 truncate">{l.key}</span>
-                      <span>{withUnit(formatAggStat(l.vals[hoverIdx] ?? null), unit)}</span>
+                      <span>{withUnit(formatAggStat(l.vals[hoverIdx] ?? null), l.unit ?? unit)}</span>
                     </span>
                   ))
                 ) : (
@@ -339,7 +401,7 @@ function LineSpark({
             <span key={l.key} className="flex min-w-0 items-center gap-1.5">
               <span className="h-0 w-3 shrink-0 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />
               <span className="min-w-0 truncate">{l.key}</span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">{withUnit(formatAggStat(lastValue(l.vals)), unit)}</span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{withUnit(formatAggStat(lastValue(l.vals)), l.unit ?? unit)}</span>
             </span>
           ))}
         </div>

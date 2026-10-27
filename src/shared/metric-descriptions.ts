@@ -1,4 +1,4 @@
-import { clickhouseInsertJsonEachRow, clickhouseQuery } from "./clickhouse";
+import { clickhouseQuery } from "./clickhouse";
 import { metricDescriptionOf } from "./metric";
 
 /** What this process has seen or looked up. Ingest and query share it. */
@@ -14,13 +14,6 @@ export async function rememberMetricDescriptions(descriptions: ReadonlyMap<strin
   if (changed.length === 0) {
     return;
   }
-  const seen = new Date().toISOString().replace("T", " ").replace("Z", "");
-  await clickhouseInsertJsonEachRow(
-    changed
-      .map(([name, description]) => JSON.stringify({ tenant_id: "default", name, description, seen }))
-      .join("\n"),
-    "metric_descriptions",
-  );
   for (const [name, description] of changed) {
     known.set(name, description);
   }
@@ -33,12 +26,15 @@ export async function metricDescription(name: string): Promise<string | null> {
     return cached;
   }
   const rows = await clickhouseQuery<{ description: string }>(
-    `SELECT argMax(description, seen) AS description
-     FROM metric_descriptions
-     WHERE tenant_id = {tenant_id:String} AND name = {metric_name:String}
-     HAVING count() > 0`,
+    // Read off the points themselves (#331): the newest that came with one, point or bucket.
+    `SELECT description FROM (
+       SELECT description, ts FROM metrics WHERE tenant_id = {tenant_id:String} AND name = {metric_name:String} AND description != '' ORDER BY ts DESC LIMIT 1
+       UNION ALL
+       SELECT description, ts FROM metric_buckets WHERE tenant_id = {tenant_id:String} AND name = {metric_name:String} AND description != '' ORDER BY ts DESC LIMIT 1
+     ) ORDER BY ts DESC LIMIT 1`,
     { tenant_id: "default", metric_name: name },
   );
+
   const found = metricDescriptionOf(rows[0]?.description);
   known.set(name, found);
   return found;

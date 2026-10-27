@@ -20,6 +20,8 @@ export type HeldView = {
   sources: HeldSource[];
   now: number;
   live: boolean;
+  /** The window the view was made for: a metric panel over the board reads its own tells from it (#331). */
+  window: Window;
   /** The hunt's own count is a floor. */
   floor: boolean;
   /** Gaps inside the window of the sources that could feed the hunt. */
@@ -73,6 +75,7 @@ export function heldView(input: {
     sources,
     now,
     live,
+    window,
     floor: gaps.length > 0,
     gaps,
     pill: pillWords(gaps, sources, now, live),
@@ -124,4 +127,45 @@ export function savedWindow(
   const from = saved.from_ts ? Date.parse(saved.from_ts) : NaN;
   const to = saved.to_ts ? Date.parse(saved.to_ts) : NaN;
   return Number.isFinite(from) && Number.isFinite(to) ? { from, to } : null;
+}
+
+/**
+ * What a metric panel says while a source is short inside its window (#331, 33e). A sum or a
+ * count over it is a floor: the pill names the source. An average or a percentile keeps its
+ * number and is named partial, never a floor. A log hunt does not reach metric points, so only a
+ * `toposcope` matcher on the panel rules a source out.
+ */
+export type MetricHeld = {
+  /** A sum or a count: at least this much. */
+  floor: boolean;
+  /** The pill: the source named, and for an average or a percentile that the reading is partial. */
+  pill: string;
+  hatches: Array<HeldGap & { label: string }>;
+};
+
+/** Whether a metric's reading adds up, so a short source makes it a floor: a counter, a histogram's count or sum. */
+export function metricAdds(result: { kind?: string; reading?: string } | null | undefined): boolean {
+  return result?.kind === "counter" || (result?.kind === "histogram" && (result.reading === "count" || result.reading === "sum"));
+}
+
+export function metricHeld(
+  held: HeldView | null,
+  panel: { labels?: Record<string, string>; adds: boolean; reading: string },
+): MetricHeld | null {
+  if (!held) {
+    return null;
+  }
+  const { sources, now, live, window } = held;
+  const only = panel.labels?.toposcope;
+  const gaps = gapsIn(sources, window, now).filter((g) => only === undefined || g.source === only);
+  if (gaps.length === 0) {
+    return null;
+  }
+  const pill = pillWords(gaps, sources, now, live)!;
+  const shortCount = new Set(gaps.map((g) => g.source)).size;
+  return {
+    floor: panel.adds,
+    pill: panel.adds ? pill : `${pill} · ${panel.reading || "reading"} is partial`,
+    hatches: gaps.map((gap) => ({ ...gap, label: hatchLabel(gap, sources, shortCount) })),
+  };
 }
