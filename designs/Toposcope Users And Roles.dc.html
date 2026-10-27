@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 30a */
+[data-frame="30a"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="30a"] a:hover{color:#fff}
+[data-frame="30a"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="30a"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa;background:transparent;border:0;font:inherit;cursor:pointer}
+[data-frame="30a"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="30a"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="30a"] .me{width:28px;height:28px;border-radius:50%;background:#27272a;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+[data-frame="30a"] .seg{display:inline-flex;border:1px solid #2a2a2e;border-radius:7px;overflow:hidden}
+[data-frame="30a"] .seg span{padding:6px 10px;font-size:12px;color:#8a8a93}
+[data-frame="30a"] .seg span.on{color:#fafafa;background:#27272a}
+[data-frame="30a"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px;font:inherit;cursor:pointer}
+[data-frame="30a"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="30a"] .r{display:grid;grid-template-columns:36px 1fr 110px 170px 150px 120px 60px;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid #1c1c20;font-size:13px}
+[data-frame="30a"] .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0d0d0f}
+[data-frame="30a"] .role{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:6px;border:1px solid #2a2a2e;font-size:11.5px;color:#d4d4d8}
+[data-frame="30a"] .grp{display:flex;align-items:baseline;gap:10px;padding:14px 16px 8px;font-size:12px;color:#8a8a93}
+[data-frame="30a"] .grp b{font-size:13px;color:#fafafa;font-weight:600}
+  /* 30b */
+[data-frame="30b"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="30b"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="30b"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa}
+[data-frame="30b"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="30b"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="30b"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="30b"] .in{height:36px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font:inherit;font-size:13.5px;outline:none;box-sizing:border-box;width:100%}
+[data-frame="30b"] .btn{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:13px;font:inherit;cursor:pointer}
+[data-frame="30b"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="30b"] .rc{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid #2a2a2e;border-radius:10px;background:#0d0d0f;cursor:pointer}
+[data-frame="30b"] .rc.on{border-color:#e7e1d3;background:#1a1a1e}
+[data-frame="30b"] .rc b{font-size:14px;font-weight:600;color:#fafafa}
+[data-frame="30b"] .rc span{font-size:12.5px;color:#a1a1aa;line-height:1.5}
+[data-frame="30b"] .rc i{font-style:normal;font-size:12px;color:#d4d4d8}
+[data-frame="30b"] .ghost{opacity:.3}
+  /* 30c */
+[data-frame="30c"] a{color:#a1a1aa;text-decoration:none}
+[data-frame="30c"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="30c"] .sub{font-size:12.5px;color:#8a8a93}
+[data-frame="30c"] .btn{display:flex;align-items:center;justify-content:center;gap:10px;height:42px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font:inherit;font-size:14px;cursor:pointer;width:100%}
+[data-frame="30c"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="30c"] .in{height:40px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font:inherit;font-size:14px;outline:none;box-sizing:border-box;width:100%}
+[data-frame="30c"] .col{width:360px;display:flex;flex-direction:column;gap:18px}
+[data-frame="30c"] .cap{font-family:'JetBrains Mono',monospace;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.06em}
+  /* 30d */
+[data-frame="30d"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="30d"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="30d"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa}
+[data-frame="30d"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="30d"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="30d"] .me{width:28px;height:28px;border-radius:50%;background:#27272a;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+[data-frame="30d"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+[data-frame="30d"] .card h2{margin:0;font-size:14px;font-weight:500;color:#fafafa}
+[data-frame="30d"] .row{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center;font-size:13px}
+[data-frame="30d"] .row .k{color:#8a8a93}
+[data-frame="30d"] .in{height:32px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font-size:12.5px;display:flex;align-items:center}
+[data-frame="30d"] .ok{color:#6ee7b7}
+[data-frame="30d"] .t{width:100%;border-collapse:collapse;font-size:12.5px}
+[data-frame="30d"] .t th{text-align:left;font-weight:500;color:#8a8a93;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid #27272a}
+[data-frame="30d"] .t th.c,[data-frame="30d"] .t td.c{text-align:center;width:84px}
+[data-frame="30d"] .t td{padding:7px 8px;border-bottom:1px solid #1c1c20;color:#d4d4d8}
+[data-frame="30d"] .y{color:#6ee7b7}
+[data-frame="30d"] .n{color:#52525b}
+[data-frame="30d"] .sw{display:inline-flex;align-items:center;gap:8px;font-size:12.5px}
+[data-frame="30d"] .sw i{width:30px;height:16px;border-radius:9px;background:#3f3f46;position:relative;display:inline-block}
+[data-frame="30d"] .sw i::after{content:"";position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#d4d4d8}
+  /* 30e */
+[data-frame="30e"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="30e"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="30e"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa}
+[data-frame="30e"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="30e"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="30e"] .me{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 10px 0 4px;border-radius:15px;background:#18181b;border:1px solid #27272a;font-size:12px;color:#d4d4d8}
+[data-frame="30e"] .me i{width:22px;height:22px;border-radius:50%;background:#2dd4bf;color:#0d0d0f;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;font-style:normal}
+[data-frame="30e"] .card{display:flex;flex-direction:column;gap:10px;padding:16px 18px;border:1px solid #27272a;border-radius:10px;background:#131316;min-height:140px;box-sizing:border-box}
+[data-frame="30e"] .name{font-size:13.5px;font-weight:500;color:#fafafa}
+[data-frame="30e"] .big{font-size:24px;font-weight:600;color:#fafafa}
+[data-frame="30e"] .mk{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:7px;border:1px solid #27272a;background:#131316;font-size:12.5px;color:#d4d4d8}
+[data-frame="30e"] .mk b{font-weight:400;color:#8a8a93;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+[data-frame="30e"] .ml{display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid #1f1f23;font-size:12.5px}
+[data-frame="30e"] .who{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#8a8a93}
+[data-frame="30e"] .who i{width:16px;height:16px;border-radius:50%;font-style:normal;font-size:8px;font-weight:600;color:#0d0d0f;display:inline-flex;align-items:center;justify-content:center}
+[data-frame="30e"] .pop{position:absolute;right:24px;top:52px;width:280px;padding:14px 16px;border:1px solid #3f3f46;border-radius:10px;background:#18181b;box-shadow:0 20px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+  /* 31a */
+[data-frame="31a"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="31a"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="31a"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa}
+[data-frame="31a"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="31a"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="31a"] .me{width:28px;height:28px;border-radius:50%;background:#27272a;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+[data-frame="31a"] .ee{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;border:1px solid #a78bfa;color:#c4b5fd;font-size:10.5px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+[data-frame="31a"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+[data-frame="31a"] .card h2{margin:0;font-size:14px;font-weight:500;color:#fafafa;display:flex;align-items:center;gap:8px}
+[data-frame="31a"] .row{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:center;font-size:13px}
+[data-frame="31a"] .row .k{color:#8a8a93}
+[data-frame="31a"] .in{height:32px;padding:0 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font-size:12.5px;display:flex;align-items:center}
+[data-frame="31a"] .ok{color:#6ee7b7}
+[data-frame="31a"] .m{display:grid;grid-template-columns:1fr 30px 150px 1fr 80px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="31a"] .role{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:6px;border:1px solid #2a2a2e;font-size:11.5px;color:#d4d4d8}
+[data-frame="31a"] .ev{display:flex;gap:12px;font-size:12px;padding:7px 0;border-bottom:1px solid #1c1c20}
+  /* 31b */
+[data-frame="31b"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="31b"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="31b"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa}
+[data-frame="31b"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="31b"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="31b"] .me{width:28px;height:28px;border-radius:50%;background:#27272a;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+[data-frame="31b"] .ee{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;border:1px solid #a78bfa;color:#c4b5fd;font-size:10.5px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+[data-frame="31b"] .card{border:1px solid #27272a;border-radius:10px;background:#131316;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+[data-frame="31b"] .card h2{margin:0;font-size:14px;font-weight:500;color:#fafafa}
+[data-frame="31b"] .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a8a93;font-weight:500}
+[data-frame="31b"] .in{min-height:34px;padding:7px 10px;border-radius:7px;border:1px solid #2a2a2e;background:#0d0d0f;color:#fafafa;font-size:13px;display:flex;align-items:center;box-sizing:border-box}
+[data-frame="31b"] .ck{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#d4d4d8}
+[data-frame="31b"] .ck i{width:14px;height:14px;border-radius:3px;border:1px solid #3f3f46;display:inline-block;flex:none}
+[data-frame="31b"] .ck i.on{background:#a78bfa;border-color:#a78bfa}
+[data-frame="31b"] .big{font-family:'JetBrains Mono',monospace;font-size:26px;color:#fafafa}
+[data-frame="31b"] .btn{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:13px}
+[data-frame="31b"] .btn.p{background:#e7e1d3;color:#0d0d0f;border-color:#e7e1d3;font-weight:500}
+[data-frame="31b"] .seg{flex:1 1 0;min-width:0}
+  /* 31c */
+[data-frame="31c"] a{color:#e4e4e7;text-decoration:none}
+[data-frame="31c"] .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+[data-frame="31c"] .tab{padding:6px 10px;border-radius:6px;font-size:13px;color:#a1a1aa}
+[data-frame="31c"] .tab.on{color:#fafafa;background:#27272a}
+[data-frame="31c"] .sub{font-size:12px;color:#8a8a93}
+[data-frame="31c"] .me{width:28px;height:28px;border-radius:50%;background:#27272a;color:#fafafa;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+[data-frame="31c"] .ee{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;border:1px solid #a78bfa;color:#c4b5fd;font-size:10.5px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+[data-frame="31c"] .seg{display:inline-flex;border:1px solid #2a2a2e;border-radius:7px;overflow:hidden}
+[data-frame="31c"] .seg span{padding:6px 10px;font-size:12px;color:#8a8a93}
+[data-frame="31c"] .seg span.on{color:#fafafa;background:#27272a}
+[data-frame="31c"] .btn{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:7px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-size:12.5px}
+[data-frame="31c"] .r{display:grid;grid-template-columns:80px 170px 120px 1fr 160px;gap:14px;align-items:center;padding:9px 16px;border-bottom:1px solid #1c1c20;font-size:12.5px}
+[data-frame="31c"] .who{display:inline-flex;align-items:center;gap:7px}
+[data-frame="31c"] .who i{width:20px;height:20px;border-radius:50%;font-style:normal;font-size:9px;font-weight:600;color:#0d0d0f;display:inline-flex;align-items:center;justify-content:center}
+[data-frame="31c"] .k{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:5px;border:1px solid #2a2a2e;font-size:11px;color:#d4d4d8;width:max-content}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Users And Roles</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 30a–31c · Users and roles · approved 2026-10-27</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Users in OSS: people in Access, invites, three fixed roles, OIDC sign-in, a Viewer's Home</h2>
+
+    <div id="30a" data-frame="30a" data-screen-label="30a Access › People" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#30a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">30a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Access › People</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="30a" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span></div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab on" href="#30a">Access</a><a class="tab" href="#30d">Settings</a>
+    <span class="me" title="Ian · Owner">IA</span>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600">Access</h1>
+      <span class="sub">Every way in or out of this instance · 11 live</span>
+      <div style="flex:1"></div>
+      <span class="seg"><span>All 11</span><span class="on">People · 4</span><span>Tokens · 2</span><span>Links · 3</span><span>Shares · 2</span></span>
+      <a href="#30b" class="btn p">Invite someone</a>
+    </div>
+
+    <div style="border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden">
+      <div class="grp"><b>People</b><span>sign in to this instance and see what their role lets them</span></div>
+      <div class="r" style="padding:6px 16px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#8a8a93"><span></span><span>Name</span><span>Role</span><span>Signs in with</span><span>Last seen</span><span>Invited by</span><span></span></div>
+      <div class="r"><span class="av" style="background:#e7e1d3">IA</span><span><span style="color:#fafafa;font-weight:500">Ian</span> <span class="sub">· you · ian@agental.io</span></span><span class="role" style="border-color:#e7e1d3;color:#fafafa">Owner</span><span class="sub">Google · password from .env</span><span class="mono sub">now</span><span class="sub">first owner</span><span></span></div>
+      <div class="r"><span class="av" style="background:#60a5fa">MK</span><span><span style="color:#fafafa;font-weight:500">Maya K.</span> <span class="sub">· maya@agental.io</span></span><span class="role">Operator</span><span class="sub">Google</span><span class="mono sub">12 min ago</span><span class="sub">Ian · 3 d ago</span><a href="#revoke" class="sub">revoke</a></div>
+      <div class="r"><span class="av" style="background:#2dd4bf">DR</span><span><span style="color:#fafafa;font-weight:500">Dev R.</span> <span class="sub">· dev@agental.io</span></span><span class="role">Viewer</span><span class="sub">password</span><span class="mono sub">yesterday 18:02</span><span class="sub">Maya K. · 1 d ago</span><a href="#revoke" class="sub">revoke</a></div>
+      <div class="r" style="border-bottom:0;opacity:.75"><span class="av" style="background:#3f3f46;color:#d4d4d8">?</span><span><span style="color:#fafafa;font-weight:500">sam@contractor.dev</span> <span class="sub">· invite not used yet · expires in 6 d</span></span><span class="role">Viewer</span><span class="sub">—</span><span class="mono sub">never</span><span class="sub">Ian · today</span><a href="#revoke" class="sub">cancel</a></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px"><b style="font-size:13.5px;font-weight:500;color:#fafafa">Who did what</b><span class="sub" style="line-height:1.5">Notes, monitors, retention and every Access change carry the name of the person who made them. Machines keep their token's name.</span></section>
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px"><b style="font-size:13.5px;font-weight:500;color:#fafafa">The password from .env</b><span class="sub" style="line-height:1.5">Still signs in as the first owner, so an upgrade locks nobody out. Turn it off in Settings › Sign-in once another owner exists.</span></section>
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px"><b style="font-size:13.5px;font-weight:500;color:#fafafa">Revoke is immediate</b><span class="sub" style="line-height:1.5">Their sessions end on the next request. What they made stays, still under their name.</span></section>
+    </div>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <div id="30b" data-frame="30b" data-screen-label="30b Invite someone" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#30b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">30b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Invite someone</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="30b" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;position:relative;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20" class="ghost">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93">log-vm</span></div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><span class="tab">Home</span><span class="tab">Hunt</span><span class="tab">Watch</span></nav>
+    <div style="flex:1"></div><span class="tab on">Access</span><span class="tab">Settings</span>
+  </header>
+  <div class="ghost" style="padding:22px 24px"><h1 style="margin:0;font-size:20px;font-weight:600">Access</h1><div style="margin-top:16px;height:260px;border:1px solid #27272a;border-radius:10px;background:#131316"></div></div>
+
+  <section aria-label="Invite someone" style="position:absolute;top:64px;left:50%;transform:translateX(-50%);width:900px;box-sizing:border-box;padding:24px 28px;background:#121214;border:1px solid #3f3f46;border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:20px">
+    <div style="display:flex;align-items:baseline;gap:12px"><h2 style="margin:0;font-size:17px;font-weight:600">Invite someone</h2><span class="sub">They get a link that works once. No mail server needed: send it however you like.</span><div style="flex:1"></div><a href="#30a" class="tab" aria-label="Close">×</a></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:6px"><label class="lab" for="30b-em">Email or a name</label><input id="30b-em" class="in" value="sam@contractor.dev"><span class="sub">With Google sign-in on, they must sign in as this address.</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="lab">Link works for</span><span class="in" style="display:flex;align-items:center">7 days ▾</span></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span class="lab">Role</span>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+        <a href="#viewer" class="rc on"><b>Viewer</b><span>Reads everything: Home, Hunt, Watch, traces. Saves their own hunts.</span><i>Cannot change monitors, Access, retention or settings.</i></a>
+        <a href="#operator" class="rc"><b>Operator</b><span>Everything a Viewer does, plus monitors, notes, shared hunts, Fields and shares' panels.</span><i>Cannot let people in or change retention.</i></a>
+        <a href="#owner" class="rc"><b>Owner</b><span>Everything, including people, tokens, links, shares, retention and sign-in.</span><i>Keep this to two or three people.</i></a>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px dashed #e7e1d3;border-radius:10px">
+      <span class="lab" style="color:#e7e1d3">After you press Invite · shown once</span>
+      <div style="display:flex;gap:10px;align-items:center"><span class="mono" style="flex:1;font-size:12.5px;color:#fafafa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">https://logs.agental.io/join/tsi1_8c41••••••••••••••••••••</span><span class="btn">Copy</span></div>
+      <span class="sub">Shows under People as "invite not used yet" until they sign in. Cancel it there.</span>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center"><a href="#30a" class="btn p">Invite as Viewer</a><a href="#30a" class="btn" style="border-color:transparent;color:#8a8a93">Cancel</a><div style="flex:1"></div><span class="sub">Only an Owner sees this button.</span></div>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="30c" data-frame="30c" data-screen-label="30c Sign in · password or your provider" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#30c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">30c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Sign in · password or your provider</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="30c" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:grid;grid-template-columns:1fr 1px 1fr;align-items:center;justify-items:center;overflow:hidden">
+
+  <form class="col" style="margin:0">
+    <span class="cap">Signing in</span>
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:15px">toposcope</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><span class="sub">Signing in to</span><span class="mono" style="font-size:30px;font-weight:500;color:#fafafa">log-vm</span><span class="mono sub">logs.agental.io · 0.9.0</span></div>
+    <button type="button" class="btn p"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#0d0d0f" stroke-width="2"></circle></svg>Continue with Google · agental.io</button>
+    <div style="display:flex;align-items:center;gap:10px"><span style="flex:1;height:1px;background:#27272a"></span><span class="sub">or with a password</span><span style="flex:1;height:1px;background:#27272a"></span></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><label for="30c-u" class="sub">Email</label><input id="30c-u" class="in" value="dev@agental.io"></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><label for="30c-pw" class="sub">Password</label><input id="30c-pw" type="password" class="in"></div>
+    <button type="button" class="btn">Sign in</button>
+    <span class="sub">Stays signed in on this browser for 30 days. Forgot it? Ask an Owner to send a new invite.</span>
+  </form>
+
+  <div style="width:1px;height:640px;background:#1c1c20"></div>
+
+  <form class="col" style="margin:0">
+    <span class="cap">From an invite link</span>
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:15px">toposcope</span></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><span class="sub">Ian invited you to</span><span class="mono" style="font-size:30px;font-weight:500;color:#fafafa">log-vm</span><span class="sub">as a <b style="color:#fafafa;font-weight:500">Viewer</b>: you can read everything and save your own hunts.</span></div>
+    <button type="button" class="btn p"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#0d0d0f" stroke-width="2"></circle></svg>Continue with Google as sam@contractor.dev</button>
+    <div style="display:flex;align-items:center;gap:10px"><span style="flex:1;height:1px;background:#27272a"></span><span class="sub">or set a password</span><span style="flex:1;height:1px;background:#27272a"></span></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><label for="30c-n" class="sub">Your name</label><input id="30c-n" class="in" value="Sam"></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><label for="30c-np" class="sub">Password · 12 characters or more</label><input id="30c-np" type="password" class="in"></div>
+    <button type="button" class="btn">Join log-vm</button>
+    <span class="sub">The link works once and expires in 6 days.</span>
+  </form>
+</div>
+      </div>
+    </div>
+
+    <div id="30d" data-frame="30d" data-screen-label="30d Settings › Sign-in and roles" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#30d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">30d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Settings › Sign-in and roles</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="30d" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span></div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="#30a">Access</a><a class="tab on" href="#30d">Settings</a><span class="me">IA</span>
+  </header>
+  <div style="display:flex;align-items:center;gap:8px;padding:14px 24px 0;font-size:13px"><a href="Settings.dc.html" style="color:#8a8a93">Settings</a><span style="color:#3f3f46">›</span><span style="color:#fafafa;font-weight:500">Sign-in and roles</span></div>
+
+  <main style="flex:1;min-height:0;padding:16px 24px 0;display:grid;grid-template-columns:520px 1fr;gap:16px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Sign in with a provider</h2><span class="ok" style="font-size:12px">● working · last sign-in 12 min ago</span></div>
+        <div class="row"><span class="k">Provider</span><span class="in">Google Workspace (OIDC) ▾</span></div>
+        <div class="row"><span class="k">Issuer</span><span class="in mono">https://accounts.google.com</span></div>
+        <div class="row"><span class="k">Client id</span><span class="in mono">83104…apps.googleusercontent.com</span></div>
+        <div class="row"><span class="k">Client secret</span><span class="in mono">•••••••••••• · set 3 d ago · replace</span></div>
+        <div class="row"><span class="k">Allowed domain</span><span class="in mono">agental.io</span></div>
+        <div class="row"><span class="k">Without an invite</span><span class="in">Join as Viewer ▾</span></div>
+        <span class="sub">Any OIDC provider works: Google, Entra, Okta, Keycloak, Authentik. Redirect URL: <span class="mono">https://logs.agental.io/auth/callback</span></span>
+      </section>
+      <section class="card">
+        <h2>Passwords</h2>
+        <div class="row"><span class="k">People's passwords</span><span class="sw"><i style="background:#e7e1d3"></i>on · 1 person uses one</span></div>
+        <div class="row"><span class="k">The .env password</span><span class="sw"><i></i>signs in as the first owner · turn off once another Owner exists</span></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>What each role may do</h2><span class="sub">fixed in this edition · data-scoped roles are in Enterprise</span></div>
+      <table class="t">
+        <tr><th></th><th class="c">Viewer</th><th class="c">Operator</th><th class="c">Owner</th></tr>
+        <tr><td>Read Home, Hunt, Watch, traces, profiles</td><td class="c y">✓</td><td class="c y">✓</td><td class="c y">✓</td></tr>
+        <tr><td>Save their own hunts, pin them</td><td class="c y">✓</td><td class="c y">✓</td><td class="c y">✓</td></tr>
+        <tr><td>Export rows</td><td class="c y">✓</td><td class="c y">✓</td><td class="c y">✓</td></tr>
+        <tr><td>Write notes on the clock</td><td class="c n">—</td><td class="c y">✓</td><td class="c y">✓</td></tr>
+        <tr><td>Make and change monitors, webhooks</td><td class="c n">—</td><td class="c y">✓</td><td class="c y">✓</td></tr>
+        <tr><td>Change Fields roles and metric links</td><td class="c n">—</td><td class="c y">✓</td><td class="c y">✓</td></tr>
+        <tr><td>Add panels to an existing share</td><td class="c n">—</td><td class="c y">✓</td><td class="c y">✓</td></tr>
+        <tr><td>Invite people, change roles</td><td class="c n">—</td><td class="c n">—</td><td class="c y">✓</td></tr>
+        <tr><td>Make or revoke tokens, links, shares</td><td class="c n">—</td><td class="c n">—</td><td class="c y">✓</td></tr>
+        <tr><td>Retention, sign-in, instance settings</td><td class="c n">—</td><td class="c n">—</td><td class="c y">✓</td></tr>
+      </table>
+      <span class="sub">Every write in the right-hand two columns is recorded with the person who made it.</span>
+    </section>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <div id="30e" data-frame="30e" data-screen-label="30e Home as a Viewer" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#30e" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">30e</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Home as a Viewer</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="30e" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden;position:relative">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-vm</span></div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab on" href="#30e">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a></nav>
+    <div style="flex:1"></div>
+    <span class="sub">no Access, no Settings for a Viewer</span>
+    <span class="me"><i>DR</i>Dev R. · Viewer ▾</span>
+  </header>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:14px 24px 0">
+    <span class="sub" style="margin-right:4px">Since</span>
+    <span class="mk" style="border-color:#e7e1d3;color:#fafafa"><span style="color:#e7e1d3">▲</span>billing v0.9<b>12:48</b></span>
+    <span class="mk"><span style="color:#2dd4bf">⚑</span>new-pricing on<b>11:30</b></span>
+    <span class="mk"><span style="color:#8a8a93">○</span>raised api rate limit<b>08:40</b></span>
+  </div>
+
+  <main style="flex:1;min-height:0;padding:18px 24px 0;display:grid;grid-template-columns:1fr 340px;gap:18px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600">What changed since <span style="color:#e7e1d3">billing v0.9</span></h1>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+        <div class="card"><span class="name">Errors on billing</span><span><span class="big">9.1%</span> <span class="mono" style="font-size:12px;color:#fca5a5">+8.2</span></span><span class="who"><i style="background:#60a5fa">MK</i>saved by Maya K.</span></div>
+        <div class="card"><span class="name">Checkout latency p95</span><span><span class="big">1 380</span> <span class="mono" style="font-size:12px;color:#fca5a5">+968</span></span><span class="who"><i style="background:#e7e1d3">IA</i>saved by Ian</span></div>
+        <div class="card" style="border-color:#2dd4bf"><span class="name">My billing timeouts</span><span><span class="big">61</span> <span class="mono" style="font-size:12px;color:#fca5a5">new</span></span><span class="who"><i style="background:#2dd4bf">DR</i>yours · only you see it</span></div>
+      </div>
+      <section class="card" style="min-height:0">
+        <div style="display:flex;justify-content:space-between"><span class="name">Monitors · 1 open</span><span class="sub">read-only for you · ask an Operator to change one</span></div>
+        <div class="ml"><span style="color:#fca5a5">●</span><span style="flex:1">Errors on billing above 2%</span><span class="who"><i style="background:#60a5fa">MK</i>Maya K.</span><span class="mono" style="color:#fca5a5">4.8%</span></div>
+        <div class="ml" style="border-bottom:0"><span style="color:#6ee7b7">●</span><span style="flex:1">api.example.io certificate</span><span class="who"><i style="background:#e7e1d3">IA</i>Ian</span><span class="mono sub">41 d</span></div>
+      </section>
+    </div>
+    <aside style="display:flex;flex-direction:column;gap:10px;padding-left:18px;border-left:1px solid #1c1c20">
+      <span class="name">Marks · today</span>
+      <div class="ml"><span class="mono sub" style="width:40px">12:48</span><span style="flex:1"><span style="color:#e7e1d3">▲</span> deployed: billing v0.9</span><span class="who">ci</span></div>
+      <div class="ml"><span class="mono sub" style="width:40px">11:30</span><span style="flex:1"><span style="color:#2dd4bf">⚑</span> new-pricing on</span><span class="who">launchdarkly</span></div>
+      <div class="ml"><span class="mono sub" style="width:40px">08:40</span><span style="flex:1"><span style="color:#8a8a93">○</span> raised api rate limit</span><span class="who"><i style="background:#60a5fa">MK</i>Maya K.</span></div>
+      <span class="sub" style="line-height:1.5">A Viewer reads every mark and who made it, but writes no note.</span>
+    </aside>
+  </main>
+
+  <div class="pop">
+    <b style="color:#fafafa;font-weight:500">Dev R.</b>
+    <span class="sub">dev@agental.io · Viewer · signs in with a password</span>
+    <span style="height:1px;background:#27272a"></span>
+    <span>Change your password</span>
+    <span>Your saved hunts · 2</span>
+    <span style="color:#8a8a93">Need to change a monitor? Owners: Ian</span>
+    <span style="height:1px;background:#27272a"></span>
+    <span>Sign out</span>
+  </div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Enterprise: SAML and SCIM with groups to roles, a role with a data fence, the audit log</h2>
+
+    <div id="31a" data-frame="31a" data-screen-label="31a EE · Directory: SAML, SCIM, groups to roles" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#31a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">31a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">EE · Directory: SAML, SCIM, groups to roles</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="31a" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-acme</span><span class="ee">ENTERPRISE</span></div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="#30a">Access</a><a class="tab on" href="#30d">Settings</a><span class="me">MK</span>
+  </header>
+  <div style="display:flex;align-items:center;gap:8px;padding:14px 24px 0;font-size:13px"><a href="Settings.dc.html" style="color:#8a8a93">Settings</a><span style="color:#3f3f46">›</span><span style="color:#fafafa;font-weight:500">Directory</span></div>
+
+  <main style="flex:1;min-height:0;padding:16px 24px 0;display:grid;grid-template-columns:480px 1fr;gap:16px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section class="card">
+        <h2>Sign in with SAML</h2>
+        <div class="row"><span class="k">Identity provider</span><span class="in">Okta · acme.okta.com</span></div>
+        <div class="row"><span class="k">Metadata</span><span class="in mono">uploaded 2 d ago · cert expires in 340 d</span></div>
+        <div class="row"><span class="k">Status</span><span class="ok" style="font-size:12.5px">● 41 sign-ins this week</span></div>
+        <span class="sub">OIDC from the free edition still works beside it.</span>
+      </section>
+      <section class="card">
+        <h2>Keep people in sync · SCIM</h2>
+        <div class="row"><span class="k">Endpoint</span><span class="in mono">https://logs.acme.io/scim/v2</span></div>
+        <div class="row"><span class="k">Token</span><span class="in mono">•••••••• · in Access as a token</span></div>
+        <div class="row"><span class="k">Last sync</span><span class="ok" style="font-size:12.5px">● 13:20 · 58 people · 4 groups</span></div>
+        <span class="sub">Someone removed in Okta loses access on the next sync. Their row says so, and what they made keeps their name.</span>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Directory groups → roles</h2><span class="sub">a person gets the widest role of their groups</span></div>
+        <div class="m" style="font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.04em;padding:4px 0"><span>Group in Okta</span><span></span><span>Role</span><span>Sees</span><span>People</span></div>
+        <div class="m"><span class="mono">platform-oncall</span><span style="color:#8a8a93">→</span><span class="role" style="border-color:#e7e1d3;color:#fafafa">Owner</span><span class="sub">everything</span><span class="mono sub">4</span></div>
+        <div class="m"><span class="mono">sre</span><span style="color:#8a8a93">→</span><span class="role">Operator</span><span class="sub">everything</span><span class="mono sub">11</span></div>
+        <div class="m"><span class="mono">billing-team</span><span style="color:#8a8a93">→</span><span class="role" style="border-color:#a78bfa;color:#c4b5fd">Billing engineer</span><span class="mono sub">service:billing*</span><span class="mono sub">9</span></div>
+        <div class="m" style="border-bottom:0"><span class="mono">engineering</span><span style="color:#8a8a93">→</span><span class="role">Viewer</span><span class="sub">everything</span><span class="mono sub">34</span></div>
+        <a href="#31b" style="font-size:12.5px;color:#c4b5fd">Billing engineer is a role with a data fence →</a>
+      </section>
+      <section class="card">
+        <h2>Last sync</h2>
+        <div class="ev"><span class="mono sub" style="width:44px">13:20</span><span style="flex:1">jo@acme.io added to billing-team</span><span class="sub">now Billing engineer</span></div>
+        <div class="ev"><span class="mono sub" style="width:44px">13:20</span><span style="flex:1">pat@acme.io removed from Okta</span><span style="color:#fca5a5;font-size:12px">signed out · access ended</span></div>
+        <div class="ev" style="border-bottom:0"><span class="mono sub" style="width:44px">09:20</span><span style="flex:1">sre group renamed in Okta</span><span class="sub">mapping kept by group id</span></div>
+      </section>
+    </div>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <div id="31b" data-frame="31b" data-screen-label="31b EE · A role with a data fence" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#31b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">31b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">EE · A role with a data fence</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="31b" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-acme</span><span class="ee">ENTERPRISE</span></div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab" href="#30a">Access</a><a class="tab on" href="#30d">Settings</a><span class="me">MK</span>
+  </header>
+  <div style="display:flex;align-items:center;gap:8px;padding:14px 24px 0;font-size:13px"><a href="Settings.dc.html" style="color:#8a8a93">Settings</a><span style="color:#3f3f46">›</span><a href="#30d" style="color:#8a8a93">Roles</a><span style="color:#3f3f46">›</span><span style="color:#fafafa;font-weight:500">Billing engineer</span></div>
+
+  <main style="flex:1;min-height:0;padding:16px 24px 0;display:grid;grid-template-columns:1fr 460px;gap:16px;align-items:start">
+    <section class="card">
+      <h2>A role is what someone may do, and which rows they may see</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="display:flex;flex-direction:column;gap:6px"><span class="lab">Name</span><span class="in">Billing engineer</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px"><span class="lab">May do, as</span><span class="in">Operator ▾ · monitors, notes, shared hunts</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="lab">Sees only rows matching · the fence</span>
+        <span class="in mono" style="border-color:#a78bfa;font-size:13.5px">service:billing* OR service:checkout</span>
+        <span class="sub">Same syntax as the bar and as a share's scope. Added to every search, card, monitor and export this role makes, on the server; they cannot widen it.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span class="lab">Inside the fence</span>
+        <span class="ck"><i class="on"></i>Metrics whose labels match <span class="mono" style="font-size:12px">service:billing*</span></span>
+        <span class="ck"><i class="on"></i>Traces and profiles of those services</span>
+        <span class="ck"><i class="on"></i>Marks for those services, plus every deploy of the platform</span>
+        <span class="ck"><i></i>Rows that arrive through links</span>
+        <span class="ck"><i></i>Fields with the lookup role (<span class="mono" style="font-size:12px">client_ip</span>, <span class="mono" style="font-size:12px">user_id</span>) shown in full; hashed otherwise</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px"><a href="#31a" class="btn p">Save role</a><span class="btn" style="border-color:transparent;color:#8a8a93">Cancel</span><div style="flex:1"></div><span class="sub">Given to: billing-team (9 people) from Okta</span></div>
+    </section>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section class="card">
+        <h2>What this role would see · last 24 h</h2>
+        <div style="display:flex;gap:24px"><div style="display:flex;flex-direction:column;gap:2px"><span class="big">2.31M</span><span class="sub">of 18.6M rows</span></div><div style="display:flex;flex-direction:column;gap:2px"><span class="big">3</span><span class="sub">of 9 services</span></div><div style="display:flex;flex-direction:column;gap:2px"><span class="big">14</span><span class="sub">of 61 metrics</span></div></div>
+        <div style="position:relative;height:70px;border-bottom:1px solid #2a2a2e">
+          <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:2px"><sc-for list="{{f31b_bars}}" as="b" hint-placeholder-count="48"><div class="seg" style="display:flex;flex-direction:column-reverse;height:100%"><div style="height:{{b.in}}px;background:#a78bfa"></div><div style="height:{{b.out}}px;background:#27272a"></div></div></sc-for></div>
+        </div>
+        <span class="sub"><span style="color:#c4b5fd">■</span> inside the fence · <span style="color:#52525b">■</span> outside it</span>
+      </section>
+      <section class="card">
+        <h2>How it looks to them</h2>
+        <span class="sub" style="line-height:1.5">Home shows only cards whose hunts fall inside the fence. A search for <span class="mono">service:api</span> answers "outside your role", not "0 rows", so nobody mistakes a fence for an outage.</span>
+        <span class="sub" style="line-height:1.5">A share made by this role can never reach past its fence.</span>
+      </section>
+    </div>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <div id="31c" data-frame="31c" data-screen-label="31c EE · Audit log" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#31c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">31c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">EE · Audit log</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="31c" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width:1440px;height:900px;box-sizing:border-box;background:#0d0d0f;color:#e4e4e7;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden">
+  <header style="height:48px;display:flex;align-items:center;gap:18px;padding:0 24px;border-bottom:1px solid #1c1c20">
+    <div style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-weight:600;font-size:14px">toposcope</span><span class="mono" style="font-size:12px;color:#8a8a93;margin-left:6px">log-acme</span><span class="ee">ENTERPRISE</span></div>
+    <nav style="display:flex;gap:2px;margin-left:12px"><a class="tab" href="Home.dc.html">Home</a><a class="tab" href="Hunt.dc.html">Hunt</a><a class="tab" href="Watch.dc.html">Watch</a></nav>
+    <div style="flex:1"></div>
+    <a class="tab on" href="#30a">Access</a><a class="tab" href="#30d">Settings</a><span class="me">MK</span>
+  </header>
+
+  <main style="flex:1;min-height:0;padding:22px 24px 0;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <h1 style="margin:0;font-size:20px;font-weight:600">Access › Audit</h1>
+      <span class="sub">Every read and write, with who made it · kept 400 days · today 1 214 entries</span>
+      <div style="flex:1"></div>
+      <span class="seg"><span class="on">All</span><span>Writes</span><span>Reads</span><span>Exports</span><span>Refused</span></span>
+      <span class="btn">Person ▾</span><span class="btn">Export as rows</span>
+    </div>
+
+    <div style="border:1px solid #27272a;border-radius:10px;background:#131316;overflow:hidden">
+      <div class="r" style="padding:7px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#8a8a93"><span>Time</span><span>Who</span><span>Kind</span><span>What</span><span>From</span></div>
+      <div class="r"><span class="mono sub">13:26:04</span><span class="who"><i style="background:#60a5fa">MK</i>Maya K.</span><span class="k">write</span><span>Changed retention of logs from 30 to 14 days</span><span class="mono sub">Google · 10.4.1.9</span></div>
+      <div class="r"><span class="mono sub">13:24:51</span><span class="who"><i style="background:#c4b5fd">JO</i>Jo P.</span><span class="k">export</span><span>Exported 1 652 rows of <span class="mono">service:billing (level:error OR level:fatal)</span> as CSV</span><span class="mono sub">Okta · 10.4.2.17</span></div>
+      <div class="r" style="background:#15110f"><span class="mono sub">13:22:10</span><span class="who"><i style="background:#c4b5fd">JO</i>Jo P.</span><span class="k" style="border-color:#7f1d1d;color:#fca5a5">refused</span><span>Searched <span class="mono">service:api</span>, outside the Billing engineer fence</span><span class="mono sub">Okta · 10.4.2.17</span></div>
+      <div class="r"><span class="mono sub">13:20:00</span><span class="who"><span class="k" style="border:0;padding:0">scim</span></span><span class="k">write</span><span>Ended access for pat@acme.io, removed from Okta</span><span class="mono sub">SCIM token</span></div>
+      <div class="r"><span class="mono sub">13:18:33</span><span class="who"><span class="mono" style="font-size:12px;color:#2dd4bf">acme-admin</span></span><span class="k">read</span><span>Share served 214 reads of 3 panels this minute, 1 refused split by <span class="mono">sandbox</span></span><span class="mono sub">console.acme.io</span></div>
+      <div class="r"><span class="mono sub">12:52:40</span><span class="who"><i style="background:#e7e1d3">IA</i>Ian</span><span class="k">write</span><span>Made link key for edge-iad · they copy from us · <span class="mono">service:*</span></span><span class="mono sub">password · 10.4.1.2</span></div>
+      <div class="r" style="border-bottom:0"><span class="mono sub">12:51:02</span><span class="who"><i style="background:#60a5fa">MK</i>Maya K.</span><span class="k">write</span><span>Made monitor Errors on billing above 2% · ntfy, Slack</span><span class="mono sub">Google · 10.4.1.9</span></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px"><b style="font-size:13.5px;font-weight:500;color:#fafafa">It is rows, like everything else</b><span class="sub" style="line-height:1.5">Each entry is a row under <span class="mono">service:toposcope audit:*</span>. Hunt it, chart it, watch it: page when anyone exports more than 10 000 rows.</span></section>
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px"><b style="font-size:13.5px;font-weight:500;color:#fafafa">Searches, not their results</b><span class="sub" style="line-height:1.5">A read records the query, the window and the row count, never the rows, so the audit log holds no more than the people did.</span></section>
+      <section style="padding:14px 16px;border:1px solid #27272a;border-radius:10px;background:#131316;display:flex;flex-direction:column;gap:6px"><b style="font-size:13.5px;font-weight:500;color:#fafafa">Kept apart</b><span class="sub" style="line-height:1.5">Its own retention, longer than the logs', and no role can delete an entry, Owners included.</span></section>
+    </div>
+  </main>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f31b', new (class { renderVals() { const bars = []; for (let i = 0; i < 48; i++) bars.push({ in: Math.round(6 + 6 * Math.abs(Math.sin(i * .5))), out: Math.round(30 + 22 * Math.abs(Math.cos(i * .3))) }); return { bars }; } })().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>
