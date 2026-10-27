@@ -1,3 +1,4 @@
+import { operatorAuth } from "./operator-auth";
 import { fakeLogEvent, fakeAppVersion, fakeFramedFingerprint, huntSeedEvents } from "../src/shared/fake-event";
 import { generateLogsInClickHouse } from "./load-ch-generate";
 import {
@@ -13,14 +14,10 @@ import { parseLiveArgs } from "./load-rates";
 
 const APP_URL = envValue("TOPOSCOPE_URL") ?? "http://127.0.0.1:8080";
 const INGEST_TOKEN = envValue("TOPOSCOPE_INGEST_TOKEN") ?? "toposcope-ingest";
-const PASSWORD = envValue("TOPOSCOPE_PASSWORD") ?? "toposcope";
 const SYSLOG_HOST = process.env.SYSLOG_UDP_HOST ?? "127.0.0.1";
 const SYSLOG_PORT = Number(process.env.SYSLOG_UDP_PORT ?? "5514");
 const BATCH = 500;
 
-function basicAuth(): string {
-  return `Basic ${btoa(`toposcope:${PASSWORD}`)}`;
-}
 
 async function waitForHealth(): Promise<void> {
   for (let i = 0; i < 60; i++) {
@@ -42,7 +39,7 @@ async function fetchJson(url: string, name: string): Promise<void> {
   let last: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, { headers: { authorization: basicAuth() } });
+      const res = await fetch(url, { headers: { authorization: await operatorAuth("load") } });
       if (!res.ok) {
         throw new Error(`${name} failed: ${res.status} ${await res.text()}`);
       }
@@ -86,7 +83,7 @@ async function waitForQueryTotal(
   let last = -1;
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    const res = await fetch(url, { headers: { authorization: basicAuth() } });
+    const res = await fetch(url, { headers: { authorization: await operatorAuth("load") } });
     if (!res.ok) {
       throw new Error(`search ${q} failed: ${res.status} ${await res.text()}`);
     }
@@ -114,7 +111,7 @@ async function waitForMarkerTotal(
   let last = -1;
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    const res = await fetch(url, { headers: { authorization: basicAuth() } });
+    const res = await fetch(url, { headers: { authorization: await operatorAuth("load") } });
     if (!res.ok) {
       throw new Error(`marker search failed: ${res.status} ${await res.text()}`);
     }
@@ -402,10 +399,11 @@ async function main(): Promise<void> {
   }
 
   const parallelT0 = performance.now();
+  const authorization = await operatorAuth("load");
   const parallel = await Promise.all(
     Array.from({ length: 4 }, () =>
       fetch(`${APP_URL}/api/search?range=${range}&q=level:error`, {
-        headers: { authorization: basicAuth() },
+        headers: { authorization },
       }),
     ),
   );

@@ -68,7 +68,8 @@ describe("the skill's shape", () => {
   });
 });
 
-const password = "operator-secret-0f3a9c";
+// The read token `check` keeps beside .env (#305: there is no shared password to read with).
+const readToken = "tsp1_skill-read-0f3a9c";
 const token = "ingest-secret-7b21d4";
 const word = "tscheck0123456789ab";
 
@@ -84,8 +85,9 @@ beforeAll(() => {
   home = mkdtempSync(join(tmpdir(), "toposcope-skill-"));
   writeFileSync(
     join(home, ".env"),
-    `CLICKHOUSE_USER=default\nCLICKHOUSE_PASSWORD=clickhouse-secret-55e0\nTOPOSCOPE_PASSWORD=${password}\nTOPOSCOPE_INGEST_TOKEN=${token}\n`,
+    `CLICKHOUSE_USER=default\nCLICKHOUSE_PASSWORD=clickhouse-secret-55e0\nTOPOSCOPE_INGEST_TOKEN=${token}\n`,
   );
+  writeFileSync(join(home, "skill.token"), `${readToken}\n`);
   // Stands in for the instance's search route, on loopback.
   server = Bun.serve({
     hostname: "127.0.0.1",
@@ -187,7 +189,7 @@ describe("check", () => {
     expect(out).toContain("window: the last 15 minutes (2026-10-07T12:00:00.000Z to 2026-10-07T12:15:00.000Z)");
     expect(seen).toEqual([
       {
-        authorization: `Basic ${btoa(`toposcope:${password}`)}`,
+        authorization: `Bearer ${readToken}`,
         q: `${word} OR exception.message:${word}`,
         range: "15m",
       },
@@ -211,10 +213,10 @@ describe("check", () => {
     expect(out).toContain(`q: ${word} OR exception.message:${word}\n`);
   });
 
-  test("never prints the operator password", async () => {
+  test("never prints its read token", async () => {
     reply = found([await exported()]);
     const { out, err } = await run("check", word);
-    expect(out + err).not.toContain(password);
+    expect(out + err).not.toContain(readToken);
   });
 
   test("takes only a word that marker printed, and sends nothing else", async () => {
@@ -348,7 +350,7 @@ describe("up checks the release's files against its SHA256SUMS (#195)", () => {
   const sha = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
   const files: Record<string, string> = {
     "compose.yml": "services: {}\n",
-    "env.example": "CLICKHOUSE_PASSWORD=\nTOPOSCOPE_PASSWORD=\nTOPOSCOPE_INGEST_TOKEN=\n",
+    "env.example": "CLICKHOUSE_PASSWORD=\nTOPOSCOPE_INGEST_TOKEN=\n",
     "vector.yaml": "sources: {}\n",
     LICENSE: "MIT\n",
     "toposcope.sh": "#!/usr/bin/env bash\n",

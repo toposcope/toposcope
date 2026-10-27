@@ -11,7 +11,7 @@ export type InstanceInfo = {
   id: string;
   name: string | null;
   address: string;
-  session: { kind: "basic" } | { kind: "cookie"; expires_at: number };
+  session: { kind: "token" } | { kind: "cookie"; expires_at: number };
 };
 
 /** The browser tab says which instance this is: `agental-prod · toposcope` (frame 12e). */

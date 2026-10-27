@@ -41,7 +41,7 @@ beforeAll(async () => {
       await new Promise((ok) => setTimeout(ok, 0));
     }
     const out = {};
-    const basic = { authorization: "Basic " + btoa("op:pw"), "content-type": "application/json" };
+    const basic = { authorization: (await import(root + "/control/owner-for-tests.ts")).ownerBearer(), "content-type": "application/json" };
     const bearer = { authorization: "Bearer ingest-only", "content-type": "application/json" };
     const go = async (key, path, method = "GET", body, headers = basic) => {
       const res = await app.fetch(new Request("http://app.test" + path, { method, headers, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) }));

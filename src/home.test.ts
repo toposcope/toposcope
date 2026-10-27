@@ -30,7 +30,7 @@ beforeAll(async () => {
       await new Promise((ok) => setTimeout(ok, 0));
     }
     const out = {};
-    const auth = { authorization: "Basic " + btoa("op:pw"), "content-type": "application/json", accept: "text/html" };
+    const auth = { authorization: (await import(root + "/control/owner-for-tests.ts")).ownerBearer(), "content-type": "application/json", accept: "text/html" };
     const go = async (key, path, init = {}) => {
       const res = await app.fetch(new Request("http://app.test" + path, { redirect: "manual", headers: auth, ...init }));
       out[key] = { status: res.status, location: res.headers.get("location"), body: await res.text() };

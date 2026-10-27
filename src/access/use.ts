@@ -6,7 +6,7 @@ import type { LogEvent } from "../shared/log-event";
  * its own row with why. Shares keep writing their own rows (they also carry `access:` now).
  * No addresses of the people or machines that called: a series to search and watch, not an audit log.
  */
-export type AccessKind = "token" | "link" | "share";
+export type AccessKind = "token" | "link" | "share" | "person";
 
 type Tally = { kind: AccessKind; name: string; used: number; refused: number; last: number | null };
 const tallies = new Map<string, Tally>();

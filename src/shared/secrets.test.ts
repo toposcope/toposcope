@@ -6,7 +6,6 @@ import {
 } from "./secrets";
 
 const generated = {
-  TOPOSCOPE_PASSWORD: "not-demo-password",
   TOPOSCOPE_INGEST_TOKEN: "not-demo-token",
   CLICKHOUSE_PASSWORD: "not-demo-ch",
 };
@@ -17,10 +16,7 @@ describe("packagedSecretsError", () => {
   });
 
   test("refuses missing, empty, and demo values", () => {
-    expect(packagedSecretsError({})).toContain("TOPOSCOPE_PASSWORD");
-    expect(
-      packagedSecretsError({ ...generated, TOPOSCOPE_PASSWORD: DEMO_PASSWORD }),
-    ).toContain("TOPOSCOPE_PASSWORD");
+    expect(packagedSecretsError({})).toContain("TOPOSCOPE_INGEST_TOKEN");
     expect(
       packagedSecretsError({
         ...generated,
@@ -30,16 +26,17 @@ describe("packagedSecretsError", () => {
     expect(
       packagedSecretsError({ ...generated, CLICKHOUSE_PASSWORD: DEMO_PASSWORD }),
     ).toContain("CLICKHOUSE_PASSWORD");
-    expect(
-      packagedSecretsError({ ...generated, TOPOSCOPE_PASSWORD: "" }),
-    ).toContain("TOPOSCOPE_PASSWORD");
+  });
+
+  test("there is no shared password to require (#305)", () => {
+    expect(packagedSecretsError({ ...generated, TOPOSCOPE_PASSWORD: "" })).toBeNull();
+    expect(packagedSecretsError({ ...generated, TOPOSCOPE_PASSWORD: DEMO_PASSWORD })).toBeNull();
   });
 
   test("bun run dev may keep localhost demo values", () => {
     expect(
       packagedSecretsError({
         TOPOSCOPE_DEV: "1",
-        TOPOSCOPE_PASSWORD: DEMO_PASSWORD,
         TOPOSCOPE_INGEST_TOKEN: DEMO_INGEST_TOKEN,
         CLICKHOUSE_PASSWORD: DEMO_PASSWORD,
       }),
