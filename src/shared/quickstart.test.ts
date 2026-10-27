@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const root = `${import.meta.dir}/../..`;
-const secrets = ["CLICKHOUSE_PASSWORD", "TOPOSCOPE_PASSWORD", "TOPOSCOPE_INGEST_TOKEN"];
+const secrets = ["CLICKHOUSE_PASSWORD", "TOPOSCOPE_INGEST_TOKEN"];
 
-test("the README quick start writes the three secrets without printing them", async () => {
+test("the README quick start writes the two secrets without printing them", async () => {
   const readme = await Bun.file(`${root}/README.md`).text();
   const block = readme.match(/```bash\n(cp env\.example \.env\n[\s\S]*?docker compose up -d\n)```/)?.[1];
   expect(block).toBeDefined();

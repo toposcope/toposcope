@@ -29,7 +29,8 @@ describe("packaged compose", () => {
     expect(yaml).toContain('"127.0.0.1:4319:4319"');
     expect(yaml).toContain('OTLP_GRPC_PORT: "4319"');
     expect(yaml).not.toMatch(/"(?:0\.0\.0\.0:)?4319:4319"/);
-    expect(yaml).toContain("TOPOSCOPE_PASSWORD: ${TOPOSCOPE_PASSWORD:?");
+    // #305: people sign in; there is no shared password to pass through.
+    expect(yaml).not.toContain("TOPOSCOPE_PASSWORD");
     // Optional: an alert links back only when it is set.
     expect(yaml).toContain("TOPOSCOPE_PUBLIC_URL: ${TOPOSCOPE_PUBLIC_URL:-}");
     // Optional: who watches Toposcope (#179).
@@ -69,7 +70,8 @@ describe("dev compose", () => {
 describe("env example", () => {
   test("is placeholders, not demo values", async () => {
     const env = await Bun.file(`${root}/.env.example`).text();
-    expect(env).toContain("TOPOSCOPE_PASSWORD=");
+    expect(env).not.toMatch(/^TOPOSCOPE_PASSWORD=/m);
+    expect(env).toContain("owner-link");
     expect(env).toContain("TOPOSCOPE_INGEST_TOKEN=");
     expect(env).not.toContain("TOPOSCOPE_PASSWORD=toposcope");
     expect(env).not.toContain("TOPOSCOPE_INGEST_TOKEN=toposcope-ingest");

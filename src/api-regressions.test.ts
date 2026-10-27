@@ -56,7 +56,7 @@ beforeAll(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     }
     const settings = await import(root + "/control/settings.ts");
-    const headers = { authorization: "Basic " + btoa("operator:regression-only"), "content-type": "application/json" };
+    const headers = { authorization: (await import(root + "/control/owner-for-tests.ts")).ownerBearer(), "content-type": "application/json" };
     const sender = { authorization: "Bearer regression-ingest", "content-type": "application/json" };
     const out = {};
     for (const value of ["0", "-1", "0.5", "10.5", "366", "1e400", "-1e400"]) {

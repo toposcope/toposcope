@@ -6,6 +6,10 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+**Changes stored data:** SQLite gains `people`, `person_tokens` and `owner_links`, and `sessions` is replaced, so every 0.8 browser is signed out.
+
+People sign in, and there is no shared password (frames 30c and 32a). `TOPOSCOPE_PASSWORD` is gone from `env.example`, `compose.yml` and the boot checks; if it is still set it is ignored, with one line in the log. The first Owner comes from `./toposcope.sh owner-link <email>` on the host, which prints a link that works once, for an hour, and is never logged or written to disk; the same command gives a locked-out Owner a new password and ends their sessions. While there is no Owner the sign-in page says to run it. A person signs in with their email and a password of 12 characters or more (argon2id); misses slow down, up to 30 seconds, and never lock. Sessions belong to a person, last 30 days and slide forward. HTTP Basic is refused everywhere: a script sends `Authorization: Bearer` with a personal or service account token, and `./toposcope.sh service-token <account> <role>` makes a service account's token on the host. Ingest tokens are unchanged and still read nothing. The header shows the person's initials, with their role and Sign out. [#305](https://github.com/toposcope/toposcope/issues/305)
+
 ## 0.8.0
 
 **Before you upgrade:** 0.8 is the redesign, in one release. The header is words: Home · Hunt · Watch, then Access · Settings, with Fields under Settings and links in Access. The Tokens button and Settings › Shares become Access; the sidebar goes, with saved hunts on Home; the saved search marked Home becomes a pin. Each piece lands as its own paragraph below. Nothing changes in ClickHouse. SQLite gains columns only (saved searches `pinned`; monitors `measure` and `webhook_urls`; tokens `last_used_at`; links `paused`; shares `panels` and `raw_params`), which 0.7.3 leaves unread on a rollback; `upgrade.sh` takes its backup first as usual.

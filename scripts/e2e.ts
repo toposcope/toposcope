@@ -1,3 +1,4 @@
+import { operatorAuth } from "./operator-auth";
 import http2 from "node:http2";
 import net from "node:net";
 import { toOtlpJson } from "../src/ingest/otlp";
@@ -26,11 +27,7 @@ import { guideExamples, guideSection } from "./ingest-guide-examples";
 
 const APP_URL = envValue("TOPOSCOPE_URL") ?? "http://127.0.0.1:8080";
 const INGEST_TOKEN = envValue("TOPOSCOPE_INGEST_TOKEN") ?? "toposcope-ingest";
-const PASSWORD = envValue("TOPOSCOPE_PASSWORD") ?? "toposcope";
 
-function basicAuth(): string {
-  return `Basic ${btoa(`toposcope:${PASSWORD}`)}`;
-}
 
 async function expectOtlpGzipCap(path: string): Promise<void> {
   const res = await fetch(`${APP_URL}${path}`, {
@@ -174,7 +171,7 @@ async function main(): Promise<void> {
   }
   const guideSearch = await fetch(
     `${APP_URL}/api/search?q=${encodeURIComponent(`e1:${guideE1}`)}&range=15m`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   const guideFound = (await guideSearch.json()) as {
     total: number;
@@ -194,7 +191,7 @@ async function main(): Promise<void> {
   }
 
   const throughputRes = await fetch(`${APP_URL}/api/throughput`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!throughputRes.ok) {
     throw new Error(`throughput failed: ${throughputRes.status} ${await throughputRes.text()}`);
@@ -211,7 +208,7 @@ async function main(): Promise<void> {
   }
 
   const systemRes = await fetch(`${APP_URL}/api/system`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!systemRes.ok) {
     throw new Error(`system failed: ${systemRes.status} ${await systemRes.text()}`);
@@ -239,7 +236,7 @@ async function main(): Promise<void> {
     q: `level:error service:e2e ${marker}`,
   });
   const searchRes = await fetch(`${APP_URL}/api/search?${params.toString()}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!searchRes.ok) {
     throw new Error(`search failed: ${searchRes.status} ${await searchRes.text()}`);
@@ -292,7 +289,7 @@ async function main(): Promise<void> {
       split: "host",
       events: "0",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!splitSearchRes.ok) {
     throw new Error(
@@ -317,7 +314,7 @@ async function main(): Promise<void> {
       to,
       q: `level:error OR level:fatal service:e2e "${marker}"`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!booleanRes.ok) {
     throw new Error(
@@ -337,7 +334,7 @@ async function main(): Promise<void> {
       to,
       q: `service:e2e status:5* "${marker}"`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!globRes.ok) {
     throw new Error(`glob search failed: ${globRes.status} ${await globRes.text()}`);
@@ -353,7 +350,7 @@ async function main(): Promise<void> {
       to,
       q: `service:e2e duration_ms:>40 "${marker}"`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!cmpHitRes.ok) {
     throw new Error(
@@ -371,7 +368,7 @@ async function main(): Promise<void> {
       to,
       q: `service:e2e duration_ms:42 "${marker}"`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!cmpEqRes.ok) {
     throw new Error(
@@ -389,7 +386,7 @@ async function main(): Promise<void> {
       to,
       q: `service:e2e duration_ms:>100 "${marker}"`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!cmpMissRes.ok) {
     throw new Error(
@@ -407,7 +404,7 @@ async function main(): Promise<void> {
       to,
       q: `service:e2e duration_ms:">100" "${marker}"`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!cmpQuotedRes.ok) {
     throw new Error(
@@ -428,7 +425,7 @@ async function main(): Promise<void> {
       q: `service:e2e duration_ms:>40 "${marker}"`,
       agg: "p99:duration_ms",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!cmpAggRes.ok) {
     throw new Error(
@@ -455,7 +452,7 @@ async function main(): Promise<void> {
       to,
       q: "level:error OR",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (badRes.status !== 400) {
     throw new Error(`expected 400 for a broken query, got ${badRes.status}`);
@@ -468,7 +465,7 @@ async function main(): Promise<void> {
       q: "service:e2e",
       agg: "p99:duration_ms",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!p99Res.ok) {
     throw new Error(`p99 search failed: ${p99Res.status} ${await p99Res.text()}`);
@@ -491,7 +488,7 @@ async function main(): Promise<void> {
       events: "0",
       agg: "p99:duration_ms",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!noEventsRes.ok) {
     throw new Error(
@@ -519,7 +516,7 @@ async function main(): Promise<void> {
       to,
       q: "service:e2e",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!numericKeysRes.ok) {
     throw new Error(
@@ -541,7 +538,7 @@ async function main(): Promise<void> {
       to,
       q: marker,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!refusedKeysRes.ok) {
     throw new Error(
@@ -562,7 +559,7 @@ async function main(): Promise<void> {
       q: marker,
       agg: "p99:duration_ms",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!filteredRes.ok) {
     throw new Error(
@@ -590,7 +587,7 @@ async function main(): Promise<void> {
       q: `${extraMarker} timeout`,
       agg: "p99:duration_ms",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!timeoutP99Res.ok) {
     throw new Error(
@@ -613,7 +610,7 @@ async function main(): Promise<void> {
       q: `${extraMarker} timeouts`,
       agg: "p99:duration_ms",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!timeoutsP99Res.ok) {
     throw new Error(
@@ -638,7 +635,7 @@ async function main(): Promise<void> {
       agg: "p99:duration_ms",
       events: "0",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!sinceP99Res.ok) {
     throw new Error(
@@ -656,7 +653,7 @@ async function main(): Promise<void> {
       to,
       q: `${extraMarker} "deadline exceeded"`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!phraseRes.ok) {
     throw new Error(
@@ -685,7 +682,7 @@ async function main(): Promise<void> {
       to,
       q: `${extraMarker} hop-7`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!hyphenRes.ok) {
     throw new Error(
@@ -705,7 +702,7 @@ async function main(): Promise<void> {
       to,
       agg: "nope",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (badAgg.status !== 400) {
     throw new Error(`expected 400 for invalid agg, got ${badAgg.status}`);
@@ -772,7 +769,7 @@ async function main(): Promise<void> {
   }
   const marksGet = await fetch(
     `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!marksGet.ok) {
     throw new Error(`marks list failed: ${marksGet.status} ${await marksGet.text()}`);
@@ -795,7 +792,7 @@ async function main(): Promise<void> {
     throw new Error("posted change mark missing id");
   }
   const cutMissing = await fetch(`${APP_URL}/api/search/cut`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (cutMissing.status !== 400) {
     throw new Error(
@@ -807,7 +804,7 @@ async function main(): Promise<void> {
       mark: postedMark.id,
       range: "15m",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!cutGet.ok) {
     throw new Error(`cut search failed: ${cutGet.status} ${await cutGet.text()}`);
@@ -867,7 +864,7 @@ async function main(): Promise<void> {
   }
   const incidentGet = await fetch(
     `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!incidentGet.ok) {
     throw new Error(
@@ -916,7 +913,7 @@ async function main(): Promise<void> {
   }
   const incidentDupGet = await fetch(
     `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!incidentDupGet.ok) {
     throw new Error(
@@ -996,7 +993,7 @@ async function main(): Promise<void> {
   }
   const closedGet = await fetch(
     `${APP_URL}/api/marks?${new URLSearchParams({ range: "15m" }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!closedGet.ok) {
     throw new Error(`closed marks list failed: ${closedGet.status} ${await closedGet.text()}`);
@@ -1090,7 +1087,7 @@ async function main(): Promise<void> {
   }
   await fetch(`${APP_URL}/api/monitors/${encodeURIComponent(`github_${marker}`)}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
 
   const downServer = Bun.serve({
@@ -1126,7 +1123,7 @@ async function main(): Promise<void> {
       range: "15m",
       service: probeService,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!probesGet.ok) {
     throw new Error(`probes list failed: ${probesGet.status} ${await probesGet.text()}`);
@@ -1154,7 +1151,7 @@ async function main(): Promise<void> {
       events: "0",
       metric: "foo-bar",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (badMetric.status !== 400) {
     throw new Error(`expected 400 for invalid metric, got ${badMetric.status}`);
@@ -1172,7 +1169,7 @@ async function main(): Promise<void> {
         events: "0",
         metric: "cpu_seconds",
       }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     if (!metricSearchRes.ok) {
       throw new Error(
@@ -1349,7 +1346,7 @@ async function main(): Promise<void> {
   ] as const) {
     const res = await fetch(
       `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", events: "0", metric: name }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     const body = (await res.json()) as { agg?: { stat: number | null; buckets: Array<{ v: number }> } };
     // The running total's two amounts can fall either side of a bar's edge; the window's sum cannot.
@@ -1369,7 +1366,7 @@ async function main(): Promise<void> {
   ] as const) {
     const res = await fetch(
       `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", events: "0", metric }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     const body = (await res.json()) as {
       agg?: { stat: number | null; kind?: string; reading?: string; metric?: string };
@@ -1387,7 +1384,7 @@ async function main(): Promise<void> {
   // A heatmap (#238): every bucket on the clock, with the p99 as its line and stat.
   const heatRes = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", events: "0", metric: `heatmap:${otlpHistogram}` }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   const heatAgg = ((await heatRes.json()) as { agg?: { stat: number | null; reading?: string; heat?: { le: Array<number | null>; cells: Array<{ n: number[] }> } } }).agg;
   if (
@@ -1400,7 +1397,7 @@ async function main(): Promise<void> {
   }
   const otlpNamesRes = await fetch(
     `${APP_URL}/api/metric-names?${new URLSearchParams({ range: "15m", find: `h${otlpMetricRun}` }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   const otlpNames = (await otlpNamesRes.json()) as { keys: Array<{ k: string; kind: string }> };
   if (otlpNames.keys.length !== 1 || otlpNames.keys[0]?.k !== otlpHistogram || otlpNames.keys[0].kind !== "histogram") {
@@ -1415,7 +1412,7 @@ async function main(): Promise<void> {
       events: "0",
       metric: "cpu_seconds",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!metricWithQRes.ok) {
     throw new Error(
@@ -1440,7 +1437,7 @@ async function main(): Promise<void> {
       metric: "cpu_seconds",
       ml: "service:api",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!labeledMetricRes.ok) {
     throw new Error(
@@ -1466,7 +1463,7 @@ async function main(): Promise<void> {
       to,
       q: "timeout",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!metricNamesRes.ok) {
     throw new Error(
@@ -1484,7 +1481,7 @@ async function main(): Promise<void> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e metric ${marker}`,
@@ -1528,7 +1525,7 @@ async function main(): Promise<void> {
   }
   const metricSavedDel = await fetch(`${APP_URL}/api/saved-searches/${metricSaved.id}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!metricSavedDel.ok) {
     throw new Error(`delete metric saved search failed: ${metricSavedDel.status}`);
@@ -1540,7 +1537,7 @@ async function main(): Promise<void> {
       to,
       q: `service:e2e ${marker}`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!facetsRes.ok) {
     throw new Error(`facets failed: ${facetsRes.status} ${await facetsRes.text()}`);
@@ -1566,7 +1563,7 @@ async function main(): Promise<void> {
       to,
       q: `service:e2e ${marker}`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!attrKeysRes.ok) {
     throw new Error(`attr-keys failed: ${attrKeysRes.status} ${await attrKeysRes.text()}`);
@@ -1585,7 +1582,7 @@ async function main(): Promise<void> {
       q: `service:e2e ${marker}`,
       attrs: "path,status",
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!attrFacetsRes.ok) {
     throw new Error(
@@ -1609,7 +1606,7 @@ async function main(): Promise<void> {
       to,
       q: `path:/e2e ${marker}`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!pathSearch.ok) {
     throw new Error(`path search failed: ${pathSearch.status} ${await pathSearch.text()}`);
@@ -1639,7 +1636,7 @@ async function main(): Promise<void> {
       service: e2eEvent.service,
       ...(e2eEvent.host ? { host: e2eEvent.host } : {}),
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!aroundRes.ok) {
     throw new Error(`surrounding failed: ${aroundRes.status} ${await aroundRes.text()}`);
@@ -1707,7 +1704,7 @@ async function main(): Promise<void> {
         n: "3",
         q: aroundToken,
       }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     if (!aroundTsRes.ok) {
       throw new Error(
@@ -1759,7 +1756,7 @@ async function main(): Promise<void> {
       range: "15m",
       q: marker,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!rangeRes.ok) {
     throw new Error(`range search failed: ${rangeRes.status} ${await rangeRes.text()}`);
@@ -1777,7 +1774,7 @@ async function main(): Promise<void> {
   }
 
   const monthRes = await fetch(`${APP_URL}/api/search?range=30d&events=0`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!monthRes.ok) {
     throw new Error(`range=30d failed: ${monthRes.status} ${await monthRes.text()}`);
@@ -1791,14 +1788,14 @@ async function main(): Promise<void> {
     throw new Error(`range=30d span was ${monthMs}ms`);
   }
   const tooLong = await fetch(`${APP_URL}/api/search?range=366d`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (tooLong.status !== 400) {
     throw new Error(`expected 400 for range=366d, got ${tooLong.status}`);
   }
 
   const badRange = await fetch(`${APP_URL}/api/search?range=nope`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (badRange.status !== 400) {
     throw new Error(`expected 400 for invalid range, got ${badRange.status}`);
@@ -1808,7 +1805,7 @@ async function main(): Promise<void> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e ${marker}`,
@@ -1895,7 +1892,7 @@ async function main(): Promise<void> {
     method: "PUT",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e ${marker} updated`,
@@ -1915,7 +1912,7 @@ async function main(): Promise<void> {
     method: "PUT",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e ${marker} updated`,
@@ -1936,7 +1933,7 @@ async function main(): Promise<void> {
     method: "PUT",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e ${marker} updated`,
@@ -1951,7 +1948,7 @@ async function main(): Promise<void> {
   }
   const testRes = await fetch(`${APP_URL}/api/saved-searches/${saved.id}/test`, {
     method: "POST",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!testRes.ok) {
     throw new Error(`test-query failed: ${testRes.status} ${await testRes.text()}`);
@@ -1997,7 +1994,7 @@ async function main(): Promise<void> {
   }
   const otlpSearch = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: otlpMarker }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!otlpSearch.ok) {
     throw new Error(`otlp search failed: ${otlpSearch.status} ${await otlpSearch.text()}`);
@@ -2041,7 +2038,7 @@ async function main(): Promise<void> {
   }
   const otlpGzipSearch = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: otlpGzipMarker }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!otlpGzipSearch.ok) {
     throw new Error(`otlp gzip search failed: ${otlpGzipSearch.status} ${await otlpGzipSearch.text()}`);
@@ -2213,7 +2210,7 @@ async function main(): Promise<void> {
     }
     const grpcFound = await fetch(
       `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: `service:otlp-e2e ${grpcMarker}` }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     const grpcRows = (await grpcFound.json()) as { total: number };
     if (grpcRows.total !== 1) {
@@ -2257,7 +2254,7 @@ async function main(): Promise<void> {
   for (const q of [mapBodyMarker, `order_ref:${mapBodyMarker}`]) {
     const found = await fetch(
       `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     const body = (await found.json()) as { events?: Array<{ message: string }> };
     if (body.events?.[0]?.message !== `charge failed ${mapBodyMarker}`) {
@@ -2266,7 +2263,7 @@ async function main(): Promise<void> {
   }
   const otlpProtoSearch = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: otlpProtoMarker }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!otlpProtoSearch.ok) {
     throw new Error(
@@ -2299,7 +2296,7 @@ async function main(): Promise<void> {
   for (let i = 0; i < 40; i++) {
     const syslogSearch = await fetch(
       `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: syslogMarker }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     if (!syslogSearch.ok) {
       throw new Error(
@@ -2361,7 +2358,7 @@ async function main(): Promise<void> {
   }
   const otlpBatchSearch = await fetch(
     `${APP_URL}/api/search?q=${encodeURIComponent(`service:${otlpBatchService}`)}&range=15m&events=0`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   const otlpBatchTotal = ((await otlpBatchSearch.json()) as { total?: number }).total;
   if (otlpBatchTotal !== 512) {
@@ -2376,7 +2373,7 @@ async function main(): Promise<void> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({ name: `e2e-token ${marker}` }),
   });
@@ -2401,7 +2398,7 @@ async function main(): Promise<void> {
   }
   const tokenDel = await fetch(`${APP_URL}/api/api-tokens/${createdToken.id}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!tokenDel.ok) {
     throw new Error(`delete token failed: ${tokenDel.status}`);
@@ -2423,7 +2420,7 @@ async function main(): Promise<void> {
   }
 
   const runRes = await fetch(`${APP_URL}/api/saved-searches/${saved.id}/run`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!runRes.ok) {
     throw new Error(`run failed: ${runRes.status} ${await runRes.text()}`);
@@ -2437,7 +2434,7 @@ async function main(): Promise<void> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e alert ${marker}`,
@@ -2461,7 +2458,7 @@ async function main(): Promise<void> {
     method: "PUT",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({ threshold: 0.5 }),
   });
@@ -2476,7 +2473,7 @@ async function main(): Promise<void> {
     method: "PUT",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({ threshold: 2 }),
   });
@@ -2491,7 +2488,7 @@ async function main(): Promise<void> {
     method: "PUT",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       threshold: 2,
@@ -2511,7 +2508,7 @@ async function main(): Promise<void> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e p99 ${marker}`,
@@ -2529,7 +2526,7 @@ async function main(): Promise<void> {
   const p99Saved = (await p99SavedRes.json()) as { id: string };
   const p99TestRes = await fetch(
     `${APP_URL}/api/saved-searches/${p99Saved.id}/test`,
-    { method: "POST", headers: { authorization: basicAuth() } },
+    { method: "POST", headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!p99TestRes.ok) {
     throw new Error(
@@ -2564,7 +2561,7 @@ async function main(): Promise<void> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: basicAuth(),
+      authorization: await operatorAuth("e2e"),
     },
     body: JSON.stringify({
       name: `e2e p99 alert ${marker}`,
@@ -2622,14 +2619,14 @@ async function main(): Promise<void> {
   hook.stop();
   const p99AlertDel = await fetch(`${APP_URL}/api/alert-rules/${p99Alert.id}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!p99AlertDel.ok) {
     throw new Error(`delete p99 alert failed: ${p99AlertDel.status}`);
   }
   const p99SavedDel = await fetch(`${APP_URL}/api/saved-searches/${p99Saved.id}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!p99SavedDel.ok) {
     throw new Error(`delete p99 search failed: ${p99SavedDel.status}`);
@@ -2665,7 +2662,7 @@ async function main(): Promise<void> {
     const oldE1 = withFingerprint("error", oldMessage, {})?.e1 as string | undefined;
     const fsSavedRes = await fetch(`${APP_URL}/api/saved-searches`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: basicAuth() },
+      headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
       body: JSON.stringify({ name: `e2e first seen ${marker}`, query: `service:${svc} level:error`, range: "1h" }),
     });
     if (!fsSavedRes.ok) throw new Error(`first-seen save failed: ${fsSavedRes.status}`);
@@ -2682,13 +2679,13 @@ async function main(): Promise<void> {
     try {
       const badKind = await fetch(`${APP_URL}/api/alert-rules`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: basicAuth() },
+        headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
         body: JSON.stringify({ name: "x", kind: "first_seen", saved_search_id: fsSaved.id, threshold: 0.5, webhook_url: `http://127.0.0.1:${fsHook.port}/hook` }),
       });
       if (badKind.status !== 400) throw new Error(`first-seen threshold 0.5 expected 400, got ${badKind.status}`);
       const fsRuleRes = await fetch(`${APP_URL}/api/alert-rules`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: basicAuth() },
+        headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
         body: JSON.stringify({ name: `e2e new bugs ${marker}`, kind: "first_seen", saved_search_id: fsSaved.id, threshold: 1, webhook_url: `http://127.0.0.1:${fsHook.port}/hook` }),
       });
       if (!fsRuleRes.ok) throw new Error(`first-seen alert failed: ${fsRuleRes.status} ${await fsRuleRes.text()}`);
@@ -2707,16 +2704,16 @@ async function main(): Promise<void> {
       if (fsReceived.some((b) => b.mark?.id === otherMarkId)) throw new Error("a mark whose service the q rules out must not page");
       await evaluateAlerts();
       if (fsReceived.filter((b) => b.mark?.id === fsMarkId).length !== 1) throw new Error("the same e1 must not page again the next minute");
-      const listRes = await fetch(`${APP_URL}/api/alert-rules`, { headers: { authorization: basicAuth() } });
+      const listRes = await fetch(`${APP_URL}/api/alert-rules`, { headers: { authorization: await operatorAuth("e2e") } });
       const listed2 = (await listRes.json()) as { rules: Array<{ id: string; last_mark: { id: string; count: number } | null }> };
       const stored = listed2.rules.find((r) => r.id === fsRule.id);
       if (stored?.last_mark?.id !== fsMarkId || stored.last_mark.count < 1) throw new Error(`first-seen alert should record the mark it paged on, got ${JSON.stringify(stored)}`);
-      const del = await fetch(`${APP_URL}/api/alert-rules/${fsRule.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+      const del = await fetch(`${APP_URL}/api/alert-rules/${fsRule.id}`, { method: "DELETE", headers: { authorization: await operatorAuth("e2e") } });
       if (!del.ok) throw new Error(`delete first-seen alert failed: ${del.status}`);
     } finally {
       fsHook.stop();
     }
-    const fsSavedDel = await fetch(`${APP_URL}/api/saved-searches/${fsSaved.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+    const fsSavedDel = await fetch(`${APP_URL}/api/saved-searches/${fsSaved.id}`, { method: "DELETE", headers: { authorization: await operatorAuth("e2e") } });
     if (!fsSavedDel.ok) throw new Error(`delete first-seen search failed: ${fsSavedDel.status}`);
   }
 
@@ -2725,7 +2722,7 @@ async function main(): Promise<void> {
     const bodyQuery = 'service:e2e -"no such row"';
     const bodySavedRes = await fetch(`${APP_URL}/api/saved-searches`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: basicAuth() },
+      headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
       body: JSON.stringify({ name: `e2e body ${marker}`, query: bodyQuery, range: "1h" }),
     });
     if (!bodySavedRes.ok) throw new Error(`body save failed: ${bodySavedRes.status}`);
@@ -2758,7 +2755,7 @@ async function main(): Promise<void> {
       };
       const tc = await fetch(`${APP_URL}/api/alert-rules/test-call`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: basicAuth() },
+        headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
         body: JSON.stringify(pushover),
       });
       const tcBody = (await tc.json()) as { ok?: boolean; status?: number; reply?: string; sent?: string; error?: string };
@@ -2770,7 +2767,7 @@ async function main(): Promise<void> {
       // #175 (18t): with a resolved body, the test sends that one after the open one.
       const both = await fetch(`${APP_URL}/api/alert-rules/test-call`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: basicAuth() },
+        headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
         body: JSON.stringify({ ...pushover, resolved_body: '{"token": "app", "user": "me", "message": "{{alert.name}} {{state}}"}' }),
       });
       const bothBody = (await both.json()) as { ok?: boolean; resolved?: { ok: boolean; sent: string } | null };
@@ -2779,7 +2776,7 @@ async function main(): Promise<void> {
       }
       const broken = await fetch(`${APP_URL}/api/alert-rules`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: basicAuth() },
+        headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
         body: JSON.stringify({ ...pushover, body_template: '{\n  "token": "app",\n  "user": "me"\n  "message": "{{alert.name}}"\n}' }),
       });
       const brokenBody = (await broken.json()) as { error?: string };
@@ -2788,7 +2785,7 @@ async function main(): Promise<void> {
       }
       const textRuleRes = await fetch(`${APP_URL}/api/alert-rules`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: basicAuth() },
+        headers: { "content-type": "application/json", authorization: await operatorAuth("e2e") },
         body: JSON.stringify({ ...pushover, name: `e2e ntfy ${marker}`, webhook_url: `http://127.0.0.1:${stand.port}/e2e-topic`, body_kind: "text", body_template: "{{alert.name}} fired: {{series}} {{value}} ≥ {{threshold}}" }),
       });
       if (!textRuleRes.ok) throw new Error(`text body alert failed: ${textRuleRes.status} ${await textRuleRes.text()}`);
@@ -2798,23 +2795,23 @@ async function main(): Promise<void> {
       if (toTopic.length !== 1 || !toTopic[0]!.type.startsWith("text/plain") || !/^e2e ntfy \S+ fired: Count \d+ ≥ 1$/.test(toTopic[0]!.body)) {
         throw new Error(`a text body should reach the topic as that text, got ${JSON.stringify(toTopic)}`);
       }
-      await fetch(`${APP_URL}/api/alert-rules/${textRule.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+      await fetch(`${APP_URL}/api/alert-rules/${textRule.id}`, { method: "DELETE", headers: { authorization: await operatorAuth("e2e") } });
     } finally {
       stand.stop();
     }
-    await fetch(`${APP_URL}/api/saved-searches/${bodySaved.id}`, { method: "DELETE", headers: { authorization: basicAuth() } });
+    await fetch(`${APP_URL}/api/saved-searches/${bodySaved.id}`, { method: "DELETE", headers: { authorization: await operatorAuth("e2e") } });
   }
 
   const blocked = await fetch(`${APP_URL}/api/saved-searches/${saved.id}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (blocked.status !== 409) {
     throw new Error(`expected 409 deleting referenced search, got ${blocked.status}`);
   }
   const alertDel = await fetch(`${APP_URL}/api/alert-rules/${alert.id}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!alertDel.ok) {
     throw new Error(`delete alert failed: ${alertDel.status}`);
@@ -2822,14 +2819,14 @@ async function main(): Promise<void> {
 
   const delRes = await fetch(`${APP_URL}/api/saved-searches/${saved.id}`, {
     method: "DELETE",
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!delRes.ok) {
     throw new Error(`delete failed: ${delRes.status} ${await delRes.text()}`);
   }
 
   const fieldsPrevRes = await fetch(`${APP_URL}/api/fields?range=1h`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!fieldsPrevRes.ok) {
     throw new Error(`fields get failed: ${fieldsPrevRes.status} ${await fieldsPrevRes.text()}`);
@@ -2853,7 +2850,7 @@ async function main(): Promise<void> {
       method: "PUT",
       headers: {
         "content-type": "application/json",
-        authorization: basicAuth(),
+        authorization: await operatorAuth("e2e"),
       },
       body: JSON.stringify({ roles, links }),
     });
@@ -2918,7 +2915,7 @@ async function main(): Promise<void> {
     const deadline = Date.now() + 10_000;
     while (Date.now() < deadline) {
       const res = await fetch(`${APP_URL}/api/fields?range=1h`, {
-        headers: { authorization: basicAuth() },
+        headers: { authorization: await operatorAuth("e2e") },
       });
       if (!res.ok) {
         throw new Error(`fields poll failed: ${res.status} ${await res.text()}`);
@@ -2965,7 +2962,7 @@ async function main(): Promise<void> {
     }
 
     const keysWaveRes = await fetch(`${APP_URL}/api/fields?range=1h&wave=keys`, {
-      headers: { authorization: basicAuth() },
+      headers: { authorization: await operatorAuth("e2e") },
     });
     if (!keysWaveRes.ok) {
       throw new Error(`fields wave=keys failed: ${keysWaveRes.status}`);
@@ -2984,7 +2981,7 @@ async function main(): Promise<void> {
         to,
         key: lookupKey,
       }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     if (!valuesRes.ok) {
       throw new Error(`attr-values lookup failed: ${valuesRes.status}`);
@@ -3003,7 +3000,7 @@ async function main(): Promise<void> {
         metric: "cpu_seconds",
         ml: `source:${hop}`,
       }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     if (!overlayRes.ok) {
       throw new Error(`graph overlay search failed: ${overlayRes.status}`);
@@ -3037,7 +3034,7 @@ async function main(): Promise<void> {
   const feedService = `${marker}-feed`;
   const badFeed = await fetch(`${APP_URL}/api/feeds`, {
     method: "POST",
-    headers: { authorization: basicAuth(), "content-type": "application/json" },
+    headers: { authorization: await operatorAuth("e2e"), "content-type": "application/json" },
     body: JSON.stringify({ q: 'level:error message:"unclosed' }),
   });
   if (badFeed.status !== 400) {
@@ -3045,7 +3042,7 @@ async function main(): Promise<void> {
   }
   const feedRes = await fetch(`${APP_URL}/api/feeds`, {
     method: "POST",
-    headers: { authorization: basicAuth(), "content-type": "application/json" },
+    headers: { authorization: await operatorAuth("e2e"), "content-type": "application/json" },
     body: JSON.stringify({ q: `service:${feedService} level:error` }),
   });
   if (feedRes.status !== 201) {
@@ -3055,7 +3052,7 @@ async function main(): Promise<void> {
   type FeedReply = { through: number; settled: number; rows: Array<{ message: string; seq: number }>; arrived: string | null };
   const readFeed = async (after: number): Promise<FeedReply> => {
     const res = await fetch(`${APP_URL}/api/feeds/${feed.id}?after=${after}&limit=100`, {
-      headers: { authorization: basicAuth() },
+      headers: { authorization: await operatorAuth("e2e") },
     });
     if (!res.ok) {
       throw new Error(`feed read failed: ${res.status} ${await res.text()}`);
@@ -3137,7 +3134,7 @@ async function main(): Promise<void> {
         to,
         q: `request_id:${followHex}`,
       }).toString()}`,
-      { headers: { authorization: basicAuth() } },
+      { headers: { authorization: await operatorAuth("e2e") } },
     );
     if (!res.ok) {
       throw new Error(`follow search failed: ${res.status} ${await res.text()}`);
@@ -3180,7 +3177,7 @@ async function main(): Promise<void> {
     throw new Error(`follow span without auth: expected 401, got ${followSpanAnon.status}`);
   }
   const followSpanRes = await fetch(`${APP_URL}/api/search/follow-span?${followSpanParams}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!followSpanRes.ok) {
     throw new Error(`follow span failed: ${followSpanRes.status} ${await followSpanRes.text()}`);
@@ -3293,7 +3290,7 @@ async function main(): Promise<void> {
   }
 
   const treeGet = await fetch(`${APP_URL}/api/traces/${traceId}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!treeGet.ok) {
     throw new Error(`trace get failed: ${treeGet.status} ${await treeGet.text()}`);
@@ -3323,7 +3320,7 @@ async function main(): Promise<void> {
   }
 
   const protoGet = await fetch(`${APP_URL}/api/traces/${protoTraceId}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!protoGet.ok) {
     throw new Error(`protobuf trace get failed: ${protoGet.status} ${await protoGet.text()}`);
@@ -3334,7 +3331,7 @@ async function main(): Promise<void> {
   }
 
   const emptyTrace = await fetch(`${APP_URL}/api/traces/${"e".repeat(32)}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (emptyTrace.status !== 200) {
     throw new Error(`empty trace must be 200, got ${emptyTrace.status}`);
@@ -3345,7 +3342,7 @@ async function main(): Promise<void> {
   }
 
   const junkTrace = await fetch(`${APP_URL}/api/traces/req-foo`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (junkTrace.status !== 400) {
     throw new Error(`junk trace id must be 400, got ${junkTrace.status}`);
@@ -3383,7 +3380,7 @@ async function main(): Promise<void> {
     );
   }
   const spanBatchGet = await fetch(`${APP_URL}/api/traces/${batchTraceId}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   const spanBatchTotal = ((await spanBatchGet.json()) as { total?: number }).total;
   if (spanBatchTotal !== 512) {
@@ -3457,7 +3454,7 @@ async function main(): Promise<void> {
 
   const wpGet = await fetch(
     `${APP_URL}/api/profiles?${new URLSearchParams({ trace_id: traceId, span_id: wpSpan })}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!wpGet.ok) {
     throw new Error(`profile get failed: ${wpGet.status} ${await wpGet.text()}`);
@@ -3483,7 +3480,7 @@ async function main(): Promise<void> {
 
   const mysqlGet = await fetch(
     `${APP_URL}/api/profiles?${new URLSearchParams({ trace_id: traceId, span_id: mysqlSpan })}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (mysqlGet.status !== 200) {
     throw new Error(`empty profile must be 200, got ${mysqlGet.status}`);
@@ -3531,7 +3528,7 @@ async function main(): Promise<void> {
       trace_id: protoTraceId,
       span_id: protoSpan.span_id,
     })}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   const protoProfJson = (await protoProfGet.json()) as {
     stacks: Array<{ frames: string[] }>;
@@ -3572,7 +3569,7 @@ async function main(): Promise<void> {
   }
   const liveSearch = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: live.marker }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!liveSearch.ok) {
     throw new Error(`live search failed: ${liveSearch.status} ${await liveSearch.text()}`);
@@ -3583,7 +3580,7 @@ async function main(): Promise<void> {
   }
   const versionSearch = await fetch(
     `${APP_URL}/api/search?${new URLSearchParams({ range: "15m", q: "version:v0.9" }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!versionSearch.ok) {
     throw new Error(`version search failed: ${versionSearch.status} ${await versionSearch.text()}`);
@@ -3597,7 +3594,7 @@ async function main(): Promise<void> {
       range: "15m",
       q: `e1:${fakeFramedFingerprint()}`,
     }).toString()}`,
-    { headers: { authorization: basicAuth() } },
+    { headers: { authorization: await operatorAuth("e2e") } },
   );
   if (!fingerprintSearch.ok) {
     throw new Error(
@@ -3613,7 +3610,7 @@ async function main(): Promise<void> {
     throw new Error("load:live posted no kept traces");
   }
   const keptGet = await fetch(`${APP_URL}/api/traces/${keptId}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (!keptGet.ok) {
     throw new Error(`live kept trace failed: ${keptGet.status} ${await keptGet.text()}`);
@@ -3624,7 +3621,7 @@ async function main(): Promise<void> {
   }
   const orphanId = live.sampledOut[0] ?? "d".repeat(32);
   const orphanGet = await fetch(`${APP_URL}/api/traces/${orphanId}`, {
-    headers: { authorization: basicAuth() },
+    headers: { authorization: await operatorAuth("e2e") },
   });
   if (orphanGet.status !== 200) {
     throw new Error(`live orphan must be 200, got ${orphanGet.status}`);
@@ -3634,26 +3631,33 @@ async function main(): Promise<void> {
     throw new Error("live sampled-out id must be empty");
   }
 
-  // #102: a browser with no Basic prompt signs in on a page; scripts keep Basic.
+  // #305: people sign in; there is no shared password and no Basic. The host command makes an
+  // owner link (here, through the same SQLite); the link makes an Owner, who signs in by email.
   {
-    const page = await fetch(`${APP_URL}/`, { headers: { accept: "text/html" } });
-    const pageText = await page.text();
-    if (page.status !== 401 || page.headers.get("www-authenticate") || !pageText.includes("Signing in to")) {
-      throw new Error(`a page without the password should be the sign-in page, got ${page.status} ${page.headers.get("www-authenticate")}`);
-    }
+    const { createOwnerLink, liveOwnerCount } = await import("../src/control/people");
+    const basic = await fetch(`${APP_URL}/api/saved-searches`, { headers: { authorization: `Basic ${btoa("toposcope:anything")}` } });
+    if (basic.status !== 401 || basic.headers.get("www-authenticate")) throw new Error(`Basic should be refused without a challenge, got ${basic.status}`);
     const bare = await fetch(`${APP_URL}/api/saved-searches`);
-    if (bare.status !== 401 || !bare.headers.get("www-authenticate")?.startsWith('Basic realm="toposcope')) {
-      throw new Error(`an API call without credentials should keep the Basic challenge, got ${bare.status}`);
+    if (bare.status !== 401 || bare.headers.get("www-authenticate")) throw new Error(`an API call without credentials should be 401 with no challenge, got ${bare.status}`);
+    const email = `e2e-${Date.now().toString(36)}@example.test`;
+    const password = `e2e password ${Date.now()}`;
+    if (liveOwnerCount() === 0) {
+      const page = await fetch(`${APP_URL}/`, { headers: { accept: "text/html" } });
+      if (page.status !== 401 || !(await page.text()).includes("owner-link")) throw new Error(`with no Owner the page should say how to make one, got ${page.status}`);
     }
-    const wrong = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: `${PASSWORD}-not` }) });
+    const link = createOwnerLink(email);
+    const made = await fetch(`${APP_URL}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: link.token, name: "E2E", password }) });
+    if (!made.ok) throw new Error(`the owner link should make an Owner, got ${made.status} ${await made.text()}`);
+    const again = await fetch(`${APP_URL}/api/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: link.token, name: "E2E", password }) });
+    if (again.status !== 410) throw new Error(`an owner link works once, got ${again.status}`);
+    const wrong = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password: `${password}-not` }) });
     if (wrong.status !== 401) throw new Error(`a wrong password should be refused, got ${wrong.status}`);
-    const right = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password: PASSWORD }) });
+    const right = await fetch(`${APP_URL}/api/sign-in`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
     const setCookie = right.headers.get("set-cookie") ?? "";
     if (!right.ok || !/HttpOnly; SameSite=Strict/.test(setCookie)) throw new Error(`sign-in should set a cookie, got ${right.status} ${setCookie}`);
     const cookie = setCookie.split(";")[0]!;
-    const withCookie = await fetch(`${APP_URL}/api/instance`, { headers: { cookie } });
-    const info = (await withCookie.json()) as { session?: { kind: string } };
-    if (!withCookie.ok || info.session?.kind !== "cookie") throw new Error(`the cookie should sign the browser in, got ${withCookie.status} ${JSON.stringify(info)}`);
+    const me = (await (await fetch(`${APP_URL}/api/me`, { headers: { cookie } })).json()) as { role?: string; email?: string };
+    if (me.role !== "owner" || me.email !== email) throw new Error(`the cookie should be the Owner, got ${JSON.stringify(me)}`);
     await fetch(`${APP_URL}/api/sign-out`, { method: "POST", headers: { cookie } });
     const after = await fetch(`${APP_URL}/api/saved-searches`, { headers: { cookie } });
     if (after.status !== 401 || after.headers.get("www-authenticate")) throw new Error(`after Sign out the cookie should be refused without the challenge, got ${after.status}`);
@@ -3664,7 +3668,7 @@ async function main(): Promise<void> {
   // a clock it is handed); a fail opens, a warn does not, Nagios's 3 changes nothing; the keyed
   // URL's /fail opens; results are rows in Search; 501 results and an unknown key are refused.
   {
-    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const auth = { "content-type": "application/json", authorization: await operatorAuth("e2e") };
     const bearer = { "content-type": "application/json", authorization: `Bearer ${INGEST_TOKEN}` };
     const pushName = `e2e-push-${marker}`;
     const nagiosName = `e2e-nagios-${marker}`;
@@ -3835,7 +3839,7 @@ async function main(): Promise<void> {
   // process with a clock it is handed; the series is read from ClickHouse at the real time.
   {
     const svc = `e2emon${marker}`;
-    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const auth = { "content-type": "application/json", authorization: await operatorAuth("e2e") };
     // Rows 14m45s old: in a 15m window now, out of it within a few minutes.
     const rowTs = new Date(Date.now() - (14 * 60 + 45) * 1000).toISOString();
     const monIngest = await fetch(`${APP_URL}/api/ingest`, {
@@ -3943,7 +3947,7 @@ async function main(): Promise<void> {
   // tell (Toposcope not up one whole window, a short linked source); p99 fewer than is refused.
   {
     const host = `e2equiet${marker}`;
-    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const auth = { "content-type": "application/json", authorization: await operatorAuth("e2e") };
     const ingestLine = async (ts: string, n: number) => {
       const res = await fetch(`${APP_URL}/api/ingest`, {
         method: "POST",
@@ -4085,7 +4089,7 @@ async function main(): Promise<void> {
   // give this run TOPOSCOPE_E2E_CERTS=<dir>. Without them that one check reads the certificate
   // as not trusted, which must fail too.
   {
-    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const auth = { "content-type": "application/json", authorization: await operatorAuth("e2e") };
     const certDir = envValue("TOPOSCOPE_E2E_CERTS");
     const certs = certDir ? readCerts(certDir) : makeCerts(20);
     const stands = startStands(certs, { slowMs: 600 });
@@ -4268,7 +4272,7 @@ async function main(): Promise<void> {
   // for #178, the app trusts the stand-ins' CA only when started with NODE_EXTRA_CA_CERTS and this
   // run is given TOPOSCOPE_E2E_CERTS; without them a certificate reads as not trusted, still read.
   {
-    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const auth = { "content-type": "application/json", authorization: await operatorAuth("e2e") };
     const certDir = envValue("TOPOSCOPE_E2E_CERTS");
     const certs = certDir ? readCerts(certDir) : makeCerts(20);
     const stands = await startNetStands(certs);
@@ -4368,7 +4372,7 @@ async function main(): Promise<void> {
 
   // Shares (#225): one scope of numbers, read with the share's secret and nothing else.
   {
-    const auth = { "content-type": "application/json", authorization: basicAuth() };
+    const auth = { "content-type": "application/json", authorization: await operatorAuth("e2e") };
     const svc = `share-${marker}`;
     const ts = new Date().toISOString();
     const points = [
@@ -4458,7 +4462,7 @@ async function main(): Promise<void> {
         throw new Error(`a share secret must not open ${path}, got ${res.status}`);
       }
     }
-    for (const headers of [{ authorization: basicAuth() }, { authorization: `Bearer ${INGEST_TOKEN}` }, {} as Record<string, string>]) {
+    for (const headers of [{ authorization: await operatorAuth("e2e") }, { authorization: `Bearer ${INGEST_TOKEN}` }, {} as Record<string, string>]) {
       const res = await read(`/share/v1/names?${window}`, headers);
       if (res.status !== 401 || res.headers.get("www-authenticate")) {
         throw new Error(`only a share secret opens /share/v1, with no Basic prompt; got ${res.status}`);

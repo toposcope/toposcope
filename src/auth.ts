@@ -5,7 +5,8 @@ import { noteAccessUsed } from "./access/use";
 /** The `.env` ingest token has no record; Access lists it under this name. */
 export const envIngestTokenName = "TOPOSCOPE_INGEST_TOKEN";
 import { envValue } from "./shared/env";
-import { instanceId, instanceName } from "./control/instance";
+import { instanceId } from "./control/instance";
+import { isPersonTokenShape, sessionPerson, tokenActor, type Actor } from "./control/people";
 
 function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -18,10 +19,6 @@ function safeEqual(a: string, b: string): boolean {
 
 export function ingestToken(): string | undefined {
   return envValue("TOPOSCOPE_INGEST_TOKEN");
-}
-
-export function basicPassword(): string | undefined {
-  return envValue("TOPOSCOPE_PASSWORD");
 }
 
 export function checkBearer(header: string | undefined): boolean {
@@ -58,48 +55,29 @@ function bearerToken(header: string | undefined): string | undefined {
   return presented.length > 0 ? presented : undefined;
 }
 
-export function checkBasic(header: string | undefined): boolean {
-  const password = basicPassword();
-  if (!password || !header) {
-    return false;
+/**
+ * A request's person (#305): a browser session cookie, or `Authorization: Bearer` with a personal
+ * or service account token. There is no shared password and no Basic auth.
+ */
+export function resolveActor(authorization: string | undefined, cookieHeader: string | undefined, now = Date.now()): Actor | null {
+  const presented = bearerToken(authorization);
+  if (presented && isPersonTokenShape(presented)) {
+    return tokenActor(presented, now);
   }
-  const prefix = "Basic ";
-  if (!header.startsWith(prefix)) {
-    return false;
+  const session = sessionPerson(readCookie(cookieHeader, sessionCookieName()), now);
+  if (!session) {
+    return null;
   }
-  let decoded: string;
-  try {
-    decoded = atob(header.slice(prefix.length));
-  } catch {
-    return false;
-  }
-  const colon = decoded.indexOf(":");
-  if (colon < 0) {
-    return false;
-  }
-  return safeEqual(decoded.slice(colon + 1), password);
+  return { person: session.person, via: "session", token: null, role: session.person.role };
 }
 
-/** `toposcope · <name>`, so two instances on one machine ask in their own words (#102). */
-export function basicRealm(): string {
-  let name: string | null = null;
-  try {
-    name = instanceName();
-  } catch {
-    name = null;
-  }
-  // A header value is Latin-1, and the realm is quoted.
-  const safe = (name ?? "").replace(/[^\x20-\x7e\xa0-\xff]|["\\]/g, "").trim();
-  return safe ? `toposcope · ${safe}` : "toposcope";
+/** The session's end, for `GET /api/instance`, or null when the request came with a token. */
+export function sessionEnd(cookieHeader: string | undefined, now = Date.now()): number | null {
+  return sessionPerson(readCookie(cookieHeader, sessionCookieName()), now)?.expiresAt ?? null;
 }
 
-export function unauthorizedHeaders(): Record<string, string> {
-  return { "WWW-Authenticate": `Basic realm="${basicRealm()}"` };
-}
-
-export function passwordMatches(presented: string): boolean {
-  const password = basicPassword();
-  return Boolean(password) && safeEqual(presented, password!);
+export function isBasic(authorization: string | undefined): boolean {
+  return Boolean(authorization?.startsWith("Basic "));
 }
 
 /** One cookie per instance: two on one host (different ports) do not sign each other out. */

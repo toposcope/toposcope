@@ -3,16 +3,23 @@ import { Hono, type Context } from "hono";
 import { serveStatic } from "hono/bun";
 import { startAlertCron } from "./alerts/cron";
 import { startHttpMonitors } from "./alerts/http-cron";
+import { checkBearer, isBasic, readCookie, resolveActor, sessionCookieHeader, sessionCookieName, sessionEnd } from "./auth";
+import { actorOf, setActor } from "./actor-context";
 import {
-  checkBasic,
-  passwordMatches,
-  readCookie,
-  sessionCookieHeader,
-  sessionCookieName,
-  basicPassword,
-  checkBearer,
-  unauthorizedHeaders,
-} from "./auth";
+  checkPassword,
+  clearSignInFailures,
+  createSession,
+  endSession,
+  initials,
+  liveOwnerCount,
+  looksLikeEmail,
+  meBody,
+  noteSignInFailure,
+  ownerLinkFor,
+  sessionMs,
+  signInWaitMs,
+  useOwnerLink,
+} from "./control/people";
 import { getDb, getHealth } from "./control";
 import {
   createAlertRule,
@@ -37,8 +44,7 @@ import { version as runningVersionForSignIn } from "./shared/version";
 import { monitorPreviewRoute } from "./alerts/preview";
 import { fingerprintSeenRoute } from "./query/fingerprint-seen";
 import { savedSearchUrl } from "./ui/search-url";
-import { createSession, endSession, sessionExpiry, sessionMs } from "./control/sessions";
-import { safeNext, signInPageHtml } from "./sign-in-page";
+import { ownerSetupPageHtml, safeNext, signInPageHtml } from "./sign-in-page";
 import {
   createApiToken,
   deleteApiToken,
@@ -95,11 +101,14 @@ import { shareNamesRoute, shareReadCache, shareSeriesRoute, sharePanelRoute, sha
 import { embedAssetRoute, embedJsRoute, embedPageRoute } from "./share/embed-page";
 import { noFraming } from "./share/embed";
 import { startShareUse } from "./share/use";
-import { noteAccessRefused, startAccessUse } from "./access/use";
+import { noteAccessRefused, noteAccessUsed, startAccessUse } from "./access/use";
 import { accessRoute } from "./access/list";
 import { linkPageRoute, updateLinkRoute } from "./links/page";
 
 requirePackagedSecrets();
+if (process.env.TOPOSCOPE_PASSWORD) {
+  console.warn("TOPOSCOPE_PASSWORD is ignored since 0.9: there is no shared password. Make an Owner with ./toposcope.sh owner-link <email>, then delete it from .env.");
+}
 requirePublicUrl();
 requireWatchdogUrl();
 
@@ -153,6 +162,22 @@ function overHttps(c: Context): boolean {
   return c.req.header("x-forwarded-proto")?.split(",")[0]?.trim() === "https" || c.req.url.startsWith("https:");
 }
 
+let seenOriginAt = 0;
+/** The address browsers open, so `owner-link` on the host prints a link that opens here. */
+function noteSeenOrigin(c: Context): void {
+  const now = Date.now();
+  if (now - seenOriginAt < 60_000) {
+    return;
+  }
+  seenOriginAt = now;
+  const value = `${overHttps(c) ? "https" : "http"}://${openedAddress(c)}`;
+  try {
+    getDb().query("INSERT INTO settings (key, value) VALUES ('seen_origin', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(value);
+  } catch {
+    // not worth failing a page over
+  }
+}
+
 /** A browser asking for a page, not a script or the app's own API calls. */
 function wantsPage(c: Context): boolean {
   const path = c.req.path;
@@ -165,7 +190,7 @@ function wantsPage(c: Context): boolean {
   );
 }
 
-function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?: 200 | 401 }): Response {
+function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?: 200 | 401 | 429; email?: string; wait?: number }): Response {
   const url = new URL(c.req.url);
   const signedOut = url.searchParams.get("signed_out") === "1";
   if (url.searchParams.has("signed_out")) {
@@ -179,31 +204,104 @@ function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?:
       wrong: opts.wrong,
       signedOut,
       version: runningVersionForSignIn,
+      email: opts.email,
+      waitSeconds: opts.wait,
+      noOwner: liveOwnerCount() === 0,
     }),
     opts.status ?? 401,
   );
 }
 
-// #102: a browser that does not show the Basic prompt signs in on a page instead.
+// #305: a person signs in with their email and password; there is no shared password.
 app.post("/api/sign-in", async (c) => {
   const json = (c.req.header("content-type") ?? "").includes("application/json");
+  let email = "";
   let password = "";
   let nextPath = "/";
   try {
     const body = json ? ((await c.req.json()) as Record<string, unknown>) : await c.req.parseBody();
+    email = typeof body.email === "string" ? body.email.trim() : "";
     password = typeof body.password === "string" ? body.password : "";
     nextPath = safeNext(typeof body.next === "string" ? body.next : "/");
   } catch {
-    return c.json({ error: "Expected a password" }, 400);
+    return c.json({ error: "Expected an email and a password" }, 400);
   }
-  if (!basicPassword() || !passwordMatches(password)) {
-    // A short pause, so guessing is slow.
-    await Bun.sleep(750);
-    return json ? c.json({ error: "Wrong password" }, 401) : signInPage(c, { wrong: true, next: nextPath });
+  if (!looksLikeEmail(email) || !password) {
+    return json ? c.json({ error: "Expected an email and a password" }, 400) : signInPage(c, { wrong: true, next: nextPath, email });
   }
-  const session = createSession(basicPassword()!);
+  const wait = signInWaitMs(email);
+  if (wait > 0) {
+    const seconds = Math.ceil(wait / 1000);
+    return json
+      ? c.json({ error: `Too many misses: try again in ${seconds} seconds`, retry_after: seconds }, 429, { "retry-after": String(seconds) })
+      : signInPage(c, { next: nextPath, email, wait: seconds, status: 429 });
+  }
+  const person = await checkPassword(email, password);
+  if (!person) {
+    noteSignInFailure(email);
+    noteAccessRefused("person", email.toLowerCase(), "wrong email or password", c.req.path);
+    return json ? c.json({ error: "Wrong email or password" }, 401) : signInPage(c, { wrong: true, next: nextPath, email });
+  }
+  clearSignInFailures(email);
+  noteAccessUsed("person", person.email ?? person.name);
+  const session = createSession(person);
   c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
   return json ? c.json({ ok: true, expires_at: session.expiresAt }) : c.redirect(nextPath, 303);
+});
+
+// 32a: the page an owner link opens. The link is printed by `toposcope.sh owner-link <email>` on
+// the host and nowhere else; it makes the first Owner, or gives an Owner a new password.
+app.get("/setup/:token", (c) => {
+  const link = ownerLinkFor(c.req.param("token"));
+  return c.html(
+    ownerSetupPageHtml({
+      name: instanceName(),
+      address: openedAddress(c),
+      token: c.req.param("token"),
+      email: link?.email ?? null,
+      resets: Boolean(link?.person),
+      minutesLeft: link ? Math.max(1, Math.round((link.expires_at - Date.now()) / 60_000)) : 0,
+    }),
+    link ? 200 : 410,
+  );
+});
+
+app.post("/api/setup", async (c) => {
+  const json = (c.req.header("content-type") ?? "").includes("application/json");
+  let token = "";
+  let name = "";
+  let password = "";
+  try {
+    const body = json ? ((await c.req.json()) as Record<string, unknown>) : await c.req.parseBody();
+    token = typeof body.token === "string" ? body.token : "";
+    name = typeof body.name === "string" ? body.name : "";
+    password = typeof body.password === "string" ? body.password : "";
+  } catch {
+    return c.json({ error: "Expected the link's token, a name and a password" }, 400);
+  }
+  const link = ownerLinkFor(token);
+  const done = await useOwnerLink(token, { name, password });
+  if ("error" in done) {
+    if (json) {
+      return c.json({ error: done.error }, link ? 400 : 410);
+    }
+    return c.html(
+      ownerSetupPageHtml({
+        name: instanceName(),
+        address: openedAddress(c),
+        token,
+        email: link?.email ?? null,
+        resets: Boolean(link?.person),
+        minutesLeft: link ? Math.max(1, Math.round((link.expires_at - Date.now()) / 60_000)) : 0,
+        error: done.error,
+        typedName: name,
+      }),
+      link ? 400 : 410,
+    );
+  }
+  const session = createSession(done.person);
+  c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor(sessionMs / 1000), overHttps(c)));
+  return json ? c.json({ ok: true, id: done.person.id }) : c.redirect("/", 303);
 });
 
 app.use("/*", async (c, next) => {
@@ -234,6 +332,10 @@ app.use("/*", async (c, next) => {
   if (c.req.path === "/embed" || c.req.path === "/embed.js" || c.req.path.startsWith("/embed/assets/")) {
     return next();
   }
+  // 32a: the owner link's page and form answer before anyone can sign in.
+  if (c.req.path.startsWith("/setup/") || (c.req.path === "/api/setup" && c.req.method === "POST")) {
+    return next();
+  }
   const header = c.req.header("authorization");
   const ingest =
     (c.req.path === "/api/ingest" ||
@@ -246,33 +348,39 @@ app.use("/*", async (c, next) => {
       c.req.path === "/v1/profiles" ||
       c.req.path === "/v1development/profiles") &&
     c.req.method === "POST";
-  // A note mark is the one write the operator makes from the app (#259): the session may post one.
+  // A note mark is the one write a person makes from the app (#259): a session may post one.
   const operatorMark = c.req.path === "/v1/marks" && c.req.method === "POST";
-  const cookie = ingest && !operatorMark ? undefined : readCookie(c.req.header("cookie"), sessionCookieName());
-  const allowed = ingest
-    ? checkBearer(header) || checkBasic(header) || (operatorMark && sessionExpiry(cookie, basicPassword()) !== null)
-    : checkBasic(header) || sessionExpiry(cookie, basicPassword()) !== null;
-  if (!allowed && ingest && header?.startsWith("Bearer ")) {
+  if (isBasic(header)) {
+    return c.json({ error: "Basic auth is gone in 0.9: send Authorization: Bearer with a personal or service account token from Access" }, 401);
+  }
+  if (ingest && checkBearer(header)) {
+    return next();
+  }
+  const actor = !ingest || operatorMark ? resolveActor(header, c.req.header("cookie")) : null;
+  if (actor) {
+    setActor(c, actor);
+    return next();
+  }
+  if (ingest && header?.startsWith("Bearer ")) {
     noteAccessRefused("token", "unknown", "a token that matches none", c.req.path);
   }
-  if (!allowed) {
-    // A sender holds an ingest token and nothing else. On a wrong path under the
-    // ingest prefixes its token is good and its path is not, so say that.
-    const sendsHere =
-      c.req.path.startsWith("/v1/") || c.req.path.startsWith("/v1development/");
-    if (sendsHere && checkBearer(header)) {
-      return c.json({ error: "Not found" }, 404);
-    }
-    if (wantsPage(c)) {
-      return signInPage(c, {});
-    }
-    // A request with a cookie came from a signed-in browser: never the Basic prompt on top.
-    if (cookie) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-    return c.json({ error: "Unauthorized" }, 401, unauthorizedHeaders());
+  // A sender holds an ingest token and nothing else. On a wrong path under the
+  // ingest prefixes its token is good and its path is not, so say that.
+  const sendsHere = c.req.path.startsWith("/v1/") || c.req.path.startsWith("/v1development/");
+  if (sendsHere && checkBearer(header)) {
+    return c.json({ error: "Not found" }, 404);
   }
-  return next();
+  if (!ingest && checkBearer(header)) {
+    return c.json({ error: "An ingest token writes in and reads nothing: send a personal or service account token" }, 401);
+  }
+  if (wantsPage(c)) {
+    noteSeenOrigin(c);
+    return signInPage(c, {});
+  }
+  if (ingest) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  return c.json({ error: "Sign in, or send a personal or service account token" }, 401);
 });
 
 app.post("/api/sign-out", (c) => {
@@ -281,14 +389,21 @@ app.post("/api/sign-out", (c) => {
   return c.json({ ok: true });
 });
 
+app.get("/api/me", (c) => {
+  const actor = actorOf(c);
+  if (!actor) {
+    return c.json({ error: "Sign in" }, 401);
+  }
+  return c.json({ ...meBody(actor), initials: initials(actor.person.name) });
+});
+
 app.get("/api/instance", (c) => {
-  const cookie = readCookie(c.req.header("cookie"), sessionCookieName());
-  const expiresAt = checkBasic(c.req.header("authorization")) ? null : sessionExpiry(cookie, basicPassword());
+  const expiresAt = actorOf(c)?.via === "token" ? null : sessionEnd(c.req.header("cookie"));
   return c.json({
     id: instanceId(),
     name: instanceName(),
     address: openedAddress(c),
-    session: expiresAt === null ? { kind: "basic" } : { kind: "cookie", expires_at: expiresAt },
+    session: expiresAt === null ? { kind: "token" } : { kind: "cookie", expires_at: expiresAt },
   });
 });
 

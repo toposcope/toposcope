@@ -17,12 +17,8 @@ export function packagedSecretsError(
   if (allowDemoSecrets(env)) {
     return null;
   }
-  const password = env.TOPOSCOPE_PASSWORD ?? "";
   const token = env.TOPOSCOPE_INGEST_TOKEN ?? "";
   const clickhouse = env.CLICKHOUSE_PASSWORD ?? "";
-  if (!password || demoPasswords.has(password)) {
-    return "TOPOSCOPE_PASSWORD is missing or is the demo value; set a generated secret in .env";
-  }
   if (!token || demoTokens.has(token)) {
     return "TOPOSCOPE_INGEST_TOKEN is missing or is the demo value; set a generated secret in .env";
   }

@@ -34,6 +34,7 @@ import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/ins
 import { marksHuntWindow, monitorHuntRange, pushHuntRange, sourceOf, watchCounts, type WatchFilter, type WatchRange } from "./watch";
 import { monitorQuery } from "../shared/push";
 import { SettingsPage } from "@/components/settings-page";
+import { MeMenu, type Me } from "@/components/me-menu";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
 import { VersionFooter } from "@/components/version-footer";
@@ -595,6 +596,12 @@ export function App() {
     if (res.ok) {
       setInstance((await res.json()) as InstanceInfo);
     }
+  }, []);
+  const [me, setMe] = useState<Me | null>(null);
+  useEffect(() => {
+    void fetch("/api/me")
+      .then(async (res) => (res.ok ? setMe((await res.json()) as Me) : undefined))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -3940,6 +3947,7 @@ export function App() {
           >
             Settings
           </Button>
+          {me ? <MeMenu me={me} onSignOut={() => void signOut()} /> : null}
         </div>
       </header>
       {view === "settings" ? (

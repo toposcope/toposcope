@@ -2,9 +2,6 @@ export {};
 
 process.env.TOPOSCOPE_DEV = "1";
 
-if (!process.env.TOPOSCOPE_PASSWORD) {
-  process.env.TOPOSCOPE_PASSWORD = "toposcope";
-}
 if (!process.env.TOPOSCOPE_INGEST_TOKEN) {
   process.env.TOPOSCOPE_INGEST_TOKEN = "toposcope-ingest";
 }

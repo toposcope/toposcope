@@ -9,7 +9,13 @@ VERSION="0.8.0"
 IMAGE="ghcr.io/toposcope/toposcope:$VERSION"
 # The release files, checked against its SHA256SUMS. Tests point this at a stand-in on loopback.
 RELEASE="${TOPOSCOPE_RELEASE_URL:-https://github.com/toposcope/toposcope/releases/download/v$VERSION}"
-ROOT="${TOPOSCOPE_DIR:-$HOME/.toposcope}"
+# A packaged install runs the release's copy beside its compose.yml and .env; the skill keeps its own.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+if [ -z "${TOPOSCOPE_DIR:-}" ] && [ -f "$HERE/compose.yml" ] && [ -f "$HERE/.env" ]; then
+  ROOT="$HERE"
+else
+  ROOT="${TOPOSCOPE_DIR:-$HOME/.toposcope}"
+fi
 # The packaged install publishes 8080. Tests point this at a stub on loopback.
 PORT="${TOPOSCOPE_PORT:-8080}"
 URL="http://127.0.0.1:$PORT"
@@ -151,7 +157,7 @@ cmd_up() {
       umask 077
       while IFS= read -r line || [ -n "$line" ]; do
         case "$line" in
-          CLICKHOUSE_PASSWORD= | TOPOSCOPE_PASSWORD= | TOPOSCOPE_INGEST_TOKEN=)
+          CLICKHOUSE_PASSWORD= | TOPOSCOPE_INGEST_TOKEN=)
             printf '%s%s\n' "$line" "$(secret)"
             ;;
           *) printf '%s\n' "$line" ;;
@@ -159,7 +165,7 @@ cmd_up() {
       done <"$ROOT/env.example" >"$ROOT/.env"
     )
     local key
-    for key in CLICKHOUSE_PASSWORD TOPOSCOPE_PASSWORD TOPOSCOPE_INGEST_TOKEN; do
+    for key in CLICKHOUSE_PASSWORD TOPOSCOPE_INGEST_TOKEN; do
       [ -n "$(env_value "$key")" ] || die "$key was not written to $ROOT/.env: the release's env.example has changed. Nothing was started."
     done
   fi
@@ -247,6 +253,43 @@ cmd_app_env() {
   printf ', and TOPOSCOPE_URL and TOPOSCOPE_INGEST_TOKEN for a direct post. Values are not shown. It holds the ingest token: keep it out of git.\n'
 }
 
+# A read-only service account token for `check`, made once on the host and kept in a file,
+# never printed (#305: there is no shared password to read with).
+read_token() {
+  local file="$ROOT/skill.token"
+  if [ ! -s "$file" ]; then
+    need docker
+    [ -f "$ROOT/compose.yml" ] || die "No instance files in $ROOT. Run: up"
+    (
+      umask 077
+      compose exec -T app bun run src/cli.ts service-token toposcope-skill viewer skill >"$file.part" 2>"$ROOT/token.log"
+    ) || die "Could not make a read token for the skill. See $ROOT/token.log."
+    mv "$file.part" "$file"
+  fi
+  tr -d '\r\n' <"$file"
+}
+
+# The first Owner, or a locked-out Owner's way back in (32a): a link that works once, for an hour.
+# It is printed here and nowhere else: not in the app's log, not on disk.
+cmd_owner_link() {
+  local email="${1:-}"
+  printf '%s' "$email" | grep -Eq '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$' ||
+    die "Usage: owner-link <email>"
+  need docker
+  [ -f "$ROOT/compose.yml" ] || die "No instance files in $ROOT. Run this beside the install's compose.yml, or set TOPOSCOPE_DIR."
+  compose exec -T app bun run src/cli.ts owner-link "$email"
+}
+
+# A service account's token, for a script that is not a person (32f). Printed once, here.
+cmd_service_token() {
+  local account="${1:-}" role="${2:-}" name="${3:-host}"
+  printf '%s' "$account" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' && printf '%s' "$role" | grep -Eq '^(viewer|operator|owner)$' ||
+    die "Usage: service-token <account> <viewer|operator|owner> [token name]"
+  need docker
+  [ -f "$ROOT/compose.yml" ] || die "No instance files in $ROOT. Run this beside the install's compose.yml, or set TOPOSCOPE_DIR."
+  compose exec -T app bun run src/cli.ts service-token "$account" "$role" "$name"
+}
+
 cmd_marker() {
   printf 'tscheck%s\n' "$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')"
 }
@@ -257,16 +300,15 @@ cmd_check() {
   printf '%s' "$word" | grep -Eq '^tscheck[0-9a-f]{12}$' ||
     die "Usage: check <word>, with the word that marker printed."
 
-  local password body="" waited=0 wait="${TOPOSCOPE_CHECK_WAIT:-30}"
-  password="$(env_value TOPOSCOPE_PASSWORD)"
-  [ -n "$password" ] || die "No operator password in $ROOT/.env."
+  local token body="" waited=0 wait="${TOPOSCOPE_CHECK_WAIT:-30}"
+  token="$(read_token)"
 
   # The word is the error's whole message, so it is in the log line or in
   # exception.message. Exporters batch, so a row can take a few seconds.
   # Every read names its window.
   local q="$word OR exception.message:$word"
   while :; do
-    body="$(printf 'user = "toposcope:%s"\n' "$password" |
+    body="$(printf 'header = "authorization: Bearer %s"\n' "$token" |
       curl -fsS -m 10 -K - "$URL/api/search?q=$word%20OR%20exception.message:$word&range=15m")" ||
       die "Could not read from the instance at $URL. Run: status"
     if printf '%s' "$body" | grep -q "$word"; then
@@ -387,9 +429,11 @@ case "${1:-}" in
   stop) cmd_stop ;;
   app-env) shift; cmd_app_env "$@" ;;
   marker) cmd_marker ;;
+  owner-link) shift; cmd_owner_link "$@" ;;
+  service-token) shift; cmd_service_token "$@" ;;
   # `check <word>` reads a test error back; `check <monitor> -- <command>` sends a result.
   check) shift; if [ "${2:-}" = "--" ]; then cmd_check_monitor "$@"; else cmd_check "$@"; fi ;;
   *)
-    die "Usage: toposcope.sh cost | up | status | stop | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
+    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
     ;;
 esac

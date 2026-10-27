@@ -24,11 +24,11 @@ Check them against the release's sums before you use them (on macOS, `shasum -a 
 sha256sum -c SHA256SUMS
 ```
 
-Create the environment file, write three independent secrets into it without printing them, and start the stack:
+Create the environment file, write two independent secrets into it without printing them, and start the stack:
 
 ```bash
 cp env.example .env
-for key in CLICKHOUSE_PASSWORD TOPOSCOPE_PASSWORD TOPOSCOPE_INGEST_TOKEN; do
+for key in CLICKHOUSE_PASSWORD TOPOSCOPE_INGEST_TOKEN; do
   sed -i.bak "s/^${key}=\$/${key}=$(openssl rand -hex 32)/" .env
 done
 rm .env.bak
@@ -51,7 +51,13 @@ set +a
 VECTOR_DATA_DIR=vector-data vector -c vector.yaml
 ```
 
-Open [http://127.0.0.1:8080](http://127.0.0.1:8080) and sign in with `TOPOSCOPE_PASSWORD` from `.env`; a browser stays signed in for 30 days. Scripts and `curl -u` keep HTTP Basic Auth, with any username. Name the instance in Settings so two of them can be told apart. This shared operator password also permits writes, including retention changes. Search for `service:smoke` and save the search: it becomes a card on **Home**, and **Watch this** on the hunt makes a monitor from it. **Access** lists every way in or out of the instance, and [What leaves this instance](docs/access.md) says the same in prose.
+Make the first Owner. There is no shared password: this prints a link that works once, for an hour, and nowhere else:
+
+```bash
+./toposcope.sh owner-link you@example.com
+```
+
+Open the link, choose your name and a password, and you are signed in; a browser stays signed in for 30 days. Name the instance in Settings so two of them can be told apart. A script sends `Authorization: Bearer` with a personal or service account token; HTTP Basic is not accepted. Search for `service:smoke` and save the search: it becomes a card on **Home**, and **Watch this** on the hunt makes a monitor from it. **Access** lists every way in or out of the instance, and [What leaves this instance](docs/access.md) says the same in prose.
 
 The deployment pins `ghcr.io/toposcope/toposcope:0.8.0`; it never uses `:latest`. Anonymous image pulls need no registry login.
 

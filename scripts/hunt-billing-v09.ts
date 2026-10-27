@@ -1,3 +1,4 @@
+import { operatorAuth } from "./operator-auth";
 import { writeFile } from "node:fs/promises";
 import {
   buildHuntSlice,
@@ -17,7 +18,6 @@ import { formatChangeMarkLabel } from "../src/shared/change-mark";
 
 const APP_URL = envValue("TOPOSCOPE_URL") ?? "http://127.0.0.1:8080";
 const INGEST_TOKEN = envValue("TOPOSCOPE_INGEST_TOKEN") ?? "toposcope-ingest";
-const PASSWORD = envValue("TOPOSCOPE_PASSWORD") ?? "toposcope";
 const UI_URL = process.env.TOPOSCOPE_UI_URL ?? "http://127.0.0.1:5173";
 const MANIFEST =
   process.env.TOPOSCOPE_HUNT_JSON ?? "/tmp/toposcope-hunt.json";
@@ -25,9 +25,6 @@ const BATCH = 500;
 
 const loadEnv = { url: APP_URL, token: INGEST_TOKEN };
 
-function basicAuth(): string {
-  return `Basic ${btoa(`toposcope:${PASSWORD}`)}`;
-}
 
 async function waitForHealth(): Promise<void> {
   for (let i = 0; i < 60; i++) {
@@ -55,7 +52,7 @@ async function waitForQueryTotal(
   let last = -1;
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    const res = await fetch(url, { headers: { authorization: basicAuth() } });
+    const res = await fetch(url, { headers: { authorization: await operatorAuth("hunt") } });
     if (!res.ok) {
       throw new Error(`search ${q} failed: ${res.status} ${await res.text()}`);
     }
@@ -83,7 +80,7 @@ async function waitForProbeOverlay(
   let last = "";
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    const res = await fetch(url, { headers: { authorization: basicAuth() } });
+    const res = await fetch(url, { headers: { authorization: await operatorAuth("hunt") } });
     if (!res.ok) {
       throw new Error(`probe overlay failed: ${res.status} ${await res.text()}`);
     }

@@ -347,6 +347,10 @@ cmd_continue() {
   swap_files "$from" "$to"
   if start_and_wait "$ROOT/compose.yml" "$to"; then
     say "Toposcope $to is up. Ingest was stopped for $(($(date +%s) - stopped))s.${backup:+ Backup: $backup}"
+    # 0.9 has people instead of one shared password (#305): nobody signs in until an Owner is made.
+    case "$from" in
+      0.[0-8].*) say "From 0.9 there is no shared password. Make the first Owner: ./toposcope.sh owner-link <email>, then open the link it prints within the hour. Delete TOPOSCOPE_PASSWORD from .env; scripts need a personal or service account token." ;;
+    esac
     mark "Toposcope $from → $to" "$backup"
     return 0
   fi

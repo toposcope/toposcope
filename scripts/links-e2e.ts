@@ -1,17 +1,17 @@
 // Two instances linked both ways (#136): run against two apps on one machine, each with its own
-// ClickHouse database and SQLite file, sharing the operator password.
+// ClickHouse database and SQLite file. TOPOSCOPE_TOKEN_A and TOPOSCOPE_TOKEN_B are an Owner token on
+// each (`toposcope.sh service-token`, or `bun run src/cli.ts service-token e2e owner` with its SQLITE_PATH).
 //   LINKS_A_URL=http://127.0.0.1:28080 LINKS_B_URL=http://127.0.0.1:28085 bun run scripts/links-e2e.ts
 const A = process.env.LINKS_A_URL ?? "http://127.0.0.1:28080";
 const B = process.env.LINKS_B_URL ?? "http://127.0.0.1:28085";
-const password = process.env.TOPOSCOPE_PASSWORD ?? "";
 const ingestToken = process.env.TOPOSCOPE_INGEST_TOKEN ?? "";
 const tag = Date.now().toString(36);
-const basic = `Basic ${btoa(`toposcope:${password}`)}`;
+const tokens: Record<string, string> = { [A]: process.env.TOPOSCOPE_TOKEN_A ?? "", [B]: process.env.TOPOSCOPE_TOKEN_B ?? "" };
 
 async function call(base: string, path: string, init: RequestInit & { json?: unknown } = {}): Promise<{ status: number; body: any }> {
   const res = await fetch(`${base}${path}`, {
     ...init,
-    headers: { authorization: basic, "content-type": "application/json", ...(init.headers ?? {}) },
+    headers: { authorization: `Bearer ${tokens[base] ?? ""}`, "content-type": "application/json", ...(init.headers ?? {}) },
     body: init.json === undefined ? init.body : JSON.stringify(init.json),
   });
   const text = await res.text();

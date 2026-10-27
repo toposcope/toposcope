@@ -1,3 +1,4 @@
+import { migratePeople } from "./people";
 import { mkdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { pingClickHouse } from "../shared/clickhouse";
@@ -220,13 +221,7 @@ export function migrateControlDb(db: Database): void {
       value TEXT NOT NULL
     );
   `);
-  db.run(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      expires_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-  `);
+  migratePeople(db);
   db.run(`
     CREATE TABLE IF NOT EXISTS field_roles (
       key TEXT PRIMARY KEY,
