@@ -9,7 +9,7 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 | | |
 | --- | --- |
 | **Today** | [0.9.0](https://github.com/toposcope/toposcope/releases/tag/v0.9.0) — people with three roles, two-step and OIDC sign-in, what changed since a mark, the hunt on one clock, fingerprints, change marks, compare, OpenTelemetry logs, traces and metrics, links between instances, monitors, shares with named panels, charts, Access |
-| **v0.x** | What changed after a deploy, on one clock, for a team: people with three fixed roles, two-step sign-in and OIDC in 0.9 |
+| **v0.x** | What changed after a deploy, on one clock, for a team: people with three fixed roles, two-step sign-in and OIDC in 0.9; every kind of data from many instances in one in 0.10 |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
 ## Today — 0.9.0
@@ -54,6 +54,10 @@ These need a drawing or an explicit choice before they are work:
 ## People and roles
 
 One shared password fitted one operator on one box. It stopped fitting once links joined instances, shares put panels on other teams' pages, and teams wanted to hand someone a read-only view without handing them the password. So from 0.9 Toposcope has people, in the open-source edition: named users invited by a one-time link and revoked one by one; three fixed roles, Owner, Operator and Viewer; two-step sign-in with an authenticator app; sign-in with one OIDC provider, on purpose, so single sign-on is not a paid extra; and every write records who made it. There is no shared password any more: the first Owner comes from a setup link, scripts use personal tokens or a service account's, and machines that send logs keep ingest tokens.
+
+## Links carry every kind
+
+A link copies log rows and change marks, and nothing else, so an instance that collects from small nodes holds their logs but not their traces, panels, profiles or monitors, and a pulled log line offers View trace for spans that never arrived. Someone who links a node expects everything on it to arrive. So from 0.10 a link carries every kind: logs, marks, spans, metric points and histogram buckets, profiles, and monitor results with their definitions, shown read-only under the source's name. A key carries a set of kinds, all ticked, and the scope runs on each kind by the fields it has: a scope that names a field a kind lacks sends none of that kind, and says so. Every kind takes its place from one arrival sequence, so a link keeps one position and one *behind*; rows travel in ClickHouse's own format, compressed; a pulled row can be pulled on, edge to region to centre, and is never stored twice. Each kind keeps the tells Search already draws for logs: a short source is a floor, a hatch or a named partial, on a waterfall, a metric panel and a profile too. A metric point carries its kind and unit, so one name sent in two units is two lines, never summed, and every monitor names its service and host. 0.10 does not keep 0.9's links or keys: both sides of a link run the same version, and a link between different versions stops and says which side to upgrade.
 
 ## Will not
 
