@@ -3960,6 +3960,7 @@ export function App() {
         />
       ) : view === "home" ? (
         <HomeView
+          meId={me?.id ?? null}
           saved={saved}
           monitors={alerts}
           instanceName={instance?.name ?? null}

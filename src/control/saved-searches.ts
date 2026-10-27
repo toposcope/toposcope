@@ -1,3 +1,4 @@
+import { actorName, stampCreated, stampUpdated, type ActorName } from "./actors";
 import { actorOf } from "../actor-context";
 import { roleAtLeast, type Actor } from "./people";
 import type { Context } from "hono";
@@ -44,6 +45,8 @@ export type SavedSearch = {
   owner_id: string | null;
   /** On everyone's Home, or only its owner's (#306). */
   shared: boolean;
+  /** Who saved it, by name (#307): "saved by Maya K." */
+  saved_by?: ActorName | null;
 };
 
 type SavedRow = {
@@ -280,11 +283,11 @@ export function visibleSaved(actor: Actor | null): SavedSearch[] {
   const pins = actor ? pinsOf(actor.person.id) : new Set<string>();
   return allSaved()
     .filter((s) => canSee(s, actor))
-    .map((s) => ({ ...s, pinned: pins.has(s.id) }));
+    .map((s) => ({ ...s, pinned: pins.has(s.id), saved_by: actorName(s.owner_id) }));
 }
 
 function withPin(saved: SavedSearch, actor: Actor | null): SavedSearch {
-  return { ...saved, pinned: actor ? pinsOf(actor.person.id).has(saved.id) : false };
+  return { ...saved, pinned: actor ? pinsOf(actor.person.id).has(saved.id) : false, saved_by: actorName(saved.owner_id) };
 }
 
 function setPin(personId: string, savedId: string, pinned: boolean): void {
@@ -361,6 +364,7 @@ export async function createSavedSearch(c: Context): Promise<Response> {
   if (actor && search.pinned) {
     setPin(actor.person.id, search.id, true);
   }
+  stampCreated("saved_searches", search.id);
   return c.json(search, 201);
 }
 
@@ -434,6 +438,9 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
     for (const row of open) {
       closeByEdit(row.id, Date.now());
     }
+  }
+  if (!onlyPin) {
+    stampUpdated("saved_searches", id);
   }
   const updated = getSaved(id);
   return c.json(updated ? withPin(updated, actor) : null);

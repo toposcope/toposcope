@@ -166,7 +166,7 @@ describe("retention HTTP validation", () => {
     const result = results[`valid-${days}`]!;
     expect(result.status).toBe(200);
     expect(result.stored).toBe(days);
-    expect(result.body).toEqual({ retention_days: days, metrics_retention_days: null, instance_name: null, default_webhook_url: null });
+    expect(result.body).toMatchObject({ retention_days: days, metrics_retention_days: null, instance_name: null, default_webhook_url: null });
     expect(result.commands?.filter((sql) => sql.startsWith("ALTER TABLE"))).toHaveLength(12);
     expect(result.commands?.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain(`INTERVAL ${days} DAY`);
   });
@@ -227,7 +227,7 @@ describe("API not found", () => {
   });
   test("known API still returns its JSON result", () => {
     expect(results.known!.status).toBe(200);
-    expect(results.known!.body).toEqual({ retention_days: 365, metrics_retention_days: null, instance_name: null, default_webhook_url: null });
+    expect(results.known!.body).toMatchObject({ retention_days: 365, metrics_retention_days: null, instance_name: null, default_webhook_url: null });
   });
   test("unknown POST returns the same JSON 404", () => {
     expect(results.post!.status).toBe(404);

@@ -247,6 +247,8 @@ export type NetMonitorView = {
 
 /** A monitor as `GET /api/monitors` lists it. */
 export type MonitorView = AlertRule & {
+  /** Who made it (#307). */
+  made_by?: { id: string; name: string; revoked: boolean; kind: string } | null;
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   open: MonitorStretch | null;
   /** A fewer-than monitor's newest matching line; null when none in a year, absent when unread. */

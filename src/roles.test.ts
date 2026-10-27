@@ -76,6 +76,11 @@ beforeAll(async () => {
     await go("readonlyWrites", "readonly", "/api/settings", "PUT", { retention_days: 30 });
     await go("readonlyReads", "readonly", "/api/settings");
     await go("me", "readonly", "/api/me");
+    // #307: who made what.
+    await go("madeMonitor", "operator", "/api/alert-rules", "POST", { name: "errors up", saved_search_id: team.id, threshold: 5, webhook_url: "https://hooks.example.com/x" });
+    await go("monitorsAfter", "viewer", "/api/monitors");
+    await go("settingsAfter", "viewer", "/api/settings");
+    await go("savedAfter", "viewer", "/api/saved-searches");
     console.log(JSON.stringify(out));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
@@ -161,6 +166,15 @@ describe("the role table on every route (#306, 30d)", () => {
     expect(r.operatorOutside!.body.error).toContain("does not cover the panels");
     expect(r.operatorWidens!.status).toBe(403);
     expect(r.operatorWidens!.body.error).toContain("expires_at takes an Owner");
+  });
+
+  test("every write records its actor, by name (#307)", () => {
+    expect(r.madeMonitor!.status).toBe(201);
+    const made = r.monitorsAfter!.body.monitors.find((m: { name: string }) => m.name === "errors up");
+    expect(made.made_by).toMatchObject({ name: "o", kind: "service" });
+    expect(r.settingsAfter!.body.changed_by.retention_days.by).toMatchObject({ name: "w" });
+    const team = r.savedAfter!.body.searches.find((s: { name: string }) => s.name === "errors on billing");
+    expect(team.saved_by).toMatchObject({ name: "o" });
   });
 
   test("a read-only token acts as a Viewer whatever its person's role", () => {

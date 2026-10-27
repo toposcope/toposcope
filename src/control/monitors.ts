@@ -1,3 +1,4 @@
+import { actorName } from "./actors";
 import type { Context } from "hono";
 import { lastLineAt } from "../alerts/last-line";
 import {
@@ -44,6 +45,7 @@ const watchRanges = new Set(["24h", "7d", "30d"]);
 const maxWindowMs = 366 * 24 * 60 * 60_000;
 
 export type MonitorView = AlertRule & {
+  made_by?: import("./actors").ActorName | null;
   /** The saved search it reads, as Watch names it. */
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   /** Its open stretch, with the calls sent for it so far. */
@@ -76,6 +78,8 @@ async function view(rule: AlertRule): Promise<MonitorView> {
       : null,
     open: open ? { ...open, calls: monitorHistory(rule.id, 1)[0]?.calls ?? [] } : null,
     ...(lastLine !== undefined ? { last_line_at: lastLine } : {}),
+    // #307: who made it, for Watch's row and a Viewer's "ask an Operator".
+    made_by: actorName(rule.created_by),
   };
 }
 

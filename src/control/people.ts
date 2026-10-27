@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import type { Database } from "bun:sqlite";
 import { getDb } from "./index";
+import { adoptUnstamped } from "./actors";
 
 /**
  * People (#305, frames 30a–30e, 32a): who signs in, and the tokens that act for them. There is no
@@ -251,6 +252,7 @@ export async function useOwnerLink(
   ).run(id, name, link.email, passwordHash, now);
   if (first) {
     adoptUnowned(id, db);
+    adoptUnstamped(id, db);
   }
   return { person: personById(id, db)! };
 }

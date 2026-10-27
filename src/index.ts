@@ -3,8 +3,9 @@ import { Hono, type Context } from "hono";
 import { serveStatic } from "hono/bun";
 import { startAlertCron } from "./alerts/cron";
 import { startHttpMonitors } from "./alerts/http-cron";
-import { checkBearer, isBasic, readCookie, resolveActor, sessionCookieHeader, sessionCookieName, sessionEnd } from "./auth";
+import { checkBearer, ingestTokenName, isBasic, readCookie, resolveActor, sessionCookieHeader, sessionCookieName, sessionEnd } from "./auth";
 import { actorOf, setActor } from "./actor-context";
+import { runAs } from "./control/actors";
 import { actionFor, actionRole, refusalWords } from "./control/roles";
 import {
   checkPassword,
@@ -355,8 +356,9 @@ app.use("/*", async (c, next) => {
   if (isBasic(header)) {
     return c.json({ error: "Basic auth is gone in 0.9: send Authorization: Bearer with a personal or service account token from Access" }, 401);
   }
-  if (ingest && checkBearer(header)) {
-    return next();
+  const sender = ingest ? ingestTokenName(header) : null;
+  if (sender) {
+    return runAs(`token:${sender}`, () => next());
   }
   const actor = !ingest || operatorMark ? resolveActor(header, c.req.header("cookie")) : null;
   if (actor) {
@@ -368,7 +370,7 @@ app.use("/*", async (c, next) => {
       noteAccessRefused("person", actor.person.email ?? actor.person.name, words, c.req.path);
       return c.json({ error: words, need: actionRole[action] }, 403);
     }
-    return next();
+    return runAs(actor.person.id, () => next());
   }
   if (ingest && header?.startsWith("Bearer ")) {
     noteAccessRefused("token", "unknown", "a token that matches none", c.req.path);

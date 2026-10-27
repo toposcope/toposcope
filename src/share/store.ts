@@ -1,3 +1,4 @@
+import { stampCreated, stampUpdated } from "../control/actors";
 import type { Database } from "bun:sqlite";
 import { randomBytes } from "node:crypto";
 import { getDb } from "../control/index";
@@ -149,15 +150,17 @@ export function putShare(
       now,
       existing.id,
     );
+    stampUpdated("shares", existing.id, db);
     return { share: shareByName(input.name, db)!, secret: null, created: false };
   }
   const secret = newShareSecret();
+  const newId = crypto.randomUUID();
   db.transaction(() => {
     if (existing) {
       db.query("DELETE FROM shares WHERE id = ?").run(existing.id);
     }
     db.query(`INSERT INTO shares (${columns}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)`).run(
-      crypto.randomUUID(),
+      newId,
       input.name,
       storedScope(input.scope),
       JSON.stringify(input.limits),
@@ -170,11 +173,16 @@ export function putShare(
       now,
     );
   })();
+  stampCreated("shares", newId, db);
   return { share: shareByName(input.name, db)!, secret, created: true };
 }
 
 /** Revoke at once: the row stays, so the list can say it was revoked and when. */
 export function revokeShare(name: string, now = Date.now(), db: Database = getDb()): ShareRecord | null {
   db.query("UPDATE shares SET revoked_at = ?, updated_at = ? WHERE name = ? AND revoked_at IS NULL").run(now, now, name);
-  return shareByName(name, db);
+  const revoked = shareByName(name, db);
+  if (revoked) {
+    stampUpdated("shares", revoked.id, db);
+  }
+  return revoked;
 }
