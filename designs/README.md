@@ -108,6 +108,11 @@ Approved — Access is the one door, 2026-10-26. Drawn on the Design canvas "Top
 - [Toposcope Access One Door.dc.html](Toposcope%20Access%20One%20Door.dc.html) — frames 29a–29c: the header without Links (Home · Hunt · Watch, then Access · Settings); Access grouped as Tokens, Links and Shares, each with one line on what it does, plain kinds (token, we copy from, copies from us, key not used yet, share), the filter All · Tokens · Links · Shares, Paste a link key on the Links group; a link's page under an Access › name crumb with Access lit and the direction as a chip; Let someone in with cards named Token, Link and Share, each opening with what it does, the link's direction as They copy from us / We copy from them, and the key pasted at Access › Paste a link key
 - [access-one-door/](access-one-door/) — crops for issues (29a–29c)
 
+Approved — users and roles, 2026-10-27. Drawn on the Design canvas "Toposcope reimagined" as round 6; Ian approved the boards as drawn. Not in a cut yet; drafts in `private/issues/v0.9-users/`.
+
+- [Toposcope Users And Roles.dc.html](Toposcope%20Users%20And%20Roles.dc.html) — frames 30a–30e (open source): People as the fourth group in Access (role in words, how they sign in, last seen, invited by, revoke; the `.env` owner first), Invite someone (an email or a name, three role cards, a one-time link shown once, no mail server), sign in with a provider or a password and from an invite link, Settings › Sign-in and roles (one OIDC provider, passwords, the `.env` password switch, the table of what each role may do), Home as a Viewer (no Access or Settings, Watch read-only, every card and monitor names who made it) · frames 31a–31c (Enterprise): Directory (SAML, SCIM, directory groups to roles), a role with a data fence in bar syntax and its preview, the audit log (every read, write, export and refusal with its actor; queries, never results)
+- [users-and-roles/](users-and-roles/) — crops for issues (30a–31c)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.
