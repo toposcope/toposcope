@@ -28,7 +28,8 @@ export function HuntCrumb(props: {
   onSaveAs: () => void;
   onPin: (() => void) | null;
   onDelete: (() => void) | null;
-  onWatch: () => void;
+  /** Null for a Viewer, who makes no monitors (30e). */
+  onWatch: (() => void) | null;
   onShare: () => void;
 }) {
   const state = props.name ? (props.dirty ? "saved · edited" : "saved") : "not saved";
@@ -93,9 +94,11 @@ export function HuntCrumb(props: {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <Button type="button" size="sm" variant="outline" disabled={props.board} onClick={props.onWatch}>
-        Watch this
-      </Button>
+      {props.onWatch ? (
+        <Button type="button" size="sm" variant="outline" disabled={props.board} onClick={props.onWatch}>
+          Watch this
+        </Button>
+      ) : null}
       <Button type="button" size="sm" variant="outline" onClick={props.onShare}>
         Share
       </Button>

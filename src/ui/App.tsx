@@ -599,11 +599,36 @@ export function App() {
     }
   }, []);
   const [me, setMe] = useState<Me | null>(null);
-  useEffect(() => {
-    void fetch("/api/me")
-      .then(async (res) => (res.ok ? setMe((await res.json()) as Me) : undefined))
-      .catch(() => undefined);
+  const loadMe = useCallback(async () => {
+    const res = await fetch("/api/me");
+    if (res.ok) {
+      setMe((await res.json()) as Me);
+    }
   }, []);
+  useEffect(() => {
+    void loadMe().catch(() => undefined);
+  }, [loadMe]);
+  // #311: what the page offers follows the role; until /api/me answers, offer nothing a Viewer could not do.
+  const isViewer = me === null || me.role === "viewer";
+  const isOwner = me?.role === "owner";
+  // A refusal (a stale tab, a role changed meanwhile) says who may, and the page redraws for the role.
+  useEffect(() => {
+    const base = window.fetch.bind(window);
+    window.fetch = Object.assign(async (...args: Parameters<typeof fetch>) => {
+      const res = await base(...args);
+      if (res.status === 403) {
+        const body = (await res.clone().json().catch(() => null)) as { error?: string; need?: string } | null;
+        if (body?.need && body.error) {
+          toast.error(body.error);
+          void loadMe().catch(() => undefined);
+        }
+      }
+      return res;
+    }, { preconnect: window.fetch.preconnect }) as typeof fetch;
+    return () => {
+      window.fetch = base as typeof fetch;
+    };
+  }, [loadMe]);
 
   useEffect(() => {
     void loadInstance().catch(() => undefined);
@@ -3930,24 +3955,29 @@ export function App() {
               ) : null}
             </button>
           ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant={accessLit(view) ? "secondary" : "ghost"}
-            aria-current={accessLit(view) ? "page" : undefined}
-            onClick={() => setView("access")}
-          >
-            Access
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={settingsLit(view) ? "secondary" : "ghost"}
-            aria-current={settingsLit(view) ? "page" : undefined}
-            onClick={() => setView("settings")}
-          >
-            Settings
-          </Button>
+          {/* 30e: a Viewer has no Access or Settings in the header. */}
+          {isViewer ? null : (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant={accessLit(view) ? "secondary" : "ghost"}
+                aria-current={accessLit(view) ? "page" : undefined}
+                onClick={() => setView("access")}
+              >
+                Access
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={settingsLit(view) ? "secondary" : "ghost"}
+                aria-current={settingsLit(view) ? "page" : undefined}
+                onClick={() => setView("settings")}
+              >
+                Settings
+              </Button>
+            </>
+          )}
           {me ? <MeMenu me={me} onSignOut={() => void signOut()} /> : null}
         </div>
       </header>
@@ -3959,10 +3989,13 @@ export function App() {
           onSignOut={() => void signOut()}
           onOpenFields={() => setView("fields")}
           onOpenSignIn={() => setView("sign-in")}
+          readOnly={!isOwner}
+          owners={me?.owners ?? []}
         />
       ) : view === "home" ? (
         <HomeView
           meId={me?.id ?? null}
+          readOnly={isViewer}
           saved={saved}
           monitors={alerts}
           instanceName={instance?.name ?? null}
@@ -4031,7 +4064,7 @@ export function App() {
       ) : view === "watch" ? (
         <WatchView
           data={monitors}
-          canCreate
+          canCreate={!isViewer}
           range={watchRange}
           onRange={(next) => {
             watchRangeRef.current = next;
@@ -4245,7 +4278,7 @@ export function App() {
               }}
               onPin={activeSaved ? () => void togglePinned(activeSaved) : null}
               onDelete={activeSaved ? () => void onDelete(activeSaved.id) : null}
-              onWatch={() => setWatchThisOpen(true)}
+              onWatch={isViewer ? null : () => setWatchThisOpen(true)}
               onShare={() => void copyLink()}
             />
             <form
@@ -4772,6 +4805,7 @@ export function App() {
                 />
               ) : marksPanelOpen && !isSurr ? (
                 <MarksPanel
+                  canWrite={!isViewer}
                   fromMs={windowFromMs}
                   toMs={windowToMs}
                   selectedId={compare?.mark.id ?? null}

@@ -744,9 +744,13 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               </Seg>
             ))}
           </span>
-          <Button type="button" size="sm" onClick={onNew}>
-            New monitor
-          </Button>
+          {canCreate ? (
+            <Button type="button" size="sm" onClick={onNew}>
+              New monitor
+            </Button>
+          ) : (
+            <span className="text-[12px] text-muted-foreground">read-only for you · ask an Operator to change a monitor</span>
+          )}
         </div>
 
         {monitors.length === 0 ? (
@@ -755,7 +759,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             <p className="mt-1 text-xs text-muted-foreground">
               {canCreate
                 ? "A monitor opens when its search has at least, or fewer than, N lines in its window, or a URL, a port or a certificate it checks fails its conditions; it reminds while open, and says when it resolved."
-                : "Save a search, then Watch this from the sidebar."}
+                : "An Operator makes monitors; you see each one here as it opens and resolves."}
             </p>
             {canCreate ? (
               <Button type="button" size="sm" className="mt-3" onClick={onNew}>

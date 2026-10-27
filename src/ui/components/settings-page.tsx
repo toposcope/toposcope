@@ -32,7 +32,7 @@ export function bytes(n: number | null | undefined): string {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
 }
 
-export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void; onOpenSignIn: () => void }) {
+export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void; onOpenSignIn: () => void; readOnly?: boolean; owners?: string[] }) {
   const [body, setBody] = useState<SettingsBody | null>(null);
   const [name, setName] = useState("");
   const [days, setDays] = useState("30");
@@ -131,6 +131,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
         <div className="flex flex-wrap items-baseline gap-3.5">
           <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Settings</h1>
           <span className="text-[12px] text-muted-foreground">The instance itself, and what its log keys are for. Who may read or write is under Access; what to watch is under Watch.</span>
+          {props.readOnly ? <span className="text-[12px] text-amber-300">Only an Owner changes retention, delivery, the release or the name{props.owners?.length ? `: ${props.owners.join(", ")}` : ""}.</span> : null}
         </div>
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2 xl:grid-cols-3">
           <section className={card}>
@@ -139,7 +140,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               <label htmlFor="instance-name" className={k}>
                 Name
               </label>
-              <input id="instance-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="unnamed" className={input} />
+              <input id="instance-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="unnamed" className={input} disabled={props.readOnly} />
             </div>
             <div className={row}>
               <span className={k}>Shown</span>
@@ -152,16 +153,17 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             <div className={row}>
               <span className={k}>Signed in</span>
               <span className="text-muted-foreground">
-                {session?.kind === "cookie" ? `this browser, until ${signedInUntil(session.expires_at)}` : "with the password on each request"} ·{" "}
+                {session?.kind === "cookie" ? `this browser, until ${signedInUntil(session.expires_at)}` : "with a token on each request"} ·{" "}
                 <button type="button" className="text-zinc-300 hover:text-foreground" onClick={props.onSignOut}>
                   sign out
                 </button>
               </span>
             </div>
-            <Button type="button" size="sm" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Name")}>
+            <Button type="button" size="sm" variant="outline" className="self-start" disabled={busy || props.readOnly} onClick={() => void save("Name")}>
               Save the name
             </Button>
           </section>
+          <fieldset disabled={props.readOnly} className="contents">
           <section className={card}>
             <h2 className="m-0 text-[13.5px] font-medium">Retention</h2>
             <div className={row}>
@@ -191,6 +193,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               Save retention
             </Button>
           </section>
+          </fieldset>
           <section className={card}>
             <h2 className="m-0 text-[13.5px] font-medium">Time</h2>
             <div className={row}>
@@ -217,6 +220,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             </div>
             <span className="text-[12px] text-muted-foreground">Timestamps and counts are kept in this browser.</span>
           </section>
+          <fieldset disabled={props.readOnly} className="contents">
           <section className={card}>
             <h2 className="m-0 text-[13.5px] font-medium">Delivery</h2>
             <div className={row}>
@@ -232,6 +236,8 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               Save the webhook
             </Button>
           </section>
+          </fieldset>
+          <fieldset disabled={props.readOnly} className="contents">
           <section className={card}>
             <h2 className="m-0 text-[13.5px] font-medium">Release</h2>
             <div className={row}>
@@ -260,6 +266,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               Upgrade from the box: <span className="font-mono text-zinc-300">./upgrade.sh{version && version.latest !== version.running ? ` ${version.latest}` : ""}</span>. A backup runs first unless you skip it.
             </span>
           </section>
+          </fieldset>
           <section className={card}>
             <h2 className="m-0 text-[13.5px] font-medium">Storage</h2>
             <div className={row}>
@@ -287,17 +294,19 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               </button>
             </div>
           </section>
+          {props.readOnly ? null : (
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Sign-in and roles</h2>
-            <span className="text-[12px] leading-[1.5] text-muted-foreground">
-              Who signs in and how: one provider (Google, Entra, Okta, Keycloak, Authentik), passwords with two-step, and what an Owner, an Operator and a Viewer may do.
-            </span>
-            <div>
-              <Button type="button" size="sm" variant="outline" onClick={props.onOpenSignIn}>
-                Open sign-in →
-              </Button>
-            </div>
-          </section>
+              <h2 className="m-0 text-[13.5px] font-medium">Sign-in and roles</h2>
+              <span className="text-[12px] leading-[1.5] text-muted-foreground">
+                Who signs in and how: one provider (Google, Entra, Okta, Keycloak, Authentik), passwords with two-step, and what an Owner, an Operator and a Viewer may do.
+              </span>
+              <div>
+                <Button type="button" size="sm" variant="outline" onClick={props.onOpenSignIn}>
+                  Open sign-in →
+                </Button>
+              </div>
+            </section>
+          )}
           <section className={card}>
             <h2 className="m-0 text-[13.5px] font-medium">Fields</h2>
             <div className={row}>

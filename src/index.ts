@@ -16,6 +16,7 @@ import {
   liveOwnerCount,
   looksLikeEmail,
   meBody,
+  allPeople,
   roleAtLeast,
   noteSignInFailure,
   ownerLinkFor,
@@ -653,7 +654,9 @@ app.get("/api/me", (c) => {
   if (!actor) {
     return c.json({ error: "Sign in" }, 401);
   }
-  return c.json({ ...meBody(actor), initials: initials(actor.person.name) });
+  // 30e: "ask an Owner" names them.
+  const owners = allPeople().filter((p) => p.role === "owner" && p.kind === "person" && p.revoked_at === null).map((p) => p.name);
+  return c.json({ ...meBody(actor), initials: initials(actor.person.name), owners });
 });
 
 app.get("/api/instance", (c) => {

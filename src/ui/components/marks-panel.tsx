@@ -25,6 +25,8 @@ export function MarksPanel(props: {
   onFocusLogs: (mark: ChangeMark) => void;
   onHide: (mark: ChangeMark) => void;
   onClose: () => void;
+  /** A Viewer reads every mark but writes no note (30e). */
+  canWrite?: boolean;
   /** A note was written: the rail reads its marks again. */
   onWritten: () => void;
 }) {
@@ -166,6 +168,9 @@ export function MarksPanel(props: {
           </div>
         ) : null}
       </div>
+      {props.canWrite === false ? (
+        <p className="m-0 shrink-0 border-t border-white/[0.06] px-4 py-3 text-[12px] text-muted-foreground">A Viewer reads every mark and who made it, but writes no note.</p>
+      ) : (
       <form
         className="flex shrink-0 flex-col gap-2 border-t border-white/[0.06] px-4 py-3"
         onSubmit={(e) => {
@@ -189,6 +194,7 @@ export function MarksPanel(props: {
           </Button>
         </div>
       </form>
+      )}
     </aside>
   );
 }
