@@ -10,7 +10,10 @@ import { tickHttpMonitors } from "./http-cron";
 import { runNetMonitor, type NetMonitorDeps } from "./net-monitor";
 import { runNetRequest } from "./net-request";
 import { getNet, insertNet, type NetWrite } from "./net-store";
-import { monitorHistory, openStretch, resultsBetween } from "./monitor-store";
+import { pingClickHouse } from "../shared/clickhouse";
+import { migrateStore } from "../shared/migrate";
+import { resultsBetween } from "./monitor-results";
+import { monitorHistory, openStretch } from "./monitor-store";
 import type { WebhookPayload } from "./payload";
 
 let certs: Certs;
@@ -26,7 +29,15 @@ afterAll(() => {
   certs.cleanup();
 });
 
-const t0 = Date.parse("2026-10-20T11:03:00.000Z");
+// Near now, on the minute: results live in ClickHouse (#324) and a date past retention would age out.
+const t0 = Math.floor((Date.now() - 2 * 24 * 60 * 60_000) / 3_600_000) * 3_600_000 + 3 * 60_000;
+
+beforeAll(async () => {
+  process.env.CLICKHOUSE_USER ??= "default";
+  process.env.CLICKHOUSE_PASSWORD ??= "toposcope";
+  if (!(await pingClickHouse())) throw new Error("ClickHouse is required for monitor results");
+  await migrateStore();
+});
 
 function freshDb(): Database {
   const db = new Database(":memory:");
@@ -34,6 +45,9 @@ function freshDb(): Database {
   return db;
 }
 
+// One run of the tests: results outlive the in-memory SQLite in ClickHouse (#324), so ids are this run's own, one a monitor.
+const run = Date.now().toString(36);
+let made = 0;
 function addNet(
   db: Database,
   source: "tcp" | "cert",
@@ -41,7 +55,7 @@ function addNet(
   over: Record<string, unknown> = {},
 ): string {
   const row: Record<string, unknown> = {
-    id: `${source}-1`,
+    id: `${source}-${++made}-${run}`,
     name: source === "tcp" ? "db port" : "mail cert",
     query: "",
     webhook_url: "https://hooks.example.com/page",
@@ -153,7 +167,7 @@ describe("a TCP monitor", () => {
     const id = addNet(db, "tcp", { target: stands.closed });
     const r = rig(db);
     await r.run(id, t0);
-    expect(resultsBetween(t0 - 60_000, t0 + 60_000, db).map((x) => [x.monitor_id, x.result, x.via])).toEqual([[id, "fail", "tcp"]]);
+    expect((await resultsBetween(t0 - 60_000, t0 + 60_000)).filter((x) => x.monitor_id === id).map((x) => [x.monitor_id, x.result, x.via])).toEqual([[id, "fail", "tcp"]]);
   });
 });
 

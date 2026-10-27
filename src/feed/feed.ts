@@ -253,7 +253,7 @@ export async function ensureSeqProjection(): Promise<void> {
 }
 
 /** The kinds whose sort order scatters positions that arrived together. */
-export const fullSeqProjectionTables = ["spans", "metrics", "metric_buckets", "profile_samples"] as const;
+export const fullSeqProjectionTables = ["spans", "metrics", "metric_buckets", "profile_samples", "monitor_results"] as const;
 export type FullSeqProjectionTable = (typeof fullSeqProjectionTables)[number];
 
 /**

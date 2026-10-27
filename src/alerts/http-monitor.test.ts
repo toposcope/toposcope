@@ -9,7 +9,10 @@ import { nextRunAt, tickHttpMonitors } from "./http-cron";
 import { runHttpMonitor, type HttpMonitorDeps } from "./http-monitor";
 import { runHttpRequest } from "./http-request";
 import { getHttp, insertHttp, type HttpWrite } from "./http-store";
-import { monitorHistory, openStretch, pruneResults, recordPushResult, resultsBetween } from "./monitor-store";
+import { pingClickHouse } from "../shared/clickhouse";
+import { migrateStore } from "../shared/migrate";
+import { lastPushResult, recordPushResults, resultsBetween, type PushResultRow } from "./monitor-results";
+import { monitorHistory, openStretch } from "./monitor-store";
 import type { WebhookPayload } from "./payload";
 
 let certs: Certs;
@@ -25,7 +28,15 @@ afterAll(() => {
   certs.cleanup();
 });
 
-const t0 = Date.parse("2026-10-20T11:03:00.000Z");
+// Near now, on the minute: results live in ClickHouse (#324) and a date past retention would age out.
+const t0 = Math.floor((Date.now() - 2 * 24 * 60 * 60_000) / 3_600_000) * 3_600_000 + 3 * 60_000;
+
+beforeAll(async () => {
+  process.env.CLICKHOUSE_USER ??= "default";
+  process.env.CLICKHOUSE_PASSWORD ??= "toposcope";
+  if (!(await pingClickHouse())) throw new Error("ClickHouse is required for monitor results");
+  await migrateStore();
+});
 
 function freshDb(): Database {
   const db = new Database(":memory:");
@@ -33,9 +44,12 @@ function freshDb(): Database {
   return db;
 }
 
+// One run of the tests: results outlive the in-memory SQLite in ClickHouse (#324), so ids are this run's own, one a monitor.
+const run = Date.now().toString(36);
+let made = 0;
 function addHttp(db: Database, w: Partial<HttpWrite> & { url: string }, over: Record<string, unknown> = {}): string {
   const row: Record<string, unknown> = {
-    id: "http-1",
+    id: `http-${++made}-${run}`,
     name: "api /health",
     query: "",
     webhook_url: "https://hooks.example.com/page",
@@ -302,39 +316,31 @@ describe("Watch's ticks (monitor_results)", () => {
     await r.run(id, minute + 50_000);
     await r.run(id, minute + 61_000);
     await r.run(id, minute + 91_000);
-    const rows = resultsBetween(minute, minute + 120_000, db);
+    const rows = (await resultsBetween(minute, minute + 120_000)).filter((row) => row.monitor_id === id);
     expect(rows.map((row) => [row.at - minute, row.result, row.via, row.host])).toEqual([
       [31_000, "fail", "http", new URL(stands.http).host],
       [91_000, "ok", "http", new URL(stands.http).host],
     ]);
     expect(rows[0]!.message).toBe("status is 503, not 2xx");
     expect(typeof rows[1]!.duration_ms).toBe("number");
-    const all = db.query("SELECT count(*) AS n FROM monitor_results WHERE monitor_id = ?").get(id) as { n: number };
-    expect(all.n).toBe(2);
+    // Every run is kept (#324); the minute's worst is what is read, and the last minute's for its last.
+    expect(await lastPushResult(id)).toMatchObject({ result: "ok", at: minute + 91_000 });
   });
 
-  test("a lane is read in 240 columns, the worst of each; 30 days are kept", () => {
+  test("a lane is read in 240 columns, the worst of each", async () => {
     const db = freshDb();
     const id = addHttp(db, { url: `${stands.http}/health` });
     const day = 24 * 60 * 60_000;
     const from = t0 - day;
+    const runs: Array<Omit<PushResultRow, "id">> = [];
     for (let i = 0; i < 24 * 60; i++) {
       // One run a minute for a day; one warn and one fail in the same 6-minute column.
       const result = i === 600 ? "warn" : i === 602 ? "fail" : "ok";
-      recordPushResult(
-        { monitor_id: id, at: from + i * 60_000 + 5_000, result, exit_code: null, duration_ms: 10, value: null, unit: null, message: result, host: "h", via: "http" },
-        db,
-      );
+      runs.push({ monitor_id: id, at: from + i * 60_000 + 5_000, result, exit_code: null, duration_ms: 10, value: null, unit: null, message: result, host: "h", via: "http" });
     }
-    const lane = resultsBetween(from, t0, db);
+    await recordPushResults(runs);
+    const lane = (await resultsBetween(from, t0)).filter((row) => row.monitor_id === id);
     expect(lane).toHaveLength(240);
     expect(lane.filter((row) => row.result !== "ok").map((row) => row.result)).toEqual(["fail"]);
-    recordPushResult(
-      { monitor_id: id, at: t0 - 31 * day, result: "fail", exit_code: null, duration_ms: 1, value: null, unit: null, message: "old", host: "h", via: "http" },
-      db,
-    );
-    pruneResults(t0, db);
-    expect(resultsBetween(t0 - 40 * day, t0, db).some((row) => row.message === "old")).toBe(false);
-    expect(resultsBetween(from, t0, db)).toHaveLength(240);
-  });
+  }, 120_000);
 });

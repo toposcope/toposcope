@@ -15,7 +15,7 @@ import { publicUrl } from "../shared/public-url";
 import { cantTellNow, markStarted } from "./cant-tell";
 import { callUrls, passSearchMonitor, type CallDeps } from "./monitor";
 import { passPushMonitor } from "./push";
-import { closeByEdit, pruneResults, recordCall } from "./monitor-store";
+import { closeByEdit, recordCall } from "./monitor-store";
 import { pingWatchdog } from "./watchdog";
 import { evaluateAlertSeries, evaluateShareSeries } from "./series";
 import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
@@ -27,7 +27,6 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
   const db = getDb();
   const rules = enabledAlertRules(db);
   pruneSentFingerprints(now - 2 * firstSeenWatchMs);
-  pruneResults(now, db);
   const calls: CallDeps = {
     db,
     post: postWebhook,

@@ -31,6 +31,16 @@ beforeAll(async () => {
           (inserted[table] ??= []).push(...String(init?.body ?? "").split("\\n").filter(Boolean).map((l) => JSON.parse(l)));
           return new Response("");
         }
+        // A monitor's results are read back from ClickHouse (#324): the latest first.
+        const sql = String(init?.body ?? "");
+        if (sql.includes("FROM monitor_results")) {
+          const id = u.searchParams.get("param_id");
+          const rows = (inserted.monitor_results ?? [])
+            .filter((row) => !id || row.monitor_id === id)
+            .sort((a, b) => b.seq - a.seq)
+            .map(({ at, seq, ...row }) => ({ ...row, id: seq, at_ms: Date.parse(at.replace(" ", "T") + "Z") }));
+          return Response.json({ data: rows });
+        }
         return Response.json({ data: [] });
       }
       throw new Error("Unexpected external fetch " + url);

@@ -8,11 +8,11 @@ import {
   type CheckVia,
 } from "../shared/push";
 import { fallbackWindowMs, nextMove, passCalls, type CallDeps } from "./monitor";
+import { recordPushResult } from "./monitor-results";
 import {
   beginStretch,
   noteReading,
   openStretch,
-  recordPushResult,
   recordResult,
   resolveStretch,
   type CallWhat,
@@ -66,26 +66,8 @@ export function resultWords(result: Pick<PushResult, "status" | "message" | "exi
  * resolves it, a warn shows and changes nothing, and unknown changes nothing at all. A paused
  * monitor keeps its results and does not open.
  */
-export function applyPushResult(rule: AlertRule, result: PushResult, now: number, db: Database): void {
+export async function applyPushResult(rule: AlertRule, result: PushResult, now: number, db: Database): Promise<void> {
   db.transaction(() => {
-    // Unknown changes nothing, Watch's ticks included; its log row is its record.
-    if (result.status !== "unknown") {
-      recordPushResult(
-        {
-          monitor_id: rule.id,
-          at: Date.parse(result.ts),
-          result: result.status,
-          exit_code: result.exit_code,
-          duration_ms: result.duration_ms,
-          value: result.value,
-          unit: result.unit,
-          message: result.message,
-          host: result.from,
-          via: result.via,
-        },
-        db,
-      );
-    }
     db.query(
       `UPDATE alert_rules SET due_from = ?, started_at = NULL,
          every_ms = CASE WHEN ? THEN ? ELSE every_ms END,
@@ -125,6 +107,22 @@ export function applyPushResult(rule: AlertRule, result: PushResult, now: number
         break;
     }
   })();
+  // Unknown changes nothing, Watch's ticks included; its log row is its record. Kept in
+  // ClickHouse (#324), so after the monitor's own state, which a failed write must not hold back.
+  if (result.status !== "unknown") {
+    await recordPushResult({
+      monitor_id: rule.id,
+      at: Date.parse(result.ts),
+      result: result.status,
+      exit_code: result.exit_code,
+      duration_ms: result.duration_ms,
+      value: result.value,
+      unit: result.unit,
+      message: result.message,
+      host: result.from,
+      via: result.via,
+    });
+  }
 }
 
 /** A run's `/start`: until its result, the monitor is running, and the result's run is measured from here. */

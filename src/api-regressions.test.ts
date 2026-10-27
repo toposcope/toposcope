@@ -167,7 +167,7 @@ describe("retention HTTP validation", () => {
     expect(result.status).toBe(200);
     expect(result.stored).toBe(days);
     expect(result.body).toMatchObject({ retention_days: days, metrics_retention_days: null, instance_name: null, default_webhook_url: null });
-    expect(result.commands?.filter((sql) => sql.startsWith("ALTER TABLE"))).toHaveLength(12);
+    expect(result.commands?.filter((sql) => sql.startsWith("ALTER TABLE"))).toHaveLength(13);
     expect(result.commands?.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain(`INTERVAL ${days} DAY`);
   });
 });
@@ -210,7 +210,7 @@ describe("metrics retention over HTTP", () => {
     expect(result.status).toBe(200);
     expect(result.stored).toBe(400);
     const alters = result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"));
-    expect(alters).toHaveLength(12);
+    expect(alters).toHaveLength(13);
     expect(alters.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain("INTERVAL 14 DAY");
     expect(alters.find((sql) => sql.startsWith("ALTER TABLE metrics "))).toContain("INTERVAL 400 DAY");
   });

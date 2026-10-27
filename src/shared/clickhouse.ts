@@ -83,6 +83,7 @@ const insertTables = new Set([
   "metric_descriptions",
   "metric_buckets",
   "arrival_seq",
+  "monitor_results",
 ]);
 
 export async function clickhouseInsertJsonEachRow(

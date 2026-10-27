@@ -127,6 +127,7 @@ describe("retention TTL ALTER", () => {
       "spans",
       "profile_samples",
       "change_marks",
+      "monitor_results",
     ]);
     expect(retentionTtlAlterSettings).toContain("mutations_sync = 0");
     expect(retentionTtlAlterSettings).toContain("alter_sync = 0");
