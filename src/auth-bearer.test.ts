@@ -8,8 +8,12 @@ beforeAll(() => {
     const root = ${JSON.stringify(import.meta.dir)};
     const { checkBearer } = await import(root + "/auth.ts");
     const { getDb } = await import(root + "/control/index.ts");
-    const { hashToken } = await import(root + "/control/tokens.ts");
+    const { hashToken, importEnvIngestToken } = await import(root + "/control/tokens.ts");
     const out = {};
+    // #308: before the boot import, the .env value is not a token at all.
+    out.beforeImport = checkBearer("Bearer regression-ingest-token");
+    out.imported = importEnvIngestToken(process.env.TOPOSCOPE_INGEST_TOKEN);
+    out.importedAgain = importEnvIngestToken(process.env.TOPOSCOPE_INGEST_TOKEN);
     out.unknown = checkBearer("Bearer not-a-token");
     out.oneChar = checkBearer("Bearer x");
     out.configured = checkBearer("Bearer regression-ingest-token");
@@ -35,7 +39,7 @@ beforeAll(() => {
   if (child.exitCode !== 0) {
     throw new Error(child.stderr.toString());
   }
-  results = JSON.parse(child.stdout.toString()) as Record<string, boolean>;
+  results = JSON.parse(child.stdout.toString().trim().split("\n").at(-1)!) as Record<string, boolean>;
 });
 
 describe("ingest bearer token", () => {
@@ -50,7 +54,10 @@ describe("ingest bearer token", () => {
     expect(results.deleted).toBe(false);
   });
 
-  test("the configured ingest token and a created token are accepted", () => {
+  test("the .env ingest token is imported once, then accepted like a created token (#308)", () => {
+    expect(results.beforeImport).toBe(false);
+    expect(results.imported).toBe(true);
+    expect(results.importedAgain).toBe(false);
     expect(results.configured).toBe(true);
     expect(results.created).toBe(true);
   });

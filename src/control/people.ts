@@ -84,6 +84,20 @@ export function migratePeople(db: Database): void {
     );
   `);
   db.run(`
+    CREATE TABLE IF NOT EXISTS invites (
+      id TEXT PRIMARY KEY,
+      who TEXT NOT NULL,
+      role TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      created_at INTEGER NOT NULL,
+      created_by TEXT,
+      expires_at INTEGER NOT NULL,
+      used_at INTEGER,
+      used_by TEXT,
+      cancelled_at INTEGER
+    );
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS owner_links (
       id TEXT PRIMARY KEY,
       token_hash TEXT NOT NULL UNIQUE,
@@ -538,4 +552,131 @@ export function initials(name: string): string {
     return words[0]!.slice(0, 2).toUpperCase();
   }
   return (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase();
+}
+
+// ---- Invites (30b, 30c): a link that works once; no mail server ----
+
+const invitePrefix = "tsi1_";
+export const inviteDays = [1, 7, 30] as const;
+
+export type Invite = {
+  id: string;
+  who: string;
+  role: Role;
+  created_at: number;
+  created_by: string | null;
+  expires_at: number;
+  used_at: number | null;
+  used_by: string | null;
+  cancelled_at: number | null;
+};
+
+/** An invite for an email or a name, with a role, for 1, 7 or 30 days; the token is shown once. */
+export function createInvite(
+  input: { who: string; role: Role; days?: number; created_by: string | null },
+  now = Date.now(),
+  db: Database = getDb(),
+): { token: string; invite: Invite } | { error: string } {
+  const who = input.who.trim();
+  if (!who || who.length > 120) {
+    return { error: "An invite names an email or a person, up to 120 characters" };
+  }
+  if (looksLikeEmail(who)) {
+    const existing = personByEmail(who, db);
+    if (existing && existing.revoked_at === null) {
+      return { error: `${normalEmail(who)} can already sign in here` };
+    }
+  }
+  const days = input.days ?? 7;
+  if (!(inviteDays as readonly number[]).includes(days)) {
+    return { error: "An invite works for 1, 7 or 30 days" };
+  }
+  const token = `${invitePrefix}${randomBytes(24).toString("base64url")}`;
+  const id = randomUUID();
+  db.query(
+    "INSERT INTO invites (id, who, role, token_hash, created_at, created_by, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, looksLikeEmail(who) ? normalEmail(who) : who, input.role, hash(token), now, input.created_by, now + days * 24 * 60 * 60_000);
+  return { token, invite: db.query("SELECT * FROM invites WHERE id = ?").get(id) as Invite };
+}
+
+/** Invites still waiting: not used, not cancelled, not expired. */
+export function openInvites(now = Date.now(), db: Database = getDb()): Invite[] {
+  return db
+    .query("SELECT * FROM invites WHERE used_at IS NULL AND cancelled_at IS NULL AND expires_at > ? ORDER BY created_at DESC")
+    .all(now) as Invite[];
+}
+
+export function cancelInvite(id: string, now = Date.now(), db: Database = getDb()): boolean {
+  return db.query("UPDATE invites SET cancelled_at = ? WHERE id = ? AND used_at IS NULL AND cancelled_at IS NULL").run(now, id).changes > 0;
+}
+
+export function inviteFor(token: string, now = Date.now(), db: Database = getDb()): Invite | null {
+  if (!token.startsWith(invitePrefix)) {
+    return null;
+  }
+  const row = db.query("SELECT * FROM invites WHERE token_hash = ?").get(hash(token)) as Invite | null;
+  if (!row || row.used_at !== null || row.cancelled_at !== null || row.expires_at <= now) {
+    return null;
+  }
+  return row;
+}
+
+/** Joins from an invite: a new person with the invite's role (30c right). */
+export async function useInvite(
+  token: string,
+  input: { name: string; email: string; password: string },
+  now = Date.now(),
+  db: Database = getDb(),
+): Promise<{ person: Person } | { error: string }> {
+  const invite = inviteFor(token, now, db);
+  if (!invite) {
+    return { error: "This invite has been used, cancelled, or has expired. Ask whoever invited you for a new one." };
+  }
+  const email = looksLikeEmail(invite.who) ? invite.who : normalEmail(input.email);
+  if (!looksLikeEmail(email)) {
+    return { error: "Your email, to sign in with" };
+  }
+  if (personByEmail(email, db)) {
+    return { error: `${email} can already sign in here` };
+  }
+  const problem = passwordProblem(input.password);
+  if (problem) {
+    return { error: problem };
+  }
+  const name = input.name.trim() || (looksLikeEmail(invite.who) ? email.split("@")[0]! : invite.who);
+  const passwordHash = await Bun.password.hash(input.password, { algorithm: "argon2id" });
+  const id = randomUUID();
+  db.query(
+    "INSERT INTO people (id, kind, name, email, role, password_hash, created_at, created_by) VALUES (?, 'person', ?, ?, ?, ?, ?, ?)",
+  ).run(id, name, email, invite.role, passwordHash, now, invite.created_by);
+  db.query("UPDATE invites SET used_at = ?, used_by = ? WHERE id = ?").run(now, id, invite.id);
+  return { person: personById(id, db)! };
+}
+
+/** Changes a person's role; the last Owner who can sign in stays an Owner. */
+export function setRole(personId: string, role: Role, db: Database = getDb()): string | null {
+  const person = personById(personId, db);
+  if (!person || person.revoked_at !== null) {
+    return "No such person";
+  }
+  if (person.role === "owner" && role !== "owner" && person.kind === "person" && liveOwnerCount(db) <= 1) {
+    return "This is the last Owner: make another Owner first";
+  }
+  db.query("UPDATE people SET role = ? WHERE id = ?").run(role, personId);
+  return null;
+}
+
+/** Revokes a person or service account: their sessions and tokens end on the next request. */
+export function revokePerson(personId: string, now = Date.now(), db: Database = getDb()): string | null {
+  const person = personById(personId, db);
+  if (!person || person.revoked_at !== null) {
+    return "No such person";
+  }
+  if (person.role === "owner" && person.kind === "person" && liveOwnerCount(db) <= 1) {
+    return "This is the last Owner: make another Owner first";
+  }
+  db.query("UPDATE people SET revoked_at = ? WHERE id = ?").run(now, personId);
+  db.query("UPDATE person_tokens SET revoked_at = ? WHERE person_id = ? AND revoked_at IS NULL").run(now, personId);
+  endSessionsOf(personId, db);
+  return null;
 }

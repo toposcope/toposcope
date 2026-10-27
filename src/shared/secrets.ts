@@ -19,8 +19,10 @@ export function packagedSecretsError(
   }
   const token = env.TOPOSCOPE_INGEST_TOKEN ?? "";
   const clickhouse = env.CLICKHOUSE_PASSWORD ?? "";
-  if (!token || demoTokens.has(token)) {
-    return "TOPOSCOPE_INGEST_TOKEN is missing or is the demo value; set a generated secret in .env";
+  // #308: the ingest token is imported once into Access and may then leave .env; a demo value
+  // is still refused while it is there.
+  if (token && demoTokens.has(token)) {
+    return "TOPOSCOPE_INGEST_TOKEN is the demo value; set a generated secret in .env, or make an ingest token in Access";
   }
   if (!clickhouse || demoPasswords.has(clickhouse)) {
     return "CLICKHOUSE_PASSWORD is missing or is the demo value; set a generated secret in .env";

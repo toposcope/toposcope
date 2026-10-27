@@ -264,3 +264,53 @@ export function ownerSetupPageHtml(page: OwnerSetupPage): string {
   <div class="stay">The link dies when you finish or in ${page.minutesLeft} minute${page.minutesLeft === 1 ? "" : "s"}.</div>
 </form>`);
 }
+
+export type JoinPage = {
+  name: string | null;
+  address: string;
+  token: string;
+  /** The invite the link holds, or null when it is used, cancelled or expired. */
+  invite: { who: string; role: string; inviter: string | null; daysLeft: number } | null;
+  error?: string;
+  typedName?: string;
+  typedEmail?: string;
+};
+
+const roleSentence: Record<string, string> = {
+  viewer: "you can read everything and save your own hunts.",
+  operator: "you can read everything, and make monitors, notes and shared hunts.",
+  owner: "you can do everything, including letting people in.",
+};
+
+/** 30c right: joining from an invite link, with the inviter, the instance and the role said first. */
+export function joinPageHtml(page: JoinPage): string {
+  const label = page.name ?? page.address;
+  if (!page.invite) {
+    return pageShell(`Invite · ${esc(label)}`, `<div class="col">
+  <div class="brand">${mark}<span>toposcope</span></div>
+  <div class="who"><div class="to">This invite no longer works for</div><h1>${esc(label)}</h1></div>
+  <p class="lead">It has been used, cancelled, or has expired. Ask whoever invited you for a new one.</p>
+</div>`);
+  }
+  const invite = page.invite;
+  const byEmail = /@/.test(invite.who);
+  const roleName = invite.role.charAt(0).toUpperCase() + invite.role.slice(1);
+  const error = page.error ? `<div id="pw-error" class="error" role="alert"><span>${esc(page.error)}</span></div>` : "";
+  return pageShell(`Invite · ${esc(label)}`, `<form class="col" method="post" action="/api/join">
+  <div class="cap">From an invite link</div>
+  <div class="brand">${mark}<span>toposcope</span></div>
+  <div class="who"><div class="to">${invite.inviter ? `${esc(invite.inviter)} invited you to` : "You are invited to"}</div><h1>${esc(label)}</h1><div class="to">as ${roleName === "Operator" || roleName === "Owner" ? "an" : "a"} <b style="color:#fafafa;font-weight:500">${esc(roleName)}</b>: ${roleSentence[invite.role] ?? ""}</div></div>
+  <div class="pw">
+    ${byEmail ? `<span class="to">Email</span><div class="fixed">${esc(invite.who)}</div>` : `<label for="em">Your email</label>
+    <input id="em" name="email" type="email" autocomplete="username" required value="${esc(page.typedEmail ?? "")}">`}
+    <label for="nm">Your name</label>
+    <input id="nm" name="name" autocomplete="name" required value="${esc(page.typedName ?? (byEmail ? "" : invite.who))}" autofocus>
+    <label for="np">Password · 12 characters or more</label>
+    <input id="np" name="password" type="password" autocomplete="new-password" minlength="12" required${page.error ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>
+    ${error}
+    <input type="hidden" name="token" value="${esc(page.token)}">
+    <button type="submit">Join ${esc(label)}</button>
+  </div>
+  <div class="stay">The link works once and expires in ${invite.daysLeft} day${invite.daysLeft === 1 ? "" : "s"}.</div>
+</form>`);
+}

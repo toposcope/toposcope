@@ -47,7 +47,8 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD in .env}
       SQLITE_PATH: /data/toposcope.sqlite
-      TOPOSCOPE_INGEST_TOKEN: ${TOPOSCOPE_INGEST_TOKEN:?Set TOPOSCOPE_INGEST_TOKEN in .env}
+      # Imported once into Access as the ingest token "env (imported)", then never read again.
+      TOPOSCOPE_INGEST_TOKEN: ${TOPOSCOPE_INGEST_TOKEN:-}
       # Optional: the address people open Toposcope at, so alerts can link back.
       TOPOSCOPE_PUBLIC_URL: ${TOPOSCOPE_PUBLIC_URL:-}
       # Optional: a check-in somewhere else after each monitor pass (docs/operations.md).
