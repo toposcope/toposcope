@@ -35,7 +35,7 @@ bash <this skill's directory>/toposcope.sh <command>
 ## 1. Stand up
 
 1. Run `cost` and tell the user what it prints.
-2. With their yes, run `up`. It uses an instance that is already running. Otherwise it downloads the pinned release files into `~/.toposcope`, writes three fresh secrets into `.env` there, starts the two containers, waits for health, and confirms the version.
+2. With their yes, run `up`. It uses an instance that is already running. Otherwise it downloads the pinned release files into `~/.toposcope`, writes two fresh secrets into `.env` there, starts the two containers, waits for health, and confirms the version.
 3. If `up` refuses, relay its message. Do not work around it.
 
 Run `stop` only when the user asks.

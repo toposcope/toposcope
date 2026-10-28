@@ -105,7 +105,7 @@ An error row with `exception.type` and frames or a stack gets an `e1` fingerprin
 | OTLP profiles | `POST /v1/profiles` | JSON or protobuf |
 | Syslog | UDP `5514` | RFC 3164 |
 
-HTTP ingest accepts `Authorization: Bearer <TOPOSCOPE_INGEST_TOKEN>` as well as Basic Auth. See the [ingest guide](docs/ingest.md) for collector configuration, curl examples, signal-specific behavior, enrichment, and token management.
+HTTP ingest takes `Authorization: Bearer` with the ingest token; Basic Auth is not accepted. See the [ingest guide](docs/ingest.md) for collector configuration, curl examples, signal-specific behavior, enrichment, and token management.
 
 ## Search
 
