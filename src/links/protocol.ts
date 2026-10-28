@@ -253,7 +253,7 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
   noteWire(link.id, wire);
   const sent = (wire.header as { monitors?: MonitorsSnapshot }).monitors;
   if (sent) {
-    keepMonitorsSnapshot(source.name, sent);
+    keepMonitorsSnapshot(source.name, sent, Date.now(), undefined, instanceName() ?? "");
   }
   const gone =
     reply.gone && link.gone_from !== null && link.gone_to !== null

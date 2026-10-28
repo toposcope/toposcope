@@ -46,4 +46,18 @@ describe("a source's monitors over a link (#333)", () => {
     expect(kept[0]).toMatchObject({ source: "edge-1", at: 2 });
     expect(kept[0]!.monitors).toHaveLength(2);
   });
+
+  test("a region forwards the edge's monitors under the edge's name, and nothing comes back home (#334)", () => {
+    const region = db();
+    keepMonitorsSnapshot("edge-1", monitorsSnapshot("", "edge-1", Date.now(), db())!, 1, region);
+    const sent = monitorsSnapshot("", "region-eu", Date.now(), region)!;
+    expect(sent.forwarded?.map((f) => [f.source, f.monitors.length])).toEqual([["edge-1", 2]]);
+    const centre = db();
+    keepMonitorsSnapshot("region-eu", sent, 2, centre, "prod-eu");
+    expect(pulledMonitors(centre).map((p) => p.source).sort()).toEqual(["edge-1", "region-eu"]);
+    // Back at the instance the monitors entered: not kept as another's.
+    const edge = db();
+    keepMonitorsSnapshot("region-eu", sent, 3, edge, "edge-1");
+    expect(pulledMonitors(edge).map((p) => p.source)).toEqual(["region-eu"]);
+  });
 });

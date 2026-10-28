@@ -88,7 +88,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
     noteWire(link.id, wire, deps.now());
     const sent = (wire.header as { monitors?: MonitorsSnapshot }).monitors;
     if (sent) {
-      keepMonitorsSnapshot(source.name, sent, deps.now());
+      keepMonitorsSnapshot(source.name, sent, deps.now(), undefined, instanceNameOrEmpty());
     }
     after = reply.through;
     if (reply.gone) {
