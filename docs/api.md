@@ -206,6 +206,25 @@ Query:
 | `opened` | string |  | The fingerprint whose row is open, kept in the answer. |
 | `live` | string |  | 1 or true: the after side ends now. |
 
+### GET /api/search/compare
+
+A query's count, rate, agg or metric over equal windows before and after a change mark, as Compare reads it.
+
+Role: **Viewer** · `search_compare`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `mark` | string | yes | The change mark's id. |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `agg` | string |  | Compare a series derived from the rows: rate, or p99, avg, min, max or sum of a numeric attribute (p99:duration_ms). |
+| `metric` | string |  | Compare an ingested metric instead, a histogram's with its reading first (p99:http.server.request.duration). |
+| `ml` | string |  | The metric's label matchers, key:value separated by spaces, at most 4. |
+
 ### GET /api/search/revisions
 
 Which fingerprint keys a query's rows carry before and after a point.
@@ -347,6 +366,24 @@ Query:
 | `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
 | `find` | string |  | Only names that contain this. |
 | `picked` | string |  | Names to list whatever the cap, separated by commas. |
+
+### GET /api/metrics/series
+
+One metric's series in a window, by name and label matchers, split by a label when asked.
+
+Role: **Viewer** · `metric_series`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `name` | string | yes | The metric's name, a histogram's with its reading first (p99:http.server.request.duration). |
+| `ml` | string |  | Label matchers, key:value separated by spaces, at most 4. |
+| `msplit` | string |  | A label key to split the series by: one line per value, the 8 with the most points and other. |
+| `step` | string |  | Pin the bar width: 1ms, 10ms, 100ms, 1s, 10s, 1m, 5m, 15m, 1h, 4h, 1d or 7d. |
 
 ### GET /api/metric-labels
 

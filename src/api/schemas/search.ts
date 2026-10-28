@@ -111,3 +111,20 @@ export const metricLabelsQuery = v.object({
   ...window,
   name: requiredText("The metric's name.", "name is required"),
 });
+
+export const compareQuery = v.object({
+  mark: requiredText("The change mark's id.", "mark is required"),
+  ...window,
+  q,
+  agg: optionalText("Compare a series derived from the rows: rate, or p99, avg, min, max or sum of a numeric attribute (p99:duration_ms)."),
+  metric: optionalText("Compare an ingested metric instead, a histogram's with its reading first (p99:http.server.request.duration)."),
+  ml: optionalText("The metric's label matchers, key:value separated by spaces, at most 4."),
+});
+
+export const metricSeriesQuery = v.object({
+  ...window,
+  name: requiredText("The metric's name, a histogram's with its reading first (p99:http.server.request.duration).", "name is required"),
+  ml: optionalText("Label matchers, key:value separated by spaces, at most 4."),
+  msplit: optionalText("A label key to split the series by: one line per value, the 8 with the most points and other."),
+  step: optionalText("Pin the bar width: 1ms, 10ms, 100ms, 1s, 10s, 1m, 5m, 15m, 1h, 4h, 1d or 7d."),
+});

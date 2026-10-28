@@ -94,7 +94,7 @@ function rowN(n: string | number): number {
   return typeof n === "number" ? n : Number(n);
 }
 
-function resolveHunt(
+export function resolveHunt(
   from: string | undefined,
   to: string | undefined,
   range: string | undefined,

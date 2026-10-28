@@ -46,10 +46,12 @@ import {
   facetsRoute,
   metricLabelsRoute,
   metricNamesRoute,
+  metricSeriesRoute,
   numericKeysRoute,
   searchRoute,
   surroundingRoute,
 } from "../query";
+import { compareRoute } from "../query/compare";
 import { fingerprintCutRoute, fingerprintRevisionsRoute } from "../query/fingerprint-cut";
 import { fingerprintSeenRoute } from "../query/fingerprint-seen";
 import { followSpanRoute } from "../query/follow-span";
@@ -71,7 +73,7 @@ import { upgradeBody } from "./schemas/instance";
 import { monitorBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
 import { feedCreateBody, feedReadQuery, linkConfirmBody, linkInviteBody, linkOfferBody, linkPreviewBody, linkUpdateBody } from "./schemas/links";
 import { shareCreateBody, sharePutBody } from "./schemas/shares";
-import { aroundQuery, attrFacetsQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
+import { aroundQuery, attrFacetsQuery, compareQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, metricSeriesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
 
 /**
  * The described API (#356), in the order the app registers it: a fixed path comes before a
@@ -97,6 +99,7 @@ export const apiRoutes: ApiRoute[] = [
   { id: "search_context", method: "GET", path: "/api/search/context", area: "Search", action: "read", summary: "The rows either side of one row, from the same service and host.", query: contextQuery, body: null, handler: surroundingRoute },
   { id: "search_around", method: "GET", path: "/api/search/around", area: "Search", action: "read", summary: "The rows that match a query either side of a time.", query: aroundQuery, body: null, handler: aroundTsRoute },
   { id: "search_cut", method: "GET", path: "/api/search/cut", area: "Search", action: "read", summary: "Compare a query's fingerprints before and after a change mark.", query: cutQuery, body: null, handler: fingerprintCutRoute },
+  { id: "search_compare", method: "GET", path: "/api/search/compare", area: "Search", action: "read", summary: "A query's count, rate, agg or metric over equal windows before and after a change mark, as Compare reads it.", query: compareQuery, body: null, handler: compareRoute },
   { id: "search_revisions", method: "GET", path: "/api/search/revisions", area: "Search", action: "read", summary: "Which fingerprint keys a query's rows carry before and after a point.", query: revisionsQuery, body: null, handler: fingerprintRevisionsRoute },
   { id: "search_follow_span", method: "GET", path: "/api/search/follow-span", area: "Search", action: "read", summary: "How many rows carry one key:value within a day of a time, and their first and last.", query: followSpanQuery, body: null, handler: followSpanRoute },
   { id: "fingerprint_seen", method: "GET", path: "/api/fingerprints/:hex", area: "Search", action: "read", summary: "When one fingerprint was first and last seen, and how often, in a window.", query: fingerprintSeenQuery, body: null, handler: fingerprintSeenRoute },
@@ -106,6 +109,7 @@ export const apiRoutes: ApiRoute[] = [
   { id: "attr_values", method: "GET", path: "/api/attr-values", area: "Search", action: "read", summary: "The values of one attribute key that start with a prefix.", query: attrValuesQuery, body: null, handler: attrValuesRoute },
   { id: "numeric_keys", method: "GET", path: "/api/numeric-keys", area: "Search", action: "read", summary: "The attribute keys with numbers among a query's rows, to sum or average.", query: numericKeysQuery, body: null, handler: numericKeysRoute },
   { id: "metric_names", method: "GET", path: "/api/metric-names", area: "Search", action: "read", summary: "The metric names with points in a window.", query: metricNamesQuery, body: null, handler: metricNamesRoute },
+  { id: "metric_series", method: "GET", path: "/api/metrics/series", area: "Search", action: "read", summary: "One metric's series in a window, by name and label matchers, split by a label when asked.", query: metricSeriesQuery, body: null, handler: metricSeriesRoute },
   { id: "metric_labels", method: "GET", path: "/api/metric-labels", area: "Search", action: "read", summary: "The label keys one metric's points carry in a window, with how many values each.", query: metricLabelsQuery, body: null, handler: metricLabelsRoute },
 
   // Home and saved searches
