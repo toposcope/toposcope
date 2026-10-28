@@ -39,6 +39,8 @@ beforeAll(async () => {
     const as = { viewer: bearer("v", "viewer"), operator: bearer("o", "operator"), owner: bearer("w", "owner"), readonly: bearer("ro", "owner", true) };
     const out = {};
     const go = async (key, who, path, method = "GET", body) => {
+      // #360: a token previews a monitor before it saves it, as an agent does.
+      await (await import(root + "/design/preview-for-scripts.ts")).previewMonitorFirst((req) => app.fetch(req), "http://app.test" + path, { method, headers: { authorization: as[who], "content-type": "application/json" }, body });
       const res = await app.fetch(new Request("http://app.test" + path, { method, headers: { authorization: as[who], "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) }));
       const text = await res.text();
       out[key] = { status: res.status, body: text.startsWith("{") ? JSON.parse(text) : text };

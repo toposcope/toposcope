@@ -26,6 +26,22 @@ import { withFingerprint } from "../src/shared/fingerprint";
 import { guideExamples, guideSection } from "./ingest-guide-examples";
 
 const APP_URL = envValue("TOPOSCOPE_URL") ?? "http://127.0.0.1:8080";
+
+// #360: a monitor saved with a token is previewed first, so every save here previews its body the way an agent does.
+{
+  const plainFetch = globalThis.fetch;
+  const { previewMonitorFirst } = await import("../src/design/preview-for-scripts");
+  globalThis.fetch = Object.assign(
+    async (input: string | URL | Request, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.startsWith(APP_URL) && init?.body !== undefined) {
+        await previewMonitorFirst((req) => plainFetch(req), url, { method: init.method, headers: init.headers, body: init.body });
+      }
+      return plainFetch(input, init);
+    },
+    plainFetch,
+  ) as typeof fetch;
+}
 const INGEST_TOKEN = envValue("TOPOSCOPE_INGEST_TOKEN") ?? "toposcope-ingest";
 
 

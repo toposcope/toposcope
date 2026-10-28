@@ -171,3 +171,15 @@ export async function clickhouseCommand(sql: string): Promise<void> {
     throw new Error(`ClickHouse command failed: ${await res.text()}`);
   }
 }
+
+/** A command with `{name:Type}` params, for a statement that answers no rows (a lightweight DELETE). */
+export async function clickhouseCommandWith(sql: string, params: Record<string, string>): Promise<void> {
+  const url = clickhouseUrl();
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(`param_${key}`, value);
+  }
+  const res = await fetch(url, { method: "POST", headers: { Authorization: authHeader() }, body: sql });
+  if (!res.ok) {
+    throw new Error(`ClickHouse command failed: ${await res.text()}`);
+  }
+}

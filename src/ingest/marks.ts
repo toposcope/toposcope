@@ -52,7 +52,7 @@ function parseBody(
   }
 }
 
-async function insertChangeMarks(marks: ChangeMark[]): Promise<number> {
+export async function insertChangeMarks(marks: ChangeMark[]): Promise<number> {
   if (marks.length === 0) {
     return 0;
   }

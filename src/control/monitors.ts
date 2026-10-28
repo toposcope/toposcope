@@ -186,7 +186,7 @@ function aSource(source: unknown): string {
  * A source a monitor keeps: a push, HTTP(S), TCP or certificate monitor stays one, and nothing
  * else becomes one.
  */
-function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
+export function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
   const keeps = (source: unknown) => source === "push" || source === "http" || isNetSource(source);
   if (!existing || rec.source === undefined || rec.source === existing.source) {
     return null;

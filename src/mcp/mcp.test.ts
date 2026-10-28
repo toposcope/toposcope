@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { roleOf } from "../api/registry";
 import { apiRoutes } from "../api/routes";
 import { fenceNote, onClock, readTools, unfencedTools } from "./read";
 import { nestedDeeper, originAllowed } from "./server";
@@ -94,12 +95,14 @@ beforeAll(async () => {
       numeric_keys: { q: "service:api", ...day },
       facets: { q: "service:api", ...day },
     };
-    const { mcpTools, toolCall } = await import(root + "/mcp/tools.ts");
+    const { mcpTools, toolCall, designToolRouteIds } = await import(root + "/mcp/tools.ts");
     out.both = {};
     // The clock held still, so an answer that says when it was read says the same time both ways.
     setSystemTime(new Date("2026-10-28T12:00:00.000Z"));
     for (const tool of out.listOperator.body.result.tools) {
       const given = args[tool.name];
+      // A design tool writes (#360): mcp-design.test.ts runs those.
+      if (!given && designToolRouteIds().includes(tool.name)) continue;
       if (!given) { out.both[tool.name] = { missingArgs: true }; continue; }
       const via = await call("operator", tool.name, given);
       const built = toolCall(mcpTools.find((t) => t.name === tool.name), given);
@@ -215,7 +218,8 @@ describe("MCP at /mcp, in the app (#358)", () => {
 
   test("tools/list shows an Operator every default tool, and a Viewer only those a Viewer may call", () => {
     expect(names(r.listOperator)).toEqual(toolRouteIds);
-    expect(names(r.listViewer)).toEqual(toolRouteIds.filter((n) => n !== "saved_search_test"));
+    expect(names(r.listViewer)).toEqual(toolRouteIds.filter((n) => roleOf(apiRoutes.find((route) => route.id === n)!) === "viewer"));
+    expect(names(r.listViewer)).not.toContain("saved_search_test");
     const search = r.listOperator.body.result.tools.find((t: { name: string }) => t.name === "search");
     expect(search.annotations).toEqual({ readOnlyHint: true });
   });

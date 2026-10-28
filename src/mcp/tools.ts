@@ -18,6 +18,32 @@ export type McpTool = {
 };
 
 /**
+ * Design tools (#360): what an Operator makes, each with its preview first. A write answers with
+ * its id, its link in the app, and the one call that undoes it; a monitor saved with a token needs
+ * a preview of the same body in the last 10 minutes. A delete is here only as the undo of a make.
+ */
+export function designToolRouteIds(): string[] {
+  return [
+    "saved_search_preview",
+    "saved_search_create",
+    "saved_search_update",
+    "saved_search_delete",
+    "saved_search_test",
+    "monitor_draft_preview",
+    "monitor_send",
+    "monitor_put",
+    "monitor_delete",
+    "panel_preview",
+    "panel_add",
+    "panel_put",
+    "panel_remove",
+    "field_role_set",
+    "note_write",
+    "note_delete",
+  ];
+}
+
+/**
  * The routes MCP offers, by id, in the order `tools/list` shows them. A tool is one more id here;
  * the read tools (#359) and the design tools (#360) add theirs.
  */
@@ -25,7 +51,6 @@ export const toolRouteIds: string[] = [
   "search",
   "saved_searches",
   "saved_search_run",
-  "saved_search_test",
   "monitors",
   "monitor_get",
   "marks",
@@ -46,6 +71,8 @@ export const toolRouteIds: string[] = [
   "numeric_keys",
   "facets",
   // End of the read tools (#359).
+  // ---- Design tools (#360): keep them in designToolRouteIds below. ----
+  ...designToolRouteIds(),
 ];
 
 /** The tool for a route. A path param, a query key and `body` share one namespace, so a clash throws. */
