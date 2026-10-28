@@ -110,31 +110,9 @@ function openApiProblems(doc: Doc): string[] {
   return out;
 }
 
-// Routes whose schemas land in a later commit of #356; empty once every area has its own.
-const notYet = new Set<string>([
-  "POST /api/version/upgrade",
-  "GET /api/home/since",
-  "PUT /api/home",
-  "POST /api/saved-searches",
-  "PUT /api/saved-searches/:id",
-  "GET /api/saved-searches/:id/run",
-  "POST /api/saved-searches/:id/test",
-  "GET /api/fields",
-  "PUT /api/fields",
-  "POST /api/api-tokens",
-  "POST /api/people/invites",
-  "POST /api/people/service-accounts",
-  "PUT /api/people/:id",
-  "POST /api/people/:id/tokens",
-  "POST /api/me/tokens",
-  "PUT /api/sign-in-settings",
-  "PUT /api/settings",
-]);
-
 describe("the described API (#356)", () => {
   test("every route in the table has a schema for its query and its body", () => {
-    const pending = (p: string) => [...notYet].some((route) => p.startsWith(`${route}: `));
-    expect(routeProblems(apiRoutes).filter((p) => !pending(p))).toEqual([]);
+    expect(routeProblems(apiRoutes)).toEqual([]);
   });
 
   test("a route registered without a schema is a problem", () => {

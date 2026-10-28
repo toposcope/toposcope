@@ -63,6 +63,11 @@ import { createShareRoute, listSharesRoute, previewTicketRoute, putShareRoute, r
 import { version } from "../shared/version";
 import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
+import { settingsBody, signInSettingsBody } from "./schemas/settings";
+import { ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
+import { fieldsBody, fieldsQuery } from "./schemas/fields";
+import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
+import { upgradeBody } from "./schemas/instance";
 import { monitorBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
 import { feedCreateBody, feedReadQuery, linkConfirmBody, linkInviteBody, linkOfferBody, linkPreviewBody, linkUpdateBody } from "./schemas/links";
 import { shareCreateBody, sharePutBody } from "./schemas/shares";
@@ -81,7 +86,7 @@ export const apiRoutes: ApiRoute[] = [
   { id: "throughput", method: "GET", path: "/api/throughput", area: "Instance", action: "read", summary: "Rows received a second now, and a histogram of the last hour.", query: null, body: null, handler: throughputRoute },
   { id: "version", method: "GET", path: "/api/version", area: "Instance", action: "read", summary: "The running version, newer releases the daily check knows, and whether upgrading from here is on.", query: null, body: null, handler: versionRoute },
   { id: "version_check", method: "POST", path: "/api/version/check", area: "Instance", action: "change instance settings", summary: "Check for newer releases now, on top of the daily check.", query: null, body: null, handler: versionCheckRoute },
-  { id: "version_upgrade", method: "POST", path: "/api/version/upgrade", area: "Instance", action: "change instance settings", summary: "Ask the host to upgrade to a newer release the check knows.", handler: versionUpgradeRoute },
+  { id: "version_upgrade", method: "POST", path: "/api/version/upgrade", area: "Instance", action: "change instance settings", summary: "Ask the host to upgrade to a newer release the check knows.", query: null, body: upgradeBody, handler: versionUpgradeRoute },
 
   // Search
   { id: "search", method: "GET", path: "/api/search", area: "Search", action: "read", summary: "Rows that match a query in a window, newest first, with a histogram or a metric's series.", query: searchQuery, body: null, handler: searchRoute },
@@ -105,14 +110,14 @@ export const apiRoutes: ApiRoute[] = [
 
   // Home and saved searches
   { id: "home", method: "GET", path: "/api/home", area: "Saved searches", action: "read", summary: "The saved search marked Home, if any.", query: null, body: null, handler: getHome },
-  { id: "home_since", method: "GET", path: "/api/home/since", area: "Saved searches", action: "read", summary: "What changed since a mark or in the last hour: new fingerprints, monitors that opened, marks.", handler: homeSinceRoute },
-  { id: "home_set", method: "PUT", path: "/api/home", area: "Saved searches", action: "change monitors", summary: "Mark a saved search Home, or unmark it.", handler: putHome },
+  { id: "home_since", method: "GET", path: "/api/home/since", area: "Saved searches", action: "read", summary: "What changed since a mark or in the last hour: new fingerprints, monitors that opened, marks.", query: homeSinceQuery, body: null, handler: homeSinceRoute },
+  { id: "home_set", method: "PUT", path: "/api/home", area: "Saved searches", action: "change monitors", summary: "Mark a saved search Home, or unmark it.", query: null, body: homeBody, handler: putHome },
   { id: "saved_searches", method: "GET", path: "/api/saved-searches", area: "Saved searches", action: "read", summary: "The saved searches the caller may see, with their pins.", query: null, body: null, handler: listSavedSearches },
-  { id: "saved_search_create", method: "POST", path: "/api/saved-searches", area: "Saved searches", action: "own hunts", summary: "Save a search: a Viewer's is their own, an Operator's is shared.", handler: createSavedSearch },
-  { id: "saved_search_update", method: "PUT", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Change a saved search, or pin or unpin it; a field left out keeps its value.", handler: updateSavedSearch },
+  { id: "saved_search_create", method: "POST", path: "/api/saved-searches", area: "Saved searches", action: "own hunts", summary: "Save a search: a Viewer's is their own, an Operator's is shared.", query: null, body: savedCreateBody, handler: createSavedSearch },
+  { id: "saved_search_update", method: "PUT", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Change a saved search, or pin or unpin it; a field left out keeps its value.", query: null, body: savedUpdateBody, handler: updateSavedSearch },
   { id: "saved_search_delete", method: "DELETE", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Delete a saved search.", query: null, body: null, handler: deleteSavedSearch },
-  { id: "saved_search_run", method: "GET", path: "/api/saved-searches/:id/run", area: "Saved searches", action: "read", summary: "Run a saved search over its own window and say what it finds.", handler: runSavedSearch },
-  { id: "saved_search_test", method: "POST", path: "/api/saved-searches/:id/test", area: "Saved searches", action: "change monitors", summary: "Send a test call to a saved search's webhook.", handler: testSavedSearch },
+  { id: "saved_search_run", method: "GET", path: "/api/saved-searches/:id/run", area: "Saved searches", action: "read", summary: "Run a saved search over its own window: its rows' count and its series' value.", query: null, body: null, handler: runSavedSearch },
+  { id: "saved_search_test", method: "POST", path: "/api/saved-searches/:id/test", area: "Saved searches", action: "change monitors", summary: "Read a saved search as a monitor would now: its value, a sample of rows, and when it last matched.", query: null, body: null, handler: testSavedSearch },
 
   // Monitors (#175); /api/alert-rules stays as their alias.
   { id: "alert_rules", method: "GET", path: "/api/alert-rules", area: "Monitors", action: "read", summary: "Every monitor as a rule, and whether a call can link back here.", query: null, body: null, handler: listAlertRules },
@@ -137,8 +142,8 @@ export const apiRoutes: ApiRoute[] = [
   { id: "monitor_delete", method: "DELETE", path: "/api/monitors/:name", area: "Monitors", action: "change monitors", summary: "Delete a monitor by name, and its record.", query: null, body: null, handler: deleteMonitor },
 
   // Fields
-  { id: "fields", method: "GET", path: "/api/fields", area: "Fields", action: "read", summary: "The fields rows carry, their roles, and the metric links.", handler: getFields },
-  { id: "fields_set", method: "PUT", path: "/api/fields", area: "Fields", action: "change fields", summary: "Set fields' roles and the metric links.", handler: putFields },
+  { id: "fields", method: "GET", path: "/api/fields", area: "Fields", action: "read", summary: "The fields rows carry, their roles, and the metric links.", query: fieldsQuery, body: null, handler: getFields },
+  { id: "fields_set", method: "PUT", path: "/api/fields", area: "Fields", action: "change fields", summary: "Set fields' roles and the metric links.", query: null, body: fieldsBody, handler: putFields },
 
   // Shares
   { id: "shares", method: "GET", path: "/api/shares", area: "Shares", action: "see access", summary: "Every share, live ones first, with its panels and use.", query: null, body: null, handler: listSharesRoute },
@@ -164,27 +169,27 @@ export const apiRoutes: ApiRoute[] = [
   // Access and people
   { id: "access", method: "GET", path: "/api/access", area: "Access", action: "see access", summary: "Every way in: people, tokens, links and shares, with today's use and refusals.", query: null, body: null, handler: accessRoute },
   { id: "api_tokens", method: "GET", path: "/api/api-tokens", area: "Access", action: "see access", summary: "The ingest tokens.", query: null, body: null, handler: listApiTokens },
-  { id: "api_token_create", method: "POST", path: "/api/api-tokens", area: "Access", action: "make tokens, links, shares", summary: "Make an ingest token; it is in this answer and never again.", handler: createApiToken },
+  { id: "api_token_create", method: "POST", path: "/api/api-tokens", area: "Access", action: "make tokens, links, shares", summary: "Make an ingest token; it is in this answer and never again.", query: null, body: ingestTokenBody, handler: createApiToken },
   { id: "api_token_delete", method: "DELETE", path: "/api/api-tokens/:id", area: "Access", action: "make tokens, links, shares", summary: "Revoke an ingest token.", query: null, body: null, handler: deleteApiToken },
   { id: "people", method: "GET", path: "/api/people", area: "Access", action: "see access", summary: "People, service accounts and invites, with their roles and tokens.", query: null, body: null, handler: listPeopleRoute },
-  { id: "invite_create", method: "POST", path: "/api/people/invites", area: "Access", action: "let people in", summary: "Invite someone with a role; the link is in this answer and never again.", handler: createInviteRoute },
+  { id: "invite_create", method: "POST", path: "/api/people/invites", area: "Access", action: "let people in", summary: "Invite someone with a role; the link is in this answer and never again.", query: null, body: inviteBody, handler: createInviteRoute },
   { id: "invite_cancel", method: "DELETE", path: "/api/people/invites/:id", area: "Access", action: "let people in", summary: "Cancel an invite.", query: null, body: null, handler: cancelInviteRoute },
-  { id: "service_account_create", method: "POST", path: "/api/people/service-accounts", area: "Access", action: "let people in", summary: "Make a service account with a role.", handler: createServiceAccountRoute },
-  { id: "person_update", method: "PUT", path: "/api/people/:id", area: "Access", action: "let people in", summary: "Change a person's or a service account's role.", handler: putPersonRoute },
+  { id: "service_account_create", method: "POST", path: "/api/people/service-accounts", area: "Access", action: "let people in", summary: "Make a service account with a role.", query: null, body: serviceAccountBody, handler: createServiceAccountRoute },
+  { id: "person_update", method: "PUT", path: "/api/people/:id", area: "Access", action: "let people in", summary: "Change a person's or a service account's role.", query: null, body: personBody, handler: putPersonRoute },
   { id: "person_revoke", method: "DELETE", path: "/api/people/:id", area: "Access", action: "let people in", summary: "Revoke a person or a service account; their sessions and tokens end.", query: null, body: null, handler: revokePersonRoute },
-  { id: "service_token_create", method: "POST", path: "/api/people/:id/tokens", area: "Access", action: "make tokens, links, shares", summary: "Make a service account's token; it is in this answer and never again.", handler: createServiceTokenRoute },
+  { id: "service_token_create", method: "POST", path: "/api/people/:id/tokens", area: "Access", action: "make tokens, links, shares", summary: "Make a service account's token; it is in this answer and never again.", query: null, body: tokenBody, handler: createServiceTokenRoute },
   { id: "service_token_revoke", method: "DELETE", path: "/api/people/:id/tokens/:tid", area: "Access", action: "make tokens, links, shares", summary: "Revoke one of a person's or a service account's tokens.", query: null, body: null, handler: revokeTokenRoute },
   { id: "two_step_reset", method: "DELETE", path: "/api/people/:id/two-step", area: "Access", action: "let people in", summary: "Reset a person's two-step; they set it up again at their next sign-in.", query: null, body: null, handler: resetTwoStepRoute },
   { id: "my_backup_codes", method: "POST", path: "/api/me/two-step/backup-codes", area: "Access", action: "any signed in", summary: "Ten new backup codes for the caller; the old ten stop working.", query: null, body: null, handler: newBackupCodesRoute },
   { id: "my_tokens", method: "GET", path: "/api/me/tokens", area: "Access", action: "any signed in", summary: "The caller's own personal tokens.", query: null, body: null, handler: myTokensRoute },
-  { id: "my_token_create", method: "POST", path: "/api/me/tokens", area: "Access", action: "any signed in", summary: "Make a personal token for the caller's own scripts; it is in this answer and never again.", handler: createMyTokenRoute },
+  { id: "my_token_create", method: "POST", path: "/api/me/tokens", area: "Access", action: "any signed in", summary: "Make a personal token for the caller's own scripts; it is in this answer and never again.", query: null, body: tokenBody, handler: createMyTokenRoute },
   { id: "my_token_revoke", method: "DELETE", path: "/api/me/tokens/:id", area: "Access", action: "any signed in", summary: "Revoke one of the caller's own tokens.", query: null, body: null, handler: revokeTokenRoute },
 
   // Settings
   { id: "sign_in_settings", method: "GET", path: "/api/sign-in-settings", area: "Settings", action: "change instance settings", summary: "How people sign in here: passwords, the provider, and who must have two-step.", query: null, body: null, handler: signInSettingsRoute },
-  { id: "sign_in_settings_set", method: "PUT", path: "/api/sign-in-settings", area: "Settings", action: "change instance settings", summary: "Change how people sign in here; a field left out keeps its value.", handler: putSignInSettingsRoute },
-  { id: "settings", method: "GET", path: "/api/settings", area: "Settings", action: "read", summary: "Retention, the instance's name and the default webhook.", query: null, body: null, handler: getSettings },
-  { id: "settings_set", method: "PUT", path: "/api/settings", area: "Settings", action: "change instance settings", summary: "Change retention, the instance's name or the default webhook; a field left out keeps its value.", handler: putSettings },
+  { id: "sign_in_settings_set", method: "PUT", path: "/api/sign-in-settings", area: "Settings", action: "change instance settings", summary: "Change how people sign in here; a field left out keeps its value.", query: null, body: signInSettingsBody, handler: putSignInSettingsRoute },
+  { id: "settings", method: "GET", path: "/api/settings", area: "Settings", action: "read", summary: "Retention, metrics retention, the instance's name, the default webhook and who must have two-step.", query: null, body: null, handler: getSettings },
+  { id: "settings_set", method: "PUT", path: "/api/settings", area: "Settings", action: "change instance settings", summary: "Change retention, metrics retention, the instance's name, the default webhook or who must have two-step; a field left out keeps its value.", query: null, body: settingsBody, handler: putSettings },
 ];
 
 /** Not under /api, but the gate checks a role on it: a note mark is the one write a person makes from the app (#259). */

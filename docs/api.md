@@ -68,6 +68,12 @@ Ask the host to upgrade to a newer release the check knows.
 
 Role: **Owner** · `version_upgrade`
 
+Body, optional:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `version` | string |  | The release to upgrade to, one GET /api/version lists. |
+
 ## Search
 
 ### GET /api/search
@@ -371,11 +377,24 @@ What changed since a mark or in the last hour: new fingerprints, monitors that o
 
 Role: **Viewer** · `home_since`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `mark` | string |  | A change mark's id: what changed since it. |
+| `since` | string |  | hour: what changed in the last hour. |
+
 ### PUT /api/home
 
 Mark a saved search Home, or unmark it.
 
 Role: **Operator** · `home_set`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `saved_id` | string \| null | yes |  |
 
 ### GET /api/saved-searches
 
@@ -389,6 +408,22 @@ Save a search: a Viewer's is their own, an Operator's is shared.
 
 Role: **Viewer** · `saved_search_create`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string | yes | Its name. |
+| `query` | string |  | The query, in the query language. |
+| `range` | string \| null |  |  |
+| `from_ts` | string \| null |  |  |
+| `to_ts` | string \| null |  |  |
+| `agg` | string \| null |  |  |
+| `widgets` | any \| null |  |  |
+| `board` | any \| null |  |  |
+| `cols` | string \| string[] \| null |  |  |
+| `pinned` | boolean |  | Pinned for the caller; each person pins their own. |
+| `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
+
 ### PUT /api/saved-searches/{id}
 
 Change a saved search, or pin or unpin it; a field left out keeps its value.
@@ -396,6 +431,22 @@ Change a saved search, or pin or unpin it; a field left out keeps its value.
 Role: **Viewer** · `saved_search_update`
 
 Path: `id`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string |  | Its name. |
+| `query` | string |  | The query, in the query language. |
+| `range` | string \| null |  |  |
+| `from_ts` | string \| null |  |  |
+| `to_ts` | string \| null |  |  |
+| `agg` | string \| null |  |  |
+| `widgets` | any \| null |  |  |
+| `board` | any \| null |  |  |
+| `cols` | string \| string[] \| null |  |  |
+| `pinned` | boolean |  | Pinned for the caller; each person pins their own. |
+| `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
 
 ### DELETE /api/saved-searches/{id}
 
@@ -407,7 +458,7 @@ Path: `id`.
 
 ### GET /api/saved-searches/{id}/run
 
-Run a saved search over its own window and say what it finds.
+Run a saved search over its own window: its rows' count and its series' value.
 
 Role: **Viewer** · `saved_search_run`
 
@@ -415,7 +466,7 @@ Path: `id`.
 
 ### POST /api/saved-searches/{id}/test
 
-Send a test call to a saved search's webhook.
+Read a saved search as a monitor would now: its value, a sample of rows, and when it last matched.
 
 Role: **Operator** · `saved_search_test`
 
@@ -682,11 +733,28 @@ The fields rows carry, their roles, and the metric links.
 
 Role: **Viewer** · `fields`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `wave` | "keys" \| "values" \| "suggest" |  | One slice of the catalog: keys, values or suggest; all of it when left out. |
+| `cheap` | string |  | With wave=suggest: keys to suggest from cheaply, separated by commas. |
+
 ### PUT /api/fields
 
 Set fields' roles and the metric links.
 
 Role: **Operator** · `fields_set`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `roles` | { [key]: string } \| null |  |  |
+| `links` | { [key]: string } \| null |  |  |
 
 ## Shares
 
@@ -917,6 +985,12 @@ Make an ingest token; it is in this answer and never again.
 
 Role: **Owner** · `api_token_create`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string | yes | What sends with it, so Access can name it. |
+
 ### DELETE /api/api-tokens/{id}
 
 Revoke an ingest token.
@@ -937,6 +1011,14 @@ Invite someone with a role; the link is in this answer and never again.
 
 Role: **Owner** · `invite_create`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `who` | string |  | Who it is for: an email, or a name. |
+| `role` | "viewer" \| "operator" \| "owner" | yes | The role they join with. |
+| `days` | number |  | How many days the link works. |
+
 ### DELETE /api/people/invites/{id}
 
 Cancel an invite.
@@ -951,6 +1033,13 @@ Make a service account with a role.
 
 Role: **Owner** · `service_account_create`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string | yes | Its name. |
+| `role` | "viewer" \| "operator" \| "owner" | yes | What its tokens may do. |
+
 ### PUT /api/people/{id}
 
 Change a person's or a service account's role.
@@ -958,6 +1047,12 @@ Change a person's or a service account's role.
 Role: **Owner** · `person_update`
 
 Path: `id`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `role` | "viewer" \| "operator" \| "owner" | yes | The new role. |
 
 ### DELETE /api/people/{id}
 
@@ -974,6 +1069,14 @@ Make a service account's token; it is in this answer and never again.
 Role: **Owner** · `service_token_create`
 
 Path: `id`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string | yes | What uses it, so Access can name it. |
+| `expires_in_days` | number |  | Days until it stops working, 1 to 365; 365 by default. |
+| `read_only` | boolean |  | true: it reads and writes nothing. |
 
 ### DELETE /api/people/{id}/tokens/{tid}
 
@@ -1009,6 +1112,14 @@ Make a personal token for the caller's own scripts; it is in this answer and nev
 
 Role: **Viewer** · `my_token_create`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string | yes | What uses it, so Access can name it. |
+| `expires_in_days` | number |  | Days until it stops working, 1 to 365; 365 by default. |
+| `read_only` | boolean |  | true: it reads and writes nothing. |
+
 ### DELETE /api/me/tokens/{id}
 
 Revoke one of the caller's own tokens.
@@ -1031,14 +1142,32 @@ Change how people sign in here; a field left out keeps its value.
 
 Role: **Owner** · `sign_in_settings_set`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `passwords` | boolean |  | Whether people may sign in with a password. |
+| `oidc` | object \| null |  |  |
+| `two_step_for` | "everyone" \| "owners" |  | Who must have a second step: everyone with a password, or Owners only. |
+
 ### GET /api/settings
 
-Retention, the instance's name and the default webhook.
+Retention, metrics retention, the instance's name, the default webhook and who must have two-step.
 
 Role: **Viewer** · `settings`
 
 ### PUT /api/settings
 
-Change retention, the instance's name or the default webhook; a field left out keeps its value.
+Change retention, metrics retention, the instance's name, the default webhook or who must have two-step; a field left out keeps its value.
 
 Role: **Owner** · `settings_set`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `retention_days` | number |  | How many days rows are kept, 1 to 365. |
+| `metrics_retention_days` | number \| "" \| null |  |  |
+| `instance_name` | string \| null |  |  |
+| `default_webhook_url` | string \| null |  |  |
+| `two_step_for` | "everyone" \| "owners" |  | Who must have a second step: everyone with a password, or Owners only. |
