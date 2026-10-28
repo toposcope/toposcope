@@ -326,7 +326,7 @@ Version 0.7.1 changes nothing in ClickHouse or SQLite. A panel's chart pick and 
 
 1. Upgrade as usual, on both sides of each link. When 0.10 first starts it stops every link made before 0.10 (removed, as Revoke does, with its record kept), since those links cannot carry this release's tables.
 2. Once both sides run 0.10, make each link again: **Make a link key** on the side that mints, with its scope and kinds, and **Paste a link key** on the other. A `tsl1_` key is refused. A new link reads the source from its start; log rows pulled before are not stored twice.
-3. Name a service on each monitor when it is next edited. Monitors made before 0.10 keep running with no service, and Watch shows "no service"; any change to one, Pause and Silence included, asks for a service first.
+3. Name a service on each monitor when it is next edited. Monitors made before 0.10 keep running with no service, and Watch shows "no service"; an edit to one asks for a service first; Pause, Resume and Silence do not.
 4. Make every script that creates or changes monitors over the API send `service` (`POST /api/alert-rules`, `PUT /api/alert-rules/:id`, `PUT /api/monitors/:name`); a save that leaves it out keeps the one stored, and a monitor with none answers 400.
 
 What is lost:
