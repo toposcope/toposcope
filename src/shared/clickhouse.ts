@@ -86,6 +86,9 @@ const insertTables = new Set([
   "monitor_results",
 ]);
 
+/** How long an insert may take before it is given up as lost. */
+export const insertTimeoutMs = 30_000;
+
 export async function clickhouseInsertJsonEachRow(
   body: string,
   table = "logs",
@@ -99,6 +102,9 @@ export async function clickhouseInsertJsonEachRow(
     method: "POST",
     headers: { Authorization: authHeader() },
     body,
+    // An insert answers in milliseconds; one that does not has gone to a dead connection, so it
+    // fails here instead of holding its caller (a push, a run, an ingest) without end.
+    signal: AbortSignal.timeout(insertTimeoutMs),
   });
   if (!res.ok) {
     throw new Error(`ClickHouse insert failed: ${await res.text()}`);
@@ -149,6 +155,7 @@ export async function clickhouseInsertSelectZstd(
     method: "POST",
     headers: { Authorization: authHeader(), "content-encoding": "zstd" },
     body: body as unknown as BodyInit,
+    signal: AbortSignal.timeout(insertTimeoutMs),
   });
   if (!res.ok) {
     throw new Error(`ClickHouse insert failed: ${await res.text()}`);

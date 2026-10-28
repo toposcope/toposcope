@@ -184,6 +184,27 @@ async function oldestPosition(now = Date.now()): Promise<number | null> {
 /** Tests only. */
 export function forgetOldestPosition(): void {
   oldestCache = null;
+  kindOldestCache.clear();
+}
+
+const kindOldestCache = new Map<OtherKind, { at: number; oldest: number | null; oldestTs: string | null }>();
+
+/** A kind's oldest position still stored and its time: a full read, so kept for a minute as logs' is. */
+async function kindOldest(kind: OtherKind, now = Date.now()): Promise<{ oldest: number | null; oldestTs: string | null }> {
+  const cached = kindOldestCache.get(kind);
+  if (cached && now - cached.at < oldestTtlMs) {
+    return cached;
+  }
+  const rows = await clickhouseQuery<{ n: string | number; t: string | null; c: string | number }>(
+    `SELECT min(seq) AS n, argMin(${kind === "monitor_results" ? "at" : "ts"}, seq) AS t, count() AS c FROM ${kind} WHERE seq > 0`,
+  );
+  const value = {
+    at: now,
+    oldest: Number(rows[0]?.c ?? 0) > 0 ? Number(rows[0]!.n) : null,
+    oldestTs: Number(rows[0]?.c ?? 0) > 0 && rows[0]?.t ? toIsoTimestamp(String(rows[0].t)) : null,
+  };
+  kindOldestCache.set(kind, value);
+  return value;
 }
 
 /** The rows of `(after, through]` that match `q`, in arrival order, at most `limit`. */
@@ -299,14 +320,12 @@ export async function readFeed(input: {
       `SELECT ${input.positionsOnly ? "seq" : "* EXCEPT (tenant_id)"} FROM ${kind} WHERE ${where.join(" AND ")} ORDER BY seq LIMIT {limit:UInt32}`,
       kparams,
     );
-    const first = await clickhouseQuery<{ n: string | number; t: string | null; c: string | number }>(
-      `SELECT min(seq) AS n, argMin(${kind === "monitor_results" ? "at" : "ts"}, seq) AS t, count() AS c FROM ${kind} WHERE seq > 0`,
-    );
-    const kOldest = Number(first[0]?.c ?? 0) > 0 ? Number(first[0]!.n) : null;
+    const first = await kindOldest(kind, now);
+    const kOldest = first.oldest;
     const kHorizon = new Date(now - kindRetention(kind, days) * 86_400_000).toISOString();
     pages[kind] = {
       rows: krows,
-      gone: kindGone({ after: input.after, oldest: kOldest, oldestTs: first[0]?.t ? toIsoTimestamp(String(first[0].t)) : null, horizon: kHorizon }),
+      gone: kindGone({ after: input.after, oldest: kOldest, oldestTs: first.oldestTs, horizon: kHorizon }),
     };
   }
   // One page across every kind: it ends where the first full kind ends, or at the `limit`-th row

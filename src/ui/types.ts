@@ -315,7 +315,32 @@ export type MonitorsResponse = {
   sent: MonitorCall[];
   /** Results in the window, at most 240 columns a lane; older servers and fixtures leave them out. */
   results?: PushResultRow[];
+  /** Each linked source's monitors (#333), read-only: their results are in `results` by id. Older servers leave it out. */
+  sources?: MonitorsFromSource[];
   link: boolean;
+};
+
+/** A source's monitor as it travels over a link (#333): its definition, read-only here. */
+export type SourceMonitor = Pick<
+  AlertRule,
+  "id" | "name" | "kind" | "threshold" | "opens_when" | "every_ms" | "grace_ms" | "last_result" | "last_value" | "last_result_at"
+> & {
+  source?: MonitorSource;
+  state?: "ok" | "open";
+  enabled?: number;
+  service: string;
+  host: string;
+};
+
+/** A source's stretch, open to resolved, as it travels: only drawn here. */
+export type SourceStretch = Pick<MonitorStretch, "id" | "monitor_id" | "opened_at" | "resolved_at" | "closed_by" | "open_message">;
+
+/** One linked source's monitors, as the newest snapshot it sent (`at`) holds them. */
+export type MonitorsFromSource = {
+  source: string;
+  at: number;
+  monitors: SourceMonitor[];
+  stretches: SourceStretch[];
 };
 
 /** A monitor's own page: a push monitor's key and last result come only here. */

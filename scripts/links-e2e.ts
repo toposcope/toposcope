@@ -127,6 +127,19 @@ await until("A holds B's metric point", async () => {
   const names = await call(A, "/api/metric-names?range=15m");
   return JSON.stringify(names.body).includes(`pay.requests.${tag}`);
 });
+// Monitors come with a link (#333): a check pushed at B makes a monitor there, which A lists under B's name, read-only.
+const checkRes = await fetch(`${B}/v1/checks`, {
+  method: "POST",
+  headers: { authorization: `Bearer ${ingestToken}`, "content-type": "application/json" },
+  body: JSON.stringify({ monitor: `backup-${tag}`, status: "fail", message: "disk full", service: "backup", host: "db-1" }),
+});
+check(checkRes.ok, "a check pushed at B", await checkRes.text());
+await until("A lists B's monitor under B's name, with its result", async () => {
+  const w = await call(A, "/api/monitors?range=24h");
+  const src = (w.body.sources ?? []).find((s: any) => s.source === nameB);
+  const mon = src?.monitors.find((m: any) => m.name === `backup-${tag}`);
+  return Boolean(mon && mon.service === "backup" && (w.body.results ?? []).some((r: any) => r.monitor_id === mon.id && r.result === "fail"));
+});
 await Bun.sleep(6_000);
 check((await count(A, `service:${service}`)) === 6, "A holds its own five and B's one: its errors did not come back twice");
 

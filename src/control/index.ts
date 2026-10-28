@@ -296,6 +296,14 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "link_keys", "kinds", "TEXT NOT NULL DEFAULT 'logs,marks'");
   addColumnIfMissing(db, "links", "kinds", "TEXT NOT NULL DEFAULT 'logs,marks'");
   addColumnIfMissing(db, "links", "kind_state", "TEXT");
+  // A source's monitors, as its newest snapshot over a link (#333): read-only here.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pulled_monitors (
+      source TEXT PRIMARY KEY,
+      snapshot TEXT NOT NULL,
+      at INTEGER NOT NULL
+    );
+  `);
   // Rows and bytes a day for each kind a link moved, on the side that moved them (#329, #332).
   db.run(`
     CREATE TABLE IF NOT EXISTS link_volume (

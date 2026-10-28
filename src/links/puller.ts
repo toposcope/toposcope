@@ -1,3 +1,4 @@
+import { keepMonitorsSnapshot, monitorsSnapshot, type MonitorsSnapshot } from "./monitors-snapshot";
 import { feedKinds, kindsOf } from "./kinds";
 import { noteWire } from "./volume";
 import { effectiveMetricsRetentionDays } from "../control/settings";
@@ -85,6 +86,10 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
     await insertPulledMarks(reply.marks ?? [], source, hereName());
     stored += result.stored + (await insertPulledBlocks(wire, { id: reply.source?.id || link.peer_id, name: source.name }, deps.hereId()));
     noteWire(link.id, wire, deps.now());
+    const sent = (wire.header as { monitors?: MonitorsSnapshot }).monitors;
+    if (sent) {
+      keepMonitorsSnapshot(source.name, sent, deps.now());
+    }
     after = reply.through;
     if (reply.gone) {
       // A hole never closes: it only grows if retention passes more before it is read.
@@ -159,7 +164,15 @@ export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps):
       const res = await deps.fetch(`${base}/link/v1/rows`, {
         method: "POST",
         headers: { ...headers, "content-type": "application/x-toposcope-feed" },
-        body: (await encodeFeed(reply, deps.hereId(), { source: { id: deps.hereId(), name: instanceNameOrEmpty() } }).then((b) => {
+        body: (await encodeFeed(reply, deps.hereId(), {
+          source: { id: deps.hereId(), name: instanceNameOrEmpty() },
+          ...(reply.through >= reply.settled && kindsOf(link.kinds).includes("monitors")
+            ? (() => {
+                const monitors = monitorsSnapshot(link.q, instanceNameOrEmpty());
+                return monitors ? { monitors } : {};
+              })()
+            : {}),
+        }).then((b) => {
           noteWire(link.id, b, deps.now());
           return b;
         })) as unknown as BodyInit,
