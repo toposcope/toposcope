@@ -9,6 +9,7 @@ import {
   clickhouseQuery,
   toIsoTimestamp,
 } from "../shared/clickhouse";
+import { kindFilter } from "./kind-filter";
 import { emitQuerySql, QueryCompileError, compileQuery, requireCompiled } from "../query/compile";
 import { mapRow, markSelect, type MarkRow } from "../query/marks";
 import { queryRulesOutService } from "../alerts/first-seen";
@@ -93,18 +94,6 @@ export function kindGone(input: {
   }
   const edge = Date.parse(input.horizon) + 86_400_000;
   return Date.parse(input.oldestTs) <= edge ? { from: input.after + 1, to: input.oldest - 1 } : null;
-}
-
-/**
- * Whether the filter can be run on a kind, and how (#326 fills this in). Until then an empty
- * filter sends every kind whole, and any other sends none of the kinds other than logs and marks.
- */
-export function kindFilterSql(
-  q: string,
-  _kind: OtherKind,
-  _params: Record<string, string>,
-): { sql: string } | { not_sent: string } {
-  return q.trim() === "" ? { sql: "" } : { not_sent: "the filter is not read on this kind yet" };
 }
 
 export type FeedReply = {
@@ -292,7 +281,7 @@ export async function readFeed(input: {
       continue;
     }
     const kparams: Record<string, string> = { ...params };
-    const filter = kindFilterSql(input.q, kind, kparams);
+    const filter = kindFilter(input.q, kind, kparams);
     if ("not_sent" in filter) {
       pages[kind] = { rows: [], gone: null, not_sent: filter.not_sent };
       continue;
