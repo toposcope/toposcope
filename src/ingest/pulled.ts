@@ -15,7 +15,7 @@ import { withInsertSlot } from "./backpressure";
  * ones would both find a row missing and both store it.
  */
 let pulledChain: Promise<unknown> = Promise.resolve();
-function onePulledAtATime<T>(work: () => Promise<T>): Promise<T> {
+export function onePulledAtATime<T>(work: () => Promise<T>): Promise<T> {
   const run = pulledChain.then(work, work);
   pulledChain = run.catch(() => undefined);
   return run;

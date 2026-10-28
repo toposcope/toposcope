@@ -105,6 +105,58 @@ export async function clickhouseInsertJsonEachRow(
   }
 }
 
+/**
+ * A query's result as ClickHouse wrote it, zstd-compressed on the wire (#327): a link's feed
+ * sends Native blocks through untouched, so Bun never parses a row.
+ */
+export async function clickhouseQueryZstd(sql: string, params: Record<string, string> = {}): Promise<Uint8Array> {
+  const url = clickhouseUrl();
+  url.searchParams.set("enable_http_compression", "1");
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(`param_${key}`, value);
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: authHeader(), "accept-encoding": "zstd" },
+    body: sql,
+    decompress: false,
+  } as RequestInit);
+  if (!res.ok) {
+    throw new Error(`ClickHouse query failed: ${await res.text()}`);
+  }
+  if (res.headers.get("content-encoding") !== "zstd") {
+    // An empty result can come back plain; compress it so every block reads the same way.
+    return Bun.zstdCompressSync(new Uint8Array(await res.arrayBuffer()));
+  }
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+/**
+ * An `INSERT … SELECT … FROM input(…)` whose input is a zstd body (#327). Returns how many rows
+ * it wrote, from ClickHouse's own summary.
+ */
+export async function clickhouseInsertSelectZstd(
+  sql: string,
+  body: Uint8Array,
+  params: Record<string, string> = {},
+): Promise<number> {
+  const url = clickhouseUrl();
+  url.searchParams.set("query", sql);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(`param_${key}`, value);
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: authHeader(), "content-encoding": "zstd" },
+    body: body as unknown as BodyInit,
+  });
+  if (!res.ok) {
+    throw new Error(`ClickHouse insert failed: ${await res.text()}`);
+  }
+  const summary = JSON.parse(res.headers.get("x-clickhouse-summary") ?? "{}") as { written_rows?: string };
+  return Number(summary.written_rows ?? 0);
+}
+
 export async function clickhouseCommand(sql: string): Promise<void> {
   const res = await fetch(clickhouseUrl(), {
     method: "POST",

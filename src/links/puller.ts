@@ -5,7 +5,8 @@ import { instanceId, instanceName } from "../control/instance";
 function instanceNameOrEmpty(): string {
   return instanceName() ?? "";
 }
-import { readFeed, type FeedReply } from "../feed/feed";
+import { readFeed } from "../feed/feed";
+import { decodeFeed, encodeFeed, insertPulledBlocks, type WireFeed } from "../feed/wire";
 import { getRetentionDays } from "../control/settings";
 import { insertPulled, insertPulledMarks } from "../ingest/pulled";
 import { hereName } from "../shared/here";
@@ -22,7 +23,7 @@ export const pullEveryMs = 5_000;
 export const pullPagesPerPass = 20;
 export const pullPageRows = 1_000;
 
-type FeedFromSource = FeedReply & { source?: { id: string; name: string } };
+type FeedFromSource = WireFeed["header"] & { source?: { id: string; name: string } };
 
 export type PullDeps = {
   fetch: (url: string, init?: RequestInit) => Promise<Response>;
@@ -46,6 +47,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
   let holeAt = { gone_from_at: link.gone_from_at, gone_to_at: link.gone_to_at };
   for (let page = 0; page < pullPagesPerPass; page++) {
     let reply: FeedFromSource;
+    let wire: WireFeed;
     try {
       const res = await deps.fetch(
         `${link.peer_url.replace(/\/+$/, "")}/link/v1/feed?after=${after}&limit=${pullPageRows}`,
@@ -65,7 +67,8 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
         noteFailure(link.id, `the source answered ${res.status}`);
         return { stored };
       }
-      reply = (await res.json()) as FeedFromSource;
+      wire = decodeFeed(new Uint8Array(await res.arrayBuffer()));
+      reply = wire.header as FeedFromSource;
     } catch (err) {
       noteFailure(link.id, failureWords(err));
       return { stored };
@@ -77,7 +80,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
     const source = { name: reply.source?.name || link.peer_name };
     const result = await insertPulled(reply.rows, source, deps.hereId());
     await insertPulledMarks(reply.marks ?? [], source, hereName());
-    stored += result.stored;
+    stored += result.stored + (await insertPulledBlocks(wire, { id: reply.source?.id || link.peer_id, name: source.name }, deps.hereId()));
     after = reply.through;
     if (reply.gone) {
       // A hole never closes: it only grows if retention passes more before it is read.
@@ -138,6 +141,7 @@ export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps):
       return { delivered };
     }
     const reply = await readFeed({
+      positionsOnly: true,
     // Logs and marks until a link carries its kinds (#329).
     kinds: ["logs", "marks"],
       id: link.id,
@@ -150,8 +154,8 @@ export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps):
     try {
       const res = await deps.fetch(`${base}/link/v1/rows`, {
         method: "POST",
-        headers,
-        body: JSON.stringify({ ...reply, source: { id: deps.hereId(), name: instanceNameOrEmpty() } }),
+        headers: { ...headers, "content-type": "application/x-toposcope-feed" },
+        body: (await encodeFeed(reply, deps.hereId(), { source: { id: deps.hereId(), name: instanceNameOrEmpty() } })) as unknown as BodyInit,
         signal: AbortSignal.timeout(30_000),
       });
       if (!res.ok && res.status !== 409) {
