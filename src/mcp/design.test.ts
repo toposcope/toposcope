@@ -134,12 +134,53 @@ beforeAll(async () => {
     }
     out.badPreview = await call("agent", "monitor_draft_preview", { body: { name: "x " + tag, source: "search", service: "api", saved_search_id: savedId, threshold: 1, remind_every: "2h", webhook_urls: ["default"] } });
 
+    // The security review's cases (#360).
+    const put = async (n, body) => {
+      await call("agent", "monitor_draft_preview", { body: { ...body, name: n } });
+      return call("agent", "monitor_put", { name: n, body });
+    };
+    // (a) A body the draft refuses is refused by the gate, never passed on: an HTTP(S) monitor never becomes a TCP one.
+    const httpName = "health " + tag;
+    out.http = await put(httpName, { source: "http", service: "api", url: "https://api.example.com/health", every: "1m", headers: { Authorization: "Bearer one", "X-Team": "core" }, webhook_url: "https://hooks.example.com/page" });
+    out.toTcp = await api("agent", "PUT", "/api/alert-rules/" + out.http.body.id, { source: "tcp", url: "https://evil.example.com/", webhook_url: "https://hooks.example.com/evil" });
+    out.httpAfter = await call("agent", "monitor_get", { name: httpName });
+    // A header's value changed and one removed: the undo says it keeps values, and still runs.
+    out.headerChange = await put(httpName, { source: "http", service: "api", url: "https://api.example.com/health", every: "1m", headers: { Authorization: "Bearer two" }, webhook_url: "https://hooks.example.com/page" });
+    out.headerUndo = await call("agent", out.headerChange.body.undo.tool, out.headerChange.body.undo.arguments);
+    // (b) A pause alone by name pauses and keeps every other field; its undo is the pause it replaced.
+    const pushName = "backup " + tag;
+    out.push = await put(pushName, { source: "push", service: "backup", every: "1d", grace: "1h", webhook_url: "https://hooks.example.com/backup" });
+    out.pushPause = await call("agent", "monitor_put", { name: pushName, body: { enabled: false } });
+    out.pushAfterPause = await call("agent", "monitor_get", { name: pushName });
+    out.pushUnpause = await call("agent", out.pushPause.body.undo.tool, out.pushPause.body.undo.arguments);
+    out.pushAfterUnpause = await call("agent", "monitor_get", { name: pushName });
+    // An empty body is no pause: a replace, previewed first.
+    out.pushEmpty = await call("agent", "monitor_put", { name: pushName, body: {} });
+    // A pause alone to no monitor is refused as the draft reads it.
+    out.pauseNothing = await call("agent", "monitor_put", { name: "nothing " + tag, body: { enabled: false } });
+    // 3. A replace's preview does not unlock a make of a second monitor of that name.
+    out.createWithReplacePreview = await api("agent", "POST", "/api/alert-rules", { ...monitor, name });
+    await call("agent", "monitor_draft_preview", { body: { ...monitor, name, saves: "create" } });
+    out.createPreviewed = await api("agent", "POST", "/api/alert-rules", { ...monitor, name });
+    await api("agent", "DELETE", "/api/alert-rules/" + out.createPreviewed.body.id);
+    // 4. An undo is let through for 10 minutes, then needs a preview like any save.
+    await call("agent", "monitor_draft_preview", { body: { ...monitor, threshold: 600, name: pushName + " search" } });
+    const lateMade = await call("agent", "monitor_put", { name: pushName + " search", body: { ...monitor, threshold: 600 } });
+    await call("agent", "monitor_draft_preview", { body: { ...monitor, threshold: 700, name: pushName + " search" } });
+    out.lateChange = await call("agent", "monitor_put", { name: pushName + " search", body: { ...monitor, threshold: 700 } });
+    setSystemTime(new Date(Date.now() + 11 * 60_000));
+    out.lateUndo = await call("agent", out.lateChange.body.undo.tool, out.lateChange.body.undo.arguments);
+    setSystemTime();
+    void lateMade;
+
     // A browser session saves without a preview: the person is looking at the editor.
     const link = people.createOwnerLink("ian@example.test");
     const setup = await app.fetch(new Request("http://app.test/api/setup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: link.token, name: "Ian", password: "ian's long password" }) }));
     const cookie = setup.headers.get("set-cookie").split(";")[0];
     await (await import(root + "/control/owner-for-tests.ts")).passTwoStepSetup(app.fetch, cookie);
     out.session = await api("cookie:" + cookie, "PUT", "/api/monitors/" + encodeURIComponent("by hand " + tag), { ...monitor, threshold: 7 });
+    // A session's change by id may not turn an HTTP(S) monitor into a TCP one either.
+    out.sessionToTcp = await api("cookie:" + cookie, "PUT", "/api/alert-rules/" + out.http.body.id, { source: "tcp", target: "evil.example.com:443" });
 
     // Home: a canvas of two panels; the agent adds a third, and the first two stay where they were.
     const homeLayout = { logs: true, widgets: [
@@ -382,13 +423,64 @@ describe("design tools (#360)", () => {
   });
 });
 
+describe("the security review's cases (#360)", () => {
+  test("(a) a body the draft refuses is refused by the gate in its words: an HTTP(S) monitor does not become TCP", () => {
+    expect(r.http.isError).toBe(false);
+    expect(r.toTcp.status).toBe(400);
+    expect(r.toTcp.body.error).toContain("is an HTTP(S) monitor; delete it to make a TCP monitor of that name");
+    expect(r.httpAfter.body.source).toBe("http");
+    expect(r.httpAfter.body.http.url).toBe("https://api.example.com/health");
+    expect(r.sessionToTcp.status).toBe(400);
+    expect(r.sessionToTcp.body.error).toContain("delete it to make a TCP monitor");
+  });
+
+  test("(b) a pause alone by name keeps every other field, and is undone by the pause it replaced", () => {
+    expect(r.pushPause.isError).toBe(false);
+    expect(r.pushAfterPause.body.enabled).toBe(0);
+    expect(r.pushAfterPause.body.every_ms).toBe(86_400_000);
+    expect(r.pushAfterPause.body.grace_ms).toBe(3_600_000);
+    expect(r.pushAfterPause.body.webhook_url).toBe("https://hooks.example.com/backup");
+    expect(r.pushPause.body.undo).toMatchObject({ tool: "monitor_put", arguments: { body: { enabled: true } } });
+    expect(r.pushUnpause.isError).toBe(false);
+    expect(r.pushAfterUnpause.body.enabled).toBe(1);
+    expect(r.pushAfterUnpause.body.every_ms).toBe(86_400_000);
+    expect(r.pushEmpty.isError).toBe(true);
+    expect(r.pushEmpty.body.error).toMatch(sentence);
+    expect(r.pauseNothing.isError).toBe(true);
+    expect(r.pauseNothing.body.error).toBe("source is required: search, fingerprints, push, http, tcp or cert");
+  });
+
+  test("a replace's preview does not unlock a make of a second monitor of that name", () => {
+    expect(r.createWithReplacePreview.status).toBe(428);
+    expect(r.createWithReplacePreview.body.error).toContain('its name and saves: "create" in it');
+    expect(r.createWithReplacePreview.body.preview.arguments.body.saves).toBe("create");
+    expect(r.createPreviewed.status).toBe(201);
+  });
+
+  test("an undo is let through for 10 minutes only", () => {
+    expect(r.lateChange.isError).toBe(false);
+    expect(r.lateUndo.isError).toBe(true);
+    expect(r.lateUndo.body.error).toStartWith("A monitor saved with a token is previewed first");
+  });
+
+  test("an HTTP(S) monitor's undo says it keeps header values, keeps only headers still stored, and runs", () => {
+    expect(r.headerChange.isError).toBe(false);
+    expect(r.headerChange.body.undo.does).toContain("Header values are not shown, so this undo keeps their current values; set them again by hand");
+    expect(r.headerChange.body.undo.arguments.body.headers).toEqual([["Authorization", null]]);
+    expect(r.headerUndo.isError).toBe(false);
+    expect(r.headerUndo.body.http.headers).toEqual(["Authorization"]);
+  });
+});
+
 describe("the preview's hash", () => {
   test("key order, spaces around text, and the hold keys are not a change; anything else is", () => {
-    const a = bodyHash({ threshold: 5, service: "api", source: "search" }, { name: "x" });
-    expect(bodyHash({ source: "search", service: " api ", threshold: 5, enabled: false }, { name: " x " })).toBe(a);
-    expect(bodyHash({ threshold: 6, service: "api", source: "search" }, { name: "x" })).not.toBe(a);
-    expect(bodyHash({ threshold: 5, service: "api", source: "search" }, { name: "y" })).not.toBe(a);
+    const a = bodyHash({ threshold: 5, service: "api", source: "search" }, { name: "x", saves: "replace" });
+    expect(bodyHash({ source: "search", service: " api ", threshold: 5, enabled: false }, { name: " x ", saves: "replace" })).toBe(a);
+    expect(bodyHash({ threshold: 6, service: "api", source: "search" }, { name: "x", saves: "replace" })).not.toBe(a);
+    expect(bodyHash({ threshold: 5, service: "api", source: "search" }, { name: "y", saves: "replace" })).not.toBe(a);
     expect(bodyHash({ threshold: 5, service: "api", source: "search" }, { id: "x" })).not.toBe(a);
+    // A make's preview is not a replace's.
+    expect(bodyHash({ threshold: 5, service: "api", source: "search" }, { name: "x", saves: "create" })).not.toBe(a);
     expect(monitorDraft({ name: "old", id: "1", threshold: 1 }, { id: "1" })).toEqual({ name: "old", id: "1", threshold: 1 });
   });
 });

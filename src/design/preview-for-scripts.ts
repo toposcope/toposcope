@@ -28,7 +28,7 @@ export async function previewMonitorFirst(
       : method === "PUT" && path.startsWith("/api/alert-rules/") && path !== "/api/alert-rules/test-call"
         ? { id: decodeURIComponent(path.slice("/api/alert-rules/".length)) }
         : method === "POST" && path === "/api/alert-rules"
-          ? {}
+          ? { saves: "create" }
           : null;
   if (!target) {
     return;

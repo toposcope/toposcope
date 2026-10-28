@@ -72,6 +72,19 @@ const monitor = {
 
 export const monitorBody = v.object(monitor);
 
+/** A monitor's body as its preview takes it (#360): the save's body, and which save it is for. */
+export const monitorDraftBody = v.object({
+  ...monitor,
+  name: v.optional(described(v.string(), "The monitor's name, as the save will have it; required unless id is given.")),
+  id: v.optional(described(v.string(), "A monitor's id: preview a change by PUT /api/alert-rules/:id, fields left out keeping their value.")),
+  saves: v.optional(
+    described(
+      v.picklist(["replace", "create"], "saves must be replace or create"),
+      "replace (the default): PUT /api/monitors/:name, what is left out takes its default; create: POST /api/alert-rules, which makes one more of that name.",
+    ),
+  ),
+});
+
 export const testCallBody = v.object({
   ...monitor,
   id: v.nullish(described(v.string(), "The monitor the draft is of, when it has been saved.")),

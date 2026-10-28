@@ -4,7 +4,7 @@ import { actorOf } from "../actor-context";
 import { monitorPreview, previewWindows, type PreviewPoint, type PreviewWindow } from "../alerts/preview";
 import { getHttp } from "../alerts/http-store";
 import { getNet } from "../alerts/net-store";
-import { getAlert, monitorsNamed, readMonitorFields, type AlertRule, type MonitorFields } from "../control/alerts";
+import { getAlert, isHoldOnly, monitorsNamed, readMonitorFields, type AlertRule, type MonitorFields } from "../control/alerts";
 import { existingHttp, readHttpFields } from "../control/http-monitors";
 import { readPlace } from "../control/monitor-place";
 import { sourceChange } from "../control/monitors";
@@ -15,7 +15,7 @@ import { formatHttpEvery } from "../shared/http-check";
 import { isNetSource, type NetSource } from "../shared/net-check";
 import { formatSpan } from "../shared/push";
 import { noteUndo, notePreview, previewFirst, previewMs, type Target } from "./preview-gate";
-import { answerWith, readObject, type Undo } from "./answer";
+import { answerWith, readObject } from "./answer";
 
 /** A draft's preview reads the last 7 days (#360); Watch this reads one. */
 export const draftPreviewDays = 7;
@@ -113,19 +113,45 @@ export function monitorPutWithUndo(handler: Handler): Handler {
     const name = (c.req.param("name") ?? "").trim();
     const before = name ? oneNamed(name) : null;
     const previous = before ? monitorBodyOf(before) : null;
+    const beforeHeaders = before?.source === "http" ? (getHttp(before.id)?.headers ?? []) : [];
+    const rec = await readObject(c);
+    const holdOnly = !(rec instanceof Response) && isHoldOnly(rec);
     const res = await handler(c, next);
     if (!(res instanceof Response)) {
       return res;
     }
     return answerWith(res, () => {
-      const undo: Undo = previous
-        ? { tool: "monitor_put", arguments: { name, body: previous }, does: `Puts ${name} back as it was before this change` }
-        : { tool: "monitor_delete", arguments: { name }, does: `Deletes ${name}, which this made` };
-      const actor = actorOf(c);
-      if (previous && actor) {
-        noteUndo(actor.person.id, previous, { name });
+      if (!before || !previous) {
+        return { link: watchLink, undo: { tool: "monitor_delete", arguments: { name }, does: `Deletes ${name}, which this made` } };
       }
-      return { link: watchLink, undo };
+      if (holdOnly && !(rec instanceof Response)) {
+        // A pause or a silence is undone by the one it replaced, which is a pause too.
+        const back: Record<string, unknown> = {};
+        if (rec.enabled !== undefined) {
+          back.enabled = before.enabled === 1;
+        }
+        if (rec.silence_for !== undefined || rec.silenced_until !== undefined) {
+          back.silenced_until = before.silenced_until;
+        }
+        return { link: watchLink, undo: { tool: "monitor_put", arguments: { name, body: back }, does: `Puts ${name}'s pause and silence back as they were` } };
+      }
+      let does = `Puts ${name} back as it was before this change`;
+      if (before.source === "http") {
+        // A header's value is never shown, so the undo can only keep what is stored now.
+        const after = getHttp(before.id)?.headers ?? [];
+        const now = new Map(after.map(([k, v]) => [k.toLowerCase(), v]));
+        const was = new Map(beforeHeaders.map(([k, v]) => [k.toLowerCase(), v]));
+        const changed = beforeHeaders.some(([k, v]) => now.get(k.toLowerCase()) !== v) || after.some(([k]) => !was.has(k.toLowerCase()));
+        previous.headers = beforeHeaders.filter(([k]) => now.has(k.toLowerCase())).map(([k]) => [k, null]);
+        if (changed) {
+          does += ". Header values are not shown, so this undo keeps their current values; set them again by hand";
+        }
+      }
+      const actor = actorOf(c);
+      if (actor) {
+        noteUndo(actor.person.id, previous, { name, saves: "replace" });
+      }
+      return { link: watchLink, undo: { tool: "monitor_put", arguments: { name, body: previous }, does } };
     });
   };
 }
@@ -150,8 +176,7 @@ const cannotPreview: Record<Exclude<Source, "search">, string> = {
   cert: "A certificate monitor has no results before it runs: monitor_send reads the certificate once from here",
 };
 
-/** A preview reads as a replace does, but a body with no source reads as a search, as a make by POST does. */
-type Mode = "put" | "create" | "update" | "preview";
+type Mode = "put" | "create" | "update";
 type Draft =
   | { ok: true; source: Source; name: string; existing: AlertRule | null; place: MonitorPlace; fields: { status?: never } & object }
   | { ok: false; error: string; status: 400 | 404 | 409; field?: string };
@@ -180,7 +205,7 @@ export function readDraft(rec: Record<string, unknown>, target: Target, mode: Mo
     if (!name) {
       return refuse("name is required", 400, "name");
     }
-    if (mode === "put" || mode === "preview") {
+    if (mode === "put") {
       const named = monitorsNamed([name]);
       if (named.length > 1) {
         return refuse(`${named.length} monitors are named ${name}; rename one in Watch`, 409);
@@ -230,26 +255,43 @@ export function readDraft(rec: Record<string, unknown>, target: Target, mode: Mo
   return { ok: true, source, name, existing, place, fields };
 }
 
-/** The gate on a route that saves a monitor: what it saves, and whether it would. */
+function draftOf(mode: Mode) {
+  return (body: Record<string, unknown>, target: Target) => {
+    const draft = readDraft(body, target, mode);
+    return draft.ok ? { ok: true as const } : draft;
+  };
+}
+
+/** The gate on each route that saves a monitor: what it saves, how it reads, and where a pause keeps the rest. */
 export function previewedPut(handler: Handler): Handler {
-  return previewFirst(handler, (c) => ({ name: c.req.param("name") ?? "" }), (_c, body, target) => readDraft(body, target, "put").ok);
+  return previewFirst(handler, {
+    targetOf: (c) => ({ name: (c.req.param("name") ?? "").trim(), saves: "replace" }),
+    draft: draftOf("put"),
+    // A pause or a silence to a monitor that exists keeps every other field (putMonitor).
+    holdKeepsRest: (target) => "name" in target && monitorsNamed([target.name]).length === 1,
+  });
 }
 
 export function previewedCreate(handler: Handler): Handler {
-  return previewFirst(
-    handler,
-    (_c, body) => (typeof body.name === "string" && body.name.trim() ? { name: body.name.trim() } : null),
-    (_c, body, target) => readDraft(body, target, "create").ok,
-  );
+  return previewFirst(handler, {
+    targetOf: (_c, body) => ({ name: typeof body.name === "string" ? body.name.trim() : "", saves: "create" }),
+    draft: draftOf("create"),
+    holdKeepsRest: () => false,
+  });
 }
 
 export function previewedUpdate(handler: Handler): Handler {
-  return previewFirst(handler, (c) => ({ id: c.req.param("id") ?? "" }), (_c, body, target) => readDraft(body, target, "update").ok);
+  return previewFirst(handler, {
+    targetOf: (c) => ({ id: c.req.param("id") ?? "" }),
+    draft: draftOf("update"),
+    holdKeepsRest: () => true,
+  });
 }
 
 /**
  * `POST /api/monitors/preview` (#360): a monitor's body, read as `PUT /api/monitors/:name` would
- * save it (or, with `id`, as `PUT /api/alert-rules/:id` would change that monitor), and where it
+ * save it (with `saves: "create"`, as `POST /api/alert-rules` would make it; with `id`, as
+ * `PUT /api/alert-rules/:id` would change that monitor), and where it
  * would have opened and resolved over the last 7 days. A body the save would refuse is refused
  * here in the same words. A body that passes counts as previewed, for this caller, for 10
  * minutes; a source with no past (push, HTTP(S), TCP, certificate, new fingerprints) still
@@ -265,8 +307,9 @@ export async function monitorDraftPreviewRoute(c: Context): Promise<Response> {
   if (!byId && !name) {
     return c.json({ error: "name is required: the monitor's name, as PUT /api/monitors/:name will have it (or id, to preview a change by id)", field: "name" }, 400);
   }
-  const target: Target = byId ? { id: byId } : { name };
-  const draft = readDraft(rec, target, byId ? "update" : "preview");
+  const saves = rec.saves === "create" ? "create" : "replace";
+  const target: Target = byId ? { id: byId } : { name, saves };
+  const draft = readDraft(rec, target, byId ? "update" : saves === "create" ? "create" : "put");
   if (!draft.ok) {
     return c.json({ error: draft.error, ...(draft.field ? { field: draft.field } : {}) }, draft.status);
   }
@@ -276,7 +319,7 @@ export async function monitorDraftPreviewRoute(c: Context): Promise<Response> {
   const seen = actor ? notePreview(actor.person.id, rec, target, now) : null;
   const head = {
     name: draft.name,
-    ...(byId ? { id: byId } : {}),
+    ...(byId ? { id: byId } : { saves }),
     source,
     service: place.service,
     days: draftPreviewDays,

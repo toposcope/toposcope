@@ -75,7 +75,7 @@ import { fieldsBody, fieldsQuery } from "./schemas/fields";
 import { fieldRoleBody, noteBody, panelBody } from "./schemas/design";
 import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
 import { upgradeBody } from "./schemas/instance";
-import { monitorBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
+import { monitorBody, monitorDraftBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
 import { feedCreateBody, feedReadQuery, linkConfirmBody, linkInviteBody, linkOfferBody, linkPreviewBody, linkUpdateBody } from "./schemas/links";
 import { shareCreateBody, sharePutBody } from "./schemas/shares";
 import { aroundQuery, attrFacetsQuery, compareQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, metricSeriesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
@@ -147,7 +147,7 @@ export const apiRoutes: ApiRoute[] = [
   // Watch this (#264): where a saved-search monitor would have opened over the last 24 h.
   { id: "monitor_preview", method: "GET", path: "/api/monitors/preview", area: "Monitors", action: "read", summary: "Where a monitor on a query would have opened over the last 24 hours.", query: monitorPreviewQuery, body: null, handler: monitorPreviewRoute },
   // Preview first (#360): a monitor saved with a token needs a preview of the same body in the last 10 minutes.
-  { id: "monitor_draft_preview", method: "POST", path: "/api/monitors/preview", area: "Monitors", action: "change monitors", summary: "Where a monitor's body would have opened and resolved over the last 7 days, read as monitor_put would save it; a save with a token needs this first.", query: null, body: monitorBody, handler: monitorDraftPreviewRoute },
+  { id: "monitor_draft_preview", method: "POST", path: "/api/monitors/preview", area: "Monitors", action: "change monitors", summary: "Where a monitor's body would have opened and resolved over the last 7 days, read as monitor_put would save it; a save with a token needs this first.", query: null, body: monitorDraftBody, handler: monitorDraftPreviewRoute },
   { id: "monitor_send", method: "POST", path: "/api/monitors/send", area: "Monitors", action: "change monitors", summary: "Run an HTTP(S), TCP or certificate check once from here and say what came back; nothing is stored.", query: null, body: sendBody, handler: sendHttpRoute },
   { id: "monitor_get", method: "GET", path: "/api/monitors/:name", area: "Monitors", action: "read", summary: "One monitor by name, with its last 200 stretches and their calls.", query: null, body: null, handler: getMonitor },
   {

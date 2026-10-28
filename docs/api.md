@@ -860,7 +860,7 @@ Body:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
+| `name` | string |  | The monitor's name, as the save will have it; required unless id is given. |
 | `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
 | `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
 | `service` | string \| null |  | The service it is about, at most 200 characters; required when it is made. |
@@ -890,6 +890,8 @@ Body:
 | `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
 | `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
 | `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
+| `id` | string |  | A monitor's id: preview a change by PUT /api/alert-rules/:id, fields left out keeping their value. |
+| `saves` | "replace" \| "create" |  | replace (the default): PUT /api/monitors/:name, what is left out takes its default; create: POST /api/alert-rules, which makes one more of that name. |
 
 ### POST /api/monitors/send
 
