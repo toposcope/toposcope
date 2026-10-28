@@ -34,6 +34,7 @@ import { monitorQuery } from "../shared/push";
 import { isNetSource } from "../shared/net-check";
 import { getAlert, parseWebhook, readBody, readJsonObject, readRemind, type AlertRule } from "./alerts";
 import { getDb } from "./index";
+import type { MonitorPlace } from "./monitor-place";
 import { sendNetRoute } from "./net-monitors";
 
 /** An HTTP(S) monitor as the API shows it: its headers by name only, never their values. */
@@ -256,15 +257,15 @@ export function readHttpFields(
 }
 
 /** A new HTTP(S) monitor: ok, and its first run is due now. */
-export function insertHttpMonitor(fields: HttpFields, now = Date.now()): AlertRule {
+export function insertHttpMonitor(fields: HttpFields, place: MonitorPlace, now = Date.now()): AlertRule {
   const id = crypto.randomUUID();
   const db = getDb();
   db.transaction(() => {
     db.query(
       `INSERT INTO alert_rules
         (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
-         source, state, remind_every, resolved_body)
-       VALUES (?, ?, ?, ?, NULL, 1, 1, NULL, ?, 'http', ?, ?, 'http', 'ok', ?, ?)`,
+         source, state, remind_every, resolved_body, service, host)
+       VALUES (?, ?, ?, ?, NULL, 1, 1, NULL, ?, 'http', ?, ?, 'http', 'ok', ?, ?, ?, ?)`,
     ).run(
       id,
       fields.name,
@@ -276,6 +277,8 @@ export function insertHttpMonitor(fields: HttpFields, now = Date.now()): AlertRu
       fields.body_template,
       fields.remind_every,
       fields.resolved_body,
+      place.service,
+      place.host,
     );
     insertHttp(id, fields.write, now, db);
   })();

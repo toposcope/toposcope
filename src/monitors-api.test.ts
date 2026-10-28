@@ -34,6 +34,10 @@ beforeAll(async () => {
       await new Promise((ok) => setTimeout(ok, 0));
     }
     const out = {};
+    // What each new monitor's row held when it was written (#335): its service, not filled in after.
+    const controlDb = (await import(root + "/control/index.ts")).getDb();
+    controlDb.run("CREATE TEMP TABLE first_writes (name TEXT, source TEXT, service TEXT)");
+    controlDb.run("CREATE TEMP TRIGGER first_write AFTER INSERT ON main.alert_rules BEGIN INSERT INTO first_writes VALUES (NEW.name, NEW.source, NEW.service); END");
     const auth = { authorization: (await import(root + "/control/owner-for-tests.ts")).ownerBearer(), "content-type": "application/json" };
     const go = async (key, path, method = "GET", body) => {
       // Every monitor names its service (#335): a fixture that does not name one is about "api".
@@ -128,6 +132,7 @@ beforeAll(async () => {
     await go("tcpGone", "/api/monitors/db-port");
     tcpStand.stop(true);
     stand.stop(true);
+    out.firstWrites = { status: 0, body: controlDb.query("SELECT name, source, service FROM first_writes").all() };
     console.log(JSON.stringify(out));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
@@ -189,6 +194,13 @@ describe("PUT /api/monitors/<name> (#175)", () => {
     expect(r.redeclare!.status).toBe(200);
     expect(r.redeclare!.body.id).toBe(r.declare!.body.id);
     expect(r.redeclare!.body).toMatchObject({ threshold: 3, remind_every: "off" });
+  });
+
+  test("a new monitor of every source is written with its service (#335)", () => {
+    const writes = r.firstWrites!.body as Array<{ name: string; source: string; service: string }>;
+    expect([...new Set(writes.map((w) => w.source))]).toEqual(expect.arrayContaining(["search", "http", "tcp", "cert"]));
+    expect(writes.filter((w) => w.service === "")).toEqual([]);
+    expect(writes.find((w) => w.name === "named")).toMatchObject({ service: "billing" });
   });
 
   test("says what is wrong with a declaration", () => {

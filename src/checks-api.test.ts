@@ -62,6 +62,10 @@ beforeAll(async () => {
       return out[key];
     };
     const logCount = () => (inserted.logs ?? []).length;
+    // What each new monitor's row held when it was written (#335): its service, not filled in after.
+    const controlDb = (await import(root + "/control/index.ts")).getDb();
+    controlDb.run("CREATE TEMP TABLE first_writes (name TEXT, service TEXT)");
+    controlDb.run("CREATE TEMP TRIGGER first_write AFTER INSERT ON main.alert_rules BEGIN INSERT INTO first_writes VALUES (NEW.name, NEW.service); END");
 
     await go("first", "/v1/checks", "POST", { monitor: "disk-var", status: "warn", message: "/var 87% used", value: 87.2, unit: "%", every: "5m", grace: "2m", host: "log-vm", service: "box-agent", ts: "2026-10-20T11:03:00Z" }, bearer);
     await go("noToken", "/v1/checks", "POST", { monitor: "x", status: "ok" }, { "content-type": "application/json" });
@@ -119,6 +123,7 @@ beforeAll(async () => {
     await go("badDefault", "/api/settings", "PUT", { default_webhook_url: "ftp://x" });
     await go("clearDefault", "/api/settings", "PUT", { default_webhook_url: "" });
     out.key = { status: 0, body: key, text: key };
+    out.firstWrites = { status: 0, body: controlDb.query("SELECT name, service FROM first_writes").all(), text: "" };
     console.log(JSON.stringify({ out, inserted }));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
@@ -165,6 +170,15 @@ describe("POST /v1/checks (#177)", () => {
       webhook_url: null,
       query: "monitor:disk-var",
     });
+  });
+
+  test("a monitor made by its first result has that result's service from its first write (#335)", () => {
+    const first = (name: string) => r.firstWrites!.body.filter((row: { name: string }) => row.name === name);
+    expect(first("disk-var")).toEqual([{ name: "disk-var", service: "box-agent" }]);
+    expect(first("check-disk")).toEqual([{ name: "check-disk", service: "monitor" }]);
+    // One declared over the API is written with the service withPlace read, too.
+    expect(first("nightly-backup")).toEqual([{ name: "nightly-backup", service: "api" }]);
+    expect(r.firstWrites!.body.every((row: { service: string }) => row.service !== "")).toBe(true);
   });
 
   test("every result is a log row: monitor, status, source:push, with its host and service", () => {

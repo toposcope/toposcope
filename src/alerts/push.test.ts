@@ -57,6 +57,7 @@ function rig(opts: { webhook?: string | null; fallback?: string | null; every?: 
       ...pushFieldsOfResult("nightly-backup", opts.every === undefined ? hour : opts.every, opts.grace === undefined ? 15 * minute : opts.grace),
       webhook_url: opts.webhook ?? null,
     },
+    { service: "backups", host: "" },
     t0,
     db,
   ) as AlertRule;
