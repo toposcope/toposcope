@@ -148,6 +148,74 @@ describe("the pinned plot split by one label (13a)", () => {
   });
 });
 
+describe("the pinned plot draws a metric sent in two units as a panel does (#331, 33e)", () => {
+  const group = (unit: string, sources: string[], first: string, last: string) => ({ kind: "gauge", unit, sources, first, last });
+  const twoUnits = (groups: NonNullable<SearchAggResult["units_differ"]>, ms: Array<number | null>, s: Array<number | null>): SearchAggResult => ({
+    expr: "http.server.duration",
+    source: "metric",
+    buckets: [],
+    stat: null,
+    kind: "gauge",
+    unit: "s",
+    metric: "http.server.duration",
+    units_differ: groups,
+    splits: [
+      { key: "ms", unit: "ms", kind: "gauge", stat: 410, buckets: times.flatMap((tt, i) => (ms[i] === null ? [] : [{ t: tt, v: ms[i]! }])) },
+      { key: "s", unit: "s", kind: "gauge", stat: 0.25, buckets: times.flatMap((tt, i) => (s[i] === null ? [] : [{ t: tt, v: s[i]! }])) },
+    ],
+  });
+  const sources = twoUnits([group("ms", ["edge-1"], t(0), t(30)), group("s", ["edge-2"], t(0), t(30))], [400, 410, 420], [0.24, 0.25, 0.26]);
+
+  test("by Replace: two lines, each on its own unit's scale, under the line that says why", () => {
+    const html = pinned(sources, null);
+    expect((html.match(/<polyline/g) ?? []).length).toBe(2);
+    expect(html).toContain("two units: ms (edge-1), s (edge-2)");
+    // Each unit's peak on the one axis, never one scale for both.
+    expect(html).toContain("scales: 483 ms, 0.30 s");
+    // Each line's top is drawn at the same height on its own scale: 420 of 483 ms, 0.26 of 0.299 s.
+    const tops = [...html.matchAll(/<polyline points="([^"]+)"/g)].map((m) => m[1]!.split(" ").at(-1)!.split(",")[1]);
+    expect(tops[0]).toBe(tops[1]);
+  });
+
+  test("by Overlay too, it is its lines and never 'no points'", () => {
+    const html = pinned(sources, null, false);
+    expect((html.match(/<polyline/g) ?? []).length).toBe(2);
+    expect(html).toContain("two units: ms (edge-1), s (edge-2)");
+    expect(html).not.toContain("has no points in");
+  });
+
+  test("a unit changed at one source reads as the old line ending and the new one starting", () => {
+    const moved = twoUnits([group("ms", ["here"], t(0), t(15)), group("s", ["here"], t(30), t(30))], [240, 250, null], [null, null, 0.26]);
+    const html = pinned(moved, null);
+    expect(html).toContain(`two units: ms until ${t(30).slice(11, 16)}, s after`);
+    expect((html.match(/<polyline/g) ?? []).length).toBe(2);
+  });
+
+  test("hover reads each line in its own unit", () => {
+    const html = renderToStaticMarkup(
+      createElement(HistogramHover, {
+        bucket: buckets[1]!,
+        rangeLabel: "09:15–09:30",
+        keys: [],
+        split: "level",
+        left: 0,
+        side: "right",
+        hint: "",
+        metricLines: {
+          reading: "avg",
+          unit: "s",
+          lines: [
+            { key: "ms", color: "#38bdf8", dashed: false, v: 410, unit: "ms" },
+            { key: "s", color: "#a78bfa", dashed: false, v: 0.25, unit: "s" },
+          ],
+        },
+      }),
+    ).replace(/<!-- -->/g, "");
+    expect(html).toContain("410 ms");
+    expect(html).toContain("0.25 s");
+  });
+});
+
 describe("the pinned split is kept like metric= (13a)", () => {
   test("msplit rides the URL with a metric drawn by Replace", () => {
     const state = parseSearchUrl("?range=24h&metric=agental.box.vcpu&msplit=basis&y=agg&logs=0");

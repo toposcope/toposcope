@@ -1,7 +1,7 @@
 import { HeldHatch } from "@/components/held-hatch";
 import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { printUnit, withUnit } from "../metric-unit";
+import { printUnit, unitsDifferWords, withUnit } from "../metric-unit";
 import {
   abbrevCount,
   bucketIndexAt,
@@ -67,7 +67,8 @@ import {
 } from "./histogram-marks";
 import { CompareFold, type CompareFoldHunt } from "./compare-fold";
 import { monitorBandH } from "./monitor-band";
-import { endLabelMax, lastValue, sparkLines, spreadLabels } from "./metric-spark";
+import { endLabelMax, lastValue, sparkLines, spreadLabels, unitAxes, type SparkLine } from "./metric-spark";
+import { UnitsSay } from "./panel-words";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
@@ -82,7 +83,7 @@ const END_LABEL_W = 90;
 type MetricHoverLines = {
   reading: string;
   unit?: string;
-  lines: Array<{ key: string; color: string; dashed: boolean; v: number | null }>;
+  lines: Array<{ key: string; color: string; dashed: boolean; v: number | null; unit?: string }>;
 };
 
 type Props = {
@@ -160,6 +161,19 @@ function svgAreaPath(xs: number[], yTop: number[], yBot: number[]): string {
     bot.push(`${xs[i]!.toFixed(1)},${(yBot[i] ?? PLOT_H).toFixed(1)}`);
   }
   return `M${top.join(" L")} L${bot.join(" L")} Z`;
+}
+
+/** Each unit's peak in the colour of its line, where one axis would say one (#331, 33e). */
+function unitPeaks(axes: ReadonlyArray<{ unit: string; peak: number; color: string }>) {
+  return (
+    <span className="flex flex-col items-end gap-0.5" aria-label={`scales: ${axes.map((a) => withUnit(formatAggStat(a.peak), a.unit)).join(", ")}`}>
+      {axes.map((a) => (
+        <span key={a.unit} style={{ color: a.color }}>
+          {withUnit(formatAggStat(a.peak), a.unit)}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function overlayY(
@@ -298,7 +312,7 @@ export function HistogramHover({
           />
           <span className="max-w-28 truncate font-mono text-[10.5px] text-foreground/85">{row.key}</span>
           <span className="ml-auto pl-2 font-mono tabular-nums text-foreground">
-            {withUnit(formatAggStat(row.v), metricLines.unit)}
+            {withUnit(formatAggStat(row.v), row.unit ?? metricLines.unit)}
           </span>
         </div>
       ))}
@@ -470,8 +484,9 @@ export function HistogramChart({
         aggResult?.buckets ?? [],
       )
     : [];
-  // 13a: a metric drawn by Replace, split by one label, is one line per value (8 and `other`).
-  const splitDrawn = Boolean(metric && replaceY && overlayOn && aggResult?.splits);
+  // 13a: a metric drawn by Replace, split by one label, is one line per value (8 and `other`). A
+  // metric whose points came in more than one unit or kind (#331) is its lines however it is drawn.
+  const splitDrawn = Boolean(metric && overlayOn && aggResult?.splits && (replaceY || aggResult.units_differ));
   const splitLines = splitDrawn
     ? sparkLines(
         buckets.map((bucket) => bucket.t),
@@ -484,6 +499,10 @@ export function HistogramChart({
   const overlayPeak = finiteAggPeak(
     splitOn ? splitLines.flatMap((line) => line.vals) : overlayValues,
   );
+  // Lines in more than one unit share the plot, each against its own unit's scale, as a panel draws them (#331, 33e).
+  const axes = splitOn ? unitAxes(splitLines) : null;
+  const peakOf = (line: SparkLine) => axes?.find((a) => a.unit === (line.unit ?? ""))?.peak ?? overlayPeak;
+  const unitsNote = metric ? unitsDifferWords(aggResult?.units_differ, marks ? marks.marks.filter((m) => !marks.offKinds.includes(m.kind)) : undefined) : null;
   // The Split control lists the metric's label keys in this window.
   const splitName = metric && replaceY && view && onMetricSplit ? view.name : null;
   const [labelKeys, setLabelKeys] = useState<{
@@ -1082,13 +1101,14 @@ export function HistogramChart({
             color: line.color,
             dashed: line.dashed,
             v: line.vals[hover] ?? null,
+            ...(line.unit ? { unit: line.unit } : {}),
           })),
         }
       : null;
   const endLabelYs = endLabels
     ? spreadLabels(
         splitLines.map((line) => {
-          const y = overlayY(lastValue(line.vals), overlayPeak, logScale);
+          const y = overlayY(lastValue(line.vals), peakOf(line), logScale);
           return y === null ? 0 : (y / PLOT_H) * endLabelH - 7;
         }),
         13,
@@ -1318,7 +1338,13 @@ export function HistogramChart({
         >
           {yTicks.map((tick, i) => (
             <span key={`${tick}-${i}`}>
-              {replaceY && overlayOn
+              {replaceY && overlayOn && axes
+                ? i === 0
+                  ? unitPeaks(axes)
+                  : i === yTicks.length - 1
+                    ? "0"
+                    : ""
+                : replaceY && overlayOn
                 ? i === 0
                   ? withUnit(formatAggStat(tick), aggResult?.unit)
                   : formatAggStat(tick)
@@ -1538,7 +1564,7 @@ export function HistogramChart({
                 >
                   {splitDrawn ? (
                     splitLines.flatMap((line) =>
-                      overlayLineSegments(xs, line.vals, overlayPeak, logScale).map((points) => (
+                      overlayLineSegments(xs, line.vals, peakOf(line), logScale).map((points) => (
                         <polyline
                           key={`${line.key}:${points}`}
                           points={points}
@@ -1722,9 +1748,13 @@ export function HistogramChart({
                     : ""
                   : i === 3
                     ? "0"
-                    : i === 0
-                      ? withUnit(formatAggStat(tick), aggResult?.unit)
-                      : formatAggStat(tick)}
+                    : axes
+                      ? i === 0
+                        ? unitPeaks(axes)
+                        : ""
+                      : i === 0
+                        ? withUnit(formatAggStat(tick), aggResult?.unit)
+                        : formatAggStat(tick)}
               </span>
             ))}
           </div>
@@ -1771,6 +1801,12 @@ export function HistogramChart({
             <span>{scanReason}</span>
           ) : aggResult?.source === "refused" ? (
             <span>{aggResult.reason}</span>
+          ) : unitsNote && !metricQuiet ? (
+            // #331, 33e: the one line that says why the lines are apart, as a panel says it.
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className="font-mono">{[metricReadingText, splitExpr || overlayLabel].filter(Boolean).join(" · ")}</span>
+              <UnitsSay text={unitsNote} />
+            </span>
           ) : lineInfo && splitOn && !metricQuiet ? null : splitExpr && !metricQuiet ? (
             <span className="font-mono">
               {[metricReadingText, splitExpr, unitText].filter(Boolean).join(" · ")}

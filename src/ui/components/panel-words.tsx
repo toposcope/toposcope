@@ -84,15 +84,20 @@ export function PanelTells({ held, units }: { held: string | null; units: string
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3 pt-1.5">
       {held ? <HeldPill text={held} /> : null}
-      {units ? (
-        <span
-          className="inline-flex items-center rounded-[4px] border border-white/12 px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground"
-          title="One name, sent with more than one unit or kind: split and said, never summed or converted."
-        >
-          {units}
-        </span>
-      ) : null}
+      {units ? <UnitsSay text={units} /> : null}
     </div>
+  );
+}
+
+/** The one line a metric says when its points came in more than one unit or kind (#331, 33e), on a panel or the pinned plot. */
+export function UnitsSay({ text }: { text: string }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-[4px] border border-white/12 px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground"
+      title="One name, sent with more than one unit or kind: split and said, never summed or converted."
+    >
+      {text}
+    </span>
   );
 }
 
