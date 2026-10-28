@@ -472,8 +472,8 @@ Body:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `name` | string |  | Its name. |
-| `query` | string |  | The query, in the query language. |
+| `name` | string \| null |  | Its name. |
+| `query` | string \| null |  | The query, in the query language. |
 | `range` | string \| null |  | A window that ends now, as search's range takes it; null for from_ts and to_ts. |
 | `from_ts` | string \| null |  | Where a fixed window starts, an ISO time; read only when range is null. |
 | `to_ts` | string \| null |  | Where a fixed window ends, an ISO time; read only when range is null. |
@@ -481,7 +481,7 @@ Body:
 | `widgets` | any \| null |  | The canvas: its widgets and their places, as the app saves them. |
 | `board` | any \| null |  | A board's slots and window, as the app saves them; null makes it a plain hunt. |
 | `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
-| `pinned` | boolean |  | Pinned for the caller; each person pins their own. |
+| `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
 
 ### POST /api/saved-searches
@@ -866,7 +866,7 @@ Body:
 | `service` | string \| null |  | The service it is about, at most 200 characters; required when it is made. |
 | `host` | string \| null |  | The host it is about; by default the host its URL or target names. |
 | `saved_search_id` | string \| null |  | search, fingerprints: the saved search it reads. |
-| `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
+| `saved_search` | string \| null |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
 | `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
 | `opens_when` | string |  | search: at_least (the default) or fewer_than. |
 | `measure` | string |  | search: series (the default), or share of all rows. |
@@ -880,16 +880,16 @@ Body:
 | `grace` | string \| null |  | push: how long past due before it opens, up to 365d, or 0. |
 | `key` | string \| null |  | push: the ping URL's key, a random UUID; made for it when left out. |
 | `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
-| `url` | string |  | http: the URL it calls, http(s). |
+| `url` | string \| null |  | http: the URL it calls, http(s). |
 | `method` | string |  | http: GET (the default), HEAD or POST. |
 | `body` | string \| null |  | http: the body it sends, with POST only. |
 | `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
 | `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
-| `target` | string |  | tcp, cert: where it connects, host:port. |
+| `target` | string \| null |  | tcp, cert: where it connects, host:port. |
 | `starttls` | string \| null |  | cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte. |
 | `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
 | `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
-| `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
+| `enabled` | boolean \| number \| null |  | false or 0 pauses it, true or 1 resumes it. |
 | `id` | string |  | A monitor's id: preview a change by PUT /api/alert-rules/:id, fields left out keeping their value. |
 | `saves` | "replace" \| "create" |  | replace (the default): PUT /api/monitors/:name, what is left out takes its default; create: POST /api/alert-rules, which makes one more of that name. |
 
