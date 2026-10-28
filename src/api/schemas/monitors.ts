@@ -78,9 +78,9 @@ export const testCallBody = v.object({
   run: v.nullish(
     described(
       v.object({
-        status: v.nullish(v.number()),
-        duration_ms: v.nullish(v.number()),
-        why: v.nullish(v.string()),
+        status: v.nullish(described(v.number(), "http: the status that came back.")),
+        duration_ms: v.nullish(described(v.number(), "How long the run took, in ms.")),
+        why: v.nullish(described(v.string(), "What the conditions made of it, as the editor shows it.")),
       }),
       "http, tcp, cert: the editor's last Send, to fill the call in from: status, duration_ms, why.",
     ),

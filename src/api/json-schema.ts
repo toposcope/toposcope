@@ -76,8 +76,11 @@ function base(schema: Node): JsonSchema {
       return fallback === undefined || typeof fallback === "function" ? inner : { ...inner, default: fallback };
     }
     case "nullable":
-    case "nullish":
-      return { anyOf: [toJsonSchema(schema.wrapped!), { type: "null" }] };
+    case "nullish": {
+      // What the value means is said once, beside the null it may also be.
+      const { description, ...inner } = toJsonSchema(schema.wrapped!);
+      return { anyOf: [inner, { type: "null" }], ...(description === undefined ? {} : { description }) };
+    }
     default:
       throw new Error(`No JSON Schema for a valibot ${schema.type} schema`);
   }

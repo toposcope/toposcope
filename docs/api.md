@@ -394,7 +394,7 @@ Body:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `saved_id` | string \| null | yes |  |
+| `saved_id` | string \| null | yes | The saved search to mark Home; null unmarks it. |
 
 ### GET /api/saved-searches
 
@@ -414,13 +414,13 @@ Body:
 | --- | --- | --- | --- |
 | `name` | string | yes | Its name. |
 | `query` | string |  | The query, in the query language. |
-| `range` | string \| null |  |  |
-| `from_ts` | string \| null |  |  |
-| `to_ts` | string \| null |  |  |
-| `agg` | string \| null |  |  |
-| `widgets` | any \| null |  |  |
-| `board` | any \| null |  |  |
-| `cols` | string \| string[] \| null |  |  |
+| `range` | string \| null |  | A window that ends now, as search's range takes it; null for from_ts and to_ts. |
+| `from_ts` | string \| null |  | Where a fixed window starts, an ISO time; read only when range is null. |
+| `to_ts` | string \| null |  | Where a fixed window ends, an ISO time; read only when range is null. |
+| `agg` | string \| null |  | The series it reads, as search's agg takes it; null counts rows. |
+| `widgets` | any \| null |  | The canvas: its widgets and their places, as the app saves them. |
+| `board` | any \| null |  | A board's slots and window, as the app saves them; null makes it a plain hunt. |
+| `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean |  | Pinned for the caller; each person pins their own. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
 
@@ -438,13 +438,13 @@ Body:
 | --- | --- | --- | --- |
 | `name` | string |  | Its name. |
 | `query` | string |  | The query, in the query language. |
-| `range` | string \| null |  |  |
-| `from_ts` | string \| null |  |  |
-| `to_ts` | string \| null |  |  |
-| `agg` | string \| null |  |  |
-| `widgets` | any \| null |  |  |
-| `board` | any \| null |  |  |
-| `cols` | string \| string[] \| null |  |  |
+| `range` | string \| null |  | A window that ends now, as search's range takes it; null for from_ts and to_ts. |
+| `from_ts` | string \| null |  | Where a fixed window starts, an ISO time; read only when range is null. |
+| `to_ts` | string \| null |  | Where a fixed window ends, an ISO time; read only when range is null. |
+| `agg` | string \| null |  | The series it reads, as search's agg takes it; null counts rows. |
+| `widgets` | any \| null |  | The canvas: its widgets and their places, as the app saves them. |
+| `board` | any \| null |  | A board's slots and window, as the app saves them; null makes it a plain hunt. |
+| `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean |  | Pinned for the caller; each person pins their own. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
 
@@ -493,35 +493,38 @@ Body:
 | `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
 | `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
 | `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
-| `service` | string \| null |  |  |
-| `host` | string \| null |  |  |
-| `saved_search_id` | string \| null |  |  |
+| `service` | string \| null |  | The service it is about, at most 200 characters; required when it is made. |
+| `host` | string \| null |  | The host it is about; by default the host its URL or target names. |
+| `saved_search_id` | string \| null |  | search, fingerprints: the saved search it reads. |
 | `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
 | `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
 | `opens_when` | string |  | search: at_least (the default) or fewer_than. |
 | `measure` | string |  | search: series (the default), or share of all rows. |
-| `webhook_url` | string \| null |  |  |
-| `webhook_urls` | string[] \| null |  |  |
+| `webhook_url` | string \| null |  | Where it calls, http(s); push, http, tcp and cert take null for the default in Settings. |
+| `webhook_urls` | string[] \| null |  | search, fingerprints: 1 to 5 targets, each an http(s) URL or default for the webhook in Settings. |
 | `body_kind` | string |  | The call's body: default, text or json. |
-| `body_template` | string \| null |  |  |
-| `resolved_body` | string \| null |  |  |
+| `body_template` | string \| null |  | The call's body when body_kind is text or json. |
+| `resolved_body` | string \| null |  | The call's body when it closes, when body_kind is text or json. |
 | `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
-| `every` | string \| null |  |  |
-| `grace` | string \| null |  |  |
-| `key` | string \| null |  |  |
+| `every` | string \| null |  | push: how often a result is due, 30s to 365d (5m, 1h, 1d); http, tcp, cert: how often it runs, 30s, 1m, 5m, 15m, 30m or 1h. |
+| `grace` | string \| null |  | push: how long past due before it opens, up to 365d, or 0. |
+| `key` | string \| null |  | push: the ping URL's key, a random UUID; made for it when left out. |
 | `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
 | `url` | string |  | http: the URL it calls, http(s). |
 | `method` | string |  | http: GET (the default), HEAD or POST. |
-| `body` | string \| null |  |  |
+| `body` | string \| null |  | http: the body it sends, with POST only. |
 | `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
 | `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
 | `target` | string |  | tcp, cert: where it connects, host:port. |
-| `starttls` | string \| null |  |  |
-| `silence_for` | string \| null |  |  |
-| `silenced_until` | number \| null |  |  |
+| `starttls` | string \| null |  | cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte. |
+| `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
+| `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
 | `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
-| `id` | string \| null |  |  |
-| `run` | object \| null |  |  |
+| `id` | string \| null |  | The monitor the draft is of, when it has been saved. |
+| `run` | object \| null |  | http, tcp, cert: the editor's last Send, to fill the call in from: status, duration_ms, why. |
+| `run.status` | number \| null |  | http: the status that came back. |
+| `run.duration_ms` | number \| null |  | How long the run took, in ms. |
+| `run.why` | string \| null |  | What the conditions made of it, as the editor shows it. |
 
 ### POST /api/alert-rules
 
@@ -536,32 +539,32 @@ Body:
 | `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
 | `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
 | `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
-| `service` | string \| null |  |  |
-| `host` | string \| null |  |  |
-| `saved_search_id` | string \| null |  |  |
+| `service` | string \| null |  | The service it is about, at most 200 characters; required when it is made. |
+| `host` | string \| null |  | The host it is about; by default the host its URL or target names. |
+| `saved_search_id` | string \| null |  | search, fingerprints: the saved search it reads. |
 | `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
 | `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
 | `opens_when` | string |  | search: at_least (the default) or fewer_than. |
 | `measure` | string |  | search: series (the default), or share of all rows. |
-| `webhook_url` | string \| null |  |  |
-| `webhook_urls` | string[] \| null |  |  |
+| `webhook_url` | string \| null |  | Where it calls, http(s); push, http, tcp and cert take null for the default in Settings. |
+| `webhook_urls` | string[] \| null |  | search, fingerprints: 1 to 5 targets, each an http(s) URL or default for the webhook in Settings. |
 | `body_kind` | string |  | The call's body: default, text or json. |
-| `body_template` | string \| null |  |  |
-| `resolved_body` | string \| null |  |  |
+| `body_template` | string \| null |  | The call's body when body_kind is text or json. |
+| `resolved_body` | string \| null |  | The call's body when it closes, when body_kind is text or json. |
 | `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
-| `every` | string \| null |  |  |
-| `grace` | string \| null |  |  |
-| `key` | string \| null |  |  |
+| `every` | string \| null |  | push: how often a result is due, 30s to 365d (5m, 1h, 1d); http, tcp, cert: how often it runs, 30s, 1m, 5m, 15m, 30m or 1h. |
+| `grace` | string \| null |  | push: how long past due before it opens, up to 365d, or 0. |
+| `key` | string \| null |  | push: the ping URL's key, a random UUID; made for it when left out. |
 | `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
 | `url` | string |  | http: the URL it calls, http(s). |
 | `method` | string |  | http: GET (the default), HEAD or POST. |
-| `body` | string \| null |  |  |
+| `body` | string \| null |  | http: the body it sends, with POST only. |
 | `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
 | `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
 | `target` | string |  | tcp, cert: where it connects, host:port. |
-| `starttls` | string \| null |  |  |
-| `silence_for` | string \| null |  |  |
-| `silenced_until` | number \| null |  |  |
+| `starttls` | string \| null |  | cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte. |
+| `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
+| `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
 | `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
 
 ### PUT /api/alert-rules/{id}
@@ -579,32 +582,32 @@ Body:
 | `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
 | `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
 | `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
-| `service` | string \| null |  |  |
-| `host` | string \| null |  |  |
-| `saved_search_id` | string \| null |  |  |
+| `service` | string \| null |  | The service it is about, at most 200 characters; required when it is made. |
+| `host` | string \| null |  | The host it is about; by default the host its URL or target names. |
+| `saved_search_id` | string \| null |  | search, fingerprints: the saved search it reads. |
 | `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
 | `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
 | `opens_when` | string |  | search: at_least (the default) or fewer_than. |
 | `measure` | string |  | search: series (the default), or share of all rows. |
-| `webhook_url` | string \| null |  |  |
-| `webhook_urls` | string[] \| null |  |  |
+| `webhook_url` | string \| null |  | Where it calls, http(s); push, http, tcp and cert take null for the default in Settings. |
+| `webhook_urls` | string[] \| null |  | search, fingerprints: 1 to 5 targets, each an http(s) URL or default for the webhook in Settings. |
 | `body_kind` | string |  | The call's body: default, text or json. |
-| `body_template` | string \| null |  |  |
-| `resolved_body` | string \| null |  |  |
+| `body_template` | string \| null |  | The call's body when body_kind is text or json. |
+| `resolved_body` | string \| null |  | The call's body when it closes, when body_kind is text or json. |
 | `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
-| `every` | string \| null |  |  |
-| `grace` | string \| null |  |  |
-| `key` | string \| null |  |  |
+| `every` | string \| null |  | push: how often a result is due, 30s to 365d (5m, 1h, 1d); http, tcp, cert: how often it runs, 30s, 1m, 5m, 15m, 30m or 1h. |
+| `grace` | string \| null |  | push: how long past due before it opens, up to 365d, or 0. |
+| `key` | string \| null |  | push: the ping URL's key, a random UUID; made for it when left out. |
 | `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
 | `url` | string |  | http: the URL it calls, http(s). |
 | `method` | string |  | http: GET (the default), HEAD or POST. |
-| `body` | string \| null |  |  |
+| `body` | string \| null |  | http: the body it sends, with POST only. |
 | `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
 | `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
 | `target` | string |  | tcp, cert: where it connects, host:port. |
-| `starttls` | string \| null |  |  |
-| `silence_for` | string \| null |  |  |
-| `silenced_until` | number \| null |  |  |
+| `starttls` | string \| null |  | cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte. |
+| `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
+| `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
 | `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
 
 ### DELETE /api/alert-rules/{id}
@@ -658,11 +661,11 @@ Body:
 | --- | --- | --- | --- |
 | `url` | string |  | http: the URL it calls, http(s). |
 | `method` | string |  | http: GET (the default), HEAD or POST. |
-| `body` | string \| null |  |  |
+| `body` | string \| null |  | http: the body it sends, with POST only. |
 | `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
 | `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
 | `target` | string |  | tcp, cert: where it connects, host:port. |
-| `starttls` | string \| null |  |  |
+| `starttls` | string \| null |  | cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte. |
 | `source` | string |  | http (the default), tcp or cert. |
 | `id` | string |  | An HTTP(S) monitor whose stored headers a header given as null keeps. |
 
@@ -689,32 +692,32 @@ Body:
 | `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
 | `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
 | `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
-| `service` | string \| null |  |  |
-| `host` | string \| null |  |  |
-| `saved_search_id` | string \| null |  |  |
+| `service` | string \| null |  | The service it is about, at most 200 characters; required when it is made. |
+| `host` | string \| null |  | The host it is about; by default the host its URL or target names. |
+| `saved_search_id` | string \| null |  | search, fingerprints: the saved search it reads. |
 | `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
 | `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
 | `opens_when` | string |  | search: at_least (the default) or fewer_than. |
 | `measure` | string |  | search: series (the default), or share of all rows. |
-| `webhook_url` | string \| null |  |  |
-| `webhook_urls` | string[] \| null |  |  |
+| `webhook_url` | string \| null |  | Where it calls, http(s); push, http, tcp and cert take null for the default in Settings. |
+| `webhook_urls` | string[] \| null |  | search, fingerprints: 1 to 5 targets, each an http(s) URL or default for the webhook in Settings. |
 | `body_kind` | string |  | The call's body: default, text or json. |
-| `body_template` | string \| null |  |  |
-| `resolved_body` | string \| null |  |  |
+| `body_template` | string \| null |  | The call's body when body_kind is text or json. |
+| `resolved_body` | string \| null |  | The call's body when it closes, when body_kind is text or json. |
 | `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
-| `every` | string \| null |  |  |
-| `grace` | string \| null |  |  |
-| `key` | string \| null |  |  |
+| `every` | string \| null |  | push: how often a result is due, 30s to 365d (5m, 1h, 1d); http, tcp, cert: how often it runs, 30s, 1m, 5m, 15m, 30m or 1h. |
+| `grace` | string \| null |  | push: how long past due before it opens, up to 365d, or 0. |
+| `key` | string \| null |  | push: the ping URL's key, a random UUID; made for it when left out. |
 | `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
 | `url` | string |  | http: the URL it calls, http(s). |
 | `method` | string |  | http: GET (the default), HEAD or POST. |
-| `body` | string \| null |  |  |
+| `body` | string \| null |  | http: the body it sends, with POST only. |
 | `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
 | `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
 | `target` | string |  | tcp, cert: where it connects, host:port. |
-| `starttls` | string \| null |  |  |
-| `silence_for` | string \| null |  |  |
-| `silenced_until` | number \| null |  |  |
+| `starttls` | string \| null |  | cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte. |
+| `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
+| `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
 | `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
 
 ### DELETE /api/monitors/{name}
@@ -753,8 +756,8 @@ Body:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `roles` | { [key]: string } \| null |  |  |
-| `links` | { [key]: string } \| null |  |  |
+| `roles` | { [key]: string } \| null |  | Each field's role: chart, lookup, ignore; a field left out is chart. Replaces every role. |
+| `links` | { [key]: string } \| null |  | Each field's metric label, so Graph opens its metric; replaces every link. |
 
 ## Shares
 
@@ -775,18 +778,27 @@ Body:
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
 | `name` | string | yes | The share's name, in its URL and its use rows: lower-case letters, digits, . _ -, up to 64. |
-| `panels` | object[] \| null |  |  |
-| `logs` | string \| null |  |  |
+| `panels` | object[] \| null |  | Named panels, at most 24; the fence is derived from them. Left out, a share keeps its panels. |
+| `panels[].name` | string | yes | The panel's name, as a page's data-panel= names it: lower-case letters, digits, . _ -, up to 48. |
+| `panels[].params` | { [key]: string \| number } | yes | The embed tag's params: chart (line, bars, stacked, stat, top or donut; line by default), metric, reading, ml, split, agg, key (a top or donut panel needs one), n, range, step, title. |
+| `panels[].from` | string \| null |  | Where the panel was made, kept as a note. |
+| `logs` | string \| null |  | With panels and no scope: the q ANDed onto every log read. |
 | `scope` | object |  | What the share can ever read; left out, it is derived from the panels. It must cover them. |
-| `scope.metric_names` | string \| string[] \| null |  |  |
-| `scope.metric_labels` | string \| null |  |  |
-| `scope.logs` | string \| null |  |  |
-| `scope.split` | string \| string[] \| null |  |  |
-| `scope.narrow` | string \| string[] \| null |  |  |
+| `scope.metric_names` | string \| string[] \| null |  | Metric names the share may read, exact or a prefix glob (fleet_*), as a list or separated by commas; at most 50. |
+| `scope.metric_labels` | string \| null |  | Label matchers ANDed onto every metric read, key:value as ml= takes them. |
+| `scope.logs` | string \| null |  | A q ANDed onto every log read; null or empty: the share reads no logs. |
+| `scope.split` | string \| string[] \| null |  | Keys a read may split or Top-N by, at most 8. |
+| `scope.narrow` | string \| string[] \| null |  | Keys a caller may narrow by as key:value, at most 8. |
 | `raw_params` | boolean |  | Whether a page may pass its own params within the fence; on by default. |
 | `expires_at` | string \| number |  | When the share stops: a date (2027-10-23), an ISO time or epoch ms, after now and at most a year out. An Owner must give it. |
-| `limits` | object \| null |  |  |
-| `embed` | object \| null |  |  |
+| `limits` | object \| null |  | How fine, how long and how often a read may be; a field left out keeps its value, or takes its default. |
+| `limits.min_step` | string |  | The finest bar a read gets, 1ms … 7d as step= takes it; 1m by default. |
+| `limits.max_range` | string |  | The longest window one read covers, up to 365d (30d, 12h, 2w); 7d by default. |
+| `limits.max_lookback` | string |  | How far before now a window may start, up to 730d; 30d by default. |
+| `limits.reads_per_minute` | integer |  | Reads a minute; 120 by default. |
+| `embed` | object \| null |  | Embedding the share's panels in a page; a field left out keeps its value, or takes its default. |
+| `embed.frame_ancestors` | string \| string[] \| null |  | Origins that may frame the share's panels (https://host[:port], no paths, no *), at most 8; empty: JSON only. |
+| `embed.ticket_ttl` | string |  | How long a ticket lasts, up to 24h (15m, 1h); 1h by default. |
 
 ### PUT /api/shares/{name}
 
@@ -800,18 +812,27 @@ Body:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `panels` | object[] \| null |  |  |
-| `logs` | string \| null |  |  |
+| `panels` | object[] \| null |  | Named panels, at most 24; the fence is derived from them. Left out, a share keeps its panels. |
+| `panels[].name` | string | yes | The panel's name, as a page's data-panel= names it: lower-case letters, digits, . _ -, up to 48. |
+| `panels[].params` | { [key]: string \| number } | yes | The embed tag's params: chart (line, bars, stacked, stat, top or donut; line by default), metric, reading, ml, split, agg, key (a top or donut panel needs one), n, range, step, title. |
+| `panels[].from` | string \| null |  | Where the panel was made, kept as a note. |
+| `logs` | string \| null |  | With panels and no scope: the q ANDed onto every log read. |
 | `scope` | object |  | What the share can ever read; left out, it is derived from the panels. It must cover them. |
-| `scope.metric_names` | string \| string[] \| null |  |  |
-| `scope.metric_labels` | string \| null |  |  |
-| `scope.logs` | string \| null |  |  |
-| `scope.split` | string \| string[] \| null |  |  |
-| `scope.narrow` | string \| string[] \| null |  |  |
+| `scope.metric_names` | string \| string[] \| null |  | Metric names the share may read, exact or a prefix glob (fleet_*), as a list or separated by commas; at most 50. |
+| `scope.metric_labels` | string \| null |  | Label matchers ANDed onto every metric read, key:value as ml= takes them. |
+| `scope.logs` | string \| null |  | A q ANDed onto every log read; null or empty: the share reads no logs. |
+| `scope.split` | string \| string[] \| null |  | Keys a read may split or Top-N by, at most 8. |
+| `scope.narrow` | string \| string[] \| null |  | Keys a caller may narrow by as key:value, at most 8. |
 | `raw_params` | boolean |  | Whether a page may pass its own params within the fence; on by default. |
 | `expires_at` | string \| number |  | When the share stops: a date (2027-10-23), an ISO time or epoch ms, after now and at most a year out. An Owner must give it. |
-| `limits` | object \| null |  |  |
-| `embed` | object \| null |  |  |
+| `limits` | object \| null |  | How fine, how long and how often a read may be; a field left out keeps its value, or takes its default. |
+| `limits.min_step` | string |  | The finest bar a read gets, 1ms … 7d as step= takes it; 1m by default. |
+| `limits.max_range` | string |  | The longest window one read covers, up to 365d (30d, 12h, 2w); 7d by default. |
+| `limits.max_lookback` | string |  | How far before now a window may start, up to 730d; 30d by default. |
+| `limits.reads_per_minute` | integer |  | Reads a minute; 120 by default. |
+| `embed` | object \| null |  | Embedding the share's panels in a page; a field left out keeps its value, or takes its default. |
+| `embed.frame_ancestors` | string \| string[] \| null |  | Origins that may frame the share's panels (https://host[:port], no paths, no *), at most 8; empty: JSON only. |
+| `embed.ticket_ttl` | string |  | How long a ticket lasts, up to 24h (15m, 1h); 1h by default. |
 
 ### DELETE /api/shares/{name}
 
@@ -905,8 +926,8 @@ Body, optional:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `name` | string \| null |  |  |
-| `q` | string \| null |  |  |
+| `name` | string \| null |  | This instance's name, the first time only: the other side sees it. After that it lives in Settings. |
+| `q` | string \| null |  | The filter rows that leave here must match; empty means every row. |
 | `kinds` | string \| ("logs" \| "marks" \| "traces" \| "metrics" \| "profiles" \| "monitors")[] |  | The kinds the link carries, as a list or separated by commas: logs, marks, traces, metrics, profiles, monitors; all by default. |
 
 ### POST /api/links/invite
@@ -919,10 +940,10 @@ Body, optional:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `name` | string \| null |  |  |
-| `q` | string \| null |  |  |
+| `name` | string \| null |  | This instance's name, the first time only: the other side sees it. After that it lives in Settings. |
+| `q` | string \| null |  | The filter rows the other side sends must match; empty means every row. |
 | `kinds` | string \| ("logs" \| "marks" \| "traces" \| "metrics" \| "profiles" \| "monitors")[] |  | The kinds the link carries, as a list or separated by commas: logs, marks, traces, metrics, profiles, monitors; all by default. |
-| `until` | number \| string \| null |  |  |
+| `until` | number \| string \| null |  | Epoch ms until which the key works for many, at most 30 days out; left out, it works once. |
 
 ### POST /api/links/preview
 
@@ -947,7 +968,7 @@ Body, optional:
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
 | `key` | string |  | The pasted link key, tsl2_… |
-| `name` | string \| null |  |  |
+| `name` | string \| null |  | This instance's name, the first time only: the other side sees it. After that it lives in Settings. |
 
 ### DELETE /api/links/keys/{kid}
 
@@ -1147,7 +1168,14 @@ Body:
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
 | `passwords` | boolean |  | Whether people may sign in with a password. |
-| `oidc` | object \| null |  |  |
+| `oidc` | object \| null |  | The sign-in provider; null removes it. |
+| `oidc.preset` | string |  | The provider: google, entra, okta, keycloak, authentik, other; other when it is none of these. |
+| `oidc.label` | string |  | The sign-in button's name, up to 40 characters; the preset's by default. |
+| `oidc.issuer` | string |  | The provider's https URL, as its discovery document names it. |
+| `oidc.client_id` | string |  | From the provider's app registration. |
+| `oidc.client_secret` | string |  | From the provider's app registration; left out or empty keeps the one stored. |
+| `oidc.allowed_domain` | string \| null |  | Only emails at this domain, like example.com; empty for any. |
+| `oidc.without_invite` | string |  | The role someone gets who signs in with no invite: viewer (the default), operator, or none to refuse them. |
 | `two_step_for` | "everyone" \| "owners" |  | Who must have a second step: everyone with a password, or Owners only. |
 
 ### GET /api/settings
@@ -1167,7 +1195,7 @@ Body:
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
 | `retention_days` | number |  | How many days rows are kept, 1 to 365. |
-| `metrics_retention_days` | number \| "" \| null |  |  |
-| `instance_name` | string \| null |  |  |
-| `default_webhook_url` | string \| null |  |  |
+| `metrics_retention_days` | number \| "" \| null |  | How many days metric points are kept; null or empty follows retention_days. |
+| `instance_name` | string \| null |  | This instance's name, as links and the tab title show it; null or empty unnames it. |
+| `default_webhook_url` | string \| null |  | Where monitors call when they name no URL of their own, http(s); null or empty for none. |
 | `two_step_for` | "everyone" \| "owners" |  | Who must have a second step: everyone with a password, or Owners only. |

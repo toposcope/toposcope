@@ -29,17 +29,29 @@ function cell(text: string | undefined): string {
   return (text ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
+/** The object a field holds, or a list of: looked for through a null it may also be. */
+function nested(schema: JsonSchema): { object: JsonSchema; list: boolean } | null {
+  for (const variant of Array.isArray(schema.anyOf) ? (schema.anyOf as JsonSchema[]) : [schema]) {
+    const list = variant.type === "array";
+    const object = list ? (variant.items as JsonSchema | undefined) : variant;
+    if (object?.type === "object" && object.properties) {
+      return { object, list };
+    }
+  }
+  return null;
+}
+
 function fieldRows(entries: Array<[string, JsonSchema, boolean]>, prefix = ""): string[] {
   const rows: string[] = [];
   for (const [name, schema, required] of entries) {
     const description = typeof schema.description === "string" ? schema.description : "";
     rows.push(`| \`${prefix}${name}\` | ${typeWords(schema)} | ${required ? "yes" : ""} | ${cell(description)} |`);
     // One level of nesting is spelled out; deeper shapes are in /api/openapi.json.
-    const inner = schema.type === "array" ? (schema.items as JsonSchema | undefined) : schema;
-    if (!prefix && inner?.type === "object" && inner.properties) {
-      const props = Object.entries(inner.properties as Record<string, JsonSchema>);
-      const req = new Set((inner.required as string[] | undefined) ?? []);
-      rows.push(...fieldRows(props.map(([k, s]) => [k, s, req.has(k)]), `${name}${schema.type === "array" ? "[]" : ""}.`));
+    const shape = nested(schema);
+    if (!prefix && shape) {
+      const props = Object.entries(shape.object.properties as Record<string, JsonSchema>);
+      const req = new Set((shape.object.required as string[] | undefined) ?? []);
+      rows.push(...fieldRows(props.map(([k, s]) => [k, s, req.has(k)]), `${name}${shape.list ? "[]" : ""}.`));
     }
   }
   return rows;

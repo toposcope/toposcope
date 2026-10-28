@@ -115,6 +115,20 @@ describe("the described API (#356)", () => {
     expect(routeProblems(apiRoutes)).toEqual([]);
   });
 
+  test("every key a route takes says what it means", () => {
+    const bare: string[] = [];
+    for (const route of apiRoutes) {
+      for (const [key, schema] of Object.entries(route.query?.entries ?? {})) {
+        if (typeof toJsonSchema(schema).description !== "string") bare.push(`${route.id} ?${key}`);
+      }
+      const body = route.body ? toJsonSchema(route.body) : null;
+      for (const [key, schema] of Object.entries((body?.properties ?? {}) as Record<string, Doc>)) {
+        if (typeof schema.description !== "string") bare.push(`${route.id} ${key}`);
+      }
+    }
+    expect(bare).toEqual([]);
+  });
+
   test("a route registered without a schema is a problem", () => {
     const handler = () => new Response("ok");
     const route = { id: "x", method: "POST", path: "/api/x", area: "X", action: "read", summary: "Does x.", handler } as const;
