@@ -29,6 +29,8 @@ export type LinkRecord = {
   kinds: string;
   /** Each kind's last word from the feed: `{ "traces": { "not_sent": "…" } }`, JSON (#329). */
   kind_state: string | null;
+  /** Pull: where the source said its own sources stand, in its last feed header (#334), JSON. */
+  upstream: string | null;
   id: string;
   role: "pull" | "serve";
   connects: "we" | "they";
@@ -119,7 +121,7 @@ export function linkId(): string {
 export function saveLink(
   link: Omit<
     LinkRecord,
-    "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_contact_at" | "last_error" | "removed_at" | "kind_state"
+    "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_contact_at" | "last_error" | "removed_at" | "kind_state" | "upstream"
   >,
   db: Database = getDb(),
 ): LinkRecord {
@@ -171,7 +173,7 @@ export function noteContact(
   fields: Partial<
     Pick<
       LinkRecord,
-      "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_error" | "peer_name" | "kind_state"
+      "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_error" | "peer_name" | "kind_state" | "upstream"
     >
   > & { at: number },
   db: Database = getDb(),
@@ -179,7 +181,7 @@ export function noteContact(
   const sets: string[] = ["last_contact_at = ?"];
   const values: (string | number | null)[] = [fields.at];
   const keys = [
-    "position", "settled", "arrived_at", "behind_rows", "gone_from", "gone_to", "gone_from_at", "gone_to_at", "last_error", "peer_name", "kind_state",
+    "position", "settled", "arrived_at", "behind_rows", "gone_from", "gone_to", "gone_from_at", "gone_to_at", "last_error", "peer_name", "kind_state", "upstream",
   ] as const;
   for (const key of keys) {
     if (key in fields) {

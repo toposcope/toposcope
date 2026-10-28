@@ -5,6 +5,8 @@ import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { getDb } from "../control/index";
 import { getLink, volumeDay, type LinkRecord } from "./store";
 import { feedKinds, kindsOf, kindsText, linkKinds, parseLinkKinds, type LinkKind } from "./kinds";
+import { heldSources, type HeldSource } from "../shared/held";
+import { behindMs, heldLinks, upstreamFor } from "./upstream";
 
 /**
  * A link's own page (#267, frame 26m): which way rows move, its scope, where it stands, the rows
@@ -33,7 +35,28 @@ export type LinkPage = {
   pulled_24h: number;
   /** A line per kind (#329, frame 33b): on one position, each with its own state and volume. */
   kinds: KindLine[];
+  /** Pull: how far behind the peer is here, in time; 0 when caught up. Serve: null. */
+  behind_ms: number | null;
+  /**
+   * Sources further away whose rows come through this link (#334). Pull: as the peer last said,
+   * added up with this link. Serve: what this side tells the peer, so the region's page says how
+   * far behind the edge is.
+   */
+  further: Array<HeldSource & { behind_ms: number }>;
 };
+
+/** Where the link's peer stands here, and its sources further away, as this side's tells read them. */
+export function linkReach(link: LinkRecord, now = Date.now()): Pick<LinkPage, "behind_ms" | "further"> {
+  if (link.role === "serve") {
+    return { behind_ms: null, further: upstreamFor(link, now).map((s) => ({ ...s, behind_ms: behindMs(s.state, now) })) };
+  }
+  const sources = heldSources(heldLinks([link]), now);
+  const peer = sources.find((s) => s.name === link.peer_name);
+  return {
+    behind_ms: peer ? behindMs(peer.state, now) : null,
+    further: sources.filter((s) => s.name !== link.peer_name).map(({ via: _via, ...s }) => ({ ...s, behind_ms: behindMs(s.state, now) })),
+  };
+}
 
 export type KindLine = {
   kind: LinkKind;
@@ -119,6 +142,7 @@ export async function linkPage(id: string): Promise<LinkPage | null> {
     pulled,
     pulled_24h: pulled.reduce((n, b) => n + b.n, 0),
     kinds: kindLines(link, isPaused(link)),
+    ...linkReach(link),
   };
 }
 

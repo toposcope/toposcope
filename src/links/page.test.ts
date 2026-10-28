@@ -36,6 +36,16 @@ beforeAll(() => {
       widenWithScope: await put("kinds1", { q: "level:warn", kinds: ["logs", "profiles"] }),
       afterRefusal: await req("/api/links/kinds1"),
     };
+    // #334: a region pulls edge-fra, 4 minutes behind, and serves prod-eu; prod-eu's link from the region heard so.
+    const t = Date.now();
+    saveLink({ ...base, id: "fromEdge", role: "pull", peer_name: "edge-fra", q: "", kid: "k4" });
+    noteContact("fromEdge", { at: t - 2000, position: 50, settled: 90, arrived_at: new Date(t - 240000).toISOString() });
+    saveLink({ ...base, id: "toCentre", role: "serve", peer_name: "prod-eu", q: "", kid: "k5" });
+    saveLink({ ...base, id: "fromRegion", role: "pull", peer_name: "region-eu", q: "", kid: "k6" });
+    noteContact("fromRegion", { at: t - 2000, position: 9, settled: 9, upstream: JSON.stringify([{ name: "edge-fra", filters: [], state: { kind: "behind", readTo: t - 240000 }, hole: null }]) });
+    out.edgePull = await req("/api/links/fromEdge");
+    out.regionServe = await req("/api/links/toCentre");
+    out.centrePull = await req("/api/links/fromRegion");
     out.pausedFlag = { status: 0, body: { paused: isPaused({ id: "pull1" }) } };
     console.log(JSON.stringify(out));
   `;
@@ -85,5 +95,27 @@ describe("a link says which kinds it carries (#329, 33b)", () => {
     // A refused change saves nothing, not even the scope it came with.
     expect(out.widenWithScope!.status).toBe(409);
     expect(out.afterRefusal!.body.q).toBe("level:error");
+  });
+});
+
+describe("a source two hops away (#334)", () => {
+  type Further = Array<{ name: string; state: { kind: string }; behind_ms: number }>;
+  test("the region's link from the edge says how far behind the edge is, in time", () => {
+    expect(out.edgePull!.body.behind_ms as number).toBeGreaterThanOrEqual(240_000);
+    expect(out.edgePull!.body.further).toEqual([]);
+  });
+  test("the region's link to the centre says what it tells the centre: the edge, behind; never the centre itself", () => {
+    // Every source this side pulls from goes; here the other tests' links too.
+    const further = out.regionServe!.body.further as Further;
+    const edge = further.find((f) => f.name === "edge-fra")!;
+    expect(edge.state.kind).toBe("behind");
+    expect(edge.behind_ms).toBeGreaterThanOrEqual(240_000);
+    expect(further.some((f) => f.name === "prod-eu")).toBe(false);
+    expect(out.regionServe!.body.behind_ms).toBeNull();
+  });
+  test("the centre's link from the region names the edge further away, as the region said", () => {
+    const further = out.centrePull!.body.further as Further;
+    expect(further.map((f) => [f.name, f.state.kind])).toEqual([["edge-fra", "behind"]]);
+    expect(out.centrePull!.body.behind_ms).toBe(0);
   });
 });

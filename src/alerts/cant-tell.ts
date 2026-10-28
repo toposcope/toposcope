@@ -1,4 +1,4 @@
-import { activeLinks } from "../links/store";
+import { heldLinks } from "../links/upstream";
 import { feeders, gapsIn, heldSources, huntAst, type HeldLink, type HeldSource } from "../shared/held";
 import type { CantTell } from "../shared/monitor";
 
@@ -21,7 +21,7 @@ export function toposcopeStartedAt(): number {
 
 /** Where each linked source stands (#139); tests swap it. */
 export const cantTellHeld = {
-  links: (): HeldLink[] => activeLinks(),
+  links: (): HeldLink[] => heldLinks(),
 };
 
 const rank = { hole: 0, behind: 1, quiet: 2 } as const;

@@ -1,4 +1,6 @@
 import type { LinkKind } from "./link-kinds";
+import { caughtUpWithinMs, type HeldSource } from "../shared/held";
+import { heldLag, positionLines } from "../shared/held-words";
 
 /** Pure pieces of a link's page (#267, frame 26m). */
 
@@ -32,7 +34,22 @@ export type LinkPageData = {
   pulled: Array<{ t: string; n: number }>;
   pulled_24h: number;
   kinds: KindLine[];
+  /** Pull: how far behind the peer is here, in time (#334). */
+  behind_ms?: number | null;
+  /** Sources further away whose rows come through this link, and where each stands (#334). */
+  further?: Array<HeldSource & { behind_ms: number }>;
 };
+
+/** "4m behind" under the Behind card, once the peer is behind by more than a poll's worth. */
+export function behindLagWords(l: Pick<LinkPageData, "behind_ms" | "paused">): string | null {
+  return !l.paused && l.behind_ms != null && l.behind_ms >= caughtUpWithinMs ? `${heldLag(l.behind_ms)} behind` : null;
+}
+
+/** A source further away, in the words Search's held group uses: "4m behind · read to 14:56:02". */
+export function furtherWords(source: HeldSource, now: number): { text: string; ok: boolean } {
+  const line = positionLines(source, now)[0];
+  return line ? { text: line, ok: false } : { text: "caught up", ok: true };
+}
 
 /** The link's name in the crumb is the other instance (29b). */
 export function linkTitle(l: Pick<LinkPageData, "role" | "peer">): string {

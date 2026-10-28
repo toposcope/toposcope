@@ -82,6 +82,9 @@ export function positionLines(source: HeldSource, now: number, live = false): st
   if (source.hole) {
     lines.push(`hole ${holeClock(source.hole.from)} → ${holeClock(source.hole.to)}`);
   }
+  if (lines.length > 0 && source.via) {
+    lines.push(`through ${source.via}`);
+  }
   return lines;
 }
 

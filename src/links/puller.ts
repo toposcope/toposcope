@@ -1,6 +1,7 @@
 import { keepMonitorsSnapshot, monitorsSnapshot, type MonitorsSnapshot } from "./monitors-snapshot";
 import { feedKinds, kindsOf } from "./kinds";
 import { noteWire } from "./volume";
+import { parseUpstream, upstreamFor } from "./upstream";
 import { effectiveMetricsRetentionDays } from "../control/settings";
 import { mismatchWords, versionHeaders, versionRefusal } from "./version";
 import { isPaused } from "./page";
@@ -110,6 +111,7 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
       gone_to: gone?.to ?? null,
       ...holeAt,
       peer_name: reply.source?.name || link.peer_name,
+      upstream: JSON.stringify(parseUpstream((wire.header as { upstream?: unknown }).upstream)),
       last_error: null,
     });
     if (reply.through >= reply.settled) {
@@ -166,6 +168,7 @@ export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps):
         headers: { ...headers, "content-type": "application/x-toposcope-feed" },
         body: (await encodeFeed(reply, deps.hereId(), {
           source: { id: deps.hereId(), name: instanceNameOrEmpty() },
+          upstream: upstreamFor(link, deps.now()),
           ...(reply.through >= reply.settled && kindsOf(link.kinds).includes("monitors")
             ? (() => {
                 const monitors = monitorsSnapshot(link.q, instanceNameOrEmpty());
