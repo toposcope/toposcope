@@ -229,6 +229,7 @@ export async function migrateStore(): Promise<void> {
   await ensureSpans();
   await ensureProfileSamples();
   await ensureChangeMarks();
+  await ensureKindPositions();
   await backfillHistogramIfEmpty();
   await backfillAttrKeysIfEmpty();
   await backfillAttrValuesMissing();
@@ -313,6 +314,27 @@ async function ensureArrivalSeq(): Promise<void> {
     ENGINE = MergeTree
     ORDER BY reserved
   `);
+}
+
+/**
+ * Every kind takes its position from the one counter (#324): the columns logs has for it, on
+ * spans, metric points, histogram buckets and profile samples. Rows stored before have position 0
+ * and are never fed.
+ */
+async function ensureKindPositions(): Promise<void> {
+  for (const table of ["spans", "metrics", "metric_buckets", "profile_samples"]) {
+    await clickhouseCommand(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS seq UInt64 DEFAULT 0`);
+    await clickhouseCommand(
+      `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS arrived DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC')`,
+    );
+    await clickhouseCommand(
+      `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS toposcope LowCardinality(String) DEFAULT ''`,
+    );
+    await clickhouseCommand(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS src_id String DEFAULT ''`);
+    await clickhouseCommand(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS src_seq UInt64 DEFAULT 0`);
+    await ensureSkipIndex(table, "idx_seq_minmax", "seq TYPE minmax GRANULARITY 1");
+    await ensureSkipIndex(table, "idx_src_seq_minmax", "src_seq TYPE minmax GRANULARITY 1");
+  }
 }
 
 async function ensureLogsMessageTextIndex(): Promise<void> {

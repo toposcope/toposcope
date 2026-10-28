@@ -252,6 +252,28 @@ export async function ensureSeqProjection(): Promise<void> {
   await clickhouseCommand("ALTER TABLE logs MATERIALIZE PROJECTION by_seq");
 }
 
+/** The kinds whose sort order scatters positions that arrived together. */
+export const fullSeqProjectionTables = ["spans", "metrics", "metric_buckets", "profile_samples"] as const;
+export type FullSeqProjectionTable = (typeof fullSeqProjectionTables)[number];
+
+/**
+ * A full copy ordered by `seq` (#324): spans are sorted by `trace_id`, metrics and buckets by
+ * `name`, profiles by `trace_id`, so a `seq, _part_offset` projection finds a range but still reads
+ * every granule (measured: 11M spans for a 5,000-row page; 17k with this). Built only once a link
+ * carries the kind, so an instance with no such link pays no disk.
+ */
+export async function ensureFullSeqProjection(table: FullSeqProjectionTable): Promise<void> {
+  const rows = await clickhouseQuery<{ name: string }>(
+    `SELECT name FROM system.projections WHERE database = currentDatabase() AND table = {table:String} AND name = 'by_seq_full'`,
+    { table },
+  ).catch(() => [] as { name: string }[]);
+  if (rows.length > 0) {
+    return;
+  }
+  await clickhouseCommand(`ALTER TABLE ${table} ADD PROJECTION IF NOT EXISTS by_seq_full (SELECT * ORDER BY seq)`);
+  await clickhouseCommand(`ALTER TABLE ${table} MATERIALIZE PROJECTION by_seq_full`);
+}
+
 function feedId(): string {
   return `f_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 }

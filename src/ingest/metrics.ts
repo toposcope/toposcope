@@ -14,6 +14,8 @@ import { rememberMetricDescriptions } from "../shared/metric-descriptions";
 import { rememberMetricKinds } from "../shared/metric-kinds";
 import { rememberMetricUnits } from "../shared/metric-units";
 import { incMetric } from "../metrics";
+import { hereName } from "../shared/here";
+import { withArrivalSeq } from "./arrival-seq";
 import { InsertBackpressureError, withInsertSlot } from "./backpressure";
 import { insertErrorMessage, MAX_BATCH } from "./index";
 import { readOtlpBody } from "./otlp-body";
@@ -64,21 +66,24 @@ export async function insertMetricPoints(
   if (points.length === 0) {
     return 0;
   }
-  return withInsertSlot(async () => {
+  return withInsertSlot(() => withArrivalSeq(points.length, async (from, arrived) => {
     const body = points
-      .map((point) =>
+      .map((point, i) =>
         JSON.stringify({
           tenant_id: "default",
           ts: toClickHouseDateTime(point.ts),
           name: point.name,
           value: point.value,
           labels: point.labels,
+          seq: from + i,
+          arrived,
+          toposcope: hereName(),
         }),
       )
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "metrics");
     return points.length;
-  });
+  }));
 }
 
 /** A histogram's buckets. `n` carries one more count than `le` has bounds. */
@@ -86,9 +91,9 @@ export async function insertMetricBuckets(buckets: readonly MetricBuckets[]): Pr
   if (buckets.length === 0) {
     return;
   }
-  await withInsertSlot(async () => {
+  await withInsertSlot(() => withArrivalSeq(buckets.length, async (from, arrived) => {
     const body = buckets
-      .map((row) =>
+      .map((row, i) =>
         JSON.stringify({
           tenant_id: "default",
           ts: toClickHouseDateTime(row.ts),
@@ -96,11 +101,14 @@ export async function insertMetricBuckets(buckets: readonly MetricBuckets[]): Pr
           labels: row.labels,
           le: row.le,
           n: row.n,
+          seq: from + i,
+          arrived,
+          toposcope: hereName(),
         }),
       )
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "metric_buckets");
-  });
+  }));
 }
 
 function ingestFail(c: Context, err: unknown): Response {
