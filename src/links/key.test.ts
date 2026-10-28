@@ -15,17 +15,17 @@ describe("link keys (#136)", () => {
 
   test("round trip: the prefix says the direction, the rest the minter, the filter and the date", () => {
     const text = encodeLinkKey(key);
-    expect(text.startsWith("tsl1_o.")).toBe(true);
+    expect(text.startsWith("tsl2_o.")).toBe(true);
     expect(text).not.toContain(" ");
     expect(decodeLinkKey(text)).toEqual(key);
     const invite = encodeLinkKey({ ...key, kind: "invite", q: "", until: Date.parse("2026-10-20T00:00:00Z") });
-    expect(invite.startsWith("tsl1_i.")).toBe(true);
+    expect(invite.startsWith("tsl2_i.")).toBe(true);
     expect(decodeLinkKey(invite)).toEqual({ ...key, kind: "invite", q: "", until: Date.parse("2026-10-20T00:00:00Z") });
   });
 
   test("anything else is not a link key, and says so without guessing a direction", () => {
     expect(decodeLinkKey("Bearer 9f2c1e7a0b44d6")).toEqual({ error: linkKeyNotAKey });
-    expect(decodeLinkKey(encodeLinkKey(key).replace("tsl1_o", "tsl1_x"))).toEqual({ error: linkKeyNotAKey });
+    expect(decodeLinkKey(encodeLinkKey(key).replace("tsl2_o", "tsl2_x"))).toEqual({ error: linkKeyNotAKey });
     expect(decodeLinkKey(encodeLinkKey({ ...key, url: "ftp://edge" }))).toEqual({ error: linkKeyNotAKey });
     const text = encodeLinkKey(key);
     // Cut short: a segment is missing.

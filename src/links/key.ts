@@ -32,9 +32,12 @@ function unb64u(text: string): string | null {
   return Buffer.from(text, "base64url").toString("utf8");
 }
 
+/** A pasted key minted before 0.10. */
+export const linkKeyOlder = "This key is from an older Toposcope; mint a new one there";
+
 export function encodeLinkKey(key: LinkKey): string {
   return [
-    key.kind === "offer" ? "tsl1_o" : "tsl1_i",
+    key.kind === "offer" ? "tsl2_o" : "tsl2_i",
     b64u(key.name),
     b64u(key.url),
     key.kid,
@@ -45,12 +48,16 @@ export function encodeLinkKey(key: LinkKey): string {
 }
 
 export function decodeLinkKey(text: string): LinkKey | { error: string } {
+  // A key from before 0.10 (#328): its rows would not fit this release's tables.
+  if (text.trim().startsWith("tsl1_")) {
+    return { error: linkKeyOlder };
+  }
   const parts = text.trim().split(".");
   if (parts.length !== 7) {
     return { error: linkKeyNotAKey };
   }
   const [prefix, name, url, kid, q, until, secret] = parts as [string, string, string, string, string, string, string];
-  const kind = prefix === "tsl1_o" ? "offer" : prefix === "tsl1_i" ? "invite" : null;
+  const kind = prefix === "tsl2_o" ? "offer" : prefix === "tsl2_i" ? "invite" : null;
   const decodedName = unb64u(name);
   const decodedUrl = unb64u(url);
   const decodedQ = unb64u(q);

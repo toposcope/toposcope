@@ -1,3 +1,4 @@
+import { linkProtocol } from "./version";
 import { stampCreated, stampUpdated } from "../control/actors";
 import type { Database } from "bun:sqlite";
 import { getDb } from "../control/index";
@@ -118,8 +119,8 @@ export function saveLink(
   db: Database = getDb(),
 ): LinkRecord {
   db.query(
-    `INSERT INTO links (id, role, connects, peer_id, peer_name, peer_url, q, kid, secret, secret_hash, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO links (id, role, connects, peer_id, peer_name, peer_url, q, kid, secret, secret_hash, created_at, protocol)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${linkProtocol})`,
   ).run(
     link.id,
     link.role,

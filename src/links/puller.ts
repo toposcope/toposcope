@@ -1,3 +1,4 @@
+import { mismatchWords, versionHeaders, versionRefusal } from "./version";
 import { isPaused } from "./page";
 import { instanceId, instanceName } from "../control/instance";
 
@@ -48,8 +49,14 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
     try {
       const res = await deps.fetch(
         `${link.peer_url.replace(/\/+$/, "")}/link/v1/feed?after=${after}&limit=${pullPageRows}`,
-        { headers: { authorization: `Bearer ${link.secret ?? ""}` }, signal: AbortSignal.timeout(15_000) },
+        { headers: { authorization: `Bearer ${link.secret ?? ""}`, ...versionHeaders() }, signal: AbortSignal.timeout(15_000) },
       );
+      const other = await versionRefusal(res);
+      if (other) {
+        // Stopped where it stands (#328): nothing is stored while the versions differ.
+        noteFailure(link.id, mismatchWords(link.peer_name, other));
+        return { stored };
+      }
       if (res.status === 401) {
         noteFailure(link.id, "refused: the link was removed at the source");
         return { stored };
@@ -106,12 +113,17 @@ export async function pullLink(link: LinkRecord, deps: PullDeps = defaultDeps): 
  */
 export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps): Promise<{ delivered: number }> {
   const base = link.peer_url.replace(/\/+$/, "");
-  const headers = { authorization: `Bearer ${link.secret ?? ""}`, "content-type": "application/json" };
+  const headers = { authorization: `Bearer ${link.secret ?? ""}`, "content-type": "application/json", ...versionHeaders() };
   let delivered = 0;
   for (let page = 0; page < pullPagesPerPass; page++) {
     let ask: { after: number; limit: number };
     try {
       const res = await deps.fetch(`${base}/link/v1/ask`, { method: "POST", headers, signal: AbortSignal.timeout(15_000) });
+      const other = await versionRefusal(res);
+      if (other) {
+        noteFailure(link.id, mismatchWords(link.peer_name, other));
+        return { delivered };
+      }
       if (res.status === 401) {
         noteFailure(link.id, "refused: the link was removed at the puller");
         return { delivered };
