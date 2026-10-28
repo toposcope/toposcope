@@ -53,6 +53,14 @@ function metricTimeWhere(
   return { sql: where.join(" AND "), params };
 }
 
+/**
+ * A label's value on a point, by the name of its parameter. `toposcope`, the instance a point
+ * entered at (#331), is a column of its own, not a label, and is read as one.
+ */
+function labelRef(param: string, key: string): string {
+  return key === "toposcope" ? "toposcope" : `labels[{${param}:String}]`;
+}
+
 function pushLabels(
   where: string[],
   params: Record<string, string>,
@@ -62,7 +70,7 @@ function pushLabels(
   for (const [key, value] of Object.entries(labels)) {
     params[`mlk${i}`] = key;
     params[`mlv${i}`] = value;
-    where.push(`labels[{mlk${i}:String}] = {mlv${i}:String}`);
+    where.push(`${labelRef(`mlk${i}`, key)} = {mlv${i}:String}`);
     i++;
   }
 }
@@ -109,7 +117,10 @@ export const metricSplitOther = "other";
  * of a minute or more read the minute rollup; label matchers and finer bars
  * scan the stored points.
  */
-function seriesWindows(opts: SeriesOpts): { rolled: boolean; overlay: WhereClause; stat: WhereClause } {
+function seriesWindows(
+  opts: SeriesOpts,
+  scan = false,
+): { rolled: boolean; overlay: WhereClause; stat: WhereClause } {
   const overlay = {
     from: tightenHistogramFrom(opts.from, opts.since, opts.intervalMs),
     to: opts.to,
@@ -117,7 +128,7 @@ function seriesWindows(opts: SeriesOpts): { rolled: boolean; overlay: WhereClaus
   };
   // The minute rollup has no labels: a matcher or a split reads the stored points.
   const labeled = Object.keys(opts.labels).length > 0 || Boolean(opts.split);
-  if (!opts.exact && !opts.exclude && !labeled && histogramUsesMinuteRollup(opts.intervalMs)) {
+  if (!scan && !opts.exact && !opts.exclude && !labeled && histogramUsesMinuteRollup(opts.intervalMs)) {
     return {
       rolled: true,
       overlay: metricTimeWhere("minute", overlay),
@@ -135,7 +146,7 @@ function seriesWindows(opts: SeriesOpts): { rolled: boolean; overlay: WhereClaus
     if (opts.exclude) {
       where.params.exclude_key = opts.exclude.key;
       where.params.exclude_values = JSON.stringify(opts.exclude.values);
-      parts.push("labels[{exclude_key:String}] NOT IN JSONExtract({exclude_values:String}, 'Array(String)')");
+      parts.push(`${labelRef("exclude_key", opts.exclude.key)} NOT IN JSONExtract({exclude_values:String}, 'Array(String)')`);
     }
     where.sql = parts.join(" AND ");
   }
@@ -204,15 +215,28 @@ export async function searchMetricSeries(
       ...withUnit(await readingUnit(histogram.base, histogram.reading)),
       ...withDescription(await histogramDescription(histogram.base)),
     };
+    const q = readingQuantile(histogram.reading);
+    if (histogram.reading === "heatmap" || q !== null) {
+      // Buckets sent in two units are two histograms (#331): each read off its own sums, never one heatmap.
+      const groups = await metaGroups("metric_buckets", opts, "name = {metric_name:String}", { metric_name: histogram.base }, "histogram");
+      if (groups) {
+        return metaQuantileSeries(opts, histogram.base, q ?? 0.99, told, groups);
+      }
+    }
     if (histogram.reading === "heatmap") {
       return heatmapSeries(opts, histogram.base, told);
     }
-    const q = readingQuantile(histogram.reading);
     if (q !== null) {
       return quantileSeries(opts, histogram.base, q, told);
     }
     const count = `${histogram.base}.count`;
     const sum = `${histogram.base}.sum`;
+    // A count has no unit; its sum's says which unit the observations were in.
+    const said = histogram.reading === "count" ? count : sum;
+    const groups = await metaGroups("metrics", opts, "name = {said_name:String}", { said_name: said }, "counter");
+    if (groups) {
+      return metaValueSeries(opts, told, groups, histogram.reading === "avg" ? { avg: { sum, count } } : { amount: said }, "counter");
+    }
     if (histogram.reading === "avg") {
       return valueSeries(opts, told, {
         names: "name IN ({sum_name:String}, {count_name:String})",
@@ -232,6 +256,10 @@ export async function searchMetricSeries(
     ...withUnit(await metricUnit(opts.name)),
     ...withDescription(await metricDescription(opts.name)),
   };
+  const groups = await metaGroups("metrics", opts, "name = {metric_name:String}", { metric_name: opts.name }, told.kind!);
+  if (groups) {
+    return metaValueSeries(opts, told, groups, { level: opts.name }, told.kind!);
+  }
   return valueSeries(
     opts,
     told,
@@ -262,13 +290,14 @@ function amountOf(name: string): ValueRead {
 /** The values of the split label with the most points in the window: 8 kept, and whether there are more. */
 async function splitKeys(
   table: "metrics" | "metric_buckets",
+  split: string,
   stat: WhereClause,
   names: string,
   params: Record<string, string>,
 ): Promise<{ keep: string[]; other: boolean }> {
   const rows = await clickhouseQuery<{ k: string }>(
     `
-    SELECT labels[{split_key:String}] AS k, count() AS n
+    SELECT ${labelRef("split_key", split)} AS k, count() AS n
     FROM ${table}
     WHERE ${stat.sql} AND ${names}
     GROUP BY k
@@ -284,8 +313,10 @@ async function splitKeys(
 }
 
 /** The split label's value, or `other` past the 8 kept. */
-const splitKeySql =
-  "if(labels[{split_key:String}] IN JSONExtract({split_keep:String}, 'Array(String)'), labels[{split_key:String}], {split_other:String})";
+function splitKeySql(split: string): string {
+  const value = labelRef("split_key", split);
+  return `if(${value} IN JSONExtract({split_keep:String}, 'Array(String)'), ${value}, {split_other:String})`;
+}
 
 function splitResult(
   told: Told,
@@ -349,7 +380,7 @@ async function splitValueSeries(
   read: ValueRead,
 ): Promise<SearchAggResult> {
   const { overlay, stat } = seriesWindows(opts);
-  const keys = await splitKeys("metrics", stat, read.names, { ...read.params, split_key: split });
+  const keys = await splitKeys("metrics", split, stat, read.names, { ...read.params, split_key: split });
   const params = {
     ...read.params,
     split_key: split,
@@ -361,7 +392,7 @@ async function splitValueSeries(
       `
       SELECT
         toStartOfInterval(ts, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
-        ${splitKeySql} AS k,
+        ${splitKeySql(split)} AS k,
         ${read.scanned} AS v
       FROM metrics
       WHERE ${overlay.sql} AND ${read.names}
@@ -372,7 +403,7 @@ async function splitValueSeries(
     ),
     clickhouseQuery<{ k: string; v: string | number | null }>(
       `
-      SELECT ${splitKeySql} AS k, ${read.scanned} AS v
+      SELECT ${splitKeySql(split)} AS k, ${read.scanned} AS v
       FROM metrics
       WHERE ${stat.sql} AND ${read.names}
       GROUP BY k
@@ -511,7 +542,7 @@ async function splitQuantileSeries(
   told: Told,
 ): Promise<SearchAggResult> {
   const { overlay, stat } = seriesWindows(opts);
-  const keys = await splitKeys("metric_buckets", stat, "name = {metric_name:String}", {
+  const keys = await splitKeys("metric_buckets", split, stat, "name = {metric_name:String}", {
     metric_name: name,
     split_key: split,
   });
@@ -529,7 +560,7 @@ async function splitQuantileSeries(
       FROM (
         SELECT
           toStartOfInterval(ts, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
-          ${splitKeySql} AS k,
+          ${splitKeySql(split)} AS k,
           bound AS upper,
           sum(observed) AS c
         FROM ${source}
@@ -545,7 +576,7 @@ async function splitQuantileSeries(
       `
       SELECT k, groupArray(upper) AS les, groupArray(c) AS ns
       FROM (
-        SELECT ${splitKeySql} AS k, bound AS upper, sum(observed) AS c
+        SELECT ${splitKeySql(split)} AS k, bound AS upper, sum(observed) AS c
         FROM ${source}
         WHERE ${stat.sql} AND name = {metric_name:String}
         GROUP BY k, upper
@@ -562,6 +593,256 @@ async function splitQuantileSeries(
     rows.map((row) => ({ bucket: row.bucket, k: String(row.k), v: bucketQuantile(q, bucketSums(row.les, row.ns)) })),
     stats.map((row) => ({ k: String(row.k), v: bucketQuantile(q, bucketSums(row.les, row.ns)) })),
   );
+}
+
+/**
+ * A kind and unit a name's points came with in a window (#331), the instances they entered at,
+ * and when the first and last of them were.
+ */
+type MetaGroup = NonNullable<SearchAggResult["units_differ"]>[number];
+
+/**
+ * The kinds and units the matching points of a name carry in the window, when they are more
+ * than one (#331): a panel then splits by them rather than sum what disagrees. A point that
+ * came without a kind reads as the name's own; one without a unit is apart only when two
+ * others disagree, so points stored before units travelled with them never split a line.
+ */
+async function metaGroups(
+  table: "metrics" | "metric_buckets",
+  opts: SeriesOpts,
+  names: string,
+  params: Record<string, string>,
+  ownKind: string,
+): Promise<MetaGroup[] | null> {
+  const { stat } = seriesWindows(opts, true);
+  const rows = await clickhouseQuery<{ k: string; u: string; sources: unknown; first: string; last: string }>(
+    `
+    SELECT
+      if(kind = '', {own_kind:String}, kind) AS k,
+      unit AS u,
+      arraySort(groupUniqArray(toposcope)) AS sources,
+      min(ts) AS first,
+      max(ts) AS last
+    FROM ${table}
+    WHERE ${stat.sql} AND ${names}
+    GROUP BY k, u
+    ORDER BY first, k, u
+  `,
+    { ...stat.params, ...params, own_kind: ownKind },
+  );
+  const units = new Set(rows.map((row) => String(row.u)).filter((u) => u.length > 0));
+  const kinds = new Set(rows.map((row) => String(row.k)));
+  if (units.size <= 1 && kinds.size <= 1) {
+    return null;
+  }
+  return rows.map((row) => ({
+    kind: String(row.k),
+    unit: String(row.u),
+    sources: Array.isArray(row.sources) ? row.sources.map(String) : [],
+    first: toIsoTimestamp(String(row.first)),
+    last: toIsoTimestamp(String(row.last)),
+  }));
+}
+
+/** How a line split by kind and unit is named: by what differs, and by its label's value when the panel splits. */
+function metaLineKey(group: MetaGroup, groups: readonly MetaGroup[], value: string | null): string {
+  const kinds = new Set(groups.map((g) => g.kind)).size > 1;
+  const units = new Set(groups.map((g) => g.unit)).size > 1;
+  const unit = group.unit || "no unit";
+  const said = kinds && units ? `${group.kind} · ${unit}` : kinds ? group.kind : unit;
+  return value === null ? said : `${value} · ${said}`;
+}
+
+const metaKindSql = "if(kind = '', {own_kind:String}, kind)";
+
+/** A series split by kind and unit, each line read the way its kind is: lines with no points are left out. */
+function metaResult(
+  told: Told,
+  split: string | undefined,
+  keys: { keep: string[]; other: boolean } | null,
+  groups: readonly MetaGroup[],
+  rows: Array<{ bucket: string; k: string; mk: string; mu: string; v: number | null }>,
+  stats: Array<{ k: string; mk: string; mu: string; v: number | null }>,
+): SearchAggResult {
+  const values: Array<string | null> = keys ? (keys.other ? [...keys.keep, metricSplitOther] : keys.keep) : [null];
+  const splits: NonNullable<SearchAggResult["splits"]> = [];
+  for (const value of values) {
+    for (const group of groups) {
+      const mine = (row: { k: string; mk: string; mu: string }) =>
+        (value === null || row.k === value) && row.mk === group.kind && row.mu === group.unit;
+      const buckets = rows
+        .filter((row) => mine(row) && row.v !== null)
+        .map((row) => ({ t: toIsoTimestamp(String(row.bucket)), v: row.v as number }));
+      const stat = stats.find(mine)?.v ?? null;
+      if (buckets.length === 0 && stat === null) {
+        continue;
+      }
+      splits.push({
+        key: metaLineKey(group, groups, value),
+        buckets,
+        stat,
+        kind: group.kind,
+        ...(group.unit ? { unit: group.unit } : {}),
+      });
+    }
+  }
+  return {
+    ...told,
+    source: "metric",
+    buckets: [],
+    stat: null,
+    ...(split ? { split } : {}),
+    splits,
+    units_differ: [...groups],
+  };
+}
+
+/**
+ * Points of one name in more than one kind or unit (#331), one line for each. A level averages,
+ * an amount sums, and a histogram's average is its sum over its count, each paired with the
+ * sum point sent beside it so the count takes the sum's unit.
+ */
+async function metaValueSeries(
+  opts: SeriesOpts,
+  told: Told,
+  groups: readonly MetaGroup[],
+  read: { level: string } | { amount: string } | { avg: { sum: string; count: string } },
+  /** What a point sent without a kind reads as: what `metaGroups` was told. */
+  ownKind: string,
+): Promise<SearchAggResult> {
+  const { overlay, stat } = seriesWindows(opts, true);
+  const params: Record<string, string> = { own_kind: ownKind };
+  let names: string;
+  let value: string;
+  if ("avg" in read) {
+    names = "name IN ({sum_name:String}, {count_name:String})";
+    params.sum_name = read.avg.sum;
+    params.count_name = read.avg.count;
+    value = "sum(s) / nullIf(sum(c), 0)";
+  } else {
+    names = "name = {metric_name:String}";
+    params.metric_name = "level" in read ? read.level : read.amount;
+    value = "level" in read ? "if(mk = 'counter', sum(value), avg(value))" : "sum(value)";
+  }
+  const keys = opts.split ? await splitKeys("metrics", opts.split, stat, names, { ...params, split_key: opts.split }) : null;
+  if (opts.split && keys) {
+    params.split_key = opts.split;
+    params.split_keep = JSON.stringify(keys.keep);
+    params.split_other = metricSplitOther;
+  }
+  const k = opts.split ? splitKeySql(opts.split) : "''";
+  const from = (where: WhereClause) =>
+    "avg" in read
+      ? `(
+        SELECT ts, ${k} AS k,
+          anyIf(${metaKindSql}, name = {sum_name:String}) AS mk,
+          anyIf(unit, name = {sum_name:String}) AS mu,
+          sumIf(value, name = {sum_name:String}) AS s,
+          sumIf(value, name = {count_name:String}) AS c
+        FROM metrics
+        WHERE ${where.sql} AND ${names}
+        GROUP BY ts, toposcope, labels
+      )`
+      : `(
+        SELECT ts, ${k} AS k, ${metaKindSql} AS mk, unit AS mu, value
+        FROM metrics
+        WHERE ${where.sql} AND ${names}
+      )`;
+  const [rows, stats] = await Promise.all([
+    clickhouseQuery<{ bucket: string; k: string; mk: string; mu: string; v: string | number | null }>(
+      `
+      SELECT toStartOfInterval(ts, ${histogramIntervalSql(opts.intervalMs)}) AS bucket, k, mk, mu, ${value} AS v
+      FROM ${from(overlay)}
+      GROUP BY bucket, k, mk, mu
+      ORDER BY bucket
+    `,
+      { ...overlay.params, ...params },
+    ),
+    clickhouseQuery<{ k: string; mk: string; mu: string; v: string | number | null }>(
+      `
+      SELECT k, mk, mu, ${value} AS v
+      FROM ${from(stat)}
+      GROUP BY k, mk, mu
+    `,
+      { ...stat.params, ...params },
+    ),
+  ]);
+  const text = <T extends { k: string; mk: string; mu: string; v: string | number | null }>(row: T) => ({
+    ...row,
+    k: String(row.k),
+    mk: String(row.mk),
+    mu: String(row.mu),
+    v: finiteNum(row.v),
+  });
+  return metaResult(told, opts.split, keys, groups, rows.map(text), stats.map(text));
+}
+
+/**
+ * A percentile of a histogram sent in more than one unit (#331): within each unit its bucket
+ * counts summed by bound across every matching series, and the percentile read off that sum.
+ * Never across units. A heatmap of it is its p99 lines.
+ */
+async function metaQuantileSeries(
+  opts: SeriesOpts,
+  name: string,
+  q: number,
+  told: Told,
+  groups: readonly MetaGroup[],
+): Promise<SearchAggResult> {
+  const { overlay, stat } = seriesWindows(opts, true);
+  const params: Record<string, string> = { metric_name: name, own_kind: "histogram" };
+  const names = "name = {metric_name:String}";
+  const keys = opts.split ? await splitKeys("metric_buckets", opts.split, stat, names, { ...params, split_key: opts.split }) : null;
+  if (opts.split && keys) {
+    params.split_key = opts.split;
+    params.split_keep = JSON.stringify(keys.keep);
+    params.split_other = metricSplitOther;
+  }
+  const k = opts.split ? splitKeySql(opts.split) : "''";
+  const source = "metric_buckets ARRAY JOIN arrayPushBack(le, inf) AS bound, n AS observed";
+  const [rows, stats] = await Promise.all([
+    clickhouseQuery<{ bucket: string; k: string; mk: string; mu: string; les: unknown; ns: unknown }>(
+      `
+      SELECT bucket, k, mk, mu, groupArray(upper) AS les, groupArray(c) AS ns
+      FROM (
+        SELECT
+          toStartOfInterval(ts, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
+          ${k} AS k,
+          ${metaKindSql} AS mk,
+          unit AS mu,
+          bound AS upper,
+          sum(observed) AS c
+        FROM ${source}
+        WHERE ${overlay.sql} AND ${names}
+        GROUP BY bucket, k, mk, mu, upper
+      )
+      GROUP BY bucket, k, mk, mu
+      ORDER BY bucket
+    `,
+      { ...overlay.params, ...params },
+    ),
+    clickhouseQuery<{ k: string; mk: string; mu: string; les: unknown; ns: unknown }>(
+      `
+      SELECT k, mk, mu, groupArray(upper) AS les, groupArray(c) AS ns
+      FROM (
+        SELECT ${k} AS k, ${metaKindSql} AS mk, unit AS mu, bound AS upper, sum(observed) AS c
+        FROM ${source}
+        WHERE ${stat.sql} AND ${names}
+        GROUP BY k, mk, mu, upper
+      )
+      GROUP BY k, mk, mu
+    `,
+      { ...stat.params, ...params },
+    ),
+  ]);
+  const read = <T extends { k: string; mk: string; mu: string; les: unknown; ns: unknown }>(row: T) => ({
+    ...row,
+    k: String(row.k),
+    mk: String(row.mk),
+    mu: String(row.mu),
+    v: bucketQuantile(q, bucketSums(row.les, row.ns)),
+  });
+  return metaResult(told, opts.split, keys, groups, rows.map(read), stats.map(read));
 }
 
 /** The label keys a metric's points carry in the window, with how many values each: the split picker (13f). */
@@ -588,7 +869,18 @@ export async function metricLabelKeys(opts: {
   `,
     { ...params, names: JSON.stringify(names) },
   );
-  return rows.map((row) => ({ key: String(row.key), values: Number(row.values) }));
+  const keys = rows.map((row) => ({ key: String(row.key), values: Number(row.values) }));
+  // The instance a point entered at (#331) is a column, not a label: offered once points came from more than one.
+  const [sources] = await clickhouseQuery<{ values: string | number }>(
+    `SELECT uniqExact(toposcope) AS values FROM metrics WHERE ${sql} AND name IN JSONExtract({names:String}, 'Array(String)')`,
+    { ...params, names: JSON.stringify(names) },
+  );
+  const instances = Number(sources?.values ?? 0);
+  if (instances > 1 && !keys.some((row) => row.key === "toposcope")) {
+    keys.push({ key: "toposcope", values: instances });
+    keys.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  }
+  return keys;
 }
 
 function metricResult(
@@ -632,10 +924,8 @@ async function withKinds(rows: Array<{ k: string; n: number }>): Promise<MetricN
 
 /** The names kept as histograms. */
 const histogramNamesSql = `
-  SELECT name FROM metric_kinds
+  SELECT DISTINCT name FROM metric_buckets
   WHERE tenant_id = {tenant_id:String}
-  GROUP BY name
-  HAVING argMax(kind, seen) = 'histogram'
 `;
 
 /**

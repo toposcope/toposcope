@@ -1,10 +1,10 @@
-import { useHeldView } from "../held-context";
+import { useHeldView, useMetricHeld } from "../held-context";
 import { overWhatIsHereWords } from "../../shared/held-words";
 import { type ReactNode } from "react";
 import { HeadPicker } from "@/components/head-picker";
 import { downloadWidgetSeries, statExport } from "@/export-series";
 import { abbrevCount, formatAggStat } from "@/fill-histogram";
-import { printUnit } from "../metric-unit";
+import { printUnit, unitsDifferWords } from "../metric-unit";
 import type { SearchAggResult } from "@/types";
 import { seriesLabel } from "../../query/agg";
 import {
@@ -37,10 +37,26 @@ type Props = {
   total: number;
   agg: string | null;
   metric: string | null;
+  /** The metric's label matchers: a `toposcope` one keeps a Stat to one source's tells (#331). */
+  metricLabels?: Record<string, string>;
   aggResult: SearchAggResult | null;
   loading: boolean;
   updated?: ReactNode;
 };
+
+/**
+ * The one number a metric Stat shows (#331): its own, or when its points came in more than one
+ * unit, the line in the unit the name was last sent with. Never a sum across units.
+ */
+export function metricStat(result: SearchAggResult | null): { stat: number | null; unit: string | undefined } {
+  if (!result?.units_differ || !result.splits?.length) {
+    return { stat: result?.stat ?? null, unit: result?.unit };
+  }
+  const line =
+    result.splits.find((s) => (s.unit ?? "") === (result.unit ?? "") && (!s.kind || s.kind === result.kind)) ??
+    result.splits[result.splits.length - 1]!;
+  return { stat: line.stat, unit: line.unit };
+}
 
 export function StatHead({
   agg,
@@ -121,12 +137,17 @@ export function StatWidget({
   total,
   agg,
   metric,
+  metricLabels,
   aggResult,
   loading,
   updated = null,
 }: Props) {
   const catalog = useSeriesCatalog();
   const held = useHeldView();
+  // #331: a sum or a count over a short source is a floor; an average or a percentile is partial.
+  const metricShort = useMetricHeld(metric ? aggResult : null, metricLabels);
+  const unitsNote = metric ? unitsDifferWords(aggResult?.units_differ) : null;
+  const shown = metricStat(aggResult);
   const isCount = !metric && (!agg || agg === "count");
   // #139: a count a short source could feed is a floor; a percentile, rate or average keeps its
   // number and says it is over what is here.
@@ -141,7 +162,7 @@ export function StatWidget({
   // A metric's one number is named by how it was read: a counter's is a sum, never a level.
   const pick = seriesPickFromWidget(null, metric);
   const view = pick.kind === "metric" ? metricView(pick, pickedEntry(catalog, pick.name), aggResult) : null;
-  const quiet = Boolean(metric) && aggResult?.source === "metric" && aggResult.stat === null;
+  const quiet = Boolean(metric) && aggResult?.source === "metric" && shown.stat === null;
   const note = view
     ? quiet
       ? `no points ${catalog.window ? `in the last ${catalog.window}` : "in this window"} · ${view.kind}`
@@ -151,7 +172,8 @@ export function StatWidget({
     ? `${heldNote ? "≥" : ""}${abbrevCount(total)}`
     : aggResult?.source === "refused"
       ? "—"
-      : formatAggStat(aggResult?.stat);
+      : `${metricShort?.floor && !quiet ? "≥" : ""}${formatAggStat(shown.stat)}`;
+  const metricNote = metricShort ? metricShort.pill : null;
 
   return (
     <>
@@ -166,17 +188,24 @@ export function StatWidget({
               </span>
               {agg === "rate" ? (
                 <span className="font-mono text-[15px] text-muted-foreground">/s</span>
-              ) : metric && !quiet && printUnit(aggResult?.unit) ? (
+              ) : metric && !quiet && printUnit(shown.unit) ? (
                 // #104: the unit as the app sent it (13h); a histogram's count has none.
-                <span className="font-mono text-[15px] text-muted-foreground">{printUnit(aggResult?.unit)}</span>
+                <span className="font-mono text-[15px] text-muted-foreground">{printUnit(shown.unit)}</span>
               ) : null}
             </div>
             <div
               className={`mt-[3px] truncate text-[10.5px] ${
-                aggResult?.source === "refused" || quiet || heldNote ? "text-amber-400" : "text-muted-foreground"
+                aggResult?.source === "refused" || quiet || heldNote || metricNote ? "text-amber-400" : "text-muted-foreground"
               }`}
+              title={unitsNote ?? undefined}
             >
-              {aggResult?.source === "refused" ? aggResult.reason : heldNote ? `▲ ${heldNote}` : note}
+              {aggResult?.source === "refused"
+                ? aggResult.reason
+                : heldNote
+                  ? `▲ ${heldNote}`
+                  : metricNote
+                    ? `▲ ${metricNote}`
+                    : (unitsNote ?? note)}
               {updated}
             </div>
           </>
@@ -202,7 +231,7 @@ export function statSeriesFile(
     ? total
     : aggResult?.source === "refused"
       ? null
-      : (aggResult?.stat ?? null);
+      : metricStat(aggResult).stat;
   return statExport({ series: exportSeries, value: exportValue, total });
 }
 

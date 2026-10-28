@@ -664,10 +664,12 @@ describe("POST /v1/metrics", () => {
       ["process.memory.usage", 1024],
       ["app.jobs.processed", 12],
     ]);
-    expect(stored.metric_kinds!.map((row) => [row.name, row.kind])).toEqual([
+    // Each point carries its name's kind (#331); the old per-name table is not written.
+    expect(stored.metrics!.map((row) => [row.name, row.kind])).toEqual([
       ["process.memory.usage", "gauge"],
       ["app.jobs.processed", "counter"],
     ]);
+    expect(stored.metric_kinds).toBeUndefined();
   });
 
   test("each name's unit is stored, when it came with one", async () => {
@@ -678,7 +680,8 @@ describe("POST /v1/metrics", () => {
       ]),
     );
     expect(res.status).toBe(200);
-    expect(stored.metric_units!.map((row) => [row.name, row.unit])).toEqual([["process.memory.usage", "By"]]);
+    expect(stored.metrics!.map((row) => [row.name, row.unit])).toEqual([["process.memory.usage", "By"], ["queue.depth", ""]]);
+    expect(stored.metric_units).toBeUndefined();
   });
 
   test("a JSON point's unit is stored with its name", async () => {
@@ -687,7 +690,7 @@ describe("POST /v1/metrics", () => {
       { name: "agental.box.disk", value: 416 },
     ]);
     expect(res.status).toBe(200);
-    expect(stored.metric_units!.map((row) => [row.name, row.unit])).toEqual([["agental.box.memory", "GiBy"]]);
+    expect(stored.metrics!.map((row) => [row.name, row.unit])).toEqual([["agental.box.memory", "GiBy"], ["agental.box.disk", ""]]);
     expect(stored.metrics).toHaveLength(2);
   });
 
@@ -699,17 +702,17 @@ describe("POST /v1/metrics", () => {
       ]),
     );
     expect(res.status).toBe(200);
-    expect(stored.metric_descriptions!.map((row) => [row.name, row.description])).toEqual([
+    expect(stored.metrics!.map((row) => [row.name, row.description])).toEqual([
       ["process.memory.usage", "Memory the process holds."],
+      ["queue.depth", ""],
     ]);
+    expect(stored.metric_descriptions).toBeUndefined();
   });
 
   test("a JSON point's description is stored with its name", async () => {
     const res = await postJson([{ name: "agental.box.memory", value: 26.8, description: "Memory sold on a box." }]);
     expect(res.status).toBe(200);
-    expect(stored.metric_descriptions!.map((row) => [row.name, row.description])).toEqual([
-      ["agental.box.memory", "Memory sold on a box."],
-    ]);
+    expect(stored.metrics!.map((row) => [row.name, row.description])).toEqual([["agental.box.memory", "Memory sold on a box."]]);
   });
 
   test("a JSON point whose description is too long or not a string is refused, and nothing is stored", async () => {
@@ -744,14 +747,15 @@ describe("POST /v1/metrics", () => {
     expect(await res.json()).toEqual({ ingested: 2 });
     expect(stored.metrics!.map((row) => [row.name, row.value])).toEqual([["latency.count", 40], ["latency.sum", 3.2]]);
     expect(stored.metric_buckets!.map((row) => [row.name, row.le, row.n])).toEqual([["latency", [0.1], [30, 10]]]);
-    expect(stored.metric_kinds!.map((row) => [row.name, row.kind])).toContainEqual(["latency", "histogram"]);
+    expect(stored.metric_buckets!.map((row) => [row.name, row.kind])).toEqual([["latency", "histogram"]]);
+    expect(stored.metrics!.map((row) => [row.name, row.kind])).toEqual([["latency.count", "counter"], ["latency.sum", "counter"]]);
   });
 
-  test("a name's kind is written once, not on every export", async () => {
+  test("every point carries its kind, on every export, so it travels with the point (#331)", async () => {
     await postJson(request(stock));
     await postJson(request(stock));
-    expect(stored.metrics).toHaveLength(4);
-    expect(stored.metric_kinds).toHaveLength(2);
+    expect(stored.metrics!.map((row) => row.kind)).toEqual(["gauge", "counter", "gauge", "counter"]);
+    expect(stored.metric_kinds).toBeUndefined();
   });
 
   test("a protobuf request is stored and answered in protobuf", async () => {
@@ -808,7 +812,7 @@ describe("POST /v1/metrics", () => {
     expect(await (await postJson(total(99, now))).json()).toEqual({ ingested: 1 });
     expect(await (await postJson(total(104, now + 1_000))).json()).toEqual({ ingested: 1 });
     expect(stored.metrics!.map((row) => row.value)).toEqual([99, 5]);
-    expect(stored.metric_kinds!.map((row) => [row.name, row.kind])).toEqual([["app.jobs.total", "counter"]]);
+    expect(stored.metrics!.map((row) => [row.name, row.kind])).toEqual([["app.jobs.total", "counter"], ["app.jobs.total", "counter"]]);
   });
 
   test("an OTLP request is limited by its size, not by a count of points", async () => {
@@ -821,7 +825,7 @@ describe("POST /v1/metrics", () => {
   test("the plain JSON point still works, has no kind, and keeps its cap", async () => {
     const res = await postJson({ name: "cpu_seconds", value: 1.5, labels: { service: "api" } });
     expect(await res.json()).toEqual({ ingested: 1 });
-    expect(stored.metric_kinds).toBeUndefined();
+    expect(stored.metrics!.map((row) => row.kind)).toEqual([""]);
     const over = await postJson(Array.from({ length: MAX_BATCH + 1 }, () => ({ name: "cpu_seconds", value: 1 })));
     expect(over.status).toBe(400);
   });

@@ -232,6 +232,7 @@ export async function migrateStore(): Promise<void> {
   await ensureChangeMarks();
   await ensureKindPositions();
   await ensureMonitorResults();
+  await ensureMetricMeta();
   await backfillHistogramIfEmpty();
   await backfillAttrKeysIfEmpty();
   await backfillAttrValuesMissing();
@@ -374,6 +375,19 @@ async function ensureMonitorResults(): Promise<void> {
   `);
   // The service its monitor is about (#335), so a link's filter can decide it.
   await clickhouseCommand("ALTER TABLE monitor_results ADD COLUMN IF NOT EXISTS service LowCardinality(String) DEFAULT '' AFTER via");
+}
+
+/**
+ * A point carries its name's kind, unit and description (#331): they travel with it, and a name
+ * sent with two units is two series, never summed. metric_kinds, metric_units and
+ * metric_descriptions are no longer written or read; they stay until a later release removes them.
+ */
+async function ensureMetricMeta(): Promise<void> {
+  for (const table of ["metrics", "metric_buckets"]) {
+    await clickhouseCommand(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS kind LowCardinality(String) DEFAULT ''`);
+    await clickhouseCommand(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS unit LowCardinality(String) DEFAULT ''`);
+    await clickhouseCommand(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS description LowCardinality(String) DEFAULT ''`);
+  }
 }
 
 async function ensureLogsMessageTextIndex(): Promise<void> {

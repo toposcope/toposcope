@@ -29,7 +29,20 @@ export type SearchAggResult = {
   description?: string;
   /** A metric split by one label (#104): the label, and one line per value (8 and `other`). */
   split?: string;
-  splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null }>;
+  splits?: Array<{
+    key: string;
+    buckets: AggBucket[];
+    stat: number | null;
+    /** On a line split out by kind and unit (#331): its own, when the panel's points disagree. */
+    kind?: string;
+    unit?: string;
+  }>;
+  /**
+   * The kinds and units the panel's points came with, when they are more than one (#331): its
+   * lines are split by them, never summed. Each with the instances it came from (`toposcope`)
+   * and its first and last point in the window, oldest first.
+   */
+  units_differ?: Array<{ kind: string; unit: string; sources: string[]; first: string; last: string }>;
   /** A histogram read as a heatmap (#238): its bounds, rising, and per bar one count per bound (the last above them all). */
   heat?: { le: number[]; cells: Array<{ t: string; n: number[] }> };
 };

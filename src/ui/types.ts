@@ -79,7 +79,9 @@ export type SearchAggResult = {
   unit?: string;
   /** A metric split by one label: the label, and one line per value (8 and `other`). */
   split?: string;
-  splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null }>;
+  splits?: Array<{ key: string; buckets: AggBucket[]; stat: number | null; kind?: string; unit?: string }>;
+  /** The kinds and units the panel's points came with, when more than one (#331): split, never summed. */
+  units_differ?: Array<{ kind: string; unit: string; sources: string[]; first: string; last: string }>;
   /** A histogram read as a heatmap (#238): bounds rising, and per bar one count per bound. */
   heat?: { le: number[]; cells: Array<{ t: string; n: number[] }> };
 };
