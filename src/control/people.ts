@@ -25,6 +25,8 @@ export type Person = {
   created_by: string | null;
   last_seen_at: number | null;
   revoked_at: number | null;
+  /** 1 for an agent (#357): a service account made for a coding agent. */
+  agent: number;
 };
 
 /** Who a request is: a person or service account, and the token it came with, if any. */
@@ -573,7 +575,54 @@ export function createServiceAccount(
 
 export function serviceAccountByName(name: string, db: Database = getDb()): Person | null {
   return (
-    (db.query("SELECT * FROM people WHERE kind = 'service' AND name = ? AND revoked_at IS NULL").get(name) as Person | null) ?? null
+    (db.query("SELECT * FROM people WHERE kind = 'service' AND agent = 0 AND name = ? AND revoked_at IS NULL").get(name) as Person | null) ?? null
+  );
+}
+
+// ---- Agents (#357, frames 34a–34c): a service account made for a coding agent ----
+
+/** What an agent is called everywhere it shows: `agent: claude`. */
+export const agentPrefix = "agent: ";
+export const agentOwnerRefused = "An agent is a Viewer or an Operator, never an Owner";
+
+/** The name after `agent: `: what `toposcope.sh agent <name>` and Let someone in › Agent take. */
+export function isAgentName(name: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,56}$/.test(name);
+}
+
+/** An agent: a service account named `agent: <name>`, marked as one, a Viewer or an Operator. */
+export function createAgent(
+  input: { name: string; role: Role; created_by?: string | null },
+  now = Date.now(),
+  db: Database = getDb(),
+): Person {
+  const name = input.name.trim();
+  if (!isAgentName(name)) {
+    throw new Error("An agent's name is 1 to 57 letters, digits, . _ or -, starting with a letter or digit");
+  }
+  if (input.role !== "viewer" && input.role !== "operator") {
+    throw new Error(agentOwnerRefused);
+  }
+  if (agentByName(name, db)) {
+    throw new Error(`An agent named ${name} exists`);
+  }
+  const id = randomUUID();
+  db.query("INSERT INTO people (id, kind, name, email, role, created_at, created_by, agent) VALUES (?, 'service', ?, NULL, ?, ?, ?, 1)").run(
+    id,
+    `${agentPrefix}${name}`,
+    input.role,
+    now,
+    input.created_by ?? null,
+  );
+  return personById(id, db)!;
+}
+
+/** The live agent called `agent: <name>`, by the name after the prefix. */
+export function agentByName(name: string, db: Database = getDb()): Person | null {
+  return (
+    (db
+      .query("SELECT * FROM people WHERE kind = 'service' AND agent = 1 AND name = ? AND revoked_at IS NULL")
+      .get(`${agentPrefix}${name.trim()}`) as Person | null) ?? null
   );
 }
 
@@ -710,6 +759,9 @@ export function setRole(personId: string, role: Role, db: Database = getDb()): s
   }
   if (person.role === "owner" && role !== "owner" && person.kind === "person" && liveOwnerCount(db) <= 1) {
     return "This is the last Owner: make another Owner first";
+  }
+  if (person.agent === 1 && role === "owner") {
+    return agentOwnerRefused;
   }
   db.query("UPDATE people SET role = ? WHERE id = ?").run(role, personId);
   return null;

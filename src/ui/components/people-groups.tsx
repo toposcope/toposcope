@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { clockAt } from "../watch";
+import { agentSavedWords } from "../agents";
 
 /**
  * People in Access (#308): the People group (30a), Invite someone (30b), service accounts and
@@ -13,6 +14,11 @@ export type PersonTokenRow = { id: string; name: string; read_only: boolean; cre
 export type PersonRow = {
   id: string;
   kind: "person" | "service";
+  /** An agent (#357): a service account made for a coding agent, named `agent: <name>`. */
+  agent?: boolean;
+  /** An agent's: made by `toposcope.sh agent` on the host, and what it saved (34c). */
+  made_on_host?: boolean;
+  saved?: { monitors: number; home_panels: number; hunts: number };
   name: string;
   email: string | null;
   role: Role;
@@ -45,7 +51,7 @@ export function twoStepWords(p: PersonRow, nowMs: number): { text: string; tone:
   return { text: "● not set up · asked at next sign-in", tone: "warn" };
 }
 export type InviteRow = { id: string; who: string; role: Role; created_at: number; expires_at: number; invited_by: string | null };
-export type PeopleBody = { people: PersonRow[]; service_accounts: PersonRow[]; invites: InviteRow[] };
+export type PeopleBody = { people: PersonRow[]; service_accounts: PersonRow[]; agents?: PersonRow[]; invites: InviteRow[] };
 
 export const roleName: Record<Role, string> = { viewer: "Viewer", operator: "Operator", owner: "Owner" };
 
@@ -68,6 +74,9 @@ export function expiresIn(expiresAt: number, nowMs: number): string {
 
 /** How a token row names its kind in words (32f). */
 export function tokenKind(owner: PersonRow, token: PersonTokenRow): string {
+  if (owner.agent) {
+    return `agent · as ${roleName[owner.role]}`;
+  }
   if (owner.kind === "service") {
     return `service · as ${roleName[owner.role]}`;
   }
@@ -287,10 +296,74 @@ export function ServiceAccountsGroup(props: { accounts: PersonRow[]; nowMs: numb
   );
 }
 
+/** "made by Ian today at 12:58", "made on the host 10-27 09:14" (34c). */
+export function agentMadeWords(p: Pick<PersonRow, "invited_by" | "made_on_host" | "created_at">, nowMs: number): string {
+  const by = p.made_on_host ? "on the host" : p.invited_by ? `by ${p.invited_by}` : "";
+  const at = clockAt(p.created_at, nowMs);
+  return `made${by ? ` ${by}` : ""} ${at.includes(" ") ? at : `today at ${at}`}`;
+}
+
+/** 34c: agents, a group of their own above Service accounts: role, last call, what each saved, Revoke. */
+export function AgentsGroup(props: { agents: PersonRow[]; nowMs: number; isOwner: boolean; onChanged: () => void }) {
+  const [armed, setArmed] = useState<string | null>(null);
+  if (props.agents.length === 0) {
+    return null;
+  }
+  async function revoke(p: PersonRow) {
+    const res = await fetch(`/api/people/${encodeURIComponent(p.id)}`, { method: "DELETE" });
+    setArmed(null);
+    if (!res.ok) {
+      toast.error(`Revoke failed (${res.status})`);
+      return;
+    }
+    toast.success(`${p.name} revoked; what it saved stays`);
+    props.onChanged();
+  }
+  const col = "grid grid-cols-[110px_minmax(0,1fr)_140px_160px_minmax(0,260px)_90px] items-center gap-3.5";
+  return (
+    <section aria-label="Agents" className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+      <div className="flex flex-wrap items-baseline gap-2.5 border-b border-white/[0.06] px-4 py-2.5">
+        <h2 className="m-0 text-[13.5px] font-medium">Agents</h2>
+        <span className="text-[12px] text-muted-foreground">service accounts made for a coding agent</span>
+      </div>
+      {props.agents.map((p, i) => {
+        const used = p.tokens.reduce<number | null>((m, t) => (t.last_used_at && (!m || t.last_used_at > m) ? t.last_used_at : m), null);
+        return (
+          <div key={p.id} id={`agent-${p.id}`} className={cn(col, i > 0 && "border-t border-white/[0.06]", "px-4 py-[11px] text-[13px]")}>
+            <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-[6px] border border-white/10 px-2 text-[11.5px] whitespace-nowrap text-zinc-300">✦ agent</span>
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate font-mono text-foreground">{p.name}</span>
+              <span className="truncate text-[12px] text-muted-foreground">{agentMadeWords(p, props.nowMs)}</span>
+            </span>
+            <span className="text-[12px] text-muted-foreground">{roleName[p.role]}</span>
+            <span className="truncate text-[12px] text-muted-foreground">
+              {p.tokens.length} token{p.tokens.length === 1 ? "" : "s"} · {used ? `last call ${clockAt(used, props.nowMs)}` : "no call yet"}
+            </span>
+            <span className="truncate text-[12px] text-muted-foreground">{agentSavedWords(p.saved)}</span>
+            <span className="justify-self-end">
+              {props.isOwner ? (
+                armed === p.id ? (
+                  <Button type="button" size="sm" variant="outline" className="h-8 text-[12.5px] text-red-300" onClick={() => void revoke(p)}>
+                    sure? revoke
+                  </Button>
+                ) : (
+                  <Button type="button" size="sm" variant="outline" className="h-8 text-[12.5px]" onClick={() => setArmed(p.id)}>
+                    Revoke
+                  </Button>
+                )
+              ) : null}
+            </span>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 /** Personal and service tokens, as rows in the Tokens group, each saying its kind in words (32f). */
 export function PersonTokenRows(props: { body: PeopleBody; nowMs: number; meId: string | null; isOwner: boolean; onChanged: () => void }) {
   const [armed, setArmed] = useState<string | null>(null);
-  const rows = [...props.body.service_accounts, ...props.body.people].flatMap((owner) => owner.tokens.map((token) => ({ owner, token })));
+  const rows = [...(props.body.agents ?? []), ...props.body.service_accounts, ...props.body.people].flatMap((owner) => owner.tokens.map((token) => ({ owner, token })));
   async function revoke(id: string, name: string) {
     const res = await fetch(`/api/me/tokens/${encodeURIComponent(id)}`, { method: "DELETE" });
     setArmed(null);

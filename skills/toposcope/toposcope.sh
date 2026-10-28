@@ -290,6 +290,44 @@ cmd_service_token() {
   compose exec -T app bun run src/cli.ts service-token "$account" "$role" "$name"
 }
 
+# An agent (#357): the Operator service account `agent: <name>`, made once and kept, and a new
+# token for it each run, written to a file only this user can read. The token is never printed.
+cmd_agent() {
+  local name="${1:-}"
+  printf '%s' "$name" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,56}$' ||
+    die "Usage: agent <name>, with 1 to 57 letters, digits, . _ or -, starting with a letter or digit"
+  need docker
+  [ -f "$ROOT/compose.yml" ] || die "No instance files in $ROOT. Run this beside the install's compose.yml, or set TOPOSCOPE_DIR."
+  local out file="$ROOT/agent-$name.token"
+  out="$(compose exec -T app bun run src/cli.ts agent "$name" 2>"$ROOT/token.log")" ||
+    die "Could not make a token for agent: $name. See $ROOT/token.log."
+  local token rest role kept
+  token="${out%%$'\n'*}"
+  rest="${out#*$'\n'}"
+  role="${rest%%$'\n'*}"
+  kept="${rest#*$'\n'}"
+  printf '%s' "$token" | grep -Eq '^tsp1_[A-Za-z0-9_-]+$' ||
+    die "The instance did not answer with a token for agent: $name. Nothing was written."
+  (
+    umask 077
+    printf '%s\n' "$token" >"$file.part"
+  )
+  chmod 600 "$file.part"
+  mv -f "$file.part" "$file"
+  case "$role" in
+    operator) role="an Operator" ;;
+    viewer) role="a Viewer" ;;
+  esac
+  if [ "$kept" = "kept" ]; then
+    printf 'agent: %s is %s already; it has a new token, and its earlier ones work until they are revoked in Access.\n' "$name" "$role"
+  else
+    printf 'Made agent: %s, %s. What it saves shows under that name.\n' "$name" "$role"
+  fi
+  printf 'Its token is in %s, which only you can read. The token is not shown.\n' "$file"
+  printf 'For Claude Code, in the app'"'"'s repository:\n'
+  printf '  claude mcp add --transport http toposcope %s/mcp --header "Authorization: Bearer $(cat %s)"\n' "$URL" "$file"
+}
+
 cmd_marker() {
   printf 'tscheck%s\n' "$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')"
 }
@@ -431,9 +469,10 @@ case "${1:-}" in
   marker) cmd_marker ;;
   owner-link) shift; cmd_owner_link "$@" ;;
   service-token) shift; cmd_service_token "$@" ;;
+  agent) shift; cmd_agent "$@" ;;
   # `check <word>` reads a test error back; `check <monitor> -- <command>` sends a result.
   check) shift; if [ "${2:-}" = "--" ]; then cmd_check_monitor "$@"; else cmd_check "$@"; fi ;;
   *)
-    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
+    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | agent <name> | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
     ;;
 esac

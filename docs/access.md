@@ -4,7 +4,7 @@ Toposcope is self-hosted, and everything it stores stays on the host unless one 
 
 ## People
 
-Each person signs in as themselves, with a role: Viewer, Operator or Owner ([People and roles](people.md)). Access lists them under **People**, with how they sign in, whether two-step is on, when they were last seen and who invited them; an Owner invites, changes roles and revokes there. A personal token acts as its person, and a service account's as its role; both are listed with the tokens. There is no shared password.
+Each person signs in as themselves, with a role: Viewer, Operator or Owner ([People and roles](people.md)). Access lists them under **People**, with how they sign in, whether two-step is on, when they were last seen and who invited them; an Owner invites, changes roles and revokes there. A personal token acts as its person, and a service account's as its role; both are listed with the tokens. An agent, a service account made for a coding agent in **Let someone in › Agent** or with `./toposcope.sh agent <name>`, is listed under **Agents**, with its role (Viewer or Operator, never Owner), its last call, what it saved, and Revoke ([Agents](people.md#agents)). There is no shared password.
 
 ## Tokens
 

@@ -25,6 +25,12 @@ export const serviceAccountBody = v.object({
   role: described(v.picklist(roles, "A service account needs a name and a role"), "What its tokens may do."),
 });
 
+/** Owner is in the list so the handler can say why it is refused (#357). */
+export const agentBody = v.object({
+  name: described(v.string("An agent needs a name and a role: viewer or operator"), "The name after `agent: `: 1 to 57 letters, digits, . _ or -, starting with a letter or digit."),
+  role: described(v.picklist(roles, "An agent needs a name and a role: viewer or operator"), "viewer or operator; an agent is never an Owner."),
+});
+
 export const tokenBody = v.object({
   name: described(v.string("A token needs a name"), "What uses it, so Access can name it."),
   expires_in_days: v.nullish(described(v.number(), "Days until it stops working, 1 to 365; 365 by default.")),

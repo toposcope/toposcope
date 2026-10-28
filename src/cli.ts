@@ -3,12 +3,22 @@
  *
  *   bun run src/cli.ts owner-link <email>
  *   bun run src/cli.ts service-token <account> <viewer|operator|owner> [token name]
+ *   bun run src/cli.ts agent <name>
  *
  * Reaching the host is the proof, as reaching `.env` was. Nothing they print is logged or kept on
  * disk: the link and the token are shown once, here.
  */
 import { getDb } from "./control";
-import { createOwnerLink, createPersonToken, createServiceAccount, isRole, serviceAccountByName } from "./control/people";
+import {
+  agentByName,
+  createAgent,
+  createOwnerLink,
+  createPersonToken,
+  createServiceAccount,
+  isAgentName,
+  isRole,
+  serviceAccountByName,
+} from "./control/people";
 
 function origin(): string {
   const env = process.env.TOPOSCOPE_PUBLIC_URL?.replace(/\/+$/, "");
@@ -56,6 +66,24 @@ if (command === "owner-link") {
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
   }
+} else if (command === "agent") {
+  // #357: the Operator agent `agent: <name>`, or the one there is, and a new token for it. The
+  // first line is the token, the second its role, the third made or kept; toposcope.sh writes the
+  // token to a file and prints neither.
+  const name = args[0];
+  if (!name || !isAgentName(name)) {
+    fail("Usage: agent <name>, 1 to 57 letters, digits, . _ or -");
+  }
+  try {
+    const existing = agentByName(name);
+    const agent = existing ?? createAgent({ name, role: "operator", created_by: "host" });
+    const { token } = createPersonToken(agent.id, { name: "host", created_by: "host" });
+    console.log(token);
+    console.log(agent.role);
+    console.log(existing ? "kept" : "made");
+  } catch (err) {
+    fail(err instanceof Error ? err.message : String(err));
+  }
 } else {
-  fail("Commands: owner-link <email> · service-token <account> <viewer|operator|owner> [token name]");
+  fail("Commands: owner-link <email> · service-token <account> <viewer|operator|owner> [token name] · agent <name>");
 }

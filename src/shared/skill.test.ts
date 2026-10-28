@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -413,5 +415,78 @@ describe("up checks the release's files against its SHA256SUMS (#195)", () => {
     const { code, err } = await up();
     expect(code).toBe(1);
     expect(err).toContain("does not list LICENSE");
+  });
+});
+
+describe("agent <name> (#357)", () => {
+  // Stands in for `docker compose exec -T app bun run src/cli.ts …`: the same command, run here on
+  // a database of its own.
+  let instance: string;
+  let bin: string;
+  let database: string;
+
+  beforeAll(() => {
+    instance = mkdtempSync(join(tmpdir(), "toposcope-agent-"));
+    writeFileSync(join(instance, ".env"), `TOPOSCOPE_INGEST_TOKEN=${token}\n`);
+    writeFileSync(join(instance, "compose.yml"), "services: {}\n");
+    bin = mkdtempSync(join(tmpdir(), "toposcope-agent-bin-"));
+    database = join(instance, "control.sqlite");
+    writeFileSync(
+      join(bin, "docker"),
+      [
+        "#!/usr/bin/env bash",
+        'all="$*"',
+        '[ "${all#compose exec -T app bun run src/cli.ts }" != "$all" ] || exit 64',
+        "shift 7",
+        `SQLITE_PATH=${JSON.stringify(database)} exec ${JSON.stringify(process.execPath)} run ${JSON.stringify(`${root}/src/cli.ts`)} "$@"`,
+        "",
+      ].join("\n"),
+    );
+    chmodSync(join(bin, "docker"), 0o755);
+  });
+
+  afterAll(() => {
+    rmSync(instance, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  });
+
+  const agentRun = (...args: string[]) => runWith({ TOPOSCOPE_DIR: instance, PATH: `${bin}:${process.env.PATH}` }, ...args);
+
+  test("twice leaves one Operator agent and two tokens, the newest in a file only the user can read, and prints none", async () => {
+    const first = await agentRun("agent", "claude");
+    expect(first.err).toBe("");
+    expect(first.code).toBe(0);
+    const file = join(instance, "agent-claude.token");
+    const firstToken = readFileSync(file, "utf8").trim();
+    const second = await agentRun("agent", "claude");
+    expect(second.code).toBe(0);
+    const secondToken = readFileSync(file, "utf8").trim();
+
+    expect(firstToken).toMatch(/^tsp1_/);
+    expect(secondToken).toMatch(/^tsp1_/);
+    expect(secondToken).not.toBe(firstToken);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    for (const out of [first.out + first.err, second.out + second.err]) {
+      expect(out).not.toContain("tsp1_");
+      expect(out).toContain(file);
+    }
+    expect(first.out).toContain("Made agent: claude, an Operator.");
+    expect(second.out).toContain("agent: claude is an Operator already");
+    expect(second.out).toContain(`--header "Authorization: Bearer $(cat ${file})"`);
+
+    const db = new Database(database, { readonly: true });
+    const accounts = db.query("SELECT id, kind, name, role, agent FROM people").all() as Array<{ id: string; kind: string; name: string; role: string; agent: number }>;
+    expect(accounts.map(({ kind, name, role, agent }) => ({ kind, name, role, agent }))).toEqual([{ kind: "service", name: "agent: claude", role: "operator", agent: 1 }]);
+    const tokens = db.query("SELECT token_hash FROM person_tokens WHERE person_id = ? AND revoked_at IS NULL").all(accounts[0]!.id) as Array<{ token_hash: string }>;
+    expect(tokens.length).toBe(2);
+    const hashOf = (t: string) => createHash("sha256").update(t).digest("hex");
+    expect(tokens.map((t) => t.token_hash).sort()).toEqual([hashOf(firstToken), hashOf(secondToken)].sort());
+    db.close();
+  });
+
+  test("takes only a name an agent may have, and asks the instance nothing otherwise", async () => {
+    const { code, err } = await agentRun("agent", "claude; id");
+    expect(code).not.toBe(0);
+    expect(err).toContain("Usage: agent <name>");
   });
 });

@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
 import { formatOpenFor } from "../../shared/monitor";
 import { markKindColor } from "./histogram-marks";
+import { AgentBadge, OpenAgent } from "./agent-badge";
+import { agentWatchWords } from "../agents";
 import type { HeldSource } from "../../shared/held";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsFromSource, MonitorsResponse, PushResultRow, SourceMonitor } from "@/types";
 import {
@@ -73,6 +75,8 @@ type Props = {
   /** The sources with a pull link here, whose link page opens from their group. */
   linked?: ReadonlySet<string>;
   onOpenLink?: (source: string) => void;
+  /** An agent's badge opens its row in Access (#357, 34c); absent for those who see no Access. */
+  onOpenAgent?: () => void;
 };
 
 /** 26g: one row per monitor: state, what it is and its condition, what it checks, its strip, last check, now (#263). */
@@ -80,11 +84,12 @@ const wrow = "grid grid-cols-[14px_minmax(0,1.6fr)_150px_minmax(160px,1fr)_84px_
 const dotTone: Record<WatchDot, string> = { open: "text-red-300", ok: "text-emerald-300", warn: "text-amber-300", paused: "text-zinc-500" };
 
 /** 33g: the service a monitor is about and the host it checks, under its name (#335). */
-export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | "host"> }) {
+export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | "host"> & { made_by?: MonitorView["made_by"] } }) {
   const service = (monitor.service ?? "").trim();
   const host = (monitor.host ?? "").trim();
   return (
     <span className="flex max-w-full min-w-0 items-center gap-1 font-mono">
+      {monitor.made_by?.agent ? <AgentBadge name={monitor.made_by.name} className="mr-0.5" /> : null}
       {service ? (
         <Badge tone="sec">
           <span className="max-w-[140px] truncate" title={`service:${service}`}>
@@ -124,7 +129,7 @@ function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; 
       </button>
       <span className="truncate text-[12px] text-muted-foreground">
         {laneKind(monitor)}
-        {monitor.made_by ? <span title={`made by ${monitor.made_by.name}`}> · {monitor.made_by.name}</span> : null}
+        {monitor.made_by && !monitor.made_by.agent ? <span title={`made by ${monitor.made_by.name}`}> · {monitor.made_by.name}</span> : null}
       </span>
     </>
   );
@@ -871,7 +876,7 @@ function GroupHead({ children }: { children: React.ReactNode }) {
 }
 
 /** Frame 18c: Watch, every monitor on one clock, open ones first. */
-export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen, onOpenMarks, held = [], linked, onOpenLink }: Props) {
+export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen, onOpenMarks, held = [], linked, onOpenLink, onOpenAgent }: Props) {
   const monitors = data?.monitors ?? [];
   // #333, 33g: each linked source's monitors, read-only under its name.
   const sources = data?.sources ?? [];
@@ -951,13 +956,21 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
     };
   }, [card]);
 
+  const byAgents = agentWatchWords(monitors);
   return (
+    <OpenAgent.Provider value={onOpenAgent}>
     <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
       <div className="flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Watch</h1>
           <span className="text-[12px] text-muted-foreground">
             {watchSummary(monitors.length, sources)}
+            {byAgents ? (
+              <>
+                {` · ${byAgents.count} saved by `}
+                <span className="font-mono text-[#c4b5fd]">{byAgents.by}</span>
+              </>
+            ) : null}
             {open.length + awayOpen > 0 ? <span className="text-red-300"> · {open.length + awayOpen} open</span> : null}
             {deliveryRows.length > 0 ? ` · webhooks to ${deliveryRows.map((d) => d.host).join(" and ")}` : ""}
           </span>
@@ -1203,5 +1216,6 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
         ) : null}
       </div>
     </div>
+    </OpenAgent.Provider>
   );
 }

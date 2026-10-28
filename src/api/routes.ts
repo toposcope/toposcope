@@ -21,6 +21,7 @@ import {
   cancelInviteRoute,
   createInviteRoute,
   createMyTokenRoute,
+  createAgentRoute,
   createServiceAccountRoute,
   createServiceTokenRoute,
   listPeopleRoute,
@@ -70,7 +71,7 @@ import { savedCreateWithUndo, savedPreviewRoute, savedUpdateWithUndo } from "../
 import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
 import { settingsBody, signInSettingsBody } from "./schemas/settings";
-import { ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
+import { agentBody, ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
 import { fieldsBody, fieldsQuery } from "./schemas/fields";
 import { fieldRoleBody, noteBody, panelBody } from "./schemas/design";
 import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
@@ -194,10 +195,11 @@ export const apiRoutes: ApiRoute[] = [
   { id: "api_tokens", method: "GET", path: "/api/api-tokens", area: "Access", action: "see access", summary: "The ingest tokens.", query: null, body: null, handler: listApiTokens },
   { id: "api_token_create", method: "POST", path: "/api/api-tokens", area: "Access", action: "make tokens, links, shares", summary: "Make an ingest token; it is in this answer and never again.", query: null, body: ingestTokenBody, handler: createApiToken },
   { id: "api_token_delete", method: "DELETE", path: "/api/api-tokens/:id", area: "Access", action: "make tokens, links, shares", summary: "Revoke an ingest token.", query: null, body: null, handler: deleteApiToken },
-  { id: "people", method: "GET", path: "/api/people", area: "Access", action: "see access", summary: "People, service accounts and invites, with their roles and tokens.", query: null, body: null, handler: listPeopleRoute },
+  { id: "people", method: "GET", path: "/api/people", area: "Access", action: "see access", summary: "People, service accounts, agents and invites, with their roles and tokens, and what each agent saved.", query: null, body: null, handler: listPeopleRoute },
   { id: "invite_create", method: "POST", path: "/api/people/invites", area: "Access", action: "let people in", summary: "Invite someone with a role; the link is in this answer and never again.", query: null, body: inviteBody, handler: createInviteRoute },
   { id: "invite_cancel", method: "DELETE", path: "/api/people/invites/:id", area: "Access", action: "let people in", summary: "Cancel an invite.", query: null, body: null, handler: cancelInviteRoute },
   { id: "service_account_create", method: "POST", path: "/api/people/service-accounts", area: "Access", action: "let people in", summary: "Make a service account with a role.", query: null, body: serviceAccountBody, handler: createServiceAccountRoute },
+  { id: "people_agent_create", method: "POST", path: "/api/people/agents", area: "Access", action: "let people in", summary: "Make an agent, the service account `agent: <name>` as a Viewer or an Operator, never an Owner, and a token for it, in this answer and never again; the agent that has the name in that role already gets another token.", query: null, body: agentBody, handler: createAgentRoute },
   { id: "person_update", method: "PUT", path: "/api/people/:id", area: "Access", action: "let people in", summary: "Change a person's or a service account's role.", query: null, body: personBody, handler: putPersonRoute },
   { id: "person_revoke", method: "DELETE", path: "/api/people/:id", area: "Access", action: "let people in", summary: "Revoke a person or a service account; their sessions and tokens end.", query: null, body: null, handler: revokePersonRoute },
   { id: "service_token_create", method: "POST", path: "/api/people/:id/tokens", area: "Access", action: "make tokens, links, shares", summary: "Make a service account's token; it is in this answer and never again.", query: null, body: tokenBody, handler: createServiceTokenRoute },

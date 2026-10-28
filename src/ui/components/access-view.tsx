@@ -8,7 +8,8 @@ import { kindsOf, leavesWords, type LinkKind } from "../link-kinds";
 import type { LinksList } from "../link-words";
 import { KindChips } from "./kind-boxes";
 import { MintDialog, PasteDialog } from "./link-dialogs";
-import { InviteSheet, MakeTokenSheet, PeopleCards, PeopleGroup, PersonTokenRows, ServiceAccountsGroup, type PeopleBody, type Role } from "./people-groups";
+import { AgentsGroup, InviteSheet, MakeTokenSheet, PeopleCards, PeopleGroup, PersonTokenRows, ServiceAccountsGroup, type PeopleBody, type Role } from "./people-groups";
+import { AgentMade, AgentStep, type MadeAgent } from "./agent-step";
 
 /**
  * Access (#265, frames 26i and 26j; the one door since 29a, #295): every way in or out of this
@@ -155,7 +156,7 @@ export function AccessView(props: {
   }
 
   const rows = data?.rows ?? [];
-  const personTokens = people ? [...people.people, ...people.service_accounts].reduce((n, p) => n + p.tokens.length, 0) : 0;
+  const personTokens = people ? [...people.people, ...people.service_accounts, ...(people.agents ?? [])].reduce((n, p) => n + p.tokens.length, 0) : 0;
   const peopleCount = people ? people.people.length + people.invites.length : 0;
   const counts = {
     all: rows.length + peopleCount + personTokens,
@@ -270,6 +271,9 @@ export function AccessView(props: {
         ) : null}
         {props.filter === "people" ? <PeopleCards /> : null}
         {people && (props.filter === "all" || props.filter === "tokens") ? (
+          <AgentsGroup agents={people.agents ?? []} nowMs={nowMs} isOwner={isOwner} onChanged={() => void loadPeople()} />
+        ) : null}
+        {people && (props.filter === "all" || props.filter === "tokens") ? (
           <ServiceAccountsGroup accounts={people.service_accounts} nowMs={nowMs} isOwner={isOwner} onChanged={() => void loadPeople()} />
         ) : null}
 
@@ -344,6 +348,8 @@ export function AccessView(props: {
           initial={door === "link" ? "link" : null}
           onClose={() => setDoor(null)}
           onToken={() => void load()}
+          onAgent={() => void loadPeople()}
+          me={props.me?.name ?? null}
           onLink={(kind) => {
             setDoor(null);
             setMint(kind);
@@ -374,12 +380,25 @@ export function LinkKeyButtons(props: { onMake: () => void; onPaste: () => void 
   );
 }
 
-/** "Let someone in" (26j): one door, three kinds, each saying what it lets through before it is made. Links' Make a link key opens it on Link. */
-export function LetSomeoneIn(props: { initial?: "link" | null; onClose: () => void; onToken: () => void; onLink: (kind: "offer" | "invite") => void; onShare: () => void }) {
-  const [kind, setKind] = useState<"token" | "link" | null>(props.initial ?? null);
+/**
+ * "Let someone in" (26j, 34a): one door, four kinds, each saying what it lets through before it is
+ * made. Links' Make a link key opens it on Link. An agent made shows its token once (34b) in its place.
+ */
+export function LetSomeoneIn(props: {
+  initial?: "agent" | "link" | null;
+  onClose: () => void;
+  onToken: () => void;
+  onAgent?: () => void;
+  /** Who is making it, for "made by Ian just now" (34b). */
+  me?: string | null;
+  onLink: (kind: "offer" | "invite") => void;
+  onShare: () => void;
+}) {
+  const [kind, setKind] = useState<"token" | "agent" | "link" | null>(props.initial ?? null);
   const [name, setName] = useState("");
   const [secret, setSecret] = useState<string | null>(null);
   const [way, setWay] = useState<"offer" | "invite">("offer");
+  const [made, setMade] = useState<MadeAgent | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -401,14 +420,14 @@ export function LetSomeoneIn(props: { initial?: "link" | null; onClose: () => vo
     props.onToken();
   }
 
-  const card = (id: "token" | "link" | "share", glyph: string, color: string, title: string, sentence: string) => (
+  const card = (id: "token" | "agent" | "link" | "share", glyph: string, color: string, title: string, sentence: string) => (
     <button
       type="button"
       aria-pressed={kind === id}
-      className={cn("flex flex-col gap-2 rounded-[10px] border bg-[#131316] p-4 text-left", kind === id ? "border-plate" : "border-white/10 hover:border-zinc-500")}
+      className={cn("flex flex-col gap-1.5 rounded-[10px] border px-3.5 py-3 text-left", kind === id ? "border-plate bg-[#1a1a1e]" : "border-white/10 bg-[#0d0d0f] hover:border-zinc-500")}
       onClick={() => (id === "share" ? props.onShare() : setKind(id))}
     >
-      <span className="inline-flex items-center gap-2 text-[14px] font-medium">
+      <span className="inline-flex items-center gap-2 text-[13.5px] font-medium">
         <span style={{ color }}>{glyph}</span>
         {title}
       </span>
@@ -416,24 +435,44 @@ export function LetSomeoneIn(props: { initial?: "link" | null; onClose: () => vo
     </button>
   );
 
+  if (made) {
+    return (
+      <>
+        <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" />
+        <section aria-label="Agent made" className="fixed top-[70px] left-1/2 z-40 flex w-[900px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-[18px] rounded-[12px] border border-zinc-700 bg-[#121214] px-[26px] py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
+          <AgentMade made={made} me={props.me ?? null} origin={window.location.origin} onDone={props.onClose} />
+        </section>
+      </>
+    );
+  }
+
   return (
     <>
     <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" onClick={props.onClose} />
-    <section aria-label="Let someone in" className="fixed top-[70px] left-1/2 z-40 flex w-[880px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-5 rounded-[12px] border border-zinc-700 bg-[#121214] px-7 py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
+    <section aria-label="Let someone in" className="fixed top-[62px] left-1/2 z-40 flex max-h-[calc(100vh-80px)] w-[960px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 overflow-auto rounded-[12px] border border-zinc-700 bg-[#121214] px-[26px] py-[22px] shadow-[0_30px_80px_rgba(0,0,0,.7)]">
       <div className="flex items-baseline gap-3">
         <h2 className="m-0 text-[17px] font-semibold">Let someone in</h2>
-        <span className="text-[12.5px] text-muted-foreground">A token, a link or a share. Each says what it lets through before you make it.</span>
+        <span className="text-[12px] text-muted-foreground">A token, an agent, a link or a share. Each says what it lets through before you make it.</span>
         <div className="flex-1" />
         <Button type="button" size="sm" variant="ghost" onClick={props.onClose}>
           Close
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        {card("token", "↓", "#60a5fa", "Token", "Sends logs here. An app, a collector or a hub writes logs, metrics, traces or marks with it. Nothing reads out.")}
-        {card("link", "⇄", "#e7e1d3", "Link", "Copies rows between this instance and another Toposcope, either way, within a scope, ids included. Whoever copies from us sees everything the scope lets through.")}
-        {card("share", "↑", "#2dd4bf", "Share", "Shows charts on another web page: counts and series, never a row. Usually made from a panel with Share…")}
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-4">
+        {card("token", "↓", "#60a5fa", "Token", "Sends logs, metrics, traces or marks here. Nothing reads out.")}
+        {card("agent", "✦", "#e7e1d3", "Agent", "A coding agent that reads here and, as an Operator, makes monitors and panels.")}
+        {card("link", "⇄", "#e7e1d3", "Link", "Copies what this instance holds to another Toposcope, or from it.")}
+        {card("share", "↑", "#2dd4bf", "Share", "Shows charts on another web page: counts and series, never a row.")}
       </div>
-      {kind === "token" ? (
+      {kind === "agent" ? (
+        <AgentStep
+          onCancel={props.onClose}
+          onMade={(m) => {
+            setMade(m);
+            props.onAgent?.();
+          }}
+        />
+      ) : kind === "token" ? (
         <form
           className="flex flex-col gap-3"
           onSubmit={(e) => {

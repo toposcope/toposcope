@@ -74,7 +74,8 @@ export function settingStamp(key: string, db: Database = getDb()): { by: ActorNa
   }
 }
 
-export type ActorName = { id: string; name: string; revoked: boolean; kind: "person" | "service" | "token" };
+/** `agent` is true for an agent's service account (#357): the UI wears its badge. */
+export type ActorName = { id: string; name: string; revoked: boolean; kind: "person" | "service" | "token"; agent: boolean };
 
 /** A stamp as the UI shows it: "Maya K.", a service account's name, or a token's. */
 export function actorName(ref: string | null | undefined, db: Database = getDb()): ActorName | null {
@@ -82,12 +83,12 @@ export function actorName(ref: string | null | undefined, db: Database = getDb()
     return null;
   }
   if (ref.startsWith("token:")) {
-    return { id: ref, name: ref.slice("token:".length), revoked: false, kind: "token" };
+    return { id: ref, name: ref.slice("token:".length), revoked: false, kind: "token", agent: false };
   }
-  const row = db.query("SELECT id, kind, name, revoked_at FROM people WHERE id = ?").get(ref) as
-    | { id: string; kind: "person" | "service"; name: string; revoked_at: number | null }
+  const row = db.query("SELECT id, kind, name, revoked_at, agent FROM people WHERE id = ?").get(ref) as
+    | { id: string; kind: "person" | "service"; name: string; revoked_at: number | null; agent: number }
     | null;
-  return row ? { id: row.id, name: row.name, revoked: row.revoked_at !== null, kind: row.kind } : null;
+  return row ? { id: row.id, name: row.name, revoked: row.revoked_at !== null, kind: row.kind, agent: row.agent === 1 } : null;
 }
 
 /** Rows made before 0.9 pass to the first Owner (#307). */

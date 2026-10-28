@@ -65,7 +65,7 @@ export type HomeCard = {
   /** Index of the first bucket at or after the mark. */
   split_at: number;
   /** Who saved the hunt (#307, 30e): "saved by Maya K.", or yours. */
-  saved_by: { id: string; name: string } | null;
+  saved_by: { id: string; name: string; agent: boolean } | null;
   /** On everyone's Home (#306), or only its owner's. */
   shared: boolean;
 };
@@ -102,7 +102,7 @@ async function cardFor(saved: ReturnType<typeof allSaved>[number], before: Windo
   return {
     saved_id: saved.id,
     name: saved.name,
-    saved_by: saved.saved_by ? { id: saved.saved_by.id, name: saved.saved_by.name } : null,
+    saved_by: saved.saved_by ? { id: saved.saved_by.id, name: saved.saved_by.name, agent: saved.saved_by.agent } : null,
     shared: saved.shared,
     kind: seriesLabel(saved.agg ?? null).toLowerCase(),
     before: b.refused ? null : b.value,

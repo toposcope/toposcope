@@ -1,6 +1,6 @@
 # People and roles
 
-Toposcope has people, not a shared password. Each person signs in as themselves, with one of three fixed roles, and every write records who made it. Machines that send logs keep ingest tokens; scripts use a personal token or a service account's.
+Toposcope has people, not a shared password. Each person signs in as themselves, with one of three fixed roles, and every write records who made it. Machines that send logs keep ingest tokens; scripts use a personal token or a service account's, and a coding agent an [agent](#agents)'s.
 
 ## The first Owner
 
@@ -71,6 +71,29 @@ Every token is shown once. A script sends it as `Authorization: Bearer …`; HTT
 ```bash
 curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" http://127.0.0.1:8080/api/saved-searches
 ```
+
+## Agents
+
+An agent is a service account made for a coding agent, such as Claude Code: it is named `agent: <name>`, is a Viewer or an Operator and never an Owner, and holds tokens like any service account. What it saves (monitors, saved hunts, Home panels) wears a small **✦ agent: <name>** badge wherever its maker shows: in Watch, on Home and in its saved hunts. An Operator agent may do what the table above lets an Operator do: search, trace and compare around a deploy, make monitors, add panels to Home, set Fields roles, and write notes on the clock. It may never invite people, change roles, make tokens, links or shares, or change retention or sign-in.
+
+**Access › Let someone in › Agent** takes a name and a role (Operator ticked), and on **Make the agent** shows its token once, inside the setup for Claude Code:
+
+```bash
+claude mcp add --transport http toposcope https://<your address>/mcp \
+  --header "Authorization: Bearer <its token>"
+```
+
+with tabs for any other MCP client (the same address and header, as JSON) and for the host. Making an agent of a name that exists, in the same role, gives it another token; in another role it is refused.
+
+On the host, beside `compose.yml`:
+
+```bash
+./toposcope.sh agent claude
+```
+
+makes the Operator `agent: claude`, or keeps the one there is, makes a new token for it, and writes the token to `agent-claude.token` beside `.env`, a file only you can read. It prints that file's path and a `claude mcp add` line that reads the token from the file; it never prints the token. Each run adds a token, and the earlier ones work until they are revoked.
+
+Access lists agents in a group of their own, with their role, their tokens and last call, and what each saved. **Revoke** there ends its tokens on the next call; what it saved stays, under its name, for a person to keep or delete. Its tokens expire as any token does, within a year; revoke is the way to stop one sooner.
 
 ## Upgrading from 0.8
 

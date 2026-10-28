@@ -241,6 +241,8 @@ export function migrateControlDb(db: Database): void {
     );
   `);
   migratePeople(db);
+  // An agent (#357): a service account made for a coding agent, named `agent: <name>`.
+  addColumnIfMissing(db, "people", "agent", "INTEGER NOT NULL DEFAULT 0");
   db.run(`
     CREATE TABLE IF NOT EXISTS field_roles (
       key TEXT PRIMARY KEY,
