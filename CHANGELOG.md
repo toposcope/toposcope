@@ -6,6 +6,12 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+**Before you upgrade:** monitors made before 0.10 name no service, and they are not kept. Note them in Watch before you upgrade, and make them again with their service after. [Upgrading from 0.9](docs/operations.md#upgrading-from-09) has the steps.
+
+**Changes stored data:** at each start, every monitor whose service is empty is removed, with its stretches, calls, HTTP(S) or TCP settings and sent fingerprints in SQLite, and one line logs how many. Its results in ClickHouse are left to age out with retention, as a deleted monitor's are.
+
+Monitors made before 0.10 are not kept, as #335 said (no backward compatibility). 0.10.0 kept them with an empty service, showed "no service" on Watch, and let Pause, Resume and Silence skip the service check for them; both are gone, and every save of a monitor goes through the same check, which keeps the service it has. [#335](https://github.com/toposcope/toposcope/issues/335)
+
 ## 0.10.0
 
 **Before you upgrade:** 0.10 carries every kind over a link: logs, marks, traces, metrics, profiles and monitors. Links do not carry across the upgrade. Links made before 0.10 are stopped when 0.10 first starts (removed as Revoke does, their record kept), and a `tsl1_` key is refused at paste: once both sides run 0.10, make each link again with a new key. Both sides of a link must speak the same link protocol and schema; until they do, the link stops where it stands and names the side to upgrade. Every monitor save now needs `service`: monitors made before keep running and Watch shows "no service" until one is named, and a script that creates or changes monitors over the API must send it. Monitor results move to ClickHouse and the results kept in SQLite are not copied, so Watch's strips start again at the upgrade; stretches and calls are kept. A metric's kind, unit and description now come off its points, and the per-name tables are no longer read: a name not sent since the upgrade reads as a gauge, with no unit, until its next point. ClickHouse and SQLite gain tables and columns, and nothing is dropped. [Upgrading from 0.9](docs/operations.md#upgrading-from-09) has the steps and the way back.

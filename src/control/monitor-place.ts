@@ -12,9 +12,6 @@ export type MonitorPlace = { service: string; host: string };
 
 export const serviceRequired = "A monitor names its service: the service it is about";
 
-/** Body keys that only pause, resume or silence a monitor. */
-const stateOnly = new Set(["enabled", "silence_for", "silenced_until"]);
-
 /** The host a monitor checks, from what it calls. */
 export function defaultHost(rec: Record<string, unknown>, existing: AlertRule | null): string {
   const http = rec.http as { url?: unknown } | undefined;
@@ -65,12 +62,6 @@ export function withPlace(handler: Handler, existingOf: (c: Context) => AlertRul
       rec = null;
     }
     if (!rec) {
-      return handler(c, next);
-    }
-    // Pause, resume and silence change a monitor's state, not what it is: a monitor made before
-    // 0.10, with no service yet, can still be paused or silenced without naming one.
-    const keys = Object.keys(rec);
-    if (keys.length > 0 && keys.every((k) => stateOnly.has(k))) {
       return handler(c, next);
     }
     const place = readPlace(rec, existingOf(c));

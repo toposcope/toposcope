@@ -1108,7 +1108,7 @@ export function sourceDefinition(m: SourceMonitor, source: string): Array<{ labe
   const rows: Array<{ label: string; value: string }> = [
     { label: "From", value: `${source}, judged and called there` },
     { label: "Checks", value: sourceKindWords(m) },
-    { label: "Service", value: m.service || "—" },
+    { label: "Service", value: m.service },
     { label: "Host", value: m.host || "—" },
   ];
   if (src === "search") {

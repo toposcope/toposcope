@@ -63,7 +63,7 @@ export type AlertLastMark = {
 export type AlertRule = {
   /**
    * What it is about (#335): the service it watches, required on every save, and the host it
-   * checks (a push monitor's results carry the host that pushed). Empty on monitors made before.
+   * checks (a push monitor's results carry the host that pushed).
    */
   service?: string;
   host?: string;
