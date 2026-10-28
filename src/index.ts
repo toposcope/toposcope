@@ -3,20 +3,21 @@ import { Hono, type Context } from "hono";
 import { serveStatic } from "hono/bun";
 import { startAlertCron } from "./alerts/cron";
 import { startHttpMonitors } from "./alerts/http-cron";
-import { checkBearer, ingestTokenName, isBasic, readCookie, resolveActor, sessionCookieHeader, sessionCookieName, sessionEnd } from "./auth";
-import { actorOf, setActor } from "./actor-context";
+import { checkBearer, ingestTokenName, isBasic, readCookie, resolveActor, sessionCookieHeader, sessionCookieName } from "./auth";
+import { setActor } from "./actor-context";
 import { runAs } from "./control/actors";
-import { actionFor, actionRole, refusalWords } from "./control/roles";
+import { actionRole, refusalWords } from "./control/roles";
+import { actionFor, apiRoutes, openApi } from "./api/routes";
+import { checked } from "./api/registry";
+import { openedAddress, overHttps, redirectUri } from "./shared/request-address";
+import { releaseCheckDeps } from "./control/instance-routes";
 import {
   checkPassword,
   clearSignInFailures,
   createSession,
   endSession,
-  initials,
   liveOwnerCount,
   looksLikeEmail,
-  meBody,
-  allPeople,
   roleAtLeast,
   noteSignInFailure,
   ownerLinkFor,
@@ -35,55 +36,17 @@ import {
 import { actorName } from "./control/actors";
 import { getDb, getHealth } from "./control";
 import { importEnvIngestToken } from "./control/tokens";
-import {
-  cancelInviteRoute,
-  createInviteRoute,
-  createMyTokenRoute,
-  createServiceAccountRoute,
-  createServiceTokenRoute,
-  listPeopleRoute,
-  myTokensRoute,
-  putPersonRoute,
-  revokePersonRoute,
-  revokeTokenRoute,
-  resetTwoStepRoute,
-  newBackupCodesRoute,
-} from "./control/people-routes";
-import {
-  createAlertRule,
-  getAlert,
-  monitorsNamed,
-  deleteAlertRule,
-  listAlertRules,
-} from "./control/alerts";
-import {
-  createSavedSearch,
-  deleteSavedSearch,
-  listSavedSearches,
-  runSavedSearch,
-  testSavedSearch,
-  updateSavedSearch,
-} from "./control/saved-searches";
-import { getFields, putFields, storedSkipKeys } from "./control/fields";
-import { effectiveMetricsRetentionDays, getRetentionDays, getSettings, putSettings } from "./control/settings";
-import { instanceId, instanceName } from "./control/instance";
+import { storedSkipKeys } from "./control/fields";
+import { effectiveMetricsRetentionDays, getRetentionDays } from "./control/settings";
+import { instanceName } from "./control/instance";
 import { setHereName } from "./shared/here";
-import { getHome, homeSaved, putHome } from "./control/home";
-import { homeSinceRoute } from "./control/home-since";
+import { homeSaved } from "./control/home";
 import { version as runningVersionForSignIn } from "./shared/version";
-import { monitorPreviewRoute } from "./alerts/preview";
-import { fingerprintSeenRoute } from "./query/fingerprint-seen";
 import { savedSearchUrl } from "./ui/search-url";
 import { joinPageHtml, ownerSetupPageHtml, safeNext, signInPageHtml, twoStepPageHtml, type TwoStepPageBody } from "./sign-in-page";
-import { beginSetup, checkSecondStep, confirmSetup, groupedKey, hasTwoStep, makeBackupCodes, otpauthUri, twoStepFor, twoStepRequired, writeTwoStepFor } from "./control/two-step";
-import { finishSignIn, oidcConfig, passwordsOn, signInSettings, startSignIn, writeSignInSettings } from "./control/oidc";
-import { stampSetting } from "./control/actors";
+import { beginSetup, checkSecondStep, confirmSetup, groupedKey, hasTwoStep, makeBackupCodes, otpauthUri, twoStepRequired } from "./control/two-step";
+import { finishSignIn, oidcConfig, passwordsOn, startSignIn } from "./control/oidc";
 import { qrSvg } from "./shared/qr";
-import {
-  createApiToken,
-  deleteApiToken,
-  listApiTokens,
-} from "./control/tokens";
 import { ingestRoute, insertEvents } from "./ingest";
 import { ingestMetricsRoute } from "./ingest/metrics";
 import { ingestMarksRoute } from "./ingest/marks";
@@ -95,50 +58,21 @@ import { otlpProfilesRoute } from "./ingest/otlp-profiles-route";
 import { startOtlpGrpc } from "./ingest/otlp-grpc";
 import { startSyslogUdp } from "./ingest/syslog";
 import { renderMetrics } from "./metrics";
-import { attrFacetsRoute, attrKeysRoute, attrValuesRoute, aroundTsRoute, facetsRoute, metricNamesRoute,
-  metricLabelsRoute, numericKeysRoute, searchRoute, surroundingRoute } from "./query";
-import { fingerprintCutRoute, fingerprintRevisionsRoute } from "./query/fingerprint-cut";
-import { createFeedRoute, listFeedsRoute, readFeedRoute } from "./feed/feed";
 import { claimRoute, linkAskRoute, linkFeedRoute, linkRemoveRoute, linkRowsRoute, lookupRoute } from "./links/protocol";
-import {
-  confirmRoute,
-  inviteRoute,
-  listLinksRoute,
-  offerRoute,
-  previewRoute,
-  removeLinkRoute,
-  revokeKeyRoute,
-} from "./links/operator";
 import { startLinkPuller } from "./links/puller";
 import { loadArrivalSeq } from "./ingest/arrival-seq";
-import { followSpanRoute } from "./query/follow-span";
-import { testAlertCallRoute } from "./alerts/test-call";
-import { deleteMonitor, getMonitor, listMonitors, putMonitor, updateMonitorRoute } from "./control/monitors";
-import { withPlace } from "./control/monitor-place";
-import { sendHttpRoute } from "./control/http-monitors";
-import { tracesRoute } from "./query/traces";
-import { marksRoute } from "./query/marks";
-import { probesRoute } from "./query/probes";
-import { profilesRoute } from "./query/profiles";
-import { systemRoute } from "./query/system";
-import { throughputRoute } from "./query/throughput";
 import { applyRetentionDays, migrateStore, syncFieldRoleSkip } from "./shared/migrate";
 import { requirePackagedSecrets } from "./shared/secrets";
 import { requirePublicUrl } from "./shared/public-url";
 import { requireWatchdogUrl } from "./alerts/watchdog";
-import { checkReleasesNow, startReleaseCheck, versionReply, type CheckDeps, type VersionReply } from "./control/release-check";
-import { announceNewRelease } from "./control/update-event";
-import { storeSize } from "./control/store-size";
-import { readUpgrader, requestUpgrade } from "./control/upgrader";
+import { startReleaseCheck } from "./control/release-check";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
-import { createShareRoute, listSharesRoute, previewTicketRoute, putShareRoute, revokeShareRoute, shareAuth, ticketRoute } from "./share/operator";
+import { shareAuth, ticketRoute } from "./share/operator";
 import { shareNamesRoute, shareReadCache, shareSeriesRoute, sharePanelRoute, shareTopRoute } from "./share/read";
 import { embedAssetRoute, embedJsRoute, embedPageRoute } from "./share/embed-page";
 import { noFraming } from "./share/embed";
 import { startShareUse } from "./share/use";
 import { noteAccessRefused, noteAccessUsed, startAccessUse } from "./access/use";
-import { accessRoute } from "./access/list";
-import { linkPageRoute, updateLinkRoute } from "./links/page";
 
 requirePackagedSecrets();
 if (process.env.TOPOSCOPE_PASSWORD) {
@@ -187,15 +121,6 @@ app.get("/api/metrics", (c) => {
     "content-type": "text/plain; version=0.0.4; charset=utf-8",
   });
 });
-
-/** The address the browser opened: what the sign-in page and the tab title name when unnamed. */
-function openedAddress(c: Context): string {
-  return (c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "").split(",")[0]!.trim() || "toposcope";
-}
-
-function overHttps(c: Context): boolean {
-  return c.req.header("x-forwarded-proto")?.split(",")[0]?.trim() === "https" || c.req.url.startsWith("https:");
-}
 
 let seenOriginAt = 0;
 /** The address browsers open, so `owner-link` on the host prints a link that opens here. */
@@ -273,11 +198,6 @@ function setupPage(c: Context, person: Person, error?: string): Response {
   const secret = beginSetup(person.id);
   const account = person.email ?? person.name;
   return twoStepPage(c, { stage: "setup", email: account, secretGrouped: groupedKey(secret), qr: qrSvg(otpauthUri(secret, account, instanceName() ?? openedAddress(c)), 6), error }, error ? 400 : 200);
-}
-
-function redirectUri(c: Context): string {
-  const env = process.env.TOPOSCOPE_PUBLIC_URL?.replace(/\/+$/, "");
-  return `${env ?? `${overHttps(c) ? "https" : "http"}://${openedAddress(c)}`}/auth/callback`;
 }
 
 // #310: sign in with the provider. The browser goes there and comes back to /auth/callback.
@@ -652,26 +572,6 @@ app.post("/api/sign-out", (c) => {
   return c.json({ ok: true });
 });
 
-app.get("/api/me", (c) => {
-  const actor = actorOf(c);
-  if (!actor) {
-    return c.json({ error: "Sign in" }, 401);
-  }
-  // 30e: "ask an Owner" names them.
-  const owners = allPeople().filter((p) => p.role === "owner" && p.kind === "person" && p.revoked_at === null).map((p) => p.name);
-  return c.json({ ...meBody(actor), initials: initials(actor.person.name), owners });
-});
-
-app.get("/api/instance", (c) => {
-  const expiresAt = actorOf(c)?.via === "token" ? null : sessionEnd(c.req.header("cookie"));
-  return c.json({
-    id: instanceId(),
-    name: instanceName(),
-    address: openedAddress(c),
-    session: expiresAt === null ? { kind: "token" } : { kind: "cookie", expires_at: expiresAt },
-  });
-});
-
 app.post("/api/ingest", ingestRoute);
 app.post("/v1/logs", otlpLogsRoute);
 app.post("/v1/metrics", ingestMetricsRoute);
@@ -684,28 +584,13 @@ app.post("/ping/:key/:signal?", pingRoute);
 app.post("/v1/traces", otlpTracesRoute);
 app.post("/v1/profiles", otlpProfilesRoute);
 app.post("/v1development/profiles", otlpProfilesRoute);
-app.get("/api/search", searchRoute);
-app.get("/api/traces/:trace_id", tracesRoute);
-app.get("/api/marks", marksRoute);
-app.get("/api/probes", probesRoute);
-app.get("/api/profiles", profilesRoute);
-app.get("/api/search/context", surroundingRoute);
-app.get("/api/search/around", aroundTsRoute);
-app.get("/api/search/cut", fingerprintCutRoute);
-app.get("/api/search/revisions", fingerprintRevisionsRoute);
-app.get("/api/fingerprints/:hex", fingerprintSeenRoute);
-app.get("/api/feeds", listFeedsRoute);
-app.post("/api/feeds", createFeedRoute);
-app.get("/api/feeds/:id", readFeedRoute);
-app.get("/api/links", listLinksRoute);
-app.get("/api/links/:id", linkPageRoute);
-app.put("/api/links/:id", updateLinkRoute);
-app.post("/api/links/offer", offerRoute);
-app.post("/api/links/invite", inviteRoute);
-app.post("/api/links/preview", previewRoute);
-app.post("/api/links/confirm", confirmRoute);
-app.delete("/api/links/keys/:kid", revokeKeyRoute);
-app.delete("/api/links/:id", removeLinkRoute);
+// The described API (#356): every /api route a token may call, from one table, each checked
+// against its schemas before it runs. MCP (#358) reads the same table.
+for (const route of apiRoutes) {
+  app.on(route.method, route.path, checked(route));
+}
+// Built now, so a schema the spec cannot say stops the start, not a later request.
+openApi();
 // Instance to instance (#136): each proves a key's or a link's secret, not the operator password.
 app.post("/link/v1/lookup", lookupRoute);
 app.post("/link/v1/claim", claimRoute);
@@ -713,65 +598,7 @@ app.get("/link/v1/feed", linkFeedRoute);
 app.post("/link/v1/remove", linkRemoveRoute);
 app.post("/link/v1/ask", linkAskRoute);
 app.post("/link/v1/rows", linkRowsRoute);
-app.get("/api/search/follow-span", followSpanRoute);
-app.get("/api/facets", facetsRoute);
-app.get("/api/attr-keys", attrKeysRoute);
-app.get("/api/attr-facets", attrFacetsRoute);
-app.get("/api/attr-values", attrValuesRoute);
-app.get("/api/numeric-keys", numericKeysRoute);
-app.get("/api/metric-names", metricNamesRoute);
-app.get("/api/metric-labels", metricLabelsRoute);
-app.get("/api/throughput", throughputRoute);
-app.get("/api/system", systemRoute);
-// A version seen for the first time writes one event:update_available row, to page on (#197).
-const releaseCheckDeps: CheckDeps = {
-  onChecked: (releases, running) => announceNewRelease(releases, running, { write: insertEvents }),
-};
-// The stores are sized only when an upgrade is on offer: the panel says how big its backup is (#201).
-async function versionBody(reply: VersionReply): Promise<VersionReply> {
-  const upgrader = readUpgrader();
-  return reply.releases.length > 0 ? { ...reply, store: await storeSize(), upgrader } : { ...reply, upgrader };
-}
-// Signed in, unlike /api/health: how far behind an instance is stays with its operators (#196).
-app.get("/api/version", async (c) => c.json(await versionBody(versionReply())));
-// Check now (#219): one check by hand, on top of the daily one.
-app.post("/api/version/check", async (c) => c.json(await versionBody(await checkReleasesNow(releaseCheckDeps))));
-// Upgrade from here (#220): the app writes a request into its own volume; the host's upgrade.sh runs it.
-app.post("/api/version/upgrade", async (c) => {
-  const body = (await c.req.json().catch(() => null)) as { version?: unknown } | null;
-  const known = versionReply().releases.map((r) => r.version);
-  const answer = requestUpgrade(body?.version, known);
-  return c.json(answer.body, answer.status);
-});
-app.get("/api/home", getHome);
-app.get("/api/home/since", homeSinceRoute);
-app.put("/api/home", putHome);
-app.get("/api/saved-searches", listSavedSearches);
-app.post("/api/saved-searches", createSavedSearch);
-app.put("/api/saved-searches/:id", updateSavedSearch);
-app.delete("/api/saved-searches/:id", deleteSavedSearch);
-app.get("/api/saved-searches/:id/run", runSavedSearch);
-app.post("/api/saved-searches/:id/test", testSavedSearch);
-app.get("/api/alert-rules", listAlertRules);
-app.post("/api/alert-rules/test-call", testAlertCallRoute);
-app.post("/api/alert-rules", withPlace(createAlertRule, () => null));
-app.put("/api/alert-rules/:id", withPlace(updateMonitorRoute, (c) => getAlert(c.req.param("id") ?? "")));
-app.delete("/api/alert-rules/:id", deleteAlertRule);
-// Monitors (#175); /api/alert-rules stays as their alias for 0.6.
-app.get("/api/monitors", listMonitors);
-// Watch this (#264): where a saved-search monitor would have opened over the last 24 h.
-app.get("/api/monitors/preview", monitorPreviewRoute);
-// The HTTP(S) editor's Send (#178): one request from this node, nothing stored.
-app.post("/api/monitors/send", sendHttpRoute);
-app.get("/api/monitors/:name", getMonitor);
-app.put("/api/monitors/:name", withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null));
-app.delete("/api/monitors/:name", deleteMonitor);
-// Shares (#225): signed in to make and revoke them; /share/v1 reads with one's secret.
-app.get("/api/shares", listSharesRoute);
-app.post("/api/shares", createShareRoute);
-app.put("/api/shares/:name", putShareRoute);
-app.delete("/api/shares/:name", revokeShareRoute);
-app.post("/api/shares/:name/ticket", previewTicketRoute);
+// Shares (#225): /share/v1 reads with one's secret; /api/shares makes and revokes them.
 app.use("/share/*", shareAuth);
 app.post("/share/v1/tickets", ticketRoute);
 app.get("/share/v1/*", shareReadCache);
@@ -779,55 +606,6 @@ app.get("/share/v1/series", shareSeriesRoute);
 app.get("/share/v1/top", shareTopRoute);
 app.get("/share/v1/names", shareNamesRoute);
 app.get("/share/v1/panels/:name", sharePanelRoute);
-app.get("/api/access", accessRoute);
-app.get("/api/api-tokens", listApiTokens);
-app.post("/api/api-tokens", createApiToken);
-app.delete("/api/api-tokens/:id", deleteApiToken);
-app.get("/api/people", listPeopleRoute);
-app.post("/api/people/invites", createInviteRoute);
-app.delete("/api/people/invites/:id", cancelInviteRoute);
-app.post("/api/people/service-accounts", createServiceAccountRoute);
-app.put("/api/people/:id", putPersonRoute);
-app.delete("/api/people/:id", revokePersonRoute);
-app.post("/api/people/:id/tokens", createServiceTokenRoute);
-app.delete("/api/people/:id/tokens/:tid", revokeTokenRoute);
-app.delete("/api/people/:id/two-step", resetTwoStepRoute);
-app.post("/api/me/two-step/backup-codes", newBackupCodesRoute);
-app.get("/api/me/tokens", myTokensRoute);
-app.post("/api/me/tokens", createMyTokenRoute);
-app.delete("/api/me/tokens/:id", revokeTokenRoute);
-app.get("/api/sign-in-settings", (c) => c.json({ ...signInSettings(), redirect_uri: redirectUri(c), two_step_for: twoStepFor() }));
-
-app.put("/api/sign-in-settings", async (c) => {
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: "Invalid JSON body" }, 400);
-  }
-  if (!body || typeof body !== "object") {
-    return c.json({ error: "Expected an object" }, 400);
-  }
-  const rec = body as Record<string, unknown>;
-  if (rec.two_step_for !== undefined) {
-    if (rec.two_step_for !== "everyone" && rec.two_step_for !== "owners") {
-      return c.json({ error: "two_step_for is everyone or owners" }, 400);
-    }
-    writeTwoStepFor(rec.two_step_for);
-    stampSetting("two_step_for");
-  }
-  const out = writeSignInSettings(rec);
-  if ("error" in out) {
-    return c.json({ error: out.error }, 400);
-  }
-  stampSetting("sign_in");
-  return c.json({ ...out, redirect_uri: redirectUri(c), two_step_for: twoStepFor() });
-});
-
-app.get("/api/settings", getSettings);
-app.put("/api/settings", putSettings);
-app.get("/api/fields", getFields);
-app.put("/api/fields", putFields);
 
 app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));
 app.all("/share/*", (c) => c.json({ error: "Not found" }, 404));
