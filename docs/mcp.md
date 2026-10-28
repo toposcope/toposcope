@@ -47,6 +47,7 @@ Today's tools:
 | `marks` | Deploys, flags, incidents and notes in a window. |
 | `attr_keys`, `attr_values`, `numeric_keys`, `facets` | The attribute keys, one key's values, the numeric keys, and the top services, hosts, levels and fingerprints. |
 | `saved_searches`, `saved_search_run` | The saved searches, and one run over its own window. |
+| `home` | The saved search marked Home, if any. |
 | `saved_search_test` | For an Operator: a saved search read as a monitor would now. |
 
 ### What a tool answers
@@ -80,6 +81,7 @@ What an Operator makes, each with its preview (#360). A preview stores nothing a
 | A saved search | `saved_search_preview`: its rows, its series' value and a few rows over its window | `saved_search_create`, `saved_search_update` | `saved_search_delete`, or `saved_search_update` with the body it had |
 | A monitor of any kind: rows, share of rows, fewer than, HTTP(S), TCP, certificate, push, new fingerprints | `monitor_draft_preview`: where it would have opened and resolved over the last 7 days; `monitor_send` runs an HTTP(S), TCP or certificate check once; `saved_search_test` reads a saved search as a monitor would now | `monitor_put` | `monitor_delete`, or `monitor_put` with the body it had |
 | A panel on a saved search's canvas (`home` for the one marked Home) | `panel_preview`: the series it would draw | `panel_add`, `panel_put` (move, resize or change one) | `panel_remove`, or `saved_search_update` with the panels as they were |
+| Home: which saved search it is | `home` | `home_set` | `home_set` with the saved search that was Home, or null |
 | A field's role | | `field_role_set` (one field; the rest stay) | `field_role_set` with the role it had |
 | A note on the clock | | `note_write` | `note_delete` |
 

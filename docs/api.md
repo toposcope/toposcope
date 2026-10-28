@@ -446,7 +446,7 @@ Query:
 
 ### PUT /api/home
 
-Mark a saved search Home, or unmark it.
+Mark a saved search Home, or unmark it; the answer has the call that puts Home back.
 
 Role: **Operator** · `home_set`
 

@@ -191,7 +191,10 @@ beforeAll(async () => {
       { id: "b", kind: "hbar", x: 0, y: 4, w: 6, h: 3, split: "service", n: 5 },
     ] };
     const home = await api("agent", "POST", "/api/saved-searches", { name: "home " + tag, query: "service:api", range: "1h", widgets: homeLayout });
-    await api("agent", "PUT", "/api/home", { saved_id: home.body.id });
+    // Marked Home through MCP (#361), with the call that puts Home back.
+    out.homeRead = await call("agent", "home", {});
+    out.homeSet = await call("agent", "home_set", { body: { saved_id: home.body.id } });
+    out.homeReadAfter = await call("agent", "home", {});
     out.homeBefore = (await api("agent", "GET", "/api/saved-searches")).body.searches.find((s) => s.id === home.body.id).widgets;
     out.panelPreview = await call("agent", "panel_preview", { id: "home", body: { kind: "stat", agg: "count" } });
     out.hbarPreview = await call("agent", "panel_preview", { id: "home", body: { kind: "hbar", split: "level", n: 3 } });
@@ -202,6 +205,9 @@ beforeAll(async () => {
     out.undoAdd = await call("agent", out.panelAdd.body.undo.tool, out.panelAdd.body.undo.arguments);
     out.homeAfter = (await api("agent", "GET", "/api/saved-searches")).body.searches.find((s) => s.id === home.body.id).widgets;
     out.pinnedMove = await call("agent", "panel_put", { id: "home", panel: "a", body: { x: 3 } });
+    out.homeUndo = await call("agent", out.homeSet.body.undo.tool, out.homeSet.body.undo.arguments);
+    out.homeReadUndone = await call("agent", "home", {});
+    await api("agent", "PUT", "/api/home", { saved_id: home.body.id });
 
     // A field's role, one at a time, and put back.
     const key = "design_" + tag;
@@ -231,6 +237,7 @@ beforeAll(async () => {
       panel_add: { id: "home", body: { kind: "stat" } },
       panel_put: { id: "home", panel: "b", body: { x: 6 } },
       panel_remove: { id: "home", panel: "b" },
+      home_set: { body: { saved_id: null } },
       field_role_set: { key, body: { role: "ignore" } },
       note_write: { body: { title: "no" } },
       note_delete: { id: out.note.body.id },
@@ -391,6 +398,16 @@ describe("design tools (#360)", () => {
     expect(r.undoAdd.isError).toBe(false);
     expect(r.homeAfter).toEqual(r.homeBefore);
     expect(r.pinnedMove.isError).toBe(true);
+  });
+
+  test("Home is read and marked through MCP, and the mark is undone by the call it answered with (#361)", () => {
+    expect(r.homeRead.body).toEqual({ saved_id: null });
+    expect(r.homeSet.isError).toBe(false);
+    expect(r.homeSet.body).toMatchObject({ saved_id: r.homeReadAfter.body.saved_id, link: "/?view=home" });
+    expect(r.homeSet.body.undo).toEqual({ tool: "home_set", arguments: { body: { saved_id: null } }, does: "Unmarks Home, as it was before" });
+    expect(r.homeReadAfter.body.saved_id).not.toBeNull();
+    expect(r.homeUndo.isError).toBe(false);
+    expect(r.homeReadUndone.body).toEqual({ saved_id: null });
   });
 
   test("a field's role is set alone, and put back", () => {
