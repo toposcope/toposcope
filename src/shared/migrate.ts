@@ -101,6 +101,7 @@ export const retentionTtlTables = [
   { table: "spans", clock: "ts" },
   { table: "profile_samples", clock: "ts" },
   { table: "change_marks", clock: "ts" },
+  { table: "monitor_results", clock: "at" },
 ] as const;
 
 /** Do not wait for MATERIALIZE TTL. Default alter_sync=1 surfaces a corrupt-part mutation as PUT 500. */
@@ -230,6 +231,7 @@ export async function migrateStore(): Promise<void> {
   await ensureProfileSamples();
   await ensureChangeMarks();
   await ensureKindPositions();
+  await ensureMonitorResults();
   await backfillHistogramIfEmpty();
   await backfillAttrKeysIfEmpty();
   await backfillAttrValuesMissing();
@@ -335,6 +337,40 @@ async function ensureKindPositions(): Promise<void> {
     await ensureSkipIndex(table, "idx_seq_minmax", "seq TYPE minmax GRANULARITY 1");
     await ensureSkipIndex(table, "idx_src_seq_minmax", "src_seq TYPE minmax GRANULARITY 1");
   }
+}
+
+/**
+ * A monitor's results (#324): one row a result, as Watch's ticks read them, with a position from
+ * the one counter so they travel over a link like any kind. They were a SQLite table swept after
+ * 30 days; here they follow retention by TTL. The worst result of a minute wins when read.
+ */
+async function ensureMonitorResults(): Promise<void> {
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS monitor_results (
+      tenant_id LowCardinality(String),
+      monitor_id String,
+      at DateTime64(3, 'UTC'),
+      result LowCardinality(String),
+      exit_code Nullable(Int32),
+      duration_ms Nullable(Float64),
+      value Nullable(Float64),
+      unit Nullable(String),
+      message String,
+      host String,
+      via LowCardinality(String),
+      seq UInt64 DEFAULT 0,
+      arrived DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC'),
+      toposcope LowCardinality(String) DEFAULT '',
+      src_id String DEFAULT '',
+      src_seq UInt64 DEFAULT 0,
+      INDEX idx_seq_minmax seq TYPE minmax GRANULARITY 1,
+      INDEX idx_src_seq_minmax src_seq TYPE minmax GRANULARITY 1
+    )
+    ENGINE = MergeTree
+    PARTITION BY toDate(at)
+    ORDER BY (tenant_id, monitor_id, at)
+    TTL toDate(at) + INTERVAL 30 DAY
+  `);
 }
 
 async function ensureLogsMessageTextIndex(): Promise<void> {

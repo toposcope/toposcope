@@ -1,3 +1,4 @@
+import { recordPushResult } from "./monitor-results";
 import type { AlertRule } from "../control/alerts";
 import {
   judgeRun,
@@ -19,7 +20,6 @@ import {
   beginStretch,
   noteReading,
   openStretch,
-  recordPushResult,
   recordResult,
   resolveStretch,
   type CallWhat,
@@ -239,22 +239,6 @@ export type NodeRunOutcome = {
 export async function settleNodeRun(rule: AlertRule, o: NodeRunOutcome, at: number, deps: CallDeps): Promise<void> {
   const db = deps.db;
   recordResult(rule.id, o.result, o.durationMs, at, db);
-  // Watch's tick for it, in the table push results share (#177): the worst run of its minute.
-  recordPushResult(
-    {
-      monitor_id: rule.id,
-      at,
-      result: o.result,
-      exit_code: null,
-      duration_ms: o.durationMs,
-      value: null,
-      unit: null,
-      message: o.message,
-      host: o.host,
-      via: o.via,
-    },
-    db,
-  );
   const open = openStretch(rule.id, db);
   switch (nextMove(open ? "open" : "ok", o.result)) {
     case "open":
@@ -271,6 +255,20 @@ export async function settleNodeRun(rule: AlertRule, o: NodeRunOutcome, at: numb
     default:
       break;
   }
+  // Watch's tick for it (#177), in ClickHouse with a position (#324). After the monitor's own
+  // state: a monitor still opens and calls while ClickHouse is down.
+  await recordPushResult({
+    monitor_id: rule.id,
+    at,
+    result: o.result,
+    exit_code: null,
+    duration_ms: o.durationMs,
+    value: null,
+    unit: null,
+    message: o.message,
+    host: o.host,
+    via: o.via,
+  }).catch((err) => console.error("monitor result not kept", err));
 
   // Its state is kept whether or not anybody is called; with no webhook of its own and none in
   // Settings, its stretches say nobody was (`none`).

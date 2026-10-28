@@ -21,6 +21,7 @@ export const positionedTables = [
   "metrics",
   "metric_buckets",
   "profile_samples",
+  "monitor_results",
 ] as const;
 
 let next = 0;

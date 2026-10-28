@@ -239,7 +239,7 @@ export async function applyResults(results: PushResult[], nowMs: number): Promis
       rule = made;
       created.push(rule.name);
     }
-    applyPushResult(rule, result, nowMs, db);
+    await applyPushResult(rule, result, nowMs, db);
   }
   return { ok: true, ingested: results.length, created };
 }

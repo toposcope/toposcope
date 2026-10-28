@@ -1,11 +1,10 @@
 import { actorName } from "./actors";
 import type { Context } from "hono";
 import { lastLineAt } from "../alerts/last-line";
+import { lastPushResult, resultsBetween } from "../alerts/monitor-results";
 import {
-  lastPushResult,
   monitorHistory,
   openStretch,
-  resultsBetween,
   sentCallsBetween,
   stretchesBetween,
   type PushResultRow,
@@ -122,7 +121,7 @@ export async function listMonitors(c: Context): Promise<Response> {
     stretches: stretchesBetween(win.fromMs, win.toMs),
     sent: sentCallsBetween(win.fromMs, win.toMs),
     // Results on the clock (#177, #178): each a tick, at most 240 columns a lane.
-    results: resultsBetween(win.fromMs, win.toMs),
+    results: await resultsBetween(win.fromMs, win.toMs),
     link: publicUrl() !== null,
   });
 }
@@ -135,7 +134,7 @@ async function page(rule: AlertRule): Promise<MonitorView & { ping_key?: string 
   if (rule.source !== "push") {
     return view(rule);
   }
-  return { ...(await view(rule)), ping_key: pingKeyOf(rule.id), last: lastPushResult(rule.id) };
+  return { ...(await view(rule)), ping_key: pingKeyOf(rule.id), last: await lastPushResult(rule.id) };
 }
 
 function byName(name: string): AlertRule[] {
