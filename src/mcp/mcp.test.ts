@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { apiRoutes } from "../api/routes";
+import { fenceNote, onClock, readTools } from "./read";
 import { nestedDeeper, originAllowed } from "./server";
 import { mcpTools, toolCall, toolOf, toolRouteIds, toolsOf } from "./tools";
 
@@ -80,6 +81,18 @@ beforeAll(async () => {
       attr_keys: { q: "service:api", ...day },
       attr_values: { key: "route", prefix: "/a", ...day },
       metric_names: day,
+      search_context: { ts: "2026-10-27T12:00:00.000Z", service: "api" },
+      search_around: { ts: "2026-10-27T12:00:00.000Z", ...day },
+      search_compare: { mark: "deploy-api-1", ...day },
+      search_cut: { mark: "deploy-api-1", ...day },
+      home_since: {},
+      fingerprint_seen: { hex: "a91f2c", ...day },
+      traces_get: { trace_id: "0af7651916cd43dd8448eb211c80319c" },
+      metric_series: { name: "http.requests", ...day },
+      metric_labels: { name: "http.requests", ...day },
+      profiles: { trace_id: "0af7651916cd43dd8448eb211c80319c", span_id: "b7ad6b7169203331" },
+      numeric_keys: { q: "service:api", ...day },
+      facets: { q: "service:api", ...day },
     };
     const { mcpTools, toolCall } = await import(root + "/mcp/tools.ts");
     out.both = {};
@@ -158,7 +171,10 @@ describe("MCP tools from the described API (#358)", () => {
   test("each default tool is a route's id, with its summary and its query's schema", () => {
     expect(mcpTools.map((t) => t.name)).toEqual(toolRouteIds);
     const search = mcpTools.find((t) => t.name === "search")!;
-    expect(search.description).toBe(apiRoutes.find((r) => r.id === "search")!.summary);
+    // A read tool says when to use it, for an agent (#359); any other is its route's summary.
+    expect(search.description).toBe(readTools.search!.description);
+    const test = mcpTools.find((t) => t.name === "saved_search_test")!;
+    expect(test.description).toBe(apiRoutes.find((r) => r.id === "saved_search_test")!.summary);
     expect(search.inputSchema.type).toBe("object");
     expect(Object.keys(search.inputSchema.properties as object)).toContain("q");
     expect(search.inputSchema.additionalProperties).toBe(false);
@@ -204,11 +220,17 @@ describe("MCP at /mcp, in the app (#358)", () => {
     expect(search.annotations).toEqual({ readOnlyHint: true });
   });
 
-  test("every listed tool gives the same answer as its route", () => {
+  test("every listed tool gives the same answer as its route; a read tool's is under data, on the instance's clock", () => {
     for (const [name, both] of Object.entries(r.both as Record<string, { via: Answer; direct: Answer; missingArgs?: true }>)) {
       expect({ name, missingArgs: both.missingArgs }).toEqual({ name, missingArgs: undefined });
       expect({ name, isError: both.via.body.result.isError }).toEqual({ name, isError: both.direct.status >= 400 });
-      expect({ name, body: parsed(both.via) }).toEqual({ name, body: both.direct.body });
+      if (readTools[name] && both.direct.status < 400) {
+        const shaped = parsed(both.via);
+        expect({ name, note: shaped.note, now: shaped.now, cut: shaped.cut }).toEqual({ name, note: fenceNote, now: "2026-10-28T12:00:00.000Z", cut: undefined });
+        expect({ name, body: shaped.data }).toEqual({ name, body: onClock(both.direct.body) });
+      } else {
+        expect({ name, body: parsed(both.via) }).toEqual({ name, body: both.direct.body });
+      }
     }
     expect(r.both.saved_search_run.via.body.result.isError).toBe(false);
     expect(r.both.monitor_get.via.body.result.isError).toBe(true);

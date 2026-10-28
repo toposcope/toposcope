@@ -4,6 +4,7 @@ import { roleOf } from "../api/registry";
 import { roleAtLeast } from "../control/people";
 import { publicUrl } from "../shared/public-url";
 import { version } from "../shared/version";
+import { capArgs, capsOf, readTools, shapeRead, type Caps } from "./read";
 import { toolCall, type McpTool } from "./tools";
 
 /**
@@ -113,10 +114,27 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** The route's answer as a tool's result: its JSON as text, an error when it was not 2xx. */
-async function asResult(res: Response): Promise<unknown> {
+/**
+ * The route's answer as a tool's result: its JSON as text, an error when it was not 2xx. A read
+ * tool's 2xx answer is shaped first (read.ts): capped, under `data` beside the note that it is
+ * stored text, and on the instance's clock. A refusal is the route's own sentence either way.
+ */
+async function asResult(res: Response, tool: McpTool, args: Record<string, unknown>, caps: Caps | null): Promise<unknown> {
   const text = await res.text();
-  return { content: [{ type: "text", text }], isError: !res.ok };
+  const read = readTools[tool.name];
+  if (!read || !caps || !res.ok) {
+    return { content: [{ type: "text", text }], isError: !res.ok };
+  }
+  const own = Object.fromEntries(Object.entries(args).filter(([key]) => !(capArgs as readonly string[]).includes(key)));
+  const takes = Object.keys((tool.inputSchema.properties ?? {}) as object);
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = text;
+  }
+  const shaped = shapeRead({ tool: tool.name, read, args: own, caps, json, takes });
+  return { content: [{ type: "text", text: JSON.stringify(shaped) }], isError: false };
 }
 
 /** `POST /mcp`. `run` is the app itself, so a tool's request meets the same gate and handler as the API. */
@@ -165,6 +183,10 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
           return failure(rpcError.invalidParams, "arguments must be an object");
         }
         const call = toolCall(tool, args);
+        const caps = readTools[tool.name] ? capsOf(args) : null;
+        if (caps && "error" in caps) {
+          return { result: { content: [{ type: "text", text: JSON.stringify(caps) }], isError: true } };
+        }
         if ("error" in call) {
           return { result: { content: [{ type: "text", text: JSON.stringify(call) }], isError: true } };
         }
@@ -187,7 +209,7 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
           headers.set("content-type", "application/json");
         }
         const res = await run(new Request(url, { method: call.method, headers, body: call.body }));
-        return { result: await asResult(res) };
+        return { result: await asResult(res, tool, args, caps) };
       }
       default:
         return failure(rpcError.methodNotFound, `No method ${method} here: Toposcope answers initialize, ping, tools/list and tools/call`);
