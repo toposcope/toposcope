@@ -12,7 +12,11 @@ An app, a collector or a hub sends logs, metrics, traces, profiles, marks and ch
 
 ## Links
 
-A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through. A key is minted with **Make a link key** on the Links group, or in **Access › Let someone in › Link** (the same step), shown once, and listed as *key not used yet* until the other side pastes it; a link then reads *we copy from* or *copies from us*. Each link has a page: which way rows move, its scope, where it stands, **Pause** and **Revoke**. Change marks travel with a link. Rows pulled into this instance follow its retention. See [operations](operations.md#links).
+A link lets another Toposcope pull **raw rows** that match one filter, ids included, and keep its place. The other operator sees everything the filter lets through, of every kind the link carries: logs, change marks, traces, metrics, profiles and monitors, each a box on the key, all ticked by default. A key is minted with **Make a link key** on the Links group, or in **Access › Let someone in › Link** (the same step), shown once, and listed as *key not used yet* until the other side pastes it; a link then reads *we copy from* or *copies from us*. Access names each link's and key's kinds.
+
+The side rows leave from decides what goes. The filter applies to each kind by the fields it has: a kind that lacks a field the filter names (`level`, words in the message, or for monitors any key but service, host and `toposcope`) sends none of its rows, and the box and the link's page say so. Profiles go with their spans; monitors go by service and host, with their definitions and recent stretches, and show read-only at the other side. **Change scope** on the link's page can untick a kind but never add one: to send another kind, make a new key.
+
+Each link has a page: which way rows move, its scope, a line per kind with where it stands and its rows and bytes a day, **Pause** and **Revoke**. Rows pulled into this instance follow its retention, and leave again through any link that copies from us, under the name of the instance they entered at. See [operations](operations.md#links).
 
 ## Shares
 
