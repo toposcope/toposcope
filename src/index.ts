@@ -51,6 +51,8 @@ import {
 } from "./control/people-routes";
 import {
   createAlertRule,
+  getAlert,
+  monitorsNamed,
   deleteAlertRule,
   listAlertRules,
 } from "./control/alerts";
@@ -112,6 +114,7 @@ import { loadArrivalSeq } from "./ingest/arrival-seq";
 import { followSpanRoute } from "./query/follow-span";
 import { testAlertCallRoute } from "./alerts/test-call";
 import { deleteMonitor, getMonitor, listMonitors, putMonitor, updateMonitorRoute } from "./control/monitors";
+import { withPlace } from "./control/monitor-place";
 import { sendHttpRoute } from "./control/http-monitors";
 import { tracesRoute } from "./query/traces";
 import { marksRoute } from "./query/marks";
@@ -751,8 +754,8 @@ app.get("/api/saved-searches/:id/run", runSavedSearch);
 app.post("/api/saved-searches/:id/test", testSavedSearch);
 app.get("/api/alert-rules", listAlertRules);
 app.post("/api/alert-rules/test-call", testAlertCallRoute);
-app.post("/api/alert-rules", createAlertRule);
-app.put("/api/alert-rules/:id", updateMonitorRoute);
+app.post("/api/alert-rules", withPlace(createAlertRule, () => null));
+app.put("/api/alert-rules/:id", withPlace(updateMonitorRoute, (c) => getAlert(c.req.param("id") ?? "")));
 app.delete("/api/alert-rules/:id", deleteAlertRule);
 // Monitors (#175); /api/alert-rules stays as their alias for 0.6.
 app.get("/api/monitors", listMonitors);
@@ -761,7 +764,7 @@ app.get("/api/monitors/preview", monitorPreviewRoute);
 // The HTTP(S) editor's Send (#178): one request from this node, nothing stored.
 app.post("/api/monitors/send", sendHttpRoute);
 app.get("/api/monitors/:name", getMonitor);
-app.put("/api/monitors/:name", putMonitor);
+app.put("/api/monitors/:name", withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null));
 app.delete("/api/monitors/:name", deleteMonitor);
 // Shares (#225): signed in to make and revoke them; /share/v1 reads with one's secret.
 app.get("/api/shares", listSharesRoute);

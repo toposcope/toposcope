@@ -10,6 +10,7 @@ import {
 import { MarkGlyph } from "@/components/histogram-marks";
 import { AlertBodyField, TestCall } from "@/components/alert-body-field";
 import { MonitorField, MonitorSwitch, monitorBox } from "@/components/monitor-field";
+import { MonitorPlaceFields, serviceMissing, serviceOk, useSeenServices } from "@/components/monitor-place-fields";
 import { alertBodyProblem, resolvedBodyProblem, type AlertBodyKind } from "../../shared/alert-body";
 import {
   cantTellWords,
@@ -46,6 +47,10 @@ export type MonitorInput = {
   resolved_body: string | null;
   remind_every: RemindId;
   opens_when: OpensWhen;
+  /** The service it is about (#335): required. */
+  service: string;
+  /** The host it is about; may be empty. */
+  host: string;
 };
 
 type Probe = {
@@ -102,6 +107,9 @@ export function AlertRuleDialog({
   const [savedSearchId, setSavedSearchId] = useState("");
   const [threshold, setThreshold] = useState("1");
   const [webhook, setWebhook] = useState("");
+  const [service, setService] = useState("");
+  const [host, setHost] = useState("");
+  const seenServices = useSeenServices(open);
   const [probe, setProbe] = useState<Probe | null>(null);
   const [probeLoading, setProbeLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -135,6 +143,8 @@ export function AlertRuleDialog({
       setSavedSearchId(draft.rule.saved_search_id ?? "");
       setThreshold(String(draft.rule.threshold));
       setWebhook(draft.rule.webhook_url ?? "");
+      setService(draft.rule.service ?? "");
+      setHost(draft.rule.host ?? "");
       return;
     }
     const item = saved.find((row) => row.id === draft.savedSearchId);
@@ -148,6 +158,8 @@ export function AlertRuleDialog({
     setSavedSearchId(draft.savedSearchId);
     setThreshold("1");
     setWebhook("");
+    setService("");
+    setHost("");
   }, [open, draft, saved]);
 
   useEffect(() => {
@@ -207,6 +219,7 @@ export function AlertRuleDialog({
     bodyProblem !== null ||
     resolvedProblem !== null ||
     fewerProblem !== null ||
+    !serviceOk(service) ||
     (!fingerprints && Boolean(probe?.refused));
 
   async function submit(e: FormEvent) {
@@ -228,6 +241,8 @@ export function AlertRuleDialog({
         saved_search_id: savedSearchId,
         threshold: thresholdN,
         webhook_url: webhook.trim(),
+        service: service.trim(),
+        host: host.trim(),
       };
       if (editing) {
         await onUpdate(editing.id, body);
@@ -495,6 +510,15 @@ export function AlertRuleDialog({
                 className={`${monitorBox} bg-transparent outline-none`}
               />
             </MonitorField>
+            <MonitorPlaceFields
+              kind="search"
+              service={service}
+              onService={setService}
+              host={host}
+              onHost={setHost}
+              seen={seenServices}
+              layout="field"
+            />
             <MonitorField label="Webhook" htmlFor="alert-webhook">
               <input
                 id="alert-webhook"
@@ -550,6 +574,9 @@ export function AlertRuleDialog({
                 />
               ) : null}
             </span>
+            {serviceOk(service) ? null : (
+              <span className="self-center text-[12px] text-muted-foreground">{serviceMissing}</span>
+            )}
             {editing ? (
               <Button
                 type="button"
@@ -564,9 +591,11 @@ export function AlertRuleDialog({
             <DialogClose type="button" className="h-[30px] border border-white/15 text-foreground">
               Cancel
             </DialogClose>
-            <Button type="submit" className="h-[30px]" disabled={busy || saved.length === 0 || blocked}>
-              {editing ? "Save" : "Create"}
-            </Button>
+            <span title={serviceOk(service) ? undefined : serviceMissing}>
+              <Button type="submit" className="h-[30px]" disabled={busy || saved.length === 0 || blocked}>
+                {editing ? "Save" : "Create"}
+              </Button>
+            </span>
           </div>
         </form>
       </DialogContent>

@@ -77,7 +77,7 @@ beforeAll(async () => {
     await go("readonlyReads", "readonly", "/api/settings");
     await go("me", "readonly", "/api/me");
     // #307: who made what.
-    await go("madeMonitor", "operator", "/api/alert-rules", "POST", { name: "errors up", saved_search_id: team.id, threshold: 5, webhook_url: "https://hooks.example.com/x" });
+    await go("madeMonitor", "operator", "/api/alert-rules", "POST", { name: "errors up", service: "api", saved_search_id: team.id, threshold: 5, webhook_url: "https://hooks.example.com/x" });
     await go("monitorsAfter", "viewer", "/api/monitors");
     await go("settingsAfter", "viewer", "/api/settings");
     await go("savedAfter", "viewer", "/api/saved-searches");

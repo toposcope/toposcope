@@ -19,8 +19,8 @@ const columns: Record<Exclude<OtherKind, "profile_samples">, Columns> = {
   spans: { service: "service", host: "attrs['host.name']", map: "attrs" },
   metrics: { service: "labels['service']", host: "labels['host']", map: "labels" },
   metric_buckets: { service: "labels['service']", host: "labels['host']", map: "labels" },
-  // A monitor has no service until it names one (#335).
-  monitor_results: { service: null, host: "host", map: null },
+  // Every monitor names its service and host (#335).
+  monitor_results: { service: "service", host: "host", map: null },
 };
 
 class Blocked extends Error {
@@ -76,8 +76,7 @@ function emit(node: QueryNode | null, cols: Columns, params: Record<string, stri
   }
 }
 
-function reason(field: string, kind: OtherKind): string {
-  if (field === "service" && kind === "monitor_results") return "the filter names service, and a monitor has none yet";
+function reason(field: string, _kind: OtherKind): string {
   return field === "words in the message" ? "the filter names words in the message" : `the filter names ${field}`;
 }
 

@@ -18,6 +18,19 @@ import {
  * back from them.
  */
 
+/** api.example.com from https://api.example.com/health: the host it checks (#335), as the server takes it. */
+export function hostFromUrl(raw: string): string {
+  const text = raw.trim();
+  if (!/^https?:\/\//i.test(text)) {
+    return "";
+  }
+  try {
+    return new URL(text).hostname;
+  } catch {
+    return "";
+  }
+}
+
 /** "api /health" from https://api.agental.dev/health: the first label of its host, and its path. */
 export function nameFromUrl(raw: string): string {
   try {

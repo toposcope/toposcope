@@ -39,8 +39,8 @@ describe("a link's filter on each kind (#326)", () => {
     expect(kindFilter("toposcope:edge-1", "monitor_results", {})).toEqual({ sql: "toposcope = {kf0:String}" });
   });
 
-  test("a monitor has no service yet, so a filter on service sends no monitors", () => {
-    expect(notSent("service:api", "monitor_results")).toBe("the filter names service, and a monitor has none yet");
+  test("a monitor is decided by the service and host it names (#335); other keys it has not", () => {
+    expect(kindFilter("service:api", "monitor_results", {})).toEqual({ sql: "service = {kf0:String}" });
     expect(notSent("route:/pay", "monitor_results")).toBe("the filter names route");
   });
 

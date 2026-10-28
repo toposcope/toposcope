@@ -63,6 +63,34 @@ type Props = {
 const wrow = "grid grid-cols-[14px_minmax(0,1.6fr)_150px_minmax(160px,1fr)_84px_96px] items-center gap-4 border-b border-white/[0.06] px-4 py-2.5";
 const dotTone: Record<WatchDot, string> = { open: "text-red-300", ok: "text-emerald-300", warn: "text-amber-300", paused: "text-zinc-500" };
 
+/** 33g: the service a monitor is about and the host it checks, under its name (#335). */
+export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | "host"> }) {
+  const service = (monitor.service ?? "").trim();
+  const host = (monitor.host ?? "").trim();
+  return (
+    <span className="flex max-w-full min-w-0 items-center gap-1 font-mono">
+      {service ? (
+        <Badge tone="sec">
+          <span className="max-w-[140px] truncate" title={`service:${service}`}>
+            {service}
+          </span>
+        </Badge>
+      ) : (
+        <span title="Made before monitors named their service: edit it to give it one">
+          <Badge tone="out">no service</Badge>
+        </span>
+      )}
+      {host ? (
+        <Badge tone="out">
+          <span className="max-w-[160px] truncate" title={`host:${host}`}>
+            {host}
+          </span>
+        </Badge>
+      ) : null}
+    </span>
+  );
+}
+
 function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; stretches: MonitorStretch[]; nowMs: number; onOpen: Props["onOpen"] }) {
   const dot = watchDot(monitor);
   return (
@@ -77,6 +105,7 @@ function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; 
         onClick={() => onOpen(monitor, monitor.open ?? undefined)}
       >
         <span className={cn("max-w-full truncate text-[13px] font-medium hover:underline", dot === "paused" && "text-muted-foreground")}>{monitor.name}</span>
+        <PlaceTags monitor={monitor} />
         <span className="max-w-full truncate text-[12px] text-muted-foreground">
           {watchStateLine(monitor, stretches, nowMs)} · <span className="font-mono">{openCardLine(monitor, nowMs)}</span>
         </span>
@@ -394,6 +423,7 @@ function PushLane({
           <span className={cn("max-w-full truncate text-[12px] hover:underline", paused && "text-muted-foreground")}>
             {monitor.name}
           </span>
+          <PlaceTags monitor={monitor} />
           <span className="max-w-full truncate font-mono text-[11px] text-muted-foreground">{laneKind(monitor)}</span>
         </button>
       ) : (

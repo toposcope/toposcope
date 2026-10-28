@@ -135,6 +135,9 @@ export type AlertRule = {
   last_result_at?: number | null;
   /** A search monitor opens at least or fewer than its threshold (#176). */
   opens_when?: OpensWhen;
+  /** The service it is about and the host it checks (#335); empty on monitors made before. */
+  service?: string;
+  host?: string;
   /** Why a fewer-than monitor stayed shut on its last pass. */
   cant_tell?: CantTell | null;
   /** A push monitor (#177): its schedule, the time its next result counts from, a run in flight, its last ok. */
@@ -247,6 +250,10 @@ export type NetMonitorView = {
 
 /** A monitor as `GET /api/monitors` lists it. */
 export type MonitorView = AlertRule & {
+  /** The service it is about (#335): empty on a monitor made before, which asks to be edited. */
+  service: string;
+  /** The host it checks (#335): a URL's or address's host unless changed; may be empty. */
+  host: string;
   /** Who made it (#307). */
   made_by?: { id: string; name: string; revoked: boolean; kind: string } | null;
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;

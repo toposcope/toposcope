@@ -358,6 +358,7 @@ async function ensureMonitorResults(): Promise<void> {
       message String,
       host String,
       via LowCardinality(String),
+      service LowCardinality(String) DEFAULT '',
       seq UInt64 DEFAULT 0,
       arrived DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC'),
       toposcope LowCardinality(String) DEFAULT '',
@@ -371,6 +372,8 @@ async function ensureMonitorResults(): Promise<void> {
     ORDER BY (tenant_id, monitor_id, at)
     TTL toDate(at) + INTERVAL 30 DAY
   `);
+  // The service its monitor is about (#335), so a link's filter can decide it.
+  await clickhouseCommand("ALTER TABLE monitor_results ADD COLUMN IF NOT EXISTS service LowCardinality(String) DEFAULT '' AFTER via");
 }
 
 async function ensureLogsMessageTextIndex(): Promise<void> {

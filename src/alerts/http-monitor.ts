@@ -266,8 +266,10 @@ export async function settleNodeRun(rule: AlertRule, o: NodeRunOutcome, at: numb
     value: null,
     unit: null,
     message: o.message,
-    host: o.host,
+    // What is checked (#335): the monitor's own host, else the one its run reached.
+    host: rule.host || o.host,
     via: o.via,
+    service: rule.service ?? "",
   }).catch((err) => console.error("monitor result not kept", err));
 
   // Its state is kept whether or not anybody is called; with no webhook of its own and none in

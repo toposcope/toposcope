@@ -225,6 +225,7 @@ export function RunCallsRows({
   preview,
   canLink,
   testDraft,
+  afterName,
   children,
 }: {
   state: RunCallsState;
@@ -239,6 +240,8 @@ export function RunCallsRows({
   preview: { name: string; query: string; series: string };
   canLink: boolean;
   testDraft: () => Record<string, unknown> | null;
+  /** Rows under the name: its service and host (#335). */
+  afterName?: ReactNode;
   /** Rows of its own after calls: an HTTP(S) monitor's request. */
   children?: ReactNode;
 }) {
@@ -255,6 +258,7 @@ export function RunCallsRows({
           className={cn(box, "min-h-7 flex-1 bg-transparent outline-none placeholder:text-muted-foreground")}
         />
       </span>
+      {afterName}
       <span className="flex items-center gap-2 text-[12px]">
         <span className="w-14 shrink-0 text-muted-foreground">run</span>
         <span className="min-w-0 truncate font-mono">

@@ -18,6 +18,8 @@ export type PushResultRow = {
   message: string;
   host: string;
   via: string;
+  /** The service its monitor is about (#335). */
+  service?: string;
 };
 
 type ResultSqlRow = Omit<PushResultRow, "id" | "at"> & { id: string | number; at_ms: string | number };
@@ -60,6 +62,7 @@ export async function recordPushResults(rows: ReadonlyArray<Omit<PushResultRow, 
               message: row.message,
               host: row.host,
               via: row.via,
+              service: row.service ?? "",
               seq: from + i,
               arrived,
               toposcope: hereName(),

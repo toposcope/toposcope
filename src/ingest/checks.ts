@@ -236,7 +236,9 @@ export async function applyResults(results: PushResult[], nowMs: number): Promis
       if ("error" in made) {
         continue;
       }
-      rule = made;
+      // A monitor made by its first result is about that result's service (#335).
+      db.query("UPDATE alert_rules SET service = ? WHERE id = ?").run(result.service || "monitor", made.id);
+      rule = { ...made, service: result.service || "monitor" };
       created.push(rule.name);
     }
     await applyPushResult(rule, result, nowMs, db);

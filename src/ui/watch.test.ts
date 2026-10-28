@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import { MonitorRail } from "./components/monitor-rail";
-import { MarksLane, WatchView } from "./components/watch-view";
+import { MarksLane, PlaceTags, WatchView } from "./components/watch-view";
 import { eventTableMarkLayout } from "./change-marks";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "./types";
 import {
@@ -70,6 +70,8 @@ const call = (over: Partial<MonitorCall> = {}): MonitorCall => ({
 const monitor = (over: Partial<MonitorView> = {}): MonitorView => ({
   id: "m-errors",
   name: "api errors",
+  service: "api",
+  host: "",
   kind: "threshold",
   source: "search",
   state: "ok",
@@ -99,6 +101,8 @@ const monitor = (over: Partial<MonitorView> = {}): MonitorView => ({
 const quiet = monitor({
   id: "m-quiet",
   name: "ci-box lines loud",
+  service: "ci",
+  host: "ci-box",
   threshold: 1,
   state: "open",
   remind_every: "window",
@@ -219,11 +223,11 @@ describe("Watch's lanes (#175, frame 18c)", () => {
     expect(text).toContain("Watch 3 monitors · 1 open · webhooks to ntfy.sh All 3 Search 2 Fingerprints 1 24h 7d 30d New monitor");
     expect(text).toContain("Monitor Checks Last 24h Last check Now");
     // Rows in order: the open one first.
-    expect(text).toContain("ci-box lines loud open since 10:41 · 22m · search · host:ci-box · at least 1 line in 15m search · at least 1 · 15m 11:02 open 22m");
+    expect(text).toContain("ci-box lines loud ci ci-box open since 10:41 · 22m · search · host:ci-box · at least 1 line in 15m search · at least 1 · 15m 11:02 open 22m");
     expect(text.indexOf("ci-box lines loud")).toBeLessThan(text.indexOf("api errors"));
-    expect(text).toContain("api errors ok · last open");
+    expect(text).toContain("api errors api ok · last open");
     expect(text).toContain("search · at least 50 · 15m 11:02 12");
-    expect(text).toContain("after a deploy ok · fingerprints");
+    expect(text).toContain("after a deploy api ok · fingerprints");
     expect(text).toContain("marks deploys and flags on the same clock");
     expect(text).toContain("2 marks");
     expect(text).toContain("What opened today 10:41 ● ci-box lines loud · still open sent ✓");
@@ -302,6 +306,7 @@ const push = (over: Partial<MonitorView> = {}): MonitorView =>
   monitor({
     id: "m-push",
     name: "nightly-backup",
+    service: "backup",
     kind: "threshold",
     source: "push",
     saved_search_id: null,
@@ -427,7 +432,7 @@ describe("push monitors on Watch (#177, frames 18c and 18f)", () => {
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
     expect(text).toContain("All 2 Search 1 Push 1");
     expect(text).toContain("Each tick is a result. A bar is a run, from its /start to its end. The dashed line is when the next one is due.");
-    expect(text).toContain("nightly-backup push · 1d · grace 1h ok next 10-21 02:03");
+    expect(text).toContain("nightly-backup backup push · 1d · grace 1h ok next 10-21 02:03");
     expect(text).not.toContain("api errors");
     expect(text).not.toContain("marks deploys and flags");
   });
@@ -575,5 +580,20 @@ describe("Watch as a list (#263, 26g)", () => {
       { id: "b", name: "b", webhook_url: "https://ntfy.sh/alerts", last_attempt_at: 5, last_fired_at: 5, last_error: null } as never,
     ]);
     expect(rows).toEqual([{ host: "ntfy.sh", ok: true, lastAt: 5, monitors: 1 }]);
+  });
+});
+
+describe("a monitor's service and host on Watch (#335, frame 33g)", () => {
+  const tags = (m: { service: string; host: string }) =>
+    renderToStaticMarkup(createElement(PlaceTags, { monitor: m })).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+  test("its service and the host it checks, under its name", () => {
+    expect(tags({ service: "api", host: "api.example.com" })).toBe("api api.example.com");
+    expect(tags({ service: "api", host: "" })).toBe("api");
+  });
+
+  test("one made before monitors named a service says so, to be edited", () => {
+    expect(tags({ service: "", host: "" })).toBe("no service");
+    expect(tags({ service: "  ", host: "db.internal" })).toBe("no service db.internal");
   });
 });

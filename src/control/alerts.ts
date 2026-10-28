@@ -42,7 +42,7 @@ import {
 } from "../shared/monitor";
 
 const RULE_COLS =
-  "id, name, query, measure, webhook_url, webhook_urls, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at, created_by, updated_by";
+  "id, name, query, measure, webhook_url, webhook_urls, saved_search_id, threshold, enabled, last_fired_at, last_attempt_at, last_status, last_error, consecutive_failures, silenced_until, created_at, kind, last_mark, body_kind, body_template, source, state, remind_every, resolved_body, last_result, last_value, last_result_at, opens_when, cant_tell, every_ms, grace_ms, due_from, started_at, last_ok_at, paused_at, created_by, updated_by, service, host";
 
 /** `threshold`: the saved search's series ≥ N. `first_seen`: a fingerprint first seen after a deploy or flag mark. */
 export const alertKinds = ["threshold", "first_seen"] as const;
@@ -61,6 +61,12 @@ export type AlertLastMark = {
 };
 
 export type AlertRule = {
+  /**
+   * What it is about (#335): the service it watches, required on every save, and the host it
+   * checks (a push monitor's results carry the host that pushed). Empty on monitors made before.
+   */
+  service?: string;
+  host?: string;
   /** Who made it and who last changed it (#307): a person, a service account or `token:<name>`. */
   created_by?: string | null;
   updated_by?: string | null;

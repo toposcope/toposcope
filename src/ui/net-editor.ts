@@ -38,6 +38,12 @@ export const netModeExample: Record<NetMode, string> = {
   pop3: "pop.example.com:110",
 };
 
+/** db.internal from db.internal:5432, ::1 from [::1]:993: the host it checks (#335). */
+export function hostFromTarget(raw: string): string {
+  const t = parseNetTarget(raw);
+  return "error" in t ? "" : t.host;
+}
+
 /** "db:5432", "10.0.0.5:6379", "smtp certificate": a name to start from (18x). */
 export function nameFromTarget(raw: string, source: NetSource): string {
   const t = parseNetTarget(raw);

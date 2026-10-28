@@ -120,6 +120,10 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "started_at", "INTEGER");
   addColumnIfMissing(db, "alert_rules", "last_ok_at", "INTEGER");
   addColumnIfMissing(db, "alert_rules", "paused_at", "INTEGER");
+  // What a monitor is about (#335): its service and the host it checks. Empty on older monitors,
+  // which keep running and are asked for a service the next time they are saved.
+  addColumnIfMissing(db, "alert_rules", "service", "TEXT NOT NULL DEFAULT ''");
+  addColumnIfMissing(db, "alert_rules", "host", "TEXT NOT NULL DEFAULT ''");
   db.run("CREATE UNIQUE INDEX IF NOT EXISTS alert_rules_ping_key ON alert_rules (ping_key) WHERE ping_key IS NOT NULL");
   // A monitor's results for Watch's ticks (#177, #178), shared by the sources that have results: one row
   // a monitor a minute, the worst of the minute winning (fail > warn > ok, of equals the later), for
