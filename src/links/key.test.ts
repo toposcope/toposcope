@@ -1,3 +1,4 @@
+import type { LinkKind } from "./kinds";
 import { describe, expect, test } from "bun:test";
 import { decodeLinkKey, encodeLinkKey, hashSecret, kidLabel, linkKeyNotAKey, newKid, newSecret } from "./key";
 import { keyState, type LinkKeyRecord } from "./store";
@@ -11,6 +12,7 @@ describe("link keys (#136)", () => {
     q: "level:error service:api checkout",
     until: null,
     secret: newSecret(),
+    kinds: ["logs", "marks", "traces", "metrics", "profiles", "monitors"] as LinkKind[],
   };
 
   test("round trip: the prefix says the direction, the rest the minter, the filter and the date", () => {
@@ -32,6 +34,13 @@ describe("link keys (#136)", () => {
     expect(decodeLinkKey(text.slice(0, text.lastIndexOf(".")))).toEqual({ error: linkKeyNotAKey });
   });
 
+  test("a key carries the kinds its link will carry, in one order; an unknown kind is not a key (#329)", () => {
+    const some = encodeLinkKey({ ...key, kinds: ["traces", "logs"] });
+    expect(some.endsWith(".traces,logs")).toBe(true);
+    expect(decodeLinkKey(some)).toMatchObject({ kinds: ["logs", "traces"] });
+    expect(decodeLinkKey(encodeLinkKey(key).replace(/\.[^.]*$/, ".logs,cats"))).toEqual({ error: linkKeyNotAKey });
+  });
+
   test("ids and secrets", () => {
     expect(newKid()).toMatch(/^k[0-9a-f]{4}$/);
     expect(kidLabel("k7f3a")).toBe("k-7f3a");
@@ -40,7 +49,7 @@ describe("link keys (#136)", () => {
   });
 
   test("where a key stands", () => {
-    const base: LinkKeyRecord = { kid: "k1234", kind: "offer", q: "", secret_hash: "x", until: null, uses: 0, created_at: 0, spent_at: null, revoked_at: null };
+    const base: LinkKeyRecord = { kinds: "logs,marks", kid: "k1234", kind: "offer", q: "", secret_hash: "x", until: null, uses: 0, created_at: 0, spent_at: null, revoked_at: null };
     expect(keyState(base)).toBe("unused");
     expect(keyState({ ...base, spent_at: 5, uses: 1 })).toBe("used");
     expect(keyState({ ...base, revoked_at: 5 })).toBe("revoked");

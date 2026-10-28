@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AccessRefusal, AccessRow } from "../../access/list";
 import { clockAt } from "../watch";
+import { kindsOf, leavesWords, type LinkKind } from "../link-kinds";
+import type { LinksList } from "../link-words";
+import { KindChips } from "./kind-boxes";
 import { MintDialog, PasteDialog } from "./link-dialogs";
 import { InviteSheet, MakeTokenSheet, PeopleCards, PeopleGroup, PersonTokenRows, ServiceAccountsGroup, type PeopleBody, type Role } from "./people-groups";
 
@@ -52,6 +55,42 @@ export function expiryWords(row: AccessRow, nowMs: number): { text: string; soon
   return { text: `in ${days} d`, soon: days < 14 && row.kind === "share" };
 }
 
+/** The kinds of each link (by id) and key (by kid), from `GET /api/links` (#329). */
+export function kindsById(list: Pick<LinksList, "links" | "keys"> | null): Map<string, { q: string; kinds: LinkKind[] }> {
+  const by = new Map<string, { q: string; kinds: LinkKind[] }>();
+  for (const l of list?.links ?? []) {
+    by.set(l.id, { q: l.q, kinds: kindsOf(l.kinds) });
+  }
+  for (const k of list?.keys ?? []) {
+    by.set(k.kid, { q: k.q, kinds: kindsOf(k.kinds) });
+  }
+  return by;
+}
+
+/**
+ * "What leaves this instance" (33c): each link that copies from us and each key that will, naming
+ * the kinds that go and why the rest do not; each share reads counts only.
+ */
+export function whatLeaves(list: Pick<LinksList, "links" | "keys"> | null, rows: readonly AccessRow[]): string {
+  const out: string[] = [];
+  for (const l of list?.links ?? []) {
+    if (l.role === "serve") {
+      out.push(leavesWords({ peer: l.peer_name || l.peer_url, q: l.q, kinds: kindsOf(l.kinds), pending: false }));
+    }
+  }
+  for (const k of list?.keys ?? []) {
+    if (k.kind === "offer") {
+      out.push(leavesWords({ peer: `key ${k.label}`, q: k.q, kinds: kindsOf(k.kinds), pending: true }));
+    }
+  }
+  for (const r of rows) {
+    if (r.kind === "share") {
+      out.push(`${r.name} reads counts, never a row.`);
+    }
+  }
+  return out.length ? out.join(" ") : "Nothing: no link copies from this instance and no share reads from it.";
+}
+
 export function AccessView(props: {
   filter: AccessFilter;
   onFilter: (filter: AccessFilter) => void;
@@ -65,6 +104,7 @@ export function AccessView(props: {
   me?: { id: string; name: string; role: Role } | null;
 }) {
   const [data, setData] = useState<{ rows: AccessRow[]; refusals: AccessRefusal[] } | null>(null);
+  const [links, setLinks] = useState<LinksList | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
   const [door, setDoor] = useState<"any" | "link" | null>(null);
   const [mint, setMint] = useState<"offer" | "invite" | null>(null);
@@ -88,6 +128,10 @@ export function AccessView(props: {
     const res = await fetch("/api/access");
     if (res.ok) {
       setData((await res.json()) as { rows: AccessRow[]; refusals: AccessRefusal[] });
+    }
+    const list = await fetch("/api/links").catch(() => null);
+    if (list?.ok) {
+      setLinks((await list.json()) as LinksList);
     }
   }, []);
   useEffect(() => {
@@ -124,8 +168,11 @@ export function AccessView(props: {
   const shown = rows.filter((r) => inFilter(r, props.filter));
   const col = "grid grid-cols-[150px_minmax(0,1.6fr)_minmax(0,1fr)_100px_160px_96px_72px] items-center gap-4";
 
+  const kinds = kindsById(links);
+
   function row(r: AccessRow) {
     const exp = expiryWords(r, nowMs);
+    const carries = r.kind === "link" || r.kind === "invite" ? kinds.get(r.id) : undefined;
     const g = accessGlyph(r);
     return (
       <div key={`${r.kind}-${r.id}`} className={cn(col, "border-t border-white/[0.06] px-4 py-2.5 text-[12.5px]")}>
@@ -133,8 +180,11 @@ export function AccessView(props: {
           <span style={{ color: g.color }}>{g.glyph}</span>
           {r.verb}
         </span>
-        <span className="min-w-0 truncate">
-          <span className="font-medium text-foreground">{r.name}</span> <span className="text-muted-foreground">· {r.lets_through}</span>
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="truncate">
+            <span className="font-medium text-foreground">{r.name}</span> <span className="text-muted-foreground">· {r.lets_through}</span>
+          </span>
+          {carries ? <KindChips q={carries.q} kinds={carries.kinds} /> : null}
         </span>
         <span className="truncate font-mono text-[12px] text-muted-foreground">{r.scope}</span>
         <span className={cn("text-[12px] text-muted-foreground", exp.soon && "text-red-300")}>
@@ -252,6 +302,13 @@ export function AccessView(props: {
               </section>
             );
           })}
+
+        {data && props.filter !== "people" && props.filter !== "tokens" ? (
+          <section aria-label="What leaves this instance" className="flex flex-col gap-1 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3">
+            <span className="text-[13px] font-medium">What leaves this instance</span>
+            <span className="text-[12px] leading-[1.5] text-muted-foreground">{whatLeaves(links, rows)}</span>
+          </section>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-4 text-[12px] text-muted-foreground">
           <span className="min-w-0 flex-1 truncate">

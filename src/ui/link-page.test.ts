@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { behindWords, linkKind, linkTitle, quarterBars, ratePerHour } from "./link-page";
+import { behindWords, kindLineWords, kindsCarried, linkKind, linkTitle, quarterBars, ratePerHour, type KindLine } from "./link-page";
 
 describe("a link's page words (#267)", () => {
   test("title, behind, rate", () => {
@@ -19,5 +19,26 @@ describe("a link's page words (#267)", () => {
     expect(bars.find((b) => b.t === Date.parse("2026-10-26T13:00:00Z"))!.n).toBe(12);
     // 09:14–09:20 touches the 09:00 and the 09:15 quarter.
     expect(bars.filter((b) => b.gap).length).toBe(2);
+  });
+});
+
+describe("a line per kind (#329, 33b)", () => {
+  const line = (over: Partial<KindLine>): KindLine => ({ kind: "logs", ticked: true, state: "caught up", rows_day: 0, bytes_day: 0, ...over });
+  const pull = { role: "pull" as const, peer: "edge-1" };
+  test("each state in words, with its dot", () => {
+    expect(kindLineWords(line({}), pull)).toEqual({ state: "caught up", tone: "ok", note: "rows, message text included" });
+    expect(kindLineWords(line({ kind: "profiles", ticked: false, state: "unticked at the source" }), pull)).toEqual({ state: "unticked at the source", tone: "off", note: "edge-1 sends none on this link" });
+    expect(kindLineWords(line({ kind: "traces", state: "unticked at the source", ticked: false }), { role: "serve", peer: "x" }).note).toBe("this instance sends none on this link");
+    expect(kindLineWords(line({ kind: "traces", state: "not sent", not_sent: "the filter names level" }), pull)).toEqual({ state: "not sent", tone: "off", note: "not sent: the filter names level" });
+    expect(kindLineWords(line({ kind: "metrics", state: "a hole", gone: { from: Date.parse("2026-10-19T03:00:00Z"), to: Date.parse("2026-10-20T09:00:00Z") } }), pull)).toEqual({
+      state: "a hole",
+      tone: "warn",
+      note: "2026-10-19 → 2026-10-20 gone at the source",
+    });
+    expect(kindLineWords(line({ state: "paused" }), pull).tone).toBe("warn");
+    expect(kindLineWords(line({ state: "behind" }), pull).state).toBe("behind");
+  });
+  test("what it carries and what is unticked", () => {
+    expect(kindsCarried([line({}), line({ kind: "marks" }), line({ kind: "profiles", ticked: false })])).toEqual({ carries: ["logs", "marks"], unticked: ["profiles"] });
   });
 });

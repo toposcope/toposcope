@@ -5,7 +5,7 @@ import { migrateControlDb } from "../control/index";
 import { decodeLinkKey, encodeLinkKey, linkKeyOlder } from "./key";
 import { here, linkProtocol, mismatchWords, olderRelease, refuseOtherVersion, versionHeaders, versionRefusal } from "./version";
 
-const key = { kind: "offer" as const, name: "edge-1", url: "https://edge-1.example.com", kid: "k7f3a", q: "", until: null, secret: "s".repeat(43) };
+const key = { kind: "offer" as const, name: "edge-1", url: "https://edge-1.example.com", kid: "k7f3a", q: "", until: null, secret: "s".repeat(43), kinds: ["logs" as const] };
 
 describe("a link names its protocol; different versions refuse (#328)", () => {
   test("keys start tsl2_, and a tsl1_ key is refused at paste with one line", () => {

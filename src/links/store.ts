@@ -11,6 +11,7 @@ import { hashSecret, type LinkKeyKind } from "./key";
  */
 
 export type LinkKeyRecord = {
+  kinds: string;
   kid: string;
   kind: LinkKeyKind;
   q: string;
@@ -24,6 +25,10 @@ export type LinkKeyRecord = {
 };
 
 export type LinkRecord = {
+  /** The kinds it carries, `logs,marks,traces` (#329). */
+  kinds: string;
+  /** Each kind's last word from the feed: `{ "traces": { "not_sent": "…" } }`, JSON (#329). */
+  kind_state: string | null;
   id: string;
   role: "pull" | "serve";
   connects: "we" | "they";
@@ -55,13 +60,13 @@ export type LinkRecord = {
 };
 
 export function saveLinkKey(
-  key: { kid: string; kind: LinkKeyKind; q: string; secret: string; until: number | null },
+  key: { kid: string; kind: LinkKeyKind; q: string; secret: string; until: number | null; kinds: string },
   now = Date.now(),
   db: Database = getDb(),
 ): void {
   db.query(
-    "INSERT INTO link_keys (kid, kind, q, secret_hash, until, uses, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)",
-  ).run(key.kid, key.kind, key.q, hashSecret(key.secret), key.until, now);
+    "INSERT INTO link_keys (kid, kind, q, secret_hash, until, uses, created_at, kinds) VALUES (?, ?, ?, ?, ?, 0, ?, ?)",
+  ).run(key.kid, key.kind, key.q, hashSecret(key.secret), key.until, now, key.kinds);
   stampCreated("link_keys", key.kid, db);
 }
 
@@ -114,13 +119,13 @@ export function linkId(): string {
 export function saveLink(
   link: Omit<
     LinkRecord,
-    "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_contact_at" | "last_error" | "removed_at"
+    "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_contact_at" | "last_error" | "removed_at" | "kind_state"
   >,
   db: Database = getDb(),
 ): LinkRecord {
   db.query(
-    `INSERT INTO links (id, role, connects, peer_id, peer_name, peer_url, q, kid, secret, secret_hash, created_at, protocol)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${linkProtocol})`,
+    `INSERT INTO links (id, role, connects, peer_id, peer_name, peer_url, q, kid, secret, secret_hash, created_at, protocol, kinds)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${linkProtocol}, ?)`,
   ).run(
     link.id,
     link.role,
@@ -133,6 +138,7 @@ export function saveLink(
     link.secret,
     link.secret_hash,
     link.created_at,
+    link.kinds ?? "logs,marks",
   );
   stampCreated("links", link.id, db);
   return getLink(link.id, db)!;
@@ -165,7 +171,7 @@ export function noteContact(
   fields: Partial<
     Pick<
       LinkRecord,
-      "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_error" | "peer_name"
+      "position" | "settled" | "arrived_at" | "behind_rows" | "gone_from" | "gone_to" | "gone_from_at" | "gone_to_at" | "last_error" | "peer_name" | "kind_state"
     >
   > & { at: number },
   db: Database = getDb(),
@@ -173,7 +179,7 @@ export function noteContact(
   const sets: string[] = ["last_contact_at = ?"];
   const values: (string | number | null)[] = [fields.at];
   const keys = [
-    "position", "settled", "arrived_at", "behind_rows", "gone_from", "gone_to", "gone_from_at", "gone_to_at", "last_error", "peer_name",
+    "position", "settled", "arrived_at", "behind_rows", "gone_from", "gone_to", "gone_from_at", "gone_to_at", "last_error", "peer_name", "kind_state",
   ] as const;
   for (const key of keys) {
     if (key in fields) {
@@ -214,4 +220,34 @@ export function holeTimes(
   // Never closed before it opens: positions can go before their day is past retention.
   const to = kept < from ? from : kept;
   return { gone_from_at: from, gone_to_at: to };
+}
+
+/** Rows and bytes one call moved for a kind, added to today's count on this side (#329). */
+export function noteVolume(linkId: string, kind: string, rows: number, bytes: number, now = Date.now(), db: Database = getDb()): void {
+  if (rows <= 0 && bytes <= 0) {
+    return;
+  }
+  const day = new Date(now).toISOString().slice(0, 10);
+  db.query(
+    `INSERT INTO link_volume (link_id, kind, day, rows, bytes) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (link_id, kind, day) DO UPDATE SET rows = rows + excluded.rows, bytes = bytes + excluded.bytes`,
+  ).run(linkId, kind, day, rows, bytes);
+}
+
+/** A kind's rows and bytes over the last day: today and yesterday, by the share of today gone. */
+export function volumeDay(linkId: string, now = Date.now(), db: Database = getDb()): Record<string, { rows: number; bytes: number }> {
+  const today = new Date(now).toISOString().slice(0, 10);
+  const yesterday = new Date(now - 86_400_000).toISOString().slice(0, 10);
+  const past = (now % 86_400_000) / 86_400_000;
+  const rows = db
+    .query("SELECT kind, day, rows, bytes FROM link_volume WHERE link_id = ? AND day IN (?, ?)")
+    .all(linkId, today, yesterday) as Array<{ kind: string; day: string; rows: number; bytes: number }>;
+  const out: Record<string, { rows: number; bytes: number }> = {};
+  for (const r of rows) {
+    const share = r.day === today ? 1 : 1 - past;
+    const v = (out[r.kind] ??= { rows: 0, bytes: 0 });
+    v.rows += Math.round(r.rows * share);
+    v.bytes += Math.round(r.bytes * share);
+  }
+  return out;
 }

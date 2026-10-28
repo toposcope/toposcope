@@ -1,4 +1,17 @@
+import type { LinkKind } from "./link-kinds";
+
 /** Pure pieces of a link's page (#267, frame 26m). */
+
+/** A line per kind (#329, frame 33b): each on the link's one position. */
+export type KindLine = {
+  kind: LinkKind;
+  ticked: boolean;
+  state: "caught up" | "behind" | "a hole" | "not sent" | "unticked at the source" | "paused";
+  not_sent?: string;
+  gone?: { from: number; to: number };
+  rows_day: number;
+  bytes_day: number;
+};
 
 export type LinkPageData = {
   id: string;
@@ -18,6 +31,7 @@ export type LinkPageData = {
   holes: Array<{ from: string; to: string }>;
   pulled: Array<{ t: string; n: number }>;
   pulled_24h: number;
+  kinds: KindLine[];
 };
 
 /** The link's name in the crumb is the other instance (29b). */
@@ -58,4 +72,50 @@ export function quarterBars(pulled: Array<{ t: string; n: number }>, holes: Arra
     out.push({ t, n: by.get(t) ?? 0, gap });
   }
   return out;
+}
+
+/** What a kind is, in the By kind table, when nothing is wrong (33b). */
+const kindIs: Record<LinkKind, string> = {
+  logs: "rows, message text included",
+  marks: "every mark the scope does not rule out by service",
+  traces: "spans, attributes as sent",
+  metrics: "points and buckets",
+  profiles: "samples, with their spans",
+  monitors: "results, read-only on the puller",
+};
+
+const ymd = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+/**
+ * A kind's line in words (33b): the state with its dot, and the note beside it. A server reason
+ * like "the filter names level" is shown as "not sent: the filter names level".
+ */
+export function kindLineWords(
+  line: KindLine,
+  l: Pick<LinkPageData, "role" | "peer">,
+): { state: string; tone: "ok" | "warn" | "off"; note: string } {
+  const source = l.role === "pull" ? l.peer : "this instance";
+  switch (line.state) {
+    case "unticked at the source":
+      return { state: "unticked at the source", tone: "off", note: `${source} sends none on this link` };
+    case "not sent":
+      return { state: "not sent", tone: "off", note: `not sent: ${line.not_sent ?? "the scope cannot decide it"}` };
+    case "a hole":
+      return {
+        state: "a hole",
+        tone: "warn",
+        note: line.gone ? `${ymd(line.gone.from)} → ${ymd(line.gone.to)} gone at the source` : "some rows were gone at the source",
+      };
+    case "paused":
+      return { state: "paused", tone: "warn", note: kindIs[line.kind] };
+    case "behind":
+      return { state: "behind", tone: "warn", note: kindIs[line.kind] };
+    default:
+      return { state: "caught up", tone: "ok", note: kindIs[line.kind] };
+  }
+}
+
+/** The kinds a link carries, and those unticked at the source, for "Which way, and what". */
+export function kindsCarried(lines: readonly KindLine[]): { carries: LinkKind[]; unticked: LinkKind[] } {
+  return { carries: lines.filter((k) => k.ticked).map((k) => k.kind), unticked: lines.filter((k) => !k.ticked).map((k) => k.kind) };
 }

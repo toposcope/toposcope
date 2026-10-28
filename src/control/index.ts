@@ -292,6 +292,21 @@ export function migrateControlDb(db: Database): void {
   // The protocol a link was made with (#328). Links from before 0.10 cannot carry this release's
   // tables, so they stop: removed, as Revoke does, with their record kept.
   addColumnIfMissing(db, "links", "protocol", "INTEGER NOT NULL DEFAULT 1");
+  // The kinds a key and its link carry (#329), and each kind's last word from the feed.
+  addColumnIfMissing(db, "link_keys", "kinds", "TEXT NOT NULL DEFAULT 'logs,marks'");
+  addColumnIfMissing(db, "links", "kinds", "TEXT NOT NULL DEFAULT 'logs,marks'");
+  addColumnIfMissing(db, "links", "kind_state", "TEXT");
+  // Rows and bytes a day for each kind a link moved, on the side that moved them (#329, #332).
+  db.run(`
+    CREATE TABLE IF NOT EXISTS link_volume (
+      link_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      day TEXT NOT NULL,
+      rows INTEGER NOT NULL DEFAULT 0,
+      bytes INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (link_id, kind, day)
+    );
+  `);
   db.query("UPDATE links SET removed_at = ? WHERE protocol < 2 AND removed_at IS NULL").run(Date.now());
   // A feed (#135): rows by arrival through one q, fixed when it is defined.
   db.run(`
