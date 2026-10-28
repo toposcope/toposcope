@@ -71,6 +71,24 @@ Every tool's 2xx answer is the route's JSON, shaped for an agent; the HTTP API's
 - **Capped, a read tool.** At most 50 rows in each list, 10 series and 64,000 bytes. `max_rows`, `max_series` and `max_bytes` ask for less, never more. A cut answer has `cut`: what was cut, a sentence, and `try`, the same tool's arguments asked narrower: a quarter of the window, and a `service:` term for the service most of the rows came from, offered only when that name is a plain word (letters, digits, `.`, `_` and `-`, at most 64), since `cut` sits outside `data`. An answer still over `max_bytes` with one row a list has `data: null`.
 - **On the instance's clock.** Times are RFC 3339 in UTC, and `now` is when the instance answered; a time in a row's attributes is left as it was sent.
 
+### Design tools
+
+What an Operator makes, each with its preview (#360). A preview stores nothing and is marked read-only; a delete is marked destructive.
+
+| Makes | Preview | Write | Undone by |
+| --- | --- | --- | --- |
+| A saved search | `saved_search_preview`: its rows, its series' value and a few rows over its window | `saved_search_create`, `saved_search_update` | `saved_search_delete`, or `saved_search_update` with the body it had |
+| A monitor of any kind: rows, share of rows, fewer than, HTTP(S), TCP, certificate, push, new fingerprints | `monitor_draft_preview`: where it would have opened and resolved over the last 7 days; `monitor_send` runs an HTTP(S), TCP or certificate check once; `saved_search_test` reads a saved search as a monitor would now | `monitor_put` | `monitor_delete`, or `monitor_put` with the body it had |
+| A panel on a saved search's canvas (`home` for the one marked Home) | `panel_preview`: the series it would draw | `panel_add`, `panel_put` (move, resize or change one) | `panel_remove`, or `saved_search_update` with the panels as they were |
+| A field's role | | `field_role_set` (one field; the rest stay) | `field_role_set` with the role it had |
+| A note on the clock | | `note_write` | `note_delete` |
+
+Every write answers with `id`, `link` (where it is in the app, a path on this instance) and `undo`: `{ tool, arguments, does }`, the one call that takes it back, which `tools/call` takes as it is.
+
+**A monitor is previewed before it is saved.** `monitor_put` with a token refuses (428) unless the same caller called `monitor_draft_preview` with the same body, its name in it, in the last 10 minutes. The refusal says which: no preview, one older than 10 minutes, or a body that changed since; and it carries the preview call to make. Bodies match by a hash of the body normalized: key order and spaces around text do not count, anything else does. It holds for every token, an agent's or a script's alike, on `PUT /api/monitors/:name`, `POST /api/alert-rules` and `PUT /api/alert-rules/:id` (whose preview names the `id` in place of the name). A browser session is not held, since the person is in the editor; nor is a body that only pauses or silences, nor the `undo` a change answered with, which puts back a body that was. A push, HTTP(S), TCP, certificate or new-fingerprints monitor has no past to draw: its preview still counts, and says why it drew nothing and what to call instead. An HTTP(S) monitor's undo gives each header as null, which keeps the stored value, since a header's value is never shown back.
+
+Not here: deleting in bulk, and anything an Owner does (people, roles, tokens, sign-in, retention, shares and links).
+
 ## The protocol
 
 MCP revision 2025-11-25 (2025-06-18 too, when the client asks for it), over Streamable HTTP, stateless. Each `POST /mcp` carries one JSON-RPC message: a request gets its answer as JSON in the reply, and a notification gets 202. There is no session, no server-sent stream, and `GET /mcp` is 405. It answers `initialize`, `ping`, `tools/list` and `tools/call`, and offers no resources, prompts, sampling or elicitation. A browser page may call it only from this instance's own address, `TOPOSCOPE_PUBLIC_URL` or `http://localhost` on the app's port; any other `Origin` is a 403, and a client that sends none, as a CLI or an agent, is taken. A message is at most 1 MiB (a 413 past that) and its params nest at most 64 deep. A path param is one segment of its route's path: `.`, `..` or one holding a `/` is the tool's error.
