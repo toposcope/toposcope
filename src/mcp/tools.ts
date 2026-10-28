@@ -100,6 +100,10 @@ export function toolCall(tool: McpTool, args: Record<string, unknown>): ToolCall
     if (value === null || value === "") {
       return { error: `${name} is required`, field: name };
     }
+    // Each is one segment of the route's path: never a dot segment or a path of its own.
+    if (value === "." || value === ".." || value.includes("/")) {
+      return { error: `${name} may not be . or .. or hold a /`, field: name };
+    }
     path = path.replace(`:${name}`, encodeURIComponent(value));
   }
   const query = new URLSearchParams();

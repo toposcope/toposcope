@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { apiRoutes } from "../api/routes";
+import { nestedDeeper, originAllowed } from "./server";
 import { mcpTools, toolCall, toolOf, toolRouteIds, toolsOf } from "./tools";
 
 const root = join(import.meta.dir, "..");
@@ -116,13 +117,31 @@ beforeAll(async () => {
     out.badVersion = await rpc("operator", "ping", undefined, { "mcp-protocol-version": "2024-01-01" });
     out.goodVersion = await rpc("operator", "ping", undefined, { "mcp-protocol-version": "2025-11-25" });
     out.otherSite = await rpc("operator", "ping", undefined, { origin: "https://evil.example" });
-    out.ownSite = await rpc("operator", "ping", undefined, { origin: "http://app.test" });
+    // A DNS-rebinding page: its Origin and the Host it reaches us under are the same name.
+    out.rebound = await rpc("operator", "ping", undefined, { origin: "http://evil.example:8080", host: "evil.example:8080" });
+    out.ownSite = await rpc("operator", "ping", undefined, { origin: "https://logs.example.com" });
+    out.localSite = await rpc("operator", "ping", undefined, { origin: "http://127.0.0.1:8080" });
+    out.dotDot = await call("operator", "monitor_get", { name: ".." });
+    out.dot = await call("operator", "monitor_get", { name: "." });
+    out.slash = await call("operator", "saved_search_run", { id: "../../me" });
+    out.dotted = await call("operator", "monitor_get", { name: "a.b" });
+    const big = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping", params: { pad: "x".repeat(1024 * 1024) } });
+    out.tooBig = await post("operator", big);
+    const stream = (text) => new ReadableStream({ start(c) { const b = new TextEncoder().encode(text); for (let i = 0; i < b.length; i += 65536) c.enqueue(b.slice(i, i + 65536)); c.close(); } });
+    out.tooBigStream = await answer(await app.fetch(new Request("http://app.test/mcp", { method: "POST", headers: { authorization: as.operator, "content-type": "application/json" }, body: stream(big), duplex: "half" })));
+    let deep = "x";
+    for (let i = 0; i < 100; i++) deep = [deep];
+    out.deep = await call("operator", "search", { q: deep });
+    out.veryDeep = await post("operator", '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{"q":' + "[".repeat(200000) + "]".repeat(200000) + "}}}");
     out.get = await answer(await app.fetch(new Request("http://app.test/mcp", { headers: { authorization: as.operator, accept: "text/event-stream" } })));
     console.log(JSON.stringify(out));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
     cwd: fixture,
-    env: { ...process.env, NODE_PATH: join(root, "../node_modules"), TOPOSCOPE_DEV: "1", SQLITE_PATH: ":memory:", CLICKHOUSE_URL: "http://clickhouse.test", OTLP_GRPC_PORT: "0" },
+    env: {
+      ...process.env, NODE_PATH: join(root, "../node_modules"), TOPOSCOPE_DEV: "1", SQLITE_PATH: ":memory:", CLICKHOUSE_URL: "http://clickhouse.test", OTLP_GRPC_PORT: "0",
+      TOPOSCOPE_PUBLIC_URL: "https://logs.example.com", PORT: "8080",
+    },
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -237,7 +256,56 @@ describe("MCP at /mcp, in the app (#358)", () => {
     expect([r.badVersion.status, r.badVersion.body.error.code]).toEqual([400, -32600]);
     expect(r.goodVersion.body.result).toEqual({});
     expect(r.otherSite.status).toBe(403);
+    expect(r.rebound.status).toBe(403);
     expect(r.ownSite.body.result).toEqual({});
+    expect(r.localSite.body.result).toEqual({});
     expect(r.get.status).toBe(405);
+  });
+});
+
+describe("MCP's limits (#358)", () => {
+  test("an Origin is this instance's public address or localhost on its port, never the request's Host", () => {
+    const env = { TOPOSCOPE_PUBLIC_URL: "https://logs.example.com/toposcope", PORT: "8080" };
+    expect(originAllowed(undefined, env)).toBe(true);
+    expect(originAllowed("https://logs.example.com", env)).toBe(true);
+    expect(originAllowed("http://logs.example.com", env)).toBe(false);
+    expect(originAllowed("http://localhost:8080", env)).toBe(true);
+    expect(originAllowed("http://127.0.0.1:8080", env)).toBe(true);
+    expect(originAllowed("http://[::1]:8080", env)).toBe(true);
+    expect(originAllowed("http://127.0.0.1:6274", env)).toBe(false);
+    expect(originAllowed("http://evil.example:8080", env)).toBe(false);
+    expect(originAllowed("null", env)).toBe(false);
+    expect(originAllowed("http://localhost:8080", {})).toBe(true);
+    expect(originAllowed("https://logs.example.com", {})).toBe(false);
+  });
+
+  test("nesting is counted without recursion: 64 deep is taken, 65 is not", () => {
+    const nest = (n: number) => {
+      let v: unknown = "x";
+      for (let i = 0; i < n; i++) v = [v];
+      return v;
+    };
+    expect(nestedDeeper(nest(64), 64)).toBe(false);
+    expect(nestedDeeper(nest(65), 64)).toBe(true);
+    expect(nestedDeeper(nest(500_000), 64)).toBe(true);
+  });
+
+  test("a path param is one segment: . and .. and a / are the tool's error, and the call goes nowhere else", () => {
+    expect(parsed(r.dotDot)).toEqual({ error: "name may not be . or .. or hold a /", field: "name" });
+    expect(parsed(r.dot).field).toBe("name");
+    expect(parsed(r.slash)).toEqual({ error: "id may not be . or .. or hold a /", field: "id" });
+    expect(r.dotDot.body.result.isError).toBe(true);
+    expect(parsed(r.dotted)).toEqual({ error: "Monitor not found" });
+  });
+
+  test("a body past 1 MiB is a 413 before it is read as JSON, with or without Content-Length", () => {
+    expect([r.tooBig.status, r.tooBig.body.error.code, r.tooBig.body.id]).toEqual([413, -32600, null]);
+    expect([r.tooBigStream.status, r.tooBigStream.body.error.code]).toEqual([413, -32600]);
+  });
+
+  test("params nested past 64 deep are -32602, not a stack overflow", () => {
+    expect([r.deep.status, r.deep.body.error.code]).toEqual([200, -32602]);
+    expect(r.deep.body.error.message).toBe("params nest at most 64 deep");
+    expect(r.veryDeep.body.error.code).toBe(-32602);
   });
 });

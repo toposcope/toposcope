@@ -2,7 +2,6 @@ import type { Context } from "hono";
 import { actorOf } from "../actor-context";
 import { roleOf } from "../api/registry";
 import { roleAtLeast } from "../control/people";
-import { openedAddress } from "../shared/request-address";
 import { publicUrl } from "../shared/public-url";
 import { version } from "../shared/version";
 import { toolCall, type McpTool } from "./tools";
@@ -29,7 +28,7 @@ export const rpcError = {
   internal: -32603,
 } as const;
 
-function reply(c: Context, id: Id | null, answer: Answer, status: 200 | 400 = 200): Response {
+function reply(c: Context, id: Id | null, answer: Answer, status: 200 | 400 | 413 = 200): Response {
   return c.json({ jsonrpc: "2.0", id, ...answer }, status);
 }
 
@@ -37,19 +36,77 @@ function failure(code: number, message: string): Answer {
   return { error: { code, message } };
 }
 
-/** A browser on another site may not drive MCP here (the spec's DNS-rebinding rule); a client with no Origin may. */
-function originAllowed(c: Context): boolean {
-  const origin = c.req.header("origin");
-  if (!origin) {
+/** The most a POST to /mcp may carry. */
+export const maxBodyBytes = 1024 * 1024;
+/** How deep a message's params may nest. */
+export const maxDepth = 64;
+
+/**
+ * A browser page may drive MCP here only from this instance's own address: TOPOSCOPE_PUBLIC_URL, or
+ * localhost on the port the app listens on. Never the request's Host, which a DNS-rebinding page
+ * sets to its own name. A client with no Origin (a CLI, an agent) is not a page and may.
+ */
+export function originAllowed(origin: string | undefined, env: Record<string, string | undefined> = process.env): boolean {
+  if (origin === undefined) {
     return true;
   }
+  let given: URL;
   try {
-    const host = new URL(origin).host;
-    const own = publicUrl();
-    return host === openedAddress(c) || host === new URL(c.req.url).host || (own !== null && host === new URL(own).host);
+    given = new URL(origin);
   } catch {
     return false;
   }
+  const own = publicUrl(env);
+  if (own !== null && given.origin === new URL(own).origin) {
+    return true;
+  }
+  const port = env.PORT ?? "8080";
+  return given.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(given.hostname) && given.port === port;
+}
+
+/** Deeper than `limit`, counted without recursion so a deep message cannot overflow the stack. */
+export function nestedDeeper(value: unknown, limit: number): boolean {
+  const stack: Array<[unknown, number]> = [[value, 1]];
+  while (stack.length > 0) {
+    const [node, depth] = stack.pop()!;
+    if (typeof node !== "object" || node === null) {
+      continue;
+    }
+    if (depth > limit) {
+      return true;
+    }
+    for (const child of Object.values(node)) {
+      stack.push([child, depth + 1]);
+    }
+  }
+  return false;
+}
+
+/** The body as text, or null once it passes `max` bytes: read no further than that, whatever Content-Length says. */
+async function cappedText(request: Request, max: number): Promise<string | null> {
+  const length = Number(request.headers.get("content-length"));
+  if (Number.isFinite(length) && length > max) {
+    return null;
+  }
+  if (!request.body) {
+    return "";
+  }
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -112,8 +169,13 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
           return { result: { content: [{ type: "text", text: JSON.stringify(call) }], isError: true } };
         }
         // Not listed is not refused here: the route refuses, in its own words, what this token may not do.
-        const url = new URL(call.path, c.req.url);
-        url.search = call.query.toString();
+        // The path is joined, not resolved against the request's, and a path the URL parser would
+        // still change (a dot segment) is refused, so a tool reaches its own route and no other.
+        const search = call.query.toString();
+        const url = new URL(`${new URL(c.req.url).origin}${call.path}${search ? `?${search}` : ""}`);
+        if (url.pathname !== call.path) {
+          return { result: { content: [{ type: "text", text: JSON.stringify({ error: `${tool.name}: a path param may not be a path` }) }], isError: true } };
+        }
         const headers = new Headers();
         for (const name of ["authorization", "host", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-for"]) {
           const value = c.req.header(name);
@@ -133,16 +195,20 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
   }
 
   return async (c: Context): Promise<Response> => {
-    if (!originAllowed(c)) {
+    if (!originAllowed(c.req.header("origin"))) {
       return c.json({ error: "MCP here takes no calls from a page on another site" }, 403);
     }
     // Only a token: MCP speaks for a script or an agent, never a browser's session.
     if (actorOf(c)?.via !== "token") {
       return c.json({ error: "Send Authorization: Bearer with a personal or service account token" }, 401);
     }
+    const text = await cappedText(c.req.raw, maxBodyBytes);
+    if (text === null) {
+      return reply(c, null, failure(rpcError.invalidRequest, `A message is at most ${maxBodyBytes} bytes`), 413);
+    }
     let message: unknown;
     try {
-      message = JSON.parse(await c.req.text());
+      message = JSON.parse(text);
     } catch {
       return reply(c, null, failure(rpcError.parse, "The body is not JSON"), 400);
     }
@@ -174,6 +240,9 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
     }
     if (m.params !== undefined && !isObject(m.params)) {
       return reply(c, id, failure(rpcError.invalidParams, "params must be an object"));
+    }
+    if (nestedDeeper(m.params, maxDepth)) {
+      return reply(c, id, failure(rpcError.invalidParams, `params nest at most ${maxDepth} deep`));
     }
     try {
       return reply(c, id, await answer(c, m.method, (m.params as Record<string, unknown> | undefined) ?? {}));
