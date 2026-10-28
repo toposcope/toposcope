@@ -1,6 +1,7 @@
 import { keepMonitorsSnapshot, monitorsSnapshot, type MonitorsSnapshot } from "./monitors-snapshot";
 import { ensureSourceProjections, feedKinds, kindsOf } from "./kinds";
 import { noteWire } from "./volume";
+import { parseUpstream, upstreamFor } from "./upstream";
 import { effectiveMetricsRetentionDays } from "../control/settings";
 import { refuseOtherVersion, versionHeaders } from "./version";
 import { decodeFeed, encodeFeed, insertPulledBlocks, type WireFeed } from "../feed/wire";
@@ -197,7 +198,11 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
   });
   const caughtUp = reply.through >= reply.settled && kindsOf(link.kinds).includes("monitors");
   const monitors = caughtUp ? monitorsSnapshot(link.q, instanceName() ?? "") : null;
-  const body = await encodeFeed(reply, instanceId(), { source: { id: instanceId(), name: instanceName() ?? "" }, ...(monitors ? { monitors } : {}) });
+  const body = await encodeFeed(reply, instanceId(), {
+    source: { id: instanceId(), name: instanceName() ?? "" },
+    upstream: upstreamFor(link),
+    ...(monitors ? { monitors } : {}),
+  });
   noteWire(link.id, body);
   return new Response(body as unknown as BodyInit, {
     headers: { "content-type": "application/x-toposcope-feed", ...versionHeaders() },
@@ -269,6 +274,7 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
     gone_to: gone?.to ?? null,
     ...holeTimes(link, { gone: reply.gone ?? null, horizon: reply.horizon }),
     peer_name: reply.source?.name || link.peer_name,
+    upstream: JSON.stringify(parseUpstream((wire.header as { upstream?: unknown }).upstream)),
     last_error: null,
   });
   return c.json({ position: reply.through, stored: stored.stored });

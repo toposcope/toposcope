@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { activeLinks } from "../links/store";
+import { heldLinks } from "../links/upstream";
 import { feeders, heldSources, omitWhere, shortIn, sourceGaps, type HeldLink } from "../shared/held";
 import { heldClock, holeClock } from "../shared/held-words";
 import {
@@ -302,7 +302,7 @@ export async function cutFingerprintKey(
 
 /** Where each source this instance pulls from stands (#140); tests swap it. */
 export const fingerprintCutHeld = {
-  links: (): HeldLink[] => activeLinks(),
+  links: (): HeldLink[] => heldLinks(),
 };
 
 /**

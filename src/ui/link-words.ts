@@ -1,4 +1,5 @@
 import { formatCompactCount } from "./count-format";
+import type { HeldSource } from "../shared/held";
 
 /** A link as `GET /api/links` lists it (#136): no secret. */
 export type LinkItem = {
@@ -23,6 +24,8 @@ export type LinkItem = {
   last_contact_at: number | null;
   last_error: string | null;
   created_at: number;
+  /** Where its source's own sources stand, as the source last said (#334). */
+  upstream?: HeldSource[];
 };
 
 export type LinkKeyItem = {

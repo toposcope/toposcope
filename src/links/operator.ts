@@ -18,6 +18,8 @@ import {
   type LinkKeyKind,
 } from "./key";
 import { pullSoon } from "./puller";
+import { parseUpstream } from "./upstream";
+import type { HeldSource } from "../shared/held";
 import {
   activeLinks,
   getLink,
@@ -33,7 +35,7 @@ import {
 
 /** The Links view's routes (#136), behind the operator password. */
 
-export type LinkView = Omit<LinkRecord, "secret" | "secret_hash">;
+export type LinkView = Omit<LinkRecord, "secret" | "secret_hash" | "upstream"> & { upstream: HeldSource[] };
 
 export type LinkKeyView = {
   kid: string;
@@ -47,7 +49,7 @@ export type LinkKeyView = {
 
 function view(link: LinkRecord): LinkView {
   const { secret: _s, secret_hash: _h, ...rest } = link;
-  return rest;
+  return { ...rest, upstream: parseUpstream(link.upstream) };
 }
 
 /** The address the other side is told to reach this instance at. */

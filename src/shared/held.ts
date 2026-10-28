@@ -22,6 +22,11 @@ export type HeldLink = {
   gone_to: number | null;
   gone_from_at: string | null;
   gone_to_at: string | null;
+  /**
+   * Where the source's own sources stand, as it last said in its feed's header (#334): an edge
+   * two hops away is short here when it is short at the region, and named, not the region.
+   */
+  upstream?: HeldSource[] | null;
 };
 
 /** Behind by less than this reads as caught up, so polls do not toggle chrome. */
@@ -46,6 +51,8 @@ export type HeldSource = {
   state: HeldState;
   /** Rows the source dropped before they were read, closed at both ends; the far end is a day boundary. */
   hole: { from: number; to: number } | null;
+  /** A source with no link here, known from the source of a link that is (#334): that link's peer. */
+  via?: string;
 };
 
 export type HeldGap = {
@@ -73,9 +80,56 @@ function linkState(link: HeldLink, now: number): HeldState {
 
 const rank = { "caught-up": 0, behind: 1, quiet: 2 } as const;
 
-/** Sources by name, from the links this instance pulls through; a source's worst link speaks for it. */
+/** Where a row is known to: the read position while behind, the known end while quiet. */
+function knownTo(state: HeldState): number {
+  return state.kind === "behind" ? state.readTo : state.kind === "quiet" ? state.knownTo : Infinity;
+}
+
+/** The worse of two states, known only as far as both are: what two links, or two hops, add up to. */
+export function worseState(a: HeldState, b: HeldState): HeldState {
+  const [worst, other] = rank[b.kind] > rank[a.kind] ? [b, a] : [a, b];
+  if (worst.kind === "caught-up") {
+    return worst;
+  }
+  const to = Math.min(knownTo(worst), knownTo(other));
+  if (worst.kind === "behind") {
+    return { kind: "behind", readTo: to };
+  }
+  const since = other.kind === "quiet" ? Math.min(worst.since, other.since) : worst.since;
+  return { ...worst, since, knownTo: to };
+}
+
+function widerHole(a: HeldSource["hole"], b: HeldSource["hole"]): HeldSource["hole"] {
+  return a && b ? { from: Math.min(a.from, b.from), to: Math.max(a.to, b.to) } : (a ?? b);
+}
+
+type Building = HeldSource & { everything: boolean };
+
+function merge(byName: Map<string, Building>, next: Building): void {
+  const prev = byName.get(next.name);
+  if (!prev) {
+    byName.set(next.name, next);
+    return;
+  }
+  prev.everything ||= next.everything;
+  for (const f of next.filters) {
+    if (!prev.filters.includes(f)) prev.filters.push(f);
+  }
+  prev.state = worseState(prev.state, next.state);
+  prev.hole = widerHole(prev.hole, next.hole);
+  // Named the way it came only while no link here reaches it.
+  if (next.via === undefined) delete prev.via;
+}
+
+/**
+ * Sources by name, from the links this instance pulls through; a source's worst link speaks for
+ * it. A source's own sources come too (#334), each as its own link and the hop before it add up:
+ * read through both filters, short when either is. A direct link that takes every row speaks for
+ * its source alone: what came the long way adds nothing to it.
+ */
 export function heldSources(links: HeldLink[], now: number): HeldSource[] {
-  const byName = new Map<string, HeldSource & { everything: boolean }>();
+  const byName = new Map<string, Building>();
+  const relayed: Building[] = [];
   for (const link of links) {
     if (link.role !== "pull" || !link.peer_name) {
       continue;
@@ -86,24 +140,27 @@ export function heldSources(links: HeldLink[], now: number): HeldSource[] {
         ? { from: Date.parse(link.gone_from_at), to: Date.parse(link.gone_to_at) }
         : null;
     const q = link.q.trim();
-    const prev = byName.get(link.peer_name);
-    if (!prev) {
-      byName.set(link.peer_name, { name: link.peer_name, filters: q ? [q] : [], everything: !q, state, hole });
-      continue;
+    merge(byName, { name: link.peer_name, filters: q ? [q] : [], everything: !q, state, hole });
+    for (const far of link.upstream ?? []) {
+      if (!far.name || far.name === link.peer_name) {
+        continue;
+      }
+      // Both filters cut: a row from there came through the source's filter and then this link's.
+      const filters = far.filters.length > 0 ? far.filters.map((f) => (q ? `(${f}) (${q})` : f)) : q ? [q] : [];
+      relayed.push({
+        name: far.name,
+        filters,
+        everything: filters.length === 0,
+        state: worseState(state, far.state),
+        hole: widerHole(hole, far.hole),
+        via: link.peer_name,
+      });
     }
-    prev.everything ||= !q;
-    if (q && !prev.filters.includes(q)) {
-      prev.filters.push(q);
-    }
-    if (rank[state.kind] > rank[prev.state.kind]) {
-      prev.state = state;
-    } else if (state.kind === "behind" && prev.state.kind === "behind") {
-      prev.state = { kind: "behind", readTo: Math.min(state.readTo, prev.state.readTo) };
-    } else if (state.kind === "quiet" && prev.state.kind === "quiet") {
-      prev.state = { ...prev.state, since: Math.min(state.since, prev.state.since), knownTo: Math.min(state.knownTo, prev.state.knownTo) };
-    }
-    if (hole) {
-      prev.hole = prev.hole ? { from: Math.min(prev.hole.from, hole.from), to: Math.max(prev.hole.to, hole.to) } : hole;
+  }
+  const direct = new Set([...byName.values()].filter((s) => s.everything).map((s) => s.name));
+  for (const far of relayed) {
+    if (!direct.has(far.name)) {
+      merge(byName, far);
     }
   }
   return [...byName.values()].map(({ everything, ...source }) => ({

@@ -1,5 +1,10 @@
+import { gapsIn, heldSources, type HeldSource } from "../src/shared/held";
+import { pillWords } from "../src/shared/held-words";
+
 // Three instances chained edge → region → centre, plus a direct edge → centre link (#334): run
 // against three apps on one machine, each with its own ClickHouse database and SQLite file.
+// Then the direct link goes and the region stops pulling the edge: the centre's tells name the
+// edge as short, and the region's link pages say how far behind it is.
 // TOPOSCOPE_TOKEN_EDGE, _REGION and _CENTRE are an Owner token on each.
 //   TIERS_EDGE_URL=… TIERS_REGION_URL=… TIERS_CENTRE_URL=… bun run scripts/tiers-e2e.ts
 const EDGE = process.env.TIERS_EDGE_URL ?? "http://127.0.0.1:28085";
@@ -102,6 +107,38 @@ await until("the centre lists the edge's monitor under the edge's name, not the 
   const at = (s: string) => sources.find((x) => x.source === s)?.monitors.some((m) => m.name === `tier-${tag}`) ?? false;
   return at(nEdge) && !at(nRegion);
 });
+
+// A short source two hops away (#334). A direct every-row link speaks for the edge on its own, so
+// it goes first; then the region stops pulling the edge, and the edge is short at the centre.
+const pullFrom = async (base: string, peer: string) =>
+  ((await call(base, "/api/links")).body.links as Array<{ id: string; role: string; peer_name: string }>).find((l) => l.role === "pull" && l.peer_name === peer)!;
+const direct = await pullFrom(CENTRE, nEdge);
+check((await call(CENTRE, `/api/links/${direct.id}`, { method: "DELETE" })).status === 200, "the centre drops its direct link from the edge");
+const regionFromEdge = await pullFrom(REGION, nEdge);
+check((await call(REGION, `/api/links/${regionFromEdge.id}`, { method: "PUT", json: { paused: true } })).status === 200, "the region stops pulling the edge");
+// The centre's tells, as Search draws them from its links: one pill over the last 15 minutes.
+const centreTells = async () => {
+  const now = Date.now();
+  const sources = heldSources((await call(CENTRE, "/api/links")).body.links, now);
+  return { sources, pill: pillWords(gapsIn(sources, { from: now - 15 * 60_000, to: now }, now), sources, now) };
+};
+await until(
+  "the centre's tells name the edge as short, through the region, and not the region",
+  async () => {
+    const { sources, pill } = await centreTells();
+    const at = (n: string) => sources.find((s: HeldSource) => s.name === n);
+    return at(nEdge)?.state.kind === "quiet" && at(nEdge)?.via === nRegion && at(nRegion)?.state.kind === "caught-up" && pill?.startsWith(`${nEdge} `) === true;
+  },
+  90,
+);
+const regionToCentre = ((await call(REGION, "/api/links")).body.links as Array<{ id: string; role: string }>).find((l) => l.role === "serve")!;
+const told = await call(REGION, `/api/links/${regionToCentre.id}`);
+const edgeThere = (told.body.further ?? []).find((f: { name: string }) => f.name === nEdge);
+check(edgeThere?.state.kind === "quiet" && edgeThere.behind_ms >= 30_000, "the region's link to the centre says how far behind the edge is", told.body.further);
+const edgePage = await call(REGION, `/api/links/${regionFromEdge.id}`);
+check(edgePage.body.paused === true && edgePage.body.behind_ms >= 30_000, "the region's link from the edge says how far behind it is, in time", edgePage.body);
+check((await call(REGION, `/api/links/${regionFromEdge.id}`, { method: "PUT", json: { paused: false } })).status === 200, "the region pulls the edge again");
+await until("the centre has the edge caught up again", async () => (await centreTells()).sources.find((s: HeldSource) => s.name === nEdge)?.state.kind === "caught-up", 60);
 console.log("tiers e2e ok");
 
 export {};

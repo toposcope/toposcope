@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { behindWords, kindLineWords, kindsCarried, linkKind, linkTitle, quarterBars, ratePerHour, type KindLine } from "./link-page";
+import { behindLagWords, behindWords, furtherWords, kindLineWords, kindsCarried, linkKind, linkTitle, quarterBars, ratePerHour, type KindLine } from "./link-page";
 
 describe("a link's page words (#267)", () => {
   test("title, behind, rate", () => {
@@ -40,5 +40,22 @@ describe("a line per kind (#329, 33b)", () => {
   });
   test("what it carries and what is unticked", () => {
     expect(kindsCarried([line({}), line({ kind: "marks" }), line({ kind: "profiles", ticked: false })])).toEqual({ carries: ["logs", "marks"], unticked: ["profiles"] });
+  });
+});
+
+describe("a source two hops away (#334)", () => {
+  const now = Date.parse("2026-10-28T15:00:00Z");
+  test("the Behind card says how far behind in time once past a poll's worth, not while paused", () => {
+    expect(behindLagWords({ behind_ms: 240_000, paused: false })).toBe("4m behind");
+    expect(behindLagWords({ behind_ms: 5_000, paused: false })).toBeNull();
+    expect(behindLagWords({ behind_ms: 240_000, paused: true })).toBeNull();
+    expect(behindLagWords({ behind_ms: null, paused: false })).toBeNull();
+  });
+  test("each source further away in Search's words", () => {
+    expect(furtherWords({ name: "edge-fra", filters: [], state: { kind: "behind", readTo: now - 240_000 }, hole: null }, now)).toEqual({
+      text: "4m behind · read to 14:56:00",
+      ok: false,
+    });
+    expect(furtherWords({ name: "edge-fra", filters: [], state: { kind: "caught-up" }, hole: null }, now)).toEqual({ text: "caught up", ok: true });
   });
 });

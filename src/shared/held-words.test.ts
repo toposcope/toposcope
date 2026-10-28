@@ -25,6 +25,8 @@ describe("held words (#139)", () => {
 
   test("position lines, as 5c, 5d, 5e and 5h draw them", () => {
     expect(positionLines(behind("prod-eu", at("14:56:02")), now)).toEqual(["4m behind · read to 14:56:02"]);
+    // #334: a source two hops away says which link it comes through.
+    expect(positionLines({ ...behind("edge-fra", at("14:56:02")), via: "region-eu" }, now)).toEqual(["4m behind · read to 14:56:02", "through region-eu"]);
     expect(positionLines(behind("prod-eu", at("14:55:50")), at("15:00:02"), true)).toEqual(["4m 12s behind · read to 14:55:50"]);
     expect(positionLines(quiet("prod-eu", at("12:58:04")), at("15:00:04"))).toEqual(["not answering since 12:58:04 · 2h 2m"]);
     expect(positionLines(quiet("site-0417", at("14:20:31")), now)).toEqual(["not answering since 14:20:31"]);

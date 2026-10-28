@@ -8,9 +8,11 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 **Before you upgrade:** monitors made before 0.10 name no service, and they are not kept. Note them in Watch before you upgrade, and make them again with their service after. [Upgrading from 0.9](docs/operations.md#upgrading-from-09) has the steps.
 
-**Changes stored data:** at each start, every monitor whose service is empty is removed, with its stretches, calls, HTTP(S) or TCP settings and sent fingerprints in SQLite, and one line logs how many. Its results in ClickHouse are left to age out with retention, as a deleted monitor's are.
+**Changes stored data:** at each start, every monitor whose service is empty is removed, with its stretches, calls, HTTP(S) or TCP settings and sent fingerprints in SQLite, and one line logs how many. Its results in ClickHouse are left to age out with retention, as a deleted monitor's are. Links gain `upstream`.
 
 Monitors made before 0.10 are not kept, as #335 said (no backward compatibility). 0.10.0 kept them with an empty service, showed "no service" on Watch, and let Pause, Resume and Silence skip the service check for them; both are gone, and every save of a monitor goes through the same check, which keeps the service it has. [#335](https://github.com/toposcope/toposcope/issues/335)
+
+A source short two hops away is short at the centre too, and named. A feed reply's header now says where the source's own sources stand (`upstream`), as its Search would tell them, and what came to it from further away goes on the same way; the centre adds each to its own link with the region, so while the edge is behind at the region, or not answering it, the centre's tells name the edge, not the region, and its held group says "through region". A direct every-row link speaks for its source alone. `GET /api/links` gives each link its `upstream`; a link's page adds `behind_ms` (the Behind card reads "4m behind") and `further`, the sources beyond it and where each stands, so the region's link to the centre says how far behind the edge is. [#334](https://github.com/toposcope/toposcope/issues/334)
 
 ## 0.10.0
 

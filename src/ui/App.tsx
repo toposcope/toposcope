@@ -3338,7 +3338,9 @@ export function App() {
 
   /** A short source's link page, from the trace's amber line (#330). */
   function openSourceLink(source: string) {
-    const link = held.links.find((item) => item.role === "pull" && item.peer_name === source);
+    // A source two hops away opens the link it comes through (#334).
+    const through = held.sources.find((s) => s.name === source)?.via ?? source;
+    const link = held.links.find((item) => item.role === "pull" && item.peer_name === through);
     if (!link) {
       return;
     }
@@ -4119,7 +4121,7 @@ export function App() {
           onOpen={openMonitor}
           onOpenMarks={openMarksStretch}
           held={held.sources}
-          linked={new Set(held.links.filter((l) => l.role === "pull" && l.peer_name).map((l) => l.peer_name))}
+          linked={new Set(held.sources.map((s) => s.name))}
           onOpenLink={openSourceLink}
         />
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { holeTimes } from "../links/store";
-import { feeders, filterImplied, gapsIn, heldSources, huntAst, omitKey, shortIn, type HeldLink } from "./held";
+import { feeders, filterImplied, gapsIn, heldSources, huntAst, omitKey, shortIn, worseState, type HeldLink, type HeldSource } from "./held";
 
 const now = Date.parse("2026-08-14T15:00:00Z");
 const at = (iso: string) => Date.parse(`2026-08-14T${iso}Z`);
@@ -167,5 +167,55 @@ describe("a hole's ends in time (#139)", () => {
     expect(holeTimes(held, { gone: { from: 41, to: 120 }, horizon: "2026-08-12T09:00:00.000Z" }).gone_to_at).toBe(
       "2026-08-12T00:00:00.000Z",
     );
+  });
+});
+
+describe("a source two hops away (#334)", () => {
+  const edge = (over: Partial<HeldSource> = {}): HeldSource => ({ name: "edge-fra", filters: [], state: { kind: "caught-up" }, hole: null, ...over });
+  const region = (upstream: HeldSource[], over: Partial<HeldLink> = {}) => link({ peer_name: "region-eu", upstream, ...over });
+
+  test("the edge, behind at the region, is short here and named, through the region", () => {
+    const sources = heldSources([region([edge({ state: { kind: "behind", readTo: at("14:56:02") } })])], now);
+    expect(sources.map((s) => [s.name, s.state.kind, s.via])).toEqual([
+      ["region-eu", "caught-up", undefined],
+      ["edge-fra", "behind", "region-eu"],
+    ]);
+    expect(gapsIn(sources, { from: at("14:00:00"), to: now }, now).map((g) => g.source)).toEqual(["edge-fra"]);
+  });
+
+  test("the two hops add up: the region quiet here makes the edge quiet too, known to the earlier of both", () => {
+    const sources = heldSources(
+      [region([edge({ state: { kind: "behind", readTo: at("12:30:00") } })], { last_contact_at: at("12:58:04"), last_error: "timeout" })],
+      now,
+    );
+    expect(sources.find((s) => s.name === "edge-fra")!.state).toEqual({ kind: "quiet", since: at("12:58:04"), knownTo: at("12:30:00"), connects: "we" });
+  });
+
+  test("a direct every-row link speaks for the edge; a filtered one does not hide the long way", () => {
+    const behind = edge({ state: { kind: "behind", readTo: at("14:56:02") } });
+    const direct = heldSources([region([behind]), link({ peer_name: "edge-fra" })], now);
+    expect(direct.find((s) => s.name === "edge-fra")).toMatchObject({ state: { kind: "caught-up" }, filters: [] });
+    expect(direct.find((s) => s.name === "edge-fra")!.via).toBeUndefined();
+    const filtered = heldSources([region([behind]), link({ peer_name: "edge-fra", q: "level:error" })], now);
+    expect(filtered.find((s) => s.name === "edge-fra")!.state.kind).toBe("behind");
+  });
+
+  test("both filters cut, and the region's own name never comes back as further away", () => {
+    const sources = heldSources([region([edge({ filters: ["service:api"] }), edge({ name: "region-eu" })], { q: "level:error" })], now);
+    expect(sources.map((s) => [s.name, s.filters])).toEqual([
+      ["region-eu", ["level:error"]],
+      ["edge-fra", ["(service:api) (level:error)"]],
+    ]);
+    expect(feeders(sources, huntAst("service:web")).map((s) => s.name)).toEqual(["region-eu"]);
+  });
+
+  test("the worse state is known only as far as both are", () => {
+    expect(worseState({ kind: "caught-up" }, { kind: "behind", readTo: 5 })).toEqual({ kind: "behind", readTo: 5 });
+    expect(worseState({ kind: "behind", readTo: 3 }, { kind: "quiet", since: 9, knownTo: 7, connects: "they" })).toEqual({
+      kind: "quiet",
+      since: 9,
+      knownTo: 3,
+      connects: "they",
+    });
   });
 });

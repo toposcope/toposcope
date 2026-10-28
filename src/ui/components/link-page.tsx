@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { behindWords, kindLineWords, kindsCarried, linkKind, linkTitle, quarterBars, ratePerHour, type LinkPageData } from "../link-page";
+import { behindLagWords, behindWords, furtherWords, kindLineWords, kindsCarried, linkKind, linkTitle, quarterBars, ratePerHour, type LinkPageData } from "../link-page";
 import { bytesDay, kindTitle, type LinkKind } from "../link-kinds";
 import { formatCompactCount } from "../count-format";
 import { KindBoxes } from "./kind-boxes";
@@ -66,6 +66,8 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
     return <main className="p-6 text-[13px] text-muted-foreground">Loading the link…</main>;
   }
   const behind = behindWords(link);
+  const lag = behindLagWords(link);
+  const further = link.further ?? [];
   const bars = quarterBars(link.pulled, link.holes, nowMs);
   const peak = Math.max(1, ...bars.map((b) => b.n));
   const card = "flex flex-col gap-2 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5";
@@ -203,6 +205,23 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
                 a gap from {h.from.slice(0, 16).replace("T", " ")} to {h.to.slice(0, 16).replace("T", " ")} · drawn as a floor
               </span>
             ))}
+            {further.length > 0 ? (
+              <div aria-label="Further away" className="flex flex-col gap-1 border-t border-white/[0.06] pt-2">
+                <span className="text-[12px] text-muted-foreground">
+                  {link.role === "pull" ? `Further away, through ${link.peer}` : `Further away, told to ${link.peer}`}
+                </span>
+                {further.map((f) => {
+                  const w = furtherWords(f, nowMs);
+                  return (
+                    <span key={f.name} className="flex items-baseline gap-2 text-[12px]">
+                      <span className={cn("inline-block size-[7px] shrink-0 rounded-full", w.ok ? "bg-emerald-300" : "bg-amber-400")} aria-hidden="true" />
+                      <span className="font-mono text-zinc-300">{f.name}</span>
+                      <span className={w.ok ? "text-muted-foreground" : "text-amber-300"}>{w.text}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
             <span className="text-[12px] text-muted-foreground">Made {new Date(link.created_at).toISOString().slice(0, 16).replace("T", " ")} · key pasted then</span>
           </section>
         </div>
@@ -216,7 +235,10 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
             <section className={card}>
               <span className="text-[12px] text-muted-foreground">Behind</span>
               <span className={cn("font-mono text-[20px] font-semibold", !behind.ok && "text-amber-300")}>{behind.text}</span>
-              <span className="text-[12px] text-muted-foreground">{link.arrived_at ? `read to ${link.arrived_at.slice(11, 19)}` : "—"}</span>
+              <span className={cn("text-[12px]", lag ? "text-amber-300" : "text-muted-foreground")}>
+                {link.arrived_at ? `read to ${link.arrived_at.slice(11, 19)}` : "—"}
+                {lag ? ` · ${lag}` : ""}
+              </span>
             </section>
             <section className={card}>
               <span className="text-[12px] text-muted-foreground">Last {link.role === "pull" ? "pull" : "read"}</span>
