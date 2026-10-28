@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-export const upgradeBody = v.optional(
+export const upgradeBody = v.nullish(
   v.object({
     version: v.optional(
       v.pipe(

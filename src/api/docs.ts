@@ -71,11 +71,13 @@ function routeSection(route: ApiRoute): string[] {
   }
   if (route.body) {
     const body = toJsonSchema(route.body);
-    const object = Array.isArray(body.anyOf) ? undefined : body;
-    if (object?.type === "object" && object.properties && Object.keys(object.properties).length > 0) {
+    const shape = nested(body);
+    const object = shape && !shape.list ? shape.object : undefined;
+    if (object && Object.keys(object.properties as object).length > 0) {
       const req = new Set((object.required as string[] | undefined) ?? []);
       const props = Object.entries(object.properties as Record<string, JsonSchema>);
-      lines.push(`Body${isOptional(route.body) ? ", optional" : ""}:`, "", ...header, ...fieldRows(props.map(([k, s]) => [k, s, req.has(k)])), "");
+      const optional = !isOptional(route.body) ? "" : Array.isArray(body.anyOf) ? ", optional or null" : ", optional";
+      lines.push(`Body${optional}:`, "", ...header, ...fieldRows(props.map(([k, s]) => [k, s, req.has(k)])), "");
     } else {
       lines.push(`Body${isOptional(route.body) ? ", optional" : ""}: ${typeWords(body)}.`, "");
     }

@@ -14,12 +14,16 @@ type Node = v.GenericSchema & {
   literal?: unknown;
   rest?: Node;
   default?: unknown;
-  pipe?: Array<{ kind: string; type: string; requirement?: unknown; description?: string; title?: string }>;
+  pipe?: Array<{ kind: string; type: string; requirement?: unknown; description?: string; title?: string; options?: unknown[] }>;
 };
 
 /** A schema that may be left out of its object. */
 export function isOptional(schema: v.GenericSchema): boolean {
   return schema.type === "optional" || schema.type === "exact_optional" || schema.type === "nullish" || schema.type === "undefinedable";
+}
+
+function picklist(options: unknown[]): JsonSchema {
+  return options.every((o) => typeof o === "string") ? { type: "string", enum: options } : { enum: options };
 }
 
 function base(schema: Node): JsonSchema {
@@ -38,7 +42,7 @@ function base(schema: Node): JsonSchema {
     case "literal":
       return { const: schema.literal };
     case "picklist":
-      return { enum: schema.options };
+      return picklist(schema.options!);
     case "array":
       return { type: "array", items: toJsonSchema(schema.item!) };
     case "tuple":
@@ -133,11 +137,15 @@ function applyPipe(out: JsonSchema, schema: Node): JsonSchema {
       case "iso_date_time":
         out.format = "date-time";
         break;
+      // A schema after a transform in the pipe: its words are what the value must be.
+      case "picklist":
+        Object.assign(out, picklist(step.options!));
+        break;
+      case "to_lower_case":
       case "finite":
       case "check":
       case "trim":
       case "transform":
-      case "to_lower_case":
         break;
       default:
         throw new Error(`No JSON Schema for a valibot ${step.type} action`);

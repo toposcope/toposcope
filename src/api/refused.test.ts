@@ -6,7 +6,7 @@ import { join } from "node:path";
 const root = join(import.meta.dir, "..");
 const fixture = mkdtempSync(join(tmpdir(), "toposcope-api-"));
 type Answer = { status: number; body: any };
-let r: { refused: Record<string, Answer>; missing: Record<string, Answer>; spec: Answer; specMatches: boolean; viewer: Answer };
+let r: { refused: Record<string, Answer>; missing: Record<string, Answer>; spec: Answer; specMatches: boolean; viewer: Answer; taken: Record<string, Answer>; wrong: Record<string, Answer> };
 
 // The app itself, as a token calls it: every route with a body refuses one its schema refuses (#356).
 beforeAll(async () => {
@@ -50,9 +50,26 @@ beforeAll(async () => {
         missing[route.method + " " + route.path] = await call(route.method, at(route.path));
       }
     }
+    // What main took stays taken: an empty choice is absent, null is absent where the handler reads it so.
+    const account = people.createServiceAccount({ name: "bot", role: "viewer" });
+    const taken = {
+      marksKindEmpty: await call("GET", "/api/marks?range=1h&kind="),
+      marksKindCase: await call("GET", "/api/marks?range=1h&kind=%20Deploy%20"),
+      fieldsWaveEmpty: await call("GET", "/api/fields?wave="),
+      offerKindsNull: await call("POST", "/api/links/offer", JSON.stringify({ name: "here", kinds: null, q: null })),
+      offerNull: await call("POST", "/api/links/offer", "null"),
+      tokenDaysNull: await call("POST", "/api/people/" + account.id + "/tokens", JSON.stringify({ name: "t", expires_in_days: null, read_only: null })),
+      savedNulls: await call("POST", "/api/saved-searches", JSON.stringify({ name: "s", query: null, pinned: null })),
+    };
+    // A wrong type main turned into a default is refused, naming the field.
+    const wrong = {
+      tokenDaysText: await call("POST", "/api/people/" + account.id + "/tokens", JSON.stringify({ name: "t", expires_in_days: "30" })),
+      enabledText: await call("PUT", "/api/alert-rules/x", JSON.stringify({ enabled: "false" })),
+      marksKindOther: await call("GET", "/api/marks?range=1h&kind=release"),
+    };
     const spec = await call("GET", "/api/openapi.json");
     const viewerAnswer = await call("PUT", "/api/settings", "42", viewer);
-    console.log(JSON.stringify({ refused, missing, spec, specMatches: JSON.stringify(spec.body) === JSON.stringify(openApi()), viewer: viewerAnswer }));
+    console.log(JSON.stringify({ refused, missing, spec, specMatches: JSON.stringify(spec.body) === JSON.stringify(openApi()), viewer: viewerAnswer, taken, wrong }));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
     cwd: fixture,
@@ -85,6 +102,18 @@ describe("the described API in the app (#356)", () => {
       expect(typeof answer.body.error).toBe("string");
     }
     expect(r.missing["GET /api/search/cut"]!.body).toEqual({ error: "mark is required", field: "mark" });
+  });
+
+  test("what main took is still taken: an empty choice, any case of a mark's kind, and null for left out", () => {
+    for (const [name, answer] of Object.entries(r.taken)) {
+      expect({ name, status: answer.status, body: answer.status >= 400 ? answer.body : null }).toEqual({ name, status: name === "marksKindEmpty" || name === "marksKindCase" || name === "fieldsWaveEmpty" ? 200 : 201, body: null });
+    }
+  });
+
+  test("a wrong type main turned into a default is refused, with its field", () => {
+    expect(r.wrong.tokenDaysText).toEqual({ status: 400, body: { error: 'expires_in_days must be number, not "30"', field: "expires_in_days" } });
+    expect(r.wrong.enabledText).toEqual({ status: 400, body: { error: 'enabled must be boolean or number, not "false"', field: "enabled" } });
+    expect(r.wrong.marksKindOther).toEqual({ status: 400, body: { error: "kind must be deploy, flag, incident, or note", field: "kind" } });
   });
 
   test("GET /api/openapi.json serves the spec the table builds", () => {

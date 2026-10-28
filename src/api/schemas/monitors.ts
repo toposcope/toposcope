@@ -23,7 +23,7 @@ const lines = v.union([v.string(), v.array(v.union([v.string(), v.number()]))]);
 
 /** What an HTTP(S), TCP or certificate check calls: the monitor's own fields, and the editor's Send. */
 const check = {
-  url: v.optional(described(v.string(), "http: the URL it calls, http(s).")),
+  url: v.nullish(described(v.string(), "http: the URL it calls, http(s).")),
   method: v.optional(described(v.string(), "http: GET (the default), HEAD or POST.")),
   body: v.nullish(described(v.string(), "http: the body it sends, with POST only.")),
   headers: v.optional(
@@ -33,13 +33,13 @@ const check = {
     ),
   ),
   conditions: v.optional(described(lines, "http, tcp, cert: what each run must show, one line each, as text or a list.")),
-  target: v.optional(described(v.string(), "tcp, cert: where it connects, host:port.")),
+  target: v.nullish(described(v.string(), "tcp, cert: where it connects, host:port.")),
   starttls: v.nullish(described(v.string(), "cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte.")),
 };
 
 /** Every field a monitor takes, of any source; each says which source reads it. A field left out keeps its value on an update. */
 const monitor = {
-  name: v.optional(described(v.string(), "The monitor's name; PUT /api/monitors/:name takes it from the path.")),
+  name: v.nullish(described(v.string(), "The monitor's name; PUT /api/monitors/:name takes it from the path.")),
   source: v.optional(
     described(
       v.picklist(["search", "fingerprints", "push", "http", "tcp", "cert"], "source must be search, fingerprints, push, http, tcp or cert"),
@@ -50,7 +50,7 @@ const monitor = {
   service: v.nullish(described(v.string(), "The service it is about, at most 200 characters; required when it is made.")),
   host: v.nullish(described(v.string(), "The host it is about; by default the host its URL or target names.")),
   saved_search_id: v.nullish(described(v.string(), "search, fingerprints: the saved search it reads.")),
-  saved_search: v.optional(described(v.string(), "search, fingerprints: the saved search it reads, by name, when saved_search_id is left out.")),
+  saved_search: v.nullish(described(v.string(), "search, fingerprints: the saved search it reads, by name, when saved_search_id is left out.")),
   threshold: v.optional(described(v.union([v.number(), v.string()]), "search: the value it opens at, a number above 0.")),
   opens_when: v.optional(described(v.string(), "search: at_least (the default) or fewer_than.")),
   measure: v.optional(described(v.string(), "search: series (the default), or share of all rows.")),
@@ -67,7 +67,7 @@ const monitor = {
   ...check,
   silence_for: v.nullish(described(v.string(), "Silence it for 1h, 4h or 24h from now.")),
   silenced_until: v.nullish(described(v.number(), "Silence it until this epoch ms; null ends a silence.")),
-  enabled: v.optional(described(v.union([v.boolean(), v.number()]), "false or 0 pauses it, true or 1 resumes it.")),
+  enabled: v.nullish(described(v.union([v.boolean(), v.number()]), "false or 0 pauses it, true or 1 resumes it.")),
 };
 
 export const monitorBody = v.object(monitor);
@@ -89,6 +89,6 @@ export const testCallBody = v.object({
 
 export const sendBody = v.object({
   ...check,
-  source: v.optional(described(v.string(), "http (the default), tcp or cert.")),
-  id: v.optional(described(v.string(), "An HTTP(S) monitor whose stored headers a header given as null keeps.")),
+  source: v.nullish(described(v.string(), "http (the default), tcp or cert.")),
+  id: v.nullish(described(v.string(), "An HTTP(S) monitor whose stored headers a header given as null keeps.")),
 });

@@ -23,6 +23,15 @@ export function repeated(description: string) {
   return v.optional(v.pipe(v.array(v.string()), v.description(description)));
 }
 
+/**
+ * A key that takes one of a few words. Left empty it is absent, as the handlers read it; with
+ * `fold`, case and spaces around it do not matter either.
+ */
+export function optionalChoice(options: readonly [string, ...string[]], message: string, description: string, fold = false) {
+  const word = fold ? v.pipe(v.string(message), v.trim(), v.toLowerCase(), v.picklist(options, message)) : v.picklist(options, message);
+  return v.optional(v.pipe(v.union([v.literal(""), word], message), v.description(description)));
+}
+
 export const q = optionalText("A query in Toposcope's query language (docs/query.md); empty matches every row.");
 
 /** The window most reads take: `range`, or `from` and `to`. */

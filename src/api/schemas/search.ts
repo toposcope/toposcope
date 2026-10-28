@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { limit, optionalText, q, repeated, requiredText, window } from "./common";
+import { limit, optionalChoice, optionalText, q, repeated, requiredText, window } from "./common";
 
 const omit = optionalText("0 or false counts each facet over the whole query; by default a facet leaves its own field out of it.");
 
@@ -23,7 +23,7 @@ export const searchQuery = v.object({
 
 export const marksQuery = v.object({
   ...window,
-  kind: v.optional(v.pipe(v.picklist(["deploy", "flag", "incident", "note"], "kind must be deploy, flag, incident, or note"), v.description("Only marks of this kind."))),
+  kind: optionalChoice(["deploy", "flag", "incident", "note"], "kind must be deploy, flag, incident, or note", "Only marks of this kind; any case.", true),
   service: optionalText("Only marks for this service."),
 });
 

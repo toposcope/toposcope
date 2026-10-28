@@ -20,13 +20,13 @@ export const signInSettingsBody = v.object({
   oidc: v.nullish(
     described(
       v.object({
-        preset: v.optional(described(v.string(), `The provider: ${providerPresets.join(", ")}; other when it is none of these.`)),
-        label: v.optional(described(v.string(), "The sign-in button's name, up to 40 characters; the preset's by default.")),
-        issuer: v.optional(described(v.string(), "The provider's https URL, as its discovery document names it.")),
-        client_id: v.optional(described(v.string(), "From the provider's app registration.")),
-        client_secret: v.optional(described(v.string(), "From the provider's app registration; left out or empty keeps the one stored.")),
+        preset: v.nullish(described(v.string(), `The provider: ${providerPresets.join(", ")}; other when it is none of these.`)),
+        label: v.nullish(described(v.string(), "The sign-in button's name, up to 40 characters; the preset's by default.")),
+        issuer: v.nullish(described(v.string(), "The provider's https URL, as its discovery document names it.")),
+        client_id: v.nullish(described(v.string(), "From the provider's app registration.")),
+        client_secret: v.nullish(described(v.string(), "From the provider's app registration; left out or empty keeps the one stored.")),
         allowed_domain: v.nullish(described(v.string(), "Only emails at this domain, like example.com; empty for any.")),
-        without_invite: v.optional(described(v.string(), "The role someone gets who signs in with no invite: viewer (the default), operator, or none to refuse them.")),
+        without_invite: v.nullish(described(v.string(), "The role someone gets who signs in with no invite: viewer (the default), operator, or none to refuse them.")),
       }, "oidc is an object, or null to remove it"),
       "The sign-in provider; null removes it.",
     ),

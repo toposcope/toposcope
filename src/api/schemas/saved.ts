@@ -16,7 +16,7 @@ export const homeBody = v.object({
 
 /** A saved search's fields; on an update, a field left out keeps its value. */
 const saved = {
-  query: v.optional(described(v.string(), "The query, in the query language.")),
+  query: v.nullish(described(v.string(), "The query, in the query language.")),
   range: v.nullish(described(v.string(), "A window that ends now, as search's range takes it; null for from_ts and to_ts.")),
   from_ts: v.nullish(described(v.string(), "Where a fixed window starts, an ISO time; read only when range is null.")),
   to_ts: v.nullish(described(v.string(), "Where a fixed window ends, an ISO time; read only when range is null.")),
@@ -24,7 +24,7 @@ const saved = {
   widgets: v.nullish(described(v.unknown(), "The canvas: its widgets and their places, as the app saves them.")),
   board: v.nullish(described(v.unknown(), "A board's slots and window, as the app saves them; null makes it a plain hunt.")),
   cols: v.nullish(described(v.union([v.string(), v.array(v.string())]), "Attribute keys shown as columns, a list or separated by commas.")),
-  pinned: v.optional(described(v.boolean(), "Pinned for the caller; each person pins their own.")),
+  pinned: v.nullish(described(v.boolean(), "Pinned for the caller; each person pins their own.")),
   // A shared that is not true or false is the handler's 403, as before.
   shared: v.optional(described(v.unknown(), "true or false: shared with everyone, or the caller's own; a Viewer's is their own.")),
 };
@@ -35,6 +35,6 @@ export const savedCreateBody = v.object({
 });
 
 export const savedUpdateBody = v.object({
-  name: v.optional(described(v.string(), "Its name.")),
+  name: v.nullish(described(v.string(), "Its name.")),
   ...saved,
 });

@@ -11,9 +11,9 @@ export const ingestTokenBody = v.object({
 });
 
 export const inviteBody = v.object({
-  who: v.optional(described(v.string(), "Who it is for: an email, or a name.")),
+  who: v.nullish(described(v.string(), "Who it is for: an email, or a name.")),
   role: described(v.picklist(roles, "role is viewer, operator or owner"), "The role they join with."),
-  days: v.optional(described(v.number(), "How many days the link works.")),
+  days: v.nullish(described(v.number(), "How many days the link works.")),
 });
 
 export const personBody = v.object({
@@ -27,6 +27,6 @@ export const serviceAccountBody = v.object({
 
 export const tokenBody = v.object({
   name: described(v.string("A token needs a name"), "What uses it, so Access can name it."),
-  expires_in_days: v.optional(described(v.number(), "Days until it stops working, 1 to 365; 365 by default.")),
-  read_only: v.optional(described(v.boolean(), "true: it reads and writes nothing.")),
+  expires_in_days: v.nullish(described(v.number(), "Days until it stops working, 1 to 365; 365 by default.")),
+  read_only: v.nullish(described(v.boolean(), "true: it reads and writes nothing.")),
 });

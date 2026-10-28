@@ -13,7 +13,7 @@ export const feedReadQuery = v.object({
   kinds: optionalText(`The kinds to read, separated by commas: ${feedKinds.join(", ")}; all by default.`),
 });
 
-const kinds = v.optional(
+const kinds = v.nullish(
   v.pipe(
     v.union([v.string(), v.array(v.picklist(linkKinds))]),
     v.description(`The kinds the link carries, as a list or separated by commas: ${linkKinds.join(", ")}; all by default.`),
@@ -33,7 +33,7 @@ export const linkUpdateBody = v.object({
   ),
 });
 
-export const linkOfferBody = v.optional(
+export const linkOfferBody = v.nullish(
   v.object({
     name,
     q: v.nullish(v.pipe(v.string(), v.description("The filter rows that leave here must match; empty means every row."))),
@@ -41,7 +41,7 @@ export const linkOfferBody = v.optional(
   }),
 );
 
-export const linkInviteBody = v.optional(
+export const linkInviteBody = v.nullish(
   v.object({
     name,
     q: v.nullish(v.pipe(v.string(), v.description("The filter rows the other side sends must match; empty means every row."))),
@@ -55,15 +55,15 @@ export const linkInviteBody = v.optional(
   }),
 );
 
-export const linkPreviewBody = v.optional(
+export const linkPreviewBody = v.nullish(
   v.object({
-    key: v.optional(v.pipe(v.string(), v.description("The pasted link key, tsl2_…"))),
+    key: v.nullish(v.pipe(v.string(), v.description("The pasted link key, tsl2_…"))),
   }),
 );
 
-export const linkConfirmBody = v.optional(
+export const linkConfirmBody = v.nullish(
   v.object({
-    key: v.optional(v.pipe(v.string(), v.description("The pasted link key, tsl2_…"))),
+    key: v.nullish(v.pipe(v.string(), v.description("The pasted link key, tsl2_…"))),
     name,
   }),
 );

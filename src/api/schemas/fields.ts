@@ -1,10 +1,10 @@
 import * as v from "valibot";
 import { fieldRoles } from "../../shared/fields";
-import { optionalText, window } from "./common";
+import { optionalChoice, optionalText, window } from "./common";
 
 export const fieldsQuery = v.object({
   ...window,
-  wave: v.optional(v.pipe(v.picklist(["keys", "values", "suggest"], "wave must be keys, values, or suggest"), v.description("One slice of the catalog: keys, values or suggest; all of it when left out."))),
+  wave: optionalChoice(["keys", "values", "suggest"], "wave must be keys, values, or suggest", "One slice of the catalog: keys, values or suggest; all of it when left out or empty."),
   cheap: optionalText("With wave=suggest: keys to suggest from cheaply, separated by commas."),
 });
 
