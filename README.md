@@ -138,6 +138,7 @@ Local development runs ClickHouse in Docker and the Bun API plus Vite UI on the 
 
 - [Roadmap](ROADMAP.md)
 - [API](docs/api.md): every `/api` route a token may call, its role and what it takes; `GET /api/openapi.json` is the same as OpenAPI 3.1
+- [MCP](docs/mcp.md): an agent calls the API as tools at `/mcp`, with the same token
 - [Ingest guide](docs/ingest.md)
 - [Operations guide](docs/operations.md)
 - [Query language](docs/query.md)

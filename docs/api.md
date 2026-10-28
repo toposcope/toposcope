@@ -2,7 +2,7 @@
 
 <!-- Written by `bun run api-docs` from src/api/routes.ts. Do not edit by hand. -->
 
-Every `/api` route a personal or service account token may call, from the same table the app registers its routes from. `GET /api/openapi.json` is this page as OpenAPI 3.1.
+Every `/api` route a personal or service account token may call, from the same table the app registers its routes from. `GET /api/openapi.json` is this page as OpenAPI 3.1, and [MCP at `/mcp`](mcp.md) runs these routes as tools.
 
 Send the token as `Authorization: Bearer <token>`; a browser's session works too. Each route names the least role that may call it ([People and roles](people.md)). A query value is text; a body is JSON.
 
