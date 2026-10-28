@@ -91,4 +91,4 @@ Do not add a hosted control plane, PromQL, Grafana, or a Toposcope ingest daemon
 
 ## Versions
 
-`package.json` is the product version. **0.9** is shipped (`0.9.0`). Series cuts are GitHub milestones. A patch is one release. Changelog entries are the history; they are not a second spec. A `v*` tag publishes the image and zip; GitHub release notes are that version’s changelog section.
+`package.json` is the product version. **0.10** is shipped (`0.10.0`). Series cuts are GitHub milestones. A patch is one release. Changelog entries are the history; they are not a second spec. A `v*` tag publishes the image and zip; GitHub release notes are that version’s changelog section.
