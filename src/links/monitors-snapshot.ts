@@ -18,6 +18,11 @@ export type MonitorDefinition = Pick<
 > & { service: string; host: string };
 
 export type MonitorsSnapshot = {
+  /**
+   * Monitors that entered elsewhere and came here over a link (#334), forwarded under the
+   * instance they entered at, so edge → region → centre shows the edge's monitors at the centre.
+   */
+  forwarded?: Array<{ source: string; monitors: MonitorDefinition[]; stretches: MonitorsSnapshot["stretches"] }>;
   monitors: MonitorDefinition[];
   stretches: Array<Pick<MonitorStretch, "id" | "monitor_id" | "opened_at" | "resolved_at" | "closed_by" | "open_message">>;
 };
@@ -54,11 +59,30 @@ export function monitorsSnapshot(q: string, here: string, now = Date.now(), db: 
   const stretches = stretchesBetween(now - stretchDays * 86_400_000, now, db)
     .filter((s) => ids.has(s.monitor_id))
     .map(({ id, monitor_id, opened_at, resolved_at, closed_by, open_message }) => ({ id, monitor_id, opened_at, resolved_at, closed_by, open_message }));
-  return { monitors, stretches };
+  // What came here from further away goes on, filtered the same way, under where it entered.
+  const forwarded = pulledMonitors(db)
+    .filter((p) => p.source !== here)
+    .map((p) => {
+      const kept = p.monitors.filter(
+        (m) => !ast || matchNode(ast, (key) => (key === "service" ? m.service : key === "host" ? m.host : key === "toposcope" ? p.source : "")),
+      );
+      const keptIds = new Set(kept.map((m) => m.id));
+      return { source: p.source, monitors: kept, stretches: p.stretches.filter((s) => keptIds.has(s.monitor_id)) };
+    })
+    .filter((p) => p.monitors.length > 0);
+  return { monitors, stretches, ...(forwarded.length > 0 ? { forwarded } : {}) };
 }
 
 /** The puller's side: the newest snapshot from a source replaces the one before. */
-export function keepMonitorsSnapshot(source: string, snapshot: MonitorsSnapshot, now = Date.now(), db: Database = getDb()): void {
+export function keepMonitorsSnapshot(source: string, snapshot: MonitorsSnapshot, now = Date.now(), db: Database = getDb(), here = ""): void {
+  const { forwarded = [], ...own } = snapshot;
+  for (const f of forwarded) {
+    // A monitor that entered here and came back is not kept as another instance's.
+    if (f.source && f.source !== here && f.source !== source) {
+      keepMonitorsSnapshot(f.source, { monitors: f.monitors, stretches: f.stretches }, now, db, here);
+    }
+  }
+  snapshot = own;
   db.query(
     `INSERT INTO pulled_monitors (source, snapshot, at) VALUES (?, ?, ?)
      ON CONFLICT (source) DO UPDATE SET snapshot = excluded.snapshot, at = excluded.at`,

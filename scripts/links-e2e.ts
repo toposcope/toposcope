@@ -110,7 +110,7 @@ await ingest(B, service, [{ level: "warn", message: `${tag} from edge` }]);
 await until("A holds B's own row", async () => (await count(A, `toposcope:${nameB} service:${service}`)) === 1);
 // Every kind comes with a link (#329): B's spans and metric points reach A over the same link.
 check(Array.isArray(backConfirm.body.kinds ? backConfirm.body.kinds.split(",") : null) && backConfirm.body.kinds.includes("traces"), "the link carries every kind by default", backConfirm.body.kinds);
-const traceId = Array.from({ length: 32 }, (_, i) => "0123456789abcdef"[(i * 7 + tag.length) % 16]).join("");
+const traceId = crypto.randomUUID().replaceAll("-", "");
 const nano = `${Date.now()}000000`;
 const otlp = async (path: string, body: unknown) => {
   const res = await fetch(`${B}${path}`, { method: "POST", headers: { authorization: `Bearer ${ingestToken}`, "content-type": "application/json" }, body: JSON.stringify(body) });
