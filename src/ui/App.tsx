@@ -537,7 +537,7 @@ export function App() {
   const [facets, setFacets] = useState<Facets>(emptyFacets);
   const [facetsLoading, setFacetsLoading] = useState(true);
   // What this instance holds (#139): where each source it pulls from stands.
-  const held = useHeld(view === "search", live);
+  const held = useHeld(view === "search" || view === "watch", live);
   const linked = held.sources.length > 0;
   const linkedRef = useRef(linked);
   linkedRef.current = linked;
@@ -4118,6 +4118,9 @@ export function App() {
           onNew={openNewAlert}
           onOpen={openMonitor}
           onOpenMarks={openMarksStretch}
+          held={held.sources}
+          linked={new Set(held.links.filter((l) => l.role === "pull" && l.peer_name).map((l) => l.peer_name))}
+          onOpenLink={openSourceLink}
         />
 
       ) : view === "sign-in" ? (

@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
 import { formatOpenFor } from "../../shared/monitor";
 import { markKindColor } from "./histogram-marks";
-import type { MonitorCall, MonitorStretch, MonitorView, MonitorsResponse, PushResultRow } from "@/types";
+import type { HeldSource } from "../../shared/held";
+import type { MonitorCall, MonitorStretch, MonitorView, MonitorsFromSource, MonitorsResponse, PushResultRow, SourceMonitor } from "@/types";
 import {
   clockAt,
   httpLane,
@@ -41,6 +42,16 @@ import {
   watchTicks,
   type WatchFilter,
   type WatchRange,
+  placeShows,
+  sourceDefinition,
+  sourceKindWords,
+  sourceRow,
+  sourceStanding,
+  sourceStretch,
+  watchPlaces,
+  watchSummary,
+  type SourceStanding,
+  type WatchPlace,
 } from "@/watch";
 
 type Props = {
@@ -57,6 +68,11 @@ type Props = {
   onOpen: (monitor: MonitorView, stretch?: Pick<MonitorStretch, "opened_at" | "resolved_at">) => void;
   /** Open a chip's stretch in Search, every service (#212, 20c). */
   onOpenMarks?: (fromMs: number, toMs: number) => void;
+  /** Where each linked source stands (#139), so a short one's lanes are hatched (#333). */
+  held?: HeldSource[];
+  /** The sources with a pull link here, whose link page opens from their group. */
+  linked?: ReadonlySet<string>;
+  onOpenLink?: (source: string) => void;
 };
 
 /** 26g: one row per monitor: state, what it is and its condition, what it checks, its strip, last check, now (#263). */
@@ -674,15 +690,210 @@ function MarkPeek({ group, nowMs }: { group: WatchMarkGroup; nowMs: number }) {
   );
 }
 
+/** 33g: a short source's spans, hatched amber on its lanes; never green. */
+const shortHatch = "repeating-linear-gradient(135deg,rgba(251,191,36,.35) 0 2px,transparent 2px 5px)";
+
+/** A source's monitor (#333, 33g): drawn as its source judged it, read-only; opening it shows what came, never Edit. */
+function SourceLane({
+  monitor,
+  source,
+  stretches,
+  results,
+  standing,
+  fromMs,
+  toMs,
+  nowMs,
+  ticks,
+  open,
+  onToggle,
+}: {
+  monitor: SourceMonitor;
+  source: string;
+  stretches: MonitorsFromSource["stretches"];
+  results: PushResultRow[];
+  standing: SourceStanding;
+  fromMs: number;
+  toMs: number;
+  nowMs: number;
+  ticks: Array<{ left: number }>;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const row = sourceRow(monitor, source, stretches, results, standing, nowMs);
+  const kind = sourceOf(monitor);
+  const runs =
+    kind === "http" || kind === "tcp" || kind === "cert" ? httpLane(results, monitor.every_ms ?? 30_000, fromMs, toMs) : null;
+  const marks = kind === "push" ? pushTicks(results, fromMs, toMs) : [];
+  const spans = stretchSpans(stretches.map(sourceStretch), fromMs, toMs, nowMs);
+  return (
+    <>
+      <div className={cn(wrow, row.dot === "open" && "bg-red-500/[0.04]")} data-monitor={monitor.id} data-source={source}>
+        <span className={cn("text-[12px]", dotTone[row.dot])} aria-label={standing.short ? "short" : row.dot}>
+          ●
+        </span>
+        <button
+          type="button"
+          className="flex min-w-0 flex-col items-start text-left"
+          title={`${monitor.name} · read-only, judged at ${source}`}
+          aria-expanded={open}
+          onClick={onToggle}
+        >
+          <span className="max-w-full truncate text-[13px] font-medium hover:underline">{monitor.name}</span>
+          <PlaceTags monitor={monitor} />
+          <span className="max-w-full truncate text-[12px] text-muted-foreground">{row.line}</span>
+        </button>
+        <span className="truncate text-[12px] text-muted-foreground">{sourceKindWords(monitor)}</span>
+        <span
+          className="relative h-[18px] overflow-hidden rounded-[3px] bg-[#0f0f11]"
+          style={
+            runs?.dense && results.length > 0
+              ? { backgroundImage: "repeating-linear-gradient(to right,rgba(231,225,211,.35) 0 1px,transparent 1px 3px)" }
+              : undefined
+          }
+        >
+          {runs?.dense && results.length > 0 ? null : <Grid ticks={ticks} />}
+          {runs?.ticks.map((t) => (
+            <span
+              key={t.id}
+              title={`${clockAt(t.result.at, nowMs)} ${t.result.result} · ${t.result.message}`}
+              className={cn("absolute", runTone[t.tone], t.width > 0 ? "rounded-[1px]" : "")}
+              style={{ left: pct(t.left), width: t.width > 0 ? `max(2px, ${pct(t.width)})` : "2px" }}
+            />
+          ))}
+          {marks.map((t) => (
+            <span
+              key={t.id}
+              title={`${clockAt(t.result.at, nowMs)} ${t.result.result} · ${t.result.message}`}
+              className={cn("absolute top-1 bottom-1 min-w-[2px] rounded-[1px]", tickTone[t.tone])}
+              style={{ left: pct(t.left), width: t.width > 0 ? pct(t.width) : "2px" }}
+            />
+          ))}
+          {spans.map((span) => (
+            <span
+              key={span.id}
+              title={`open at ${source} ${clockAt(span.stretch.opened_at, nowMs)} → ${
+                span.open ? "now" : clockAt(span.stretch.resolved_at ?? nowMs, nowMs)
+              } · ${formatOpenFor((span.stretch.resolved_at ?? nowMs) - span.stretch.opened_at)}`}
+              className={cn("absolute top-[3px] bottom-[3px]", span.open ? "bg-red-500" : "rounded-[2px] bg-red-500/45")}
+              style={{ left: pct(span.left), width: pct(span.width) }}
+            />
+          ))}
+          {standing.hatches.map((h) => (
+            <span
+              key={`${h.left}-${h.width}`}
+              data-short
+              title={`not here yet: ${source} is short`}
+              className="absolute inset-y-0"
+              style={{ left: pct(h.left), width: pct(h.width), backgroundImage: shortHatch }}
+            />
+          ))}
+        </span>
+        <span className="font-mono text-[12px] text-muted-foreground">{row.lastCheck !== null ? clockAt(row.lastCheck, nowMs) : "—"}</span>
+        <span
+          className={cn(
+            "truncate text-right font-mono text-[12px]",
+            row.now.tone === "red" ? "text-red-300" : row.now.tone === "amber" ? "text-amber-300" : "text-muted-foreground",
+          )}
+        >
+          {row.now.text}
+        </span>
+      </div>
+      {open ? <SourceDetail monitor={monitor} source={source} stretches={stretches} results={results} nowMs={nowMs} /> : null}
+    </>
+  );
+}
+
+/** A source's monitor opened (33g): its definition, results and stretches as the source holds them; no Edit, Pause, Silence or delete. */
+export function SourceDetail({
+  monitor,
+  source,
+  stretches,
+  results,
+  nowMs,
+}: {
+  monitor: SourceMonitor;
+  source: string;
+  stretches: MonitorsFromSource["stretches"];
+  results: PushResultRow[];
+  nowMs: number;
+}) {
+  const recent = [...results].sort((a, b) => b.at - a.at).slice(0, 12);
+  const spans = [...stretches].sort((a, b) => b.opened_at - a.opened_at);
+  return (
+    <div
+      role="region"
+      aria-label={`${monitor.name}, read-only`}
+      data-source-detail={monitor.id}
+      className="grid grid-cols-1 gap-4 border-b border-white/[0.06] bg-[#111114] px-4 py-3 text-[12px] lg:grid-cols-3"
+    >
+      <div className="flex flex-col gap-1">
+        <span className="flex items-center gap-2 text-[12.5px] font-medium">
+          Definition <Badge tone="out">read-only</Badge>
+        </span>
+        {sourceDefinition(monitor, source).map((d) => (
+          <span key={d.label} className="flex gap-2">
+            <span className="w-[84px] shrink-0 text-muted-foreground">{d.label}</span>
+            <span className="min-w-0 truncate font-mono">{d.value}</span>
+          </span>
+        ))}
+        <span className="mt-1 text-muted-foreground">Judged and called at {source}; nothing is judged or called again here. Change it there.</span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-[12.5px] font-medium">Results here</span>
+        {recent.length === 0 ? <span className="text-muted-foreground">None in this window.</span> : null}
+        {recent.map((r) => (
+          <span key={r.id} className="flex gap-2">
+            <span className="font-mono text-muted-foreground">{clockAt(r.at, nowMs)}</span>
+            <span className={r.result === "fail" ? "text-red-300" : r.result === "warn" ? "text-amber-300" : "text-zinc-300"}>{r.result}</span>
+            <span className="min-w-0 truncate text-muted-foreground">{r.message}</span>
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-col gap-1">
+        <span className="text-[12.5px] font-medium">Stretches</span>
+        {spans.length === 0 ? <span className="text-muted-foreground">None open or resolved in this window.</span> : null}
+        {spans.map((st) => (
+          <span key={st.id} className="flex gap-2">
+            <span className={st.resolved_at === null ? "text-red-300" : "text-zinc-500"}>●</span>
+            <span className="font-mono text-muted-foreground">{clockAt(st.opened_at, nowMs)}</span>
+            <span className="min-w-0 truncate text-zinc-300">
+              {st.resolved_at === null
+                ? `open ${formatOpenFor(nowMs - st.opened_at)}`
+                : `resolved ${clockAt(st.resolved_at, nowMs)} · ${formatOpenFor(st.resolved_at - st.opened_at)}${st.closed_by === "edit" ? " · closed by edit" : ""}`}
+              {st.open_message ? ` · ${st.open_message}` : ""}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 33g: a group's head: Here, or a source by name, read-only, with where it stands and its link. */
+function GroupHead({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-baseline gap-2.5 border-b border-white/[0.06] px-4 py-2.5">{children}</div>;
+}
+
 /** Frame 18c: Watch, every monitor on one clock, open ones first. */
-export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen, onOpenMarks }: Props) {
+export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen, onOpenMarks, held = [], linked, onOpenLink }: Props) {
   const monitors = data?.monitors ?? [];
+  // #333, 33g: each linked source's monitors, read-only under its name.
+  const sources = data?.sources ?? [];
+  const away = sources.flatMap((g) => g.monitors);
+  const [placePick, setPlace] = useState<WatchPlace>("all");
+  const places = watchPlaces(monitors.length, sources);
+  const place: WatchPlace = places.some((p) => p.id === placePick) ? placePick : "all";
+  const [peek, setPeek] = useState<string | null>(null);
   const nowMs = data?.now ?? Date.now();
   const fromMs = data ? Date.parse(data.from) : nowMs;
   const toMs = data ? Date.parse(data.to) : nowMs;
-  const filters = watchFilters(monitors);
+  const filters = watchFilters([...monitors, ...away]);
   const shown = sortForWatch(monitors).filter((m) => filter === "all" || sourceOf(m) === filter);
   const open = sortForWatch(monitors).filter((m) => m.state === "open" && m.open);
+  const awayOpen = sources.reduce(
+    (n, g) => n + g.monitors.filter((m) => m.state === "open" && g.stretches.some((st) => st.monitor_id === m.id && st.resolved_at === null)).length,
+    0,
+  );
   const deliveryRows = deliveries(monitors);
   const today = openedToday(data?.stretches ?? [], monitors, nowMs);
   const ticks = watchTicks(fromMs, toMs, range);
@@ -750,8 +961,8 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Watch</h1>
           <span className="text-[12px] text-muted-foreground">
-            {monitors.length} monitor{monitors.length === 1 ? "" : "s"}
-            {open.length > 0 ? <span className="text-red-300"> · {open.length} open</span> : null}
+            {watchSummary(monitors.length, sources)}
+            {open.length + awayOpen > 0 ? <span className="text-red-300"> · {open.length + awayOpen} open</span> : null}
             {deliveryRows.length > 0 ? ` · webhooks to ${deliveryRows.map((d) => d.host).join(" and ")}` : ""}
           </span>
           <span className="inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]">
@@ -761,6 +972,15 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               </Seg>
             ))}
           </span>
+          {places.length > 0 ? (
+            <span className="inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]" aria-label="Where">
+              {places.map((p) => (
+                <Seg key={p.id} on={place === p.id} onClick={() => setPlace(p.id)}>
+                  {p.label} <span className="font-mono text-muted-foreground">{p.n}</span>
+                </Seg>
+              ))}
+            </span>
+          ) : null}
           {tall ? (
             <span className="text-[12px] text-muted-foreground">
               Each tick is a result. A bar is a run, from its /start to its end. The dashed line is when the next one
@@ -783,7 +1003,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
           )}
         </div>
 
-        {monitors.length === 0 ? (
+        {monitors.length === 0 && away.length === 0 ? (
           <div className="rounded-[6.4px] border bg-card px-3 py-8 text-center">
             <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -797,8 +1017,16 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               </Button>
             ) : null}
           </div>
-        ) : (
-          <div className="relative rounded-[6.4px] border bg-card py-1">
+        ) : !placeShows(place, null) ? null : (
+          <div className={cn("relative rounded-[6.4px] border bg-card", sources.length > 0 ? "pb-1" : "py-1")}>
+            {sources.length > 0 ? (
+              <GroupHead>
+                <h2 className="m-0 text-[13.5px] font-medium">Here</h2>
+                <span className="text-[12px] text-muted-foreground">
+                  {monitors.length > 0 ? "judged and called from this instance" : "no monitors on this instance yet"}
+                </span>
+              </GroupHead>
+            ) : null}
             {tall ? (
             <div className={cn(prow, "border-b-0 py-[3px]")}>
               <span />
@@ -882,7 +1110,68 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
           </div>
         )}
 
-        {monitors.length > 0 && !tall ? (
+        {sources
+          .filter((g) => placeShows(place, g.source))
+          .map((g) => {
+            const standing = sourceStanding(g.source, held.find((h) => h.name === g.source), g.at, fromMs, toMs, nowMs);
+            const rows = g.monitors.filter((m) => filter === "all" || sourceOf(m) === filter);
+            const openFirst = [...rows.filter((m) => m.state === "open"), ...rows.filter((m) => m.state !== "open")];
+            return (
+              <section key={g.source} className="rounded-[6.4px] border bg-card pb-1" data-source-group={g.source}>
+                <GroupHead>
+                  <h2 className="m-0 flex items-center gap-2 text-[13.5px] font-medium">
+                    <Badge tone="sec">
+                      <span className="font-mono">{g.source}</span>
+                    </Badge>
+                    from {g.source}
+                  </h2>
+                  <Badge tone="out">read-only</Badge>
+                  <span className={cn("text-[12px]", standing.short ? "text-amber-300" : "text-muted-foreground")}>{standing.line}</span>
+                  {onOpenLink && linked?.has(g.source) ? (
+                    <button
+                      type="button"
+                      className="ml-auto text-[12px] text-muted-foreground hover:text-foreground"
+                      onClick={() => onOpenLink(g.source)}
+                    >
+                      the link →
+                    </button>
+                  ) : null}
+                </GroupHead>
+                {openFirst.length === 0 ? (
+                  <div className="px-4 py-3 text-[12px] text-muted-foreground">
+                    {g.monitors.length === 0 ? `No monitors came from ${g.source}.` : "None of this kind."}
+                  </div>
+                ) : null}
+                {openFirst.map((m) => {
+                  const key = `${g.source}:${m.id}`;
+                  return (
+                    <SourceLane
+                      key={key}
+                      monitor={m}
+                      source={g.source}
+                      stretches={g.stretches.filter((st) => st.monitor_id === m.id)}
+                      results={resultsBy.get(m.id) ?? []}
+                      standing={standing}
+                      fromMs={fromMs}
+                      toMs={toMs}
+                      nowMs={nowMs}
+                      ticks={ticks}
+                      open={peek === key}
+                      onToggle={() => setPeek(peek === key ? null : key)}
+                    />
+                  );
+                })}
+              </section>
+            );
+          })}
+        {sources.length > 0 && place !== "here" ? (
+          <span className="text-[12px] text-muted-foreground">
+            A source's monitor opens read-only: its definition, results and stretches as its source holds them. Nothing is
+            judged or called again here, and there is no Edit.
+          </span>
+        ) : null}
+
+        {monitors.length > 0 && !tall && placeShows(place, null) ? (
           <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
             <section className="flex flex-col gap-2 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5">
               <span className="text-[13.5px] font-medium">What opened today</span>

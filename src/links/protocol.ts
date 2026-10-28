@@ -1,3 +1,4 @@
+import { keepMonitorsSnapshot, monitorsSnapshot, type MonitorsSnapshot } from "./monitors-snapshot";
 import { ensureSourceProjections, feedKinds, kindsOf } from "./kinds";
 import { noteWire } from "./volume";
 import { effectiveMetricsRetentionDays } from "../control/settings";
@@ -194,7 +195,9 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
     behind_rows: link.q.trim() === "" ? Math.max(0, reply.settled - reply.through) : null,
     last_error: null,
   });
-  const body = await encodeFeed(reply, instanceId(), { source: { id: instanceId(), name: instanceName() ?? "" } });
+  const caughtUp = reply.through >= reply.settled && kindsOf(link.kinds).includes("monitors");
+  const monitors = caughtUp ? monitorsSnapshot(link.q, instanceName() ?? "") : null;
+  const body = await encodeFeed(reply, instanceId(), { source: { id: instanceId(), name: instanceName() ?? "" }, ...(monitors ? { monitors } : {}) });
   noteWire(link.id, body);
   return new Response(body as unknown as BodyInit, {
     headers: { "content-type": "application/x-toposcope-feed", ...versionHeaders() },
@@ -248,6 +251,10 @@ export async function linkRowsRoute(c: Context): Promise<Response> {
   await insertPulledMarks(reply.marks ?? [], source, hereName());
   await insertPulledBlocks(wire, { id: reply.source?.id || link.peer_id, name: source.name }, instanceId());
   noteWire(link.id, wire);
+  const sent = (wire.header as { monitors?: MonitorsSnapshot }).monitors;
+  if (sent) {
+    keepMonitorsSnapshot(source.name, sent);
+  }
   const gone =
     reply.gone && link.gone_from !== null && link.gone_to !== null
       ? { from: Math.min(link.gone_from, reply.gone.from), to: Math.max(link.gone_to, reply.gone.to) }

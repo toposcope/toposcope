@@ -7,7 +7,8 @@ import { formatSpan, isLate, isRunning, pushDueAt, pushOpensAt, type PushClock }
 import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, newestFirst, type MarkCluster } from "./change-marks";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
-import type { MonitorCall, MonitorStretch, MonitorView, PushResultRow } from "./types";
+import { sourceGaps, type HeldSource } from "../shared/held";
+import type { MonitorCall, MonitorStretch, MonitorView, MonitorsFromSource, PushResultRow, SourceMonitor, SourceStretch } from "./types";
 
 /**
  * Watch (#175, frame 18c): every monitor a lane on one clock, open ones first. The clock is
@@ -26,7 +27,7 @@ export function watchRangeMs(range: WatchRange): number {
 export type WatchFilter = "all" | MonitorSource;
 
 /** The segments over the lanes: All, then each source a monitor has, in 18c's order. */
-export function watchFilters(monitors: readonly MonitorView[]): Array<{ id: WatchFilter; label: string; n: number }> {
+export function watchFilters(monitors: readonly Pick<MonitorView, "source" | "kind">[]): Array<{ id: WatchFilter; label: string; n: number }> {
   const order: Array<[MonitorSource, string]> = [
     ["search", "Search"],
     ["http", "HTTP"],
@@ -928,4 +929,197 @@ export function deliveries(monitors: readonly MonitorView[]): DeliveryRow[] {
   }
   }
   return [...by.values()].sort((a, b) => a.host.localeCompare(b.host));
+}
+
+/* A source's monitors, read-only under its name (#333, frame 33g). */
+
+/** Where a row was judged: every place, this instance, or one linked source by name. */
+export type WatchPlace = "all" | "here" | `from:${string}`;
+
+/** The place segment (33g): All · Here · each source; none on an instance that has no source's monitors. */
+export function watchPlaces(here: number, sources: readonly Pick<MonitorsFromSource, "source" | "monitors">[]): Array<{ id: WatchPlace; label: string; n: number }> {
+  if (sources.length === 0) {
+    return [];
+  }
+  const total = here + sources.reduce((n, s) => n + s.monitors.length, 0);
+  return [
+    { id: "all", label: "All", n: total },
+    { id: "here", label: "Here", n: here },
+    ...sources.map((s) => ({ id: `from:${s.source}` as WatchPlace, label: s.source, n: s.monitors.length })),
+  ];
+}
+
+/** Whether a group shows under a place: `null` is Here. */
+export function placeShows(place: WatchPlace, source: string | null): boolean {
+  return place === "all" || (source === null ? place === "here" : place === `from:${source}`);
+}
+
+/** The header's count (33g): "7 monitors · 2 here, 5 from 2 linked instances". */
+export function watchSummary(here: number, sources: readonly Pick<MonitorsFromSource, "monitors">[]): string {
+  const away = sources.reduce((n, s) => n + s.monitors.length, 0);
+  const total = here + away;
+  const head = `${total} monitor${total === 1 ? "" : "s"}`;
+  if (sources.length === 0) {
+    return head;
+  }
+  return `${head} · ${here} here, ${away} from ${sources.length} linked instance${sources.length === 1 ? "" : "s"}`;
+}
+
+/** Where a source stands for its monitors: caught up, or short from a time, and the spans to hatch. */
+export type SourceStanding = {
+  short: boolean;
+  /** Since when results are not here; null while caught up. */
+  since: number | null;
+  line: string;
+  /** Hatched on every lane of the source, never drawn green: its spans not here, inside the window. */
+  hatches: Array<{ left: number; width: number }>;
+};
+
+export function sourceStanding(
+  name: string,
+  held: HeldSource | undefined,
+  copiedAt: number,
+  fromMs: number,
+  toMs: number,
+  nowMs: number,
+): SourceStanding {
+  if (!held) {
+    // No pull link by that name now: what is here is as the last snapshot left it.
+    return { short: false, since: null, line: `judged and called at ${name} · copied here ${clockAt(copiedAt, nowMs)}, no link from it now`, hatches: [] };
+  }
+  const gaps = sourceGaps(held, nowMs);
+  const hatches = gaps.flatMap((g) => {
+    const s = span(g.from, g.to, fromMs, toMs);
+    return s ? [s] : [];
+  });
+  const open = gaps.find((g) => g.kind !== "hole");
+  if (open) {
+    return { short: true, since: open.from, line: `short since ${clockAt(open.from, nowMs)} · results after that are not here yet`, hatches };
+  }
+  return { short: false, since: null, line: `judged and called at ${name} · caught up · its results, stretches and definitions copied here`, hatches };
+}
+
+/** A source's stretch with what this instance does not have about it left empty: it is only drawn. */
+export function sourceStretch(s: SourceStretch): MonitorStretch {
+  return {
+    ...s,
+    open_value: null,
+    last_value: null,
+    last_at: s.resolved_at ?? s.opened_at,
+    called_at: null,
+    open_call: null,
+    resolved_call: null,
+    calls: [],
+  };
+}
+
+/** "saved hunt · count", "url · every 30s", "push · every 1d": what a source's monitor checks, from its definition alone. */
+export function sourceKindWords(m: SourceMonitor): string {
+  const src = sourceOf(m);
+  const word =
+    src === "search"
+      ? `saved hunt · ${m.opens_when === "fewer_than" ? "fewer than" : "at least"} ${m.threshold}`
+      : src === "http"
+        ? "url"
+        : src === "tcp"
+          ? "port"
+          : src === "cert"
+            ? "certificate"
+            : src === "fingerprints"
+              ? "fingerprints"
+              : "push";
+  return typeof m.every_ms === "number" && m.every_ms > 0 && src !== "search" && src !== "fingerprints"
+    ? `${word} · every ${formatSpan(m.every_ms)}`
+    : word;
+}
+
+/** A source's monitor's row (33g): its dot, the line under its name, its last check and its Now. Never green while short. */
+export type SourceRow = {
+  dot: WatchDot;
+  line: string;
+  lastCheck: number | null;
+  now: { text: string; tone: "red" | "amber" | "sec" };
+  open: MonitorStretch | null;
+};
+
+export function sourceRow(
+  m: SourceMonitor,
+  source: string,
+  stretches: readonly SourceStretch[],
+  results: readonly PushResultRow[],
+  standing: Pick<SourceStanding, "short">,
+  nowMs: number,
+): SourceRow {
+  const last = results.length ? results.reduce((a, b) => (b.at > a.at ? b : a)) : null;
+  const lastCheck = last?.at ?? m.last_result_at ?? null;
+  const openS = stretches.filter((s) => s.resolved_at === null).sort((a, b) => b.opened_at - a.opened_at)[0];
+  const open = m.state === "open" && openS ? sourceStretch(openS) : null;
+  const said = last?.result ?? m.last_result ?? null;
+  if (standing.short) {
+    return {
+      dot: "paused",
+      line: lastCheck !== null ? `${said ?? "a result"} at ${clockAt(lastCheck, nowMs)}, the last result here` : "no result here yet",
+      lastCheck,
+      now: { text: "?", tone: "amber" },
+      open,
+    };
+  }
+  if (m.enabled === 0) {
+    return { dot: "paused", line: `paused at ${source}`, lastCheck, now: { text: "paused", tone: "sec" }, open: null };
+  }
+  if (open) {
+    return {
+      dot: "open",
+      line: `open at ${source} since ${clockAt(open.opened_at, nowMs)} · ${formatOpenFor(nowMs - open.opened_at)}`,
+      lastCheck,
+      now: { text: sourceReading(m, last) || `open ${formatOpenFor(nowMs - open.opened_at)}`, tone: "red" },
+      open,
+    };
+  }
+  const resolved = [...stretches].filter((s) => s.resolved_at !== null).sort((a, b) => b.opened_at - a.opened_at)[0];
+  const line =
+    resolved && resolved.resolved_at !== null
+      ? `ok · last open ${clockAt(resolved.opened_at, nowMs)} for ${formatOpenFor(resolved.resolved_at - resolved.opened_at)}`
+      : said === "warn" || said === "fail"
+        ? `${said} at ${source}`
+        : "ok";
+  const dot: WatchDot = said === "warn" || said === "fail" ? "warn" : "ok";
+  return { dot, line, lastCheck, now: { text: sourceReading(m, last) || (said ?? "—"), tone: dot === "warn" ? "amber" : "sec" }, open: null };
+}
+
+/** What it last read: "41 ms" for a URL or a port, a pushed value with its unit, a search's count. */
+function sourceReading(m: SourceMonitor, last: PushResultRow | null): string {
+  const src = sourceOf(m);
+  if ((src === "http" || src === "tcp") && typeof last?.duration_ms === "number") {
+    return `${last.duration_ms} ms`;
+  }
+  if (src === "push") {
+    return pushValue(last?.value ?? m.last_value, last?.unit ?? null);
+  }
+  if (src === "search" && typeof m.last_value === "number") {
+    return formatCompactCount(m.last_value);
+  }
+  return "";
+}
+
+/** A source's monitor opened read-only (33g): its definition as lines, nothing to change. */
+export function sourceDefinition(m: SourceMonitor, source: string): Array<{ label: string; value: string }> {
+  const src = sourceOf(m);
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "From", value: `${source}, judged and called there` },
+    { label: "Checks", value: sourceKindWords(m) },
+    { label: "Service", value: m.service || "—" },
+    { label: "Host", value: m.host || "—" },
+  ];
+  if (src === "search") {
+    rows.push({ label: "Opens when", value: `${m.opens_when === "fewer_than" ? "fewer than" : "at least"} ${m.threshold}` });
+  }
+  if (typeof m.every_ms === "number" && m.every_ms > 0) {
+    rows.push({ label: "Every", value: formatSpan(m.every_ms) });
+  }
+  if (typeof m.grace_ms === "number" && m.grace_ms > 0) {
+    rows.push({ label: "Grace", value: formatSpan(m.grace_ms) });
+  }
+  rows.push({ label: "State there", value: m.enabled === 0 ? "paused" : (m.state ?? "ok") });
+  return rows;
 }

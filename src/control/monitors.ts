@@ -1,3 +1,4 @@
+import { pulledMonitors } from "../links/monitors-snapshot";
 import { actorName } from "./actors";
 import type { Context } from "hono";
 import { lastLineAt } from "../alerts/last-line";
@@ -122,6 +123,13 @@ export async function listMonitors(c: Context): Promise<Response> {
     sent: sentCallsBetween(win.fromMs, win.toMs),
     // Results on the clock (#177, #178): each a tick, at most 240 columns a lane.
     results: await resultsBetween(win.fromMs, win.toMs),
+    // Each linked source's monitors (#333), read-only: their results are in `results` by id.
+    sources: pulledMonitors().map((p) => ({
+      source: p.source,
+      at: p.at,
+      monitors: p.monitors,
+      stretches: p.stretches.filter((s) => s.opened_at <= win.toMs && (s.resolved_at === null || s.resolved_at >= win.fromMs)),
+    })),
     link: publicUrl() !== null,
   });
 }
