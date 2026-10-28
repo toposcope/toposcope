@@ -63,6 +63,8 @@ import { createShareRoute, listSharesRoute, previewTicketRoute, putShareRoute, r
 import { version } from "../shared/version";
 import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
+import { feedCreateBody, feedReadQuery, linkConfirmBody, linkInviteBody, linkOfferBody, linkPreviewBody, linkUpdateBody } from "./schemas/links";
+import { shareCreateBody, sharePutBody } from "./schemas/shares";
 import { aroundQuery, attrFacetsQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
 
 /**
@@ -139,22 +141,22 @@ export const apiRoutes: ApiRoute[] = [
 
   // Shares
   { id: "shares", method: "GET", path: "/api/shares", area: "Shares", action: "see access", summary: "Every share, live ones first, with its panels and use.", query: null, body: null, handler: listSharesRoute },
-  { id: "share_create", method: "POST", path: "/api/shares", area: "Shares", action: "make tokens, links, shares", summary: "Make a share; its secret is in this answer and never again.", handler: createShareRoute },
-  { id: "share_put", method: "PUT", path: "/api/shares/:name", area: "Shares", action: "add share panels", summary: "Make or change a share in place; an Operator may only add panels to one that exists.", handler: putShareRoute },
+  { id: "share_create", method: "POST", path: "/api/shares", area: "Shares", action: "make tokens, links, shares", summary: "Make a share; its secret is in this answer and never again.", query: null, body: shareCreateBody, handler: createShareRoute },
+  { id: "share_put", method: "PUT", path: "/api/shares/:name", area: "Shares", action: "add share panels", summary: "Make or change a share in place; an Operator may only add panels to one that exists.", query: null, body: sharePutBody, handler: putShareRoute },
   { id: "share_revoke", method: "DELETE", path: "/api/shares/:name", area: "Shares", action: "make tokens, links, shares", summary: "Revoke a share now: its secret and every read made with it stop.", query: null, body: null, handler: revokeShareRoute },
-  { id: "share_ticket", method: "POST", path: "/api/shares/:name/ticket", area: "Shares", action: "add share panels", summary: "A five-minute ticket to preview a share as the other site will see it.", handler: previewTicketRoute },
+  { id: "share_ticket", method: "POST", path: "/api/shares/:name/ticket", area: "Shares", action: "add share panels", summary: "A five-minute ticket to preview a share as the other site will see it.", query: null, body: null, handler: previewTicketRoute },
 
   // Links and feeds
   { id: "feeds", method: "GET", path: "/api/feeds", area: "Links and feeds", action: "see access", summary: "Every feed: a fixed filter whose rows are read in order.", query: null, body: null, handler: listFeedsRoute },
-  { id: "feed_create", method: "POST", path: "/api/feeds", area: "Links and feeds", action: "make tokens, links, shares", summary: "Make a feed on a filter; the filter never changes after.", handler: createFeedRoute },
-  { id: "feed_read", method: "GET", path: "/api/feeds/:id", area: "Links and feeds", action: "see access", summary: "A feed's rows after a position, in order.", handler: readFeedRoute },
+  { id: "feed_create", method: "POST", path: "/api/feeds", area: "Links and feeds", action: "make tokens, links, shares", summary: "Make a feed on a filter; the filter never changes after.", query: null, body: feedCreateBody, handler: createFeedRoute },
+  { id: "feed_read", method: "GET", path: "/api/feeds/:id", area: "Links and feeds", action: "see access", summary: "A feed's rows after a position, in order.", query: feedReadQuery, body: null, handler: readFeedRoute },
   { id: "links", method: "GET", path: "/api/links", area: "Links and feeds", action: "see access", summary: "This instance, its links and its link keys.", query: null, body: null, handler: listLinksRoute },
   { id: "link_get", method: "GET", path: "/api/links/:id", area: "Links and feeds", action: "see access", summary: "One link's page: which way rows move, its scope, and each kind's state.", query: null, body: null, handler: linkPageRoute },
-  { id: "link_update", method: "PUT", path: "/api/links/:id", area: "Links and feeds", action: "make tokens, links, shares", summary: "Pause or resume a link, or narrow its scope where rows leave here.", handler: updateLinkRoute },
-  { id: "link_offer", method: "POST", path: "/api/links/offer", area: "Links and feeds", action: "make tokens, links, shares", summary: "Mint a key that lets another instance copy rows from here.", handler: offerRoute },
-  { id: "link_invite", method: "POST", path: "/api/links/invite", area: "Links and feeds", action: "make tokens, links, shares", summary: "Mint a key that lets another instance send rows here.", handler: inviteRoute },
-  { id: "link_preview", method: "POST", path: "/api/links/preview", area: "Links and feeds", action: "make tokens, links, shares", summary: "Read a pasted key: who minted it, which way rows move, its filter, and whether it is unused.", handler: previewRoute },
-  { id: "link_confirm", method: "POST", path: "/api/links/confirm", area: "Links and feeds", action: "make tokens, links, shares", summary: "Claim a pasted key at its minter and start the link.", handler: confirmRoute },
+  { id: "link_update", method: "PUT", path: "/api/links/:id", area: "Links and feeds", action: "make tokens, links, shares", summary: "Pause or resume a link, or narrow its scope where rows leave here.", query: null, body: linkUpdateBody, handler: updateLinkRoute },
+  { id: "link_offer", method: "POST", path: "/api/links/offer", area: "Links and feeds", action: "make tokens, links, shares", summary: "Mint a key that lets another instance copy rows from here.", query: null, body: linkOfferBody, handler: offerRoute },
+  { id: "link_invite", method: "POST", path: "/api/links/invite", area: "Links and feeds", action: "make tokens, links, shares", summary: "Mint a key that lets another instance send rows here.", query: null, body: linkInviteBody, handler: inviteRoute },
+  { id: "link_preview", method: "POST", path: "/api/links/preview", area: "Links and feeds", action: "make tokens, links, shares", summary: "Read a pasted key: who minted it, which way rows move, its filter, and whether it is unused.", query: null, body: linkPreviewBody, handler: previewRoute },
+  { id: "link_confirm", method: "POST", path: "/api/links/confirm", area: "Links and feeds", action: "make tokens, links, shares", summary: "Claim a pasted key at its minter and start the link.", query: null, body: linkConfirmBody, handler: confirmRoute },
   { id: "link_key_revoke", method: "DELETE", path: "/api/links/keys/:kid", area: "Links and feeds", action: "make tokens, links, shares", summary: "Revoke a link key that has not been used.", query: null, body: null, handler: revokeKeyRoute },
   { id: "link_remove", method: "DELETE", path: "/api/links/:id", area: "Links and feeds", action: "make tokens, links, shares", summary: "Stop a link; rows already moved age out under retention.", query: null, body: null, handler: removeLinkRoute },
 

@@ -527,6 +527,24 @@ Make a share; its secret is in this answer and never again.
 
 Role: **Owner** · `share_create`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string | yes | The share's name, in its URL and its use rows: lower-case letters, digits, . _ -, up to 64. |
+| `panels` | object[] \| null |  |  |
+| `logs` | string \| null |  |  |
+| `scope` | object |  | What the share can ever read; left out, it is derived from the panels. It must cover them. |
+| `scope.metric_names` | string \| string[] \| null |  |  |
+| `scope.metric_labels` | string \| null |  |  |
+| `scope.logs` | string \| null |  |  |
+| `scope.split` | string \| string[] \| null |  |  |
+| `scope.narrow` | string \| string[] \| null |  |  |
+| `raw_params` | boolean |  | Whether a page may pass its own params within the fence; on by default. |
+| `expires_at` | string \| number |  | When the share stops: a date (2027-10-23), an ISO time or epoch ms, after now and at most a year out. An Owner must give it. |
+| `limits` | object \| null |  |  |
+| `embed` | object \| null |  |  |
+
 ### PUT /api/shares/{name}
 
 Make or change a share in place; an Operator may only add panels to one that exists.
@@ -534,6 +552,23 @@ Make or change a share in place; an Operator may only add panels to one that exi
 Role: **Operator** · `share_put`
 
 Path: `name`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `panels` | object[] \| null |  |  |
+| `logs` | string \| null |  |  |
+| `scope` | object |  | What the share can ever read; left out, it is derived from the panels. It must cover them. |
+| `scope.metric_names` | string \| string[] \| null |  |  |
+| `scope.metric_labels` | string \| null |  |  |
+| `scope.logs` | string \| null |  |  |
+| `scope.split` | string \| string[] \| null |  |  |
+| `scope.narrow` | string \| string[] \| null |  |  |
+| `raw_params` | boolean |  | Whether a page may pass its own params within the fence; on by default. |
+| `expires_at` | string \| number |  | When the share stops: a date (2027-10-23), an ISO time or epoch ms, after now and at most a year out. An Owner must give it. |
+| `limits` | object \| null |  |  |
+| `embed` | object \| null |  |  |
 
 ### DELETE /api/shares/{name}
 
@@ -565,6 +600,12 @@ Make a feed on a filter; the filter never changes after.
 
 Role: **Owner** · `feed_create`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `q` | string | yes | The feed's filter, in the query language; empty means every row. It never changes after. |
+
 ### GET /api/feeds/{id}
 
 A feed's rows after a position, in order.
@@ -572,6 +613,14 @@ A feed's rows after a position, in order.
 Role: **Operator** · `feed_read`
 
 Path: `id`.
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `after` | string |  | The position to read after, a whole number, 0 or more; 0 by default. |
+| `limit` | string |  | How many to return at most, a whole number. |
+| `kinds` | string |  | The kinds to read, separated by commas: logs, marks, spans, metrics, metric_buckets, profile_samples, monitor_results; all by default. |
 
 ### GET /api/links
 
@@ -595,11 +644,27 @@ Role: **Owner** · `link_update`
 
 Path: `id`.
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `paused` | boolean |  | Pause or resume the link. |
+| `q` | string |  | A new filter, only on a link whose rows leave here. |
+| `kinds` | string \| ("logs" \| "marks" \| "traces" \| "metrics" \| "profiles" \| "monitors")[] |  | Fewer kinds, only on a link whose rows leave here: a kind is never added to a key already used. |
+
 ### POST /api/links/offer
 
 Mint a key that lets another instance copy rows from here.
 
 Role: **Owner** · `link_offer`
+
+Body, optional:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string \| null |  |  |
+| `q` | string \| null |  |  |
+| `kinds` | string \| ("logs" \| "marks" \| "traces" \| "metrics" \| "profiles" \| "monitors")[] |  | The kinds the link carries, as a list or separated by commas: logs, marks, traces, metrics, profiles, monitors; all by default. |
 
 ### POST /api/links/invite
 
@@ -607,17 +672,39 @@ Mint a key that lets another instance send rows here.
 
 Role: **Owner** · `link_invite`
 
+Body, optional:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string \| null |  |  |
+| `q` | string \| null |  |  |
+| `kinds` | string \| ("logs" \| "marks" \| "traces" \| "metrics" \| "profiles" \| "monitors")[] |  | The kinds the link carries, as a list or separated by commas: logs, marks, traces, metrics, profiles, monitors; all by default. |
+| `until` | number \| string \| null |  |  |
+
 ### POST /api/links/preview
 
 Read a pasted key: who minted it, which way rows move, its filter, and whether it is unused.
 
 Role: **Owner** · `link_preview`
 
+Body, optional:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `key` | string |  | The pasted link key, tsl2_… |
+
 ### POST /api/links/confirm
 
 Claim a pasted key at its minter and start the link.
 
 Role: **Owner** · `link_confirm`
+
+Body, optional:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `key` | string |  | The pasted link key, tsl2_… |
+| `name` | string \| null |  |  |
 
 ### DELETE /api/links/keys/{kid}
 
