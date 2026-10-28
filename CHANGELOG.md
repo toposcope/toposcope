@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.10.1
 
 **Before you upgrade:** monitors made before 0.10 name no service, and they are not kept. Note them in Watch before you upgrade, and make them again with their service after. [Upgrading from 0.9](docs/operations.md#upgrading-from-09) has the steps. boot drops `metric_kinds`, `metric_units` and `metric_descriptions`, which nothing has read since 0.10.0, and makes `metrics_by_minute` and `metric_buckets_by_minute` again with `kind`, `unit` and `toposcope` in their key, filling them from the stored points. Rolling back to 0.10.0 runs on the new rollups (its views write them with an empty kind, unit and source) and makes the three tables again, empty and unread.
 
