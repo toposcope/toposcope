@@ -3,7 +3,9 @@ import { Copy, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { HeldSource } from "../../shared/held";
 import type { Span } from "../../shared/span";
+import { enteredRow, showsEntered } from "../trace-held";
 import { formatTraceMs } from "../waterfall";
 import {
   foldStack,
@@ -25,6 +27,8 @@ type Props = {
   onClose: () => void;
   onViewProfiles: (span: Span) => void;
   className?: string;
+  /** What this instance holds (#139, #330), for "Where it entered". */
+  held?: { sources: HeldSource[]; now: number; here: string };
 };
 
 function GroupHead({ children, tone }: { children: ReactNode; tone?: "error" }) {
@@ -153,11 +157,15 @@ function ResourceGroup({ fields }: { fields: SpanField[] }) {
 }
 
 /** A selected span in the rail, laid out as an event is: one attribute a row. */
-export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, className }: Props) {
+export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, className, held }: Props) {
   const [tab, setTab] = useState<"fields" | "json">("fields");
   const groups = spanFieldGroups(span);
   const json = spanJson(span);
   const offset = spanOffsetLabel(startMs, formatTraceMs);
+  const sources = held?.sources ?? [];
+  const entered = showsEntered(span, sources)
+    ? enteredRow(span, sources, held?.now ?? Date.now(), held?.here ?? "")
+    : null;
   return (
     <aside
       data-screen-label="Span detail"
@@ -241,6 +249,20 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
           </pre>
         ) : (
           <>
+            {entered ? (
+              <>
+                <GroupHead>Where it entered</GroupHead>
+                <dl className="mx-3 overflow-hidden rounded-lg border">
+                  <div className="grid min-h-7 grid-cols-[104px_minmax(0,1fr)] items-start gap-2 px-2.5 pt-1.5 pb-[5px] @max-[300px]:grid-cols-[76px_minmax(0,1fr)]">
+                    <dt className="truncate font-mono text-[11px] leading-4 text-muted-foreground">toposcope</dt>
+                    <dd className="font-mono text-xs break-words">
+                      {entered.value}
+                      {entered.note ? <span className="font-sans text-muted-foreground"> · {entered.note}</span> : null}
+                    </dd>
+                  </div>
+                </dl>
+              </>
+            ) : null}
             {groups.exception ? (
               <>
                 <GroupHead tone="error">Exception</GroupHead>
