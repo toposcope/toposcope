@@ -322,22 +322,23 @@ Version 0.7.1 changes nothing in ClickHouse or SQLite. A panel's chart pick and 
 
 ### Upgrading from 0.9
 
-0.10 carries every kind over a link, and links do not carry across the upgrade. ClickHouse gains `monitor_results` and columns on `spans`, `metrics`, `metric_buckets` and `profile_samples`; SQLite gains `link_volume`, `pulled_monitors` and columns on `links`, `link_keys` and `alert_rules`. Nothing is dropped.
+0.10 carries every kind over a link, and links do not carry across the upgrade. ClickHouse gains `monitor_results` and columns on `spans`, `metrics`, `metric_buckets` and `profile_samples`; SQLite gains `link_volume`, `pulled_monitors` and columns on `links`, `link_keys` and `alert_rules`. No table or column is dropped; monitors made before 0.10 are removed.
 
 1. Upgrade as usual, on both sides of each link. When 0.10 first starts it stops every link made before 0.10 (removed, as Revoke does, with its record kept), since those links cannot carry this release's tables.
 2. Once both sides run 0.10, make each link again: **Make a link key** on the side that mints, with its scope and kinds, and **Paste a link key** on the other. A `tsl1_` key is refused. A new link reads the source from its start; log rows pulled before are not stored twice.
-3. Name a service on each monitor when it is next edited. Monitors made before 0.10 keep running with no service, and Watch shows "no service"; an edit to one asks for a service first; Pause, Resume and Silence do not.
-4. Make every script that creates or changes monitors over the API send `service` (`POST /api/alert-rules`, `PUT /api/alert-rules/:id`, `PUT /api/monitors/:name`); a save that leaves it out keeps the one stored, and a monitor with none answers 400.
+3. Make each monitor again, naming its service. Every monitor names the service it is about, and monitors made before 0.10 name none, so they are not kept: each start removes every monitor with no service, with its stretches, calls and silences, and logs one line saying how many. Note the monitors you have in Watch before you upgrade.
+4. Make every script that creates monitors over the API send `service` (`POST /api/alert-rules`, `PUT /api/monitors/:name`); a monitor saved without one answers 400, and a save that leaves it out of a monitor that has one keeps it.
 
 What is lost:
 
+- Monitors made before 0.10, with their stretches and calls. Their results in ClickHouse are not read and age out with retention.
 - Monitor results kept in SQLite are not copied to ClickHouse, so Watch's strips start again at the upgrade. Stretches and calls stay in SQLite and are kept.
 - Spans, metric points, histogram buckets and profile samples stored before 0.10 have no position and never travel over a link.
 - `metric_kinds`, `metric_units` and `metric_descriptions` are no longer read. A name's kind, unit and description come off its newest point that has one, so a name not sent since the upgrade reads as a gauge, with no unit or description, until its next point.
 
 A link carries a kind's full projection ordered by `seq` (`by_seq_full`), built on the source's table once a link carries that kind. It costs disk: about 90 % more on `spans` and 130 % more on `metrics`, measured on synthetic data.
 
-To go back to 0.9.0, `./upgrade.sh rollback --yes` restores the backup it took before the upgrade, links made before 0.10 included, and loses what came in since. Pinning 0.9.0 by hand ([Rollback](#rollback)) keeps the data: 0.9.0 runs on the new tables and columns and leaves them unread. Links stopped at the upgrade stay stopped. Links made under 0.10 are not for 0.9: a `tsl2_` key cannot be pasted there, and a 0.10 side refuses a 0.9 one, so revoke them and make links again on 0.9. Monitor results written under 0.10 are in ClickHouse, where 0.9 does not read them, so Watch's strips show a gap for that time. A metric name first sent under 0.10 has no kind or unit on 0.9 until it is sent again there, and a counter reads as an average meanwhile. Rows already pulled stay as ordinary rows.
+To go back to 0.9.0, `./upgrade.sh rollback --yes` restores the backup it took before the upgrade, links and monitors made before 0.10 included, and loses what came in since. Pinning 0.9.0 by hand ([Rollback](#rollback)) keeps the data: 0.9.0 runs on the new tables and columns and leaves them unread. Links stopped at the upgrade stay stopped, and monitors removed at the upgrade stay removed. Links made under 0.10 are not for 0.9: a `tsl2_` key cannot be pasted there, and a 0.10 side refuses a 0.9 one, so revoke them and make links again on 0.9. Monitor results written under 0.10 are in ClickHouse, where 0.9 does not read them, so Watch's strips show a gap for that time. A metric name first sent under 0.10 has no kind or unit on 0.9 until it is sent again there, and a counter reads as an average meanwhile. Rows already pulled stay as ordinary rows.
 
 ## Backup and restore
 

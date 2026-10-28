@@ -12,8 +12,16 @@ export type MonitorPlace = { service: string; host: string };
 
 export const serviceRequired = "A monitor names its service: the service it is about";
 
-/** Body keys that only pause, resume or silence a monitor. */
-const stateOnly = new Set(["enabled", "silence_for", "silenced_until"]);
+/** What withPlace read for each save, so a new monitor's row is written with its service. */
+const places = new WeakMap<Request, MonitorPlace>();
+
+/**
+ * The service and host a route creating a monitor writes with its row (#335), as withPlace read
+ * them: a monitor never exists without its service, even for a moment.
+ */
+export function placeOf(c: Context): MonitorPlace | Response {
+  return places.get(c.req.raw) ?? c.json({ error: serviceRequired }, 400);
+}
 
 /** The host a monitor checks, from what it calls. */
 export function defaultHost(rec: Record<string, unknown>, existing: AlertRule | null): string {
@@ -53,7 +61,8 @@ export function savePlace(id: string, place: MonitorPlace): void {
 
 /**
  * Wraps a route that saves a monitor: the service and host are read and checked before it runs,
- * kept once it has saved, and part of what it answers.
+ * written with the row when it creates one (placeOf), kept once it has saved, and part of what it
+ * answers.
  */
 export function withPlace(handler: Handler, existingOf: (c: Context) => AlertRule | null): Handler {
   return async (c, next) => {
@@ -67,16 +76,11 @@ export function withPlace(handler: Handler, existingOf: (c: Context) => AlertRul
     if (!rec) {
       return handler(c, next);
     }
-    // Pause, resume and silence change a monitor's state, not what it is: a monitor made before
-    // 0.10, with no service yet, can still be paused or silenced without naming one.
-    const keys = Object.keys(rec);
-    if (keys.length > 0 && keys.every((k) => stateOnly.has(k))) {
-      return handler(c, next);
-    }
     const place = readPlace(rec, existingOf(c));
     if ("error" in place) {
       return c.json({ error: place.error }, 400);
     }
+    places.set(c.req.raw, place);
     const res = (await handler(c, next)) as Response;
     if (res.status !== 200 && res.status !== 201) {
       return res;

@@ -91,11 +91,7 @@ export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | 
             {service}
           </span>
         </Badge>
-      ) : (
-        <span title="Made before monitors named their service: edit it to give it one">
-          <Badge tone="out">no service</Badge>
-        </span>
-      )}
+      ) : null}
       {host ? (
         <Badge tone="out">
           <span className="max-w-[160px] truncate" title={`host:${host}`}>

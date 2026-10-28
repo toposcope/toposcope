@@ -120,8 +120,8 @@ export function migrateControlDb(db: Database): void {
   addColumnIfMissing(db, "alert_rules", "started_at", "INTEGER");
   addColumnIfMissing(db, "alert_rules", "last_ok_at", "INTEGER");
   addColumnIfMissing(db, "alert_rules", "paused_at", "INTEGER");
-  // What a monitor is about (#335): its service and the host it checks. Empty on older monitors,
-  // which keep running and are asked for a service the next time they are saved.
+  // What a monitor is about (#335): its service and the host it checks. Every monitor names its
+  // service; one made before 0.10 has none and is removed below.
   addColumnIfMissing(db, "alert_rules", "service", "TEXT NOT NULL DEFAULT ''");
   addColumnIfMissing(db, "alert_rules", "host", "TEXT NOT NULL DEFAULT ''");
   db.run("CREATE UNIQUE INDEX IF NOT EXISTS alert_rules_ping_key ON alert_rules (ping_key) WHERE ping_key IS NOT NULL");
@@ -223,6 +223,7 @@ export function migrateControlDb(db: Database): void {
       PRIMARY KEY (rule_id, mark_id, e1)
     );
   `);
+  dropServicelessMonitors(db);
   db.run(`
     CREATE TABLE IF NOT EXISTS api_tokens (
       id TEXT PRIMARY KEY,
@@ -359,6 +360,32 @@ export function migrateControlDb(db: Database): void {
   migrateActors(db, addColumnIfMissing);
   migrateTwoStep(db, addColumnIfMissing);
   migrateOidc(db, addColumnIfMissing);
+}
+
+/**
+ * Monitors made before 0.10 name no service (#335). They are not kept: each is removed with its
+ * stretches, calls, HTTP(S) or TCP settings, sent fingerprints and old SQLite results, as Delete
+ * removes one. Their results in ClickHouse stay until retention ages them out, as a deleted
+ * monitor's do. Once they are gone this finds none.
+ */
+function dropServicelessMonitors(database: Database): void {
+  const old = "SELECT id FROM alert_rules WHERE trim(service) = ''";
+  const removed = database.transaction(() => {
+    for (const [table, key] of [
+      ["monitor_calls", "monitor_id"],
+      ["monitor_stretches", "monitor_id"],
+      ["monitor_results", "monitor_id"],
+      ["monitor_http", "monitor_id"],
+      ["monitor_net", "monitor_id"],
+      ["alert_sent_fingerprints", "rule_id"],
+    ]) {
+      database.run(`DELETE FROM ${table} WHERE ${key} IN (${old})`);
+    }
+    return database.run("DELETE FROM alert_rules WHERE trim(service) = ''").changes;
+  })();
+  if (removed > 0) {
+    console.warn(`Removed ${removed} monitor${removed === 1 ? "" : "s"} made before 0.10, which named no service: make them again in Watch.`);
+  }
 }
 
 type SqliteColumn = { name: string };

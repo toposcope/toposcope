@@ -38,6 +38,7 @@ import {
   readPushFields,
 } from "./push-monitors";
 import { getDb } from "./index";
+import { placeOf } from "./monitor-place";
 import { getSaved } from "./saved-searches";
 
 /** Watch's clock: 24h, 7d or 30d, or a hunt's own from/to. */
@@ -213,7 +214,11 @@ async function putPushMonitor(
     if (cap) {
       return c.json({ error: cap }, 400);
     }
-    const created = insertPushMonitor(fields, now);
+    const place = placeOf(c);
+    if (place instanceof Response) {
+      return place;
+    }
+    const created = insertPushMonitor(fields, place, now);
     if ("error" in created) {
       return c.json({ error: created.error }, 400);
     }
@@ -245,7 +250,11 @@ async function putHttpMonitor(
   }
   const now = Date.now();
   if (!kept) {
-    const created = insertHttpMonitor(fields, now);
+    const place = placeOf(c);
+    if (place instanceof Response) {
+      return place;
+    }
+    const created = insertHttpMonitor(fields, place, now);
     applyMonitorHold(created, rec, now);
     return c.json(await page(getAlert(created.id)!), 201);
   }
@@ -272,7 +281,11 @@ async function putNetMonitor(
   }
   const now = Date.now();
   if (!kept) {
-    const created = insertNetMonitor(fields, now);
+    const place = placeOf(c);
+    if (place instanceof Response) {
+      return place;
+    }
+    const created = insertNetMonitor(fields, place, now);
     applyMonitorHold(created, rec, now);
     return c.json(await page(getAlert(created.id)!), 201);
   }
@@ -350,7 +363,11 @@ export async function putMonitor(c: Context): Promise<Response> {
   }
   const now = Date.now();
   if (!existing) {
-    const created = insertMonitor(fields, now);
+    const place = placeOf(c);
+    if (place instanceof Response) {
+      return place;
+    }
+    const created = insertMonitor(fields, place, now);
     applyMonitorHold(created, rec, now);
     return c.json(await view(getAlert(created.id)!), 201);
   }

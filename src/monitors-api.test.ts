@@ -34,6 +34,10 @@ beforeAll(async () => {
       await new Promise((ok) => setTimeout(ok, 0));
     }
     const out = {};
+    // What each new monitor's row held when it was written (#335): its service, not filled in after.
+    const controlDb = (await import(root + "/control/index.ts")).getDb();
+    controlDb.run("CREATE TEMP TABLE first_writes (name TEXT, source TEXT, service TEXT)");
+    controlDb.run("CREATE TEMP TRIGGER first_write AFTER INSERT ON main.alert_rules BEGIN INSERT INTO first_writes VALUES (NEW.name, NEW.source, NEW.service); END");
     const auth = { authorization: (await import(root + "/control/owner-for-tests.ts")).ownerBearer(), "content-type": "application/json" };
     const go = async (key, path, method = "GET", body) => {
       // Every monitor names its service (#335): a fixture that does not name one is about "api".
@@ -57,13 +61,6 @@ beforeAll(async () => {
     await go("noService", "/api/monitors/x", "PUT", { service: "", source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
     await go("named", "/api/monitors/named", "PUT", { service: "billing", source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
     await go("namedGone", "/api/monitors/named", "DELETE");
-    // A monitor made before 0.10 has no service: it can still be paused, resumed and silenced (#335).
-    const older = (await go("older", "/api/alert-rules", "POST", { name: "older", service: "api", saved_search_id: saved.id, threshold: 1, webhook_url: hook })).body;
-    (await import(root + "/control/index.ts")).getDb().query("UPDATE alert_rules SET service = '' WHERE id = ?").run(older.id);
-    await go("olderPause", "/api/alert-rules/" + older.id, "PUT", { enabled: false });
-    await go("olderSilence", "/api/alert-rules/" + older.id, "PUT", { silence_for: "1h" });
-    await go("olderEdit", "/api/alert-rules/" + older.id, "PUT", { threshold: 2, service: "" });
-    await go("olderGone", "/api/alert-rules/" + older.id, "DELETE");
     await go("noSearch", "/api/monitors/x", "PUT", { source: "search", saved_search: "no such search", threshold: 1, webhook_url: hook });
     await go("fpResolved", "/api/monitors/x", "PUT", { source: "fingerprints", saved_search_id: saved.id, threshold: 1, webhook_url: hook, body_kind: "text", body_template: "{{alert.name}}", resolved_body: "{{alert.name}} resolved" });
     await go("badResolved", "/api/monitors/x", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook, body_kind: "text", body_template: "{{alert.name}}", resolved_body: "{{mark.kind}} resolved" });
@@ -135,6 +132,7 @@ beforeAll(async () => {
     await go("tcpGone", "/api/monitors/db-port");
     tcpStand.stop(true);
     stand.stop(true);
+    out.firstWrites = { status: 0, body: controlDb.query("SELECT name, source, service FROM first_writes").all() };
     console.log(JSON.stringify(out));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], {
@@ -198,14 +196,20 @@ describe("PUT /api/monitors/<name> (#175)", () => {
     expect(r.redeclare!.body).toMatchObject({ threshold: 3, remind_every: "off" });
   });
 
+  test("a new monitor of every source is written with its service (#335)", () => {
+    const writes = r.firstWrites!.body as Array<{ name: string; source: string; service: string }>;
+    expect([...new Set(writes.map((w) => w.source))]).toEqual(expect.arrayContaining(["search", "http", "tcp", "cert"]));
+    expect(writes.filter((w) => w.service === "")).toEqual([]);
+    expect(writes.find((w) => w.name === "named")).toMatchObject({ service: "billing" });
+  });
+
   test("says what is wrong with a declaration", () => {
     // Every monitor names its service (#335), and says it back.
     expect(r.noService!.status).toBe(400);
     expect(r.noService!.body.error).toBe("A monitor names its service: the service it is about");
     expect(r.named!.body).toMatchObject({ service: "billing", host: "" });
-    expect(r.olderPause!.status).toBe(200);
-    expect(r.olderSilence!.status).toBe(200);
-    expect(r.olderEdit!.status).toBe(400);
+    // A pause names nothing and keeps the service the monitor had.
+    expect(r.pause!.body).toMatchObject({ enabled: 0, service: "api" });
     expect(r.noSource!.status).toBe(400);
     expect(r.noSource!.body.error).toBe("source is required: search, fingerprints, push, http, tcp or cert");
     expect(r.noSearch!.status).toBe(404);

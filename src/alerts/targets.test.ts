@@ -162,7 +162,7 @@ beforeAll(() => {
     const both = readMonitorFields({ ...base, webhook_urls: ["default", "https://hooks.slack.com/services/x"] }, null);
     const onlyDefault = readMonitorFields({ ...base, webhook_urls: ["default"] }, null);
     const none = readMonitorFields({ ...base }, null);
-    const made = getAlert(insertMonitor(both).id);
+    const made = getAlert(insertMonitor(both, { service: "api", host: "" }).id);
     console.log(JSON.stringify({ both: both.webhook_url, onlyDefault: onlyDefault.webhook_url, none, stored: made.webhook_urls }));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], { env: { ...process.env, SQLITE_PATH: ":memory:" }, stdout: "pipe", stderr: "pipe" });

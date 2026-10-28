@@ -35,6 +35,7 @@ import {
 import { monitorQuery } from "../shared/push";
 import { getAlert, parseWebhook, readBody, readRemind, type AlertRule } from "./alerts";
 import { getDb } from "./index";
+import type { MonitorPlace } from "./monitor-place";
 
 /** A TCP or certificate monitor as the API shows it (#180). */
 export type NetView = {
@@ -176,15 +177,15 @@ export function readNetFields(rec: Record<string, unknown>, source: NetSource, e
 }
 
 /** A new TCP or certificate monitor: ok, and its first run is due now. */
-export function insertNetMonitor(fields: NetFields, now = Date.now()): AlertRule {
+export function insertNetMonitor(fields: NetFields, place: MonitorPlace, now = Date.now()): AlertRule {
   const id = crypto.randomUUID();
   const db = getDb();
   db.transaction(() => {
     db.query(
       `INSERT INTO alert_rules
         (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
-         source, state, remind_every, resolved_body)
-       VALUES (?, ?, ?, ?, NULL, 1, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?)`,
+         source, state, remind_every, resolved_body, service, host)
+       VALUES (?, ?, ?, ?, NULL, 1, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?, ?)`,
     ).run(
       id,
       fields.name,
@@ -198,6 +199,8 @@ export function insertNetMonitor(fields: NetFields, now = Date.now()): AlertRule
       fields.source,
       fields.remind_every,
       fields.resolved_body,
+      place.service,
+      place.host,
     );
     insertNet(id, fields.write, now, db);
   })();

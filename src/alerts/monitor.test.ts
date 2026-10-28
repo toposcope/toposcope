@@ -56,6 +56,8 @@ function addRule(db: Database, over: Record<string, unknown> = {}): string {
     remind_every: "window",
     resolved_body: null,
     silenced_until: null,
+    // Every monitor names its service (#335); one that does not is removed at the next start.
+    service: "api",
     ...over,
   };
   const cols = Object.keys(row);
@@ -354,7 +356,7 @@ describe("a search monitor opens, reminds and resolves (#175)", () => {
   });
 });
 
-describe("the upgrade to 0.6 (#175)", () => {
+describe("an upgrade from 0.5 (#175, #335)", () => {
   /** alert_rules as 0.5.7 left it. */
   function db057(): Database {
     const db = new Database(":memory:");
@@ -376,23 +378,10 @@ describe("the upgrade to 0.6 (#175)", () => {
     return db;
   }
 
-  test("every alert becomes a monitor of its kind, ok, reminding every window", () => {
+  test("its alerts name no service, so they are not kept", () => {
     const db = db057();
     migrateControlDb(db);
-    expect(getAlert("mon-1", db)).toMatchObject({ source: "search", state: "ok", remind_every: "window", resolved_body: null });
-    expect(getAlert("mon-2", db)).toMatchObject({ source: "fingerprints", state: "ok", remind_every: "window" });
-    migrateControlDb(db);
-    expect(getAlert("mon-1", db)?.remind_every).toBe("window");
-  });
-
-  test("an alert that existed before still calls once per window while it holds", async () => {
-    const db = db057();
-    migrateControlDb(db);
-    const m = rig(db);
-    for (let i = 0; i <= 45; i++) {
-      await m.at(i, 57);
-    }
-    expect(m.sent.map((s) => s.at)).toEqual([t0, t0 + 15 * minute, t0 + 30 * minute, t0 + 45 * minute]);
-    expect(m.rule().last_fired_at).toBe(t0 + 45 * minute);
+    expect(getAlert("mon-1", db)).toBeNull();
+    expect(getAlert("mon-2", db)).toBeNull();
   });
 });

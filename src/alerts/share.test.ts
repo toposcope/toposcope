@@ -43,7 +43,7 @@ beforeAll(() => {
     const ok = readMonitorFields({ ...base, saved_search_id: "rows" }, null);
     const refused = readMonitorFields({ ...base, saved_search_id: "p99" }, null);
     const bad = readMonitorFields({ ...base, saved_search_id: "rows", measure: "median" }, null);
-    const made = insertMonitor(ok);
+    const made = insertMonitor(ok, { service: "api", host: "" });
     console.log(JSON.stringify({ ok: ok.measure, refused, bad, stored: getAlert(made.id).measure }));
   `;
   const child = Bun.spawnSync([process.execPath, "--eval", script], { env: { ...process.env, SQLITE_PATH: ":memory:" }, stdout: "pipe", stderr: "pipe" });

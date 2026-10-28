@@ -228,17 +228,17 @@ export async function applyResults(results: PushResult[], nowMs: number): Promis
     // Looked up again: a request that ran beside this one may have made it meanwhile.
     let rule = monitorsNamed([result.monitor], db).find((r) => r.source === "push") ?? null;
     if (!rule) {
+      // A monitor made by its first result is about that result's service (#335), from its first write.
       const made = insertPushMonitor(
         pushFieldsOfResult(result.monitor, result.every_ms ?? null, result.grace_ms ?? null),
+        { service: result.service || "monitor", host: "" },
         nowMs,
         db,
       );
       if ("error" in made) {
         continue;
       }
-      // A monitor made by its first result is about that result's service (#335).
-      db.query("UPDATE alert_rules SET service = ? WHERE id = ?").run(result.service || "monitor", made.id);
-      rule = { ...made, service: result.service || "monitor" };
+      rule = made;
       created.push(rule.name);
     }
     await applyPushResult(rule, result, nowMs, db);

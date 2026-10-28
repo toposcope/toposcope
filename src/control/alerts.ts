@@ -15,6 +15,7 @@ import { isNetSource } from "../shared/net-check";
 import { getSaved } from "./saved-searches";
 import { boardWatchRefuse } from "../shared/boards";
 import { getDb } from "./index";
+import { placeOf, type MonitorPlace } from "./monitor-place";
 import { publicUrl } from "../shared/public-url";
 import {
   alertBodyKinds,
@@ -63,7 +64,7 @@ export type AlertLastMark = {
 export type AlertRule = {
   /**
    * What it is about (#335): the service it watches, required on every save, and the host it
-   * checks (a push monitor's results carry the host that pushed). Empty on monitors made before.
+   * checks (a push monitor's results carry the host that pushed).
    */
   service?: string;
   host?: string;
@@ -612,14 +613,14 @@ function savedByName(name: string): { id: string } | FieldsError {
 }
 
 /** A new monitor: ok, with no stretches yet. */
-export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRule {
+export function insertMonitor(fields: MonitorFields, place: MonitorPlace, now = Date.now()): AlertRule {
   const id = crypto.randomUUID();
   getDb()
     .query(
       `INSERT INTO alert_rules
         (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
-         source, state, remind_every, resolved_body, opens_when, measure, webhook_urls)
-       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?, ?, ?)`,
+         source, state, remind_every, resolved_body, opens_when, measure, webhook_urls, service, host)
+       VALUES (?, ?, ?, ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -638,6 +639,8 @@ export function insertMonitor(fields: MonitorFields, now = Date.now()): AlertRul
       fields.opens_when,
       fields.measure,
       fields.webhook_urls ? JSON.stringify(fields.webhook_urls) : null,
+      place.service,
+      place.host,
     );
   stampCreated("alert_rules", id);
   return getAlert(id)!;
@@ -751,19 +754,23 @@ export async function createAlertRule(c: Context): Promise<Response> {
   if (rec instanceof Response) {
     return rec;
   }
+  const place = placeOf(c);
+  if (place instanceof Response) {
+    return place;
+  }
   if (rec.source === "http") {
     const fields = readHttpFields(rec, null);
     if ("error" in fields) {
       return c.json({ error: fields.error }, fields.status);
     }
-    return c.json(insertHttpMonitor(fields), 201);
+    return c.json(insertHttpMonitor(fields, place), 201);
   }
   if (isNetSource(rec.source)) {
     const fields = readNetFields(rec, rec.source, null);
     if ("error" in fields) {
       return c.json({ error: fields.error }, fields.status);
     }
-    return c.json(insertNetMonitor(fields), 201);
+    return c.json(insertNetMonitor(fields, place), 201);
   }
   if (typeof rec.name !== "string" || rec.name.trim().length === 0) {
     return c.json({ error: "name is required" }, 400);
@@ -775,7 +782,7 @@ export async function createAlertRule(c: Context): Promise<Response> {
   if ("error" in fields) {
     return c.json({ error: fields.error }, fields.status);
   }
-  return c.json(insertMonitor(fields), 201);
+  return c.json(insertMonitor(fields, place), 201);
 }
 
 export async function updateAlertRule(c: Context): Promise<Response> {

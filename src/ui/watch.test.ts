@@ -591,9 +591,4 @@ describe("a monitor's service and host on Watch (#335, frame 33g)", () => {
     expect(tags({ service: "api", host: "api.example.com" })).toBe("api api.example.com");
     expect(tags({ service: "api", host: "" })).toBe("api");
   });
-
-  test("one made before monitors named a service says so, to be edited", () => {
-    expect(tags({ service: "", host: "" })).toBe("no service");
-    expect(tags({ service: "  ", host: "db.internal" })).toBe("no service db.internal");
-  });
 });

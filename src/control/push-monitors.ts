@@ -13,6 +13,7 @@ import {
 } from "../shared/push";
 import { getAlert, parseWebhook, readBody, readRemind, type AlertRule } from "./alerts";
 import { getDb } from "./index";
+import type { MonitorPlace } from "./monitor-place";
 
 /** A push monitor's fields, as a create, a replace or an update gives them (#177). */
 export type PushFields = {
@@ -128,6 +129,7 @@ function freshKey(wanted: string | null, db: Database): string | { error: string
 /** A new push monitor: ok, with a keyed URL, its next result due counted from now. */
 export function insertPushMonitor(
   fields: PushFields,
+  place: MonitorPlace,
   now = Date.now(),
   db: Database = getDb(),
 ): AlertRule | { error: string } {
@@ -139,8 +141,8 @@ export function insertPushMonitor(
   db.query(
     `INSERT INTO alert_rules
       (id, name, query, webhook_url, saved_search_id, threshold, enabled, last_fired_at, created_at, kind, body_kind, body_template,
-       source, state, remind_every, resolved_body, ping_key, every_ms, grace_ms, due_from)
-     VALUES (?, ?, ?, ?, NULL, 1, 1, NULL, ?, 'threshold', ?, ?, 'push', 'ok', ?, ?, ?, ?, ?, ?)`,
+       source, state, remind_every, resolved_body, ping_key, every_ms, grace_ms, due_from, service, host)
+     VALUES (?, ?, ?, ?, NULL, 1, 1, NULL, ?, 'threshold', ?, ?, 'push', 'ok', ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     fields.name,
@@ -155,6 +157,8 @@ export function insertPushMonitor(
     fields.every_ms,
     fields.grace_ms,
     now,
+    place.service,
+    place.host,
   );
   stampCreated("alert_rules", id, db);
   return getAlert(id, db)!;
