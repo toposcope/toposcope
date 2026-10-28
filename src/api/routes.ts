@@ -63,6 +63,7 @@ import { createShareRoute, listSharesRoute, previewTicketRoute, putShareRoute, r
 import { version } from "../shared/version";
 import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
+import { monitorBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
 import { feedCreateBody, feedReadQuery, linkConfirmBody, linkInviteBody, linkOfferBody, linkPreviewBody, linkUpdateBody } from "./schemas/links";
 import { shareCreateBody, sharePutBody } from "./schemas/shares";
 import { aroundQuery, attrFacetsQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
@@ -115,14 +116,14 @@ export const apiRoutes: ApiRoute[] = [
 
   // Monitors (#175); /api/alert-rules stays as their alias.
   { id: "alert_rules", method: "GET", path: "/api/alert-rules", area: "Monitors", action: "read", summary: "Every monitor as a rule, and whether a call can link back here.", query: null, body: null, handler: listAlertRules },
-  { id: "alert_rule_test_call", method: "POST", path: "/api/alert-rules/test-call", area: "Monitors", action: "change monitors", summary: "Send a test call for a monitor as drafted, filled in from its last evaluation.", handler: testAlertCallRoute },
-  { id: "alert_rule_create", method: "POST", path: "/api/alert-rules", area: "Monitors", action: "change monitors", summary: "Make a monitor on a saved search.", handler: withPlace(createAlertRule, () => null) },
-  { id: "alert_rule_update", method: "PUT", path: "/api/alert-rules/:id", area: "Monitors", action: "change monitors", summary: "Change a monitor by id; a field left out keeps its value.", handler: withPlace(updateMonitorRoute, (c) => getAlert(c.req.param("id") ?? "")) },
+  { id: "alert_rule_test_call", method: "POST", path: "/api/alert-rules/test-call", area: "Monitors", action: "change monitors", summary: "Send a test call for a monitor as drafted, filled in from its last evaluation.", query: null, body: testCallBody, handler: testAlertCallRoute },
+  { id: "alert_rule_create", method: "POST", path: "/api/alert-rules", area: "Monitors", action: "change monitors", summary: "Make a monitor on a saved search.", query: null, body: monitorBody, handler: withPlace(createAlertRule, () => null) },
+  { id: "alert_rule_update", method: "PUT", path: "/api/alert-rules/:id", area: "Monitors", action: "change monitors", summary: "Change a monitor by id; a field left out keeps its value.", query: null, body: monitorBody, handler: withPlace(updateMonitorRoute, (c) => getAlert(c.req.param("id") ?? "")) },
   { id: "alert_rule_delete", method: "DELETE", path: "/api/alert-rules/:id", area: "Monitors", action: "change monitors", summary: "Delete a monitor by id, and its record.", query: null, body: null, handler: deleteAlertRule },
-  { id: "monitors", method: "GET", path: "/api/monitors", area: "Monitors", action: "read", summary: "Every monitor with its state and the stretches, calls and results in a window.", handler: listMonitors },
+  { id: "monitors", method: "GET", path: "/api/monitors", area: "Monitors", action: "read", summary: "Every monitor with its state and the stretches, calls and results in a window.", query: monitorsQuery, body: null, handler: listMonitors },
   // Watch this (#264): where a saved-search monitor would have opened over the last 24 h.
-  { id: "monitor_preview", method: "GET", path: "/api/monitors/preview", area: "Monitors", action: "read", summary: "Where a monitor on a query would have opened over the last 24 hours.", handler: monitorPreviewRoute },
-  { id: "monitor_send", method: "POST", path: "/api/monitors/send", area: "Monitors", action: "change monitors", summary: "Run an HTTP(S), TCP or certificate check once from here and say what came back; nothing is stored.", handler: sendHttpRoute },
+  { id: "monitor_preview", method: "GET", path: "/api/monitors/preview", area: "Monitors", action: "read", summary: "Where a monitor on a query would have opened over the last 24 hours.", query: monitorPreviewQuery, body: null, handler: monitorPreviewRoute },
+  { id: "monitor_send", method: "POST", path: "/api/monitors/send", area: "Monitors", action: "change monitors", summary: "Run an HTTP(S), TCP or certificate check once from here and say what came back; nothing is stored.", query: null, body: sendBody, handler: sendHttpRoute },
   { id: "monitor_get", method: "GET", path: "/api/monitors/:name", area: "Monitors", action: "read", summary: "One monitor by name, with its last 200 stretches and their calls.", query: null, body: null, handler: getMonitor },
   {
     id: "monitor_put",
@@ -131,7 +132,7 @@ export const apiRoutes: ApiRoute[] = [
     area: "Monitors",
     action: "change monitors",
     summary: "Make or replace the monitor of that name; what is left out takes its default.",
-    handler: withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null),
+    query: null, body: monitorBody, handler: withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null),
   },
   { id: "monitor_delete", method: "DELETE", path: "/api/monitors/:name", area: "Monitors", action: "change monitors", summary: "Delete a monitor by name, and its record.", query: null, body: null, handler: deleteMonitor },
 

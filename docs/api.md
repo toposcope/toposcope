@@ -435,11 +435,83 @@ Send a test call for a monitor as drafted, filled in from its last evaluation.
 
 Role: **Operator** · `alert_rule_test_call`
 
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
+| `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
+| `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
+| `service` | string \| null |  |  |
+| `host` | string \| null |  |  |
+| `saved_search_id` | string \| null |  |  |
+| `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
+| `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
+| `opens_when` | string |  | search: at_least (the default) or fewer_than. |
+| `measure` | string |  | search: series (the default), or share of all rows. |
+| `webhook_url` | string \| null |  |  |
+| `webhook_urls` | string[] \| null |  |  |
+| `body_kind` | string |  | The call's body: default, text or json. |
+| `body_template` | string \| null |  |  |
+| `resolved_body` | string \| null |  |  |
+| `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
+| `every` | string \| null |  |  |
+| `grace` | string \| null |  |  |
+| `key` | string \| null |  |  |
+| `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
+| `url` | string |  | http: the URL it calls, http(s). |
+| `method` | string |  | http: GET (the default), HEAD or POST. |
+| `body` | string \| null |  |  |
+| `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
+| `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
+| `target` | string |  | tcp, cert: where it connects, host:port. |
+| `starttls` | string \| null |  |  |
+| `silence_for` | string \| null |  |  |
+| `silenced_until` | number \| null |  |  |
+| `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
+| `id` | string \| null |  |  |
+| `run` | object \| null |  |  |
+
 ### POST /api/alert-rules
 
 Make a monitor on a saved search.
 
 Role: **Operator** · `alert_rule_create`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
+| `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
+| `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
+| `service` | string \| null |  |  |
+| `host` | string \| null |  |  |
+| `saved_search_id` | string \| null |  |  |
+| `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
+| `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
+| `opens_when` | string |  | search: at_least (the default) or fewer_than. |
+| `measure` | string |  | search: series (the default), or share of all rows. |
+| `webhook_url` | string \| null |  |  |
+| `webhook_urls` | string[] \| null |  |  |
+| `body_kind` | string |  | The call's body: default, text or json. |
+| `body_template` | string \| null |  |  |
+| `resolved_body` | string \| null |  |  |
+| `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
+| `every` | string \| null |  |  |
+| `grace` | string \| null |  |  |
+| `key` | string \| null |  |  |
+| `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
+| `url` | string |  | http: the URL it calls, http(s). |
+| `method` | string |  | http: GET (the default), HEAD or POST. |
+| `body` | string \| null |  |  |
+| `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
+| `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
+| `target` | string |  | tcp, cert: where it connects, host:port. |
+| `starttls` | string \| null |  |  |
+| `silence_for` | string \| null |  |  |
+| `silenced_until` | number \| null |  |  |
+| `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
 
 ### PUT /api/alert-rules/{id}
 
@@ -448,6 +520,41 @@ Change a monitor by id; a field left out keeps its value.
 Role: **Operator** · `alert_rule_update`
 
 Path: `id`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
+| `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
+| `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
+| `service` | string \| null |  |  |
+| `host` | string \| null |  |  |
+| `saved_search_id` | string \| null |  |  |
+| `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
+| `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
+| `opens_when` | string |  | search: at_least (the default) or fewer_than. |
+| `measure` | string |  | search: series (the default), or share of all rows. |
+| `webhook_url` | string \| null |  |  |
+| `webhook_urls` | string[] \| null |  |  |
+| `body_kind` | string |  | The call's body: default, text or json. |
+| `body_template` | string \| null |  |  |
+| `resolved_body` | string \| null |  |  |
+| `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
+| `every` | string \| null |  |  |
+| `grace` | string \| null |  |  |
+| `key` | string \| null |  |  |
+| `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
+| `url` | string |  | http: the URL it calls, http(s). |
+| `method` | string |  | http: GET (the default), HEAD or POST. |
+| `body` | string \| null |  |  |
+| `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
+| `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
+| `target` | string |  | tcp, cert: where it connects, host:port. |
+| `starttls` | string \| null |  |  |
+| `silence_for` | string \| null |  |  |
+| `silenced_until` | number \| null |  |  |
+| `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
 
 ### DELETE /api/alert-rules/{id}
 
@@ -463,17 +570,50 @@ Every monitor with its state and the stretches, calls and results in a window.
 
 Role: **Viewer** · `monitors`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | Watch's clock: 24h (the default), 7d or 30d; from and to win over it, at most 366d apart. |
+
 ### GET /api/monitors/preview
 
 Where a monitor on a query would have opened over the last 24 hours.
 
 Role: **Viewer** · `monitor_preview`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `agg` | string |  | The saved search's series, as search's agg takes it; counts rows when left out. |
+| `opens_when` | string |  | at_least (the default) or fewer_than. |
+| `threshold` | string |  | The value it opens at, a positive number. |
+| `window` | string |  | 5m (the default), 15m or 1h. |
+| `measure` | string |  | series (the default), or share of all rows. |
+
 ### POST /api/monitors/send
 
 Run an HTTP(S), TCP or certificate check once from here and say what came back; nothing is stored.
 
 Role: **Operator** · `monitor_send`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `url` | string |  | http: the URL it calls, http(s). |
+| `method` | string |  | http: GET (the default), HEAD or POST. |
+| `body` | string \| null |  |  |
+| `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
+| `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
+| `target` | string |  | tcp, cert: where it connects, host:port. |
+| `starttls` | string \| null |  |  |
+| `source` | string |  | http (the default), tcp or cert. |
+| `id` | string |  | An HTTP(S) monitor whose stored headers a header given as null keeps. |
 
 ### GET /api/monitors/{name}
 
@@ -490,6 +630,41 @@ Make or replace the monitor of that name; what is left out takes its default.
 Role: **Operator** · `monitor_put`
 
 Path: `name`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string |  | The monitor's name; PUT /api/monitors/:name takes it from the path. |
+| `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
+| `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
+| `service` | string \| null |  |  |
+| `host` | string \| null |  |  |
+| `saved_search_id` | string \| null |  |  |
+| `saved_search` | string |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
+| `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
+| `opens_when` | string |  | search: at_least (the default) or fewer_than. |
+| `measure` | string |  | search: series (the default), or share of all rows. |
+| `webhook_url` | string \| null |  |  |
+| `webhook_urls` | string[] \| null |  |  |
+| `body_kind` | string |  | The call's body: default, text or json. |
+| `body_template` | string \| null |  |  |
+| `resolved_body` | string \| null |  |  |
+| `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
+| `every` | string \| null |  |  |
+| `grace` | string \| null |  |  |
+| `key` | string \| null |  |  |
+| `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
+| `url` | string |  | http: the URL it calls, http(s). |
+| `method` | string |  | http: GET (the default), HEAD or POST. |
+| `body` | string \| null |  |  |
+| `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
+| `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
+| `target` | string |  | tcp, cert: where it connects, host:port. |
+| `starttls` | string \| null |  |  |
+| `silence_for` | string \| null |  |  |
+| `silenced_until` | number \| null |  |  |
+| `enabled` | boolean \| number |  | false or 0 pauses it, true or 1 resumes it. |
 
 ### DELETE /api/monitors/{name}
 
