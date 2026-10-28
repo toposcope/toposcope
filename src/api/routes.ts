@@ -63,6 +63,7 @@ import { createShareRoute, listSharesRoute, previewTicketRoute, putShareRoute, r
 import { version } from "../shared/version";
 import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
+import { aroundQuery, attrFacetsQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
 
 /**
  * The described API (#356), in the order the app registers it: a fixed path comes before a
@@ -80,24 +81,24 @@ export const apiRoutes: ApiRoute[] = [
   { id: "version_upgrade", method: "POST", path: "/api/version/upgrade", area: "Instance", action: "change instance settings", summary: "Ask the host to upgrade to a newer release the check knows.", handler: versionUpgradeRoute },
 
   // Search
-  { id: "search", method: "GET", path: "/api/search", area: "Search", action: "read", summary: "Rows that match a query in a window, newest first, with a histogram or a metric's series.", handler: searchRoute },
+  { id: "search", method: "GET", path: "/api/search", area: "Search", action: "read", summary: "Rows that match a query in a window, newest first, with a histogram or a metric's series.", query: searchQuery, body: null, handler: searchRoute },
   { id: "traces_get", method: "GET", path: "/api/traces/:trace_id", area: "Search", action: "read", summary: "One trace's spans, the slowest branches when it is large.", query: null, body: null, handler: tracesRoute },
-  { id: "marks", method: "GET", path: "/api/marks", area: "Search", action: "read", summary: "Change marks in a window: deploys, flags, incidents and notes.", handler: marksRoute },
-  { id: "probes", method: "GET", path: "/api/probes", area: "Search", action: "read", summary: "Probe samples in a window.", handler: probesRoute },
-  { id: "profiles", method: "GET", path: "/api/profiles", area: "Search", action: "read", summary: "The profile samples one span carries, as a flame graph.", handler: profilesRoute },
-  { id: "search_context", method: "GET", path: "/api/search/context", area: "Search", action: "read", summary: "The rows either side of one row, from the same service and host.", handler: surroundingRoute },
-  { id: "search_around", method: "GET", path: "/api/search/around", area: "Search", action: "read", summary: "The rows that match a query either side of a time.", handler: aroundTsRoute },
-  { id: "search_cut", method: "GET", path: "/api/search/cut", area: "Search", action: "read", summary: "Compare a query's fingerprints before and after a change mark.", handler: fingerprintCutRoute },
-  { id: "search_revisions", method: "GET", path: "/api/search/revisions", area: "Search", action: "read", summary: "Which fingerprint keys a query's rows carry before and after a point.", handler: fingerprintRevisionsRoute },
-  { id: "search_follow_span", method: "GET", path: "/api/search/follow-span", area: "Search", action: "read", summary: "How many rows carry one key:value within a day of a time, and their first and last.", handler: followSpanRoute },
-  { id: "fingerprint_seen", method: "GET", path: "/api/fingerprints/:hex", area: "Search", action: "read", summary: "When one fingerprint was first and last seen, and how often, in a window.", handler: fingerprintSeenRoute },
-  { id: "facets", method: "GET", path: "/api/facets", area: "Search", action: "read", summary: "The top values of service, host, level and fingerprint among a query's rows.", handler: facetsRoute },
-  { id: "attr_keys", method: "GET", path: "/api/attr-keys", area: "Search", action: "read", summary: "The attribute keys a query's rows carry.", handler: attrKeysRoute },
-  { id: "attr_facets", method: "GET", path: "/api/attr-facets", area: "Search", action: "read", summary: "The top values of some attribute keys among a query's rows.", handler: attrFacetsRoute },
-  { id: "attr_values", method: "GET", path: "/api/attr-values", area: "Search", action: "read", summary: "The values of one attribute key that start with a prefix.", handler: attrValuesRoute },
-  { id: "numeric_keys", method: "GET", path: "/api/numeric-keys", area: "Search", action: "read", summary: "The attribute keys with numbers among a query's rows, to sum or average.", handler: numericKeysRoute },
-  { id: "metric_names", method: "GET", path: "/api/metric-names", area: "Search", action: "read", summary: "The metric names with points in a window.", handler: metricNamesRoute },
-  { id: "metric_labels", method: "GET", path: "/api/metric-labels", area: "Search", action: "read", summary: "The label keys one metric's points carry in a window, with how many values each.", handler: metricLabelsRoute },
+  { id: "marks", method: "GET", path: "/api/marks", area: "Search", action: "read", summary: "Change marks in a window: deploys, flags, incidents and notes.", query: marksQuery, body: null, handler: marksRoute },
+  { id: "probes", method: "GET", path: "/api/probes", area: "Search", action: "read", summary: "Probe samples in a window.", query: probesQuery, body: null, handler: probesRoute },
+  { id: "profiles", method: "GET", path: "/api/profiles", area: "Search", action: "read", summary: "The profile samples one span carries, as a flame graph.", query: profilesQuery, body: null, handler: profilesRoute },
+  { id: "search_context", method: "GET", path: "/api/search/context", area: "Search", action: "read", summary: "The rows either side of one row, from the same service and host.", query: contextQuery, body: null, handler: surroundingRoute },
+  { id: "search_around", method: "GET", path: "/api/search/around", area: "Search", action: "read", summary: "The rows that match a query either side of a time.", query: aroundQuery, body: null, handler: aroundTsRoute },
+  { id: "search_cut", method: "GET", path: "/api/search/cut", area: "Search", action: "read", summary: "Compare a query's fingerprints before and after a change mark.", query: cutQuery, body: null, handler: fingerprintCutRoute },
+  { id: "search_revisions", method: "GET", path: "/api/search/revisions", area: "Search", action: "read", summary: "Which fingerprint keys a query's rows carry before and after a point.", query: revisionsQuery, body: null, handler: fingerprintRevisionsRoute },
+  { id: "search_follow_span", method: "GET", path: "/api/search/follow-span", area: "Search", action: "read", summary: "How many rows carry one key:value within a day of a time, and their first and last.", query: followSpanQuery, body: null, handler: followSpanRoute },
+  { id: "fingerprint_seen", method: "GET", path: "/api/fingerprints/:hex", area: "Search", action: "read", summary: "When one fingerprint was first and last seen, and how often, in a window.", query: fingerprintSeenQuery, body: null, handler: fingerprintSeenRoute },
+  { id: "facets", method: "GET", path: "/api/facets", area: "Search", action: "read", summary: "The top values of service, host, level and fingerprint among a query's rows.", query: facetsQuery, body: null, handler: facetsRoute },
+  { id: "attr_keys", method: "GET", path: "/api/attr-keys", area: "Search", action: "read", summary: "The attribute keys a query's rows carry.", query: attrKeysQuery, body: null, handler: attrKeysRoute },
+  { id: "attr_facets", method: "GET", path: "/api/attr-facets", area: "Search", action: "read", summary: "The top values of some attribute keys among a query's rows.", query: attrFacetsQuery, body: null, handler: attrFacetsRoute },
+  { id: "attr_values", method: "GET", path: "/api/attr-values", area: "Search", action: "read", summary: "The values of one attribute key that start with a prefix.", query: attrValuesQuery, body: null, handler: attrValuesRoute },
+  { id: "numeric_keys", method: "GET", path: "/api/numeric-keys", area: "Search", action: "read", summary: "The attribute keys with numbers among a query's rows, to sum or average.", query: numericKeysQuery, body: null, handler: numericKeysRoute },
+  { id: "metric_names", method: "GET", path: "/api/metric-names", area: "Search", action: "read", summary: "The metric names with points in a window.", query: metricNamesQuery, body: null, handler: metricNamesRoute },
+  { id: "metric_labels", method: "GET", path: "/api/metric-labels", area: "Search", action: "read", summary: "The label keys one metric's points carry in a window, with how many values each.", query: metricLabelsQuery, body: null, handler: metricLabelsRoute },
 
   // Home and saved searches
   { id: "home", method: "GET", path: "/api/home", area: "Saved searches", action: "read", summary: "The saved search marked Home, if any.", query: null, body: null, handler: getHome },

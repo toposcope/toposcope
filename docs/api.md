@@ -76,6 +76,28 @@ Rows that match a query in a window, newest first, with a histogram or a metric'
 
 Role: **Viewer** · `search`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `cursor` | string |  | The cursor of the last page, for the next page of events. |
+| `since` | string |  | The newest event's time the caller has: only newer rows and the current bar come back. |
+| `limit` | string |  | How many to return at most, a whole number. |
+| `split` | string |  | Split the histogram by level (the default), service, host or none. |
+| `step` | string |  | Pin the histogram's bar width: 1ms, 10ms, 100ms, 1s, 10s, 1m, 5m, 15m, 1h, 4h, 1d or 7d. |
+| `agg` | string |  | A series derived from the rows: rate, or p99, avg, min, max or sum of a numeric attribute (p99:duration_ms). |
+| `metric` | string |  | An ingested metric to plot instead, a histogram's with its reading first (p99:http.server.request.duration). |
+| `ml` | string |  | The metric's label matchers, key:value separated by spaces, at most 4. |
+| `msplit` | string |  | A metric label key to split the metric's series by. |
+| `events` | string |  | 0 skips the page of events. |
+| `keep` | string[] |  | Series keys to keep in a split, besides other. |
+| `exact` | string |  | 1 reads the stored rows rather than the rollups. |
+| `other` | string |  | 1 folds the series past the cap into other. |
+
 ### GET /api/traces/{trace_id}
 
 One trace's spans, the slowest branches when it is large.
@@ -90,11 +112,30 @@ Change marks in a window: deploys, flags, incidents and notes.
 
 Role: **Viewer** · `marks`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `kind` | "deploy" \| "flag" \| "incident" \| "note" |  | Only marks of this kind. |
+| `service` | string |  | Only marks for this service. |
+
 ### GET /api/probes
 
 Probe samples in a window.
 
 Role: **Viewer** · `probes`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `service` | string |  | Only probes of this service. |
 
 ### GET /api/profiles
 
@@ -102,11 +143,28 @@ The profile samples one span carries, as a flame graph.
 
 Role: **Viewer** · `profiles`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `trace_id` | string | yes | The trace, 32 hex characters. |
+| `span_id` | string | yes | The span, 16 hex characters. |
+
 ### GET /api/search/context
 
 The rows either side of one row, from the same service and host.
 
 Role: **Viewer** · `search_context`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `ts` | string | yes | The row's time, an ISO time. |
+| `service` | string | yes | The row's service. |
+| `host` | string |  | The row's host. |
+| `n` | string |  | How many rows either side, a whole number. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 
 ### GET /api/search/around
 
@@ -114,11 +172,33 @@ The rows that match a query either side of a time.
 
 Role: **Viewer** · `search_around`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `ts` | string | yes | The time to read either side of, an ISO time. |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `n` | string |  | How many rows either side, a whole number. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+
 ### GET /api/search/cut
 
 Compare a query's fingerprints before and after a change mark.
 
 Role: **Viewer** · `search_cut`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `mark` | string | yes | The change mark's id. |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `opened` | string |  | The fingerprint whose row is open, kept in the answer. |
+| `live` | string |  | 1 or true: the after side ends now. |
 
 ### GET /api/search/revisions
 
@@ -126,11 +206,27 @@ Which fingerprint keys a query's rows carry before and after a point.
 
 Role: **Viewer** · `search_revisions`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `from` | string | yes | Where the before side starts, an ISO time. |
+| `after` | string | yes | The point between before and after, an ISO time. |
+| `to` | string | yes | Where the after side ends, an ISO time. |
+
 ### GET /api/search/follow-span
 
 How many rows carry one key:value within a day of a time, and their first and last.
 
 Role: **Viewer** · `search_follow_span`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `q` | string | yes | The key:value to follow. |
+| `at` | string | yes | The time to read a day either side of, an ISO time. |
 
 ### GET /api/fingerprints/{hex}
 
@@ -140,11 +236,30 @@ Role: **Viewer** · `fingerprint_seen`
 
 Path: `hex`.
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time; the last 7 days by default. |
+| `to` | string |  | Where the window ends, an ISO time; now by default. |
+
 ### GET /api/facets
 
 The top values of service, host, level and fingerprint among a query's rows.
 
 Role: **Viewer** · `facets`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `limit` | string |  | How many to return at most, a whole number. |
+| `omit` | string |  | 0 or false counts each facet over the whole query; by default a facet leaves its own field out of it. |
+| `fields` | string |  | toposcope adds the instance each row entered at as a facet. |
 
 ### GET /api/attr-keys
 
@@ -152,11 +267,32 @@ The attribute keys a query's rows carry.
 
 Role: **Viewer** · `attr_keys`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+
 ### GET /api/attr-facets
 
 The top values of some attribute keys among a query's rows.
 
 Role: **Viewer** · `attr_facets`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `attrs` | string |  | The attribute keys to count, separated by commas. |
+| `limit` | string |  | How many to return at most, a whole number. |
+| `omit` | string |  | 0 or false counts each facet over the whole query; by default a facet leaves its own field out of it. |
 
 ### GET /api/attr-values
 
@@ -164,11 +300,31 @@ The values of one attribute key that start with a prefix.
 
 Role: **Viewer** · `attr_values`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
+| `key` | string |  | The attribute key. |
+| `prefix` | string |  | What the values start with. |
+
 ### GET /api/numeric-keys
 
 The attribute keys with numbers among a query's rows, to sum or average.
 
 Role: **Viewer** · `numeric_keys`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 
 ### GET /api/metric-names
 
@@ -176,11 +332,30 @@ The metric names with points in a window.
 
 Role: **Viewer** · `metric_names`
 
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `find` | string |  | Only names that contain this. |
+| `picked` | string |  | Names to list whatever the cap, separated by commas. |
+
 ### GET /api/metric-labels
 
 The label keys one metric's points carry in a window, with how many values each.
 
 Role: **Viewer** · `metric_labels`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `name` | string | yes | The metric's name. |
 
 ## Saved searches
 
