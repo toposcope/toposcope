@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { apiRoutes } from "../api/routes";
-import { fenceNote, onClock, readTools } from "./read";
+import { fenceNote, onClock, readTools, unfencedTools } from "./read";
 import { nestedDeeper, originAllowed } from "./server";
 import { mcpTools, toolCall, toolOf, toolRouteIds, toolsOf } from "./tools";
 
@@ -220,11 +220,11 @@ describe("MCP at /mcp, in the app (#358)", () => {
     expect(search.annotations).toEqual({ readOnlyHint: true });
   });
 
-  test("every listed tool gives the same answer as its route; a read tool's is under data, on the instance's clock", () => {
+  test("every listed tool gives the same answer as its route, under data, on the instance's clock", () => {
     for (const [name, both] of Object.entries(r.both as Record<string, { via: Answer; direct: Answer; missingArgs?: true }>)) {
       expect({ name, missingArgs: both.missingArgs }).toEqual({ name, missingArgs: undefined });
       expect({ name, isError: both.via.body.result.isError }).toEqual({ name, isError: both.direct.status >= 400 });
-      if (readTools[name] && both.direct.status < 400) {
+      if (both.direct.status < 400) {
         const shaped = parsed(both.via);
         expect({ name, note: shaped.note, now: shaped.now, cut: shaped.cut }).toEqual({ name, note: fenceNote, now: "2026-10-28T12:00:00.000Z", cut: undefined });
         expect({ name, body: shaped.data }).toEqual({ name, body: onClock(both.direct.body) });
@@ -234,6 +234,14 @@ describe("MCP at /mcp, in the app (#358)", () => {
     }
     expect(r.both.saved_search_run.via.body.result.isError).toBe(false);
     expect(r.both.monitor_get.via.body.result.isError).toBe(true);
+  });
+
+  test("every tool is fenced: none opts out, a design tool's answer included", () => {
+    expect([...unfencedTools]).toEqual([]);
+    const test = parsed(r.both.saved_search_test.via);
+    expect(Object.keys(test).sort()).toEqual(["clock", "data", "note", "now"]);
+    expect(test.note).toBe(fenceNote);
+    expect(readTools.saved_search_test).toBeUndefined();
   });
 
   test("a Viewer's call to an Operator's route is refused with the route's sentence, and Access counts it", () => {

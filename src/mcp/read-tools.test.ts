@@ -113,6 +113,9 @@ beforeAll(async () => {
     out2.attrValues = await call("attr_values", { q: "service:" + api, key: "route", prefix: "/", ...win });
     out2.numericKeys = await call("numeric_keys", { q: "service:" + api, ...win });
     out2.facets = await call("facets", { q: "service:" + api + " OR service:" + worker, ...win, omit: "0" });
+    const saved = (await app.fetch(new Request("http://app.test/api/saved-searches", { method: "POST", headers: { authorization: bearer, "content-type": "application/json" },
+      body: JSON.stringify({ name: tag + " admin rows", query: "service:" + api + " route:/admin", range: "1h" }) }))).json();
+    out2.savedTest = await call("saved_search_test", { id: (await saved).id });
     out2.direct = await (await app.fetch(new Request("http://app.test/api/search?" + new URLSearchParams({ q: "service:" + api + " route:/admin", ...win }), { headers: { authorization: bearer } }))).json();
     console.log(JSON.stringify({ ...out, ...out2, tag, api, worker, metric, traceId, now }));
   `;
@@ -230,6 +233,16 @@ describe("read tools answer from seeded data (#359)", () => {
     expect(ok(r.attrValues).values.map((v: { v: string }) => v.v)).toEqual(expect.arrayContaining(["/pay", "/admin"]));
     expect(ok(r.numericKeys).keys.map((k: { k: string }) => k.k)).toContain("duration_ms");
     expect(ok(r.facets).service.map((v: { v: string }) => v.v).sort()).toEqual([r.api, r.worker].sort());
+  });
+});
+
+describe("a design tool is fenced too (#359)", () => {
+  test("saved_search_test's sample of rows comes back under data, beside the note, with no cut", () => {
+    const body = r.savedTest.body;
+    expect(r.savedTest.isError).toBe(false);
+    expect(Object.keys(body).sort()).toEqual(["clock", "data", "note", "now"]);
+    expect(body.note).toBe(fenceNote);
+    expect(JSON.stringify(body.data)).toContain(instruction);
   });
 });
 

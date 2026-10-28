@@ -4,7 +4,7 @@ import { roleOf } from "../api/registry";
 import { roleAtLeast } from "../control/people";
 import { publicUrl } from "../shared/public-url";
 import { version } from "../shared/version";
-import { capArgs, capsOf, readTools, shapeRead, type Caps } from "./read";
+import { capArgs, capsOf, fenced, readTools, shapeRead, unfencedTools, type Caps } from "./read";
 import { toolCall, type McpTool } from "./tools";
 
 /**
@@ -115,25 +115,31 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * The route's answer as a tool's result: its JSON as text, an error when it was not 2xx. A read
- * tool's 2xx answer is shaped first (read.ts): capped, under `data` beside the note that it is
- * stored text, and on the instance's clock. A refusal is the route's own sentence either way.
+ * The route's answer as a tool's result: its JSON as text, an error when it was not 2xx. Every
+ * tool's 2xx answer is fenced first (read.ts): under `data` beside the note that it is stored or
+ * sent text, and on the instance's clock; a read tool's is capped too. A refusal is the route's
+ * own sentence.
  */
 async function asResult(res: Response, tool: McpTool, args: Record<string, unknown>, caps: Caps | null): Promise<unknown> {
   const text = await res.text();
-  const read = readTools[tool.name];
-  if (!read || !caps || !res.ok) {
+  if (!res.ok || unfencedTools.has(tool.name)) {
     return { content: [{ type: "text", text }], isError: !res.ok };
   }
-  const own = Object.fromEntries(Object.entries(args).filter(([key]) => !(capArgs as readonly string[]).includes(key)));
-  const takes = Object.keys((tool.inputSchema.properties ?? {}) as object);
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
     json = text;
   }
-  const shaped = shapeRead({ tool: tool.name, read, args: own, caps, json, takes });
+  const read = readTools[tool.name];
+  let shaped;
+  if (read && caps) {
+    const own = Object.fromEntries(Object.entries(args).filter(([key]) => !(capArgs as readonly string[]).includes(key)));
+    const takes = Object.keys((tool.inputSchema.properties ?? {}) as object);
+    shaped = shapeRead({ tool: tool.name, read, args: own, caps, json, takes });
+  } else {
+    shaped = fenced(json);
+  }
   return { content: [{ type: "text", text: JSON.stringify(shaped) }], isError: false };
 }
 
