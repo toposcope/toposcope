@@ -562,7 +562,9 @@ export function WidgetCanvas({
         const note = lines ? panelNote(widget, lines) : null;
         // #331: a source short inside the window, and points sent in more than one unit, said on the panel.
         const metricShort = widget.metric ? metricPanelHeld(held, data.agg, widget.metricLabels) : null;
-        const unitsNote = widget.metric ? unitsDifferWords(data.agg?.units_differ) : null;
+        // A deploy a unit changed around is named in the line and drawn on the plot (33e).
+        const panelMarks = marks ? marks.marks.filter((mark) => !marks.offKinds.includes(mark.kind)) : undefined;
+        const unitsNote = widget.metric ? unitsDifferWords(data.agg?.units_differ, panelMarks) : null;
         const tells = metricShort || unitsNote ? <PanelTells held={metricShort?.pill ?? null} units={unitsNote} /> : null;
         const spark = (
           <TimeseriesSpark
@@ -607,6 +609,7 @@ export function WidgetCanvas({
             editor={editorFor(widget)}
             namedLines={Boolean(lines?.legend.length)}
             held={metricShort}
+            marks={panelMarks}
           />
         );
         const editing = editingId === widget.id;

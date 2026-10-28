@@ -606,6 +606,7 @@ type MetaGroup = NonNullable<SearchAggResult["units_differ"]>[number];
  * than one (#331): a panel then splits by them rather than sum what disagrees. A point that
  * came without a kind reads as the name's own; one without a unit is apart only when two
  * others disagree, so points stored before units travelled with them never split a line.
+ * Unlabeled minute bars read the rollup, which keys by kind, unit and source: to the minute.
  */
 async function metaGroups(
   table: "metrics" | "metric_buckets",
@@ -614,16 +615,17 @@ async function metaGroups(
   params: Record<string, string>,
   ownKind: string,
 ): Promise<MetaGroup[] | null> {
-  const { stat } = seriesWindows(opts, true);
+  const { rolled, stat } = seriesWindows(opts);
+  const clock = rolled ? "minute" : "ts";
   const rows = await clickhouseQuery<{ k: string; u: string; sources: unknown; first: string; last: string }>(
     `
     SELECT
       if(kind = '', {own_kind:String}, kind) AS k,
       unit AS u,
       arraySort(groupUniqArray(toposcope)) AS sources,
-      min(ts) AS first,
-      max(ts) AS last
-    FROM ${table}
+      min(${clock}) AS first,
+      max(${clock}) AS last
+    FROM ${rolled ? `${table}_by_minute` : table}
     WHERE ${stat.sql} AND ${names}
     GROUP BY k, u
     ORDER BY first, k, u
@@ -700,7 +702,8 @@ function metaResult(
 /**
  * Points of one name in more than one kind or unit (#331), one line for each. A level averages,
  * an amount sums, and a histogram's average is its sum over its count, each paired with the
- * sum point sent beside it so the count takes the sum's unit.
+ * sum point sent beside it so the count takes the sum's unit. Unlabeled minute bars of a level
+ * or an amount read the rollup grouped by kind and unit; the pairing needs the points.
  */
 async function metaValueSeries(
   opts: SeriesOpts,
@@ -710,7 +713,7 @@ async function metaValueSeries(
   /** What a point sent without a kind reads as: what `metaGroups` was told. */
   ownKind: string,
 ): Promise<SearchAggResult> {
-  const { overlay, stat } = seriesWindows(opts, true);
+  const { rolled, overlay, stat } = seriesWindows(opts, "avg" in read);
   const params: Record<string, string> = { own_kind: ownKind };
   let names: string;
   let value: string;
@@ -719,6 +722,10 @@ async function metaValueSeries(
     params.sum_name = read.avg.sum;
     params.count_name = read.avg.count;
     value = "sum(s) / nullIf(sum(c), 0)";
+  } else if (rolled) {
+    names = "name = {metric_name:String}";
+    params.metric_name = "level" in read ? read.level : read.amount;
+    value = "level" in read ? "if(mk = 'counter', sumMerge(v_sum), sumMerge(v_sum) / nullIf(countMerge(n), 0))" : "sumMerge(v_sum)";
   } else {
     names = "name = {metric_name:String}";
     params.metric_name = "level" in read ? read.level : read.amount;
@@ -732,7 +739,13 @@ async function metaValueSeries(
   }
   const k = opts.split ? splitKeySql(opts.split) : "''";
   const from = (where: WhereClause) =>
-    "avg" in read
+    rolled
+      ? `(
+        SELECT minute AS ts, ${k} AS k, ${metaKindSql} AS mk, unit AS mu, n, v_sum
+        FROM metrics_by_minute
+        WHERE ${where.sql} AND ${names}
+      )`
+      : "avg" in read
       ? `(
         SELECT ts, ${k} AS k,
           anyIf(${metaKindSql}, name = {sum_name:String}) AS mk,
@@ -780,7 +793,7 @@ async function metaValueSeries(
 /**
  * A percentile of a histogram sent in more than one unit (#331): within each unit its bucket
  * counts summed by bound across every matching series, and the percentile read off that sum.
- * Never across units. A heatmap of it is its p99 lines.
+ * Never across units. A heatmap of it is its p99 lines. Unlabeled minute bars read the rollup.
  */
 async function metaQuantileSeries(
   opts: SeriesOpts,
@@ -789,7 +802,7 @@ async function metaQuantileSeries(
   told: Told,
   groups: readonly MetaGroup[],
 ): Promise<SearchAggResult> {
-  const { overlay, stat } = seriesWindows(opts, true);
+  const { rolled, overlay, stat } = seriesWindows(opts);
   const params: Record<string, string> = { metric_name: name, own_kind: "histogram" };
   const names = "name = {metric_name:String}";
   const keys = opts.split ? await splitKeys("metric_buckets", opts.split, stat, names, { ...params, split_key: opts.split }) : null;
@@ -799,19 +812,24 @@ async function metaQuantileSeries(
     params.split_other = metricSplitOther;
   }
   const k = opts.split ? splitKeySql(opts.split) : "''";
-  const source = "metric_buckets ARRAY JOIN arrayPushBack(le, inf) AS bound, n AS observed";
+  const clock = rolled ? "minute" : "ts";
+  const source = rolled
+    ? "metric_buckets_by_minute"
+    : "metric_buckets ARRAY JOIN arrayPushBack(le, inf) AS bound, n AS observed";
+  const bound = rolled ? "le" : "bound";
+  const observed = rolled ? "sum(n)" : "sum(observed)";
   const [rows, stats] = await Promise.all([
     clickhouseQuery<{ bucket: string; k: string; mk: string; mu: string; les: unknown; ns: unknown }>(
       `
       SELECT bucket, k, mk, mu, groupArray(upper) AS les, groupArray(c) AS ns
       FROM (
         SELECT
-          toStartOfInterval(ts, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
+          toStartOfInterval(${clock}, ${histogramIntervalSql(opts.intervalMs)}) AS bucket,
           ${k} AS k,
           ${metaKindSql} AS mk,
           unit AS mu,
-          bound AS upper,
-          sum(observed) AS c
+          ${bound} AS upper,
+          ${observed} AS c
         FROM ${source}
         WHERE ${overlay.sql} AND ${names}
         GROUP BY bucket, k, mk, mu, upper
@@ -825,7 +843,7 @@ async function metaQuantileSeries(
       `
       SELECT k, mk, mu, groupArray(upper) AS les, groupArray(c) AS ns
       FROM (
-        SELECT ${k} AS k, ${metaKindSql} AS mk, unit AS mu, bound AS upper, sum(observed) AS c
+        SELECT ${k} AS k, ${metaKindSql} AS mk, unit AS mu, ${bound} AS upper, ${observed} AS c
         FROM ${source}
         WHERE ${stat.sql} AND ${names}
         GROUP BY k, mk, mu, upper

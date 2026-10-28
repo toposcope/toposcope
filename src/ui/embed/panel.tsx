@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { HbarWidget } from "@/components/hbar-widget";
 import { MetricSpark, sparkTimes } from "@/components/metric-spark";
+import { PanelTells } from "@/components/panel-words";
 import { StatWidget } from "@/components/stat-widget";
 import type { SearchAggResult } from "@/types";
+import { unitsDifferWords } from "../metric-unit";
 import {
   embedAggResult,
   embedMessage,
@@ -136,16 +138,20 @@ function Plot({ params, body, muted }: { params: EmbedParams; body: SeriesBody; 
           loading={false}
         />
       ) : (
-        <MetricSpark
-          times={times}
-          result={result}
-          readingWord={reading ?? (metric ? (result.kind === "counter" ? "sum" : "avg") : (body.agg ?? "count"))}
-          kindWord={result.kind ?? "counter"}
-          name={metric ?? params.title}
-          window={window}
-          live={false}
-          chart={params.chart === "bars" || params.chart === "stacked" ? params.chart : "line"}
-        />
+        <>
+          {/* Points sent in more than one unit or kind (#331): the one line that says why, as the board says it. */}
+          <PanelTells held={null} units={unitsDifferWords(result.units_differ)} />
+          <MetricSpark
+            times={times}
+            result={result}
+            readingWord={reading ?? (metric ? (result.kind === "counter" ? "sum" : "avg") : (body.agg ?? "count"))}
+            kindWord={result.kind ?? "counter"}
+            name={metric ?? params.title}
+            window={window}
+            live={false}
+            chart={params.chart === "bars" || params.chart === "stacked" ? params.chart : "line"}
+          />
+        </>
       )}
     </div>
   );

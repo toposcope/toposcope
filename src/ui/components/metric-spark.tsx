@@ -5,10 +5,12 @@ import { formatAggStat } from "@/fill-histogram";
 import type { SearchAggResult } from "@/types";
 import { alignAggBuckets } from "../../query/agg";
 import { useSeriesCatalog } from "../series-catalog";
-import { withUnit } from "../metric-unit";
+import { unitChangeMark, unitChanges, withUnit } from "../metric-unit";
 import { darkPlotTheme, usePlotTheme, type PlotTheme } from "../plot-theme";
 import type { MetricHeld } from "../held-view";
 import { HeldHatch } from "./held-hatch";
+import { MarkGlyph, markKindColor } from "./histogram-marks";
+import type { ChangeMark } from "../../shared/change-mark";
 
 /** One line per value of a split (frames 13e, 13g); the sixth colour is not `other`'s grey. */
 export const splitPalette = darkPlotTheme.palette;
@@ -30,8 +32,6 @@ export function sparkLines(
   times: readonly string[],
   result: SearchAggResult | null,
   theme: PlotTheme = darkPlotTheme,
-  /** The first line's place in the palette: a panel drawn as one plot per unit keeps each line's colour. */
-  offset = 0,
 ): SparkLine[] {
   if (!result || result.source === "refused") {
     return [];
@@ -39,7 +39,7 @@ export function sparkLines(
   if (result.splits) {
     return result.splits.map((s, i) => ({
       key: s.key,
-      color: s.key === "other" ? theme.other : theme.palette[(i + offset) % theme.palette.length]!,
+      color: s.key === "other" ? theme.other : theme.palette[i % theme.palette.length]!,
       dashed: s.key === "other",
       vals: alignAggBuckets(times, s.buckets),
       ...(s.unit ? { unit: s.unit } : {}),
@@ -153,25 +153,29 @@ type SparkProps = {
   chart?: "line" | "bars" | "stacked";
   /** A source short inside the window (#331). */
   held?: MetricHeld | null;
+  /** The panel's marks (#331, 33e): a deploy a unit changed around is drawn where the old line ends. */
+  marks?: readonly ChangeMark[];
 };
 
+/** One unit's scale in a plot whose lines came in more than one unit: its peak and the colour of its first line. */
+export type UnitAxis = { unit: string; peak: number; color: string };
+
 /**
- * A result whose lines came in more than one unit (#331, 33e), as one plot per unit, each on its
- * own axis: ms and s never share one. Null when its lines share a unit.
+ * The scales of a plot whose lines came in more than one unit (#331, 33e): its lines share the
+ * plot, each drawn against its own unit's peak, so ms and s are never read off one axis. Null
+ * when its lines share a unit.
  */
-export function unitPlots(result: SearchAggResult | null): Array<{ result: SearchAggResult; offset: number }> | null {
-  if (!result?.units_differ || !result.splits) {
-    return null;
-  }
-  const units = [...new Set(result.splits.map((s) => s.unit ?? ""))];
+export function unitAxes(lines: readonly SparkLine[]): UnitAxis[] | null {
+  const units = [...new Set(lines.map((l) => l.unit ?? ""))];
   if (units.length < 2) {
     return null;
   }
   return units.map((unit) => {
-    const offset = result.splits!.findIndex((s) => (s.unit ?? "") === unit);
-    const splits = result.splits!.filter((s) => (s.unit ?? "") === unit);
-    const { unit: _panel, ...rest } = result;
-    return { result: { ...rest, ...(unit ? { unit } : {}), splits }, offset };
+    const mine = lines.filter((l) => (l.unit ?? "") === unit);
+    const finite = mine.flatMap((l) => l.vals.filter((v): v is number => v !== null));
+    // Some room above the highest line, as one axis has.
+    const peak = finite.length === 0 ? 1 : Math.max(1e-9, ...finite) * 1.15;
+    return { unit, peak, color: mine[0]!.color };
   });
 }
 
@@ -179,16 +183,6 @@ export function unitPlots(result: SearchAggResult | null): Array<{ result: Searc
 export function MetricSpark(props: SparkProps) {
   if (props.result?.heat) {
     return <HeatSpark result={props.result} readingWord={props.readingWord} />;
-  }
-  const plots = unitPlots(props.result);
-  if (plots) {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        {plots.map((plot) => (
-          <LineSpark key={plot.result.unit ?? ""} {...props} result={plot.result} offset={plot.offset} />
-        ))}
-      </div>
-    );
   }
   return <LineSpark {...props} />;
 }
@@ -204,7 +198,7 @@ function LineSpark({
   namedLines = false,
   chart = "line",
   held = null,
-  offset = 0,
+  marks,
 }: {
   times: string[];
   result: SearchAggResult | null;
@@ -220,19 +214,26 @@ function LineSpark({
   chart?: "line" | "bars" | "stacked";
   /** A source short inside the window (#331): its span hatched; an average or a percentile named partial. */
   held?: MetricHeld | null;
-  /** The first line's place in the palette, when the panel draws one plot per unit. */
-  offset?: number;
+  marks?: readonly ChangeMark[];
 }) {
   const theme = usePlotTheme();
-  const lines = useMemo(() => sparkLines(times, result, theme, offset), [times, result, theme, offset]);
+  const lines = useMemo(() => sparkLines(times, result, theme), [times, result, theme]);
   const unit = result?.unit;
   const finite = lines.flatMap((l) => l.vals.filter((v): v is number => v !== null));
   const quiet = finite.length === 0;
-  // Some room above the highest line, so it does not sit on the panel's edge.
+  // Lines in more than one unit share the plot, each on its own unit's scale (#331, 33e); they never stack.
+  const axes = unitAxes(lines);
   const n = times.length;
-  const stacked = chart === "stacked" && lines.length > 1;
+  const stacked = chart === "stacked" && lines.length > 1 && !axes;
+  // Some room above the highest line, so it does not sit on the panel's edge.
   const peak = quiet ? 1 : Math.max(1e-9, stacked ? stackedPeak(lines, n) : Math.max(...finite)) * 1.15;
-  const bars = chart === "line" ? null : barRects(lines, n, peak, stacked);
+  const peakOf = (l: SparkLine) => axes?.find((a) => a.unit === (l.unit ?? ""))?.peak ?? peak;
+  const bars =
+    chart === "line"
+      ? null
+      : axes
+        ? barRects(lines.map((l) => ({ ...l, vals: l.vals.map((v) => (v === null ? null : v / peakOf(l))) })), n, 1, false)
+        : barRects(lines, n, peak, stacked);
   const step = n > 1 ? Date.parse(times[1]!) - Date.parse(times[0]!) : 60_000;
   const seconds = step < 60_000;
   const split = Boolean(result?.splits);
@@ -255,10 +256,10 @@ function LineSpark({
   const hoverIdx = hoverT ? times.indexOf(hoverT) : -1;
 
   const x = (i: number) => ((i + 0.5) / Math.max(1, n)) * 100;
-  const y = (v: number) => 100 - (v / peak) * 100;
-  const points = (vals: ReadonlyArray<number | null>) =>
-    vals
-      .map((v, i) => (v === null ? null : `${x(i).toFixed(2)},${y(v).toFixed(2)}`))
+  const yOf = (l: SparkLine) => (v: number) => 100 - (v / peakOf(l)) * 100;
+  const points = (l: SparkLine) =>
+    l.vals
+      .map((v, i) => (v === null ? null : `${x(i).toFixed(2)},${yOf(l)(v).toFixed(2)}`))
       .filter((p): p is string => p !== null)
       .join(" ");
 
@@ -287,19 +288,40 @@ function LineSpark({
     ? spreadLabels(
         lines.map((l) => {
           const v = lastValue(l.vals);
-          return v === null ? 0 : (y(v) / 100) * plotH - 7;
+          return v === null ? 0 : (yOf(l)(v) / 100) * plotH - 7;
         }),
         13,
         Math.max(0, plotH - 13),
       )
     : [];
 
+  // A unit changed at one source (#331, 33e): the deploy it changed around, where the old line ends.
+  const t0 = n > 0 ? Date.parse(times[0]!) : 0;
+  const changeMarks = quiet || n === 0
+    ? []
+    : (unitChanges(result?.units_differ) ?? [])
+        .map((change) => unitChangeMark(change, marks))
+        .filter((mark): mark is ChangeMark => mark !== null)
+        .map((mark) => ({ ...mark, at: ((Date.parse(mark.ts) - t0) / (n * step)) * 100 }))
+        .filter((mark) => mark.at >= 0 && mark.at <= 100);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 pb-1.5">
       <span className={`pl-12 font-mono text-[10.5px] ${quiet ? "text-amber-400" : "text-muted-foreground"}`}>{tag}</span>
       <div className="relative mt-1 flex min-h-0 flex-1">
         <div className="flex w-12 shrink-0 flex-col justify-between pr-1.5 text-right font-mono text-[10px] leading-none whitespace-nowrap text-muted-foreground">
-          <span>{quiet ? "" : withUnit(formatAggStat(peak), unit)}</span>
+          {axes && !quiet ? (
+            // Each unit's peak in the colour of its line: two scales, said where the one would be.
+            <span className="flex flex-col gap-1" aria-label={`scales: ${axes.map((a) => withUnit(formatAggStat(a.peak), a.unit)).join(", ")}`}>
+              {axes.map((a) => (
+                <span key={a.unit} style={{ color: a.color }}>
+                  {withUnit(formatAggStat(a.peak), a.unit)}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span>{quiet ? "" : withUnit(formatAggStat(peak), unit)}</span>
+          )}
           <span className="text-muted-foreground/60">0</span>
         </div>
         <div
@@ -321,7 +343,7 @@ function LineSpark({
                 : lines.map((l) => (
                 <polyline
                   key={l.key || "line"}
-                  points={points(l.vals)}
+                  points={points(l)}
                   fill="none"
                   stroke={l.color}
                   strokeWidth="1.4"
@@ -335,6 +357,21 @@ function LineSpark({
           {held && held.hatches.length > 0 && n > 0 ? (
             <HeldHatch spans={held.hatches} fromMs={Date.parse(times[0]!)} plotSpanMs={n * step} />
           ) : null}
+          {changeMarks.map((mark) => (
+            <span
+              key={mark.id}
+              className="pointer-events-none absolute inset-y-0 w-px"
+              style={{ left: `${mark.at}%`, background: markKindColor(mark.kind) }}
+            >
+              <span
+                className={`absolute top-0 flex items-center gap-1 font-mono text-[10px] whitespace-nowrap ${mark.at > 70 ? "right-1.5" : "left-1.5"}`}
+                style={{ color: markKindColor(mark.kind) }}
+              >
+                <MarkGlyph kind={mark.kind} size={9} />
+                {mark.title} · {clock(mark.ts, false)}
+              </span>
+            </span>
+          ))}
           {named
             ? lines.map((l, i) => (
                 <span
@@ -355,7 +392,7 @@ function LineSpark({
                   <span
                     key={l.key || "dot"}
                     className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_0_2px_var(--plot-ring)]"
-                    style={{ left: `${x(hoverIdx)}%`, top: `${y(v)}%`, background: l.color }}
+                    style={{ left: `${x(hoverIdx)}%`, top: `${yOf(l)(v)}%`, background: l.color }}
                   />
                 );
               })}
@@ -411,7 +448,9 @@ function LineSpark({
             <span key={l.key} className="flex min-w-0 items-center gap-1.5">
               <span className="h-0 w-3 shrink-0 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />
               <span className="min-w-0 truncate">{l.key}</span>
-              <span className="ml-auto text-muted-foreground">{formatAggStat(lastValue(l.vals))}</span>
+              <span className="ml-auto text-muted-foreground">
+                {axes ? withUnit(formatAggStat(lastValue(l.vals)), l.unit) : formatAggStat(lastValue(l.vals))}
+              </span>
             </span>
           ))}
         </div>

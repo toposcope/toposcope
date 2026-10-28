@@ -5,9 +5,8 @@ import { metricDescriptionOf } from "./metric";
 const known = new Map<string, string | null>();
 
 /**
- * A name remembers the description it was last sent with (#167), as its unit
- * is remembered. A point sent without one leaves it as it was. Writes only the
- * names whose description is new or changed.
+ * The description a name was last sent with (#167), as this process saw it. A point sent
+ * without one leaves it as it was. The point carries it (#331), so nothing is written here.
  */
 export async function rememberMetricDescriptions(descriptions: ReadonlyMap<string, string>): Promise<void> {
   const changed = [...descriptions].filter(([name, description]) => known.get(name) !== description);

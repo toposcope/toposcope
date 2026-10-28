@@ -5,9 +5,8 @@ import { metricUnitOf } from "./metric";
 const known = new Map<string, string | null>();
 
 /**
- * A name remembers the unit it was last sent with, beside its kind. A point
- * sent without one leaves it as it was. Writes only the names whose unit is
- * new or changed.
+ * The unit a name was last sent with, as this process saw it. A point sent without one leaves
+ * it as it was. The point carries it (#331), so nothing is written here.
  */
 export async function rememberMetricUnits(units: ReadonlyMap<string, string>): Promise<void> {
   const changed = [...units].filter(([name, unit]) => known.get(name) !== unit);
