@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { guideSection } from "../../scripts/ingest-guide-examples";
@@ -438,7 +438,9 @@ describe("agent <name> (#357)", () => {
         'all="$*"',
         '[ "${all#compose exec -T app bun run src/cli.ts }" != "$all" ] || exit 64',
         "shift 7",
-        `SQLITE_PATH=${JSON.stringify(database)} exec ${JSON.stringify(process.execPath)} run ${JSON.stringify(`${root}/src/cli.ts`)} "$@"`,
+        `SQLITE_PATH=${JSON.stringify(database)} ${JSON.stringify(process.execPath)} run ${JSON.stringify(`${root}/src/cli.ts`)} "$@" || exit $?`,
+        // A container that answers and then fails, after the token was made.
+        '[ "$1" != agent ] || [ -z "${AGENT_TEST_FAIL:-}" ] || exit 1',
         "",
       ].join("\n"),
     );
@@ -484,9 +486,40 @@ describe("agent <name> (#357)", () => {
     db.close();
   });
 
+  const liveTokens = (name: string) => {
+    const db = new Database(database, { readonly: true });
+    const n = (db.query("SELECT count(*) AS n FROM person_tokens t JOIN people p ON p.id = t.person_id WHERE p.name = ? AND t.revoked_at IS NULL").get(`agent: ${name}`) as { n: number }).n;
+    const all = (db.query("SELECT count(*) AS n FROM person_tokens t JOIN people p ON p.id = t.person_id WHERE p.name = ?").get(`agent: ${name}`) as { n: number }).n;
+    db.close();
+    return { live: n, all };
+  };
+
   test("takes only a name an agent may have, and asks the instance nothing otherwise", async () => {
-    const { code, err } = await agentRun("agent", "claude; id");
+    for (const name of ["claude; id", "claude\nx", "x".repeat(58), ""]) {
+      const { code, err } = await agentRun("agent", name);
+      expect(code).not.toBe(0);
+      expect(err).toContain("Usage: agent <name>");
+    }
+    expect(existsSync(join(instance, "agent-claude\nx.token"))).toBe(false);
+  });
+
+  test("writes no token through a link, and makes none", async () => {
+    const target = join(instance, "elsewhere");
+    writeFileSync(target, "kept as it was\n");
+    symlinkSync(target, join(instance, "agent-linked.token"));
+    const { code, err, out } = await agentRun("agent", "linked");
     expect(code).not.toBe(0);
-    expect(err).toContain("Usage: agent <name>");
+    expect(err).toContain("is not a regular file");
+    expect(out + err).not.toContain("tsp1_");
+    expect(readFileSync(target, "utf8")).toBe("kept as it was\n");
+    expect(liveTokens("linked").all).toBe(0);
+  });
+
+  test("a token the script cannot keep is revoked, and not shown", async () => {
+    const { code, out, err } = await runWith({ TOPOSCOPE_DIR: instance, PATH: `${bin}:${process.env.PATH}`, AGENT_TEST_FAIL: "1" }, "agent", "dropped");
+    expect(code).not.toBe(0);
+    expect(out + err).not.toContain("tsp1_");
+    expect(existsSync(join(instance, "agent-dropped.token"))).toBe(false);
+    expect(liveTokens("dropped")).toEqual({ live: 0, all: 1 });
   });
 });

@@ -8,7 +8,8 @@ import { agentMay, agentNameProblem, agentNever, agentRoleCards, mcpSetup, setup
  * Let someone in › Agent (#357): 34a, a name and a role, with what an agent may and never may do;
  * Make shows 34b, its token once inside the MCP setup for Claude Code, any MCP client, or the host.
  */
-export type MadeAgent = { name: string; role: AgentRole; token: string };
+/** `kept`: the agent existed already, in this role, and this is another token for it. */
+export type MadeAgent = { name: string; role: AgentRole; token: string; kept?: boolean };
 
 const lab = "text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase";
 
@@ -24,12 +25,12 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
     setBusy(true);
     try {
       const res = await fetch("/api/people/agents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: name.trim(), role }) });
-      const body = (await res.json().catch(() => null)) as { token?: string; agent?: { name: string }; error?: string } | null;
+      const body = (await res.json().catch(() => null)) as { token?: string; kept?: boolean; agent?: { name: string }; error?: string } | null;
       if (!res.ok || !body?.token) {
         toast.error(body?.error ?? `The agent was not made (${res.status})`);
         return;
       }
-      props.onMade({ name: body.agent?.name ?? `agent: ${name.trim()}`, role, token: body.token });
+      props.onMade({ name: body.agent?.name ?? `agent: ${name.trim()}`, role, token: body.token, kept: body.kept === true });
     } finally {
       setBusy(false);
     }
@@ -145,6 +146,11 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
         </svg>
         <span className="text-[13px] text-amber-200">Its token is in the setup below, and this is the only time it is shown. Copy it now, or close and make another.</span>
       </div>
+      {props.made.kept ? (
+        <p className="m-0 text-[12.5px] text-zinc-300">
+          <span className="font-mono">{props.made.name}</span> already existed; this is a new token, and its earlier tokens still work (revoke them in its row).
+        </p>
+      ) : null}
 
       <div className="flex items-center gap-3">
         <span className={lab}>Connect it</span>

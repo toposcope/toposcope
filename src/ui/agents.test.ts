@@ -61,6 +61,13 @@ describe("an agent made (34b)", () => {
     expect(html).toContain("Set up monitors and Home panels for this app&#x27;s service.");
   });
 
+  test("an agent that existed says this is a new token, and its earlier ones still work", () => {
+    const fresh = renderToStaticMarkup(createElement(AgentMade, { made, me: "Ian", origin: "http://x", onDone: noop }));
+    expect(fresh).not.toContain("already existed");
+    const again = renderToStaticMarkup(createElement(AgentMade, { made: { ...made, kept: true }, me: "Ian", origin: "http://x", onDone: noop }));
+    expect(again).toContain("agent: claude</span> already existed; this is a new token, and its earlier tokens still work (revoke them in its row).");
+  });
+
   test("each tab's setup points at this instance's /mcp", () => {
     const input = { origin: "https://log-vm.example.com/", token, name: "claude" };
     expect(mcpSetup("claude", input)).toBe(`claude mcp add --transport http toposcope https://log-vm.example.com/mcp \\\n  --header "Authorization: Bearer ${token}"`);

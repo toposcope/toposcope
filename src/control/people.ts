@@ -544,6 +544,11 @@ export function tokensOf(personId: string, db: Database = getDb()): PersonToken[
     .all(personId) as PersonToken[];
 }
 
+/** Revokes a personal or service token by its value: a host command's way back from a token it could not hand over. */
+export function revokePresentedToken(presented: string, now = Date.now(), db: Database = getDb()): boolean {
+  return db.query("UPDATE person_tokens SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL").run(now, hash(presented)).changes > 0;
+}
+
 export function revokePersonToken(id: string, now = Date.now(), db: Database = getDb()): boolean {
   return db.query("UPDATE person_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL").run(now, id).changes > 0;
 }

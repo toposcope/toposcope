@@ -83,7 +83,7 @@ claude mcp add --transport http toposcope https://<your address>/mcp \
   --header "Authorization: Bearer <its token>"
 ```
 
-with tabs for any other MCP client (the same address and header, as JSON) and for the host. Making an agent of a name that exists, in the same role, gives it another token; in another role it is refused.
+with tabs for any other MCP client (the same address and header, as JSON) and for the host. Making an agent of a name that exists, in the same role, gives it another token, and says its earlier tokens still work; in another role it is refused.
 
 On the host, beside `compose.yml`:
 
@@ -91,7 +91,7 @@ On the host, beside `compose.yml`:
 ./toposcope.sh agent claude
 ```
 
-makes the Operator `agent: claude`, or keeps the one there is, makes a new token for it, and writes the token to `agent-claude.token` beside `.env`, a file only you can read. It prints that file's path and a `claude mcp add` line that reads the token from the file; it never prints the token. Each run adds a token, and the earlier ones work until they are revoked.
+makes the Operator `agent: claude`, or keeps the one there is, makes a new token for it, and writes the token to `agent-claude.token` beside `.env`, a file only you can read. It prints that file's path and a `claude mcp add` line that reads the token from the file; it never prints the token. It will not write through a link or onto anything but a plain file, and a token it made but could not write it revokes. Each run adds a token, and the earlier ones work until they are revoked.
 
 Access lists agents in a group of their own, with their role, their tokens and last call, and what each saved. **Revoke** there ends its tokens on the next call; what it saved stays, under its name, for a person to keep or delete. Its tokens expire as any token does, within a year; revoke is the way to stop one sooner.
 
