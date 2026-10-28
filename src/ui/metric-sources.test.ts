@@ -3,8 +3,11 @@ import type { HeldSource } from "../shared/held";
 import type { SearchAggResult } from "../query/agg";
 import { metricPanelHeld } from "./held-context";
 import { heldView, metricAdds } from "./held-view";
-import { unitsDifferWords } from "./metric-unit";
-import { sparkLines, unitPlots } from "./components/metric-spark";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import type { ChangeMark } from "../shared/change-mark";
+import { unitChangeMark, unitChanges, unitsDifferWords } from "./metric-unit";
+import { MetricSpark, sparkLines, unitAxes } from "./components/metric-spark";
 import { metricStat } from "./components/stat-widget";
 
 // #331, frame 33e: metric panels across sources.
@@ -77,17 +80,75 @@ describe("a panel whose points came in two units (#331)", () => {
     ],
   });
 
-  test("drawn one plot per unit, each line keeping its colour", () => {
-    const plots = unitPlots(split)!;
-    expect(plots.map((p) => [p.result.unit, p.result.splits!.map((l) => l.key), p.offset])).toEqual([
-      ["ms", ["ms"], 0],
-      ["s", ["s"], 1],
+  test("drawn as two lines in one plot, each on its own unit's scale, never summed", () => {
+    const times = ["2026-10-27T13:00:00.000Z"];
+    const lines = sparkLines(times, split);
+    expect(lines.map((l) => [l.key, l.unit, l.vals])).toEqual([
+      ["ms", "ms", [410]],
+      ["s", "s", [0.25]],
     ]);
-    const all = sparkLines(["2026-10-27T13:00:00.000Z"], split);
-    const second = sparkLines(["2026-10-27T13:00:00.000Z"], plots[1]!.result, undefined, plots[1]!.offset);
-    expect(second[0]!.color).toBe(all[1]!.color);
-    expect(second[0]!.unit).toBe("s");
-    expect(unitPlots(result({ splits: [{ key: "a", buckets: [], stat: 1 }] }))).toBeNull();
+    const axes = unitAxes(lines)!;
+    expect(axes.map((a) => [a.unit, a.peak, a.color])).toEqual([
+      ["ms", 410 * 1.15, lines[0]!.color],
+      ["s", 0.25 * 1.15, lines[1]!.color],
+    ]);
+    expect(unitAxes(sparkLines(times, result({ splits: [{ key: "a", buckets: [], stat: 1 }, { key: "b", buckets: [], stat: 2 }] })))).toBeNull();
+    const html = renderToStaticMarkup(
+      createElement(MetricSpark, { times, result: split, readingWord: "avg", kindWord: "gauge", name: "http.server.duration", window: "1h", live: false }),
+    ).replace(/<!-- -->/g, "");
+    // One plot: one svg holding both lines, and each unit's peak on the one axis.
+    expect(html.match(/<svg/g)).toHaveLength(1);
+    expect(html.match(/<polyline/g)).toHaveLength(2);
+    expect(html).toContain("scales: 471 ms, 0.29 s");
+  });
+
+  const before = { ...ms, sources: ["here"], last: "2026-10-27T12:57:00.000Z" };
+  const after = { ...s, first: "2026-10-27T12:58:00.000Z" };
+  const deploy = (over: Partial<ChangeMark>): ChangeMark => ({
+    id: "d1",
+    ts: "2026-10-27T12:57:40.000Z",
+    end_ts: null,
+    kind: "deploy",
+    service: "api",
+    title: "api v2.0",
+    attrs: {},
+    ...over,
+  });
+
+  test("a unit changed by a deploy names the deploy, and draws it where the old line ends", () => {
+    expect(unitChanges([before, after])).toEqual([{ from: before.last, to: after.first }]);
+    expect(unitChanges([ms, s])).toBeNull();
+    expect(unitChangeMark({ from: before.last, to: after.first }, [deploy({})])?.title).toBe("api v2.0");
+    expect(unitChangeMark({ from: before.last, to: after.first }, [deploy({ kind: "note" })])).toBeNull();
+    expect(unitChangeMark({ from: before.last, to: after.first }, [deploy({ ts: "2026-10-27T12:40:00.000Z" })])).toBeNull();
+    expect(unitsDifferWords([before, after], [deploy({})])).toBe("two units: ms until ▲ api v2.0, s after");
+    expect(unitsDifferWords([before, after], [])).toBe("two units: ms until 12:58, s after");
+
+    const times = ["2026-10-27T12:56:00.000Z", "2026-10-27T12:57:00.000Z", "2026-10-27T12:58:00.000Z", "2026-10-27T12:59:00.000Z"];
+    const moved = result({
+      unit: "s",
+      kind: "gauge",
+      stat: null,
+      units_differ: [before, after],
+      splits: [
+        { key: "ms", unit: "ms", kind: "gauge", buckets: [{ t: times[0]!, v: 240 }, { t: times[1]!, v: 250 }], stat: 245 },
+        { key: "s", unit: "s", kind: "gauge", buckets: [{ t: times[2]!, v: 0.26 }, { t: times[3]!, v: 0.25 }], stat: 0.255 },
+      ],
+    });
+    const lines = sparkLines(times, moved);
+    expect(lines.map((l) => l.vals)).toEqual([
+      [240, 250, null, null],
+      [null, null, 0.26, 0.25],
+    ]);
+    const html = renderToStaticMarkup(
+      createElement(MetricSpark, { times, result: moved, readingWord: "avg", kindWord: "gauge", name: "d", window: "1h", live: false, marks: [deploy({})] }),
+    ).replace(/<!-- -->/g, "");
+    expect(html.match(/<svg[^>]*viewBox="0 0 100 100"/g)).toHaveLength(1);
+    expect(html).toContain("api v2.0 · 12:57");
+    const unmarked = renderToStaticMarkup(
+      createElement(MetricSpark, { times, result: moved, readingWord: "avg", kindWord: "gauge", name: "d", window: "1h", live: false }),
+    ).replace(/<!-- -->/g, "");
+    expect(unmarked).not.toContain("api v2.0");
   });
 
   test("a Stat shows the line in the unit last sent, never a sum across units", () => {

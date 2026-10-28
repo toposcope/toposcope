@@ -194,6 +194,17 @@ describe("a name sent with two units is two lines, and says so (#331)", () => {
     });
   });
 
+  test("the minute rollup, keyed by kind and unit, gives the lines the stored points give", async () => {
+    if (!ready) return;
+    // Minute bars with no matcher read the rollup; a 10 s bar reads the points.
+    for (const [name, reading] of [[dur, null], [mixed, null], [lat2, "p99"]] as const) {
+      const rolled = await searchMetricSeries({ ...window, intervalMs: 60_000, name, reading, labels: {} });
+      const scanned = await searchMetricSeries({ ...window, intervalMs: 10_000, name, reading, labels: {} });
+      expect(keyed(rolled)).toEqual(keyed(scanned));
+      expect(rolled.units_differ!.map((g) => [g.kind, g.unit, g.sources])).toEqual(scanned.units_differ!.map((g) => [g.kind, g.unit, g.sources]));
+    }
+  });
+
   test("a heatmap over two units draws as its p99 lines, never one grid", async () => {
     if (!ready) return;
     const result = await searchMetricSeries({ ...window, intervalMs: 60_000, name: lat2, reading: "heatmap", labels: {} });

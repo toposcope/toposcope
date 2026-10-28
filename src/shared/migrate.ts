@@ -233,6 +233,8 @@ export async function migrateStore(): Promise<void> {
   await ensureKindPositions();
   await ensureMonitorResults();
   await ensureMetricMeta();
+  await ensureMetricRollups();
+  await dropMetricMetaTables();
   await backfillHistogramIfEmpty();
   await backfillAttrKeysIfEmpty();
   await backfillAttrValuesMissing();
@@ -379,8 +381,7 @@ async function ensureMonitorResults(): Promise<void> {
 
 /**
  * A point carries its name's kind, unit and description (#331): they travel with it, and a name
- * sent with two units is two series, never summed. metric_kinds, metric_units and
- * metric_descriptions are no longer written or read; they stay until a later release removes them.
+ * sent with two units is two series, never summed.
  */
 async function ensureMetricMeta(): Promise<void> {
   for (const table of ["metrics", "metric_buckets"]) {
@@ -632,54 +633,6 @@ async function ensureMetrics(): Promise<void> {
     ORDER BY (tenant_id, name, ts)
     TTL toDate(ts) + INTERVAL 30 DAY
   `);
-  await clickhouseCommand(`
-    CREATE TABLE IF NOT EXISTS metrics_by_minute (
-      tenant_id LowCardinality(String),
-      minute DateTime('UTC'),
-      name LowCardinality(String),
-      n AggregateFunction(count),
-      v_sum AggregateFunction(sum, Float64),
-      v_min AggregateFunction(min, Float64),
-      v_max AggregateFunction(max, Float64)
-    )
-    ENGINE = AggregatingMergeTree
-    PARTITION BY toDate(minute)
-    ORDER BY (tenant_id, name, minute)
-    TTL toDate(minute) + INTERVAL 30 DAY
-  `);
-  // A name remembers its kind (gauge or counter); the newest row for a name wins.
-  await clickhouseCommand(`
-    CREATE TABLE IF NOT EXISTS metric_kinds (
-      tenant_id LowCardinality(String),
-      name LowCardinality(String),
-      kind LowCardinality(String),
-      seen DateTime64(3, 'UTC')
-    )
-    ENGINE = ReplacingMergeTree(seen)
-    ORDER BY (tenant_id, name)
-  `);
-  // A name remembers the unit it was last sent with (`GiBy`, `s`); the newest row for a name wins.
-  await clickhouseCommand(`
-    CREATE TABLE IF NOT EXISTS metric_units (
-      tenant_id LowCardinality(String),
-      name LowCardinality(String),
-      unit LowCardinality(String),
-      seen DateTime64(3, 'UTC')
-    )
-    ENGINE = ReplacingMergeTree(seen)
-    ORDER BY (tenant_id, name)
-  `);
-  // A name remembers the description it was last sent with (#167), apart from its unit so neither overwrites the other.
-  await clickhouseCommand(`
-    CREATE TABLE IF NOT EXISTS metric_descriptions (
-      tenant_id LowCardinality(String),
-      name LowCardinality(String),
-      description String,
-      seen DateTime64(3, 'UTC')
-    )
-    ENGINE = ReplacingMergeTree(seen)
-    ORDER BY (tenant_id, name)
-  `);
   // A histogram's buckets, one row for each interval of each series. `n` has one
   // more count than `le` has bounds: the last is what was observed above them all.
   await clickhouseCommand(`
@@ -696,6 +649,51 @@ async function ensureMetrics(): Promise<void> {
     ORDER BY (tenant_id, name, ts)
     TTL toDate(ts) + INTERVAL 30 DAY
   `);
+}
+
+/** The key of each metric minute rollup (#331): the bucket bound last, so a percentile still reads its bounds in order. */
+export const metricRollupKeys = {
+  metrics_by_minute: "tenant_id, name, minute, kind, unit, toposcope",
+  metric_buckets_by_minute: "tenant_id, name, minute, kind, unit, toposcope, le",
+} as const;
+
+/**
+ * A name's minute rollups key by the kind and unit its points came with, and the instance they
+ * entered at (#331), so points that disagree stay apart rows and are never merged into one. A
+ * rollup made with another key is made again and filled from the stored points, which keep as
+ * long as it does.
+ */
+async function ensureMetricRollups(): Promise<void> {
+  const rebuilt: string[] = [];
+  const days = (await currentTtlIntervalDays()).metrics ?? 30;
+  for (const table of ["metrics_by_minute", "metric_buckets_by_minute"] as const) {
+    const sorting = await tableSortingKey(table);
+    if (sorting !== null && sorting !== metricRollupKeys[table]) {
+      await clickhouseCommand(`DROP VIEW IF EXISTS ${table}_mv`);
+      await clickhouseCommand(`DROP TABLE IF EXISTS ${table}`);
+      rebuilt.push(table);
+    } else if (sorting === null) {
+      rebuilt.push(table);
+    }
+  }
+  await clickhouseCommand(`
+    CREATE TABLE IF NOT EXISTS metrics_by_minute (
+      tenant_id LowCardinality(String),
+      minute DateTime('UTC'),
+      name LowCardinality(String),
+      kind LowCardinality(String),
+      unit LowCardinality(String),
+      toposcope LowCardinality(String),
+      n AggregateFunction(count),
+      v_sum AggregateFunction(sum, Float64),
+      v_min AggregateFunction(min, Float64),
+      v_max AggregateFunction(max, Float64)
+    )
+    ENGINE = AggregatingMergeTree
+    PARTITION BY toDate(minute)
+    ORDER BY (${metricRollupKeys.metrics_by_minute})
+    TTL toDate(minute) + INTERVAL ${days} DAY
+  `);
   // One row for each bound, so series with different bounds still add up, and a
   // bound nothing was counted under still says where the next bucket starts.
   await clickhouseCommand(`
@@ -703,41 +701,81 @@ async function ensureMetrics(): Promise<void> {
       tenant_id LowCardinality(String),
       minute DateTime('UTC'),
       name LowCardinality(String),
+      kind LowCardinality(String),
+      unit LowCardinality(String),
+      toposcope LowCardinality(String),
       le Float64,
       n SimpleAggregateFunction(sum, Float64)
     )
     ENGINE = AggregatingMergeTree
     PARTITION BY toDate(minute)
-    ORDER BY (tenant_id, name, minute, le)
-    TTL toDate(minute) + INTERVAL 30 DAY
+    ORDER BY (${metricRollupKeys.metric_buckets_by_minute})
+    TTL toDate(minute) + INTERVAL ${days} DAY
   `);
   await clickhouseCommand("DROP VIEW IF EXISTS metric_buckets_by_minute_mv");
-  await clickhouseCommand(`
-    CREATE MATERIALIZED VIEW metric_buckets_by_minute_mv TO metric_buckets_by_minute AS
-    SELECT
-      tenant_id,
-      toStartOfMinute(ts) AS minute,
-      name,
-      bound AS le,
-      sum(observed) AS n
-    FROM metric_buckets AS sent
-    ARRAY JOIN arrayPushBack(sent.le, inf) AS bound, sent.n AS observed
-    GROUP BY tenant_id, minute, name, le
-  `);
+  await clickhouseCommand(`CREATE MATERIALIZED VIEW metric_buckets_by_minute_mv TO metric_buckets_by_minute AS ${metricBucketsRollupSql("")}`);
   await clickhouseCommand("DROP VIEW IF EXISTS metrics_by_minute_mv");
-  await clickhouseCommand(`
-    CREATE MATERIALIZED VIEW metrics_by_minute_mv TO metrics_by_minute AS
+  await clickhouseCommand(`CREATE MATERIALIZED VIEW metrics_by_minute_mv TO metrics_by_minute AS ${metricsRollupSql("")}`);
+  for (const table of rebuilt) {
+    const source = table === "metrics_by_minute" ? "metrics" : "metric_buckets";
+    const rollup = table === "metrics_by_minute" ? metricsRollupSql : metricBucketsRollupSql;
+    await backfillDays(table, source, table, (day) => `
+      INSERT INTO ${table}
+      ${rollup(`WHERE toDate(ts) = toDate('${day}')`)}
+      SETTINGS max_execution_time = 120
+    `);
+  }
+}
+
+/** A minute of points as the rollup keeps it. */
+function metricsRollupSql(where: string): string {
+  return `
     SELECT
       tenant_id,
       toStartOfMinute(ts) AS minute,
       name,
+      kind,
+      unit,
+      toposcope,
       countState() AS n,
       sumState(value) AS v_sum,
       minState(value) AS v_min,
       maxState(value) AS v_max
     FROM metrics
-    GROUP BY tenant_id, minute, name
-  `);
+    ${where}
+    GROUP BY tenant_id, minute, name, kind, unit, toposcope
+  `;
+}
+
+/** A minute of histogram buckets as the rollup keeps it: one row for each bound. */
+function metricBucketsRollupSql(where: string): string {
+  return `
+    SELECT
+      tenant_id,
+      toStartOfMinute(ts) AS minute,
+      name,
+      kind,
+      unit,
+      toposcope,
+      bound AS le,
+      sum(observed) AS n
+    FROM metric_buckets AS sent
+    ARRAY JOIN arrayPushBack(sent.le, inf) AS bound, sent.n AS observed
+    ${where}
+    GROUP BY tenant_id, minute, name, kind, unit, toposcope, le
+  `;
+}
+
+/**
+ * The per-name tables a name's kind, unit and description were kept in before they travelled on
+ * every point (#331). Nothing has read or written them since 0.10.0.
+ */
+export const droppedMetricMetaTables = ["metric_kinds", "metric_units", "metric_descriptions"] as const;
+
+async function dropMetricMetaTables(): Promise<void> {
+  for (const table of droppedMetricMetaTables) {
+    await clickhouseCommand(`DROP TABLE IF EXISTS ${table}`);
+  }
 }
 
 async function ensureSpans(): Promise<void> {

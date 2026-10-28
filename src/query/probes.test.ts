@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import {
-  clickhouseCommand,
   clickhouseInsertJsonEachRow,
   pingClickHouse,
   toClickHouseDateTime,
 } from "../shared/clickhouse";
+import { migrateStore } from "../shared/migrate";
 import { probeToMetricPoint } from "../shared/probe";
 import { searchMetricSeries } from "./metric-series";
 import { probesRoute, searchProbes } from "./probes";
@@ -28,50 +28,8 @@ describe("searchProbes ClickHouse", () => {
     if (!(await pingClickHouse())) {
       return;
     }
-    await clickhouseCommand(`
-      CREATE TABLE IF NOT EXISTS metrics (
-        tenant_id LowCardinality(String),
-        ts DateTime64(3, 'UTC'),
-        name LowCardinality(String),
-        value Float64,
-        labels Map(LowCardinality(String), String)
-      )
-      ENGINE = MergeTree
-      PARTITION BY toDate(ts)
-      ORDER BY (tenant_id, name, ts)
-      TTL toDate(ts) + INTERVAL 30 DAY
-    `);
-    // The series reads a name's kind; `up` has none and reads as an average.
-    await clickhouseCommand(`
-      CREATE TABLE IF NOT EXISTS metric_kinds (
-        tenant_id LowCardinality(String),
-        name LowCardinality(String),
-        kind LowCardinality(String),
-        seen DateTime64(3, 'UTC')
-      )
-      ENGINE = ReplacingMergeTree(seen)
-      ORDER BY (tenant_id, name)
-    `);
-    await clickhouseCommand(`
-      CREATE TABLE IF NOT EXISTS metric_units (
-        tenant_id LowCardinality(String),
-        name LowCardinality(String),
-        unit LowCardinality(String),
-        seen DateTime64(3, 'UTC')
-      )
-      ENGINE = ReplacingMergeTree(seen)
-      ORDER BY (tenant_id, name)
-    `);
-    await clickhouseCommand(`
-      CREATE TABLE IF NOT EXISTS metric_descriptions (
-        tenant_id LowCardinality(String),
-        name LowCardinality(String),
-        description String,
-        seen DateTime64(3, 'UTC')
-      )
-      ENGINE = ReplacingMergeTree(seen)
-      ORDER BY (tenant_id, name)
-    `);
+    // The series reads each point's kind and unit (#331): the store as boot leaves it.
+    await migrateStore();
     const token = `probe${Date.now()}`;
     const toMs = Math.floor(Date.now() / 60_000) * 60_000;
     const fromMs = toMs - 3_600_000;
