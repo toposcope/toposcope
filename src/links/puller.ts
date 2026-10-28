@@ -126,6 +126,8 @@ export async function serveLink(link: LinkRecord, deps: PullDeps = defaultDeps):
       return { delivered };
     }
     const reply = await readFeed({
+    // Logs and marks until a link carries its kinds (#329).
+    kinds: ["logs", "marks"],
       id: link.id,
       q: link.q,
       after: ask.after,

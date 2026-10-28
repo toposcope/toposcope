@@ -153,6 +153,8 @@ export async function linkFeedRoute(c: Context): Promise<Response> {
   }
   const limitRaw = c.req.query("limit");
   const reply = await readFeed({
+    // Logs and marks until a link carries its kinds (#329).
+    kinds: ["logs", "marks"],
     id: link.id,
     q: link.q,
     after,
