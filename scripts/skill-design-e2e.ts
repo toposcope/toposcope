@@ -152,7 +152,7 @@ try {
   const token = readFileSync(tokenFile, "utf8").trim();
   check(/^tsp1_/.test(token), "the token file holds one token");
   const shown = await sh(["mcp"]);
-  check(shown.code === 0 && shown.out.includes(`--header "Authorization: Bearer $(cat ${tokenFile})"`), "mcp prints the Claude Code line");
+  check(shown.code === 0 && shown.out.includes(`--header "Authorization: Bearer $(cat -- ${tokenFile})"`), "mcp prints the Claude Code line");
   const json = await sh(["mcp", "--json", join(dir, "mcp.json")]);
   check(json.code === 0 && JSON.parse(readFileSync(join(dir, "mcp.json"), "utf8")).mcpServers.toposcope.url === `${base}/mcp`, "mcp --json writes a client's config");
 
@@ -172,7 +172,9 @@ try {
   check(savedErrors.ok && typeof savedErrors.data.id === "string" && savedErrors.data.undo?.tool === "saved_search_delete", "saved_search_create answers with its undo", savedErrors.data);
 
   const monitorName = `${service} errors`;
-  const errorsMonitor = { source: "search", service, saved_search_id: savedErrors.data.id, threshold: 10, window: "5m", webhook_urls: ["default"] };
+  // A webhook's URL is its credential: it is never shown through a tool, only its host and a handle.
+  const secretHook = `https://hooks.example.test/services/${crypto.randomUUID()}`;
+  const errorsMonitor = { source: "search", service, saved_search_id: savedErrors.data.id, threshold: 10, window: "5m", webhook_urls: ["default", secretHook] };
   const unpreviewed = await call("monitor_put", { name: monitorName, body: errorsMonitor });
   check(!unpreviewed.ok && JSON.stringify(unpreviewed.data).includes("monitor_draft_preview"), "monitor_put without a preview is refused, naming the preview", unpreviewed.data);
   const preview = await call("monitor_draft_preview", { body: { name: monitorName, ...errorsMonitor } });
@@ -201,13 +203,28 @@ try {
   const fpSaved = await call("monitor_put", { name: fpName, body: fpMonitor });
   check(fpSaved.ok, "monitor_put of the fingerprints monitor", fpSaved.data);
   const marking = await call("home_set", { body: { saved_id: shopSearch.data.id } });
-  check(marking.ok && marking.data.undo?.tool === "home_set", "home_set, with its undo", marking.data);
+  check(marking.ok && marking.data.undo?.tool === "home_set" && marking.data.undo.arguments.body.if_home === shopSearch.data.id, "home_set, with an undo that holds only while Home is still this", marking.data);
+  const again = await call("home_set", { body: { saved_id: savedErrors.data.id } });
+  check(!again.ok && JSON.stringify(again.data).includes("only where none is marked"), "an agent cannot move a Home that is marked", again.data);
   const added = [];
   for (const panel of [errorsPanel, p99Panel]) {
     const res = await call("panel_add", { id: "home", body: panel });
     check(res.ok && res.data.undo?.tool === "panel_remove", `panel_add ${panel.title} on Home`, res.data);
     added.push(res.data);
   }
+
+  // A change to the monitor, and its undo: the webhook comes back as it was, never seen whole.
+  const listed = await call("monitor_get", { name: monitorName });
+  const shownHooks = listed.data.webhook_urls as string[];
+  check(shownHooks[0] === "default" && /^https:\/\/hooks\.example\.test\/… kept:[0-9a-f]{12}$/.test(shownHooks[1]!), "monitor_get shows the webhook as its host and a handle", shownHooks);
+  const changed = { ...errorsMonitor, threshold: 20, webhook_urls: ["default"] };
+  check((await call("monitor_draft_preview", { body: { name: monitorName, ...changed } })).ok, "monitor_draft_preview of a change");
+  const change = await call("monitor_put", { name: monitorName, body: changed });
+  check(change.ok && change.data.undo?.tool === "monitor_put", "monitor_put of the change", change.data);
+  const undoChange = await call(change.data.undo.tool, change.data.undo.arguments);
+  check(undoChange.ok, `undo: ${change.data.undo.does}`, undoChange.data);
+  const direct = (await (await fetch(`${base}/api/monitors/${encodeURIComponent(monitorName)}`, { headers: { authorization: `Bearer ${token}` } })).json()) as { threshold: number; webhook_urls: string[] };
+  check(direct.threshold === 10 && JSON.stringify(direct.webhook_urls) === JSON.stringify(["default", secretHook]), "the undo put back the webhook as it was", direct);
 
   const watch = await call("monitors", {});
   const ours = (watch.data.monitors as Array<{ name: string; made_by?: { name: string; agent?: boolean } }>).filter((m) => m.name.startsWith(service));
@@ -227,10 +244,20 @@ try {
   const ran = Bun.spawnSync(["bash", "-c", marker.run], { env: { ...process.env, TOPOSCOPE_URL: "", TOPOSCOPE_INGEST_TOKEN: "", TOPOSCOPE_SERVICE: service } });
   check(ran.exitCode === 0 && ran.stdout.toString().includes("no deploy marked"), "the step skips itself while TOPOSCOPE_URL is empty");
   // And with it set, it marks a deploy.
+  // And with it set, it marks a deploy, a tag with a quote in it staying text.
+  const ref = 'v1.4.3"},"kind":"note';
+  const sha = crypto.randomUUID().slice(0, 12);
   const ranSet = Bun.spawnSync(["bash", "-c", marker.run], {
-    env: { ...process.env, TOPOSCOPE_URL: base, TOPOSCOPE_INGEST_TOKEN: ingestToken, TOPOSCOPE_SERVICE: service, GITHUB_REF_NAME: "v1.4.3", GITHUB_SHA: "abc123" },
+    env: { ...process.env, TOPOSCOPE_URL: base, TOPOSCOPE_INGEST_TOKEN: ingestToken, TOPOSCOPE_SERVICE: service, GITHUB_REF_NAME: ref, GITHUB_SHA: sha },
   });
-  check(ranSet.exitCode === 0, "the step marks a deploy when TOPOSCOPE_URL is set", ranSet.stderr.toString());
+  check(ranSet.exitCode === 0 && !ranSet.stdout.toString().includes("::warning::"), "the step marks a deploy when TOPOSCOPE_URL is set", ranSet.stderr.toString());
+  await Bun.sleep(1000);
+  const ciMarks = await call("marks", { kind: "deploy", range: "1h" });
+  const ciMark = (ciMarks.data.marks as Array<{ id: string; kind: string; title: string }>).find((m) => m.id === `deploy-${service}-${sha}`);
+  check(ciMark?.kind === "deploy" && ciMark.title === ref, "its mark arrived as a deploy, the tag as text", ciMarks.data);
+  // A mark the instance does not take warns and leaves the job green.
+  const ranDown = Bun.spawnSync(["bash", "-c", marker.run], { env: { ...process.env, TOPOSCOPE_URL: "http://127.0.0.1:9", TOPOSCOPE_INGEST_TOKEN: ingestToken, TOPOSCOPE_SERVICE: service, GITHUB_REF_NAME: "v1", GITHUB_SHA: "d" } });
+  check(ranDown.exitCode === 0 && ranDown.stdout.toString().includes("::warning::"), "a mark that fails warns and does not fail the job");
 
   // ---- Undo each, with the call each write answered with, newest first. ----
   for (const write of [...added].reverse()) {
@@ -247,6 +274,11 @@ try {
 
   // ---- No token anywhere a person or `ps` would see it. ----
   check(!transcript.includes(token) && !transcript.includes(ingestToken), "no token in anything the script printed");
+  if (transcript.includes(secretHook)) {
+    const at = transcript.indexOf(secretHook);
+    console.error(transcript.slice(Math.max(0, transcript.lastIndexOf("$ toposcope.sh", at)), at + 200).replaceAll(secretHook, "<HOOK>"));
+  }
+  check(!transcript.includes(secretHook), "no webhook URL in anything the script printed");
   const argv = readFileSync(argvLog, "utf8");
   check(argv.includes("/mcp") && !argv.includes(token), "no token in any argument curl was given");
   console.log("skill design e2e: passed");
