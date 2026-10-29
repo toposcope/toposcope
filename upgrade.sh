@@ -8,7 +8,7 @@
 #
 # Run it in the directory that holds compose.yml and .env (or set TOPOSCOPE_DIR). It is for
 # operators: unlike the agent skill's toposcope.sh, rollback replaces the data with the backup's,
-# and it keeps only the last 3 backups. The app never runs it: that would need the Docker socket.
+# and it keeps only the last 2 backups. The app never runs it: that would need the Docker socket.
 # With enable-ui, the app writes a request into its own volume and a systemd unit here runs it (#220).
 # Secrets are read from .env as text and never printed.
 set -euo pipefail
@@ -18,7 +18,7 @@ URL="${TOPOSCOPE_URL:-http://127.0.0.1:8080}"
 RELEASES="${TOPOSCOPE_RELEASE_BASE:-https://github.com/toposcope/toposcope/releases/download}"
 API="${TOPOSCOPE_RELEASES_API:-https://api.github.com/repos/toposcope/toposcope/releases}"
 BACKUPS="$ROOT/backups"
-KEEP=3
+KEEP=2
 WAIT_MINUTES=10
 FILES="compose.yml env.example vector.yaml LICENSE toposcope.sh upgrade.sh"
 UNITS="${TOPOSCOPE_SYSTEMD_DIR:-/etc/systemd/system}"
@@ -173,18 +173,39 @@ print_before() {
     }'
 }
 
+# Run inside a volume at /data: writes /tmp/skip, the paths a backup leaves out. For ch_data that
+# is ClickHouse's own system database (its query, trace and text logs), which ClickHouse makes again
+# when it starts; Toposcope's tables are all in the others. Each system table's data sits in store/,
+# where data/system/<table> links to it.
+SKIP_SYSTEM='cd /data && : >/tmp/skip
+if [ -d data/system ]; then
+  printf "./data/system\n./metadata/system\n" >>/tmp/skip
+  for l in data/system/*; do
+    if [ -L "$l" ]; then printf "./%s\n" "$(readlink "$l" | sed "s#^\(\.\./\)*##")" >>/tmp/skip; fi
+  done
+fi'
+
+# What a backup leaves out of a volume: ClickHouse's system database, nothing of the app's.
+skip_for() { if [ "$1" = ch_data ]; then printf '%s' "$SKIP_SYSTEM"; else printf ': >/tmp/skip'; fi; }
+
+# The part of a volume a backup takes, in KB.
 volume_kb() {
-  local image="$1" volume="$2"
-  docker run --rm -v "$volume:/data:ro" --entrypoint du "$image" -sk /data 2>/dev/null | awk '{ print $1; exit }'
+  local image="$1" name="$2" part="$3"
+  docker run --rm -v "${name}_$part:/data:ro" --entrypoint sh "$image" -c \
+    "$(skip_for "$part")"' && kb=$(du -sk . | cut -f1) && while read -r p; do
+      if [ -e "$p" ]; then kb=$((kb - $(du -sk "$p" | cut -f1))); fi
+    done </tmp/skip && echo "$kb"' 2>/dev/null |
+    awk '{ print $1; exit }'
 }
 
-# Both volumes into backups/<UTC time>-<version>/, with the compose.yml in use. Prints the path.
+# Both volumes into backups/<UTC time>-<version>/, with the compose.yml in use, without
+# ClickHouse's system database. Prints the path.
 take_backup() {
   local version="$1" image="$2" name dir ch app need free started part
   name="$(project)"
   [ -n "$name" ] || die "Could not tell this install's Compose project, so not which volumes to back up."
-  ch="$(volume_kb "$image" "${name}_ch_data")"
-  app="$(volume_kb "$image" "${name}_app_data")"
+  ch="$(volume_kb "$image" "$name" ch_data)"
+  app="$(volume_kb "$image" "$name" app_data)"
   [ -n "$ch" ] && [ -n "$app" ] || die "Could not read the size of ${name}_ch_data and ${name}_app_data. Nothing was changed."
   need=$((ch + app))
   mkdir -p "$BACKUPS"
@@ -204,7 +225,8 @@ take_backup() {
   say "Backing up about $((need / 1024)) MB into $dir. Ingest is stopped while it runs." >&2
   started="$(date +%s)"
   for part in ch_data app_data; do
-    docker run --rm -v "${name}_$part:/data:ro" -v "$dir:/backup" --entrypoint tar "$image" czf "/backup/$part.tgz" -C /data . &
+    docker run --rm -v "${name}_$part:/data:ro" -v "$dir:/backup" --entrypoint sh "$image" -c \
+      "$(skip_for "$part") && tar czf /backup/$part.tgz -X /tmp/skip -C /data ." &
     local pid=$! ticks=0
     # Says how far it has got every 10 seconds, so a long backup is never silent.
     while kill -0 "$pid" 2>/dev/null; do
@@ -231,6 +253,21 @@ prune_backups() {
     rm -rf -- "${all[$i]}"
     say "Removed the old backup ${all[$i]} (keeping the last $KEEP)." >&2
   done
+}
+
+# Removes the Toposcope images that nothing here names any more: not the running release's, not
+# the one before it, not a kept backup's, which a rollback starts. Docker refuses one in use.
+remove_old_images() {
+  local from="$1" keep=" " f image
+  for f in "$ROOT/compose.yml" "$ROOT/compose.yml.$from" "$BACKUPS"/*/compose.yml; do
+    [ ! -f "$f" ] || keep="$keep$(app_image "$f") "
+  done
+  docker image ls --format '{{.Repository}}:{{.Tag}}' ghcr.io/toposcope/toposcope 2>/dev/null |
+    while read -r image; do
+      case "$keep" in *" $image "*) continue ;; esac
+      case "$image" in *:"<none>") continue ;; esac
+      ! docker image rm "$image" >/dev/null 2>&1 || say "Removed the old image $image (nothing here names it)."
+    done
 }
 
 latest_backup() {
@@ -352,6 +389,7 @@ cmd_continue() {
       0.[0-8].*) say "From 0.9 there is no shared password. Make the first Owner: ./toposcope.sh owner-link <email>, then open the link it prints within the hour. Delete TOPOSCOPE_PASSWORD from .env; scripts need a personal or service account token." ;;
     esac
     mark "Toposcope $from → $to" "$backup"
+    remove_old_images "$from"
     return 0
   fi
   say "Toposcope $to did not come up. Its last log lines:"

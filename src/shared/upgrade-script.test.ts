@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -67,7 +67,8 @@ beforeAll(() => {
     },
   });
   // Docker stands in: it records each call; `up` makes a version healthy unless it is listed as
-  // broken; a restore mends the version it restores; tar writes its file.
+  // broken; a restore mends the version it restores; a backup's tar writes its file; the images
+  // are FAKE_IMAGES, and each one removed is recorded.
   fakeBin = mkdtempSync(join(tmpdir(), "toposcope-fake-docker-"));
   writeFileSync(
     join(fakeBin, "docker"),
@@ -92,10 +93,13 @@ case " $* " in
     v="$(sed -n 's/.*toposcope:\\(.*\\)$/\\1/p' "$file" | head -n 1)"
     broken "$v" || printf '%s\\n' "$v" >"$FAKE_STATE/version" ;;
   *" logs "*) echo "fake app log line" ;;
-  *"--entrypoint du"*) printf '%s\\t/data\\n' "\${FAKE_DU:-100}" ;;
-  *"--entrypoint tar"*)
+  *"image ls"*) for i in $FAKE_IMAGES; do printf '%s\\n' "$i"; done ;;
+  *"image rm"*) printf '%s\\n' "\${args[2]}" >>"$FAKE_STATE/removed" ;;
+  *"--entrypoint sh"*"du -sk"*) printf '%s\\n' "\${FAKE_DU:-100}" ;;
+  *"--entrypoint sh"*"tar czf"*)
     for a in "$@"; do case "$a" in *:/backup) dir="\${a%:/backup}" ;; esac; done
-    for a in "$@"; do case "$a" in /backup/*.tgz) echo backup >"$dir/\${a#/backup/}" ;; esac; done ;;
+    part="$(printf '%s' "$*" | sed -n 's#.*/backup/\\([a-z_]*\\.tgz\\).*#\\1#p')"
+    echo backup >"$dir/$part" ;;
   *"--entrypoint sh"*)
     for a in "$@"; do case "$a" in ghcr.io/toposcope/toposcope:*) v="\${a#*:}" ;; esac; done
     grep -vx "$v" "$FAKE_STATE/broken" >"$FAKE_STATE/broken.next" 2>/dev/null; mv "$FAKE_STATE/broken.next" "$FAKE_STATE/broken" ;;
@@ -119,7 +123,7 @@ let install: string;
 beforeEach(() => {
   releases = { "0.6.1": releaseFiles("0.6.1"), "0.6.2": releaseFiles("0.6.2") };
   marks = [];
-  for (const f of ["calls", "broken", "version", "systemctl"]) rmSync(join(state, f), { force: true });
+  for (const f of ["calls", "broken", "version", "systemctl", "removed"]) rmSync(join(state, f), { force: true });
   writeFileSync(join(state, "version"), "0.6.1\n");
   writeFileSync(join(state, "broken"), "");
   install = mkdtempSync(join(tmpdir(), "toposcope-install-"));
@@ -174,8 +178,10 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     // The pull comes before the stop; the stop before the backup.
     const log = calls();
     expect(log.indexOf("pull -q app")).toBeLessThan(log.indexOf(" stop"));
-    expect(log.indexOf(" stop")).toBeLessThan(log.indexOf("--entrypoint tar"));
+    expect(log.indexOf(" stop")).toBeLessThan(log.indexOf("tar czf"));
     expect(r.all).not.toContain(token);
+    // Only Toposcope images nothing here names go: 0.6.2 runs, 0.6.1 is the way back.
+    expect(existsSync(join(state, "removed"))).toBe(false);
     // 0.6.2's env.example names the same settings as 0.6.1's.
     expect(r.all).not.toContain("New settings");
   });
@@ -208,7 +214,7 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
     expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
     expect(marks.map((m) => m.body.title)).toEqual(["Toposcope 0.6.2 did not start; back on 0.6.1"]);
-    expect(calls()).not.toContain("--entrypoint sh");
+    expect(calls()).not.toContain("tar xzf");
   });
 
   test("when 0.6.1 cannot open its data either, both volumes come back from the backup", async () => {
@@ -217,7 +223,7 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     expect(r.code).toBe(1);
     expect(r.all).toContain("Restoring both volumes from");
     expect(r.all).toContain("Back on 0.6.1, restored from");
-    expect(calls()).toContain("--entrypoint sh");
+    expect(calls()).toContain("tar xzf");
     expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
     expect(marks.map((m) => m.body.title)).toEqual(["Toposcope 0.6.2 did not start; back on 0.6.1, restored from the backup"]);
   });
@@ -265,10 +271,61 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
   });
 });
 
+describe("old images", () => {
+  test("after an upgrade, the Toposcope images that no compose.yml here names are removed", async () => {
+    const images = ["0.5.2", "0.6.0", "0.6.1", "0.6.2", "<none>"].map((t) => `ghcr.io/toposcope/toposcope:${t}`).join(" ");
+    const r = await run([], { FAKE_IMAGES: images });
+    expect(r.code).toBe(0);
+    expect(readFileSync(join(state, "removed"), "utf8").trim().split("\n")).toEqual(["ghcr.io/toposcope/toposcope:0.5.2", "ghcr.io/toposcope/toposcope:0.6.0"]);
+    expect(r.all).toContain("Removed the old image ghcr.io/toposcope/toposcope:0.5.2");
+  });
+
+  test("a kept backup's image stays, so a rollback can start it", async () => {
+    mkdirSync(join(install, "backups", "20261001T000000Z-0.6.0"), { recursive: true });
+    writeFileSync(join(install, "backups", "20261001T000000Z-0.6.0", "version"), "0.6.0\n");
+    writeFileSync(join(install, "backups", "20261001T000000Z-0.6.0", "compose.yml"), composeFor("0.6.0"));
+    const images = ["0.5.2", "0.6.0", "0.6.1", "0.6.2"].map((t) => `ghcr.io/toposcope/toposcope:${t}`).join(" ");
+    expect((await run([], { FAKE_IMAGES: images })).code).toBe(0);
+    expect(readFileSync(join(state, "removed"), "utf8").trim().split("\n")).toEqual(["ghcr.io/toposcope/toposcope:0.5.2"]);
+  });
+
+  test("a failed upgrade removes no image", async () => {
+    writeFileSync(join(state, "broken"), "0.6.2\n");
+    const images = ["0.5.2", "0.6.1", "0.6.2"].map((t) => `ghcr.io/toposcope/toposcope:${t}`).join(" ");
+    expect((await run([], { FAKE_IMAGES: images })).code).toBe(1);
+    expect(existsSync(join(state, "removed"))).toBe(false);
+  });
+});
+
 describe("backup and rollback", () => {
-  test("backup keeps the last 3", async () => {
-    for (let i = 0; i < 4; i++) expect((await run(["backup"])).code).toBe(0);
-    expect(backups()).toHaveLength(3);
+  test("backup keeps the last 2", async () => {
+    for (let i = 0; i < 3; i++) expect((await run(["backup"])).code).toBe(0);
+    expect(backups()).toHaveLength(2);
+  });
+
+  test("ClickHouse's system database is left out of ch_data, and nothing out of app_data", async () => {
+    expect((await run(["backup"])).code).toBe(0);
+    const tars = calls().split("--rm -v ").filter((c) => c.includes("tar czf"));
+    expect(tars).toHaveLength(2);
+    expect(tars.find((c) => c.includes("ch_data.tgz"))).toContain("./metadata/system");
+    expect(tars.find((c) => c.includes("app_data.tgz"))).not.toContain("system");
+    for (const c of tars) expect(c).toContain("-X /tmp/skip");
+  });
+
+  test("the skip list names the system database's links, its metadata and the store/ dirs they point at", async () => {
+    // A ClickHouse data directory, as an Atomic database lays it out.
+    const data = mkdtempSync(join(tmpdir(), "toposcope-ch-data-"));
+    for (const d of ["data/system", "data/default", "metadata/system", "metadata/default", "store/aaa/aaa-1", "store/bbb/bbb-2", "store/ccc/ccc-3"]) mkdirSync(join(data, d), { recursive: true });
+    symlinkSync("../../store/aaa/aaa-1", join(data, "data/system/text_log"));
+    symlinkSync("../../store/bbb/bbb-2", join(data, "data/system/query_log"));
+    symlinkSync("../../store/ccc/ccc-3", join(data, "data/default/logs"));
+    const skip = join(data, "..", `${data.split("/").at(-1)}.skip`);
+    const snippet = /^SKIP_SYSTEM='([\s\S]*?)'$/m.exec(scriptText)![1]!.replaceAll("/tmp/skip", skip).replace("cd /data", `cd ${data}`);
+    const child = Bun.spawn(["sh", "-c", snippet]);
+    expect(await child.exited).toBe(0);
+    expect(readFileSync(skip, "utf8").split("\n").filter(Boolean).sort()).toEqual(["./data/system", "./metadata/system", "./store/aaa/aaa-1", "./store/bbb/bbb-2"]);
+    rmSync(data, { recursive: true, force: true });
+    rmSync(skip, { force: true });
   });
 
   test("rollback says what it would lose and goes back only with --yes", async () => {
