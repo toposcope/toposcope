@@ -1456,3 +1456,34 @@ export async function surroundingRoute(c: Context): Promise<Response> {
     return queryHttpError(c, err) ?? Promise.reject(err);
   }
 }
+
+/**
+ * `GET /api/metrics/series?name=` (#359) — one metric's series by name and labels, as a panel
+ * plots it through `/api/search?metric=`, without the log rows and histogram that rides along there.
+ */
+export async function metricSeriesRoute(c: Context): Promise<Response> {
+  try {
+    const raw = c.req.query("name") ?? "";
+    if (raw.trim() === "") {
+      return c.json({ error: "name is required" }, 400);
+    }
+    const ref = requireMetricRef(raw);
+    const from = c.req.query("from") ?? undefined;
+    const to = c.req.query("to") ?? undefined;
+    // No window is the last hour, as a new panel's.
+    const resolved = resolveFilters({ from, to, range: c.req.query("range") ?? (from || to ? undefined : "1h") });
+    const intervalMs = histogramIntervalMs(resolved.from, resolved.to, c.req.query("step") ?? undefined);
+    const series = await searchMetricSeries({
+      from: resolved.from,
+      to: resolved.to,
+      intervalMs,
+      name: ref.name,
+      reading: ref.reading,
+      labels: parseMetricLabels(c.req.query("ml") ?? undefined),
+      split: parseMetricSplit(c.req.query("msplit")) ?? undefined,
+    });
+    return c.json({ from: resolved.from ?? null, to: resolved.to ?? null, series });
+  } catch (err) {
+    return queryHttpError(c, err) ?? Promise.reject(err);
+  }
+}

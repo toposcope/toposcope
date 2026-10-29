@@ -2,11 +2,13 @@ import { pathParams } from "../api/openapi";
 import { isOptional, toJsonSchema, type JsonSchema } from "../api/json-schema";
 import type { ApiError, ApiRoute } from "../api/registry";
 import { apiRoutes } from "../api/routes";
+import { capArgs, capSchemas, readTools } from "./read";
 
 /**
  * MCP's tools (#358): each one stands for one row of the described API and runs it, so its name
- * is the route's id, its description the route's summary, and its input the route's own: the path's
- * params and the query's keys at the top, and the JSON body, when the route takes one, under `body`.
+ * is the route's id, its description the route's summary (a read tool's own, for an agent, #359), and
+ * its input the route's own: the path's params and the query's keys at the top, and the JSON body,
+ * when the route takes one, under `body`. A read tool also takes its caps (read.ts).
  */
 export type McpTool = {
   name: string;
@@ -30,6 +32,20 @@ export const toolRouteIds: string[] = [
   "attr_keys",
   "attr_values",
   "metric_names",
+  // Read tools (#359): what an Operator reads. Their descriptions and caps are in read.ts.
+  "search_context",
+  "search_around",
+  "search_compare",
+  "search_cut",
+  "home_since",
+  "fingerprint_seen",
+  "traces_get",
+  "metric_series",
+  "metric_labels",
+  "profiles",
+  "numeric_keys",
+  "facets",
+  // End of the read tools (#359).
 ];
 
 /** The tool for a route. A path param, a query key and `body` share one namespace, so a clash throws. */
@@ -55,11 +71,17 @@ export function toolOf(route: ApiRoute): McpTool {
   if (route.body) {
     add("body", toJsonSchema(route.body), !isOptional(route.body));
   }
+  const read = readTools[route.id];
+  if (read) {
+    for (const [key, schema] of Object.entries(capSchemas(read))) {
+      add(key, schema, false);
+    }
+  }
   const inputSchema: JsonSchema = { type: "object", properties, additionalProperties: false };
   if (required.length > 0) {
     inputSchema.required = required;
   }
-  return { name: route.id, route, description: route.summary, inputSchema };
+  return { name: route.id, route, description: read?.description ?? route.summary, inputSchema };
 }
 
 /** The tools for some route ids; an id the table does not have throws, so a typo stops the start. */
@@ -89,7 +111,11 @@ function queryValue(value: unknown): string | null {
 export function toolCall(tool: McpTool, args: Record<string, unknown>): ToolCall | ApiError {
   const params = pathParams(tool.route.path);
   const queryKeys = Object.keys(tool.route.query?.entries ?? {});
+  const caps: readonly string[] = readTools[tool.name] ? capArgs : [];
   for (const key of Object.keys(args)) {
+    if (caps.includes(key)) {
+      continue;
+    }
     if (!params.includes(key) && !queryKeys.includes(key) && !(key === "body" && tool.route.body)) {
       return { error: `${tool.name} takes no ${key}`, field: key };
     }
