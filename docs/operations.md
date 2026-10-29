@@ -208,6 +208,27 @@ The app stayed near 30 MiB throughout. A second run, stopped at ten minutes, cli
 
 The packaged Compose file lets ClickHouse use up to 4 GB and the app up to 512 MB.
 
+## ClickHouse's own logs
+
+Out of the box ClickHouse logs at trace level and keeps a dozen system log tables with no end date. On a packaged install that was most of the data volume: `system.text_log` alone grew past 4 GiB, almost all of it trace and debug lines, beside 150 MiB of Toposcope's own data. The packaged `compose.yml` gives ClickHouse a `config.d` file, the `clickhouse_logs` config at its end, which:
+
+- logs warnings and up;
+- turns off `text_log`, `trace_log`, `processors_profile_log`, `query_views_log`, `query_thread_log`, `query_metric_log`, `metric_log`, `asynchronous_metric_log`, `part_log`, `background_schedule_pool_log` and `opentelemetry_span_log`;
+- keeps `query_log`, `error_log` and `asynchronous_insert_log` for 7 days.
+
+Toposcope reads only `system.metrics`, `system.events`, `system.asynchronous_metrics` and `system.parts`, which this does not touch. To keep more, put your own file in `compose.override.yml` beside it. Compose configs with `content` need Docker Compose 2.23.1 or later.
+
+On an install from before this, the tables ClickHouse wrote stay until they are dropped, and the kept ones are set aside as `query_log_0` and the like when their end date is added. After upgrading, this drops both, in the install's directory:
+
+```bash
+docker compose exec -T clickhouse sh -c 'clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --format TSVRaw --queries-file /dev/stdin | clickhouse-client --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery' <<'SQL'
+SELECT 'DROP TABLE system.' || name || ' SYNC;' FROM system.tables
+WHERE database = 'system' AND match(name, '^(text_log|trace_log|processors_profile_log|query_views_log|query_thread_log|query_metric_log|metric_log|asynchronous_metric_log|part_log|background_schedule_pool_log|opentelemetry_span_log)$|_log_[0-9]+$')
+SQL
+```
+
+The footer's ClickHouse chip shows memory, then `disk`: the whole filesystem ClickHouse is on, other files included. What ClickHouse itself stores, and how much of that is these logs, is in the chip's tooltip and in Settings › Storage.
+
 ## What Toposcope calls out to
 
 Toposcope calls out only where this list says. Everything but the first item is something you set up.
@@ -243,10 +264,11 @@ In order, it:
 2. Downloads the release's files into `releases/X.Y.Z/` and checks each against its `SHA256SUMS`. If one does not match, nothing else happens.
 3. Prints each newer release's Before you upgrade.
 4. Pulls the new image while the old one still runs.
-5. Checks the free disk, stops the stack, and backs up both volumes into `backups/<UTC time>-<from version>/`, with the `compose.yml` in use. It says where the backup went and how big it is, and keeps the last 3. Ingest is refused while the stack is stopped. The packaged Vector buffers on disk and sends when the app is back, OTLP exporters retry or drop according to their own settings, and syslog over UDP is lost. Every run prints how long the stop lasted.
+5. Checks the free disk, stops the stack, and backs up both volumes into `backups/<UTC time>-<from version>/`, with the `compose.yml` in use. ClickHouse's own `system` database (its logs) is left out: ClickHouse makes it again when it starts. It says where the backup went and how big it is, and keeps the last 2. Ingest is refused while the stack is stopped. The packaged Vector buffers on disk and sends when the app is back, OTLP exporters retry or drop according to their own settings, and syslog over UDP is lost. Every run prints how long the stop lasted.
 6. Swaps `compose.yml`, keeping `.env` and `compose.override.yml`. An edited `vector.yaml` is kept, with the new one beside it as `vector.yaml.new`. Any setting the new `env.example` has that `.env` lacks is named.
 7. Starts the stack and waits up to 10 minutes (`--wait <minutes>`) for `/api/health` to report the new version.
 8. Posts a deploy change mark, `Toposcope 0.6.1 → 0.6.2`.
+9. Removes the `ghcr.io/toposcope/toposcope` images that nothing here names: not the new release's, not the one it came from, not a kept backup's. Docker keeps any image a container still uses.
 
 If the new version does not come up, it prints the app's last log lines, starts the old version with its own `compose.yml`, and marks that. If the old version will not open its data either, it restores both volumes from the backup first.
 
@@ -344,7 +366,7 @@ To go back to 0.9.0, `./upgrade.sh rollback --yes` restores the backup it took b
 
 ## Backup and restore
 
-Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`.
+Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`. `./upgrade.sh backup` does this for you, without ClickHouse's own logs.
 
 ```bash
 docker compose down
