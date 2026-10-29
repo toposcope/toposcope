@@ -88,7 +88,10 @@ describe("the skill's shape", () => {
 
   test("the script cannot remove data", () => {
     expect(scriptText).not.toMatch(/\bcompose (down|rm|kill)\b/);
-    expect(scriptText).not.toMatch(/\b(rm|rmi|prune|truncate)\b/);
+    // One removal, and only of the temp file `mcp --json` made itself (#361), however the script ends.
+    const ownTemp = `trap '[ -z "$MCP_TMP" ] || rm -f -- "$MCP_TMP"' EXIT INT TERM`;
+    expect(scriptText.split(ownTemp).length).toBe(2);
+    expect(scriptText.replace(ownTemp, "")).not.toMatch(/\b(rm|rmi|prune|truncate|unlink)\b/);
     // The only thing it asks Docker about volumes and images is whether they exist.
     const asked = [...scriptText.matchAll(/\bdocker (volume|image|manifest|system) (\w+)/g)].map(
       (call) => `${call[1]} ${call[2]}`,
@@ -501,7 +504,7 @@ describe("agent <name> (#357)", () => {
     }
     expect(first.out).toContain("Made agent: claude, an Operator.");
     expect(second.out).toContain("agent: claude is an Operator already");
-    expect(second.out).toContain(`--header "Authorization: Bearer $(cat ${file})"`);
+    expect(second.out).toContain(`--header "Authorization: Bearer $(cat -- ${file})"`);
 
     const db = new Database(database, { readonly: true });
     const accounts = db.query("SELECT id, kind, name, role, agent FROM people").all() as Array<{ id: string; kind: string; name: string; role: string; agent: number }>;
@@ -608,7 +611,7 @@ describe("mcp and call (#361)", () => {
     expect(code).toBe(0);
     expect(out + err).not.toContain(agentToken);
     expect(out).toContain(
-      `claude mcp add --transport http toposcope http://127.0.0.1:${mcp.port}/mcp --header "Authorization: Bearer $(cat ${join(instance, "agent-claude.token")})"`,
+      `claude mcp add --transport http toposcope http://127.0.0.1:${mcp.port}/mcp --header "Authorization: Bearer $(cat -- ${join(instance, "agent-claude.token")})"`,
     );
   });
 
@@ -694,6 +697,87 @@ describe("mcp and call (#361)", () => {
       expect(code).not.toBe(0);
     }
     expect(posts).toEqual([]);
+  });
+
+  test("the Claude Code line reads the token from a path with spaces and quotes, as the shell runs it", async () => {
+    const odd = mkdtempSync(join(tmpdir(), "toposcope it's $HOME "));
+    writeFileSync(join(odd, ".env"), `TOPOSCOPE_INGEST_TOKEN=${token}\n`);
+    writeFileSync(join(odd, "agent-claude.token"), `${agentToken}\n`, { mode: 0o600 });
+    const { code, out } = await onMcp(["mcp"], undefined, { TOPOSCOPE_DIR: odd });
+    expect(code).toBe(0);
+    const header = out.match(/--header "(Authorization: Bearer \$\(cat -- .*\))"$/m)?.[1];
+    expect(header).toBeDefined();
+    const said = Bun.spawnSync(["bash", "-c", `printf '%s' "${header}"`]);
+    expect(said.stdout.toString()).toBe(`Authorization: Bearer ${agentToken}`);
+    expect(out).toContain("keeps it in its own config");
+    rmSync(odd, { recursive: true, force: true });
+  });
+
+  test("a port that is not a port is refused before anything is sent", async () => {
+    posts = [];
+    for (const port of ["1@127.0.0.2:28777", "80/x", "0", "65536", ""]) {
+      const { code, err } = await onMcp(["call", "home"], undefined, { TOPOSCOPE_PORT: port || " " });
+      expect({ port, code, err }).toEqual({ port, code: 1, err: "TOPOSCOPE_PORT is a port, 1 to 65535.\n" });
+    }
+    expect(posts).toEqual([]);
+  });
+
+  test("call's JSON cannot end its arguments early and name another tool", async () => {
+    posts = [];
+    for (const args of [
+      '{}},"params":{"name":"monitor_delete","arguments":{"name":"x"}',
+      '{"a":"b"}}, {"c":1}',
+      '{"a":[1}',
+      '{"a":"\\"}',
+      '{"a":1} {"b":2}',
+      '{"a":"unterminated}',
+    ]) {
+      const { code, err } = await onMcp(["call", "home", args]);
+      expect({ args, code }).toEqual({ args, code: 1 });
+      expect(err).toContain("one JSON object");
+    }
+    expect(posts).toEqual([]);
+    answer = () => ({ content: [{ type: "text", text: "{}" }], isError: false });
+    const fine = '{ "q": "a } b ] \\" {", "n": [1, {"x": []}] }\n';
+    expect((await onMcp(["call", "search", fine])).code).toBe(0);
+    expect(posts[0]!.body.params).toEqual({ name: "search", arguments: { q: 'a } b ] " {', n: [1, { x: [] }] } });
+  });
+
+  test("call's curl reads no .curlrc and goes through no proxy", async () => {
+    const home = mkdtempSync(join(tmpdir(), "toposcope-curlrc-"));
+    // A .curlrc that would print the header, and a proxy that would see it: neither is used.
+    writeFileSync(join(home, ".curlrc"), "verbose\n");
+    writeFileSync(argvLog, "");
+    posts = [];
+    answer = () => ({ content: [{ type: "text", text: "{}" }], isError: false });
+    const dead = "http://127.0.0.1:9";
+    const { code, out, err } = await onMcp(["call", "home"], undefined, { HOME: home, CURL_HOME: home, http_proxy: dead, HTTP_PROXY: dead, all_proxy: dead, ALL_PROXY: dead, no_proxy: "", NO_PROXY: "" });
+    expect(err).toBe("");
+    expect(code).toBe(0);
+    expect(out + err).not.toContain(agentToken);
+    expect(posts).toHaveLength(1);
+    expect(readFileSync(argvLog, "utf8").split("\n")[0]).toMatch(/^-q --noproxy \* /);
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  test("mcp --json leaves no temp file, and takes a file it wrote only when it is all its own", async () => {
+    const file = join(instance, "again.json");
+    expect((await onMcp(["mcp", "--json", file])).code).toBe(0);
+    const ours = readFileSync(file, "utf8");
+    // The first line alone is not enough: anything more is someone else's.
+    writeFileSync(file, ours.replace("} } }\n", '} },\n  "other": {} }\n'));
+    const refused = await onMcp(["mcp", "--json", file]);
+    expect(refused.code).not.toBe(0);
+    expect(refused.err).toContain("was not written by this skill");
+    // A directory it cannot write into: it says so and leaves nothing behind.
+    const locked = join(instance, "locked");
+    mkdirSync(locked);
+    chmodSync(locked, 0o500);
+    const failed = await onMcp(["mcp", "--json", join(locked, "mcp.json")]);
+    chmodSync(locked, 0o700);
+    expect(failed.code).not.toBe(0);
+    const left = [...new Bun.Glob(".mcp-json.*").scanSync({ cwd: instance, dot: true })];
+    expect(left).toEqual([]);
   });
 
   test("with two agents' tokens, call and mcp ask which, and take --agent", async () => {

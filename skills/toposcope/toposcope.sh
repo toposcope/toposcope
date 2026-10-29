@@ -26,6 +26,10 @@ die() {
   exit 1
 }
 
+# The port is digits and nothing else, so URL names 127.0.0.1 and no other host.
+[[ $PORT =~ ^[0-9]{1,5}$ ]] && [ "$((10#$PORT))" -ge 1 ] && [ "$((10#$PORT))" -le 65535 ] ||
+  die "TOPOSCOPE_PORT is a port, 1 to 65535."
+
 need() {
   command -v "$1" >/dev/null 2>&1 || die "This needs $1, and it is not installed."
 }
@@ -339,7 +343,15 @@ cmd_agent() {
   fi
   printf 'Its token is in %s, which only you can read. The token is not shown.\n' "$file"
   printf 'For Claude Code, in the app'"'"'s repository:\n'
-  printf '  claude mcp add --transport http toposcope %s/mcp --header "Authorization: Bearer $(cat %s)"\n' "$URL" "$file"
+  claude_line "$file"
+}
+
+# The line that adds this instance to Claude Code as an agent. The token's file is read when the
+# line runs, its path escaped for the shell; the token then sits in Claude Code's own config.
+claude_line() {
+  local quoted
+  printf -v quoted '%q' "$1"
+  printf '  claude mcp add --transport http toposcope %s/mcp --header "Authorization: Bearer $(cat -- %s)"\n' "$URL" "$quoted"
 }
 
 # The file an agent's token is in: `agent-<name>.token` beside .env, or the only one there is.
@@ -372,6 +384,22 @@ read_agent_token() {
   [[ $token =~ ^tsp1_[A-Za-z0-9_-]+$ ]] || die "$1 does not hold one token. Run: agent <name>"
 }
 
+# Whether a file is one `mcp --json` wrote: its five lines, in its shape.
+mcp_json_ours() {
+  LC_ALL=C awk -v m="$1" '
+    NR == 1 && $0 != m { bad = 1 }
+    NR == 2 && $0 != "  \"type\": \"http\"," { bad = 1 }
+    NR == 3 && $0 !~ /^  "url": "http:\/\/127\.0\.0\.1:[0-9]+\/mcp",$/ { bad = 1 }
+    NR == 4 && $0 !~ /^  "headers": \{ "Authorization": "Bearer tsp1_[A-Za-z0-9_-]+" \}$/ { bad = 1 }
+    { last = $0 }
+    END { exit (NR == 5 && last == "} } }" && !bad) ? 0 : 1 }
+  ' "$2"
+}
+
+# The temp file `mcp --json` writes before it moves it in place; taken away however the script ends.
+MCP_TMP=""
+trap '[ -z "$MCP_TMP" ] || rm -f -- "$MCP_TMP"' EXIT INT TERM
+
 # How an MCP client connects as an agent (#361). Prints the Claude Code line, which reads the token
 # from its file when it runs; `--json <file>` writes the config other clients read, with the token
 # in it, to a file only this user can read and git ignores. The token is never printed.
@@ -387,8 +415,8 @@ cmd_mcp() {
   local file
   file="$(agent_file "$agent")"
   if [ -z "$json" ]; then
-    printf 'For Claude Code, in the app'"'"'s repository (it reads the token from %s as it runs):\n' "$file"
-    printf '  claude mcp add --transport http toposcope %s/mcp --header "Authorization: Bearer $(cat %s)"\n' "$URL" "$file"
+    printf 'For Claude Code, in the app'"'"'s repository (it reads the token from %s as it runs, and keeps it in its own config):\n' "$file"
+    claude_line "$file"
     printf 'For another client: mcp --json <file> writes its config. The token is not shown.\n'
     return
   fi
@@ -402,33 +430,61 @@ cmd_mcp() {
   if [ -L "$json" ] || { [ -e "$json" ] && [ ! -f "$json" ]; }; then
     die "$json is not a regular file, so no token is written there."
   fi
-  if [ -e "$json" ] && [ "$(head -n 1 "$json")" != "$marker" ]; then
+  if [ -e "$json" ] && ! mcp_json_ours "$marker" "$json"; then
     die "$json exists and was not written by this skill. Choose another file, or add toposcope to it by hand from: mcp"
   fi
-  if command -v git >/dev/null 2>&1 && git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
-    ! git -C "$dir" check-ignore -q -- "$base"; then
+  if ! command -v git >/dev/null 2>&1; then
+    printf 'git is not installed, so whether %s is in a git repository was not checked. Keep it out of git: it holds the token.\n' "$json" >&2
+  elif git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 && ! git -C "$dir" check-ignore -q -- "$base"; then
     die "$json is in a git repository and git does not ignore it. Add it to .gitignore first: it will hold the agent's token."
   fi
-  local tmp
-  if ! tmp="$(umask 077 && mktemp "$dir/.toposcope-mcp.XXXXXX")" || ! chmod 600 "$tmp" ||
+  # Written beside the instance's .env, which no repository holds, then moved in place.
+  if ! MCP_TMP="$(umask 077 && mktemp "$ROOT/.mcp-json.XXXXXX")" || ! chmod 600 "$MCP_TMP" ||
     ! {
       printf '%s\n' "$marker"
       printf '  "type": "http",\n'
-      printf '  "url": "%s/mcp",\n' "$URL"
-      printf '  "headers": { "Authorization": "Bearer %s" }\n' "$token"
+      printf '  "url": "%s/mcp",\n' "$(json_text "$URL")"
+      printf '  "headers": { "Authorization": "Bearer %s" }\n' "$(json_text "$token")"
       printf '} } }\n'
-    } >"$tmp" || [ -L "$json" ] || ! mv -f "$tmp" "$json"; then
-    [ -z "${tmp:-}" ] || [ ! -f "$tmp" ] || : >"$tmp"
+    } >"$MCP_TMP" || [ -L "$json" ] || ! mv -f "$MCP_TMP" "$json"; then
     die "Could not write $json."
   fi
+  MCP_TMP=""
   printf 'Wrote %s: the toposcope MCP server at %s/mcp, as %s. It holds the token, which is not shown: keep it out of git.\n' \
     "$json" "$URL" "$(basename "$file" .token | sed 's/^agent-/agent: /')"
 }
 
+# Whether text is one JSON object and nothing after it: strings and their escapes read, every bracket
+# closed by its own kind, and the outer object closed by the last character that is not space. So it
+# cannot end the arguments early and name another tool; the instance parses the rest.
+json_object_ok() {
+  printf '%s' "$1" | LC_ALL=C awk '
+    { text = text (NR > 1 ? "\n" : "") $0 }
+    END {
+      n = length(text); depth = 0; instr = 0; esc = 0; started = 0
+      for (i = 1; i <= n; i++) {
+        c = substr(text, i, 1)
+        if (instr) {
+          if (esc) esc = 0; else if (c == "\\") esc = 1; else if (c == "\"") instr = 0
+          continue
+        }
+        if (c == " " || c == "\t" || c == "\n" || c == "\r") continue
+        if (!started) { if (c != "{") exit 1; started = 1 }
+        else if (depth == 0) exit 1
+        if (c == "\"") instr = 1
+        else if (c == "{" || c == "[") stack[++depth] = c
+        else if (c == "}") { if (depth == 0 || stack[depth] != "{") exit 1; depth-- }
+        else if (c == "]") { if (depth == 0 || stack[depth] != "[") exit 1; depth-- }
+      }
+      exit (started && depth == 0 && !instr) ? 0 : 1
+    }'
+}
+
 # One MCP tool, called over HTTP as an agent (#361): a `tools/call` to /mcp. The token goes to curl
 # through a pipe on its stdin as a header (`-H @-`), and the call's JSON through a pipe of its own
-# (`@<(...)`), so neither is in an argument `ps` shows and neither touches the disk. `-` in place of the JSON reads it from stdin. Prints the JSON-RPC answer;
-# exits 1 when the tool or the server refused.
+# (`@<(...)`), so neither is in an argument `ps` shows and neither touches the disk. `-q` keeps a
+# .curlrc out and `--noproxy` a proxy, so neither sees the header. `-` in place of the JSON reads it
+# from stdin. Prints the JSON-RPC answer; exits 1 when the tool or the server refused.
 cmd_call() {
   local agent="" tool="" args=""
   while [ "$#" -gt 0 ]; do
@@ -444,18 +500,16 @@ cmd_call() {
   need curl
   [ "$args" != "-" ] || args="$(cat)"
   [ -n "$args" ] || args="{}"
-  local trimmed="${args#"${args%%[![:space:]]*}"}"
-  trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-  [[ $trimmed == \{*\} ]] || die "A tool's arguments are one JSON object, such as '{\"name\":\"errors\"}'."
+  json_object_ok "$args" || die "A tool's arguments are one JSON object, such as '{\"name\":\"errors\"}'."
 
   local file token
   file="$(agent_file "$agent")"
   read_agent_token "$file"
   local payload answer code
-  payload="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"$tool\",\"arguments\":$trimmed}}"
+  payload="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"$tool\",\"arguments\":$args}}"
   # printf is the shell's own, so the token passes through a pipe and is in no process's arguments.
   answer="$(printf 'authorization: Bearer %s\n' "$token" |
-    curl -sS -m 60 -X POST "$URL/mcp" -H @- \
+    curl -q --noproxy '*' -sS -m 60 -X POST "$URL/mcp" -H @- \
       -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
       -H 'mcp-protocol-version: 2025-11-25' -A "toposcope.sh/$VERSION" \
       --data-binary @<(printf '%s' "$payload") -w '\n%{http_code}')" ||
@@ -492,7 +546,7 @@ cmd_check() {
   local q="$word OR exception.message:$word"
   while :; do
     body="$(printf 'header = "authorization: Bearer %s"\n' "$token" |
-      curl -fsS -m 10 -K - "$URL/api/search?q=$word%20OR%20exception.message:$word&range=15m")" ||
+      curl -q --noproxy '*' -fsS -m 10 -K - "$URL/api/search?q=$word%20OR%20exception.message:$word&range=15m")" ||
       die "Could not read from the instance at $URL. Run: status"
     if printf '%s' "$body" | grep -q "$word"; then
       break
@@ -599,7 +653,7 @@ cmd_check_monitor() {
   body="$body}"
 
   printf 'header = "authorization: Bearer %s"\n' "$token" |
-    curl -fsS -m 10 -K - -o /dev/null -X POST "$url/v1/checks" \
+    curl -q -fsS -m 10 -K - -o /dev/null -X POST "$url/v1/checks" \
       -H 'content-type: application/json' -A "toposcope.sh/$VERSION" --data-binary "$body" ||
     printf 'The result of %s was not sent to %s.\n' "$monitor" "$url" >&2
   return "$code"
