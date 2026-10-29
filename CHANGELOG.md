@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.11.0
 
 **Before you upgrade:** a monitor saved with a token is now previewed first. A script that makes or changes monitors with `PUT /api/monitors/:name`, `POST /api/alert-rules` or `PUT /api/alert-rules/:id` must first send the same body, with the monitor's name in it (and `"saves": "create"` for `POST /api/alert-rules`; for a change by id, its id), to `POST /api/monitors/preview`, and save within 10 minutes, with a token of the same person or service account; without that the save answers 428 and says so. Saves in the app, and pausing or silencing, are as before; `PUT /api/monitors/:name` with only `enabled`, `silence_for` or `silenced_until` now pauses or silences the monitor and keeps its other fields, where it used to replace them with their defaults. `PUT /api/alert-rules/:id` now refuses a change of source on an HTTP(S), TCP or certificate monitor, as `PUT /api/monitors/:name` did. `PUT /api/home` now refuses a saved search that is not shared (400) or that the caller cannot see (404): Home is everyone's.
 

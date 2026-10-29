@@ -4,11 +4,11 @@ Toposcope is self-hosted observability for the question after a deploy: what cha
 
 It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability.
 
-Current release: `0.10.1` · [MIT Expat license](LICENSE)
+Current release: `0.11.0` · [MIT Expat license](LICENSE)
 
 ## Quick start
 
-The packaged install is the recommended path for operators. Download these files from the [v0.10.1 release](https://github.com/toposcope/toposcope/releases/tag/v0.10.1) into one directory:
+The packaged install is the recommended path for operators. Download these files from the [v0.11.0 release](https://github.com/toposcope/toposcope/releases/tag/v0.11.0) into one directory:
 
 - `compose.yml`
 - `env.example`
@@ -61,7 +61,7 @@ Open the link, choose your name and a password, set up two-step with any authent
 
 Then let the others in: **Access › People › Invite someone** gives a link that works once, with a role, Viewer, Operator or Owner, and **Settings › Sign-in and roles** can add Google, Entra, Okta, Keycloak or any other OIDC provider. A script sends `Authorization: Bearer` with a personal or service account token from **Access › Make a token**; HTTP Basic is not accepted. [People and roles](docs/people.md) has the details, and what to do when upgrading from 0.8.
 
-The deployment pins `ghcr.io/toposcope/toposcope:0.10.1`; it never uses `:latest`. Anonymous image pulls need no registry login.
+The deployment pins `ghcr.io/toposcope/toposcope:0.11.0`; it never uses `:latest`. Anonymous image pulls need no registry login.
 
 ## What Toposcope does
 
