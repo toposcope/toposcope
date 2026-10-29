@@ -15,6 +15,9 @@ services:
       CLICKHOUSE_DB: default
     volumes:
       - ch_data:/var/lib/clickhouse
+    configs:
+      - source: clickhouse_logs
+        target: /etc/clickhouse-server/config.d/toposcope-logs.xml
     healthcheck:
       test:
         [
@@ -82,3 +85,39 @@ services:
 volumes:
   ch_data:
   app_data:
+
+# ClickHouse's own logging, which out of the box fills the data volume with system tables
+# Toposcope never reads (text_log at trace level alone grows by gigabytes a week). The server
+# logs warnings and up; the high-volume system logs are off; the ones kept live 7 days.
+# Toposcope reads none of these logs (docs/operations.md, ClickHouse's own logs). Needs Compose
+# 2.23.1 or later.
+configs:
+  clickhouse_logs:
+    content: |
+      <clickhouse>
+        <logger>
+          <level>warning</level>
+          <size>100M</size>
+          <count>3</count>
+        </logger>
+        <text_log remove="1"/>
+        <trace_log remove="1"/>
+        <processors_profile_log remove="1"/>
+        <query_views_log remove="1"/>
+        <query_thread_log remove="1"/>
+        <query_metric_log remove="1"/>
+        <metric_log remove="1"/>
+        <asynchronous_metric_log remove="1"/>
+        <part_log remove="1"/>
+        <background_schedule_pool_log remove="1"/>
+        <opentelemetry_span_log remove="1"/>
+        <query_log>
+          <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+        </query_log>
+        <error_log>
+          <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+        </error_log>
+        <asynchronous_insert_log>
+          <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+        </asynchronous_insert_log>
+      </clickhouse>
