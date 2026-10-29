@@ -454,7 +454,8 @@ Body:
 
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
-| `saved_id` | string \| null | yes | The saved search to mark Home; null unmarks it. |
+| `saved_id` | string \| null | yes | The saved search to mark Home, a shared one; null unmarks it. Home is everyone's: an agent marks it only where none is. |
+| `if_home` | string \| null |  | Change Home only while it is this saved search (null: while none is); otherwise 409 and Home is left as it is. |
 
 ### GET /api/saved-searches
 

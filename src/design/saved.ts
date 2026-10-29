@@ -131,13 +131,17 @@ export function homeSetWithUndo(handler: Handler): Handler {
     if (!(res instanceof Response)) {
       return res;
     }
-    return answerWith(res, () => ({
-      link: "/?view=home",
-      undo: {
-        tool: "home_set",
-        arguments: { body: { saved_id: before } },
-        does: before === null ? "Unmarks Home, as it was before" : "Marks Home the saved search that was Home before",
-      },
-    }));
+    return answerWith(res, async () => {
+      // Only while Home is still what this made it: a Home someone changed since is left alone.
+      const after = ((await res.clone().json()) as { saved_id: string | null }).saved_id;
+      return {
+        link: "/?view=home",
+        undo: {
+          tool: "home_set",
+          arguments: { body: { saved_id: before, if_home: after } },
+          does: before === null ? "Unmarks Home, as it was before, if Home is still what this marked" : "Marks Home the saved search that was Home before, if Home is still what this marked",
+        },
+      };
+    });
   };
 }

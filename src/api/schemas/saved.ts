@@ -11,7 +11,8 @@ export const homeSinceQuery = v.object({
 });
 
 export const homeBody = v.object({
-  saved_id: v.nullable(described(v.string("saved_id is required"), "The saved search to mark Home; null unmarks it."), ),
+  saved_id: v.nullable(described(v.string("saved_id is required"), "The saved search to mark Home, a shared one; null unmarks it. Home is everyone's: an agent marks it only where none is."), ),
+  if_home: v.optional(v.nullable(described(v.string(), "Change Home only while it is this saved search (null: while none is); otherwise 409 and Home is left as it is."))),
 });
 
 /** A saved search's fields; on an update, a field left out keeps its value. */

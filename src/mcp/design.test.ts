@@ -45,6 +45,8 @@ beforeAll(async () => {
     };
     const agent = bearer("agent", "operator");
     bearer("viewer", "viewer");
+    // An agent (#357): Home is everyone's, so it marks Home only where none is (#361).
+    as.claude = "Bearer " + people.createPersonToken(people.createAgent({ name: "claude", role: "operator" }).id, { name: "t" }).token;
     const answer = async (res) => {
       const text = await res.text();
       return { status: res.status, body: text.startsWith("{") || text.startsWith("[") ? JSON.parse(text) : text };
@@ -192,9 +194,17 @@ beforeAll(async () => {
     ] };
     const home = await api("agent", "POST", "/api/saved-searches", { name: "home " + tag, query: "service:api", range: "1h", widgets: homeLayout });
     // Marked Home through MCP (#361), with the call that puts Home back.
-    out.homeRead = await call("agent", "home", {});
-    out.homeSet = await call("agent", "home_set", { body: { saved_id: home.body.id } });
-    out.homeReadAfter = await call("agent", "home", {});
+    out.homeRead = await call("claude", "home", {});
+    const mine = await api("claude", "POST", "/api/saved-searches", { name: "mine " + tag, query: "service:api", range: "1h", shared: false });
+    const theirs = await api("agent", "POST", "/api/saved-searches", { name: "theirs " + tag, query: "service:api", range: "1h", shared: false });
+    out.homeCannotSee = await call("claude", "home_set", { body: { saved_id: theirs.body.id } });
+    out.homeUnshared = await call("claude", "home_set", { body: { saved_id: mine.body.id } });
+    out.homeSet = await call("claude", "home_set", { body: { saved_id: home.body.id } });
+    out.homeReadAfter = await call("claude", "home", {});
+    const other = await api("agent", "POST", "/api/saved-searches", { name: "other " + tag, query: "service:api", range: "1h" });
+    out.homeOverAgent = await call("claude", "home_set", { body: { saved_id: other.body.id } });
+    out.homeUnmarkAgent = await call("claude", "home_set", { body: { saved_id: null } });
+    out.homeStill = await call("claude", "home", {});
     out.homeBefore = (await api("agent", "GET", "/api/saved-searches")).body.searches.find((s) => s.id === home.body.id).widgets;
     out.panelPreview = await call("agent", "panel_preview", { id: "home", body: { kind: "stat", agg: "count" } });
     out.hbarPreview = await call("agent", "panel_preview", { id: "home", body: { kind: "hbar", split: "level", n: 3 } });
@@ -205,8 +215,13 @@ beforeAll(async () => {
     out.undoAdd = await call("agent", out.panelAdd.body.undo.tool, out.panelAdd.body.undo.arguments);
     out.homeAfter = (await api("agent", "GET", "/api/saved-searches")).body.searches.find((s) => s.id === home.body.id).widgets;
     out.pinnedMove = await call("agent", "panel_put", { id: "home", panel: "a", body: { x: 3 } });
-    out.homeUndo = await call("agent", out.homeSet.body.undo.tool, out.homeSet.body.undo.arguments);
-    out.homeReadUndone = await call("agent", "home", {});
+    // Someone marks another Home: the agent's undo leaves theirs alone, and says so.
+    await api("agent", "PUT", "/api/home", { saved_id: other.body.id });
+    out.homeUndoMoved = await call("claude", out.homeSet.body.undo.tool, out.homeSet.body.undo.arguments);
+    out.homeAfterMoved = await call("claude", "home", {});
+    await api("agent", "PUT", "/api/home", { saved_id: home.body.id });
+    out.homeUndo = await call("claude", out.homeSet.body.undo.tool, out.homeSet.body.undo.arguments);
+    out.homeReadUndone = await call("claude", "home", {});
     await api("agent", "PUT", "/api/home", { saved_id: home.body.id });
 
     // A field's role, one at a time, and put back.
@@ -402,12 +417,30 @@ describe("design tools (#360)", () => {
 
   test("Home is read and marked through MCP, and the mark is undone by the call it answered with (#361)", () => {
     expect(r.homeRead.body).toEqual({ saved_id: null });
+    expect(r.homeUnshared.isError).toBe(true);
+    expect(r.homeUnshared.body.error).toBe("Home is everyone's: only a shared saved search can be Home. Share it first");
     expect(r.homeSet.isError).toBe(false);
     expect(r.homeSet.body).toMatchObject({ saved_id: r.homeReadAfter.body.saved_id, link: "/?view=home" });
-    expect(r.homeSet.body.undo).toEqual({ tool: "home_set", arguments: { body: { saved_id: null } }, does: "Unmarks Home, as it was before" });
+    expect(r.homeSet.body.undo).toEqual({
+      tool: "home_set",
+      arguments: { body: { saved_id: null, if_home: r.homeReadAfter.body.saved_id } },
+      does: "Unmarks Home, as it was before, if Home is still what this marked",
+    });
     expect(r.homeReadAfter.body.saved_id).not.toBeNull();
+    // Marked already: an agent neither moves Home nor unmarks it.
+    expect(r.homeOverAgent.isError).toBe(true);
+    expect(r.homeOverAgent.body.error).toContain("an agent marks Home only where none is marked");
+    expect(r.homeUnmarkAgent.isError).toBe(true);
+    expect(r.homeStill.body.saved_id).toBe(r.homeReadAfter.body.saved_id);
+    // Someone changed Home since: the undo does nothing, and says so.
+    expect(r.homeUndoMoved.isError).toBe(true);
+    expect(r.homeUndoMoved.body.error).toContain("it was left as it is");
+    expect(r.homeAfterMoved.body.saved_id).not.toBe(r.homeReadAfter.body.saved_id);
+    expect(r.homeAfterMoved.body.saved_id).not.toBeNull();
     expect(r.homeUndo.isError).toBe(false);
     expect(r.homeReadUndone.body).toEqual({ saved_id: null });
+    // A saved search the caller cannot see is not one it can make Home.
+    expect(r.homeCannotSee.body.error).toBe("Saved search not found");
   });
 
   test("a field's role is set alone, and put back", () => {
