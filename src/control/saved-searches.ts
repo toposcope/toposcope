@@ -125,7 +125,7 @@ function parseSavedAgg(
   }
 }
 
-function parseSavedFields(
+export function parseSavedFields(
   rec: Record<string, unknown>,
   fallback?: SavedSearch,
 ): SavedFields | { error: string } {
@@ -226,7 +226,7 @@ function parseSavedCols(
  * known and differs from the panel's own is refused, naming the line and both
  * units. A metric not sent yet has no unit to compare and is let through.
  */
-async function mixedUnits(layout: WidgetLayout | null): Promise<string | null> {
+export async function mixedUnits(layout: WidgetLayout | null): Promise<string | null> {
   try {
     for (const [i, widget] of (layout?.widgets ?? []).entries()) {
       if (!widget.metric || !widget.lines?.length) {
@@ -288,6 +288,11 @@ export function visibleSaved(actor: Actor | null): SavedSearch[] {
 
 function withPin(saved: SavedSearch, actor: Actor | null): SavedSearch {
   return { ...saved, pinned: actor ? pinsOf(actor.person.id).has(saved.id) : false, saved_by: actorName(saved.owner_id) };
+}
+
+/** Whether this person has pinned this saved search. */
+export function pinnedFor(personId: string, savedId: string): boolean {
+  return pinsOf(personId).has(savedId);
 }
 
 function setPin(personId: string, savedId: string, pinned: boolean): void {

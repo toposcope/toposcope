@@ -1434,7 +1434,7 @@ export function parseSavedLayout(raw: unknown): WidgetLayout | null {
   };
 }
 
-function parseSavedWidget(raw: unknown): WidgetDef | null {
+export function parseSavedWidget(raw: unknown): WidgetDef | null {
   if (!raw || typeof raw !== "object") {
     return null;
   }

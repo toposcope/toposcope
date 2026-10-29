@@ -22,9 +22,13 @@ import {
   readJsonObject,
   readMonitorFields,
   removeMonitor,
+  isHoldOnly,
+  sourceChange,
   updateAlertRule,
   type AlertRule,
 } from "./alerts";
+
+export { sourceChange };
 import { getHttp } from "../alerts/http-store";
 import { getNet } from "../alerts/net-store";
 import { isNetSource, type NetSource } from "../shared/net-check";
@@ -177,26 +181,6 @@ export async function getMonitor(c: Context): Promise<Response> {
   return c.json({ ...(await page(rule)), stretches: monitorHistory(rule.id) });
 }
 
-/** "a push", "an HTTP(S)", "a TCP", "a certificate", "a search": a source as a sentence names it. */
-function aSource(source: unknown): string {
-  return source === "http" ? "an HTTP(S)" : source === "tcp" ? "a TCP" : source === "cert" ? "a certificate" : `a ${String(source)}`;
-}
-
-/**
- * A source a monitor keeps: a push, HTTP(S), TCP or certificate monitor stays one, and nothing
- * else becomes one.
- */
-function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
-  const keeps = (source: unknown) => source === "push" || source === "http" || isNetSource(source);
-  if (!existing || rec.source === undefined || rec.source === existing.source) {
-    return null;
-  }
-  if (keeps(existing.source) || keeps(rec.source)) {
-    return `${existing.name} is ${aSource(existing.source)} monitor; delete it to make ${aSource(rec.source)} monitor of that name`;
-  }
-  return null;
-}
-
 /** `PUT /api/monitors/<name>` with `source: "push"`: create or replace a push monitor (#177). */
 async function putPushMonitor(
   c: Context,
@@ -338,6 +322,11 @@ export async function putMonitor(c: Context): Promise<Response> {
   const rec = await readJsonObject(c);
   if (rec instanceof Response) {
     return rec;
+  }
+  // Only a pause or a silence (#360): what an operator does to the monitor, every other field kept.
+  if (existing && isHoldOnly(rec)) {
+    applyMonitorHold(existing, rec, Date.now());
+    return c.json(await page(getAlert(existing.id)!));
   }
   const keeps = existing?.source === "push" || existing?.source === "http" || isNetSource(existing?.source);
   if (rec.source === undefined && rec.kind === undefined && !keeps) {

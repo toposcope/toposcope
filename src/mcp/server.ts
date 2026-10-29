@@ -159,7 +159,7 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
             protocolVersion: agreed,
             capabilities: { tools: { listChanged: false } },
             serverInfo: { name: "toposcope", title: "Toposcope", version },
-            instructions: "Each tool runs one route of Toposcope's API with your token, so it may do what your role may do there and no more.",
+            instructions: "Each tool runs one route of Toposcope's API with your token, so it may do what your role may do there and no more. Preview before you write: monitor_put saves only a body monitor_draft_preview saw in the last 10 minutes. Every write answers with undo, the one call that takes it back.",
           },
         };
       }
@@ -174,7 +174,9 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
               name: t.name,
               description: t.description,
               inputSchema: t.inputSchema,
-              ...(t.route.method === "GET" ? { annotations: { readOnlyHint: true } } : {}),
+              // A preview (#360) stores nothing but that it was seen; a DELETE takes something away.
+              ...(t.route.method === "GET" || t.name.endsWith("_preview") ? { annotations: { readOnlyHint: true } } : {}),
+              ...(t.route.method === "DELETE" ? { annotations: { destructiveHint: true } } : {}),
             })),
           },
         };

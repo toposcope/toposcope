@@ -785,6 +785,35 @@ export async function createAlertRule(c: Context): Promise<Response> {
   return c.json(insertMonitor(fields, place), 201);
 }
 
+/** "a push", "an HTTP(S)", "a TCP", "a certificate", "a search": a source as a sentence names it. */
+function aSource(source: unknown): string {
+  return source === "http" ? "an HTTP(S)" : source === "tcp" ? "a TCP" : source === "cert" ? "a certificate" : `a ${String(source)}`;
+}
+
+/**
+ * A source a monitor keeps: a push, HTTP(S), TCP or certificate monitor stays one, and nothing
+ * else becomes one.
+ */
+export function sourceChange(existing: AlertRule | null, rec: Record<string, unknown>): string | null {
+  const keeps = (source: unknown) => source === "push" || source === "http" || isNetSource(source);
+  if (!existing || rec.source === undefined || rec.source === existing.source) {
+    return null;
+  }
+  if (keeps(existing.source) || keeps(rec.source)) {
+    return `${existing.name} is ${aSource(existing.source)} monitor; delete it to make ${aSource(rec.source)} monitor of that name`;
+  }
+  return null;
+}
+
+/** The keys that pause or silence a monitor: what an operator does to it, not what it is. */
+export const holdKeys = ["enabled", "silence_for", "silenced_until"] as const;
+
+/** A body that only pauses or silences, and says something. */
+export function isHoldOnly(rec: Record<string, unknown>): boolean {
+  const keys = Object.keys(rec).filter((k) => rec[k] !== undefined);
+  return keys.length > 0 && keys.every((k) => (holdKeys as readonly string[]).includes(k));
+}
+
 export async function updateAlertRule(c: Context): Promise<Response> {
   const id = c.req.param("id");
   if (!id) {
@@ -797,6 +826,11 @@ export async function updateAlertRule(c: Context): Promise<Response> {
   const rec = await readJsonObject(c);
   if (rec instanceof Response) {
     return rec;
+  }
+  // A monitor's source never changes: an HTTP(S), TCP, certificate or push monitor stays one (#360).
+  const change = sourceChange(existing, rec);
+  if (change) {
+    return c.json({ error: change }, 400);
   }
   const now = Date.now();
   const http = existingHttp(existing);

@@ -50,12 +50,14 @@ A **push monitor** takes results instead of reading a search: a cron job, a back
 
 `/ping/<key>` is the one route that takes no token, so a proxy in front of Toposcope must pass it through. Its key is printed only on the monitor's page and in its editor; anyone holding it can post that monitor's results and nothing else. Replace a leaked key by declaring the monitor again (`PUT /api/monitors/<name>` with `"source": "push"`, its `every` and `grace`, and a new random UUID as `key`), or delete and recreate it.
 
-A script or an agent can declare one without the UI, by name; the same name replaces it:
+A script or an agent can declare one without the UI, by name; the same name replaces it. A save made with a token is previewed first (0.11): `POST /api/monitors/preview` with the same body and the monitor's name in it says where it would have opened and resolved over the last 7 days, and for 10 minutes after it the save of that same body goes through. Without one, or with a body changed since, the save answers 428 with the sentence and the call to make. A save made in the app, with a browser session, needs none; a body with only `enabled`, `silence_for` or `silenced_until` needs none either, and pauses or silences the monitor, keeping its other fields. `POST /api/alert-rules` is previewed with `"saves": "create"` in the body, since it may make a second monitor of a name. The answer to a save carries `undo`, the call that takes it back: a delete for a new monitor, the body it had for a replaced one.
 
 ```bash
+body='{"source": "search", "service": "api", "saved_search": "api errors", "threshold": 50, "webhook_url": "https://ntfy.sh/my-topic", "remind_every": "4h"}'
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X POST http://127.0.0.1:8080/api/monitors/preview \
+  -H 'content-type: application/json' -d "$(echo "$body" | jq '. + {name: "api-errors"}')"
 curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT http://127.0.0.1:8080/api/monitors/api-errors \
-  -H 'content-type: application/json' \
-  -d '{"source": "search", "saved_search": "api errors", "threshold": 50, "webhook_url": "https://ntfy.sh/my-topic", "remind_every": "4h"}'
+  -H 'content-type: application/json' -d "$body"
 curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT http://127.0.0.1:8080/api/monitors/ci-box-went-quiet \
   -H 'content-type: application/json' \
   -d '{"source": "search", "saved_search": "ci-box lines", "opens_when": "fewer_than", "threshold": 1, "webhook_url": "https://ntfy.sh/my-topic"}'

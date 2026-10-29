@@ -63,14 +63,19 @@ import { throughputRoute } from "../query/throughput";
 import { tracesRoute } from "../query/traces";
 import { createShareRoute, listSharesRoute, previewTicketRoute, putShareRoute, revokeShareRoute } from "../share/operator";
 import { version } from "../shared/version";
+import { monitorDraftPreviewRoute, monitorPutWithUndo, previewedCreate, previewedPut, previewedUpdate } from "../design/monitors";
+import { deleteNoteRoute, putFieldRoleRoute, writeNoteRoute } from "../design/notes-fields";
+import { addPanelRoute, previewPanelRoute, putPanelRoute, removePanelRoute } from "../design/panels";
+import { savedCreateWithUndo, savedPreviewRoute, savedUpdateWithUndo } from "../design/saved";
 import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
 import { settingsBody, signInSettingsBody } from "./schemas/settings";
 import { ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
 import { fieldsBody, fieldsQuery } from "./schemas/fields";
+import { fieldRoleBody, noteBody, panelBody } from "./schemas/design";
 import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
 import { upgradeBody } from "./schemas/instance";
-import { monitorBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
+import { monitorBody, monitorDraftBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
 import { feedCreateBody, feedReadQuery, linkConfirmBody, linkInviteBody, linkOfferBody, linkPreviewBody, linkUpdateBody } from "./schemas/links";
 import { shareCreateBody, sharePutBody } from "./schemas/shares";
 import { aroundQuery, attrFacetsQuery, compareQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, metricSeriesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
@@ -94,6 +99,8 @@ export const apiRoutes: ApiRoute[] = [
   { id: "search", method: "GET", path: "/api/search", area: "Search", action: "read", summary: "Rows that match a query in a window, newest first, with a histogram or a metric's series.", query: searchQuery, body: null, handler: searchRoute },
   { id: "traces_get", method: "GET", path: "/api/traces/:trace_id", area: "Search", action: "read", summary: "One trace's spans, the slowest branches when it is large.", query: null, body: null, handler: tracesRoute },
   { id: "marks", method: "GET", path: "/api/marks", area: "Search", action: "read", summary: "Change marks in a window: deploys, flags, incidents and notes.", query: marksQuery, body: null, handler: marksRoute },
+  { id: "note_write", method: "POST", path: "/api/marks/notes", area: "Search", action: "write notes", summary: "Write a note on the clock, under the caller's name, at now or at a time.", query: null, body: noteBody, handler: writeNoteRoute },
+  { id: "note_delete", method: "DELETE", path: "/api/marks/notes/:id", area: "Search", action: "write notes", summary: "Take a note off the clock: one the caller wrote, or any note for an Owner.", query: null, body: null, handler: deleteNoteRoute },
   { id: "probes", method: "GET", path: "/api/probes", area: "Search", action: "read", summary: "Probe samples in a window.", query: probesQuery, body: null, handler: probesRoute },
   { id: "profiles", method: "GET", path: "/api/profiles", area: "Search", action: "read", summary: "The profile samples one span carries, as a flame graph.", query: profilesQuery, body: null, handler: profilesRoute },
   { id: "search_context", method: "GET", path: "/api/search/context", area: "Search", action: "read", summary: "The rows either side of one row, from the same service and host.", query: contextQuery, body: null, handler: surroundingRoute },
@@ -117,21 +124,30 @@ export const apiRoutes: ApiRoute[] = [
   { id: "home_since", method: "GET", path: "/api/home/since", area: "Saved searches", action: "read", summary: "What changed since a mark or in the last hour: new fingerprints, monitors that opened, marks.", query: homeSinceQuery, body: null, handler: homeSinceRoute },
   { id: "home_set", method: "PUT", path: "/api/home", area: "Saved searches", action: "change monitors", summary: "Mark a saved search Home, or unmark it.", query: null, body: homeBody, handler: putHome },
   { id: "saved_searches", method: "GET", path: "/api/saved-searches", area: "Saved searches", action: "read", summary: "The saved searches the caller may see, with their pins.", query: null, body: null, handler: listSavedSearches },
-  { id: "saved_search_create", method: "POST", path: "/api/saved-searches", area: "Saved searches", action: "own hunts", summary: "Save a search: a Viewer's is their own, an Operator's is shared.", query: null, body: savedCreateBody, handler: createSavedSearch },
-  { id: "saved_search_update", method: "PUT", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Change a saved search, or pin or unpin it; a field left out keeps its value.", query: null, body: savedUpdateBody, handler: updateSavedSearch },
+  // Design tools (#360): what a search finds before it is saved; each save answers with its link and its undo.
+  { id: "saved_search_preview", method: "POST", path: "/api/saved-searches/preview", area: "Saved searches", action: "own hunts", summary: "What a saved search would find over its window, before it is saved: its rows, its series' value and a few rows.", query: null, body: savedUpdateBody, handler: savedPreviewRoute },
+  { id: "saved_search_create", method: "POST", path: "/api/saved-searches", area: "Saved searches", action: "own hunts", summary: "Save a search: a Viewer's is their own, an Operator's is shared; the answer has its link and the call that undoes it.", query: null, body: savedCreateBody, handler: savedCreateWithUndo(createSavedSearch) },
+  { id: "saved_search_update", method: "PUT", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Change a saved search, or pin or unpin it; a field left out keeps its value, and the answer has the call that puts it back.", query: null, body: savedUpdateBody, handler: savedUpdateWithUndo(updateSavedSearch) },
   { id: "saved_search_delete", method: "DELETE", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Delete a saved search.", query: null, body: null, handler: deleteSavedSearch },
   { id: "saved_search_run", method: "GET", path: "/api/saved-searches/:id/run", area: "Saved searches", action: "read", summary: "Run a saved search over its own window: its rows' count and its series' value.", query: null, body: null, handler: runSavedSearch },
+  // Panels one at a time (#360): `home` in place of the id is the saved search marked Home.
+  { id: "panel_preview", method: "POST", path: "/api/saved-searches/:id/panels/preview", area: "Saved searches", action: "own hunts", summary: "The series a panel would draw on a saved search's canvas, over its window, before it is added.", query: null, body: panelBody, handler: previewPanelRoute },
+  { id: "panel_add", method: "POST", path: "/api/saved-searches/:id/panels", area: "Saved searches", action: "own hunts", summary: "Add one panel to a saved search's canvas (home for Home's), leaving the others where they are.", query: null, body: panelBody, handler: addPanelRoute },
+  { id: "panel_put", method: "PUT", path: "/api/saved-searches/:id/panels/:panel", area: "Saved searches", action: "own hunts", summary: "Move, resize or change one panel; a field left out stays, and panels it lands on move down.", query: null, body: panelBody, handler: putPanelRoute },
+  { id: "panel_remove", method: "DELETE", path: "/api/saved-searches/:id/panels/:panel", area: "Saved searches", action: "own hunts", summary: "Take one panel off a saved search's canvas; the pinned plot stays.", query: null, body: null, handler: removePanelRoute },
   { id: "saved_search_test", method: "POST", path: "/api/saved-searches/:id/test", area: "Saved searches", action: "change monitors", summary: "Read a saved search as a monitor would now: its value, a sample of rows, and when it last matched.", query: null, body: null, handler: testSavedSearch },
 
   // Monitors (#175); /api/alert-rules stays as their alias.
   { id: "alert_rules", method: "GET", path: "/api/alert-rules", area: "Monitors", action: "read", summary: "Every monitor as a rule, and whether a call can link back here.", query: null, body: null, handler: listAlertRules },
   { id: "alert_rule_test_call", method: "POST", path: "/api/alert-rules/test-call", area: "Monitors", action: "change monitors", summary: "Send a test call for a monitor as drafted, filled in from its last evaluation.", query: null, body: testCallBody, handler: testAlertCallRoute },
-  { id: "alert_rule_create", method: "POST", path: "/api/alert-rules", area: "Monitors", action: "change monitors", summary: "Make a monitor on a saved search.", query: null, body: monitorBody, handler: withPlace(createAlertRule, () => null) },
-  { id: "alert_rule_update", method: "PUT", path: "/api/alert-rules/:id", area: "Monitors", action: "change monitors", summary: "Change a monitor by id; a field left out keeps its value.", query: null, body: monitorBody, handler: withPlace(updateMonitorRoute, (c) => getAlert(c.req.param("id") ?? "")) },
+  { id: "alert_rule_create", method: "POST", path: "/api/alert-rules", area: "Monitors", action: "change monitors", summary: "Make a monitor on a saved search.", query: null, body: monitorBody, handler: previewedCreate(withPlace(createAlertRule, () => null)) },
+  { id: "alert_rule_update", method: "PUT", path: "/api/alert-rules/:id", area: "Monitors", action: "change monitors", summary: "Change a monitor by id; a field left out keeps its value.", query: null, body: monitorBody, handler: previewedUpdate(withPlace(updateMonitorRoute, (c) => getAlert(c.req.param("id") ?? ""))) },
   { id: "alert_rule_delete", method: "DELETE", path: "/api/alert-rules/:id", area: "Monitors", action: "change monitors", summary: "Delete a monitor by id, and its record.", query: null, body: null, handler: deleteAlertRule },
   { id: "monitors", method: "GET", path: "/api/monitors", area: "Monitors", action: "read", summary: "Every monitor with its state and the stretches, calls and results in a window.", query: monitorsQuery, body: null, handler: listMonitors },
   // Watch this (#264): where a saved-search monitor would have opened over the last 24 h.
   { id: "monitor_preview", method: "GET", path: "/api/monitors/preview", area: "Monitors", action: "read", summary: "Where a monitor on a query would have opened over the last 24 hours.", query: monitorPreviewQuery, body: null, handler: monitorPreviewRoute },
+  // Preview first (#360): a monitor saved with a token needs a preview of the same body in the last 10 minutes.
+  { id: "monitor_draft_preview", method: "POST", path: "/api/monitors/preview", area: "Monitors", action: "change monitors", summary: "Where a monitor's body would have opened and resolved over the last 7 days, read as monitor_put would save it; a save with a token needs this first.", query: null, body: monitorDraftBody, handler: monitorDraftPreviewRoute },
   { id: "monitor_send", method: "POST", path: "/api/monitors/send", area: "Monitors", action: "change monitors", summary: "Run an HTTP(S), TCP or certificate check once from here and say what came back; nothing is stored.", query: null, body: sendBody, handler: sendHttpRoute },
   { id: "monitor_get", method: "GET", path: "/api/monitors/:name", area: "Monitors", action: "read", summary: "One monitor by name, with its last 200 stretches and their calls.", query: null, body: null, handler: getMonitor },
   {
@@ -140,14 +156,17 @@ export const apiRoutes: ApiRoute[] = [
     path: "/api/monitors/:name",
     area: "Monitors",
     action: "change monitors",
-    summary: "Make or replace the monitor of that name; what is left out takes its default.",
-    query: null, body: monitorBody, handler: withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null),
+    summary: "Make or replace the monitor of that name; what is left out takes its default. With a token, preview the same body first; the answer has the call that undoes it.",
+    query: null,
+    body: monitorBody,
+    handler: previewedPut(monitorPutWithUndo(withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null))),
   },
   { id: "monitor_delete", method: "DELETE", path: "/api/monitors/:name", area: "Monitors", action: "change monitors", summary: "Delete a monitor by name, and its record.", query: null, body: null, handler: deleteMonitor },
 
   // Fields
   { id: "fields", method: "GET", path: "/api/fields", area: "Fields", action: "read", summary: "The fields rows carry, their roles, and the metric links.", query: fieldsQuery, body: null, handler: getFields },
   { id: "fields_set", method: "PUT", path: "/api/fields", area: "Fields", action: "change fields", summary: "Set fields' roles and the metric links.", query: null, body: fieldsBody, handler: putFields },
+  { id: "field_role_set", method: "PUT", path: "/api/fields/roles/:key", area: "Fields", action: "change fields", summary: "Set one field's role, leaving every other role and link as it is.", query: null, body: fieldRoleBody, handler: putFieldRoleRoute },
 
   // Shares
   { id: "shares", method: "GET", path: "/api/shares", area: "Shares", action: "see access", summary: "Every share, live ones first, with its panels and use.", query: null, body: null, handler: listSharesRoute },

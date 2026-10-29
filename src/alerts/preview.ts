@@ -91,10 +91,14 @@ export function shareSteps(matching: PreviewPoint[], all: PreviewPoint[]): Previ
   });
 }
 
-export async function monitorPreview(input: { q: string; agg: string | null; opensWhen: OpensWhen; threshold: number; window: PreviewWindow; measure?: MonitorMeasure; nowMs?: number }): Promise<MonitorPreview> {
-  const nowMs = input.nowMs ?? Date.now();
+/** One read of the search, at most a day of bars (search draws 500 at most), on the step grid. */
+async function readSteps(
+  input: { q: string; agg: string | null; window: PreviewWindow; measure?: MonitorMeasure },
+  fromMs: number,
+  toMs: number,
+): Promise<{ series: PreviewPoint[]; refused: string | null }> {
   const stepMs = previewWindows[input.window];
-  const span = { from: new Date(nowMs - dayMs).toISOString(), to: new Date(nowMs).toISOString(), step: input.window, events: "0", split: "none" as const };
+  const span = { from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString(), step: input.window, events: "0", split: "none" as const };
   const share = input.measure === "share";
   const [res, everything] = await Promise.all([
     search({ q: input.q, ...span, ...(input.agg && !share ? { agg: input.agg } : {}) }),
@@ -111,10 +115,34 @@ export async function monitorPreview(input: { q: string; agg: string | null; ope
     ? res.agg.buckets.map((b) => ({ t: b.t, v: b.v }))
     : res.histogram.map((b) => ({ t: b.t, v: b.n }));
   // A bar with no rows is a 0, not a gap: "fewer than" must see it (and a count reads 0 there).
-  const counted = fillSteps(sparse, nowMs - dayMs, nowMs, stepMs, !input.agg || share);
+  const counted = fillSteps(sparse, fromMs, toMs, stepMs, !input.agg || share);
   const series = share && everything
-    ? shareSteps(counted, fillSteps(everything.histogram.map((b) => ({ t: b.t, v: b.n })), nowMs - dayMs, nowMs, stepMs, true))
+    ? shareSteps(counted, fillSteps(everything.histogram.map((b) => ({ t: b.t, v: b.n })), fromMs, toMs, stepMs, true))
     : counted;
+  return { series, refused };
+}
+
+/**
+ * Where a monitor would have opened over the last day (Watch this), or over `spanMs` (a draft's
+ * preview reads 7 days, #360): one read a day, the bars joined on the step grid.
+ */
+export async function monitorPreview(input: { q: string; agg: string | null; opensWhen: OpensWhen; threshold: number; window: PreviewWindow; measure?: MonitorMeasure; nowMs?: number; spanMs?: number }): Promise<MonitorPreview> {
+  const nowMs = input.nowMs ?? Date.now();
+  const stepMs = previewWindows[input.window];
+  const spanMs = input.spanMs ?? dayMs;
+  const reads: Array<Promise<{ series: PreviewPoint[]; refused: string | null }>> = [];
+  // Each day's edge on the step grid, so no bar is read twice or split.
+  const startMs = nowMs - spanMs;
+  for (let from = startMs; from < nowMs; from += dayMs) {
+    const to = Math.min(nowMs, from + dayMs);
+    const gridFrom = from === startMs ? from : Math.floor(from / stepMs) * stepMs;
+    const gridTo = to === nowMs ? to : Math.floor(to / stepMs) * stepMs;
+    reads.push(readSteps(input, gridFrom, gridTo));
+  }
+  const parts = await Promise.all(reads);
+  const refused = parts.find((p) => p.refused)?.refused ?? null;
+  const seen = new Set<string>();
+  const series = parts.flatMap((p) => p.series).filter((p) => (seen.has(p.t) ? false : (seen.add(p.t), true)));
   const opens = refused ? [] : stretchesOf(series, input.opensWhen, input.threshold, stepMs);
   const open_ms = opens.reduce((sum, s) => sum + ((s.to ? Date.parse(s.to) : nowMs) - Date.parse(s.from)), 0);
   return {

@@ -128,6 +128,29 @@ Query:
 | `kind` | "" \| "deploy" \| "flag" \| "incident" \| "note" |  | Only marks of this kind; any case. |
 | `service` | string |  | Only marks for this service. |
 
+### POST /api/marks/notes
+
+Write a note on the clock, under the caller's name, at now or at a time.
+
+Role: **Operator** · `note_write`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `title` | string | yes | What happened, in one line, up to 500 characters. |
+| `ts` | string |  | When, an ISO time; now when left out. |
+| `service` | string |  | The service it is about, if one. |
+| `attrs` | { [key]: string \| number \| boolean } |  | More about it, as key: value. |
+
+### DELETE /api/marks/notes/{id}
+
+Take a note off the clock: one the caller wrote, or any note for an Owner.
+
+Role: **Operator** · `note_delete`
+
+Path: `id`.
+
 ### GET /api/probes
 
 Probe samples in a window.
@@ -439,9 +462,31 @@ The saved searches the caller may see, with their pins.
 
 Role: **Viewer** · `saved_searches`
 
+### POST /api/saved-searches/preview
+
+What a saved search would find over its window, before it is saved: its rows, its series' value and a few rows.
+
+Role: **Viewer** · `saved_search_preview`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string \| null |  | Its name. |
+| `query` | string \| null |  | The query, in the query language. |
+| `range` | string \| null |  | A window that ends now, as search's range takes it; null for from_ts and to_ts. |
+| `from_ts` | string \| null |  | Where a fixed window starts, an ISO time; read only when range is null. |
+| `to_ts` | string \| null |  | Where a fixed window ends, an ISO time; read only when range is null. |
+| `agg` | string \| null |  | The series it reads, as search's agg takes it; null counts rows. |
+| `widgets` | any \| null |  | The canvas: its widgets and their places, as the app saves them. |
+| `board` | any \| null |  | A board's slots and window, as the app saves them; null makes it a plain hunt. |
+| `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
+| `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
+| `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
+
 ### POST /api/saved-searches
 
-Save a search: a Viewer's is their own, an Operator's is shared.
+Save a search: a Viewer's is their own, an Operator's is shared; the answer has its link and the call that undoes it.
 
 Role: **Viewer** · `saved_search_create`
 
@@ -463,7 +508,7 @@ Body:
 
 ### PUT /api/saved-searches/{id}
 
-Change a saved search, or pin or unpin it; a field left out keeps its value.
+Change a saved search, or pin or unpin it; a field left out keeps its value, and the answer has the call that puts it back.
 
 Role: **Viewer** · `saved_search_update`
 
@@ -500,6 +545,125 @@ Run a saved search over its own window: its rows' count and its series' value.
 Role: **Viewer** · `saved_search_run`
 
 Path: `id`.
+
+### POST /api/saved-searches/{id}/panels/preview
+
+The series a panel would draw on a saved search's canvas, over its window, before it is added.
+
+Role: **Viewer** · `panel_preview`
+
+Path: `id`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `kind` | "timeseries" \| "stat" \| "hbar" |  | timeseries (bars or lines over time), stat (one number) or hbar (top values); required to add one. |
+| `x` | number |  | Its column, 0 to 11; left out, it goes in the first gap. |
+| `y` | number |  | Its row from the top; left out, it goes in the first gap. Panels it lands on move down. |
+| `w` | number |  | How many of the 12 columns it spans. |
+| `h` | number |  | How many rows tall it is, 2 to 8. |
+| `split` | string |  | timeseries, hbar: what its bars are split by: level, service, host or none. |
+| `chart` | string |  | timeseries: stacked, bars or lines. |
+| `agg` | string \| null |  | timeseries, stat: the series it reads, as search's agg takes it (p99(duration_ms)); null counts rows. |
+| `replaceY` | boolean |  | timeseries: a metric draws in place of the row counts. |
+| `logScale` | boolean |  | timeseries: a log scale. |
+| `attr` | string \| null |  | hbar: the attribute key whose values it ranks, in place of split. |
+| `pct` | boolean |  | hbar: each value as a share of the total. |
+| `n` | number |  | hbar: how many values, 1 to 50. |
+| `metric` | string \| null |  | timeseries, stat: an ingested metric it draws, in place of rows. |
+| `metricLabels` | { [key]: string } |  | The labels that pick the metric's series. |
+| `metricSplit` | string \| null |  | timeseries: a metric label, one line per value. |
+| `metricChart` | string |  | timeseries with a metric: line, bars or stacked. |
+| `topView` | string |  | hbar: donut, to draw it as a donut. |
+| `lines` | object[] |  | timeseries with a metric: up to three more metrics of its unit on its axis. |
+| `lines[].metric` | string | yes |  |
+| `lines[].labels` | { [key]: string } |  |  |
+| `names` | { [key]: string } |  | A name for each line: 0 to 3 for merged lines, a label value for a split's. |
+| `title` | string |  | timeseries: a title of its own, up to 80 characters. |
+| `note` | string |  | timeseries: what it is for, up to 160 characters. |
+
+### POST /api/saved-searches/{id}/panels
+
+Add one panel to a saved search's canvas (home for Home's), leaving the others where they are.
+
+Role: **Viewer** · `panel_add`
+
+Path: `id`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `kind` | "timeseries" \| "stat" \| "hbar" |  | timeseries (bars or lines over time), stat (one number) or hbar (top values); required to add one. |
+| `x` | number |  | Its column, 0 to 11; left out, it goes in the first gap. |
+| `y` | number |  | Its row from the top; left out, it goes in the first gap. Panels it lands on move down. |
+| `w` | number |  | How many of the 12 columns it spans. |
+| `h` | number |  | How many rows tall it is, 2 to 8. |
+| `split` | string |  | timeseries, hbar: what its bars are split by: level, service, host or none. |
+| `chart` | string |  | timeseries: stacked, bars or lines. |
+| `agg` | string \| null |  | timeseries, stat: the series it reads, as search's agg takes it (p99(duration_ms)); null counts rows. |
+| `replaceY` | boolean |  | timeseries: a metric draws in place of the row counts. |
+| `logScale` | boolean |  | timeseries: a log scale. |
+| `attr` | string \| null |  | hbar: the attribute key whose values it ranks, in place of split. |
+| `pct` | boolean |  | hbar: each value as a share of the total. |
+| `n` | number |  | hbar: how many values, 1 to 50. |
+| `metric` | string \| null |  | timeseries, stat: an ingested metric it draws, in place of rows. |
+| `metricLabels` | { [key]: string } |  | The labels that pick the metric's series. |
+| `metricSplit` | string \| null |  | timeseries: a metric label, one line per value. |
+| `metricChart` | string |  | timeseries with a metric: line, bars or stacked. |
+| `topView` | string |  | hbar: donut, to draw it as a donut. |
+| `lines` | object[] |  | timeseries with a metric: up to three more metrics of its unit on its axis. |
+| `lines[].metric` | string | yes |  |
+| `lines[].labels` | { [key]: string } |  |  |
+| `names` | { [key]: string } |  | A name for each line: 0 to 3 for merged lines, a label value for a split's. |
+| `title` | string |  | timeseries: a title of its own, up to 80 characters. |
+| `note` | string |  | timeseries: what it is for, up to 160 characters. |
+
+### PUT /api/saved-searches/{id}/panels/{panel}
+
+Move, resize or change one panel; a field left out stays, and panels it lands on move down.
+
+Role: **Viewer** · `panel_put`
+
+Path: `id`, `panel`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `kind` | "timeseries" \| "stat" \| "hbar" |  | timeseries (bars or lines over time), stat (one number) or hbar (top values); required to add one. |
+| `x` | number |  | Its column, 0 to 11; left out, it goes in the first gap. |
+| `y` | number |  | Its row from the top; left out, it goes in the first gap. Panels it lands on move down. |
+| `w` | number |  | How many of the 12 columns it spans. |
+| `h` | number |  | How many rows tall it is, 2 to 8. |
+| `split` | string |  | timeseries, hbar: what its bars are split by: level, service, host or none. |
+| `chart` | string |  | timeseries: stacked, bars or lines. |
+| `agg` | string \| null |  | timeseries, stat: the series it reads, as search's agg takes it (p99(duration_ms)); null counts rows. |
+| `replaceY` | boolean |  | timeseries: a metric draws in place of the row counts. |
+| `logScale` | boolean |  | timeseries: a log scale. |
+| `attr` | string \| null |  | hbar: the attribute key whose values it ranks, in place of split. |
+| `pct` | boolean |  | hbar: each value as a share of the total. |
+| `n` | number |  | hbar: how many values, 1 to 50. |
+| `metric` | string \| null |  | timeseries, stat: an ingested metric it draws, in place of rows. |
+| `metricLabels` | { [key]: string } |  | The labels that pick the metric's series. |
+| `metricSplit` | string \| null |  | timeseries: a metric label, one line per value. |
+| `metricChart` | string |  | timeseries with a metric: line, bars or stacked. |
+| `topView` | string |  | hbar: donut, to draw it as a donut. |
+| `lines` | object[] |  | timeseries with a metric: up to three more metrics of its unit on its axis. |
+| `lines[].metric` | string | yes |  |
+| `lines[].labels` | { [key]: string } |  |  |
+| `names` | { [key]: string } |  | A name for each line: 0 to 3 for merged lines, a label value for a split's. |
+| `title` | string |  | timeseries: a title of its own, up to 80 characters. |
+| `note` | string |  | timeseries: what it is for, up to 160 characters. |
+
+### DELETE /api/saved-searches/{id}/panels/{panel}
+
+Take one panel off a saved search's canvas; the pinned plot stays.
+
+Role: **Viewer** · `panel_remove`
+
+Path: `id`, `panel`.
 
 ### POST /api/saved-searches/{id}/test
 
@@ -686,6 +850,49 @@ Query:
 | `window` | string |  | 5m (the default), 15m or 1h. |
 | `measure` | string |  | series (the default), or share of all rows. |
 
+### POST /api/monitors/preview
+
+Where a monitor's body would have opened and resolved over the last 7 days, read as monitor_put would save it; a save with a token needs this first.
+
+Role: **Operator** · `monitor_draft_preview`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string |  | The monitor's name, as the save will have it; required unless id is given. |
+| `source` | "search" \| "fingerprints" \| "push" \| "http" \| "tcp" \| "cert" |  | What it watches: a saved search's series, its new fingerprints, a push, an HTTP(S) check, a TCP connect or a certificate. A monitor's source never changes. |
+| `kind` | string |  | search, fingerprints: threshold or first_seen, the older name of source. |
+| `service` | string \| null |  | The service it is about, at most 200 characters; required when it is made. |
+| `host` | string \| null |  | The host it is about; by default the host its URL or target names. |
+| `saved_search_id` | string \| null |  | search, fingerprints: the saved search it reads. |
+| `saved_search` | string \| null |  | search, fingerprints: the saved search it reads, by name, when saved_search_id is left out. |
+| `threshold` | number \| string |  | search: the value it opens at, a number above 0. |
+| `opens_when` | string |  | search: at_least (the default) or fewer_than. |
+| `measure` | string |  | search: series (the default), or share of all rows. |
+| `webhook_url` | string \| null |  | Where it calls, http(s); push, http, tcp and cert take null for the default in Settings. |
+| `webhook_urls` | string[] \| null |  | search, fingerprints: 1 to 5 targets, each an http(s) URL or default for the webhook in Settings. |
+| `body_kind` | string |  | The call's body: default, text or json. |
+| `body_template` | string \| null |  | The call's body when body_kind is text or json. |
+| `resolved_body` | string \| null |  | The call's body when it closes, when body_kind is text or json. |
+| `remind_every` | string |  | Call again while open: off, window (search, fingerprints), 1h, 4h or 24h. |
+| `every` | string \| null |  | push: how often a result is due, 30s to 365d (5m, 1h, 1d); http, tcp, cert: how often it runs, 30s, 1m, 5m, 15m, 30m or 1h. |
+| `grace` | string \| null |  | push: how long past due before it opens, up to 365d, or 0. |
+| `key` | string \| null |  | push: the ping URL's key, a random UUID; made for it when left out. |
+| `fail_after` | number |  | http, tcp, cert: how many failed runs in a row open it, a whole number. |
+| `url` | string \| null |  | http: the URL it calls, http(s). |
+| `method` | string |  | http: GET (the default), HEAD or POST. |
+| `body` | string \| null |  | http: the body it sends, with POST only. |
+| `headers` | { [key]: string \| null } \| ((string \| null)[])[] |  | http: headers, as { name: value } or [[name, value]]; a value of null keeps the one stored under that name. |
+| `conditions` | string \| (string \| number)[] |  | http, tcp, cert: what each run must show, one line each, as text or a list. |
+| `target` | string \| null |  | tcp, cert: where it connects, host:port. |
+| `starttls` | string \| null |  | cert: smtp, imap or pop3 to start TLS after a greeting; null or none for TLS from the first byte. |
+| `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
+| `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
+| `enabled` | boolean \| number \| null |  | false or 0 pauses it, true or 1 resumes it. |
+| `id` | string |  | A monitor's id: preview a change by PUT /api/alert-rules/:id, fields left out keeping their value. |
+| `saves` | "replace" \| "create" |  | replace (the default): PUT /api/monitors/:name, what is left out takes its default; create: POST /api/alert-rules, which makes one more of that name. |
+
 ### POST /api/monitors/send
 
 Run an HTTP(S), TCP or certificate check once from here and say what came back; nothing is stored.
@@ -716,7 +923,7 @@ Path: `name`.
 
 ### PUT /api/monitors/{name}
 
-Make or replace the monitor of that name; what is left out takes its default.
+Make or replace the monitor of that name; what is left out takes its default. With a token, preview the same body first; the answer has the call that undoes it.
 
 Role: **Operator** · `monitor_put`
 
@@ -795,6 +1002,20 @@ Body:
 | --- | --- | --- | --- |
 | `roles` | { [key]: string } \| null |  | Each field's role: chart, lookup, ignore; a field left out is chart. Replaces every role. |
 | `links` | { [key]: string } \| null |  | Each field's metric label, so Graph opens its metric; replaces every link. |
+
+### PUT /api/fields/roles/{key}
+
+Set one field's role, leaving every other role and link as it is.
+
+Role: **Operator** · `field_role_set`
+
+Path: `key`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `role` | "chart" \| "lookup" \| "ignore" | yes | chart (the default: a facet with its values counted), lookup (an id you follow, never charted) or ignore (not charted); a role applies to rows that arrive after it. |
 
 ## Shares
 
