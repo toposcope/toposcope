@@ -4,6 +4,18 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+One described API. Every `/api` route a personal or service account token may call is one row of a table (`src/api/routes.ts`): its method and path, the role it takes, one sentence on what it does, and a valibot schema for its query and its JSON body. The app registers the routes from that table, `GET /api/openapi.json` serves it as OpenAPI 3.1, built at start, and [docs/api.md](docs/api.md) is written from it by `bun run api-docs`; a test fails when the page drifts or a route has no schema. A query or a body a route's schema refuses is a 400 and the route does not run. Every refusal is `{ "error": "<sentence>", "field": "<path>" }`, `field` only when the sentence is about one input, with the status the route gave before; a role refusal still names the role it needs. Sign-in, ingest, links between instances and shares' public side keep their own pages, which the spec and docs/api.md link to. [#356](https://github.com/toposcope/toposcope/issues/356)
+
+**Refused now, where 0.10 took it:** a value of the wrong JSON type that a handler used to drop or turn into a default is a 400 naming its field. An empty query choice (`kind=`, `wave=`) is still absent, `kind=` on marks still takes any case, and `null` is still absent wherever a handler read it so.
+
+- A number given as text: `expires_in_days: "30"` on a token (0.10 made it 365), `days` on an invite (0.10 took the default).
+- A true or false given as text: `enabled: "false"` on a monitor and `pinned` on a saved search (0.10 ignored them), `read_only` on a token (0.10 read it as false).
+- Text given as another type, which 0.10 dropped for the stored or default value: `name`, `query`, `range`, `from_ts`, `to_ts` on a saved search; `name`, `saved_search`, `url`, `target` on a monitor; `who` on an invite; `q` and `key` on a link key; `default_webhook_url` in Settings (0.10 read a number as none); the provider's `label`, `preset`, `client_secret` and `without_invite` in sign-in settings.
+- `silenced_until` that is not a number or null (0.10 ignored it), and a monitor's `conditions` list item that is not text or a number (0.10 made it text).
+- A body that is not JSON on the link offer, invite, preview and confirm routes (0.10 read it as `{}`); `null` there is still an empty body.
+
 ## 0.10.1
 
 **Before you upgrade:** monitors made before 0.10 name no service, and they are not kept. Note them in Watch before you upgrade, and make them again with their service after. [Upgrading from 0.9](docs/operations.md#upgrading-from-09) has the steps. boot drops `metric_kinds`, `metric_units` and `metric_descriptions`, which nothing has read since 0.10.0, and makes `metrics_by_minute` and `metric_buckets_by_minute` again with `kind`, `unit` and `toposcope` in their key, filling them from the stored points. Rolling back to 0.10.0 runs on the new rollups (its views write them with an empty kind, unit and source) and makes the three tables again, empty and unread.

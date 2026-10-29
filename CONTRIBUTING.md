@@ -38,6 +38,7 @@ bun run dev
 ```bash
 bun test
 bun run typecheck
+bun run api-docs
 bun run e2e
 bun run seed
 bun run truncate
@@ -48,6 +49,8 @@ bun run load:500k
 bun run load:10m
 bun run load:100m
 ```
+
+`bun run api-docs` writes [docs/api.md](docs/api.md) from the route table in `src/api/routes.ts`; a test fails when the two drift. A new `/api` route goes in that table, with a schema for its query and its body.
 
 `bun run e2e` expects ClickHouse to be up and the API to answer on `:8080`.
 
