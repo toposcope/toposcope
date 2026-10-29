@@ -61,7 +61,10 @@ beforeAll(async () => {
         body: JSON.stringify({ jsonrpc: "2.0", id: ++n, method: "tools/call", params: { name, arguments: args } }),
       })));
       const result = res.body.result;
-      return { isError: result?.isError ?? null, body: result ? JSON.parse(result.content[0].text) : res.body };
+      const parsed = result ? JSON.parse(result.content[0].text) : res.body;
+      // A tool's 2xx answer is fenced (#359): the route's JSON is under data, beside the note.
+      const fenced = !result?.isError && parsed && typeof parsed === "object" && "note" in parsed && "data" in parsed;
+      return { isError: result?.isError ?? null, fenced, body: fenced ? parsed.data : parsed };
     };
     const out = {};
 
@@ -298,6 +301,8 @@ describe("design tools (#360)", () => {
     expect(Date.parse(r.preview.body.saves_until)).toBeGreaterThan(Date.now());
 
     expect(r.saved.isError).toBe(false);
+    // Design tools come back fenced like every tool, so a saved name an agent did not write reads as data.
+    expect(r.saved.fenced).toBe(true);
     expect(r.saved.body.name).toBe(r.preview.body.name);
     expect(r.saved.body.link).toBe("/?view=watch");
     expect(r.saved.body.undo).toMatchObject({ tool: "monitor_delete", arguments: { name: r.preview.body.name } });
