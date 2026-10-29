@@ -56,6 +56,18 @@ describe("clickhouseStatsFromMetrics", () => {
     expect(sample.cpuUs).toBe(3_262_645_786);
   });
 
+  test("stored is ClickHouse's active parts, with its own system logs apart; the disk stays the filesystem", () => {
+    const withParts = new Map([...rows, ["PartsBytes", 150_000_000], ["PartsBytesSystem", 9_500_000_000]]);
+    const { stats } = clickhouseStatsFromMetrics(withParts, undefined, 1000);
+    expect(stats.stored).toBe(9_650_000_000);
+    expect(stats.stored_system).toBe(9_500_000_000);
+    expect(stats.disk_used).toBe(350_638_546_944);
+    const noSystem = clickhouseStatsFromMetrics(new Map([...rows, ["PartsBytes", 150_000_000]]), undefined, 1000).stats;
+    expect([noSystem.stored, noSystem.stored_system]).toEqual([150_000_000, 0]);
+    const none = clickhouseStatsFromMetrics(rows, undefined, 1000).stats;
+    expect([none.stored, none.stored_system]).toEqual([null, null]);
+  });
+
   test("second sample fills CPU and disk IO rates", () => {
     const first = clickhouseStatsFromMetrics(rows, undefined, 1000);
     const next = new Map(rows);
