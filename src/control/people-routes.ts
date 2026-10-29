@@ -5,7 +5,9 @@ import { actorName } from "./actors";
 import { getDb } from "./index";
 import {
   allPeople,
+  agentByName,
   cancelInvite,
+  createAgent,
   createInvite,
   createPersonToken,
   createServiceAccount,
@@ -32,6 +34,7 @@ function personJson(p: Person, meId: string | null) {
   return {
     id: p.id,
     kind: p.kind,
+    agent: p.agent === 1,
     name: p.name,
     email: p.email,
     role: p.role,
@@ -59,13 +62,30 @@ async function body(c: Context): Promise<Record<string, unknown> | null> {
   }
 }
 
+/**
+ * What an agent saved, under its own name (34c): its monitors, the saved hunts it shared (each a
+ * panel on everyone's Home), and the rest (a Viewer's own, boards).
+ */
+function agentSaved(id: string): { monitors: number; home_panels: number; hunts: number } {
+  const db = getDb();
+  const monitors = (db.query("SELECT count(*) AS n FROM alert_rules WHERE created_by = ?").get(id) as { n: number }).n;
+  const saved = db.query("SELECT board, shared FROM saved_searches WHERE owner_id = ?").all(id) as Array<{ board: string | null; shared: number }>;
+  const homePanels = saved.filter((s) => !s.board && s.shared === 1).length;
+  return { monitors, home_panels: homePanels, hunts: saved.length - homePanels };
+}
+
+function agentJson(p: Person, meId: string | null) {
+  return { ...personJson(p, meId), made_on_host: p.created_by === "host", saved: agentSaved(p.id) };
+}
+
 /** `GET /api/people`. */
 export function listPeopleRoute(c: Context): Response {
   const me = actorOf(c)?.person.id ?? null;
   const people = allPeople().filter((p) => p.revoked_at === null);
   return c.json({
     people: people.filter((p) => p.kind === "person").map((p) => personJson(p, me)),
-    service_accounts: people.filter((p) => p.kind === "service").map((p) => personJson(p, me)),
+    service_accounts: people.filter((p) => p.kind === "service" && p.agent !== 1).map((p) => personJson(p, me)),
+    agents: people.filter((p) => p.kind === "service" && p.agent === 1).map((p) => agentJson(p, me)),
     invites: openInvites().map((i) => ({ id: i.id, who: i.who, role: i.role, created_at: i.created_at, expires_at: i.expires_at, invited_by: actorName(i.created_by)?.name ?? null })),
   });
 }
@@ -129,6 +149,30 @@ export async function createServiceAccountRoute(c: Context): Promise<Response> {
   try {
     const account = createServiceAccount({ name: rec.name, role: rec.role, created_by: actorOf(c)?.person.id ?? null });
     return c.json(personJson(account, actorOf(c)?.person.id ?? null), 201);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
+  }
+}
+
+/**
+ * `POST /api/people/agents` `{ name, role }` (#357, 34a → 34b): an agent and a token, shown once. A
+ * Viewer or an Operator; an Owner is refused. The agent that has the name already, in that role,
+ * gets another token (as `toposcope.sh agent` does); in another role it is refused.
+ */
+export async function createAgentRoute(c: Context): Promise<Response> {
+  const rec = await body(c);
+  if (!rec || typeof rec.name !== "string" || !isRole(rec.role)) {
+    return c.json({ error: "An agent needs a name and a role: viewer or operator" }, 400);
+  }
+  const by = actorOf(c)?.person.id ?? null;
+  try {
+    const existing = rec.role === "owner" ? null : agentByName(rec.name);
+    if (existing && existing.role !== rec.role) {
+      return c.json({ error: `${existing.name} is a${existing.role === "operator" ? "n Operator" : " Viewer"}: revoke it first, or name another agent` }, 409);
+    }
+    const agent = existing ?? createAgent({ name: rec.name, role: rec.role, created_by: by });
+    const { token } = createPersonToken(agent.id, { name: "made in Access", created_by: by });
+    return c.json({ agent: agentJson(personById(agent.id)!, by), token, kept: existing !== null }, 201);
   } catch (err) {
     return c.json({ error: err instanceof Error ? err.message : String(err) }, 400);
   }

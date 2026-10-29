@@ -1280,7 +1280,7 @@ Path: `id`.
 
 ### GET /api/people
 
-People, service accounts and invites, with their roles and tokens.
+People, service accounts, agents and invites, with their roles and tokens, and what each agent saved.
 
 Role: **Operator** · `people`
 
@@ -1318,6 +1318,19 @@ Body:
 | --- | --- | --- | --- |
 | `name` | string | yes | Its name. |
 | `role` | "viewer" \| "operator" \| "owner" | yes | What its tokens may do. |
+
+### POST /api/people/agents
+
+Make an agent, the service account `agent: <name>` as a Viewer or an Operator, never an Owner, and a token for it, in this answer and never again; the agent that has the name in that role already gets another token.
+
+Role: **Owner** · `people_agent_create`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `name` | string | yes | The name after `agent: `: 1 to 57 letters, digits, . _ or -, starting with a letter or digit. |
+| `role` | "viewer" \| "operator" \| "owner" | yes | viewer or operator; an agent is never an Owner. |
 
 ### PUT /api/people/{id}
 

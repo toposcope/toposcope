@@ -16,6 +16,8 @@ export type SavedSearch = {
   cols?: string[];
   /** Home's Pinned column (#259). */
   pinned?: boolean;
+  /** Who saved it (#307); an agent's wears its badge (#357). */
+  saved_by?: { id: string; name: string; agent?: boolean } | null;
   created_at: number;
 };
 
@@ -257,7 +259,7 @@ export type MonitorView = AlertRule & {
   /** The host it checks (#335): a URL's or address's host unless changed; may be empty. */
   host: string;
   /** Who made it (#307). */
-  made_by?: { id: string; name: string; revoked: boolean; kind: string } | null;
+  made_by?: { id: string; name: string; revoked: boolean; kind: string; agent?: boolean } | null;
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   open: MonitorStretch | null;
   /** A fewer-than monitor's newest matching line; null when none in a year, absent when unread. */

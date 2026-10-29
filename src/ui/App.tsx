@@ -3336,6 +3336,14 @@ export function App() {
     setActiveInspect(tab);
   }
 
+  /** Access's Agents group, from an agent's badge (#357, 34c). */
+  function openAgents() {
+    setLinkPageId(null);
+    setSharePage(null);
+    setAccessFilter("tokens");
+    setView("access");
+  }
+
   /** A short source's link page, from the trace's amber line (#330). */
   function openSourceLink(source: string) {
     // A source two hops away opens the link it comes through (#334).
@@ -4056,6 +4064,7 @@ export function App() {
           }}
           onOpenWatch={() => setView("watch")}
           onOpenAccess={() => setView("access")}
+          onOpenAgents={isViewer ? undefined : openAgents}
           onOpenBoard={(item) => openSavedTab(item)}
         />
       ) : view === "access" && sharePage ? (
@@ -4123,6 +4132,7 @@ export function App() {
           held={held.sources}
           linked={new Set(held.sources.map((s) => s.name))}
           onOpenLink={openSourceLink}
+          onOpenAgent={isViewer ? undefined : openAgents}
         />
 
       ) : view === "sign-in" ? (

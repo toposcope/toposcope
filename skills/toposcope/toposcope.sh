@@ -290,6 +290,58 @@ cmd_service_token() {
   compose exec -T app bun run src/cli.ts service-token "$account" "$role" "$name"
 }
 
+# A token the instance made for this script that it could not keep: revoked, so no live token is
+# left printed nowhere.
+drop_tokens() {
+  printf '%s\n' "$1" | compose exec -T app bun run src/cli.ts revoke-token >/dev/null 2>>"$ROOT/token.log" || true
+}
+
+# An agent (#357): the Operator service account `agent: <name>`, made once and kept, and a new
+# token for it each run, written to a file only this user can read. The token is never printed.
+cmd_agent() {
+  local name="${1:-}"
+  [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,56}$ ]] ||
+    die "Usage: agent <name>, with 1 to 57 letters, digits, . _ or -, starting with a letter or digit"
+  need docker
+  [ -f "$ROOT/compose.yml" ] || die "No instance files in $ROOT. Run this beside the install's compose.yml, or set TOPOSCOPE_DIR."
+  local file="$ROOT/agent-$name.token"
+  if [ -L "$file" ] || { [ -e "$file" ] && [ ! -f "$file" ]; }; then
+    die "$file is not a regular file, so no token is written there. Nothing was made."
+  fi
+  local token tmp
+  token="$(compose exec -T app bun run src/cli.ts agent "$name" 2>"$ROOT/token.log")" || {
+    drop_tokens "$token"
+    die "Could not make a token for agent: $name. See $ROOT/token.log."
+  }
+  if [[ ! $token =~ ^tsp1_[A-Za-z0-9_-]+$ ]]; then
+    drop_tokens "$token"
+    die "The instance did not answer with one token for agent: $name. Nothing was written."
+  fi
+  # A new file of its own, made only for this user before the token goes in, then put in place.
+  if ! tmp="$(umask 077 && mktemp "$ROOT/.agent-$name.XXXXXX")" || ! chmod 600 "$tmp" ||
+    ! printf '%s\n' "$token" >"$tmp" || [ -L "$file" ] || { [ -e "$file" ] && [ ! -f "$file" ]; } ||
+    ! mv -f "$tmp" "$file"; then
+    drop_tokens "$token"
+    die "Could not write $file, so its token was revoked."
+  fi
+  local said role kept
+  said="$(sed -n 's/^agent: //p' "$ROOT/token.log" | tail -n 1)"
+  role="${said% *}"
+  kept="${said##* }"
+  case "$role" in
+    operator) role="an Operator" ;;
+    viewer) role="a Viewer" ;;
+  esac
+  if [ "$kept" = "kept" ]; then
+    printf 'agent: %s is %s already; it has a new token, and its earlier ones work until they are revoked in Access.\n' "$name" "$role"
+  else
+    printf 'Made agent: %s, %s. What it saves shows under that name.\n' "$name" "$role"
+  fi
+  printf 'Its token is in %s, which only you can read. The token is not shown.\n' "$file"
+  printf 'For Claude Code, in the app'"'"'s repository:\n'
+  printf '  claude mcp add --transport http toposcope %s/mcp --header "Authorization: Bearer $(cat %s)"\n' "$URL" "$file"
+}
+
 cmd_marker() {
   printf 'tscheck%s\n' "$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')"
 }
@@ -431,9 +483,10 @@ case "${1:-}" in
   marker) cmd_marker ;;
   owner-link) shift; cmd_owner_link "$@" ;;
   service-token) shift; cmd_service_token "$@" ;;
+  agent) shift; cmd_agent "$@" ;;
   # `check <word>` reads a test error back; `check <monitor> -- <command>` sends a result.
   check) shift; if [ "${2:-}" = "--" ]; then cmd_check_monitor "$@"; else cmd_check "$@"; fi ;;
   *)
-    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
+    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | agent <name> | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
     ;;
 esac

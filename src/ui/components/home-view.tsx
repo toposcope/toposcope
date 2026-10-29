@@ -6,6 +6,7 @@ import type { HomeCard, HomeSince } from "../../control/home-since";
 import { formatCompactCount } from "../count-format";
 import { deltaText, firstRunSteps, formatValue, hhmmUtc, markAge, markGlyph, resolvePick, sideText, type HomePick } from "../home-since";
 import type { MonitorView, SavedSearch } from "../types";
+import { AgentBadge, OpenAgent } from "./agent-badge";
 
 export type HomeWindow = { from: string; to: string };
 
@@ -23,6 +24,8 @@ type Props = {
   onOpenHunt: (q: string, window: HomeWindow) => void;
   onOpenWatch: () => void;
   onOpenAccess: () => void;
+  /** An agent's badge opens its row in Access (#357); absent for a Viewer, who sees no Access. */
+  onOpenAgents?: () => void;
   onOpenBoard: (item: SavedSearch) => void;
 };
 
@@ -247,7 +250,9 @@ export function HomeView(props: Props) {
               {data.cards.map((card) => {
                 const item = props.saved.find((s) => s.id === card.saved_id);
                 return (
-                  <Card key={card.saved_id} card={card} meId={props.meId ?? null} quiet={since.kind === "hour"} onClick={() => item && props.onOpenSaved(item, window, selectedId)} />
+                  <OpenAgent.Provider key={card.saved_id} value={props.onOpenAgents}>
+                    <Card card={card} meId={props.meId ?? null} quiet={since.kind === "hour"} onClick={() => item && props.onOpenSaved(item, window, selectedId)} />
+                  </OpenAgent.Provider>
                 );
               })}
             </div>
@@ -316,7 +321,10 @@ export function HomeView(props: Props) {
                     className={cn("flex justify-between rounded-md px-2.5 py-[7px] text-left hover:bg-white/[0.04]", s.id === selectedId && "bg-white/[0.06]")}
                     onClick={() => props.onOpenSaved(s, window, selectedId)}
                   >
-                    <span className="truncate">{s.name}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate">{s.name}</span>
+                      {s.saved_by?.agent ? <AgentBadge name={s.saved_by.name} onOpen={props.onOpenAgents} /> : null}
+                    </span>
                     <span className="ml-2 font-mono text-[12px] text-muted-foreground">
                       {card ? (card.kind === "count" ? formatCompactCount(card.after ?? 0) : card.kind) : ""}
                     </span>
@@ -405,7 +413,11 @@ function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; 
         ))}
         <div className="absolute -top-1 bottom-0 w-px" style={{ left: `${card.spark.length ? (card.split_at / card.spark.length) * 100 : 50}%`, background: quiet ? "#3f3f46" : "#e7e1d3" }} />
       </div>
-      {card.saved_by ? (
+      {card.saved_by?.agent ? (
+        <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+          <AgentBadge name={card.saved_by.name} />
+        </span>
+      ) : card.saved_by ? (
         <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
           <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-[#27272a] text-[9px] font-semibold text-zinc-300">{initialsOf(card.saved_by.name)}</span>
           {card.saved_by.id === meId ? (card.shared ? "yours" : "yours · only you see it") : `saved by ${card.saved_by.name}`}
