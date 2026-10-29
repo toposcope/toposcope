@@ -342,6 +342,137 @@ cmd_agent() {
   printf '  claude mcp add --transport http toposcope %s/mcp --header "Authorization: Bearer $(cat %s)"\n' "$URL" "$file"
 }
 
+# The file an agent's token is in: `agent-<name>.token` beside .env, or the only one there is.
+# Prints the file's path, never the token.
+agent_file() {
+  local name="${1:-}" file
+  if [ -n "$name" ]; then
+    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,56}$ ]] ||
+      die "An agent's name is 1 to 57 letters, digits, . _ or -, starting with a letter or digit."
+    file="$ROOT/agent-$name.token"
+  else
+    local found=()
+    for file in "$ROOT"/agent-*.token; do
+      [ -e "$file" ] || [ -L "$file" ] || continue
+      found+=("$file")
+    done
+    [ "${#found[@]}" -gt 0 ] || die "No agent's token in $ROOT. Run: agent <name>"
+    [ "${#found[@]}" -eq 1 ] || die "There is more than one agent's token in $ROOT: name one with --agent <name>."
+    file="${found[0]}"
+  fi
+  [ ! -L "$file" ] && [ -f "$file" ] || die "No agent's token at $file. Run: agent <name>"
+  printf '%s' "$file"
+}
+
+# An agent's token, read from its file into the caller's variable `token`. Never printed.
+read_agent_token() {
+  token=""
+  IFS= read -r token <"$1" || [ -n "$token" ] || die "Could not read $1."
+  token="${token%$'\r'}"
+  [[ $token =~ ^tsp1_[A-Za-z0-9_-]+$ ]] || die "$1 does not hold one token. Run: agent <name>"
+}
+
+# How an MCP client connects as an agent (#361). Prints the Claude Code line, which reads the token
+# from its file when it runs; `--json <file>` writes the config other clients read, with the token
+# in it, to a file only this user can read and git ignores. The token is never printed.
+cmd_mcp() {
+  local agent="" json=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --agent) agent="${2:-}"; [ -n "$agent" ] || die "Usage: mcp [--agent <name>] [--json <file>]"; shift 2 ;;
+      --json) json="${2:-}"; [ -n "$json" ] || die "Usage: mcp [--agent <name>] [--json <file>]"; shift 2 ;;
+      *) die "Usage: mcp [--agent <name>] [--json <file>]" ;;
+    esac
+  done
+  local file
+  file="$(agent_file "$agent")"
+  if [ -z "$json" ]; then
+    printf 'For Claude Code, in the app'"'"'s repository (it reads the token from %s as it runs):\n' "$file"
+    printf '  claude mcp add --transport http toposcope %s/mcp --header "Authorization: Bearer $(cat %s)"\n' "$URL" "$file"
+    printf 'For another client: mcp --json <file> writes its config. The token is not shown.\n'
+    return
+  fi
+
+  local token marker='{ "mcpServers": { "toposcope": {'
+  read_agent_token "$file"
+  local dir base
+  dir="$(dirname "$json")"
+  base="$(basename "$json")"
+  [ -d "$dir" ] || die "$dir is not a directory."
+  if [ -L "$json" ] || { [ -e "$json" ] && [ ! -f "$json" ]; }; then
+    die "$json is not a regular file, so no token is written there."
+  fi
+  if [ -e "$json" ] && [ "$(head -n 1 "$json")" != "$marker" ]; then
+    die "$json exists and was not written by this skill. Choose another file, or add toposcope to it by hand from: mcp"
+  fi
+  if command -v git >/dev/null 2>&1 && git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
+    ! git -C "$dir" check-ignore -q -- "$base"; then
+    die "$json is in a git repository and git does not ignore it. Add it to .gitignore first: it will hold the agent's token."
+  fi
+  local tmp
+  if ! tmp="$(umask 077 && mktemp "$dir/.toposcope-mcp.XXXXXX")" || ! chmod 600 "$tmp" ||
+    ! {
+      printf '%s\n' "$marker"
+      printf '  "type": "http",\n'
+      printf '  "url": "%s/mcp",\n' "$URL"
+      printf '  "headers": { "Authorization": "Bearer %s" }\n' "$token"
+      printf '} } }\n'
+    } >"$tmp" || [ -L "$json" ] || ! mv -f "$tmp" "$json"; then
+    [ -z "${tmp:-}" ] || [ ! -f "$tmp" ] || : >"$tmp"
+    die "Could not write $json."
+  fi
+  printf 'Wrote %s: the toposcope MCP server at %s/mcp, as %s. It holds the token, which is not shown: keep it out of git.\n' \
+    "$json" "$URL" "$(basename "$file" .token | sed 's/^agent-/agent: /')"
+}
+
+# One MCP tool, called over HTTP as an agent (#361): a `tools/call` to /mcp. The token goes to curl
+# through a pipe on its stdin as a header (`-H @-`), and the call's JSON through a pipe of its own
+# (`@<(...)`), so neither is in an argument `ps` shows and neither touches the disk. `-` in place of the JSON reads it from stdin. Prints the JSON-RPC answer;
+# exits 1 when the tool or the server refused.
+cmd_call() {
+  local agent="" tool="" args=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --agent) agent="${2:-}"; [ -n "$agent" ] || die "Usage: call [--agent <name>] <tool> ['<json>' | -]"; shift 2 ;;
+      *)
+        if [ -z "$tool" ]; then tool="$1"; elif [ -z "$args" ]; then args="$1"; else die "Usage: call [--agent <name>] <tool> ['<json>' | -]"; fi
+        shift
+        ;;
+    esac
+  done
+  [[ $tool =~ ^[a-z][a-z0-9_]{0,63}$ ]] || die "Usage: call [--agent <name>] <tool> ['<json>' | -], with a tool's name as tools/list gives it"
+  need curl
+  [ "$args" != "-" ] || args="$(cat)"
+  [ -n "$args" ] || args="{}"
+  local trimmed="${args#"${args%%[![:space:]]*}"}"
+  trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+  [[ $trimmed == \{*\} ]] || die "A tool's arguments are one JSON object, such as '{\"name\":\"errors\"}'."
+
+  local file token
+  file="$(agent_file "$agent")"
+  read_agent_token "$file"
+  local payload answer code
+  payload="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"$tool\",\"arguments\":$trimmed}}"
+  # printf is the shell's own, so the token passes through a pipe and is in no process's arguments.
+  answer="$(printf 'authorization: Bearer %s\n' "$token" |
+    curl -sS -m 60 -X POST "$URL/mcp" -H @- \
+      -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+      -H 'mcp-protocol-version: 2025-11-25' -A "toposcope.sh/$VERSION" \
+      --data-binary @<(printf '%s' "$payload") -w '\n%{http_code}')" ||
+    die "Could not reach $URL/mcp. Run: status"
+  code="${answer##*$'\n'}"
+  answer="${answer%$'\n'*}"
+  printf '%s\n' "$answer"
+  case "$code" in
+    2??) ;;
+    *) printf 'The instance answered %s.\n' "$code" >&2; return 1 ;;
+  esac
+  if [[ $answer != *'"isError":false'* ]]; then
+    printf '%s refused: its answer above says why.\n' "$tool" >&2
+    return 1
+  fi
+}
+
 cmd_marker() {
   printf 'tscheck%s\n' "$(od -An -N6 -tx1 /dev/urandom | tr -d ' \n')"
 }
@@ -484,9 +615,11 @@ case "${1:-}" in
   owner-link) shift; cmd_owner_link "$@" ;;
   service-token) shift; cmd_service_token "$@" ;;
   agent) shift; cmd_agent "$@" ;;
+  mcp) shift; cmd_mcp "$@" ;;
+  call) shift; cmd_call "$@" ;;
   # `check <word>` reads a test error back; `check <monitor> -- <command>` sends a result.
   check) shift; if [ "${2:-}" = "--" ]; then cmd_check_monitor "$@"; else cmd_check "$@"; fi ;;
   *)
-    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | agent <name> | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
+    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | agent <name> | mcp [--agent <name>] [--json <file>] | call [--agent <name>] <tool> ['<json>' | -] | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
     ;;
 esac

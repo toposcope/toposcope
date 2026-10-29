@@ -81,6 +81,7 @@ Logs, ingested metrics, spans, profile samples, and change marks are stored in C
 An app speaks OpenTelemetry to Toposcope: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional — add one for a disk buffer or enrichment. Vector is the canonical collector; Fluent Bit and Alloy are supported alternatives. Collectors own buffering, parsing, sampling, and enrichment. The ingest guide says [what an app sends](docs/ingest.md#what-an-app-sends).
 
 A coding agent can do this for an app: the [toposcope skill](skills/toposcope/SKILL.md) stands up one local instance, gets the app’s errors into it, and checks that they arrive with a stack fingerprint.
+Then it designs: as its own Operator identity, over MCP or `toposcope.sh call`, it proposes the app’s monitors, two Home panels and the CI step that marks a deploy, previews each over the last 7 days, and saves only what you say yes to, with the call that undoes each.
 
 Record each deploy from CI; Home and Compare measure from these marks:
 

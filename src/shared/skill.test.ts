@@ -1,11 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { guideSection } from "../../scripts/ingest-guide-examples";
+import { monitorBody } from "../api/schemas/monitors";
+import { panelBody } from "../api/schemas/design";
+import { savedCreateBody } from "../api/schemas/saved";
 import { mapOtlpJson } from "../ingest/otlp";
+import { toolRouteIds } from "../mcp/tools";
 import { flattenAttrs } from "./attrs";
 import { liftException } from "./exception";
 import { withFingerprint } from "./fingerprint";
@@ -37,9 +41,32 @@ describe("the skill's shape", () => {
 
   test("every command it names is one the script has", () => {
     const named = [...new Set([...skill.matchAll(/^\| `([a-z-]+)(?: [^`]*)?` \|/gm)].map((row) => row[1]!))];
-    expect(named.sort()).toEqual(["app-env", "check", "cost", "marker", "status", "stop", "up"]);
-    for (const command of named) {
+    expect(named.sort()).toEqual(["agent", "app-env", "call", "check", "cost", "marker", "mcp", "status", "stop", "up"]);
+    // And every command it tells the agent to run, in its steps as in its table.
+    const run = [...skill.matchAll(/\b[Rr]un `([a-z-]+)[ `]/g)].map((m) => m[1]!);
+    for (const command of new Set([...named, ...run])) {
       expect(scriptText).toMatch(new RegExp(`^  ${command}\\) `, "m"));
+    }
+  });
+
+  test("every command the script has, it names (#361)", () => {
+    const commands = [...scriptText.matchAll(/^  ([a-z-]+)\) /gm)].map((m) => m[1]!);
+    expect(commands.length).toBeGreaterThan(9);
+    for (const command of commands) {
+      expect({ command, named: new RegExp("`" + command + "[ `]").test(skill) }).toEqual({ command, named: true });
+    }
+  });
+
+  test("every tool its design step names is one MCP offers (#361)", () => {
+    const design = skill.slice(skill.indexOf("## 4. Design"), skill.indexOf("## A job's result"));
+    expect(design.length).toBeGreaterThan(1000);
+    const fields = new Set([monitorBody, panelBody, savedCreateBody].flatMap((schema) => Object.keys(schema.entries)));
+    const spans = [...design.matchAll(/`([a-z]+(?:_[a-z0-9]+)+)`/g)].map((m) => m[1]!).filter((word) => !fields.has(word));
+    const called = [...design.matchAll(/`call ([a-z_]+) /g)].map((m) => m[1]!);
+    const named = new Set([...spans, ...called]);
+    expect(named.size).toBeGreaterThan(10);
+    for (const tool of named) {
+      expect({ tool, offered: toolRouteIds.includes(tool) }).toEqual({ tool, offered: true });
     }
   });
 
@@ -521,5 +548,164 @@ describe("agent <name> (#357)", () => {
     expect(out + err).not.toContain("tsp1_");
     expect(existsSync(join(instance, "agent-dropped.token"))).toBe(false);
     expect(liveTokens("dropped")).toEqual({ live: 0, all: 1 });
+  });
+});
+
+describe("mcp and call (#361)", () => {
+  // An agent's token as `agent` leaves it, beside a stand-in for /mcp on loopback that keeps what it was sent.
+  const agentToken = "tsp1_agent-call-5d0c1e9a";
+  let instance: string;
+  let mcp: ReturnType<typeof Bun.serve>;
+  let posts: Array<{ authorization: string | null; version: string | null; body: any }> = [];
+  let answer: (body: any) => unknown = () => ({});
+  let bin: string;
+  let argvLog: string;
+
+  beforeAll(() => {
+    instance = mkdtempSync(join(tmpdir(), "toposcope-mcp-"));
+    writeFileSync(join(instance, ".env"), `TOPOSCOPE_INGEST_TOKEN=${token}\n`);
+    writeFileSync(join(instance, "agent-claude.token"), `${agentToken}\n`, { mode: 0o600 });
+    mcp = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      async fetch(request) {
+        if (new URL(request.url).pathname !== "/mcp" || request.method !== "POST") {
+          return new Response("not found", { status: 404 });
+        }
+        const body = await request.json();
+        posts.push({ authorization: request.headers.get("authorization"), version: request.headers.get("mcp-protocol-version"), body });
+        return Response.json({ jsonrpc: "2.0", id: body.id, result: answer(body) });
+      },
+    });
+    // curl as it is, with every argument it was given written down first.
+    bin = mkdtempSync(join(tmpdir(), "toposcope-mcp-bin-"));
+    argvLog = join(bin, "argv.log");
+    const curl = Bun.which("curl")!;
+    writeFileSync(join(bin, "curl"), `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >>${JSON.stringify(argvLog)}\nexec ${JSON.stringify(curl)} "$@"\n`);
+    chmodSync(join(bin, "curl"), 0o755);
+  });
+
+  afterAll(() => {
+    mcp.stop(true);
+    rmSync(instance, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  });
+
+  async function onMcp(args: string[], stdin?: string, env: Record<string, string> = {}) {
+    const { TOPOSCOPE_URL: _url, TOPOSCOPE_INGEST_TOKEN: _token, ...inherited } = process.env;
+    const child = Bun.spawn(["bash", script, ...args], {
+      env: { ...inherited, TOPOSCOPE_DIR: instance, TOPOSCOPE_PORT: String(mcp.port), PATH: `${bin}:${process.env.PATH}`, ...env },
+      stdin: stdin === undefined ? "ignore" : new TextEncoder().encode(stdin),
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [out, err, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
+    return { code, out, err };
+  }
+
+  test("mcp prints the Claude Code line, which reads the token from its file, and not the token", async () => {
+    const { code, out, err } = await onMcp(["mcp"]);
+    expect(code).toBe(0);
+    expect(out + err).not.toContain(agentToken);
+    expect(out).toContain(
+      `claude mcp add --transport http toposcope http://127.0.0.1:${mcp.port}/mcp --header "Authorization: Bearer $(cat ${join(instance, "agent-claude.token")})"`,
+    );
+  });
+
+  test("mcp --json writes a client's config only this user can read, and prints no token", async () => {
+    const file = join(instance, "mcp.json");
+    const { code, out, err } = await onMcp(["mcp", "--json", file]);
+    expect(err).toBe("");
+    expect(code).toBe(0);
+    expect(out + err).not.toContain(agentToken);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({
+      mcpServers: { toposcope: { type: "http", url: `http://127.0.0.1:${mcp.port}/mcp`, headers: { Authorization: `Bearer ${agentToken}` } } },
+    });
+    // Its own file it writes again; anyone else's, or a link, it leaves as it was.
+    expect((await onMcp(["mcp", "--json", file])).code).toBe(0);
+    const theirs = join(instance, "theirs.json");
+    writeFileSync(theirs, '{ "mcpServers": {} }\n');
+    expect((await onMcp(["mcp", "--json", theirs])).code).not.toBe(0);
+    expect(readFileSync(theirs, "utf8")).toBe('{ "mcpServers": {} }\n');
+    symlinkSync(theirs, join(instance, "linked.json"));
+    const linked = await onMcp(["mcp", "--json", join(instance, "linked.json")]);
+    expect(linked.code).not.toBe(0);
+    expect(linked.err).toContain("not a regular file");
+    expect(readFileSync(theirs, "utf8")).toBe('{ "mcpServers": {} }\n');
+  });
+
+  test("mcp --json writes no token into a git repository that does not ignore the file", async () => {
+    const repo = join(instance, "repo");
+    mkdirSync(repo);
+    Bun.spawnSync(["git", "init", "-q", repo]);
+    const refused = await onMcp(["mcp", "--json", join(repo, ".mcp.json")]);
+    expect(refused.code).not.toBe(0);
+    expect(refused.err).toContain("git does not ignore it");
+    expect(existsSync(join(repo, ".mcp.json"))).toBe(false);
+    writeFileSync(join(repo, ".gitignore"), ".mcp.json\n");
+    expect((await onMcp(["mcp", "--json", join(repo, ".mcp.json")])).code).toBe(0);
+  });
+
+  test("call posts one tools/call with the agent's token, in no argument and in no output", async () => {
+    posts = [];
+    writeFileSync(argvLog, "");
+    answer = () => ({ content: [{ type: "text", text: '{"saved_id":null}' }], isError: false });
+    const { code, out, err } = await onMcp(["call", "home", "{}"]);
+    expect(err).toBe("");
+    expect(code).toBe(0);
+    expect(posts).toEqual([
+      {
+        authorization: `Bearer ${agentToken}`,
+        version: "2025-11-25",
+        body: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "home", arguments: {} } },
+      },
+    ]);
+    expect(out).toContain('"isError":false');
+    expect(out + err).not.toContain(agentToken);
+    const argv = readFileSync(argvLog, "utf8");
+    expect(argv).toContain("/mcp");
+    expect(argv).not.toContain(agentToken);
+  });
+
+  test("call - reads the arguments from stdin, so they are in no argument either", async () => {
+    posts = [];
+    writeFileSync(argvLog, "");
+    answer = () => ({ content: [{ type: "text", text: "{}" }], isError: false });
+    const args = { body: { name: "health", source: "http", url: "http://host.docker.internal:3000/health", headers: { "x-check-key": "private-91f2" } } };
+    const { code } = await onMcp(["call", "monitor_draft_preview", "-"], JSON.stringify(args));
+    expect(code).toBe(0);
+    expect(posts[0]!.body.params).toEqual({ name: "monitor_draft_preview", arguments: args });
+    expect(readFileSync(argvLog, "utf8")).not.toContain("private-91f2");
+  });
+
+  test("call exits 1 when the tool refused, and still prints why", async () => {
+    answer = () => ({ content: [{ type: "text", text: '{"error":"Preview it first: monitor_draft_preview"}' }], isError: true });
+    const { code, out, err } = await onMcp(["call", "monitor_put", '{"name":"x","body":{}}']);
+    expect(code).toBe(1);
+    expect(out).toContain("Preview it first");
+    expect(err).toContain("monitor_put refused");
+  });
+
+  test("call takes only a tool's name and one JSON object, and sends nothing otherwise", async () => {
+    posts = [];
+    for (const args of [["call", "home; id", "{}"], ["call", "Home", "{}"], ["call", "home", "[1]"], ["call", "home", "nope"], ["call"]]) {
+      const { code } = await onMcp(args);
+      expect(code).not.toBe(0);
+    }
+    expect(posts).toEqual([]);
+  });
+
+  test("with two agents' tokens, call and mcp ask which, and take --agent", async () => {
+    writeFileSync(join(instance, "agent-other.token"), "tsp1_other-77\n", { mode: 0o600 });
+    const asked = await onMcp(["call", "home"]);
+    expect(asked.code).not.toBe(0);
+    expect(asked.err).toContain("--agent <name>");
+    posts = [];
+    answer = () => ({ content: [{ type: "text", text: "{}" }], isError: false });
+    expect((await onMcp(["call", "--agent", "other", "home"])).code).toBe(0);
+    expect(posts[0]!.authorization).toBe("Bearer tsp1_other-77");
+    expect((await onMcp(["mcp", "--agent", "nobody"])).code).not.toBe(0);
+    rmSync(join(instance, "agent-other.token"));
   });
 });
