@@ -2,7 +2,7 @@
 
 An agent speaks MCP to Toposcope at `/mcp`, on the same address as the app. There is nothing to install and no second process: the server is the instance's own, always at its version.
 
-It takes the same token as the [API](api.md): `Authorization: Bearer` with a personal or service account token from **Access**. Each tool stands for one API route and runs it with that token, so a tool may do what the token's role may do on that route and nothing more. A refusal is the route's own sentence. Calls are counted under the token in Access, as API calls are: its last use, and each refusal with why.
+It takes the same token as the [API](api.md): `Authorization: Bearer` with a personal or service account token from **Access**, or an [agent](people.md#agents)'s: **Access › Let someone in › Agent** shows the setup with its token in it, and `./toposcope.sh agent <name>` writes one to a file on the host. What an agent saves wears its name. Each tool stands for one API route and runs it with that token, so a tool may do what the token's role may do on that route and nothing more. A refusal is the route's own sentence. Calls are counted under the token in Access, as API calls are: its last use, and each refusal with why.
 
 ## Connect
 

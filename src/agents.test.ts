@@ -2,6 +2,9 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { roleOf } from "./api/registry";
+import { apiRoutes } from "./api/routes";
+import { designToolRouteIds } from "./mcp/tools";
 
 /** An agent is a service account (#357, frames 34a–34c). */
 const root = import.meta.dir;
@@ -49,9 +52,24 @@ beforeAll(async () => {
     const agent = "Bearer " + made.body.token;
     await go("agentMe", "/api/me", "GET", undefined, agent);
     const saved = await go("agentSaves", "/api/saved-searches", "POST", { name: "errors on api", query: "service:api level:error", range: "15m" }, agent);
-    await go("agentWatches", "/api/monitors/errors%20on%20api", "PUT", { service: "api", source: "search", saved_search_id: saved.body.id, threshold: 5, webhook_url: "https://hooks.example.com/page" }, agent);
+    // A save with a token is previewed first (#360).
+    const watched = { service: "api", source: "search", saved_search_id: saved.body.id, threshold: 5, webhook_url: "https://hooks.example.com/page" };
+    await go("agentPreviews", "/api/monitors/preview", "POST", { ...watched, name: "errors on api" }, agent);
+    await go("agentWatches", "/api/monitors/errors%20on%20api", "PUT", watched, agent);
     await go("agentLetsIn", "/api/people/agents", "POST", { name: "another", role: "viewer" }, agent);
     await go("agentMakesToken", "/api/people/" + made.body.agent.id + "/tokens", "POST", { name: "more" }, agent);
+    // Through MCP (#358) with the agent's token: its tools, and a monitor saved after its preview.
+    let rpc = 0;
+    const mcp = async (key, method, params) => {
+      const res = await app.fetch(new Request("http://app.test/mcp", { method: "POST", headers: { authorization: agent, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: ++rpc, method, params }) }));
+      const text = await res.text();
+      out[key] = { status: res.status, body: text.startsWith("{") ? JSON.parse(text) : text };
+      return out[key];
+    };
+    await mcp("mcpList", "tools/list", {});
+    const viaMcp = { source: "search", service: "api", saved_search_id: saved.body.id, threshold: 7, webhook_urls: ["https://hooks.example.com/page"] };
+    await mcp("mcpPreview", "tools/call", { name: "monitor_draft_preview", arguments: { body: { ...viaMcp, name: "errors via mcp" } } });
+    await mcp("mcpSaved", "tools/call", { name: "monitor_put", arguments: { name: "errors via mcp", body: viaMcp } });
     // A Viewer agent reads and saves its own hunts, and changes no monitor.
     const reader = await go("viewer", "/api/people/agents", "POST", { name: "reader", role: "viewer" });
     await go("viewerWatches", "/api/monitors/x", "PUT", { service: "api", source: "search", saved_search_id: saved.body.id, threshold: 5, webhook_url: "https://hooks.example.com/page" }, "Bearer " + reader.body.token);
@@ -110,6 +128,7 @@ describe("an agent is a service account (#357)", () => {
   test("an Operator agent may do what an Operator may, and never let anyone in", () => {
     expect(r.agentMe!.body).toMatchObject({ kind: "service", name: "agent: claude", role: "operator", via: "token" });
     expect(r.agentSaves!.status).toBe(201);
+    expect(r.agentPreviews!.status).toBe(200);
     expect([200, 201]).toContain(r.agentWatches!.status);
     expect(r.agentLetsIn!.status).toBe(403);
     expect(r.agentMakesToken!.status).toBe(403);
@@ -122,11 +141,26 @@ describe("an agent is a service account (#357)", () => {
     expect(hunt.saved_by).toMatchObject({ name: "agent: claude", agent: true });
   });
 
+  test("through MCP an Operator agent has the design tools and no Owner route, and a monitor it saves wears its badge", () => {
+    expect(r.mcpList!.status).toBe(200);
+    const names: string[] = r.mcpList!.body.result.tools.map((t: { name: string }) => t.name);
+    for (const id of designToolRouteIds()) {
+      expect(names).toContain(id);
+    }
+    const ownerOnly = apiRoutes.filter((route) => roleOf(route) === "owner").map((route) => route.id);
+    expect(ownerOnly).toContain("people_agent_create");
+    expect(names.filter((n) => ownerOnly.includes(n))).toEqual([]);
+    expect(r.mcpPreview!.body.result.isError).toBeFalsy();
+    expect(r.mcpSaved!.body.result.isError).toBeFalsy();
+    const monitor = r.monitors!.body.monitors.find((m: { name: string }) => m.name === "errors via mcp");
+    expect(monitor.made_by).toMatchObject({ name: "agent: claude", agent: true });
+  });
+
   test("Access lists agents in a group of their own, with what each saved", () => {
     const body = r.people!.body;
     expect(body.service_accounts.map((p: { name: string }) => p.name)).toEqual(["tests"]);
     expect(body.agents.map((p: { name: string }) => p.name)).toEqual(["agent: claude", "agent: reader"]);
-    expect(body.agents[0]).toMatchObject({ role: "operator", agent: true, made_on_host: false, saved: { monitors: 1, home_panels: 1, hunts: 0 } });
+    expect(body.agents[0]).toMatchObject({ role: "operator", agent: true, made_on_host: false, saved: { monitors: 2, home_panels: 1, hunts: 0 } });
     expect(body.agents[0].tokens).toHaveLength(2);
     expect(body.agents[1]).toMatchObject({ role: "viewer", saved: { monitors: 0, home_panels: 0, hunts: 0 } });
   });
