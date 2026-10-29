@@ -16,7 +16,7 @@ import { signedInUntil } from "./instance-menu";
  */
 type SettingsBody = { retention_days: number; metrics_retention_days: number | null; instance_name: string | null; default_webhook_url: string | null };
 type VersionBody = { running: string; latest: string; check: "on" | "off"; checked_at: string | null; error: string | null };
-type SystemBody = { app: { mem_used: number | null; mem_limit: number | null }; clickhouse: { disk_used: number | null; disk_total: number | null; mem_used: number | null } };
+type SystemBody = { app: { mem_used: number | null; mem_limit: number | null }; clickhouse: { disk_used: number | null; disk_total: number | null; stored?: number | null; stored_system?: number | null; mem_used: number | null } };
 
 export function bytes(n: number | null | undefined): string {
   if (n == null) {
@@ -271,6 +271,13 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             <h2 className="m-0 text-[13.5px] font-medium">Storage</h2>
             <div className={row}>
               <span className={k}>ClickHouse</span>
+              <span className="font-mono">
+                {bytes(system?.clickhouse.stored)}
+                {system?.clickhouse.stored_system ? ` (${bytes(system.clickhouse.stored_system)} its own logs)` : ""}
+              </span>
+            </div>
+            <div className={row}>
+              <span className={k}>Disk</span>
               <span className="font-mono">
                 {bytes(system?.clickhouse.disk_used)} / {bytes(system?.clickhouse.disk_total)}
               </span>
