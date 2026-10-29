@@ -9,6 +9,8 @@ import { runAs } from "./control/actors";
 import { actionRole, refusalWords } from "./control/roles";
 import { actionFor, apiRoutes, openApi } from "./api/routes";
 import { checked } from "./api/registry";
+import { mcpNotHere, mcpRoute } from "./mcp/server";
+import { mcpTools } from "./mcp/tools";
 import { openedAddress, overHttps, redirectUri } from "./shared/request-address";
 import { releaseCheckDeps } from "./control/instance-routes";
 import {
@@ -591,6 +593,9 @@ for (const route of apiRoutes) {
 }
 // Built now, so a schema the spec cannot say stops the start, not a later request.
 openApi();
+// MCP (#358): each tool runs its route through the app, with the caller's own Bearer token.
+app.post("/mcp", mcpRoute(mcpTools, (request) => app.fetch(request)));
+app.on(["GET", "DELETE"], "/mcp", mcpNotHere);
 // Instance to instance (#136): each proves a key's or a link's secret, not the operator password.
 app.post("/link/v1/lookup", lookupRoute);
 app.post("/link/v1/claim", claimRoute);
