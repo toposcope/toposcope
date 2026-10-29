@@ -9,6 +9,8 @@ import { bodyHash, monitorDraft } from "../design/preview-gate";
 import { designToolRouteIds } from "./tools";
 
 const root = join(import.meta.dir, "..");
+/** A webhook as MCP shows it (#361): its scheme and host, and its handle. */
+const kept = (origin: string) => new RegExp(`^${origin.replaceAll(".", "\\.")}/… kept:[0-9a-f]{12}$`);
 const fixture = mkdtempSync(join(tmpdir(), "toposcope-design-"));
 type Answer = { status: number; body: any };
 let r: Record<string, any>;
@@ -117,6 +119,7 @@ beforeAll(async () => {
     out.change = await call("agent", "monitor_put", { name, body: { ...monitor, threshold: 500 } });
     out.undoChange = await call("agent", out.change.body.undo.tool, out.change.body.undo.arguments);
     out.afterUndoChange = await call("agent", "monitor_get", { name });
+    out.afterUndoChangeApi = await api("agent", "GET", "/api/monitors/" + encodeURIComponent(name));
     // Pausing or silencing is not a design: no preview.
     out.pause = await api("agent", "PUT", "/api/alert-rules/" + out.again.body.id, { enabled: false });
     // A change by id with a token is held too; its preview names the id.
@@ -357,9 +360,12 @@ describe("design tools (#360)", () => {
     expect(r.change.body.threshold).toBe(500);
     expect(r.change.body.undo.tool).toBe("monitor_put");
     expect(r.change.body.undo.arguments.body).toMatchObject({ source: "search", threshold: 300, service: "api", saved_search_id: r.searchSaved.body.id });
+    // A webhook is never shown whole through MCP (#361): the undo carries its handle, and puts back the URL.
+    expect(r.change.body.undo.arguments.body.webhook_urls).toEqual([expect.stringMatching(kept("https://hooks.example.com"))]);
     expect(r.undoChange.isError).toBe(false);
     expect(r.afterUndoChange.body.threshold).toBe(300);
-    expect(r.afterUndoChange.body.webhook_urls).toEqual(["https://hooks.example.com/page"]);
+    expect(r.afterUndoChange.body.webhook_urls).toEqual([expect.stringMatching(kept("https://hooks.example.com"))]);
+    expect(r.afterUndoChangeApi.body.webhook_urls).toEqual(["https://hooks.example.com/page"]);
   });
 
   test("a pause needs no preview; a change by id is held, and its preview names the id", () => {
@@ -494,7 +500,7 @@ describe("the security review's cases (#360)", () => {
     expect(r.pushAfterPause.body.enabled).toBe(0);
     expect(r.pushAfterPause.body.every_ms).toBe(86_400_000);
     expect(r.pushAfterPause.body.grace_ms).toBe(3_600_000);
-    expect(r.pushAfterPause.body.webhook_url).toBe("https://hooks.example.com/backup");
+    expect(r.pushAfterPause.body.webhook_url).toMatch(kept("https://hooks.example.com"));
     expect(r.pushPause.body.undo).toMatchObject({ tool: "monitor_put", arguments: { body: { enabled: true } } });
     expect(r.pushUnpause.isError).toBe(false);
     expect(r.pushAfterUnpause.body.enabled).toBe(1);

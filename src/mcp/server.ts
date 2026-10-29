@@ -4,6 +4,7 @@ import { roleOf } from "../api/registry";
 import { roleAtLeast } from "../control/people";
 import { publicUrl } from "../shared/public-url";
 import { version } from "../shared/version";
+import { hideWebhooks, hideWebhooksInText, KeptRefused, keptWebhooks } from "./webhooks";
 import { capArgs, capsOf, fenced, readTools, shapeRead, unfencedTools, type Caps } from "./read";
 import { toolCall, type McpTool } from "./tools";
 
@@ -120,10 +121,17 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * sent text, and on the instance's clock; a read tool's is capped too. A refusal is the route's
  * own sentence.
  */
-async function asResult(res: Response, tool: McpTool, args: Record<string, unknown>, caps: Caps | null): Promise<unknown> {
+async function asResult(res: Response, tool: McpTool, args: Record<string, unknown>, caps: Caps | null, person: string): Promise<unknown> {
   const text = await res.text();
   if (!res.ok || unfencedTools.has(tool.name)) {
-    return { content: [{ type: "text", text }], isError: !res.ok };
+    // A refusal can carry the body it refused, webhooks and all: hidden the same way.
+    let shown: string;
+    try {
+      shown = JSON.stringify(hideWebhooks(JSON.parse(text), person));
+    } catch {
+      shown = hideWebhooksInText(text);
+    }
+    return { content: [{ type: "text", text: shown }], isError: !res.ok };
   }
   let json: unknown;
   try {
@@ -131,6 +139,8 @@ async function asResult(res: Response, tool: McpTool, args: Record<string, unkno
   } catch {
     json = text;
   }
+  // A webhook's URL is its credential (#361): never shown whole, given as a handle instead.
+  json = hideWebhooks(json, person);
   const read = readTools[tool.name];
   let shaped;
   if (read && caps) {
@@ -186,9 +196,20 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
         if (!tool) {
           return failure(rpcError.invalidParams, `No tool ${typeof params.name === "string" ? params.name : "named"}: tools/list says which there are`);
         }
-        const args = params.arguments ?? {};
-        if (!isObject(args)) {
+        const given = params.arguments ?? {};
+        if (!isObject(given)) {
           return failure(rpcError.invalidParams, "arguments must be an object");
+        }
+        // A webhook handle this caller was shown is its URL again before the route reads it (#361).
+        const person = actorOf(c)!.person.id;
+        let args: Record<string, unknown>;
+        try {
+          args = keptWebhooks(given, person) as Record<string, unknown>;
+        } catch (err) {
+          if (err instanceof KeptRefused) {
+            return { result: { content: [{ type: "text", text: JSON.stringify({ error: err.message }) }], isError: true } };
+          }
+          throw err;
         }
         const call = toolCall(tool, args);
         const caps = readTools[tool.name] ? capsOf(args) : null;
@@ -217,7 +238,7 @@ export function mcpRoute(tools: McpTool[], run: (request: Request) => Response |
           headers.set("content-type", "application/json");
         }
         const res = await run(new Request(url, { method: call.method, headers, body: call.body }));
-        return { result: await asResult(res, tool, args, caps) };
+        return { result: await asResult(res, tool, args, caps, person) };
       }
       default:
         return failure(rpcError.methodNotFound, `No method ${method} here: Toposcope answers initialize, ping, tools/list and tools/call`);
