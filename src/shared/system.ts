@@ -3,8 +3,12 @@ import { formatBytesPair } from "./bytes";
 export type ProcessStats = {
   mem_used: number;
   mem_limit: number | null;
+  /** The filesystem the store is on, everything on it: for ClickHouse, its default disk. */
   disk_used: number | null;
   disk_total: number | null;
+  /** ClickHouse only: its active parts, every database, and the part that is its own system logs. */
+  stored: number | null;
+  stored_system: number | null;
   cpu: number | null;
   io_read: number | null;
   io_write: number | null;
@@ -111,12 +115,17 @@ export function clickhouseStatsFromMetrics(
     sample,
     finitePositive(metrics.get("CGroupMaxCPU")),
   );
+  const data = finiteNonNeg(metrics.get("PartsBytes"));
+  const system = finiteNonNeg(metrics.get("PartsBytesSystem"));
+  const stored = data == null && system == null ? null : (data ?? 0) + (system ?? 0);
   return {
     stats: {
       mem_used: memUsed,
       mem_limit: memLimit,
       disk_used: finiteNonNeg(metrics.get("DiskUsed_default")),
       disk_total: finitePositive(metrics.get("DiskTotal_default")),
+      stored,
+      stored_system: stored == null ? null : (system ?? 0),
       cpu: rates.cpu,
       io_read: rates.io_read,
       io_write: rates.io_write,

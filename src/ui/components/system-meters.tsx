@@ -37,7 +37,7 @@ function Chip({
     (isHighPressure(stats.mem_used, stats.mem_limit) ||
       (stats.disk_used != null &&
         isHighPressure(stats.disk_used, stats.disk_total)));
-  const aria = [label, mem, disk].filter(Boolean).join(" ");
+  const aria = [label, mem, disk ? `disk ${disk}` : null].filter(Boolean).join(" ");
 
   return (
     <Tooltip delayDuration={200}>
@@ -54,6 +54,7 @@ function Chip({
           {disk ? (
             <>
               <span className="opacity-50">·</span>
+              <span className="opacity-60">disk</span>
               <span>{disk}</span>
             </>
           ) : null}
@@ -70,8 +71,14 @@ function Chip({
         ) : (
           <>
             <p>Mem {formatBytesPair(stats.mem_used, stats.mem_limit)}</p>
+            {stats.stored != null ? (
+              <p>
+                Stored {formatBytes(stats.stored)}
+                {stats.stored_system ? ` · ${formatBytes(stats.stored_system)} its own logs` : ""}
+              </p>
+            ) : null}
             {showDisk && stats.disk_used != null ? (
-              <p>Disk {formatBytesPair(stats.disk_used, stats.disk_total)}</p>
+              <p>Disk {formatBytesPair(stats.disk_used, stats.disk_total)}, the whole filesystem</p>
             ) : null}
             {stats.cpu != null ? <p>CPU {formatCpuPercent(stats.cpu)}</p> : null}
             {stats.io_read != null && stats.io_write != null ? (

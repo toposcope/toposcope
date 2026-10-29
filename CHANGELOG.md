@@ -4,6 +4,12 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+**Before you upgrade:** ClickHouse now logs warnings and up, keeps its query, error and async insert logs 7 days, and no longer writes its text, trace, metric, part and processor logs, which on a busy install filled gigabytes of the data volume that Toposcope never reads. The tables it wrote before stay on disk until you drop them: once the new version is up, run the command under [ClickHouse's own logs](docs/operations.md#clickhouses-own-logs). The packaged `compose.yml` now carries that setting as a Compose config, which needs Docker Compose 2.23.1 or later. `upgrade.sh` backs up ClickHouse without its `system` database, keeps the last 2 backups instead of 3, and after an upgrade removes the Toposcope images that neither the running release, the one before it nor a kept backup uses.
+
+ClickHouse's disk is said for what it is. The footer's ClickHouse chip labels its second figure `disk`: it was, and is, the whole filesystem ClickHouse is on, not what ClickHouse holds. Its tooltip and Settings › Storage show what ClickHouse stores (its active parts) and how much of that is its own logs. `GET /api/system` gains `stored` and `stored_system` on `clickhouse` (null on `app`).
+
 ## 0.11.0
 
 **Before you upgrade:** a monitor saved with a token is now previewed first. A script that makes or changes monitors with `PUT /api/monitors/:name`, `POST /api/alert-rules` or `PUT /api/alert-rules/:id` must first send the same body, with the monitor's name in it (and `"saves": "create"` for `POST /api/alert-rules`; for a change by id, its id), to `POST /api/monitors/preview`, and save within 10 minutes, with a token of the same person or service account; without that the save answers 428 and says so. Saves in the app, and pausing or silencing, are as before; `PUT /api/monitors/:name` with only `enabled`, `silence_for` or `silenced_until` now pauses or silences the monitor and keeps its other fields, where it used to replace them with their defaults. `PUT /api/alert-rules/:id` now refuses a change of source on an HTTP(S), TCP or certificate monitor, as `PUT /api/monitors/:name` did. `PUT /api/home` now refuses a saved search that is not shared (400) or that the caller cannot see (404): Home is everyone's.

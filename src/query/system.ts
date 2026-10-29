@@ -39,6 +39,11 @@ WHERE event IN (
   'ReadBufferFromFileDescriptorReadBytes',
   'WriteBufferFromFileDescriptorWriteBytes'
 )
+UNION ALL
+SELECT if(database = 'system', 'PartsBytesSystem', 'PartsBytes') AS metric, toFloat64(sum(bytes_on_disk)) AS value
+FROM system.parts
+WHERE active
+GROUP BY metric
 `;
 
 const samples: { app?: CounterSample; clickhouse?: CounterSample } = {};
@@ -79,6 +84,8 @@ function collectApp(now: number): ProcessStats {
     mem_limit: memLimit,
     disk_used: sqliteBytes(),
     disk_total: null,
+    stored: null,
+    stored_system: null,
     cpu: rates.cpu,
     io_read: null,
     io_write: null,
