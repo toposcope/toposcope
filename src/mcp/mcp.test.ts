@@ -87,6 +87,7 @@ beforeAll(async () => {
       search_compare: { mark: "deploy-api-1", ...day },
       search_cut: { mark: "deploy-api-1", ...day },
       home_since: {},
+      home: {},
       fingerprint_seen: { hex: "a91f2c", ...day },
       traces_get: { trace_id: "0af7651916cd43dd8448eb211c80319c" },
       metric_series: { name: "http.requests", ...day },

@@ -9,6 +9,8 @@ import { bodyHash, monitorDraft } from "../design/preview-gate";
 import { designToolRouteIds } from "./tools";
 
 const root = join(import.meta.dir, "..");
+/** A webhook as MCP shows it (#361): its scheme and host, and its handle. */
+const kept = (origin: string) => new RegExp(`^${origin.replaceAll(".", "\\.")}/… kept:[0-9a-f]{12}$`);
 const fixture = mkdtempSync(join(tmpdir(), "toposcope-design-"));
 type Answer = { status: number; body: any };
 let r: Record<string, any>;
@@ -45,6 +47,8 @@ beforeAll(async () => {
     };
     const agent = bearer("agent", "operator");
     bearer("viewer", "viewer");
+    // An agent (#357): Home is everyone's, so it marks Home only where none is (#361).
+    as.claude = "Bearer " + people.createPersonToken(people.createAgent({ name: "claude", role: "operator" }).id, { name: "t" }).token;
     const answer = async (res) => {
       const text = await res.text();
       return { status: res.status, body: text.startsWith("{") || text.startsWith("[") ? JSON.parse(text) : text };
@@ -115,6 +119,7 @@ beforeAll(async () => {
     out.change = await call("agent", "monitor_put", { name, body: { ...monitor, threshold: 500 } });
     out.undoChange = await call("agent", out.change.body.undo.tool, out.change.body.undo.arguments);
     out.afterUndoChange = await call("agent", "monitor_get", { name });
+    out.afterUndoChangeApi = await api("agent", "GET", "/api/monitors/" + encodeURIComponent(name));
     // Pausing or silencing is not a design: no preview.
     out.pause = await api("agent", "PUT", "/api/alert-rules/" + out.again.body.id, { enabled: false });
     // A change by id with a token is held too; its preview names the id.
@@ -191,7 +196,18 @@ beforeAll(async () => {
       { id: "b", kind: "hbar", x: 0, y: 4, w: 6, h: 3, split: "service", n: 5 },
     ] };
     const home = await api("agent", "POST", "/api/saved-searches", { name: "home " + tag, query: "service:api", range: "1h", widgets: homeLayout });
-    await api("agent", "PUT", "/api/home", { saved_id: home.body.id });
+    // Marked Home through MCP (#361), with the call that puts Home back.
+    out.homeRead = await call("claude", "home", {});
+    const mine = await api("claude", "POST", "/api/saved-searches", { name: "mine " + tag, query: "service:api", range: "1h", shared: false });
+    const theirs = await api("agent", "POST", "/api/saved-searches", { name: "theirs " + tag, query: "service:api", range: "1h", shared: false });
+    out.homeCannotSee = await call("claude", "home_set", { body: { saved_id: theirs.body.id } });
+    out.homeUnshared = await call("claude", "home_set", { body: { saved_id: mine.body.id } });
+    out.homeSet = await call("claude", "home_set", { body: { saved_id: home.body.id } });
+    out.homeReadAfter = await call("claude", "home", {});
+    const other = await api("agent", "POST", "/api/saved-searches", { name: "other " + tag, query: "service:api", range: "1h" });
+    out.homeOverAgent = await call("claude", "home_set", { body: { saved_id: other.body.id } });
+    out.homeUnmarkAgent = await call("claude", "home_set", { body: { saved_id: null } });
+    out.homeStill = await call("claude", "home", {});
     out.homeBefore = (await api("agent", "GET", "/api/saved-searches")).body.searches.find((s) => s.id === home.body.id).widgets;
     out.panelPreview = await call("agent", "panel_preview", { id: "home", body: { kind: "stat", agg: "count" } });
     out.hbarPreview = await call("agent", "panel_preview", { id: "home", body: { kind: "hbar", split: "level", n: 3 } });
@@ -202,6 +218,14 @@ beforeAll(async () => {
     out.undoAdd = await call("agent", out.panelAdd.body.undo.tool, out.panelAdd.body.undo.arguments);
     out.homeAfter = (await api("agent", "GET", "/api/saved-searches")).body.searches.find((s) => s.id === home.body.id).widgets;
     out.pinnedMove = await call("agent", "panel_put", { id: "home", panel: "a", body: { x: 3 } });
+    // Someone marks another Home: the agent's undo leaves theirs alone, and says so.
+    await api("agent", "PUT", "/api/home", { saved_id: other.body.id });
+    out.homeUndoMoved = await call("claude", out.homeSet.body.undo.tool, out.homeSet.body.undo.arguments);
+    out.homeAfterMoved = await call("claude", "home", {});
+    await api("agent", "PUT", "/api/home", { saved_id: home.body.id });
+    out.homeUndo = await call("claude", out.homeSet.body.undo.tool, out.homeSet.body.undo.arguments);
+    out.homeReadUndone = await call("claude", "home", {});
+    await api("agent", "PUT", "/api/home", { saved_id: home.body.id });
 
     // A field's role, one at a time, and put back.
     const key = "design_" + tag;
@@ -231,6 +255,7 @@ beforeAll(async () => {
       panel_add: { id: "home", body: { kind: "stat" } },
       panel_put: { id: "home", panel: "b", body: { x: 6 } },
       panel_remove: { id: "home", panel: "b" },
+      home_set: { body: { saved_id: null } },
       field_role_set: { key, body: { role: "ignore" } },
       note_write: { body: { title: "no" } },
       note_delete: { id: out.note.body.id },
@@ -335,9 +360,12 @@ describe("design tools (#360)", () => {
     expect(r.change.body.threshold).toBe(500);
     expect(r.change.body.undo.tool).toBe("monitor_put");
     expect(r.change.body.undo.arguments.body).toMatchObject({ source: "search", threshold: 300, service: "api", saved_search_id: r.searchSaved.body.id });
+    // A webhook is never shown whole through MCP (#361): the undo carries its handle, and puts back the URL.
+    expect(r.change.body.undo.arguments.body.webhook_urls).toEqual([expect.stringMatching(kept("https://hooks.example.com"))]);
     expect(r.undoChange.isError).toBe(false);
     expect(r.afterUndoChange.body.threshold).toBe(300);
-    expect(r.afterUndoChange.body.webhook_urls).toEqual(["https://hooks.example.com/page"]);
+    expect(r.afterUndoChange.body.webhook_urls).toEqual([expect.stringMatching(kept("https://hooks.example.com"))]);
+    expect(r.afterUndoChangeApi.body.webhook_urls).toEqual(["https://hooks.example.com/page"]);
   });
 
   test("a pause needs no preview; a change by id is held, and its preview names the id", () => {
@@ -393,6 +421,34 @@ describe("design tools (#360)", () => {
     expect(r.pinnedMove.isError).toBe(true);
   });
 
+  test("Home is read and marked through MCP, and the mark is undone by the call it answered with (#361)", () => {
+    expect(r.homeRead.body).toEqual({ saved_id: null });
+    expect(r.homeUnshared.isError).toBe(true);
+    expect(r.homeUnshared.body.error).toBe("Home is everyone's: only a shared saved search can be Home. Share it first");
+    expect(r.homeSet.isError).toBe(false);
+    expect(r.homeSet.body).toMatchObject({ saved_id: r.homeReadAfter.body.saved_id, link: "/?view=home" });
+    expect(r.homeSet.body.undo).toEqual({
+      tool: "home_set",
+      arguments: { body: { saved_id: null, if_home: r.homeReadAfter.body.saved_id } },
+      does: "Unmarks Home, as it was before, if Home is still what this marked",
+    });
+    expect(r.homeReadAfter.body.saved_id).not.toBeNull();
+    // Marked already: an agent neither moves Home nor unmarks it.
+    expect(r.homeOverAgent.isError).toBe(true);
+    expect(r.homeOverAgent.body.error).toContain("an agent marks Home only where none is marked");
+    expect(r.homeUnmarkAgent.isError).toBe(true);
+    expect(r.homeStill.body.saved_id).toBe(r.homeReadAfter.body.saved_id);
+    // Someone changed Home since: the undo does nothing, and says so.
+    expect(r.homeUndoMoved.isError).toBe(true);
+    expect(r.homeUndoMoved.body.error).toContain("it was left as it is");
+    expect(r.homeAfterMoved.body.saved_id).not.toBe(r.homeReadAfter.body.saved_id);
+    expect(r.homeAfterMoved.body.saved_id).not.toBeNull();
+    expect(r.homeUndo.isError).toBe(false);
+    expect(r.homeReadUndone.body).toEqual({ saved_id: null });
+    // A saved search the caller cannot see is not one it can make Home.
+    expect(r.homeCannotSee.body.error).toBe("Saved search not found");
+  });
+
   test("a field's role is set alone, and put back", () => {
     const key = r.role.body.key;
     expect(r.role.body).toMatchObject({ role: "lookup", was: "chart", link: "/?view=fields" });
@@ -444,7 +500,7 @@ describe("the security review's cases (#360)", () => {
     expect(r.pushAfterPause.body.enabled).toBe(0);
     expect(r.pushAfterPause.body.every_ms).toBe(86_400_000);
     expect(r.pushAfterPause.body.grace_ms).toBe(3_600_000);
-    expect(r.pushAfterPause.body.webhook_url).toBe("https://hooks.example.com/backup");
+    expect(r.pushAfterPause.body.webhook_url).toMatch(kept("https://hooks.example.com"));
     expect(r.pushPause.body.undo).toMatchObject({ tool: "monitor_put", arguments: { body: { enabled: true } } });
     expect(r.pushUnpause.isError).toBe(false);
     expect(r.pushAfterUnpause.body.enabled).toBe(1);

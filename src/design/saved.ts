@@ -1,6 +1,7 @@
 import type { Context, Handler } from "hono";
 import { actorOf } from "../actor-context";
 import { applyHistogramCountRefuse, seriesFromSearch } from "../alerts/series";
+import { homeSavedId } from "../control/home";
 import { getSaved, parseSavedFields, pinnedFor, type SavedSearch } from "../control/saved-searches";
 import { search } from "../query";
 import { InvalidAggError } from "../query/agg";
@@ -117,4 +118,30 @@ export async function savedPreviewRoute(c: Context): Promise<Response> {
     }
     throw err;
   }
+}
+
+/**
+ * `PUT /api/home`, answering with Home's link and the call that puts Home back (#361): marking a
+ * saved search Home is how an agent's panels reach Home on an instance where none is marked yet.
+ */
+export function homeSetWithUndo(handler: Handler): Handler {
+  return async (c, next) => {
+    const before = homeSavedId();
+    const res = await handler(c, next);
+    if (!(res instanceof Response)) {
+      return res;
+    }
+    return answerWith(res, async () => {
+      // Only while Home is still what this made it: a Home someone changed since is left alone.
+      const after = ((await res.clone().json()) as { saved_id: string | null }).saved_id;
+      return {
+        link: "/?view=home",
+        undo: {
+          tool: "home_set",
+          arguments: { body: { saved_id: before, if_home: after } },
+          does: before === null ? "Unmarks Home, as it was before, if Home is still what this marked" : "Marks Home the saved search that was Home before, if Home is still what this marked",
+        },
+      };
+    });
+  };
 }

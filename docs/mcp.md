@@ -47,6 +47,7 @@ Today's tools:
 | `marks` | Deploys, flags, incidents and notes in a window. |
 | `attr_keys`, `attr_values`, `numeric_keys`, `facets` | The attribute keys, one key's values, the numeric keys, and the top services, hosts, levels and fingerprints. |
 | `saved_searches`, `saved_search_run` | The saved searches, and one run over its own window. |
+| `home` | The saved search marked Home, if any. |
 | `saved_search_test` | For an Operator: a saved search read as a monitor would now. |
 
 ### What a tool answers
@@ -80,6 +81,7 @@ What an Operator makes, each with its preview (#360). A preview stores nothing a
 | A saved search | `saved_search_preview`: its rows, its series' value and a few rows over its window | `saved_search_create`, `saved_search_update` | `saved_search_delete`, or `saved_search_update` with the body it had |
 | A monitor of any kind: rows, share of rows, fewer than, HTTP(S), TCP, certificate, push, new fingerprints | `monitor_draft_preview`: where it would have opened and resolved over the last 7 days; `monitor_send` runs an HTTP(S), TCP or certificate check once; `saved_search_test` reads a saved search as a monitor would now | `monitor_put` | `monitor_delete`, or `monitor_put` with the body it had |
 | A panel on a saved search's canvas (`home` for the one marked Home) | `panel_preview`: the series it would draw | `panel_add`, `panel_put` (move, resize or change one) | `panel_remove`, or `saved_search_update` with the panels as they were |
+| Home: which saved search it is | `home` | `home_set` | `home_set` with the saved search that was Home, or null, and `if_home` |
 | A field's role | | `field_role_set` (one field; the rest stay) | `field_role_set` with the role it had |
 | A note on the clock | | `note_write` | `note_delete` |
 
@@ -90,6 +92,10 @@ Every write answers with `id`, `link` (where it is in the app, a path on this in
 Not held: a browser session, since the person is in the editor; a body that only pauses or silences (`enabled`, `silence_for`, `silenced_until`) on a change by id, or on `monitor_put` to a monitor that exists, which then pauses or silences it and keeps every other field; and, for 10 minutes, the `undo` a change answered with, which puts back a body that was. A push, HTTP(S), TCP, certificate or new-fingerprints monitor has no past to draw: its preview still counts, and says why it drew nothing and what to call instead.
 
 An HTTP(S) monitor's header values are never shown back, so its undo gives each header still stored as null, which keeps the value stored now; a header the change removed is left out. When the change altered headers, the undo's `does` says so: set those values again by hand.
+
+**Home is everyone's.** `home_set` marks a shared saved search the caller can see, never a private one. An agent's token (#357) marks Home only where none is marked, and unmarks it only with its own undo. With `if_home`, the call changes Home only while Home is still that saved search, or none for null; otherwise it answers 409 and leaves Home as it is. `home_set`'s undo carries `if_home`, so it never takes back a Home someone changed since.
+
+**A webhook is never shown whole.** A webhook's URL is its credential: whoever holds a Slack or Discord URL can post there. In a tool's answer, each `webhook_url` and `webhook_urls` entry is its scheme and host and a handle, such as `https://hooks.slack.com/… kept:3f9a2c1b7d4e`. A stored webhook's URL anywhere else in an answer, a refusal or a call's error, is its scheme and host alone. The same caller can give a handle back in any tool's arguments, and the instance reads it as the URL. So a preview and its save match, and an undo puts back the webhook it replaced. Handles are kept in the process, as previews are: after a restart a handle is refused, with the sentence to give the webhook again. The HTTP API answers as before.
 
 Not here: deleting in bulk, and anything an Owner does (people, roles, tokens, sign-in, retention, shares and links).
 

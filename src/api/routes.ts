@@ -67,7 +67,7 @@ import { version } from "../shared/version";
 import { monitorDraftPreviewRoute, monitorPutWithUndo, previewedCreate, previewedPut, previewedUpdate } from "../design/monitors";
 import { deleteNoteRoute, putFieldRoleRoute, writeNoteRoute } from "../design/notes-fields";
 import { addPanelRoute, previewPanelRoute, putPanelRoute, removePanelRoute } from "../design/panels";
-import { savedCreateWithUndo, savedPreviewRoute, savedUpdateWithUndo } from "../design/saved";
+import { homeSetWithUndo, savedCreateWithUndo, savedPreviewRoute, savedUpdateWithUndo } from "../design/saved";
 import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
 import { settingsBody, signInSettingsBody } from "./schemas/settings";
@@ -123,7 +123,7 @@ export const apiRoutes: ApiRoute[] = [
   // Home and saved searches
   { id: "home", method: "GET", path: "/api/home", area: "Saved searches", action: "read", summary: "The saved search marked Home, if any.", query: null, body: null, handler: getHome },
   { id: "home_since", method: "GET", path: "/api/home/since", area: "Saved searches", action: "read", summary: "What changed since a mark or in the last hour: new fingerprints, monitors that opened, marks.", query: homeSinceQuery, body: null, handler: homeSinceRoute },
-  { id: "home_set", method: "PUT", path: "/api/home", area: "Saved searches", action: "change monitors", summary: "Mark a saved search Home, or unmark it.", query: null, body: homeBody, handler: putHome },
+  { id: "home_set", method: "PUT", path: "/api/home", area: "Saved searches", action: "change monitors", summary: "Mark a saved search Home, or unmark it; the answer has the call that puts Home back.", query: null, body: homeBody, handler: homeSetWithUndo(putHome) },
   { id: "saved_searches", method: "GET", path: "/api/saved-searches", area: "Saved searches", action: "read", summary: "The saved searches the caller may see, with their pins.", query: null, body: null, handler: listSavedSearches },
   // Design tools (#360): what a search finds before it is saved; each save answers with its link and its undo.
   { id: "saved_search_preview", method: "POST", path: "/api/saved-searches/preview", area: "Saved searches", action: "own hunts", summary: "What a saved search would find over its window, before it is saved: its rows, its series' value and a few rows.", query: null, body: savedUpdateBody, handler: savedPreviewRoute },

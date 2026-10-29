@@ -40,6 +40,8 @@ export function designToolRouteIds(): string[] {
     "field_role_set",
     "note_write",
     "note_delete",
+    // Marks a saved search Home, where none is marked yet (#361).
+    "home_set",
   ];
 }
 
@@ -73,6 +75,8 @@ export const toolRouteIds: string[] = [
   // End of the read tools (#359).
   // ---- Design tools (#360): keep them in designToolRouteIds below. ----
   ...designToolRouteIds(),
+  // Home (#361): which saved search is Home, so the skill's panels can go on it.
+  "home",
 ];
 
 /** The tool for a route. A path param, a query key and `body` share one namespace, so a clash throws. */
