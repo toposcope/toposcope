@@ -196,17 +196,33 @@ Both sides behind NAT is for the operator's VPN; Toposcope runs no relay.
 
 ## Memory
 
-An instance that is doing nothing still takes memory, and almost all of it is ClickHouse: it fills its own caches and system tables whether or not anything arrives, then levels off. Plan for about 2 GB for an idle instance.
+Almost all of an instance's memory is ClickHouse; the app stays near 30 MiB. Out of the box ClickHouse is sized for a large shared server whatever it runs on: 512 scheduler threads, merge pools of 16, and caches of 5 to 8 GiB each. So the packaged `compose.yml` starts it through a short script, the `clickhouse_size` config at its end, which reads the CPUs and memory ClickHouse may use at every start and sizes it to them:
 
-Measured with `docker stats` on an empty 0.4.10 instance, with no ingest and no searches:
+- **Memory budget:** 80% of ClickHouse's container limit when `.env` sets one, else half of the machine's memory. Past it ClickHouse refuses a query or an insert instead of being killed; ingest then answers 429 and senders retry.
+- **Caches:** the mark cache an eighth of the budget, the primary index, index mark, uncompressed and text index postings caches a sixteenth each, the text index token and header caches a thirty-second each.
+- **Threads:** merges as many as the CPUs (2 to 16), the scheduler four per CPU (16 to 128), and one each for the pools a single node does not use (fetches, moves, distributed, message brokers).
 
-| Minutes since ready | 0 | 5 | 10 | 15 | 20 | 30 | 40 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| ClickHouse, GiB | 0.66 | 1.25 | 1.51 | 1.70 | 1.70 | 1.60 | 1.75 |
+It writes these to `/etc/clickhouse-server/config.d/toposcope-size.xml` inside the container, whose first line says what it found. To see it:
 
-The app stayed near 30 MiB throughout. A second run, stopped at ten minutes, climbed more slowly: 0.25 GiB at ready and 0.71 GiB at ten minutes. Both ran arm64 images on Docker Desktop.
+```bash
+docker compose exec clickhouse head -1 /etc/clickhouse-server/config.d/toposcope-size.xml
+```
 
-The packaged Compose file lets ClickHouse use up to 4 GB and the app up to 512 MB.
+There is no cap by default. To give ClickHouse less, set it in `.env` and run `docker compose up -d`; the budget follows:
+
+```bash
+CLICKHOUSE_MEMORY=2G
+CLICKHOUSE_CPUS=2
+```
+
+Measured with `docker stats` on empty instances, with no ingest and no searches, ClickHouse 26.3 on Docker Desktop (arm64, 8 CPUs, 16 GB), side by side:
+
+| Minutes since ready | 0 | 10 | 20 | 30 |
+| --- | --- | --- | --- | --- |
+| Sized at start, no cap, MiB | 128 | 158 | 169 | 177 |
+| Before (0.11 with its log settings, 2 CPU / 4 GB cap), MiB | 227 | 279 | 305 | 319 |
+
+Sized, ClickHouse ran 121 threads; before, 655, and its memory was still rising at 30 minutes. Under steady ingest (50 senders, 5 lines a request, two minutes, both capped at 2 CPUs and 4 GB) the sized ClickHouse stored the same rows with 618 MiB against 922 MiB and used 13% less CPU.
 
 ## ClickHouse's own logs
 
