@@ -209,7 +209,7 @@ export function fakeLogsInsertSql(
   count: number,
   opts: GenerateOpts,
 ): string {
-  return `INSERT INTO logs (tenant_id, ts, service, host, level, message, attrs, attr_map, trace_id)
+  return `INSERT INTO logs (tenant_id, ts, service, host, level, message, attr_map, trace_id)
 SELECT
   'default',
   ts,
@@ -217,7 +217,6 @@ SELECT
   host,
   level,
   message,
-  toJSONString(attr_map),
   attr_map,
   request_id
 FROM (
