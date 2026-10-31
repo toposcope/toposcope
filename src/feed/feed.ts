@@ -271,7 +271,7 @@ export async function readFeed(input: {
     try {
       rows = await clickhouseQuery<FeedSqlRow>(
         `
-        SELECT seq, ts, service, host, level, message, attrs, toposcope, src_id, src_seq
+        SELECT seq, ts, service, host, level, message, toJSONString(attr_map) AS attrs, toposcope, src_id, src_seq
         FROM logs
         WHERE ${where.join(" AND ")}
         ORDER BY seq

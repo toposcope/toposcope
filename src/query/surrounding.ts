@@ -113,7 +113,7 @@ async function fetchSurroundingSides(
   whereSql: string,
   params: Record<string, string>,
 ): Promise<SurroundingResult> {
-  const select = "SELECT ts, service, host, level, message, attrs FROM logs";
+  const select = "SELECT ts, service, host, level, message, toJSONString(attr_map) AS attrs FROM logs";
   const [beforeRows, afterRows] = await Promise.all([
     clickhouseQuery<LogRow>(
       `

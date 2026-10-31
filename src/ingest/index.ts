@@ -55,7 +55,6 @@ export async function insertEvents(events: LogEvent[], losses?: Losses): Promise
             host: event.host ?? "",
             level: event.level,
             message: event.message,
-            attrs: JSON.stringify(attr_map),
             attr_map,
             trace_id: pickTraceId(attr_map),
             seq: seq.from + i,

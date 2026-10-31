@@ -6,6 +6,10 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+**Before you upgrade:** log rows no longer store a JSON copy of their attributes in `logs.attrs`, only `attr_map`, which Search, the feed and context now read. The column stays, and the copies already in it age out with retention; nothing is dropped. Going back to 0.11.1 is safe, but there a row stored by this release shows no attributes, though searches and facets on them still find it.
+
+Logs take about two thirds less disk. Every log row stored its attributes twice, as `attr_map` and as the same pairs in JSON, and the two were three quarters of `logs`; the JSON copy is no longer written. On 500k generated rows, with the codecs below, `logs` held 18 MiB instead of 51 MiB.
+
 Logs take about half the disk. The columns that hold the most are compressed with ZSTD instead of ClickHouse's default LZ4, and the times and arrival numbers are stored as deltas: on 500k generated rows, `logs` held 28 MiB instead of 51 MiB and the attribute-values rollup 10 MiB instead of 15 MiB, with searches no slower. Each start sets the codecs where they differ, which changes no stored row: parts written after it are smaller at once, and older parts as ClickHouse merges them. Real logs compress differently from generated ones. [Compression](docs/ARCHITECTURE.md#compression) lists the columns.
 
 ## 0.11.1

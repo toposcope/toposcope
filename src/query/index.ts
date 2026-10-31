@@ -259,7 +259,7 @@ async function fetchLogPage(
     ? numericScanSettings
     : `SETTINGS max_execution_time = ${Number.isFinite(timeoutSec) ? Math.max(1, Math.trunc(timeoutSec)) : 30}`;
   const query = `
-    SELECT ts, service, host, level, message, attrs, seq, toposcope
+    SELECT ts, service, host, level, message, toJSONString(attr_map) AS attrs, seq, toposcope
     FROM logs
     WHERE ${sql}
     ORDER BY ts DESC, seq DESC
