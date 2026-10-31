@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+Logs take about half the disk. The columns that hold the most are compressed with ZSTD instead of ClickHouse's default LZ4, and the times and arrival numbers are stored as deltas: on 500k generated rows, `logs` held 28 MiB instead of 51 MiB and the attribute-values rollup 10 MiB instead of 15 MiB, with searches no slower. Each start sets the codecs where they differ, which changes no stored row: parts written after it are smaller at once, and older parts as ClickHouse merges them. Real logs compress differently from generated ones. [Compression](docs/ARCHITECTURE.md#compression) lists the columns.
+
 ## 0.11.1
 
 **Before you upgrade:** ClickHouse now logs warnings and up, keeps its query, error and async insert logs 7 days, and no longer writes its text, trace, metric, part and processor logs, which on a busy install filled gigabytes of the data volume that Toposcope never reads. The tables it wrote before stay on disk until you drop them: once the new version is up, run the command under [ClickHouse's own logs](docs/operations.md#clickhouses-own-logs). The packaged `compose.yml` now carries that setting as a Compose config, which needs Docker Compose 2.23.1 or later. `upgrade.sh` backs up ClickHouse without its `system` database, keeps the last 2 backups instead of 3, and after an upgrade removes the Toposcope images that neither the running release, the one before it nor a kept backup uses. ClickHouse is no longer capped at 2 CPUs and 4 GB: it sizes itself from what it may use at every start and takes at most half the machine's memory. To keep a cap, set `CLICKHOUSE_MEMORY` (and `CLICKHOUSE_CPUS`) in `.env`. The packaged `compose.yml` starts ClickHouse through a sizing script, so a `compose.override.yml` that sets ClickHouse's `entrypoint` replaces it.
