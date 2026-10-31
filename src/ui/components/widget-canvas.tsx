@@ -91,6 +91,8 @@ export type SeriesData = {
 };
 
 type Props = {
+  /** What matched and when (33d): drawn at the top of the pinned plot. */
+  head?: ReactNode;
   widgets: WidgetDef[];
   logs: boolean;
   onWidgets: (next: WidgetDef[]) => void;
@@ -189,6 +191,7 @@ function ResizeHandle({
 }
 
 export function WidgetCanvas({
+  head,
   widgets,
   logs,
   onWidgets,
@@ -1039,6 +1042,7 @@ export function WidgetCanvas({
                   numericKeys={numericKeys}
                   metricNames={metricNames}
                   updated={updated}
+                  head={head}
                   editor={editorFor(widget)}
                   lineInfo={legendInfo(linesOf(widget))}
                   compactToolbar={widget.w < 8}

@@ -118,6 +118,8 @@ type Props = {
   numericKeys: string[];
   metricNames: string[];
   updated?: ReactNode;
+  /** What matched and when (33d), above the toolbar inside the card. */
+  head?: ReactNode;
   /** The panel's own editor (#169): its lines, their names, its title and note. */
   editor?: ReactNode;
   /** What each drawn line is (#169, 17f): its metric, its labels, what its sender said. */
@@ -410,6 +412,7 @@ export function HistogramChart({
   onReplaceY,
   aggResult,
   updated = null,
+  head = null,
   editor = null,
   lineInfo,
   className,
@@ -1159,6 +1162,7 @@ export function HistogramChart({
 
   return (
     <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card", className)}>
+      {head}
       <div
         className={cn(
           "flex items-center gap-x-3 gap-y-2 border-b border-white/[0.08] bg-background/45 px-3 py-2",

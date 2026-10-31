@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 33d */
+[data-frame="33d"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33d"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33d"] .mu{color:#a1a1aa}
+[data-frame="33d"] .k{color:#7dd3fc}
+[data-frame="33d"] .btn{height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.12);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+  /* 33m */
+[data-frame="33m"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33m"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33m"] .mu{color:#a1a1aa}
+[data-frame="33m"] .k{color:#7dd3fc}
+[data-frame="33m"] .btn{height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.12);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+  /* 33n */
+[data-frame="33n"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33n"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33n"] .mu{color:#a1a1aa}
+[data-frame="33n"] .k{color:#7dd3fc}
+[data-frame="33n"] .btn{height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.12);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+  /* 33o */
+[data-frame="33o"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33o"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33o"] .mu{color:#a1a1aa}
+[data-frame="33o"] .k{color:#7dd3fc}
+[data-frame="33o"] .btn{height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.12);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+  /* 33i */
+[data-frame="33i"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33i"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33i"] .mu{color:#a1a1aa}
+[data-frame="33i"] .btn{height:32px;padding:0 12px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:7px}
+  /* 33j */
+[data-frame="33j"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33j"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33j"] .mu{color:#a1a1aa}
+[data-frame="33j"] .btn{height:32px;padding:0 12px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:7px}
+  /* 33k */
+[data-frame="33k"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33k"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33k"] .mu{color:#a1a1aa}
+[data-frame="33k"] .k{color:#7dd3fc}
+[data-frame="33k"] .btn{height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.12);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+  /* 33l */
+[data-frame="33l"] .r{background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px}
+[data-frame="33l"] .m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="33l"] .mu{color:#a1a1aa}
+[data-frame="33l"] .k{color:#7dd3fc}
+[data-frame="33l"] .btn{height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.12);border-radius:6.4px;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Window And Outage</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 33d–33l · The plot head (33d, 33m–33o) and the outage states (33i–33l), approved 2026-11-01</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">The plot head: what matched and when (33d, 33m–33o)</h2>
+
+    <div id="33d" data-frame="33d" data-screen-label="33d C: no strip, the plot head carries it" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">C: no strip, the plot head carries it</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×330</span>
+      </div>
+      <div data-crop="33d" style="position:relative; width:1440px; height:330px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:330px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 20px">
+    <button class="btn" type="button">Last 1h</button><button class="btn" type="button">Live</button>
+    <span style="flex:1"></span><button class="btn" type="button">Save</button><button class="btn" type="button">Share</button><button class="btn" type="button">+ panel</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:0 20px">
+    <div class="m" style="flex:1;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;display:flex;align-items:center;padding:0 12px;gap:10px;font-size:13px">
+      <span class="mu">⌕</span><span><span class="k">level:</span>error OR <span class="k">level:</span>fatal <span class="k">status:</span>5*</span>
+    </div>
+    <span class="m mu" style="font-size:12px">251 ms</span>
+  </div>
+  <div style="flex:1;margin:14px 20px 0;border:1px solid rgba(255,255,255,.1);border-bottom:none;border-radius:6.4px 6.4px 0 0;background:#111113;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:baseline;gap:8px;padding:12px 14px 0">
+      <span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums">830</span>
+      <span class="mu" style="font-size:13px">matching</span>
+      <span style="flex:1"></span>
+      <span class="m mu" style="font-size:12px">20:45:34 → 21:45:34 UTC · 1m bars</span>
+    </div>
+    <div style="flex:1;display:flex;align-items:flex-end;gap:3px;padding:10px 14px 0">
+      <sc-for list="{{f33d_bars}}" as="b" hint-placeholder-count="60"><div style="flex:1;height:{{b.h}}px;background:#c2410c;border-radius:1px 1px 0 0"></div></sc-for>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="33m" data-frame="33m" data-screen-label="33m C in Live" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33m" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33m</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">C in Live</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×330</span>
+      </div>
+      <div data-crop="33m" style="position:relative; width:1440px; height:330px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:330px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 20px">
+    <button class="btn" type="button">Last 1h</button><button class="btn" type="button" style="border-color:rgba(14,165,233,.5)"><span style="width:6px;height:6px;border-radius:50%;background:#0ea5e9"></span>Live</button>
+    <span style="flex:1"></span><button class="btn" type="button">Save</button><button class="btn" type="button">Share</button><button class="btn" type="button">+ panel</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:0 20px">
+    <div class="m" style="flex:1;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;display:flex;align-items:center;padding:0 12px;gap:10px;font-size:13px">
+      <span class="mu">⌕</span><span><span class="k">level:</span>error OR <span class="k">level:</span>fatal <span class="k">status:</span>5*</span>
+    </div>
+    <span class="m mu" style="font-size:12px">251 ms</span>
+  </div>
+  <div style="flex:1;margin:14px 20px 0;border:1px solid rgba(255,255,255,.1);border-bottom:none;border-radius:6.4px 6.4px 0 0;background:#111113;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:baseline;gap:8px;padding:12px 14px 0">
+      <span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums">834</span>
+      <span class="mu" style="font-size:13px">matching</span>
+      <span style="flex:1"></span>
+      <span style="font-size:12px;color:#7dd3fc">Live</span>
+      <span class="m mu" style="font-size:12px">20:46:12 → now UTC · 1m bars</span>
+    </div>
+    <div style="flex:1;display:flex;align-items:flex-end;gap:3px;padding:10px 14px 0">
+      <sc-for list="{{f33m_bars}}" as="b" hint-placeholder-count="60"><div style="flex:1;height:{{b.h}}px;background:#c2410c;border-radius:1px 1px 0 0"></div></sc-for>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="33n" data-frame="33n" data-screen-label="33n C on a custom window + saved hunt" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33n" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33n</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">C on a custom window + saved hunt</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×330</span>
+      </div>
+      <div data-crop="33n" style="position:relative; width:1440px; height:330px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:330px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 20px">
+    <button class="btn" type="button">20:58:10 → 21:06:40</button><button class="btn" type="button">Live</button>
+    <span style="flex:1"></span><button class="btn" type="button">Save</button><button class="btn" type="button">Share</button><button class="btn" type="button">+ panel</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:0 20px">
+    <div class="m" style="flex:1;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;display:flex;align-items:center;padding:0 12px;gap:10px;font-size:13px">
+      <span class="mu">⌕</span><span><span class="k">level:</span>error OR <span class="k">level:</span>fatal <span class="k">status:</span>5*</span>
+    </div>
+    <span class="m mu" style="font-size:12px">88 ms</span>
+  </div>
+  <div style="flex:1;margin:14px 20px 0;border:1px solid rgba(255,255,255,.1);border-bottom:none;border-radius:6.4px 6.4px 0 0;background:#111113;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 0">
+      <span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums">214</span>
+      <span class="mu" style="font-size:13px">matching</span>
+      <span style="font-size:12px;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:2px 10px;background:rgba(255,255,255,.04);margin-left:6px">Saved · 5xx on api</span>
+      <span style="flex:1"></span>
+      <span style="font-size:12px;color:#fbbf24">Custom · 8m 30s</span>
+      <span class="m mu" style="font-size:12px">20:58:10 → 21:06:40 UTC · 10s bars</span>
+      <button class="btn" type="button" style="height:24px;font-size:12px;margin-left:4px">↺ Reset to last hour</button>
+    </div>
+    <div style="flex:1;display:flex;align-items:flex-end;gap:3px;padding:10px 14px 0">
+      <sc-for list="{{f33n_bars}}" as="b" hint-placeholder-count="51"><div style="flex:1;height:{{b.h}}px;background:#c2410c;border-radius:1px 1px 0 0"></div></sc-for>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="33o" data-frame="33o" data-screen-label="33o C refused" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33o" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33o</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">C refused</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×330</span>
+      </div>
+      <div data-crop="33o" style="position:relative; width:1440px; height:330px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:330px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 20px">
+    <button class="btn" type="button">Last 365d</button><button class="btn" type="button">Live</button>
+    <span style="flex:1"></span><button class="btn" type="button">Save</button><button class="btn" type="button">Share</button><button class="btn" type="button">+ panel</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:0 20px">
+    <div class="m" style="flex:1;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;display:flex;align-items:center;padding:0 12px;gap:10px;font-size:13px">
+      <span class="mu">⌕</span><span>timeout <span class="k">duration_ms:</span>&gt;2000</span>
+    </div>
+    <span class="m mu" style="font-size:12px">1.9 s</span>
+  </div>
+  <div style="flex:1;margin:14px 20px 0;border:1px dashed rgba(255,255,255,.12);border-bottom:none;border-radius:6.4px 6.4px 0 0;background:#0d0d0f;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:baseline;gap:8px;padding:12px 14px 0">
+      <span class="mu" style="font-size:20px;font-weight:600">—</span>
+      <span style="font-size:13px;color:#fbbf24">too wide to count · narrow the window or add a service: filter</span>
+      <span style="flex:1"></span>
+      <span class="m mu" style="font-size:12px">2025-10-31 21:45 → 2026-10-31 21:45 UTC · 7d bars</span>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center">
+      <span class="mu" style="font-size:12.5px">No chart — the scan was refused before it read too much.</span>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">When the app or ClickHouse is down (33i–33l)</h2>
+
+    <div id="33i" data-frame="33i" data-screen-label="33i app unreachable, retrying" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33i" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33i</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">app unreachable, retrying</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="33i" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:900px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:36px;padding:40px">
+    <div style="display:flex;align-items:center">
+      <div style="width:168px;height:84px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:#111113;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        <span style="font-size:13px">This browser</span>
+        <span class="m" style="font-size:11.5px;color:#4ade80">online</span>
+      </div>
+      <div style="width:150px;display:flex;align-items:center;justify-content:center;position:relative">
+        <div style="width:58px;border-top:2px dashed #f87171"></div>
+        <div style="width:26px;height:26px;border-radius:50%;border:1px solid #f87171;background:#1c0c0c;color:#f87171;display:flex;align-items:center;justify-content:center;font-size:13px;margin:0 4px">✕</div>
+        <div style="width:58px;border-top:2px dashed #f87171"></div>
+      </div>
+      <div style="width:168px;height:84px;border:1px solid rgba(248,113,113,.55);border-radius:10px;background:#140b0b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        <span style="font-size:13px">toposcope app</span>
+        <span class="m" style="font-size:11.5px;color:#f87171">no answer</span>
+      </div>
+      <div style="width:150px;display:flex;align-items:center;justify-content:center">
+        <div style="width:120px;border-top:2px dotted rgba(255,255,255,.18)"></div>
+      </div>
+      <div style="width:168px;height:84px;border:1px dashed rgba(255,255,255,.16);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        <span class="mu" style="font-size:13px">ClickHouse</span>
+        <span class="m mu" style="font-size:11.5px">unknown from here</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;max-width:640px;text-align:center">
+      <h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.01em">Can’t reach the toposcope app</h1>
+      <p class="mu" style="margin:0;font-size:14px;line-height:1.55">This browser is online but log-vm isn’t answering. The app process is stopped, restarting, or the network to it is down. Your hunt is kept — query, window and panels come back as they were.</p>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:22px;padding:18px 22px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:#111113">
+      <div style="position:relative;width:56px;height:56px">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"></circle><circle cx="28" cy="28" r="24" fill="none" stroke="#e7e1d3" stroke-width="3" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="70" transform="rotate(-90 28 28)"></circle></svg>
+        <span class="m" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">8s</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:300px">
+        <span style="font-size:14px">Retrying in 8 s <span class="mu">· attempt 5</span></span>
+        <span class="m mu" style="font-size:11.5px">waits 2 → 4 → 8 → 15 → 30 s, then every 30 s</span>
+        <span class="m mu" style="font-size:11.5px">down since 21:45:34 UTC · 1m 12s</span>
+      </div>
+      <button class="btn" type="button" style="background:#e7e1d3;color:#18181b;border-color:#e7e1d3;font-weight:500">Retry now</button>
+    </div>
+
+    <div style="width:640px;display:flex;flex-direction:column;gap:8px">
+      <span class="mu" style="font-size:12px">On the host, check the app</span>
+      <div class="m" style="border:1px solid rgba(255,255,255,.1);border-radius:6.4px;background:#0d0d0f;padding:12px 14px;font-size:12.5px;line-height:1.85">
+        <div><span class="mu">$</span> docker compose ps</div>
+        <div><span class="mu">$</span> docker compose logs app --tail 50</div>
+        <div><span class="mu">$</span> docker compose up -d app</div>
+      </div>
+      <span class="mu" style="font-size:12px">Collectors keep their own buffer while the app is gone and resend when it’s back.</span>
+    </div>
+  </div>
+  <div class="m mu" style="height:32px;display:flex;align-items:center;gap:18px;padding:0 20px;border-top:1px solid rgba(255,255,255,.08);font-size:11.5px">
+    <span>ingest —</span><span>clickhouse —</span><span style="color:#f87171">● app unreachable</span><span style="flex:1"></span><span>0.11.1</span>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="33j" data-frame="33j" data-screen-label="33j app up, ClickHouse down" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33j" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33j</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">app up, ClickHouse down</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="33j" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:900px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:36px;padding:40px">
+    <div style="display:flex;align-items:center">
+      <div style="width:168px;height:84px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:#111113;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        <span style="font-size:13px">This browser</span>
+        <span class="m" style="font-size:11.5px;color:#4ade80">online</span>
+      </div>
+      <div style="width:150px;display:flex;align-items:center;justify-content:center">
+        <div style="width:120px;border-top:2px solid rgba(74,222,128,.6)"></div>
+      </div>
+      <div style="width:168px;height:84px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:#111113;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        <span style="font-size:13px">toposcope app</span>
+        <span class="m" style="font-size:11.5px;color:#4ade80">answering</span>
+      </div>
+      <div style="width:150px;display:flex;align-items:center;justify-content:center">
+        <div style="width:58px;border-top:2px dashed #fbbf24"></div>
+        <div style="width:26px;height:26px;border-radius:50%;border:1px solid #fbbf24;background:#1a1405;color:#fbbf24;display:flex;align-items:center;justify-content:center;font-size:13px;margin:0 4px">✕</div>
+        <div style="width:58px;border-top:2px dashed #fbbf24"></div>
+      </div>
+      <div style="width:168px;height:84px;border:1px solid rgba(251,191,36,.55);border-radius:10px;background:#141005;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+        <span style="font-size:13px">ClickHouse</span>
+        <span class="m" style="font-size:11.5px;color:#fbbf24">connection refused</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;max-width:660px;text-align:center">
+      <h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.01em">ClickHouse isn’t answering the app</h1>
+      <p class="mu" style="margin:0;font-size:14px;line-height:1.55">The app is up, but it can’t read or store events. Searches, panels and monitors wait for it. Ingest answers 503, so collectors hold their buffer and resend; nothing they buffered is lost.</p>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:22px;padding:18px 22px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:#111113">
+      <div style="position:relative;width:56px;height:56px">
+        <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="3"></circle><circle cx="28" cy="28" r="24" fill="none" stroke="#e7e1d3" stroke-width="3" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="30" transform="rotate(-90 28 28)"></circle></svg>
+        <span class="m" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">3s</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;min-width:300px">
+        <span style="font-size:14px">Checking again in 3 s <span class="mu">· attempt 3</span></span>
+        <span class="m mu" style="font-size:11.5px">last error: connect ECONNREFUSED clickhouse:8123</span>
+        <span class="m mu" style="font-size:11.5px">down since 21:45:02 UTC · 24s</span>
+      </div>
+      <button class="btn" type="button" style="background:#e7e1d3;color:#18181b;border-color:#e7e1d3;font-weight:500">Retry now</button>
+    </div>
+
+    <div style="width:660px;display:flex;flex-direction:column;gap:8px">
+      <span class="mu" style="font-size:12px">On the host, check ClickHouse — a full disk is the usual cause</span>
+      <div class="m" style="border:1px solid rgba(255,255,255,.1);border-radius:6.4px;background:#0d0d0f;padding:12px 14px;font-size:12.5px;line-height:1.85">
+        <div><span class="mu">$</span> docker compose logs clickhouse --tail 50</div>
+        <div><span class="mu">$</span> df -h</div>
+        <div><span class="mu">$</span> docker compose up -d clickhouse</div>
+      </div>
+    </div>
+  </div>
+  <div class="m mu" style="height:32px;display:flex;align-items:center;gap:18px;padding:0 20px;border-top:1px solid rgba(255,255,255,.08);font-size:11.5px">
+    <span>ingest 0/s · 503</span><span style="color:#fbbf24">● clickhouse down</span><span>app 80 / 512 MB</span><span style="flex:1"></span><span>0.11.1</span>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="33k" data-frame="33k" data-screen-label="33k first seconds: last paint kept, band on top" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33k" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33k</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">first seconds: last paint kept, band on top</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="33k" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:900px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="height:36px;display:flex;align-items:center;gap:12px;padding:0 20px;background:#1a1405;border-bottom:1px solid rgba(251,191,36,.3);font-size:13px">
+    <span style="width:7px;height:7px;border-radius:50%;background:#fbbf24"></span>
+    <span>Lost the app at 21:45:34</span>
+    <span class="mu">retrying in 2 s · showing the last paint</span>
+    <span style="flex:1"></span>
+    <button class="btn" type="button" style="height:24px;font-size:12px">Retry now</button>
+  </div>
+  <div style="display:flex;flex-direction:column;flex:1;opacity:.55">
+    <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 20px">
+      <button class="btn" type="button">Last 1h</button><button class="btn" type="button">Live</button>
+      <span style="flex:1"></span><button class="btn" type="button">Save</button><button class="btn" type="button">Share</button><button class="btn" type="button">+ panel</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:0 20px">
+      <div class="m" style="flex:1;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;display:flex;align-items:center;padding:0 12px;gap:10px;font-size:13px">
+        <span class="mu">⌕</span><span><span class="k">level:</span>error OR <span class="k">level:</span>fatal <span class="k">status:</span>5*</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 20px 2px">
+      <div style="display:flex;align-items:baseline;gap:7px">
+        <span style="font-size:22px;font-weight:600;font-variant-numeric:tabular-nums">830</span>
+        <span class="mu" style="font-size:13px">events match</span>
+      </div>
+      <span style="width:1px;height:18px;background:rgba(255,255,255,.14)"></span>
+      <div style="display:flex;align-items:baseline;gap:9px">
+        <span style="font-size:13px">Last hour</span>
+        <span class="m mu" style="font-size:12.5px">20:45:34 → 21:45:34 UTC</span>
+      </div>
+      <span style="flex:1"></span>
+      <span class="m mu" style="font-size:11.5px;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:2px 9px">1m bars</span>
+    </div>
+    <div style="height:190px;margin:10px 20px 0;border:1px solid rgba(255,255,255,.1);border-radius:6.4px;background:#111113;display:flex;align-items:flex-end;gap:3px;padding:12px 14px 0">
+      <sc-for list="{{f33k_bars}}" as="b" hint-placeholder-count="60"><div style="flex:1;height:{{b.h}}px;background:#c2410c;border-radius:1px 1px 0 0"></div></sc-for>
+    </div>
+    <div class="m" style="flex:1;margin:12px 20px;border:1px solid rgba(255,255,255,.1);border-radius:6.4px;font-size:12.5px;overflow:hidden">
+      <sc-for list="{{f33k_rows}}" as="row" hint-placeholder-count="8">
+        <div style="display:flex;gap:18px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06)"><span class="mu">{{row.t}}</span><span style="color:#f87171;width:44px">{{row.l}}</span><span class="mu" style="width:70px">{{row.s}}</span><span>{{row.msg}}</span></div>
+      </sc-for>
+    </div>
+  </div>
+  <div class="m mu" style="height:32px;display:flex;align-items:center;gap:18px;padding:0 20px;border-top:1px solid rgba(255,255,255,.08);font-size:11.5px">
+    <span>ingest —</span><span>clickhouse —</span><span style="color:#fbbf24">● app reconnecting</span><span style="flex:1"></span><span>0.11.1</span>
+  </div>
+</div>
+      </div>
+    </div>
+
+    <div id="33l" data-frame="33l" data-screen-label="33l back: band turns green, searched again" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#33l" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">33l</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">back: band turns green, searched again</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1440×900</span>
+      </div>
+      <div data-crop="33l" style="position:relative; width:1440px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="r" style="width:1440px;height:900px;box-sizing:border-box;display:flex;flex-direction:column">
+  <div style="height:44px;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.08)">
+    <span style="font-weight:600">toposcope</span><span class="m mu" style="font-size:12px">log-vm</span>
+    <span class="mu">Home</span><span style="background:#27272a;padding:4px 9px;border-radius:6px">Hunt</span><span class="mu">Watch</span><span class="mu">Fields</span><span class="mu">Links</span>
+    <span style="flex:1"></span><span class="mu">Tokens</span><span class="mu">Settings</span>
+  </div>
+  <div style="height:36px;display:flex;align-items:center;gap:12px;padding:0 20px;background:#07170d;border-bottom:1px solid rgba(74,222,128,.3);font-size:13px">
+    <span style="width:7px;height:7px;border-radius:50%;background:#4ade80"></span>
+    <span>Back after 1m 54s</span>
+    <span class="mu">searched again · this band goes in 4 s</span>
+  </div>
+  <div style="display:flex;flex-direction:column;flex:1">
+    <div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 20px">
+      <button class="btn" type="button">Last 1h</button><button class="btn" type="button">Live</button>
+      <span style="flex:1"></span><button class="btn" type="button">Save</button><button class="btn" type="button">Share</button><button class="btn" type="button">+ panel</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:0 20px">
+      <div class="m" style="flex:1;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:6.4px;display:flex;align-items:center;padding:0 12px;gap:10px;font-size:13px">
+        <span class="mu">⌕</span><span><span class="k">level:</span>error OR <span class="k">level:</span>fatal <span class="k">status:</span>5*</span>
+      </div>
+      <span class="m mu" style="font-size:12px">312 ms</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;padding:14px 20px 2px">
+      <div style="display:flex;align-items:baseline;gap:7px">
+        <span style="font-size:22px;font-weight:600;font-variant-numeric:tabular-nums">791</span>
+        <span class="mu" style="font-size:13px">events match</span>
+      </div>
+      <span style="width:1px;height:18px;background:rgba(255,255,255,.14)"></span>
+      <div style="display:flex;align-items:baseline;gap:9px">
+        <span style="font-size:13px">Last hour</span>
+        <span class="m mu" style="font-size:12.5px">20:47:28 → 21:47:28 UTC</span>
+      </div>
+      <span style="flex:1"></span>
+      <span class="m mu" style="font-size:11.5px;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:2px 9px">1m bars</span>
+    </div>
+    <div style="height:190px;margin:10px 20px 0;border:1px solid rgba(255,255,255,.1);border-radius:6.4px;background:#111113;display:flex;align-items:flex-end;gap:3px;padding:12px 14px 0">
+      <sc-for list="{{f33l_bars}}" as="b" hint-placeholder-count="60"><div style="flex:1;height:{{b.h}}px;background:{{b.c}};border-radius:1px 1px 0 0"></div></sc-for>
+    </div>
+    <div class="m" style="flex:1;margin:12px 20px;border:1px solid rgba(255,255,255,.1);border-radius:6.4px;font-size:12.5px;overflow:hidden">
+      <sc-for list="{{f33l_rows}}" as="row" hint-placeholder-count="8">
+        <div style="display:flex;gap:18px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.06)"><span class="mu">{{row.t}}</span><span style="color:#f87171;width:44px">{{row.l}}</span><span class="mu" style="width:70px">{{row.s}}</span><span>{{row.msg}}</span></div>
+      </sc-for>
+    </div>
+  </div>
+  <div class="m mu" style="height:32px;display:flex;align-items:center;gap:18px;padding:0 20px;border-top:1px solid rgba(255,255,255,.08);font-size:11.5px">
+    <span>ingest 940/s</span><span>clickhouse 0.9 / 4 GB</span><span>app 82 / 512 MB</span><span style="flex:1"></span><span>0.11.1</span>
+  </div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f33d', new (class {
+  renderVals() {
+    const bars = [];
+    for (let i = 0; i < 60; i++) bars.push({ h: Math.round(8 + 30 * Math.abs(Math.sin(i * 0.7)) + (i % 7 === 3 ? 22 : 0)) });
+    return { bars };
+  }
+})().renderVals()),
+      ...pre('f33m', new (class {
+  renderVals() {
+    const bars = [];
+    for (let i = 1; i < 61; i++) bars.push({ h: Math.round(8 + 30 * Math.abs(Math.sin(i * 0.7)) + (i % 7 === 3 ? 22 : 0)) });
+    return { bars };
+  }
+})().renderVals()),
+      ...pre('f33n', new (class {
+  renderVals() {
+    const bars = [];
+    for (let i = 0; i < 51; i++) bars.push({ h: Math.round(6 + 18 * Math.abs(Math.cos(i * 0.45)) + (i > 20 && i < 30 ? 30 : 0)) });
+    return { bars };
+  }
+})().renderVals()),
+      ...pre('f33k', new (class {
+  renderVals() {
+    const bars = [];
+    for (let i = 0; i < 60; i++) bars.push({ h: Math.round(8 + 30 * Math.abs(Math.sin(i * 0.7)) + (i % 7 === 3 ? 22 : 0)) });
+    const msgs = ['upstream 502 from billing-1', 'charge failed card_declined', 'timeout calling ledger after 2000ms', 'panic: nil pointer in settle()', 'upstream 503 from api-2', 'charge failed card_declined', 'upstream 502 from billing-1', 'db pool exhausted'];
+    const rows = msgs.map((msg, i) => ({ t: '21:45:' + String(33 - i * 3).padStart(2, '0'), l: i === 3 ? 'fatal' : 'error', s: i % 2 ? 'billing' : 'api', msg }));
+    return { bars, rows };
+  }
+})().renderVals()),
+      ...pre('f33l', new (class {
+  renderVals() {
+    const bars = [];
+    for (let i = 0; i < 60; i++) {
+      const gap = i >= 57 && i <= 58;
+      bars.push({ h: gap ? 2 : Math.round(8 + 30 * Math.abs(Math.sin(i * 0.7 + 1.4)) + (i === 59 ? 26 : 0)), c: gap ? '#3f3f46' : '#c2410c' });
+    }
+    const msgs = ['upstream 502 from billing-1', 'db pool exhausted', 'charge failed card_declined', 'timeout calling ledger after 2000ms', 'upstream 503 from api-2', 'charge failed card_declined', 'upstream 502 from billing-1', 'panic: nil pointer in settle()'];
+    const rows = msgs.map((msg, i) => ({ t: '21:47:' + String(27 - i * 2).padStart(2, '0'), l: i === 7 ? 'fatal' : 'error', s: i % 2 ? 'billing' : 'api', msg }));
+    return { bars, rows };
+  }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>

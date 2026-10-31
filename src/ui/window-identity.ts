@@ -1,6 +1,4 @@
-import type { HistogramIntervalId } from "../query/histogram";
 import { histogramWindowNeedsDate } from "./fill-histogram";
-import { formatSpanShort } from "./time-range";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -53,12 +51,6 @@ export function windowHead(
   return `${utcWindowStamp(fromMs, spanMs, nowMs, needsDate)} → ${utcWindowStamp(toMs, spanMs, nowMs, needsDate)}`;
 }
 
-export function windowMeta(
-  spanMs: number,
-  interval: HistogramIntervalId,
-): string {
-  return `UTC · ${formatSpanShort(spanMs)} · ${interval} bars`;
-}
 
 /** The window a hunt's monitor band reads its stretches for, to the minute: a reply or a Live poll that moves it by seconds reads nothing new. */
 export function bandWindowKey(window: { fromMs: number; toMs: number }): string {

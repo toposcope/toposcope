@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bandWindowKey, searchWindowMs, utcWindowStamp, windowHead, windowMeta } from "./window-identity";
+import { bandWindowKey, searchWindowMs, utcWindowStamp, windowHead } from "./window-identity";
 
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
@@ -40,12 +40,6 @@ describe("windowHead", () => {
     expect(windowHead(from, to, 12 * HOUR, now)).toBe(
       "2026-08-16 12:50:00 → 2026-08-17 00:50:00",
     );
-  });
-});
-
-describe("windowMeta", () => {
-  test("names timezone, span, and bar width", () => {
-    expect(windowMeta(HOUR, "1m")).toBe("UTC · 1h · 1m bars");
   });
 });
 
