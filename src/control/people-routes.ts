@@ -1,4 +1,6 @@
 import { hasTwoStep, makeBackupCodes, resetTwoStep, twoStepState } from "./two-step";
+import { forgetBrowser, forgetBrowsersOf, rememberCookieName, rememberedBrowsersOf, rememberedSummary } from "./remembered";
+import { readCookie } from "../auth";
 import type { Context } from "hono";
 import { actorOf } from "../actor-context";
 import { actorName } from "./actors";
@@ -48,7 +50,7 @@ function personJson(p: Person, meId: string | null) {
     tokens: tokensOf(p.id).map(tokenJson),
     two_step: (() => {
       const t = twoStepState(p);
-      return { ...t, reset_by: actorName(t.reset_by)?.name ?? null };
+      return { ...t, reset_by: actorName(t.reset_by)?.name ?? null, remembered: rememberedSummary(p.id) };
     })(),
   };
 }
@@ -245,6 +247,37 @@ export function newBackupCodesRoute(c: Context): Response {
     return c.json({ error: "Two-step is not set up for you" }, 400);
   }
   return c.json({ backup_codes: makeBackupCodes(actor.person.id) });
+}
+
+/** `GET /api/me/remembered-browsers` (34f): the browsers that skip my code, this one marked. */
+export function myRememberedRoute(c: Context): Response {
+  const actor = actorOf(c);
+  if (!actor || actor.via !== "session") {
+    return c.json({ browsers: [] });
+  }
+  return c.json({ browsers: rememberedBrowsersOf(actor.person.id, readCookie(c.req.header("cookie"), rememberCookieName())) });
+}
+
+/** `DELETE /api/me/remembered-browsers/:id`, or every one of mine without an id: the code is asked there again. */
+export function forgetMyBrowserRoute(c: Context): Response {
+  const actor = actorOf(c);
+  if (!actor || actor.via !== "session") {
+    return c.json({ error: "Only a signed-in browser has remembered browsers" }, 400);
+  }
+  const id = c.req.param("id");
+  if (!id) {
+    return c.json({ ok: true, forgotten: forgetBrowsersOf(actor.person.id) });
+  }
+  return forgetBrowser(actor.person.id, id) ? c.json({ ok: true, forgotten: 1 }) : c.json({ error: "No such remembered browser" }, 404);
+}
+
+/** `DELETE /api/people/:id/remembered-browsers` (34g): an Owner forgets someone's browsers. */
+export function forgetPersonBrowsersRoute(c: Context): Response {
+  const person = personById(c.req.param("id") ?? "");
+  if (!person || person.kind !== "person") {
+    return c.json({ error: "No such person" }, 404);
+  }
+  return c.json({ ok: true, forgotten: forgetBrowsersOf(person.id) });
 }
 
 /** `GET /api/me/tokens`: my own tokens. */

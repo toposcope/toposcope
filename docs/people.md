@@ -43,6 +43,8 @@ An Owner changes a role in the person's row, and revokes a person there. Revokin
 
 Everyone who signs in with a password sets up a second step: any authenticator app (TOTP), plus ten backup codes, each good once. **Settings › Sign-in and roles** can relax this to Owners only. Misses slow down, up to 30 seconds a try, and never lock an account. New backup codes come from the header's menu, and end the old ten. For a lost phone and lost codes, an Owner resets that person's two-step in their People row; they set it up again at their next sign-in.
 
+After the code, **Remember this browser** lets that browser skip it for 1, 7, 14 or 30 days; the password is still asked. The cookie holds a random token, named per instance, HttpOnly and SameSite=Strict (Secure over HTTPS), and the server keeps only its hash. Your menu › Remembered browsers lists them and forgets one or all; an Owner forgets someone's from their People row. Resetting two-step, a new password and revoking a person forget them all. Settings caps the days, 30 by default; lowering the cap shortens browsers already remembered, and never forgets them all.
+
 ## Sign in with a provider
 
 **Settings › Sign-in and roles** takes one OIDC provider: Google Workspace, Microsoft Entra, Okta, Keycloak, Authentik, or any other. Register an app there with the redirect URL the page shows, `https://<your address>/auth/callback`, then enter the issuer, client id and client secret, an allowed domain (or none), and what happens to someone with no invite: they join as a Viewer, as an Operator, or are refused.

@@ -1393,6 +1393,34 @@ Ten new backup codes for the caller; the old ten stop working.
 
 Role: **Viewer** · `my_backup_codes`
 
+### DELETE /api/people/{id}/remembered-browsers
+
+Forget the browsers a person had remembered; each asks for their code at its next sign-in.
+
+Role: **Owner** · `two_step_forget_browsers`
+
+Path: `id`.
+
+### GET /api/me/remembered-browsers
+
+The browsers that skip the caller's two-step code, and until when; this one is marked.
+
+Role: **Viewer** · `my_remembered_browsers`
+
+### DELETE /api/me/remembered-browsers
+
+Forget every browser the caller had remembered.
+
+Role: **Viewer** · `my_remembered_forget_all`
+
+### DELETE /api/me/remembered-browsers/{id}
+
+Forget one of the caller's remembered browsers; it asks for the code at its next sign-in.
+
+Role: **Viewer** · `my_remembered_forget`
+
+Path: `id`.
+
 ### GET /api/me/tokens
 
 The caller's own personal tokens.
@@ -1449,6 +1477,7 @@ Body:
 | `oidc.allowed_domain` | string \| null |  | Only emails at this domain, like example.com; empty for any. |
 | `oidc.without_invite` | string \| null |  | The role someone gets who signs in with no invite: viewer (the default), operator, or none to refuse them. |
 | `two_step_for` | "everyone" \| "owners" |  | Who must have a second step: everyone with a password, or Owners only. |
+| `remember_days_max` | 0 \| 1 \| 7 \| 14 \| 30 |  | The most days a browser may skip the two-step code; 0 asks for it at every sign-in and forgets every remembered browser. |
 
 ### GET /api/settings
 

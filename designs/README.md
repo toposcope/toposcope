@@ -118,6 +118,11 @@ Locked — the plot head and the outage states, 2026-11-01. Drawn on the Design 
 - [Toposcope Window And Outage.dc.html](Toposcope%20Window%20And%20Outage.dc.html) — frames 33d, 33m–33o: no strip between the bar and the canvas; the pinned plot's head leads with the matching count and names the window on its right (`from → to UTC · bar width`), in Live (`→ now`), on a moved window (`Custom · span` and Reset) and refused (`—`, too wide to count, no chart) · frames 33i–33l: the app unreachable (browser → app → ClickHouse with the broken link, the retry countdown, Retry now, the host commands), ClickHouse down while the app answers, the first 15 s as a band over the dimmed last paint, and the green band when it is back
 - [window-and-outage/](window-and-outage/) — crops for issues (33d, 33i–33o)
 
+Locked — remember a browser after two-step, 2026-11-01. Drawn on the Design canvas "Toposcope Remember Device"; Ian approved 34a–34i as drawn, with the Owner's cap (34h).
+
+- [Toposcope Remember Browser.dc.html](Toposcope%20Remember%20Browser.dc.html) — frames 34a–34d, 34i: the code page today, then Remember this browser as a stepped slider under the code (Off · 1 day · 7 days · 14 days · 30 days) at rest on Off, moved to 7 days with focus, at 30 days, and on a phone · 34e: the password on a remembered browser opens the app with no code and a toast saying until when · 34f: Remembered browsers… in the person's menu, a panel listing each browser (this one marked, remembered, last used, until) with forget and Forget all · 34g: People's Two-step column with how many browsers each person has remembered and the Owner's forget browsers · 34h: Settings › Sign-in and roles caps the days (never forgets them all)
+- [remember-browser/](remember-browser/) — crops for issues (34a–34i)
+
 Where an issue and its sheet differ, the issue wins.
 
 Not the shipped app. Do not invent chrome these files do not draw.

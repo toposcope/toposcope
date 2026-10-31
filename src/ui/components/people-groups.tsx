@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { clockAt } from "../watch";
 import { agentSavedWords } from "../agents";
+import { dayAt } from "./me-menu";
 
 /**
  * People in Access (#308): the People group (30a), Invite someone (30b), service accounts and
@@ -30,7 +31,7 @@ export type PersonRow = {
   invited_by: string | null;
   first_owner: boolean;
   tokens: PersonTokenRow[];
-  two_step?: { state: "on" | "not set up" | "reset" | "provider" | "none"; codes_left: number; reset_by: string | null; reset_at: number | null };
+  two_step?: { state: "on" | "not set up" | "reset" | "provider" | "none"; codes_left: number; reset_by: string | null; reset_at: number | null; remembered?: { count: number; until: number | null } };
 };
 
 /** What People says about a person's second step (32e). */
@@ -49,6 +50,18 @@ export function twoStepWords(p: PersonRow, nowMs: number): { text: string; tone:
     return { text: `● set up again at next sign-in${t.reset_by ? ` · reset by ${t.reset_by}` : ""}${t.reset_at ? ` ${clockAt(t.reset_at, nowMs)}` : ""}`, tone: "warn" };
   }
   return { text: "● not set up · asked at next sign-in", tone: "warn" };
+}
+/** 34g: the second line under Two-step, the browsers that skip their code. */
+export function rememberedWords(p: PersonRow): string | null {
+  const t = p.two_step;
+  if (t?.state !== "on") {
+    return null;
+  }
+  const n = t.remembered?.count ?? 0;
+  if (n === 0) {
+    return "no browser remembered";
+  }
+  return `${n} ${n === 1 ? "browser" : "browsers"} remembered${t.remembered?.until ? ` · until ${dayAt(t.remembered.until)}` : ""}`;
 }
 export type InviteRow = { id: string; who: string; role: Role; created_at: number; expires_at: number; invited_by: string | null };
 export type PeopleBody = { people: PersonRow[]; service_accounts: PersonRow[]; agents?: PersonRow[]; invites: InviteRow[] };
@@ -158,7 +171,13 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
           <span className="truncate text-[12px] text-muted-foreground">{p.signs_in_with}</span>
           {(() => {
             const w = twoStepWords(p, props.nowMs);
-            return <span className={cn("truncate text-[12px]", w.tone === "ok" ? "text-emerald-300" : w.tone === "warn" ? "text-amber-300" : "text-muted-foreground")}>{w.text}</span>;
+            const r = rememberedWords(p);
+            return (
+              <span className="flex min-w-0 flex-col gap-px">
+                <span className={cn("truncate text-[12px]", w.tone === "ok" ? "text-emerald-300" : w.tone === "warn" ? "text-amber-300" : "text-muted-foreground")}>{w.text}</span>
+                {r ? <span className={cn("truncate text-[11.5px]", armed === `rb:${p.id}` ? "text-plate" : "text-muted-foreground")}>{r}</span> : null}
+              </span>
+            );
           })()}
           <span className="truncate font-mono text-[12px] text-muted-foreground">{p.you ? "now" : p.last_seen_at ? clockAt(p.last_seen_at, props.nowMs) : "never"}</span>
           <span className="truncate text-[12px] text-muted-foreground">{p.first_owner ? "first Owner, from the setup link" : p.invited_by ? `${p.invited_by} · ${clockAt(p.created_at, props.nowMs)}` : "—"}</span>
@@ -168,7 +187,7 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
                 <button
                   type="button"
                   className="text-[12px] text-plate hover:underline"
-                  title="Their sessions end now, their backup codes stop working, and they set up two-step again the next time they sign in."
+                  title="Their sessions end now, their backup codes stop working, their remembered browsers are forgotten, and they set up two-step again the next time they sign in."
                   onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}/two-step`, { method: "DELETE" }, `${p.name}'s two-step is reset`)}
                 >
                   sure? reset two-step
@@ -176,6 +195,22 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
               ) : (
                 <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(`2s:${p.id}`)}>
                   reset two-step
+                </button>
+              )
+            ) : null}
+            {props.isOwner && !p.you && (p.two_step?.remembered?.count ?? 0) > 0 ? (
+              armed === `rb:${p.id}` ? (
+                <button
+                  type="button"
+                  className="text-[12px] text-plate underline"
+                  title="Each of their remembered browsers asks for the code at its next sign-in. Nobody is signed out."
+                  onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}/remembered-browsers`, { method: "DELETE" }, `${p.name}'s browsers are forgotten`)}
+                >
+                  sure? forget {p.two_step!.remembered!.count}
+                </button>
+              ) : (
+                <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(`rb:${p.id}`)}>
+                  forget browsers
                 </button>
               )
             ) : null}

@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, 
 import type { Database } from "bun:sqlite";
 import { getDb } from "./index";
 import type { Person } from "./people";
+import { forgetBrowsersOf } from "./remembered";
 
 /**
  * Two-step sign-in (#309, frames 32b–32e): a TOTP authenticator app (RFC 6238: SHA-1, 30 s,
@@ -267,6 +268,7 @@ export function resetTwoStep(personId: string, by: string | null, nowMs = Date.n
     "UPDATE people SET totp_secret = NULL, totp_pending = NULL, totp_last_step = NULL, backup_codes = NULL, two_step_reset_by = ?, two_step_reset_at = ?, session_epoch = session_epoch + 1 WHERE id = ?",
   ).run(by, nowMs, personId);
   db.query("DELETE FROM sessions WHERE person_id = ?").run(personId);
+  forgetBrowsersOf(personId, db);
 }
 
 /** What People says about a person's second step (32e). */

@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 34a */
+[data-frame="34a"] .pg{width:560px;height:720px;box-sizing:border-box;background:#0d0d0f;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px}
+[data-frame="34a"] .col{width:380px;display:flex;flex-direction:column;gap:18px}
+[data-frame="34a"] .cap{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.06em}
+[data-frame="34a"] .brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;letter-spacing:-0.015em}
+[data-frame="34a"] .brand svg{color:#e7e1d3}
+[data-frame="34a"] .who{display:flex;flex-direction:column;gap:6px}
+[data-frame="34a"] .to{font-size:12.5px;color:#8a8a93}
+[data-frame="34a"] .h1{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:30px;line-height:36px;font-weight:500;letter-spacing:-0.01em}
+[data-frame="34a"] .pw{display:flex;flex-direction:column;gap:8px}
+[data-frame="34a"] .lbl{font-size:12.5px;color:#a1a1aa}
+[data-frame="34a"] .inp{height:40px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:.3em;box-sizing:border-box}
+[data-frame="34a"] .btn{height:40px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font-size:13.5px;font-weight:500;font-family:inherit}
+[data-frame="34a"] .alt{font-size:12.5px;color:#a1a1aa}
+[data-frame="34a"] .stay{font-size:12px;line-height:18px;color:#a1a1aa}
+  /* 34b */
+[data-frame="34b"] .pg{width:560px;height:720px;box-sizing:border-box;background:#0d0d0f;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px}
+[data-frame="34b"] .col{width:380px;display:flex;flex-direction:column;gap:18px}
+[data-frame="34b"] .cap{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.06em}
+[data-frame="34b"] .brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;letter-spacing:-0.015em}
+[data-frame="34b"] .brand svg{color:#e7e1d3}
+[data-frame="34b"] .who{display:flex;flex-direction:column;gap:6px}
+[data-frame="34b"] .to{font-size:12.5px;color:#8a8a93}
+[data-frame="34b"] .h1{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:30px;line-height:36px;font-weight:500;letter-spacing:-0.01em}
+[data-frame="34b"] .pw{display:flex;flex-direction:column;gap:8px}
+[data-frame="34b"] .lbl{font-size:12.5px;color:#a1a1aa}
+[data-frame="34b"] .inp{height:40px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:.3em;box-sizing:border-box}
+[data-frame="34b"] .btn{height:40px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font-size:13.5px;font-weight:500;font-family:inherit}
+[data-frame="34b"] .alt{font-size:12.5px;color:#a1a1aa}
+[data-frame="34b"] .stay{font-size:12px;line-height:18px;color:#a1a1aa}
+[data-frame="34b"] .rem{border:0;margin:6px 0 8px;padding:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+[data-frame="34b"] .remh{display:flex;justify-content:space-between;align-items:baseline;width:100%;padding:0;font-size:12.5px;color:#a1a1aa}
+[data-frame="34b"] .val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#8a8a93}
+[data-frame="34b"] .val.on{color:#e7e1d3}
+[data-frame="34b"] .track{position:relative;height:28px}
+[data-frame="34b"] .rail{position:absolute;left:8px;right:8px;top:12px;height:4px;border-radius:2px;background:#27272a}
+[data-frame="34b"] .fill{position:absolute;left:0;top:0;height:4px;border-radius:2px;background:#e7e1d3}
+[data-frame="34b"] .stop{position:absolute;top:-3px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#3f3f46;box-sizing:border-box;border:2px solid #0d0d0f}
+[data-frame="34b"] .stop.lit{background:#e7e1d3}
+[data-frame="34b"] .thumb{position:absolute;top:-6px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#e7e1d3;box-shadow:0 0 0 3px #0d0d0f;box-sizing:border-box}
+[data-frame="34b"] .thumb.off{background:#141416;border:2px solid #71717a}
+[data-frame="34b"] .thumb.focus{outline:2px solid rgba(231,225,211,0.6);outline-offset:3px}
+[data-frame="34b"] .ticks{position:relative;height:18px;margin:0 8px}
+[data-frame="34b"] .tk{position:absolute;top:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;white-space:nowrap}
+[data-frame="34b"] .tk.cur{color:#fafafa}
+[data-frame="34b"] .sr{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+[data-frame="34b"] .hint{font-size:12px;line-height:18px;color:#a1a1aa;margin-top:2px}
+  /* 34c */
+[data-frame="34c"] .pg{width:560px;height:720px;box-sizing:border-box;background:#0d0d0f;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px}
+[data-frame="34c"] .col{width:380px;display:flex;flex-direction:column;gap:18px}
+[data-frame="34c"] .cap{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.06em}
+[data-frame="34c"] .brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;letter-spacing:-0.015em}
+[data-frame="34c"] .brand svg{color:#e7e1d3}
+[data-frame="34c"] .who{display:flex;flex-direction:column;gap:6px}
+[data-frame="34c"] .to{font-size:12.5px;color:#8a8a93}
+[data-frame="34c"] .h1{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:30px;line-height:36px;font-weight:500;letter-spacing:-0.01em}
+[data-frame="34c"] .pw{display:flex;flex-direction:column;gap:8px}
+[data-frame="34c"] .lbl{font-size:12.5px;color:#a1a1aa}
+[data-frame="34c"] .inp{height:40px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:.3em;box-sizing:border-box}
+[data-frame="34c"] .btn{height:40px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font-size:13.5px;font-weight:500;font-family:inherit}
+[data-frame="34c"] .alt{font-size:12.5px;color:#a1a1aa}
+[data-frame="34c"] .stay{font-size:12px;line-height:18px;color:#a1a1aa}
+[data-frame="34c"] .rem{border:0;margin:6px 0 8px;padding:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+[data-frame="34c"] .remh{display:flex;justify-content:space-between;align-items:baseline;width:100%;padding:0;font-size:12.5px;color:#a1a1aa}
+[data-frame="34c"] .val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#8a8a93}
+[data-frame="34c"] .val.on{color:#e7e1d3}
+[data-frame="34c"] .track{position:relative;height:28px}
+[data-frame="34c"] .rail{position:absolute;left:8px;right:8px;top:12px;height:4px;border-radius:2px;background:#27272a}
+[data-frame="34c"] .fill{position:absolute;left:0;top:0;height:4px;border-radius:2px;background:#e7e1d3}
+[data-frame="34c"] .stop{position:absolute;top:-3px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#3f3f46;box-sizing:border-box;border:2px solid #0d0d0f}
+[data-frame="34c"] .stop.lit{background:#e7e1d3}
+[data-frame="34c"] .thumb{position:absolute;top:-6px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#e7e1d3;box-shadow:0 0 0 3px #0d0d0f;box-sizing:border-box}
+[data-frame="34c"] .thumb.off{background:#141416;border:2px solid #71717a}
+[data-frame="34c"] .thumb.focus{outline:2px solid rgba(231,225,211,0.6);outline-offset:3px}
+[data-frame="34c"] .ticks{position:relative;height:18px;margin:0 8px}
+[data-frame="34c"] .tk{position:absolute;top:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;white-space:nowrap}
+[data-frame="34c"] .tk.cur{color:#fafafa}
+[data-frame="34c"] .sr{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+[data-frame="34c"] .hint{font-size:12px;line-height:18px;color:#a1a1aa;margin-top:2px}
+  /* 34d */
+[data-frame="34d"] .pg{width:560px;height:720px;box-sizing:border-box;background:#0d0d0f;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px}
+[data-frame="34d"] .col{width:380px;display:flex;flex-direction:column;gap:18px}
+[data-frame="34d"] .cap{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.06em}
+[data-frame="34d"] .brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;letter-spacing:-0.015em}
+[data-frame="34d"] .brand svg{color:#e7e1d3}
+[data-frame="34d"] .who{display:flex;flex-direction:column;gap:6px}
+[data-frame="34d"] .to{font-size:12.5px;color:#8a8a93}
+[data-frame="34d"] .h1{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:30px;line-height:36px;font-weight:500;letter-spacing:-0.01em}
+[data-frame="34d"] .pw{display:flex;flex-direction:column;gap:8px}
+[data-frame="34d"] .lbl{font-size:12.5px;color:#a1a1aa}
+[data-frame="34d"] .inp{height:40px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:.3em;box-sizing:border-box}
+[data-frame="34d"] .btn{height:40px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font-size:13.5px;font-weight:500;font-family:inherit}
+[data-frame="34d"] .alt{font-size:12.5px;color:#a1a1aa}
+[data-frame="34d"] .stay{font-size:12px;line-height:18px;color:#a1a1aa}
+[data-frame="34d"] .rem{border:0;margin:6px 0 8px;padding:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+[data-frame="34d"] .remh{display:flex;justify-content:space-between;align-items:baseline;width:100%;padding:0;font-size:12.5px;color:#a1a1aa}
+[data-frame="34d"] .val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#8a8a93}
+[data-frame="34d"] .val.on{color:#e7e1d3}
+[data-frame="34d"] .track{position:relative;height:28px}
+[data-frame="34d"] .rail{position:absolute;left:8px;right:8px;top:12px;height:4px;border-radius:2px;background:#27272a}
+[data-frame="34d"] .fill{position:absolute;left:0;top:0;height:4px;border-radius:2px;background:#e7e1d3}
+[data-frame="34d"] .stop{position:absolute;top:-3px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#3f3f46;box-sizing:border-box;border:2px solid #0d0d0f}
+[data-frame="34d"] .stop.lit{background:#e7e1d3}
+[data-frame="34d"] .thumb{position:absolute;top:-6px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#e7e1d3;box-shadow:0 0 0 3px #0d0d0f;box-sizing:border-box}
+[data-frame="34d"] .thumb.off{background:#141416;border:2px solid #71717a}
+[data-frame="34d"] .thumb.focus{outline:2px solid rgba(231,225,211,0.6);outline-offset:3px}
+[data-frame="34d"] .ticks{position:relative;height:18px;margin:0 8px}
+[data-frame="34d"] .tk{position:absolute;top:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;white-space:nowrap}
+[data-frame="34d"] .tk.cur{color:#fafafa}
+[data-frame="34d"] .sr{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+[data-frame="34d"] .hint{font-size:12px;line-height:18px;color:#a1a1aa;margin-top:2px}
+  /* 34e */
+[data-frame="34e"] .wrap{width:1200px;height:720px;box-sizing:border-box;background:#0d0d0f;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;align-items:stretch}
+[data-frame="34e"] .pg{width:560px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 16px;box-sizing:border-box}
+[data-frame="34e"] .col{width:360px;display:flex;flex-direction:column;gap:18px}
+[data-frame="34e"] .brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;letter-spacing:-0.015em}
+[data-frame="34e"] .brand svg{color:#e7e1d3}
+[data-frame="34e"] .who{display:flex;flex-direction:column;gap:6px}
+[data-frame="34e"] .to{font-size:12.5px;color:#8a8a93}
+[data-frame="34e"] .h1{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:30px;line-height:36px;font-weight:500;letter-spacing:-0.01em}
+[data-frame="34e"] .addr{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#8a8a93}
+[data-frame="34e"] .pw{display:flex;flex-direction:column;gap:8px}
+[data-frame="34e"] .lbl{font-size:12.5px;color:#a1a1aa}
+[data-frame="34e"] .inp{height:40px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;box-sizing:border-box}
+[data-frame="34e"] .btn{height:40px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font-size:13.5px;font-weight:500;font-family:inherit}
+[data-frame="34e"] .stay{font-size:12px;line-height:18px;color:#a1a1aa}
+[data-frame="34e"] .mid{width:80px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#71717a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;text-align:center}
+[data-frame="34e"] .app{width:560px;flex:none;margin:40px 0;border:1px solid rgba(255,255,255,0.1);border-radius:10px;background:#09090b;position:relative;overflow:hidden;display:flex;flex-direction:column}
+[data-frame="34e"] .hdr{height:40px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,0.08);font-size:13px}
+[data-frame="34e"] .inst{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#e4e4e7}
+[data-frame="34e"] .nav{color:#8a8a93;font-size:12.5px}
+[data-frame="34e"] .av{margin-left:auto;width:28px;height:28px;border-radius:50%;background:#27272a;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+[data-frame="34e"] .body{flex:1;padding:16px;display:flex;flex-direction:column;gap:10px}
+[data-frame="34e"] .bar{height:32px;border-radius:8px;border:1px solid #27272a;background:#141416}
+[data-frame="34e"] .plot{height:140px;border-radius:6.4px;border:1px solid rgba(255,255,255,0.08);background:#0f0f11}
+[data-frame="34e"] .row{height:22px;border-bottom:1px solid rgba(255,255,255,0.05)}
+[data-frame="34e"] .toast{position:absolute;right:16px;bottom:16px;width:330px;box-sizing:border-box;padding:12px 14px;border-radius:8px;border:1px solid #27272a;background:#18181b;display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:18px;color:#e4e4e7}
+[data-frame="34e"] .toast svg{flex:none;margin-top:2px;color:#6ee7b7}
+[data-frame="34e"] .muted{color:#a1a1aa}
+[data-frame="34e"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  /* 34i */
+[data-frame="34i"] .pg{width:390px;height:844px;box-sizing:border-box;background:#0d0d0f;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:96px 16px 32px}
+[data-frame="34i"] .col{width:100%;display:flex;flex-direction:column;gap:18px}
+[data-frame="34i"] .cap{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;text-transform:uppercase;letter-spacing:.06em}
+[data-frame="34i"] .brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;letter-spacing:-0.015em}
+[data-frame="34i"] .brand svg{color:#e7e1d3}
+[data-frame="34i"] .who{display:flex;flex-direction:column;gap:6px}
+[data-frame="34i"] .to{font-size:12.5px;color:#8a8a93}
+[data-frame="34i"] .h1{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:24px;line-height:30px;font-weight:500;letter-spacing:-0.01em}
+[data-frame="34i"] .pw{display:flex;flex-direction:column;gap:8px}
+[data-frame="34i"] .lbl{font-size:12.5px;color:#a1a1aa}
+[data-frame="34i"] .inp{height:44px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#fafafa;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:.3em;box-sizing:border-box}
+[data-frame="34i"] .btn{height:44px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font-size:14px;font-weight:500;font-family:inherit}
+[data-frame="34i"] .alt{font-size:12.5px;color:#a1a1aa}
+[data-frame="34i"] .stay{font-size:12px;line-height:18px;color:#a1a1aa}
+[data-frame="34i"] .rem{border:0;margin:6px 0 8px;padding:0;display:flex;flex-direction:column;gap:4px;min-width:0}
+[data-frame="34i"] .remh{display:flex;justify-content:space-between;align-items:baseline;width:100%;padding:0;font-size:12.5px;color:#a1a1aa}
+[data-frame="34i"] .val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#8a8a93}
+[data-frame="34i"] .val.on{color:#e7e1d3}
+[data-frame="34i"] .track{position:relative;height:36px}
+[data-frame="34i"] .rail{position:absolute;left:10px;right:10px;top:16px;height:4px;border-radius:2px;background:#27272a}
+[data-frame="34i"] .fill{position:absolute;left:0;top:0;height:4px;border-radius:2px;background:#e7e1d3}
+[data-frame="34i"] .stop{position:absolute;top:-3px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#3f3f46;box-sizing:border-box;border:2px solid #0d0d0f}
+[data-frame="34i"] .stop.lit{background:#e7e1d3}
+[data-frame="34i"] .thumb{position:absolute;top:-8px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:#e7e1d3;box-shadow:0 0 0 3px #0d0d0f;box-sizing:border-box}
+[data-frame="34i"] .thumb.off{background:#141416;border:2px solid #71717a}
+[data-frame="34i"] .thumb.focus{outline:2px solid rgba(231,225,211,0.6);outline-offset:3px}
+[data-frame="34i"] .ticks{position:relative;height:28px;margin:0 10px}
+[data-frame="34i"] .tk{position:absolute;top:0;line-height:28px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#8a8a93;white-space:nowrap}
+[data-frame="34i"] .tk.cur{color:#fafafa}
+[data-frame="34i"] .sr{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+[data-frame="34i"] .hint{font-size:12px;line-height:18px;color:#a1a1aa;margin-top:2px}
+  /* 34f */
+[data-frame="34f"] .wrap{width:1100px;height:640px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;position:relative;overflow:hidden}
+[data-frame="34f"] .hdr{height:40px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,0.08);font-size:13px}
+[data-frame="34f"] .inst{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#e4e4e7}
+[data-frame="34f"] .nav{color:#8a8a93;font-size:12.5px}
+[data-frame="34f"] .av{margin-left:auto;width:28px;height:28px;border-radius:50%;background:#3f3f46;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:0;color:#fafafa;font-family:inherit}
+[data-frame="34f"] .menu{position:absolute;top:44px;right:12px;width:248px;box-sizing:border-box;padding:4px;border-radius:8px;border:1px solid #27272a;background:#18181b}
+[data-frame="34f"] .mh{display:flex;flex-direction:column;gap:3px;padding:8px 8px 10px;border-bottom:1px solid rgba(255,255,255,0.08)}
+[data-frame="34f"] .mn{font-size:13px;font-weight:600}
+[data-frame="34f"] .me{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#a1a1aa}
+[data-frame="34f"] .mr{font-size:11.5px;color:#a1a1aa}
+[data-frame="34f"] .mi{height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;border-radius:6px;font-size:13px;color:#fafafa;text-decoration:none}
+[data-frame="34f"] .mi.hl{background:#27272a}
+[data-frame="34f"] .cnt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#a1a1aa}
+[data-frame="34f"] .panel{position:absolute;top:80px;left:60px;width:600px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;padding:24px 28px;border-radius:12px;border:1px solid #3f3f46;background:#121214}
+[data-frame="34f"] .h2{margin:0;font-size:17px;font-weight:600}
+[data-frame="34f"] .lead{margin:0;font-size:12.5px;line-height:1.55;color:#a1a1aa}
+[data-frame="34f"] .list{border:1px solid rgba(255,255,255,0.1);border-radius:10px;overflow:hidden}
+[data-frame="34f"] .it{display:grid;grid-template-columns:minmax(0,1fr) 140px 64px;gap:12px;align-items:center;padding:10px 14px;border-top:1px solid rgba(255,255,255,0.06);font-size:12.5px}
+[data-frame="34f"] .it.first{border-top:0}
+[data-frame="34f"] .nm{display:flex;flex-direction:column;gap:2px;min-width:0}
+[data-frame="34f"] .dv{font-weight:500}
+[data-frame="34f"] .you{color:#a1a1aa;font-weight:400}
+[data-frame="34f"] .sub{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#8a8a93}
+[data-frame="34f"] .until{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#d4d4d8}
+[data-frame="34f"] .fg{background:none;border:0;padding:0;font-family:inherit;font-size:12px;color:#a1a1aa;text-align:right}
+[data-frame="34f"] .fg.armed{color:#e7e1d3;text-decoration:underline}
+[data-frame="34f"] .foot{display:flex;align-items:center;gap:14px}
+[data-frame="34f"] .ghost{height:32px;padding:0 12px;border-radius:8px;border:1px solid #2a2a2e;background:#141416;color:#e4e4e7;font-family:inherit;font-size:12.5px}
+[data-frame="34f"] .done{height:32px;padding:0 14px;border-radius:8px;border:0;background:#e7e1d3;color:#0d0d0f;font-family:inherit;font-size:12.5px;font-weight:500;margin-left:auto}
+[data-frame="34f"] .stay{font-size:12px;line-height:18px;color:#a1a1aa}
+  /* 34g */
+[data-frame="34g"] .wrap{width:1280px;height:560px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;padding:28px 40px;display:flex;flex-direction:column;gap:16px}
+[data-frame="34g"] .crumb{font-size:12.5px;color:#8a8a93}
+[data-frame="34g"] .crumb b{color:#fafafa;font-weight:500}
+[data-frame="34g"] .card{border:1px solid rgba(255,255,255,0.1);border-radius:10px;background:#131316;overflow:hidden}
+[data-frame="34g"] .ch{display:flex;align-items:baseline;gap:10px;padding:10px 16px}
+[data-frame="34g"] .ct{margin:0;font-size:13.5px;font-weight:500}
+[data-frame="34g"] .cs{font-size:12px;color:#a1a1aa}
+[data-frame="34g"] .g{display:grid;grid-template-columns:36px minmax(0,1fr) 110px 120px 250px 110px 150px 120px;align-items:center;gap:12px;padding:8px 16px;border-top:1px solid rgba(255,255,255,0.06);font-size:12.5px}
+[data-frame="34g"] .th{padding-top:6px;padding-bottom:6px;font-size:11px;letter-spacing:.04em;color:#a1a1aa;text-transform:uppercase}
+[data-frame="34g"] .ini{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0d0d0f}
+[data-frame="34g"] .nm{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-frame="34g"] .nm b{font-weight:500}
+[data-frame="34g"] .mut{color:#a1a1aa}
+[data-frame="34g"] .role{display:inline-flex;height:24px;align-items:center;padding:0 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);font-size:11.5px;color:#d4d4d8;width:fit-content}
+[data-frame="34g"] .role.own{border-color:#e7e1d3;color:#fafafa}
+[data-frame="34g"] .two{display:flex;flex-direction:column;gap:1px;font-size:12px}
+[data-frame="34g"] .ok{color:#6ee7b7}
+[data-frame="34g"] .warn{color:#fcd34d}
+[data-frame="34g"] .rem{font-size:11.5px;color:#a1a1aa}
+[data-frame="34g"] .rem.hl{color:#e7e1d3}
+[data-frame="34g"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="34g"] .acts{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+[data-frame="34g"] .a{background:none;border:0;padding:0;font-family:inherit;font-size:12px;color:#a1a1aa}
+[data-frame="34g"] .a.armed{color:#e7e1d3;text-decoration:underline}
+[data-frame="34g"] .a.red{color:#fca5a5}
+  /* 34h */
+[data-frame="34h"] .wrap{width:1040px;height:460px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;padding:28px 0;display:flex;justify-content:center}
+[data-frame="34h"] .card{width:1000px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:16px 18px;border:1px solid rgba(255,255,255,0.1);border-radius:10px;background:#131316}
+[data-frame="34h"] .h2{margin:0;font-size:14px;font-weight:500}
+[data-frame="34h"] .row{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:center;gap:12px;font-size:13px}
+[data-frame="34h"] .k{color:#a1a1aa}
+[data-frame="34h"] .sel{height:32px;width:fit-content;border-radius:7px;border:1px solid rgba(255,255,255,0.1);background:#0d0d0f;color:#fafafa;padding:0 10px;font-size:12.5px;font-family:inherit}
+[data-frame="34h"] .sel.new{border-color:#e7e1d3}
+[data-frame="34h"] .mut{font-size:12px;color:#a1a1aa}
+[data-frame="34h"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#d4d4d8}
+[data-frame="34h"] .newtag{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:#0d0d0f;background:#e7e1d3;border-radius:4px;padding:1px 5px;margin-left:8px}
+[data-frame="34h"] .inl{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+[data-frame="34h"] .foot{font-size:12px;line-height:1.5;color:#a1a1aa}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Remember Browser</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 34a–34h · Two-step remembers a browser for 1 to 30 days, and the person or an Owner forgets it</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">The two-step step: remember this browser</h2>
+
+    <div id="34a" data-frame="34a" data-screen-label="34a Two-step today" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Two-step today</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×720</span>
+      </div>
+      <div data-crop="34a" style="position:relative; width:560px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<form class="col" action="#">
+<div class="cap">After the password</div>
+<div class="brand"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span>toposcope</span></div>
+<div class="who"><div class="to">ian@toposcope.io signing in to</div><div class="h1">prod-logs</div></div>
+<div class="pw">
+<label class="lbl" for="34a-code">The six digits from your authenticator app</label>
+<input id="34a-code" class="inp" value="" inputmode="numeric">
+<button class="btn" type="button">Sign in</button>
+</div>
+<a class="alt" href="#">Use a backup code instead</a>
+<div class="stay">Lost the phone and the codes? Ask an Owner to reset your two-step.</div>
+</form>
+</div>
+      </div>
+    </div>
+
+    <div id="34b" data-frame="34b" data-screen-label="34b Remember at rest (Off)" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Remember at rest (Off)</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×720</span>
+      </div>
+      <div data-crop="34b" style="position:relative; width:560px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<form class="col" action="#">
+<div class="cap">After the password</div>
+<div class="brand"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span>toposcope</span></div>
+<div class="who"><div class="to">ian@toposcope.io signing in to</div><div class="h1">prod-logs</div></div>
+<div class="pw">
+<label class="lbl" for="34b-code">The six digits from your authenticator app</label>
+<input id="34b-code" class="inp" value="{{f34b_code}}" inputmode="numeric">
+<fieldset class="rem">
+<legend class="remh"><span>Remember this browser</span><span class="{{f34b_valCls}}">{{f34b_valText}}</span></legend>
+<div class="track"><div class="rail"><div class="fill" style="{{f34b_fillStyle}}"></div><sc-for list="{{f34b_stops}}" as="s" hint-placeholder-count="5"><span class="{{s.cls}}" style="{{s.style}}"></span></sc-for><span class="{{f34b_thumbCls}}" style="{{f34b_thumbStyle}}"></span></div></div>
+<div class="ticks"><sc-for list="{{f34b_ticks}}" as="t" hint-placeholder-count="5"><label class="{{t.cls}}" style="{{t.style}}"><input class="sr" type="radio" name="remember" value="{{t.days}}" checked="{{t.checked}}">{{t.label}}</label></sc-for></div>
+<div class="hint">{{f34b_hint}}</div>
+</fieldset>
+<button class="btn" type="button">Sign in</button>
+</div>
+<a class="alt" href="#">Use a backup code instead</a>
+<div class="stay">Lost the phone and the codes? Ask an Owner to reset your two-step.</div>
+</form>
+</div>
+      </div>
+    </div>
+
+    <div id="34c" data-frame="34c" data-screen-label="34c Moved to 7 days (focus)" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Moved to 7 days (focus)</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×720</span>
+      </div>
+      <div data-crop="34c" style="position:relative; width:560px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<form class="col" action="#">
+<div class="cap">After the password</div>
+<div class="brand"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span>toposcope</span></div>
+<div class="who"><div class="to">ian@toposcope.io signing in to</div><div class="h1">prod-logs</div></div>
+<div class="pw">
+<label class="lbl" for="34c-code">The six digits from your authenticator app</label>
+<input id="34c-code" class="inp" value="{{f34c_code}}" inputmode="numeric">
+<fieldset class="rem">
+<legend class="remh"><span>Remember this browser</span><span class="{{f34c_valCls}}">{{f34c_valText}}</span></legend>
+<div class="track"><div class="rail"><div class="fill" style="{{f34c_fillStyle}}"></div><sc-for list="{{f34c_stops}}" as="s" hint-placeholder-count="5"><span class="{{s.cls}}" style="{{s.style}}"></span></sc-for><span class="{{f34c_thumbCls}}" style="{{f34c_thumbStyle}}"></span></div></div>
+<div class="ticks"><sc-for list="{{f34c_ticks}}" as="t" hint-placeholder-count="5"><label class="{{t.cls}}" style="{{t.style}}"><input class="sr" type="radio" name="remember" value="{{t.days}}" checked="{{t.checked}}">{{t.label}}</label></sc-for></div>
+<div class="hint">{{f34c_hint}}</div>
+</fieldset>
+<button class="btn" type="button">Sign in</button>
+</div>
+<a class="alt" href="#">Use a backup code instead</a>
+<div class="stay">Lost the phone and the codes? Ask an Owner to reset your two-step.</div>
+</form>
+</div>
+      </div>
+    </div>
+
+    <div id="34d" data-frame="34d" data-screen-label="34d Far end, 30 days" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Far end, 30 days</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">560×720</span>
+      </div>
+      <div data-crop="34d" style="position:relative; width:560px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<form class="col" action="#">
+<div class="cap">After the password</div>
+<div class="brand"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span>toposcope</span></div>
+<div class="who"><div class="to">ian@toposcope.io signing in to</div><div class="h1">prod-logs</div></div>
+<div class="pw">
+<label class="lbl" for="34d-code">The six digits from your authenticator app</label>
+<input id="34d-code" class="inp" value="{{f34d_code}}" inputmode="numeric">
+<fieldset class="rem">
+<legend class="remh"><span>Remember this browser</span><span class="{{f34d_valCls}}">{{f34d_valText}}</span></legend>
+<div class="track"><div class="rail"><div class="fill" style="{{f34d_fillStyle}}"></div><sc-for list="{{f34d_stops}}" as="s" hint-placeholder-count="5"><span class="{{s.cls}}" style="{{s.style}}"></span></sc-for><span class="{{f34d_thumbCls}}" style="{{f34d_thumbStyle}}"></span></div></div>
+<div class="ticks"><sc-for list="{{f34d_ticks}}" as="t" hint-placeholder-count="5"><label class="{{t.cls}}" style="{{t.style}}"><input class="sr" type="radio" name="remember" value="{{t.days}}" checked="{{t.checked}}">{{t.label}}</label></sc-for></div>
+<div class="hint">{{f34d_hint}}</div>
+</fieldset>
+<button class="btn" type="button">Sign in</button>
+</div>
+<a class="alt" href="#">Use a backup code instead</a>
+<div class="stay">Lost the phone and the codes? Ask an Owner to reset your two-step.</div>
+</form>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Signing in on a remembered browser</h2>
+
+    <div id="34e" data-frame="34e" data-screen-label="34e Remembered sign-in skips the code" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34e" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34e</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Remembered sign-in skips the code</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1200×720</span>
+      </div>
+      <div data-crop="34e" style="position:relative; width:1200px; height:720px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="wrap">
+<div class="pg">
+<form class="col" action="#">
+<div class="brand"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span>toposcope</span></div>
+<div class="who"><div class="to">Signing in to</div><div class="h1">prod-logs</div><div class="addr">logs.toposcope.io · 0.12.1</div></div>
+<div class="pw">
+<label class="lbl" for="34e-em">Email</label>
+<input id="34e-em" class="inp" value="ian@toposcope.io">
+<label class="lbl" for="34e-pw">Password</label>
+<input id="34e-pw" class="inp" type="password" value="xxxxxxxxxxxx">
+<button class="btn" type="button">Sign in</button>
+</div>
+<div class="stay">Stays signed in on this browser for 30 days.</div>
+</form>
+</div>
+<div class="mid"><svg width="40" height="16" viewBox="0 0 40 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8h34"></path><path d="M30 2l6 6-6 6"></path></svg><span>no code page</span></div>
+<div class="app">
+<div class="hdr"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span class="inst">prod-logs</span><span class="nav">Search</span><span class="nav">Watch</span><span class="nav">Alerts</span><span class="av">IA</span></div>
+<div class="body">
+<div class="bar"></div>
+<div class="plot"></div>
+<div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div>
+</div>
+<div class="toast" role="status"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg><span>No code asked: this browser is remembered for your two-step until <span class="mono">Sun 8 Nov</span>.<br><span class="muted">Forget it from your menu › Remembered browsers.</span></span></div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="34i" data-frame="34i" data-screen-label="34i Phone, 7 days" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34i" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34i</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Phone, 7 days</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">390×844</span>
+      </div>
+      <div data-crop="34i" style="position:relative; width:390px; height:844px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<form class="col" action="#">
+<div class="cap">After the password</div>
+<div class="brand"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span>toposcope</span></div>
+<div class="who"><div class="to">ian@toposcope.io signing in to</div><div class="h1">prod-logs</div></div>
+<div class="pw">
+<label class="lbl" for="34i-code">The six digits from your authenticator app</label>
+<input id="34i-code" class="inp" value="{{f34i_code}}" inputmode="numeric">
+<fieldset class="rem">
+<legend class="remh"><span>Remember this browser</span><span class="{{f34i_valCls}}">{{f34i_valText}}</span></legend>
+<div class="track"><div class="rail"><div class="fill" style="{{f34i_fillStyle}}"></div><sc-for list="{{f34i_stops}}" as="s" hint-placeholder-count="5"><span class="{{s.cls}}" style="{{s.style}}"></span></sc-for><span class="{{f34i_thumbCls}}" style="{{f34i_thumbStyle}}"></span></div></div>
+<div class="ticks"><sc-for list="{{f34i_ticks}}" as="t" hint-placeholder-count="5"><label class="{{t.cls}}" style="{{t.style}}"><input class="sr" type="radio" name="remember" value="{{t.days}}" checked="{{t.checked}}">{{t.label}}</label></sc-for></div>
+<div class="hint">{{f34i_hint}}</div>
+</fieldset>
+<button class="btn" type="button">Sign in</button>
+</div>
+<a class="alt" href="#">Use a backup code instead</a>
+<div class="stay">Lost the phone and the codes? Ask an Owner to reset your two-step.</div>
+</form>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Seeing and forgetting remembered browsers</h2>
+
+    <div id="34f" data-frame="34f" data-screen-label="34f Your remembered browsers" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34f" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34f</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Your remembered browsers</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1100×640</span>
+      </div>
+      <div data-crop="34f" style="position:relative; width:1100px; height:640px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="wrap">
+<div class="hdr"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color:#e7e1d3"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span class="inst">prod-logs</span><span class="nav">Search</span><span class="nav">Watch</span><span class="nav">Alerts</span><button class="av" type="button" aria-label="Ian Adams · Owner">IA</button></div>
+<div class="menu" role="menu">
+<div class="mh"><span class="mn">Ian Adams</span><span class="me">ian@toposcope.io</span><span class="mr">Owner</span></div>
+<a class="mi" href="#" style="margin-top:4px">New backup codes…</a>
+<a class="mi hl" href="#"><span>Remembered browsers…</span><span class="cnt">3</span></a>
+<a class="mi" href="#">Sign out</a>
+</div>
+<section class="panel" aria-label="Remembered browsers">
+<h2 class="h2">Remembered browsers</h2>
+<p class="lead">After your password, these skip the six digits until the day shown. Forgetting one asks for a code there at its next sign-in; it stays signed in until then.</p>
+<div class="list">
+<sc-for list="{{f34f_rows}}" as="r" hint-placeholder-count="3">
+<div class="{{r.cls}}">
+<span class="nm"><span class="dv">{{r.device}}<span class="you">{{r.you}}</span></span><span class="sub">{{r.sub}}</span></span>
+<span class="until">until {{r.until}}</span>
+<button class="{{r.fgCls}}" type="button">{{r.fg}}</button>
+</div>
+</sc-for>
+</div>
+<div class="foot"><button class="ghost" type="button">Forget all three</button><span class="stay">Resetting two-step or changing your password forgets them all.</span><button class="done" type="button">Done</button></div>
+</section>
+</div>
+      </div>
+    </div>
+
+    <div id="34g" data-frame="34g" data-screen-label="34g Owner on Access › People" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34g" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34g</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Owner on Access › People</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1280×560</span>
+      </div>
+      <div data-crop="34g" style="position:relative; width:1280px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="wrap">
+<div class="crumb">Access › <b>People</b></div>
+<section class="card" aria-label="People">
+<div class="ch"><h2 class="ct">People</h2><span class="cs">sign in to this instance and see what their role lets them</span></div>
+<div class="g th"><span></span><span>Name</span><span>Role</span><span>Signs in with</span><span>Two-step</span><span>Last seen</span><span>Invited by</span><span></span></div>
+<sc-for list="{{f34g_people}}" as="p" hint-placeholder-count="4">
+<div class="g">
+<span class="ini" style="{{p.tone}}">{{p.ini}}</span>
+<span class="nm"><b>{{p.name}}</b><span class="mut">{{p.rest}}</span></span>
+<span class="{{p.roleCls}}">{{p.role}}</span>
+<span class="mut" style="font-size:12px">{{p.with}}</span>
+<span class="two"><span class="{{p.twoCls}}">{{p.two}}</span><span class="{{p.remCls}}">{{p.rem}}</span></span>
+<span class="mono">{{p.seen}}</span>
+<span class="mut" style="font-size:12px">{{p.inv}}</span>
+<span class="acts"><sc-for list="{{p.acts}}" as="a" hint-placeholder-count="2"><button class="{{a.cls}}" type="button">{{a.t}}</button></sc-for></span>
+</div>
+</sc-for>
+</section>
+</div>
+      </div>
+    </div>
+
+    <div id="34h" data-frame="34h" data-screen-label="34h Optional: Owner caps the days" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#34h" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">34h</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Optional: Owner caps the days</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">1040×460</span>
+      </div>
+      <div data-crop="34h" style="position:relative; width:1040px; height:460px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="wrap">
+<section class="card" aria-label="Passwords and two-step">
+<h2 class="h2">Passwords and two-step</h2>
+<div class="row"><span class="k">Passwords</span><label class="mut" style="display:inline-flex;gap:8px;align-items:center;color:#fafafa"><input type="checkbox" checked="{{f34h_yes}}"> on · 4 people use one</label></div>
+<label class="row"><span class="k">Two-step is required for</span><select class="sel"><option>everyone with a password</option></select></label>
+<label class="row"><span class="k">Remember a browser<span class="newtag">new</span></span><span class="inl"><select class="sel new"><option>up to 30 days</option><option>up to 14 days</option><option>up to 7 days</option><option>up to 1 day</option><option>never: a code at every sign-in</option></select><span class="mut">The sign-in slider stops here. Lowering it shortens browsers already remembered; <span class="mono">never</span> forgets them all.</span></span></label>
+<div class="row"><span class="k">Rules</span><span class="mut">12 characters or more · slows down after misses, never locks · sessions last 30 days</span></div>
+<div class="row"><span class="k">Lost an Owner?</span><span class="mut">A host command makes a new one: <span class="mono">toposcope.sh owner-link</span></span></div>
+<span class="foot">Turning passwords off leaves the provider only. It is refused while an Owner has no other way in.</span>
+</section>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f34b', new (class {
+renderVals() {
+const at = Math.max(0, Math.min(4, (this.props || {}).at ?? 0));
+const focus = (this.props || {}).focus ?? false;
+const steps = [["Off", 0], ["1 day", 1], ["7 days", 7], ["14 days", 14], ["30 days", 30]];
+const until = ["", "Mon 2 Nov", "Sun 8 Nov", "Sun 15 Nov", "Tue 1 Dec"];
+const stops = steps.map((s, i) => ({ cls: "stop" + (at > 0 && i <= at ? " lit" : ""), style: "left:" + i * 25 + "%" }));
+const ticks = steps.map((s, i) => ({
+label: s[0], days: String(s[1]), checked: i === at, cls: "tk" + (i === at ? " cur" : ""),
+style: i === 0 ? "left:-8px" : i === 4 ? "right:-8px" : "left:" + i * 25 + "%;transform:translateX(-50%)"
+}));
+return {
+code: at ? "482 913" : "",
+stops, ticks,
+fillStyle: "width:" + at * 25 + "%",
+thumbCls: "thumb" + (at === 0 ? " off" : "") + (focus ? " focus" : ""),
+thumbStyle: "left:" + at * 25 + "%",
+valText: steps[at][0],
+valCls: "val" + (at ? " on" : ""),
+hint: at === 0 ? "Off: the six digits at every sign-in, as now." : "Still the password, but no code on this browser until " + until[at] + ". Forget it any time from your menu."
+};
+}
+})().renderVals()),
+      ...pre('f34c', new (class {
+renderVals() {
+const at = Math.max(0, Math.min(4, (this.props || {}).at ?? 2));
+const focus = (this.props || {}).focus ?? true;
+const steps = [["Off", 0], ["1 day", 1], ["7 days", 7], ["14 days", 14], ["30 days", 30]];
+const until = ["", "Mon 2 Nov", "Sun 8 Nov", "Sun 15 Nov", "Tue 1 Dec"];
+const stops = steps.map((s, i) => ({ cls: "stop" + (at > 0 && i <= at ? " lit" : ""), style: "left:" + i * 25 + "%" }));
+const ticks = steps.map((s, i) => ({
+label: s[0], days: String(s[1]), checked: i === at, cls: "tk" + (i === at ? " cur" : ""),
+style: i === 0 ? "left:-8px" : i === 4 ? "right:-8px" : "left:" + i * 25 + "%;transform:translateX(-50%)"
+}));
+return {
+code: at ? "482 913" : "",
+stops, ticks,
+fillStyle: "width:" + at * 25 + "%",
+thumbCls: "thumb" + (at === 0 ? " off" : "") + (focus ? " focus" : ""),
+thumbStyle: "left:" + at * 25 + "%",
+valText: steps[at][0],
+valCls: "val" + (at ? " on" : ""),
+hint: at === 0 ? "Off: the six digits at every sign-in, as now." : "Still the password, but no code on this browser until " + until[at] + ". Forget it any time from your menu."
+};
+}
+})().renderVals()),
+      ...pre('f34d', new (class {
+renderVals() {
+const at = Math.max(0, Math.min(4, (this.props || {}).at ?? 4));
+const focus = (this.props || {}).focus ?? false;
+const steps = [["Off", 0], ["1 day", 1], ["7 days", 7], ["14 days", 14], ["30 days", 30]];
+const until = ["", "Mon 2 Nov", "Sun 8 Nov", "Sun 15 Nov", "Tue 1 Dec"];
+const stops = steps.map((s, i) => ({ cls: "stop" + (at > 0 && i <= at ? " lit" : ""), style: "left:" + i * 25 + "%" }));
+const ticks = steps.map((s, i) => ({
+label: s[0], days: String(s[1]), checked: i === at, cls: "tk" + (i === at ? " cur" : ""),
+style: i === 0 ? "left:-8px" : i === 4 ? "right:-8px" : "left:" + i * 25 + "%;transform:translateX(-50%)"
+}));
+return {
+code: at ? "482 913" : "",
+stops, ticks,
+fillStyle: "width:" + at * 25 + "%",
+thumbCls: "thumb" + (at === 0 ? " off" : "") + (focus ? " focus" : ""),
+thumbStyle: "left:" + at * 25 + "%",
+valText: steps[at][0],
+valCls: "val" + (at ? " on" : ""),
+hint: at === 0 ? "Off: the six digits at every sign-in, as now." : "Still the password, but no code on this browser until " + until[at] + ". Forget it any time from your menu."
+};
+}
+})().renderVals()),
+      ...pre('f34i', new (class {
+renderVals() {
+const at = Math.max(0, Math.min(4, (this.props || {}).at ?? 2));
+const focus = (this.props || {}).focus ?? false;
+const steps = [["Off", 0], ["1 day", 1], ["7 days", 7], ["14 days", 14], ["30 days", 30]];
+const until = ["", "Mon 2 Nov", "Sun 8 Nov", "Sun 15 Nov", "Tue 1 Dec"];
+const stops = steps.map((s, i) => ({ cls: "stop" + (at > 0 && i <= at ? " lit" : ""), style: "left:" + i * 25 + "%" }));
+const ticks = steps.map((s, i) => ({
+label: s[0], days: String(s[1]), checked: i === at, cls: "tk" + (i === at ? " cur" : ""),
+style: i === 0 ? "left:-10px" : i === 4 ? "right:-10px" : "left:" + i * 25 + "%;transform:translateX(-50%)"
+}));
+return {
+code: at ? "482 913" : "",
+stops, ticks,
+fillStyle: "width:" + at * 25 + "%",
+thumbCls: "thumb" + (at === 0 ? " off" : "") + (focus ? " focus" : ""),
+thumbStyle: "left:" + at * 25 + "%",
+valText: steps[at][0],
+valCls: "val" + (at ? " on" : ""),
+hint: at === 0 ? "Off: the six digits at every sign-in, as now." : "Still the password, but no code on this browser until " + until[at] + ". Forget it any time from your menu."
+};
+}
+})().renderVals()),
+      ...pre('f34f', new (class {
+renderVals() {
+const rows = [
+{ device: "Chrome on macOS", you: " · this browser", sub: "remembered 1 Nov 14:20 · 7 days", until: "Sun 8 Nov", fg: "forget" },
+{ device: "Safari on iPhone", you: "", sub: "remembered 28 Oct · last used 31 Oct 09:12", until: "Fri 27 Nov", fg: "sure? forget", armed: true },
+{ device: "Firefox on Linux", you: "", sub: "remembered 18 Oct · last used 18 Oct", until: "Wed 4 Nov", fg: "forget" }
+];
+return { rows: rows.map((r, i) => ({ ...r, cls: "it" + (i === 0 ? " first" : ""), fgCls: "fg" + (r.armed ? " armed" : "") })) };
+}
+})().renderVals()),
+      ...pre('f34g', new (class {
+renderVals() {
+const a = (t, cls) => ({ t, cls: "a" + (cls ? " " + cls : "") });
+const people = [
+{ ini: "IA", tone: "background:#e7e1d3", name: "Ian Adams", rest: " · you · ian@toposcope.io", role: "Owner", own: true, with: "password", two: "● on · 10 backup codes", ok: true, rem: "3 browsers remembered", seen: "now", inv: "first Owner, from the setup link", acts: [] },
+{ ini: "MK", tone: "background:#93c5fd", name: "Maya Kerr", rest: " · maya@toposcope.io", role: "Operator", with: "password", two: "● on · 8 backup codes", ok: true, rem: "2 browsers remembered · until 27 Nov", hl: true, seen: "12m ago", inv: "Ian Adams · 14 Oct", acts: [a("reset two-step"), a("sure? forget 2 browsers", "armed"), a("revoke")] },
+{ ini: "TB", tone: "background:#fdba74", name: "Tom Berg", rest: " · tom@toposcope.io", role: "Viewer", with: "password", two: "● on · 2 backup codes left", ok: false, warnOn: true, rem: "no browser remembered", seen: "yesterday", inv: "Ian Adams · 20 Oct", acts: [a("reset two-step"), a("revoke")] },
+{ ini: "PS", tone: "background:#c4b5fd", name: "Priya Shah", rest: " · priya@toposcope.io", role: "Operator", with: "password", two: "● set up again at next sign-in · reset by Ian Adams 30 Oct", ok: false, warn: true, rem: "remembered browsers forgotten by the reset", seen: "29 Oct", inv: "Ian Adams · 2 Oct", acts: [a("revoke")] }
+];
+return { people: people.map((p) => ({ ...p, roleCls: "role" + (p.own ? " own" : ""), twoCls: p.ok ? "ok" : (p.warn || p.warnOn) ? "warn" : "mut", remCls: "rem" + (p.hl ? " hl" : "") })) };
+}
+})().renderVals()),
+      ...pre('f34h', new (class {
+renderVals() { return { yes: true }; }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>

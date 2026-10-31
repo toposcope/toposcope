@@ -17,6 +17,7 @@ import {
   checkPassword,
   clearSignInFailures,
   createSession,
+  noteSessionRemembered,
   endSession,
   liveOwnerCount,
   looksLikeEmail,
@@ -47,6 +48,7 @@ import { version as runningVersionForSignIn } from "./shared/version";
 import { savedSearchUrl } from "./ui/search-url";
 import { joinPageHtml, ownerSetupPageHtml, safeNext, signInPageHtml, twoStepPageHtml, type TwoStepPageBody } from "./sign-in-page";
 import { beginSetup, checkSecondStep, confirmSetup, groupedKey, hasTwoStep, makeBackupCodes, otpauthUri, twoStepRequired } from "./control/two-step";
+import { rememberBrowser, rememberCookieHeader, rememberCookieName, rememberDaysMax, rememberedUntil } from "./control/remembered";
 import { finishSignIn, oidcConfig, passwordsOn, startSignIn } from "./control/oidc";
 import { qrSvg } from "./shared/qr";
 import { ingestRoute, insertEvents } from "./ingest";
@@ -182,8 +184,16 @@ function signInPage(c: Context, opts: { wrong?: boolean; next?: string; status?:
  * setting it up when this person must have one and has none yet.
  */
 function beginSession(c: Context, person: Person, next: string): { stage: SessionStage; expiresAt: number } {
-  const stage: SessionStage = hasTwoStep(person.id) ? "verify" : twoStepRequired(person) ? "setup" : "full";
+  let stage: SessionStage = hasTwoStep(person.id) ? "verify" : twoStepRequired(person) ? "setup" : "full";
+  // 34e: a browser this person had remembered skips the code; the password was still asked.
+  const remembered = stage === "verify" ? rememberedUntil(person.id, readCookie(c.req.header("cookie"), rememberCookieName())) : null;
+  if (remembered) {
+    stage = "full";
+  }
   const session = createSession(person, Date.now(), undefined, stage, next);
+  if (remembered) {
+    noteSessionRemembered(session.value, remembered);
+  }
   c.header("Set-Cookie", sessionCookieHeader(session.value, Math.floor((stage === "full" ? sessionMs : pendingMs) / 1000), overHttps(c)));
   return { stage, expiresAt: session.expiresAt };
 }
@@ -245,7 +255,7 @@ app.get("/two-step", (c) => {
     // Shown once: a reload before Finish makes ten new ones, and the earlier ten stop working.
     return twoStepPage(c, { stage: "codes", email: waiting.person.email ?? waiting.person.name, codes: makeBackupCodes(waiting.person.id) });
   }
-  return twoStepPage(c, { stage: "verify", email: waiting.person.email ?? waiting.person.name, backup: c.req.query("backup") === "1" });
+  return twoStepPage(c, { stage: "verify", email: waiting.person.email ?? waiting.person.name, backup: c.req.query("backup") === "1", rememberMax: rememberDaysMax() });
 });
 
 async function formOrJson(c: Context): Promise<{ json: boolean; body: Record<string, unknown> }> {
@@ -269,7 +279,7 @@ app.post("/api/two-step/verify", async (c) => {
     const seconds = Math.ceil(wait / 1000);
     return json
       ? c.json({ error: `Try again in ${seconds} seconds`, retry_after: seconds }, 429)
-      : twoStepPage(c, { stage: "verify", email, backup: typeof body.backup === "string", waitSeconds: seconds }, 429);
+      : twoStepPage(c, { stage: "verify", email, backup: typeof body.backup === "string", waitSeconds: seconds, rememberMax: rememberDaysMax(), remember: Number(body.remember ?? 0) }, 429);
   }
   const code = typeof body.code === "string" ? body.code : undefined;
   const backup = typeof body.backup === "string" ? body.backup : undefined;
@@ -280,10 +290,19 @@ app.post("/api/two-step/verify", async (c) => {
     const nextWait = Math.ceil(signInWaitMs(email) / 1000);
     return json
       ? c.json({ error: "That code was not right" }, 401)
-      : twoStepPage(c, { stage: "verify", email, backup: backup !== undefined, wrong: true, waitSeconds: nextWait || undefined }, 400);
+      : twoStepPage(c, { stage: "verify", email, backup: backup !== undefined, wrong: true, waitSeconds: nextWait || undefined, rememberMax: rememberDaysMax(), remember: Number(body.remember ?? 0) }, 400);
   }
   clearSignInFailures(email);
   setSessionStage(waiting.id, "full");
+  // 34b–34d: "Remember this browser" skips the code here for the days chosen, up to the cap.
+  const days = Number(body.remember ?? 0);
+  if (days > 0) {
+    const cookieName = rememberCookieName();
+    const kept = rememberBrowser(waiting.person.id, days, { userAgent: c.req.header("user-agent"), presented: readCookie(c.req.header("cookie"), cookieName) });
+    if (kept) {
+      c.header("Set-Cookie", rememberCookieHeader(kept.token, kept.days * 24 * 60 * 60, overHttps(c)), { append: true });
+    }
+  }
   const next = safeNext(waiting.next ?? "/");
   if (result.via === "backup") {
     return json ? c.json({ ok: true, backup_codes_left: result.left }) : twoStepPage(c, { stage: "backup-used", email, left: result.left, next });

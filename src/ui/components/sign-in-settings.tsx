@@ -14,6 +14,7 @@ type Body = {
   status: { last_sign_in_at: number | null; last_error: string | null; last_error_at: number | null };
   redirect_uri: string;
   two_step_for: "everyone" | "owners";
+  remember_days_max?: 0 | 1 | 7 | 14 | 30;
 };
 
 const presets: Array<{ id: string; name: string; issuer: string }> = [
@@ -222,6 +223,21 @@ export function SignInSettings(props: { onSettings: () => void }) {
                 <option value="everyone">everyone with a password</option>
                 <option value="owners">Owners only</option>
               </select>
+            </label>
+            <label className={row}>
+              <span className={k}>Remember a browser</span>
+              <span className="flex flex-wrap items-center gap-3">
+                <select className={input} value={body?.remember_days_max ?? 30} disabled={busy || !body} onChange={(e) => void put({ remember_days_max: Number(e.target.value) }, "Saved")}>
+                  <option value={30}>up to 30 days</option>
+                  <option value={14}>up to 14 days</option>
+                  <option value={7}>up to 7 days</option>
+                  <option value={1}>up to 1 day</option>
+                  <option value={0}>never: a code at every sign-in</option>
+                </select>
+                <span className="text-[12px] text-muted-foreground">
+                  The sign-in slider stops here. Lowering it shortens browsers already remembered; <span className="font-mono text-zinc-300">never</span> forgets them all.
+                </span>
+              </span>
             </label>
             <div className={row}>
               <span className={k}>Rules</span>

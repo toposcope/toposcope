@@ -341,7 +341,17 @@ export type TwoStepPage = { name: string | null; address: string } & TwoStepPage
 export type TwoStepPageBody = {
   email: string;
 } & (
-  | { stage: "verify"; backup?: boolean; wrong?: boolean; waitSeconds?: number }
+  | {
+      stage: "verify";
+      backup?: boolean;
+      wrong?: boolean;
+      waitSeconds?: number;
+      /** The most days an Owner lets a browser be remembered (34h); 0 hides the slider. */
+      rememberMax?: number;
+      /** The days picked before a miss, kept. */
+      remember?: number;
+      nowMs?: number;
+    }
   | { stage: "setup"; secretGrouped: string; qr: string; error?: string }
   | { stage: "codes"; codes: string[]; error?: string }
   | { stage: "backup-used"; left: number; next: string }
@@ -372,7 +382,65 @@ const twoStepStyle = `<style>
   .step.done i { border-color: #1f3b30; background: #1f3b30; color: #6ee7b7; }
   a.alt { color: #d4d4d8; font-size: 12.5px; }
   @media (max-width: 640px) { .setup { grid-template-columns: 1fr; } .codes { grid-template-columns: 1fr; } }
+  /* 34b–34d: Remember this browser, a radio group drawn as a stepped track; arrow keys move it, no script. */
+  .rem { border: 0; margin: 6px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .remh { display: flex; justify-content: space-between; align-items: baseline; width: 100%; padding: 0; font-size: 12.5px; color: #a1a1aa; }
+  .val, .hint .h { display: none; }
+  .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; color: #e7e1d3; }
+  .val.v-0 { color: #8a8a93; }
+  .track { position: relative; height: 28px; }
+  .rail { position: absolute; left: 8px; right: 8px; top: 12px; height: 4px; border-radius: 2px; background: #27272a; }
+  .fill { position: absolute; left: 0; top: 0; width: 0; height: 4px; border-radius: 2px; background: #e7e1d3; }
+  .stop { position: absolute; top: -12px; width: 28px; height: 28px; margin-left: -14px; cursor: pointer; }
+  .stop::after { content: ""; position: absolute; left: 9px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: #3f3f46; box-sizing: border-box; border: 2px solid #0d0d0f; }
+  .thumb { position: absolute; top: -6px; left: 0; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #e7e1d3; box-shadow: 0 0 0 3px #0d0d0f; box-sizing: border-box; pointer-events: none; }
+  .ticks { position: relative; height: 18px; margin: 0 8px; }
+  .tk { position: absolute; top: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #8a8a93; white-space: nowrap; cursor: pointer; }
+  .sr { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+  .sr:checked + .tk { color: #fafafa; }
+  .rem:has(.sr:focus-visible) .thumb { outline: 2px solid rgba(231,225,211,0.6); outline-offset: 3px; }
+  .hint { font-size: 12px; line-height: 18px; color: #a1a1aa; margin-top: 2px; }
+  @media (max-width: 480px) {
+    .track { height: 36px; } .rail { left: 10px; right: 10px; top: 16px; } .ticks { height: 28px; margin: 0 10px; } .tk { line-height: 28px; }
+    .thumb { top: -8px; width: 20px; height: 20px; margin-left: -10px; } .stop { top: -16px; width: 36px; height: 36px; margin-left: -18px; } .stop::after { left: 13px; top: 13px; }
+  }
 </style>`;
+
+const remLabel: Record<number, string> = { 0: "Off", 1: "1 day", 7: "7 days", 14: "14 days", 30: "30 days" };
+
+/** "Sun 8 Nov", in UTC like the rest of the app's absolute times. */
+function dayAt(ms: number): string {
+  const d = new Date(ms);
+  return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()]} ${d.getUTCDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()]}`;
+}
+
+/** 34b–34d: the stops up to the Owner's cap, Off checked unless a miss kept another. */
+export function rememberSlider(max: number, picked: number, nowMs: number): string {
+  const days = [0, 1, 7, 14, 30].filter((d) => d <= max);
+  if (days.length < 2) {
+    return "";
+  }
+  const at = days.includes(picked) ? picked : 0;
+  const pos = (i: number) => (i * 100) / (days.length - 1);
+  const css = days
+    .map((d, i) => {
+      const on = `.rem:has(#rem-${d}:checked)`;
+      const lit = days.slice(1, i + 1).map((_, j) => `${on} .s-${j + 1}::after`);
+      return [
+        `${on} .fill { width: ${pos(i)}%; } ${on} .thumb { left: ${pos(i)}%; } ${on} .v-${d}, ${on} .h-${d} { display: inline; }`,
+        lit.length ? `${lit.join(", ")} { background: #e7e1d3; }` : `${on} .thumb { background: #141416; border: 2px solid #71717a; }`,
+      ].join(" ");
+    })
+    .join("\n");
+  const tickStyle = (i: number) => (i === 0 ? "left:-8px" : i === days.length - 1 ? "right:-8px" : `left:${pos(i)}%;transform:translateX(-50%)`);
+  return `<style>${css}</style>
+    <fieldset class="rem">
+      <legend class="remh"><span>Remember this browser</span>${days.map((d) => `<span class="val v-${d}">${remLabel[d]}</span>`).join("")}</legend>
+      <div class="track" aria-hidden="true"><div class="rail"><div class="fill"></div>${days.map((d, i) => `<label class="stop s-${i}" for="rem-${d}" style="left:${pos(i)}%"></label>`).join("")}<span class="thumb"></span></div></div>
+      <div class="ticks">${days.map((d, i) => `<input class="sr" type="radio" id="rem-${d}" name="remember" value="${d}"${d === at ? " checked" : ""}><label class="tk" for="rem-${d}" style="${tickStyle(i)}">${remLabel[d]}</label>`).join("")}</div>
+      <div class="hint">${days.map((d) => `<span class="h h-${d}">${d === 0 ? "Off: a code at every sign-in, as now." : `Still the password, but no code on this browser until ${dayAt(nowMs + d * 86_400_000)}. Forget it any time from your menu.`}</span>`).join("")}</div>
+    </fieldset>`;
+}
 
 /** 32b setup, 32c backup codes, 32d the second step at sign-in. */
 export function twoStepPageHtml(page: TwoStepPage): string {
@@ -439,6 +507,7 @@ export function twoStepPageHtml(page: TwoStepPage): string {
         : `<label for="code">The six digits from your authenticator app</label><input id="code" name="code" class="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus${page.wrong ? ' aria-invalid="true" aria-describedby="pw-error"' : ""}>`
     }
     ${wait}
+    ${rememberSlider(page.rememberMax ?? 0, page.remember ?? 0, page.nowMs ?? Date.now())}
     <button type="submit">Sign in</button>
   </div>
   <a class="alt" href="/two-step${page.backup ? "" : "?backup=1"}">${page.backup ? "Use the six digits instead" : "Use a backup code instead"}</a>

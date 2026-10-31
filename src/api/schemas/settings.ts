@@ -32,4 +32,5 @@ export const signInSettingsBody = v.object({
     ),
   ),
   two_step_for: twoStepFor,
+  remember_days_max: v.optional(described(v.picklist([0, 1, 7, 14, 30], "remember_days_max is 0, 1, 7, 14 or 30"), "The most days a browser may skip the two-step code; 0 asks for it at every sign-in and forgets every remembered browser.")),
 });

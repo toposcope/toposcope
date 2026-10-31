@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+Two-step can remember a browser. Under the six digits (or a backup code) a slider goes from Off to 1, 7, 14 or 30 days; on that browser the password then signs in without the code until the day it named. Each remembered browser is a row on the server that keeps only a hash of the cookie, and your menu › Remembered browsers lists them and forgets one or all. An Owner sees how many each person has on People and can forget them; resetting two-step, a new password or revoking someone forgets them too. **Settings › Sign-in and roles** caps the days (30 by default); lowering it shortens what is remembered, and never asks for the code at every sign-in again.
+
 ## 0.12.0
 
 **Before you upgrade:** log rows no longer store a JSON copy of their attributes in `logs.attrs`, only `attr_map`, which Search, the feed and context now read. The column stays, and the copies already in it age out with retention; nothing is dropped. Going back to 0.11.1 is safe, but there a row stored by this release shows no attributes, though searches and facets on them still find it.
