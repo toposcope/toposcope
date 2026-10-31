@@ -10,6 +10,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ClickHouse is sized from the machine. Out of the box it is sized for a large shared server: 512 scheduler threads, merge pools of 16 and caches of 5 to 8 GiB each, whatever box it runs on. At every start the packaged `compose.yml` now reads the CPUs and memory ClickHouse may use (its container's limits, else the machine's) and sets its memory ceiling, caches and thread pools from them; [Memory](docs/operations.md#memory) has the rule and the measurements. On an empty instance on 8 CPUs, ClickHouse held 177 MiB after 30 minutes instead of 319 MiB, with 121 threads instead of 655; under steady ingest it stored the same rows with a third less memory and 13% less CPU.
 
+Many small senders are no longer told 429. ClickHouse answers an insert only once it has written it, which takes up to 200 ms however few lines it holds, and the app let 32 inserts wait at once: with 50 senders of 5 lines each, more than half their requests were refused. Inserts are now weighed by their rows: up to 32,768 rows may wait, as many as 32 full OTLP batches did, so the memory they hold is no more than before, and at most 256 inserts. In the same test no request was refused and 53% more lines were stored, for about the same ClickHouse CPU.
+
 ClickHouse's disk is said for what it is. The footer's ClickHouse chip labels its second figure `disk`: it was, and is, the whole filesystem ClickHouse is on, not what ClickHouse holds. Its tooltip and Settings › Storage show what ClickHouse stores (its active parts) and how much of that is its own logs. `GET /api/system` gains `stored` and `stored_system` on `clickhouse` (null on `app`).
 
 ## 0.11.0

@@ -154,6 +154,7 @@ export function insertPulledNative(
         );
         return { stored: Number(stored[0]?.n ?? 0) };
       }),
+      block.rows,
     ),
   );
 }

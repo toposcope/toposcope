@@ -83,7 +83,7 @@ export async function insertChangeMarks(marks: ChangeMark[]): Promise<number> {
     } finally {
       releaseArrivalSeq(seq);
     }
-  });
+  }, marks.length);
 }
 
 export async function ingestMarksRoute(c: Context): Promise<Response> {

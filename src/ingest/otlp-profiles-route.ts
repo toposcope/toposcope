@@ -56,7 +56,7 @@ export async function insertProfileSamples(samples: ProfileSample[]): Promise<nu
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "profile_samples");
     return samples.length;
-  }));
+  }), samples.length);
 }
 
 export async function otlpProfilesRoute(c: Context): Promise<Response> {
