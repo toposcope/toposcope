@@ -1,15 +1,16 @@
 import type { Context } from "hono";
 import { actorOf } from "../actor-context";
-import { sessionEnd } from "../auth";
+import { readCookie, sessionCookieName, sessionEnd } from "../auth";
 import { insertEvents } from "../ingest";
 import { openedAddress, redirectUri } from "../shared/request-address";
 import { stampSetting } from "./actors";
 import { instanceId, instanceName } from "./instance";
 import { signInSettings, writeSignInSettings } from "./oidc";
-import { allPeople, initials, meBody } from "./people";
+import { allPeople, initials, meBody, sessionRemembered } from "./people";
 import { checkReleasesNow, versionReply, type CheckDeps, type VersionReply } from "./release-check";
 import { storeSize } from "./store-size";
 import { twoStepFor, writeTwoStepFor } from "./two-step";
+import { isRememberDays, rememberDaysMax, writeRememberDaysMax } from "./remembered";
 import { announceNewRelease } from "./update-event";
 import { readUpgrader, requestUpgrade } from "./upgrader";
 
@@ -20,7 +21,9 @@ export function meRoute(c: Context): Response {
   }
   // 30e: "ask an Owner" names them.
   const owners = allPeople().filter((p) => p.role === "owner" && p.kind === "person" && p.revoked_at === null).map((p) => p.name);
-  return c.json({ ...meBody(actor), initials: initials(actor.person.name), owners });
+  // 34e: this session skipped the code on a remembered browser, until when.
+  const remembered = actor.via === "session" ? sessionRemembered(readCookie(c.req.header("cookie"), sessionCookieName())) : null;
+  return c.json({ ...meBody(actor), initials: initials(actor.person.name), owners, remembered });
 }
 
 export function instanceRoute(c: Context): Response {
@@ -63,7 +66,7 @@ export async function versionUpgradeRoute(c: Context): Promise<Response> {
 }
 
 export function signInSettingsRoute(c: Context): Response {
-  return c.json({ ...signInSettings(), redirect_uri: redirectUri(c), two_step_for: twoStepFor() });
+  return c.json({ ...signInSettings(), redirect_uri: redirectUri(c), two_step_for: twoStepFor(), remember_days_max: rememberDaysMax() });
 }
 
 export async function putSignInSettingsRoute(c: Context): Promise<Response> {
@@ -84,10 +87,17 @@ export async function putSignInSettingsRoute(c: Context): Promise<Response> {
     writeTwoStepFor(rec.two_step_for);
     stampSetting("two_step_for");
   }
+  if (rec.remember_days_max !== undefined) {
+    if (!isRememberDays(rec.remember_days_max)) {
+      return c.json({ error: "remember_days_max is 0, 1, 7, 14 or 30" }, 400);
+    }
+    writeRememberDaysMax(rec.remember_days_max);
+    stampSetting("remember_days_max");
+  }
   const out = writeSignInSettings(rec);
   if ("error" in out) {
     return c.json({ error: out.error }, 400);
   }
   stampSetting("sign_in");
-  return c.json({ ...out, redirect_uri: redirectUri(c), two_step_for: twoStepFor() });
+  return c.json({ ...out, redirect_uri: redirectUri(c), two_step_for: twoStepFor(), remember_days_max: rememberDaysMax() });
 }

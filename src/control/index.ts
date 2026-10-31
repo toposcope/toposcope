@@ -1,6 +1,7 @@
 import { migratePeople } from "./people";
 import { migrateActors } from "./actors";
 import { migrateTwoStep } from "./two-step";
+import { migrateRemembered } from "./remembered";
 import { migrateOidc } from "./oidc";
 import { mkdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
@@ -363,6 +364,9 @@ export function migrateControlDb(db: Database): void {
   }
   migrateActors(db, addColumnIfMissing);
   migrateTwoStep(db, addColumnIfMissing);
+  migrateRemembered(db);
+  // A session a remembered browser started without the code (34e): when that browser's remembering ends.
+  addColumnIfMissing(db, "sessions", "remembered_until", "INTEGER");
   migrateOidc(db, addColumnIfMissing);
 }
 

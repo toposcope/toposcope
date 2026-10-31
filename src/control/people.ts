@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from
 import type { Database } from "bun:sqlite";
 import { getDb } from "./index";
 import { adoptUnstamped } from "./actors";
+import { forgetBrowsersOf } from "./remembered";
 
 /**
  * People (#305, frames 30a–30e, 32a): who signs in, and the tokens that act for them. There is no
@@ -258,6 +259,7 @@ export async function useOwnerLink(
     db.query(
       "UPDATE people SET password_hash = ?, session_epoch = session_epoch + 1, revoked_at = NULL, totp_secret = NULL, totp_pending = NULL, totp_last_step = NULL, backup_codes = NULL WHERE id = ?",
     ).run(passwordHash, link.person.id);
+    forgetBrowsersOf(link.person.id, db);
     return { person: personById(link.person.id, db)! };
   }
   const name = input.name.trim() || link.email.split("@")[0]!;
@@ -330,6 +332,7 @@ export async function setPassword(personId: string, password: string, db: Databa
   }
   const passwordHash = await Bun.password.hash(password, { algorithm: "argon2id" });
   db.query("UPDATE people SET password_hash = ?, session_epoch = session_epoch + 1 WHERE id = ?").run(passwordHash, personId);
+  forgetBrowsersOf(personId, db);
   return null;
 }
 
@@ -437,6 +440,21 @@ export function sessionPerson(
     notePersonSeen(person.id, now, db);
   }
   return { person, expiresAt };
+}
+
+/** Marks a session as started by a remembered browser, without the code (34e). */
+export function noteSessionRemembered(value: string, until: number, db: Database = getDb()): void {
+  db.query("UPDATE sessions SET remembered_until = ? WHERE id = ?").run(until, value.slice(0, value.indexOf(".")));
+}
+
+/** For `/api/me`: when this session skipped the code, until when, and when it began (34e's toast). */
+export function sessionRemembered(value: string | undefined, db: Database = getDb()): { until: number; signed_in_at: number } | null {
+  const dot = value ? value.indexOf(".") : -1;
+  if (!value || dot <= 0) {
+    return null;
+  }
+  const row = db.query("SELECT remembered_until, created_at FROM sessions WHERE id = ?").get(value.slice(0, dot)) as { remembered_until: number | null; created_at: number } | null;
+  return row?.remembered_until ? { until: row.remembered_until, signed_in_at: row.created_at } : null;
 }
 
 export function endSession(value: string | undefined, db: Database = getDb()): void {
@@ -784,6 +802,7 @@ export function revokePerson(personId: string, now = Date.now(), db: Database = 
   db.query("UPDATE people SET revoked_at = ? WHERE id = ?").run(now, personId);
   db.query("UPDATE person_tokens SET revoked_at = ? WHERE person_id = ? AND revoked_at IS NULL").run(now, personId);
   endSessionsOf(personId, db);
+  forgetBrowsersOf(personId, db);
   return null;
 }
 
