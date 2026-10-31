@@ -38,7 +38,8 @@ export async function pingClickHouse(): Promise<boolean> {
     url.pathname = "/ping";
     // `/ping` answers only bare: a `?database=` in CLICKHOUSE_URL would make it a 404.
     url.search = "";
-    const res = await fetch(url, { headers: { Authorization: authHeader() } });
+    // A hung ClickHouse answers health as down within the browser's probe (33j), not as a silent app.
+    const res = await fetch(url, { headers: { Authorization: authHeader() }, signal: AbortSignal.timeout(3_000) });
     if (!res.ok) {
       return false;
     }

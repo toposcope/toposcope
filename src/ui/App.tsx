@@ -207,14 +207,13 @@ import {
   type OperatorView,
   type RangeMode,
 } from "./search-url";
-import { SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./time-range";
+import { formatSpanShort, SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./time-range";
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
 import {
   bandWindowKey,
   searchWindowMs,
   windowHead,
-  windowMeta,
   type SearchWindow,
 } from "./window-identity";
 import { flattenTrace } from "./waterfall";
@@ -230,6 +229,8 @@ import { FollowOpenedChip } from "@/components/follow-opened-chip";
 import { HeldContext } from "./held-context";
 import { heldView } from "./held-view";
 import { HeldPill, ScopeChipView } from "@/components/held-tells";
+import { OutageBand, OutageChip, OutageScreen } from "@/components/outage-view";
+import { backEvent, isNoAnswer, useOutage } from "./outage";
 import { useHeld } from "./use-held";
 import {
   deriveLiveSeries,
@@ -574,6 +575,7 @@ export function App() {
   const [watchThisOpen, setWatchThisOpen] = useState(false);
   const [pinnedEvent, setPinnedEvent] = useState<LogEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const outage = useOutage();
   const [scanRefuse, setScanRefuse] = useState<SearchScan | null>(null);
   const [retentionDays, setRetentionDays] = useState(30);
   const [unauthorized, setUnauthorized] = useState(false);
@@ -1159,6 +1161,14 @@ export function App() {
   };
   const loadTowardTsRef = useRef<number | null>(null);
 
+  // 33l: back from an outage, the open hunt searches again.
+  const onBackRef = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    const onBack = () => onBackRef.current();
+    window.addEventListener(backEvent, onBack);
+    return () => window.removeEventListener(backEvent, onBack);
+  }, []);
+
   const runSearch = useCallback(
     async (
       mode: "replace" | "append" | "poll",
@@ -1712,6 +1722,10 @@ export function App() {
           return;
         }
         lastPaintHuntRef.current = hunt;
+        // No answer at all is the outage band's to say (33k), not a red line in the plot head.
+        if (isNoAnswer(err)) {
+          return;
+        }
         const message = err instanceof Error ? err.message : "Search failed";
         setError(message);
       } finally {
@@ -3901,6 +3915,81 @@ export function App() {
       };
 
 
+  // 33d, 33m–33o: what matched and when sits in the pinned plot's own head, not a strip of its own.
+  const huntHead = (
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 px-3 pt-2.5 pb-2">
+      <span className="text-[20px] leading-none font-semibold tracking-[-0.01em] tabular-nums text-foreground">
+        {scanRefuse?.histogram ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <CountText n={total} floor={heldV?.floor ?? false} />
+        )}
+      </span>
+      {scanRefuse?.histogram ? (
+        <span className="text-[13px] text-amber-400">
+          too wide to count · narrow the window or add a service: filter
+        </span>
+      ) : (
+        <span className="text-[13px] text-muted-foreground">matching</span>
+      )}
+      {heldV?.pill ? <HeldPill text={heldV.pill} /> : null}
+      {heldV?.chip ? <ScopeChipView chip={heldV.chip} /> : null}
+      {qErrOn && !chipInField ? <QueryErrorChip faults={qFaults} /> : null}
+      {unauthorized ? (
+        <span className="text-xs text-destructive">Unauthorized. Sign in again.</span>
+      ) : error && outage.status === "ok" ? (
+        <span className="min-w-0 truncate text-xs text-destructive">{error}</span>
+      ) : null}
+      <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
+        {explore ? (
+          <span className={cn("text-xs", live ? "text-sky-300" : "text-amber-400")}>
+            Custom · {formatSpanShort(spanMs)}
+          </span>
+        ) : live ? (
+          <span className="text-xs text-sky-300">Live</span>
+        ) : null}
+        {Number.isFinite(windowFromMs) && Number.isFinite(windowToMs) ? (
+          <span className="font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+            {live && !explore
+              ? `${windowHead(windowFromMs, windowToMs, spanMs).split(" → ")[0]} → now`
+              : windowHead(windowFromMs, windowToMs, spanMs)}{" "}
+            UTC · {barInterval} bars
+          </span>
+        ) : null}
+        {wsKind === "follow" && follow?.opened ? (
+          <FollowOpenedChip
+            opened={follow.opened}
+            moved={
+              !followOnOpened(follow.opened, {
+                range,
+                from,
+                to,
+                live,
+                explored: explore !== null,
+              })
+            }
+            onReset={onResetFollow}
+          />
+        ) : explore ? (
+          <button
+            type="button"
+            className="inline-flex h-6 items-center gap-1.5 rounded-md border border-white/16 px-2 text-[12px] text-foreground hover:border-ring hover:bg-accent"
+            onClick={onResetExplore}
+          >
+            <Undo2 className="size-3" />
+            Reset to {histogramExploreResetLabel(explore.range)}
+          </button>
+        ) : null}
+      </span>
+    </div>
+  );
+
+  onBackRef.current = () => {
+    if (view === "search" && !isSurr) {
+      void runSearch("replace");
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
@@ -4033,6 +4122,16 @@ export function App() {
           {me ? <MeMenu me={me} onSignOut={() => void signOut()} /> : null}
         </div>
       </header>
+      <OutageBand state={outage} />
+      {/* 33i–33l: the views stay mounted under an outage, so the hunt comes back as it was. */}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          outage.status === "down" ? "pointer-events-none opacity-55" : "",
+        )}
+        aria-hidden={outage.status === "down" ? true : undefined}
+      >
       {view === "settings" ? (
         <SettingsPage
           instance={instance}
@@ -4412,68 +4511,6 @@ export function App() {
                 </span>
               ) : null}
             </form>
-            <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-[7px] border-b px-3 py-[9px]">
-              {unauthorized ? (
-                <span className="text-xs text-destructive">
-                  Unauthorized. Sign in again.
-                </span>
-              ) : error ? (
-                <span className="text-xs text-destructive">{error}</span>
-              ) : null}
-              {boardUnbound ? (
-                <span className="font-mono text-base font-medium tracking-[-0.01em] whitespace-nowrap text-muted-foreground tabular-nums">
-                  — matching
-                </span>
-              ) : Number.isFinite(windowFromMs) && Number.isFinite(windowToMs) ? (
-                <div className="flex items-baseline gap-2.5">
-                  <span className="font-mono text-base font-medium tracking-[-0.01em] whitespace-nowrap text-foreground tabular-nums">
-                    <CountText n={total} floor={heldV?.floor ?? false} /> matching
-                  </span>
-                  <span className="font-mono text-base font-medium tracking-[-0.01em] whitespace-nowrap tabular-nums text-muted-foreground">
-                    {windowHead(windowFromMs, windowToMs, spanMs)}
-                  </span>
-                  <span className="font-mono text-[11px] whitespace-nowrap text-muted-foreground/80">
-                    {windowMeta(spanMs, barInterval)}
-                  </span>
-                </div>
-              ) : null}
-              {!boardUnbound && heldV?.pill ? <HeldPill text={heldV.pill} /> : null}
-              {!boardUnbound && heldV?.chip ? <ScopeChipView chip={heldV.chip} /> : null}
-              {qErrOn && !chipInField ? <QueryErrorChip faults={qFaults} /> : null}
-              {wsKind === "follow" && follow?.opened ? (
-                <FollowOpenedChip
-                  opened={follow.opened}
-                  moved={
-                    !followOnOpened(follow.opened, {
-                      range,
-                      from,
-                      to,
-                      live,
-                      explored: explore !== null,
-                    })
-                  }
-                  onReset={onResetFollow}
-                />
-              ) : explore ? (
-                <>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/16 bg-white/5 px-2.5 py-0.5 text-xs text-foreground">
-                    <span
-                      className="size-1.5 rounded-full"
-                      style={{ background: live ? "#0ea5e9" : "#fbbf24" }}
-                    />
-                    {live ? "Custom window" : "Custom window · paused"}
-                  </span>
-                  <button
-                    type="button"
-                    className="inline-flex h-6 items-center gap-1.5 rounded-md border border-white/16 px-2 text-[12px] text-foreground hover:border-ring hover:bg-accent"
-                    onClick={onResetExplore}
-                  >
-                    <Undo2 className="size-3" />
-                    Reset to {histogramExploreResetLabel(explore.range)}
-                  </button>
-                </>
-              ) : null}
-            </div>
             {boardUnbound && activeSaved?.board ? (
               <BoardEmpty
                 keys={activeSaved.board.keys}
@@ -4502,6 +4539,7 @@ export function App() {
               <SeriesCatalogContext.Provider value={seriesCatalog}>
                 <HeldContext.Provider value={heldV}>
                 <WidgetCanvas
+                  head={huntHead}
                   query={q}
                   widgets={widgets}
                   logs={logsOn}
@@ -4946,7 +4984,11 @@ export function App() {
           </div>
         </div>
       )}
+      </div>
+      <OutageScreen state={outage} instance={instance?.name ?? instance?.address ?? window.location.host} />
+      </div>
       <StatusFooter>
+        <OutageChip state={outage} />
         <ThroughputMeter
           onOpenHour={() => {
             setView("search");
@@ -4962,7 +5004,10 @@ export function App() {
           }}
         />
         <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />
-        <SystemMeters />
+        {/* Stale while the app is gone (33i): the last reading, dimmed. */}
+        <span className={cn("flex items-center gap-2", outage.status === "down" && outage.kind === "app" ? "opacity-40" : "")}>
+          <SystemMeters />
+        </span>
         <VersionFooter />
       </StatusFooter>
       <SharesDialog

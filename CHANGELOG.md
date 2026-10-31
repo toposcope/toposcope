@@ -6,6 +6,10 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+What matched and when sits in the plot. The count leads the pinned histogram's head and the window reads on its right (`21:09:36 → 22:09:36 UTC · 1m bars`, `→ now` in Live, `Custom · 8m 30s` with Reset on a moved window); the centered line between the search bar and the canvas is gone, and the plot gets its height.
+
+A down app or ClickHouse says so. Instead of a red "Failed to fetch", the first 15 seconds keep the last screen, dimmed, under a band that says what was lost and when the next try is; after that a full screen shows which link is broken (this browser → the app → ClickHouse), the retry countdown (2, 4, 8, 15, then every 30 seconds, or Retry now) and the commands to check on the host. When it answers again a green band says how long it was gone and the hunt searches again. Only `/api/health` decides that something is down, so a search error with everything up stays where it was. Health now gives up on a ClickHouse ping after 3 seconds, so a hung ClickHouse reads as down instead of making health hang.
+
 **Before you upgrade:** log rows no longer store a JSON copy of their attributes in `logs.attrs`, only `attr_map`, which Search, the feed and context now read. The column stays, and the copies already in it age out with retention; nothing is dropped. Going back to 0.11.1 is safe, but there a row stored by this release shows no attributes, though searches and facets on them still find it.
 
 Logs take about two thirds less disk. Every log row stored its attributes twice, as `attr_map` and as the same pairs in JSON, and the two were three quarters of `logs`; the JSON copy is no longer written. On 500k generated rows, with the codecs below, `logs` held 18 MiB instead of 51 MiB.
