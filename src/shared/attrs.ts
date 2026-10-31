@@ -10,7 +10,7 @@ export function isAttrIdent(key: string): boolean {
   return attrIdent.test(key) && !reserved.has(key);
 }
 
-/** Flatten attrs to string values. Insert uses this for both `attr_map` and the JSON `attrs` column. */
+/** Flatten attrs to string values: what a log row stores in `attr_map`. */
 export function flattenAttrs(
   attrs: Record<string, unknown> | undefined,
 ): Record<string, string> {
