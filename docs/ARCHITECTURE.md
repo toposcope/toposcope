@@ -15,7 +15,7 @@ This file is the **shipped** system.
     +-- ClickHouse HTTP  (logs + logs.trace_id bloom + message text index + logs_by_minute + logs_attr_keys_by_minute + logs_attr_values_by_minute + logs_attr_numeric_by_minute + metrics + metrics_by_minute + metric_buckets + metric_buckets_by_minute + spans + profile_samples + monitor_results + change_marks)
 ```
 
-Packaged `compose.yml` runs ClickHouse and one version-pinned Toposcope application. ClickHouse stays on the internal Docker network; the host exposes the application on `127.0.0.1:8080` and syslog UDP on `127.0.0.1:5514`. The packaged limits are 2 CPU / 4 GB for ClickHouse and 1 CPU / 512 MB for the application.
+Packaged `compose.yml` runs ClickHouse and one version-pinned Toposcope application. ClickHouse stays on the internal Docker network; the host exposes the application on `127.0.0.1:8080` and syslog UDP on `127.0.0.1:5514`. ClickHouse sizes itself from the CPUs and memory it may use at every start, and has no cap unless `.env` sets one ([Memory](operations.md#memory)); the application is capped at 1 CPU / 512 MB.
 
 During local development, only ClickHouse runs in Docker. Vite runs at `127.0.0.1:5173` and proxies API requests to Hono at `127.0.0.1:8080`. See [CONTRIBUTING.md](../CONTRIBUTING.md) for local commands and load profiles.
 

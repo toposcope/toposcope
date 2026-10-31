@@ -15,9 +15,13 @@ services:
       CLICKHOUSE_DB: default
     volumes:
       - ch_data:/var/lib/clickhouse
+    # Sizes ClickHouse from the CPUs and memory it may use, at every start (configs below).
+    entrypoint: ["/bin/bash", "/toposcope-size.sh"]
     configs:
       - source: clickhouse_logs
         target: /etc/clickhouse-server/config.d/toposcope-logs.xml
+      - source: clickhouse_size
+        target: /toposcope-size.sh
     healthcheck:
       test:
         [
@@ -31,8 +35,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2.0"
-          memory: 4G
+          # Unset, there is no cap: ClickHouse takes half the machine's memory at most and sizes
+          # itself to that. Set them in .env (CLICKHOUSE_MEMORY=4G) to give it less; 0 is no cap.
+          cpus: "${CLICKHOUSE_CPUS:-0}"
+          memory: ${CLICKHOUSE_MEMORY:-0}
     restart: unless-stopped
 
   app:
@@ -121,3 +127,68 @@ configs:
           <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
         </asynchronous_insert_log>
       </clickhouse>
+  clickhouse_size:
+    content: |
+      #!/bin/bash
+      # Sizes ClickHouse from the CPUs and memory this container may use, on every start, then starts it.
+      # Out of the box ClickHouse sizes itself for a large shared server: 512 scheduler threads, merge
+      # pools of 16 and caches of 5 to 8 GiB each. Here, everything follows the machine instead.
+      set -eu
+      first() { for f in "$$@"; do [ -r "$$f" ] && { cat "$$f"; return; }; done; echo max; }
+      clamp() { local v=$$1; [ "$$v" -lt "$$2" ] && v=$$2; [ "$$v" -gt "$$3" ] && v=$$3; echo "$$v"; }
+
+      # CPUs: the cores this container sees, or fewer when its CPU quota (cgroup v2, then v1) says so.
+      cpus=$$(nproc)
+      read -r quota period <<<"$$(first /sys/fs/cgroup/cpu.max)"
+      if [ "$${quota:-max}" = max ] && [ -r /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]; then
+        quota=$$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us); period=$$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)
+        [ "$$quota" -gt 0 ] || quota=max
+      fi
+      if [ "$${quota:-max}" != max ]; then
+        quota_cpus=$$(( (quota + period - 1) / period ))
+        [ "$$quota_cpus" -lt "$$cpus" ] && cpus=$$quota_cpus
+      fi
+      cpus=$$(clamp "$$cpus" 1 1024)
+
+      # Memory: 80% of this container's memory limit when it has one (CLICKHOUSE_MEMORY), else half of
+      # the machine's, so the apps beside it keep the rest. Past it, ClickHouse refuses a query (the app
+      # answers 429 and senders retry) instead of the kernel killing it.
+      host=$$(( $$(awk '/^MemTotal:/ {print $$2}' /proc/meminfo) * 1024 ))
+      limit=$$(first /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.limit_in_bytes)
+      if [ "$$limit" != max ] && [ "$$limit" -lt "$$host" ]; then
+        budget=$$(( limit / 10 * 8 ))
+      else
+        budget=$$(( host / 2 ))
+      fi
+
+      merges=$$(clamp "$$cpus" 2 16)
+      scheduler=$$(clamp $$(( cpus * 4 )) 16 128)
+      cat > /etc/clickhouse-server/config.d/toposcope-size.xml <<XML
+      <!-- Written by Toposcope at start for $$cpus CPUs and a $$(( budget >> 20 )) MiB budget. Edits are overwritten. -->
+      <clickhouse>
+        <max_server_memory_usage>$$budget</max_server_memory_usage>
+        <mark_cache_size>$$(( budget / 8 ))</mark_cache_size>
+        <primary_index_cache_size>$$(( budget / 16 ))</primary_index_cache_size>
+        <index_mark_cache_size>$$(( budget / 16 ))</index_mark_cache_size>
+        <uncompressed_cache_size>$$(( budget / 16 ))</uncompressed_cache_size>
+        <text_index_postings_cache_size>$$(( budget / 16 ))</text_index_postings_cache_size>
+        <text_index_tokens_cache_size>$$(( budget / 32 ))</text_index_tokens_cache_size>
+        <text_index_header_cache_size>$$(( budget / 32 ))</text_index_header_cache_size>
+        <vector_similarity_index_cache_size>0</vector_similarity_index_cache_size>
+        <background_pool_size>$$merges</background_pool_size>
+        <background_merges_mutations_concurrency_ratio>2</background_merges_mutations_concurrency_ratio>
+        <merge_tree>
+          <number_of_free_entries_in_pool_to_execute_mutation>$$merges</number_of_free_entries_in_pool_to_execute_mutation>
+          <number_of_free_entries_in_pool_to_execute_optimize_entire_partition>$$merges</number_of_free_entries_in_pool_to_execute_optimize_entire_partition>
+          <number_of_free_entries_in_pool_to_lower_max_size_of_merge>$$(( (merges + 1) / 2 ))</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+        </merge_tree>
+        <background_schedule_pool_size>$$scheduler</background_schedule_pool_size>
+        <background_common_pool_size>$$(clamp "$$cpus" 2 8)</background_common_pool_size>
+        <background_move_pool_size>1</background_move_pool_size>
+        <background_fetches_pool_size>1</background_fetches_pool_size>
+        <background_buffer_flush_schedule_pool_size>1</background_buffer_flush_schedule_pool_size>
+        <background_message_broker_schedule_pool_size>1</background_message_broker_schedule_pool_size>
+        <background_distributed_schedule_pool_size>1</background_distributed_schedule_pool_size>
+      </clickhouse>
+      XML
+      exec /entrypoint.sh "$$@"

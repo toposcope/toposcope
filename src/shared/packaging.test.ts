@@ -37,7 +37,29 @@ describe("packaged compose", () => {
     expect(yaml).toContain("TOPOSCOPE_WATCHDOG_URL: ${TOPOSCOPE_WATCHDOG_URL:-}");
     // #196: on by default, so an empty value passes through and means on.
     expect(yaml).toContain("TOPOSCOPE_UPDATE_CHECK: ${TOPOSCOPE_UPDATE_CHECK:-}");
-    expect(yaml).toContain("memory: 4G");
+    // ClickHouse is sized from the machine at each start; caps are optional and set in .env.
+    expect(yaml).toContain("memory: ${CLICKHOUSE_MEMORY:-0}");
+    expect(yaml).toContain('cpus: "${CLICKHOUSE_CPUS:-0}"');
+  });
+
+  test("starts ClickHouse through a sizing script that is valid bash and hands over to the image's entrypoint", async () => {
+    const yaml = await Bun.file(`${root}/compose.yml`).text();
+    expect(yaml).toContain('entrypoint: ["/bin/bash", "/toposcope-size.sh"]');
+    expect(yaml).toContain("target: /toposcope-size.sh");
+    const block = yaml.split("\n  clickhouse_size:\n    content: |\n")[1] ?? "";
+    expect(block).not.toBe("");
+    // Compose reads $$ as a literal $; bash gets the script as it runs in the container.
+    const script = block
+      .split("\n")
+      .filter((line) => line === "" || line.startsWith("      "))
+      .map((line) => line.slice(6))
+      .join("\n")
+      .replaceAll("$$", "$");
+    expect(script).toStartWith("#!/bin/bash\n");
+    expect(script.trimEnd()).toEndWith('exec /entrypoint.sh "$@"');
+    const check = Bun.spawnSync(["bash", "-n"], { stdin: new TextEncoder().encode(script) });
+    expect(check.stderr.toString()).toBe("");
+    expect(check.exitCode).toBe(0);
   });
 
   test("health reports the package version, which is the image pin", async () => {
