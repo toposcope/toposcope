@@ -234,6 +234,7 @@ export async function migrateStore(): Promise<void> {
   await ensureMonitorResults();
   await ensureMetricMeta();
   await ensureMetricRollups();
+  await ensureColumnCodecs();
   await dropMetricMetaTables();
   await backfillHistogramIfEmpty();
   await backfillAttrKeysIfEmpty();
@@ -255,6 +256,49 @@ async function tableHasColumn(table: string, column: string): Promise<boolean> {
     return cols.some((col) => col.name === column);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Codecs on the columns that hold the most, measured on 500k generated rows: ZSTD on the long
+ * strings, delta on the ordered times and numbers. Out of the box ClickHouse uses LZ4, which kept
+ * `logs` at 51 MiB where these keep 28 MiB, with searches no slower. A changed codec only changes
+ * the table's metadata: parts written after it use it, and older parts are rewritten as they merge.
+ */
+export const columnCodecs: Record<string, Record<string, string>> = {
+  logs: {
+    ts: "DoubleDelta, ZSTD(1)",
+    message: "ZSTD(1)",
+    attrs: "ZSTD(1)",
+    attr_map: "ZSTD(1)",
+    trace_id: "ZSTD(1)",
+    seq: "Delta(8), ZSTD(1)",
+  },
+  logs_attr_values_by_minute: {
+    minute: "DoubleDelta, ZSTD(1)",
+    value: "ZSTD(1)",
+  },
+};
+
+export function codecMatches(have: string, want: string): boolean {
+  return have.replaceAll(" ", "") === `CODEC(${want})`.replaceAll(" ", "");
+}
+
+async function ensureColumnCodecs(): Promise<void> {
+  for (const [table, columns] of Object.entries(columnCodecs)) {
+    const rows = await clickhouseQuery<{ name: string; compression_codec: string }>(
+      `SELECT name, compression_codec FROM system.columns
+       WHERE database = currentDatabase() AND table = {table:String}`,
+      { table },
+    );
+    const have = new Map(rows.map((row) => [row.name, row.compression_codec]));
+    for (const [column, codec] of Object.entries(columns)) {
+      const current = have.get(column);
+      if (current === undefined || codecMatches(current, codec)) {
+        continue;
+      }
+      await clickhouseCommand(`ALTER TABLE ${table} MODIFY COLUMN ${column} CODEC(${codec})`);
+    }
   }
 }
 

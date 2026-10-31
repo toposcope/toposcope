@@ -88,7 +88,6 @@ async function insertPulledNow(
             host: row.host,
             level: row.level,
             message: row.message,
-            attrs: JSON.stringify(row.attrs),
             attr_map: row.attrs,
             trace_id: pickTraceId(row.attrs),
             seq: seq.from + i,

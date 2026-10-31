@@ -155,7 +155,7 @@ beforeAll(async () => {
 afterAll(() => rmSync(fixture, { recursive: true, force: true }));
 
 const logsOf = (name: string) =>
-  (rows.logs ?? []).filter((row) => JSON.parse(row.attrs as string).monitor === name);
+  (rows.logs ?? []).filter((row) => row.attr_map.monitor === name);
 
 describe("POST /v1/checks (#177)", () => {
   test("a result for an unknown name creates its monitor", () => {
@@ -187,7 +187,7 @@ describe("POST /v1/checks (#177)", () => {
     const [row] = logsOf("disk-var");
     expect(row).toMatchObject({ service: "box-agent", host: "log-vm", level: "warn", message: "/var 87% used" });
     expect(row!.ts).toStartWith("2026-10-20 11:03:00");
-    expect(JSON.parse(row!.attrs)).toEqual({ monitor: "disk-var", status: "warn", source: "push" });
+    expect(row!.attr_map).toEqual({ monitor: "disk-var", status: "warn", source: "push" });
   });
 
   test("a value is the metric monitor_value, labelled with its monitor", () => {
@@ -203,9 +203,9 @@ describe("POST /v1/checks (#177)", () => {
     expect(disk).toMatchObject({ state: "open", last_result: "fail" });
     expect(load).toMatchObject({ state: "ok", last_result: null });
     expect(r.nagiosUnknown!.status).toBe(200);
-    expect(JSON.parse(logsOf("check-disk")[0]!.attrs)).toMatchObject({ status: "fail", exit_code: "2" });
+    expect(logsOf("check-disk")[0]!.attr_map).toMatchObject({ status: "fail", exit_code: "2" });
     expect(logsOf("check-disk")[0]!.level).toBe("error");
-    expect(JSON.parse(logsOf("check-disk")[1]!.attrs)).toMatchObject({ status: "unknown", exit_code: "3" });
+    expect(logsOf("check-disk")[1]!.attr_map).toMatchObject({ status: "unknown", exit_code: "3" });
   });
 
   test("needs the ingest token", () => {
@@ -254,15 +254,15 @@ describe("the keyed /ping/<key> URL (#177)", () => {
     expect(r.afterFail!.body.open.open_message).toBe("unable to create lock in backend");
     const failRow = logsOf("nightly-backup").find((row) => row.message === "unable to create lock in backend");
     expect(failRow).toMatchObject({ level: "error", service: "monitor" });
-    expect(JSON.parse(failRow!.attrs)).toMatchObject({ monitor: "nightly-backup", status: "fail", source: "push" });
+    expect(failRow!.attr_map).toMatchObject({ monitor: "nightly-backup", status: "fail", source: "push" });
   });
 
   test("its /start is a row, and the result's run is measured from it", () => {
     expect(r.start!.status).toBe(200);
-    const start = logsOf("nightly-backup").find((row) => JSON.parse(row.attrs).signal === "start");
-    expect(JSON.parse(start!.attrs)).toEqual({ monitor: "nightly-backup", signal: "start", source: "push" });
+    const start = logsOf("nightly-backup").find((row) => row.attr_map.signal === "start");
+    expect(start!.attr_map).toEqual({ monitor: "nightly-backup", signal: "start", source: "push" });
     const failRow = logsOf("nightly-backup").find((row) => row.message === "unable to create lock in backend");
-    expect(Number(JSON.parse(failRow!.attrs).duration_ms)).toBeGreaterThanOrEqual(0);
+    expect(Number(failRow!.attr_map.duration_ms)).toBeGreaterThanOrEqual(0);
   });
 
   test("a second result within a second gets 429 and writes nothing", () => {
@@ -273,7 +273,7 @@ describe("the keyed /ping/<key> URL (#177)", () => {
   test("/<exit code>: 0 resolves it, its body cut to 10 KB; anything else is a fail", () => {
     expect(r.exit0!.status).toBe(200);
     expect(r.afterOk!.body).toMatchObject({ state: "ok", last_result: "ok" });
-    const ok = logsOf("nightly-backup").find((row) => JSON.parse(row.attrs).exit_code === "0");
+    const ok = logsOf("nightly-backup").find((row) => row.attr_map.exit_code === "0");
     expect(ok!.message.length).toBe(10 * 1024);
     expect(r.afterExit1!.body).toMatchObject({ state: "open", last_result: "fail" });
     expect(r.afterExit1!.body.last).toMatchObject({ result: "fail", exit_code: 1, via: "ping" });
