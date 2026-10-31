@@ -53,7 +53,7 @@ export async function insertSpans(spans: Span[]): Promise<number> {
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "spans");
     return spans.length;
-  }));
+  }), spans.length);
 }
 
 export async function otlpTracesRoute(c: Context): Promise<Response> {

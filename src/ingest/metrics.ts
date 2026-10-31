@@ -94,7 +94,7 @@ export async function insertMetricPoints(
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "metrics");
     return points.length;
-  }));
+  }), points.length);
 }
 
 /** A histogram's buckets. `n` carries one more count than `le` has bounds. */
@@ -122,7 +122,7 @@ export async function insertMetricBuckets(buckets: readonly MetricBuckets[], met
       )
       .join("\n");
     await clickhouseInsertJsonEachRow(body, "metric_buckets");
-  }));
+  }), buckets.length);
 }
 
 function ingestFail(c: Context, err: unknown): Response {

@@ -104,7 +104,7 @@ async function insertPulledNow(
     } finally {
       releaseArrivalSeq(seq);
     }
-  });
+  }, fresh.length);
 }
 
 /**
@@ -144,5 +144,5 @@ export async function insertPulledMarks(marks: FeedMark[], source: { name: strin
     } finally {
       releaseArrivalSeq(seq);
     }
-  });
+  }, keep.length);
 }

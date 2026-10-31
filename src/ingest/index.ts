@@ -70,7 +70,7 @@ export async function insertEvents(events: LogEvent[], losses?: Losses): Promise
     } finally {
       releaseArrivalSeq(seq);
     }
-  });
+  }, events.length);
 }
 
 export function insertErrorMessage(err: unknown): string {

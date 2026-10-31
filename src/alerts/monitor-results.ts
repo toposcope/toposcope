@@ -72,6 +72,7 @@ export async function recordPushResults(rows: ReadonlyArray<Omit<PushResultRow, 
         "monitor_results",
       ),
     ),
+    rows.length,
   );
 }
 
