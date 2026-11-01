@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 35a */
+[data-frame="35a"] .pg{width:860px;height:1560px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;position:relative;overflow:hidden}
+[data-frame="35a"] .hdr{height:44px;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+[data-frame="35a"] .brand{font-weight:600;letter-spacing:-.015em;margin-right:4px}
+[data-frame="35a"] .inst{height:24px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;margin-right:8px}
+[data-frame="35a"] .nav{padding:5px 10px;border-radius:6px;color:#a1a1aa}
+[data-frame="35a"] .on{background:rgba(255,255,255,.08);color:#fafafa}
+[data-frame="35a"] .sp{flex:1}
+[data-frame="35a"] .av{width:24px;height:24px;border-radius:12px;background:#27272a;font-size:9.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:#d4d4d8}
+[data-frame="35a"] .since{height:44px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px 0}
+[data-frame="35a"] .lbl{font-size:12px;color:#a1a1aa}
+[data-frame="35a"] .chip{height:30px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-radius:7px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;color:#a1a1aa}
+[data-frame="35a"] .chipon{border-color:#e7e1d3;color:#fafafa}
+[data-frame="35a"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="35a"] .body{height:784px;display:flex}
+[data-frame="35a"] .main{flex:1;min-width:0;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+[data-frame="35a"] .h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35a"] .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+[data-frame="35a"] .card{height:150px;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#131316;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+[data-frame="35a"] .ch{display:flex;justify-content:space-between;align-items:baseline}
+[data-frame="35a"] .ct{font-size:13.5px;font-weight:500}
+[data-frame="35a"] .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35a"] .val{display:flex;align-items:baseline;gap:8px}
+[data-frame="35a"] .big{font-size:24px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35a"] .up{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#f59e8b}
+[data-frame="35a"] .was{font-size:12px;color:#a1a1aa}
+[data-frame="35a"] .spark{margin-top:auto;height:30px;background:repeating-linear-gradient(90deg,#3f3f46 0 5px,transparent 5px 7px);border-radius:1px}
+[data-frame="35a"] .aside{width:300px;flex:none;box-sizing:border-box;border-left:1px solid rgba(255,255,255,.06);padding:20px 24px 0;display:flex;flex-direction:column;gap:12px;position:relative;z-index:2}
+[data-frame="35a"] .at{font-size:13.5px;font-weight:500}
+[data-frame="35a"] .list{display:flex;flex-direction:column;gap:2px;font-size:13px}
+[data-frame="35a"] .row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left}
+[data-frame="35a"] .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+[data-frame="35a"] .n{margin-left:8px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35a"] .foot{position:absolute;left:0;right:0;top:872px;height:28px;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;padding:0 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a1a1aa;background:#09090b;z-index:1}
+[data-frame="35a"] .kbd{border:1px solid #3f3f46;border-radius:2.4px;padding:0 4px;font-size:10px;margin-right:4px}
+[data-frame="35a"] .below{position:absolute;left:0;right:0;top:900px;bottom:0;background:rgba(9,9,11,.6);border-top:1px dashed #71717a;z-index:3}
+[data-frame="35a"] .cap{position:absolute;left:24px;top:14px;width:480px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:17px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.06em}
+  /* 35b */
+[data-frame="35b"] .pg{width:860px;height:900px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+[data-frame="35b"] .hdr{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+[data-frame="35b"] .brand{font-weight:600;letter-spacing:-.015em;margin-right:4px}
+[data-frame="35b"] .inst{height:24px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;margin-right:8px}
+[data-frame="35b"] .nav{padding:5px 10px;border-radius:6px;color:#a1a1aa}
+[data-frame="35b"] .on{background:rgba(255,255,255,.08);color:#fafafa}
+[data-frame="35b"] .sp{flex:1}
+[data-frame="35b"] .av{width:24px;height:24px;border-radius:12px;background:#27272a;font-size:9.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:#d4d4d8}
+[data-frame="35b"] .since{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px 0}
+[data-frame="35b"] .lbl{font-size:12px;color:#a1a1aa}
+[data-frame="35b"] .chip{height:30px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-radius:7px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;color:#a1a1aa}
+[data-frame="35b"] .chipon{border-color:#e7e1d3;color:#fafafa}
+[data-frame="35b"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="35b"] .body{flex:1;min-height:0;display:flex}
+[data-frame="35b"] .main{flex:1;min-width:0;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+[data-frame="35b"] .h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35b"] .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+[data-frame="35b"] .card{height:150px;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#131316;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+[data-frame="35b"] .ch{display:flex;justify-content:space-between;align-items:baseline}
+[data-frame="35b"] .ct{font-size:13.5px;font-weight:500}
+[data-frame="35b"] .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35b"] .val{display:flex;align-items:baseline;gap:8px}
+[data-frame="35b"] .big{font-size:24px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35b"] .up{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#f59e8b}
+[data-frame="35b"] .was{font-size:12px;color:#a1a1aa}
+[data-frame="35b"] .spark{margin-top:auto;height:30px;background:repeating-linear-gradient(90deg,#3f3f46 0 5px,transparent 5px 7px);border-radius:1px}
+[data-frame="35b"] .aside{width:300px;flex:none;box-sizing:border-box;border-left:1px solid rgba(255,255,255,.06);padding-top:20px;display:flex;flex-direction:column;gap:12px;min-height:0}
+[data-frame="35b"] .at{font-size:13.5px;font-weight:500;padding:0 24px}
+[data-frame="35b"] .scroll{flex:1;min-height:0;overflow:hidden;position:relative;padding:0 24px 16px}
+[data-frame="35b"] .thumb{position:absolute;right:3px;top:2px;width:6px;height:250px;border-radius:3px;background:#3f3f46}
+[data-frame="35b"] .list{display:flex;flex-direction:column;gap:2px;font-size:13px}
+[data-frame="35b"] .row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left}
+[data-frame="35b"] .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+[data-frame="35b"] .n{margin-left:8px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35b"] .foot{height:28px;flex:none;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;padding:0 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a1a1aa}
+[data-frame="35b"] .kbd{border:1px solid #3f3f46;border-radius:2.4px;padding:0 4px;font-size:10px;margin-right:4px}
+  /* 35c */
+[data-frame="35c"] .pg{width:860px;height:900px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+[data-frame="35c"] .hdr{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+[data-frame="35c"] .brand{font-weight:600;letter-spacing:-.015em;margin-right:4px}
+[data-frame="35c"] .inst{height:24px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;margin-right:8px}
+[data-frame="35c"] .nav{padding:5px 10px;border-radius:6px;color:#a1a1aa}
+[data-frame="35c"] .on{background:rgba(255,255,255,.08);color:#fafafa}
+[data-frame="35c"] .sp{flex:1}
+[data-frame="35c"] .av{width:24px;height:24px;border-radius:12px;background:#27272a;font-size:9.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:#d4d4d8}
+[data-frame="35c"] .since{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px 0}
+[data-frame="35c"] .lbl{font-size:12px;color:#a1a1aa}
+[data-frame="35c"] .chip{height:30px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-radius:7px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;color:#a1a1aa}
+[data-frame="35c"] .chipon{border-color:#e7e1d3;color:#fafafa}
+[data-frame="35c"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="35c"] .body{flex:1;min-height:0;display:flex}
+[data-frame="35c"] .main{flex:1;min-width:0;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+[data-frame="35c"] .h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35c"] .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+[data-frame="35c"] .card{height:150px;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#131316;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+[data-frame="35c"] .ch{display:flex;justify-content:space-between;align-items:baseline}
+[data-frame="35c"] .ct{font-size:13.5px;font-weight:500}
+[data-frame="35c"] .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35c"] .val{display:flex;align-items:baseline;gap:8px}
+[data-frame="35c"] .big{font-size:24px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35c"] .up{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#f59e8b}
+[data-frame="35c"] .was{font-size:12px;color:#a1a1aa}
+[data-frame="35c"] .spark{margin-top:auto;height:30px;background:repeating-linear-gradient(90deg,#3f3f46 0 5px,transparent 5px 7px);border-radius:1px}
+[data-frame="35c"] .aside{width:300px;flex:none;box-sizing:border-box;border-left:1px solid rgba(255,255,255,.06);padding-top:20px;display:flex;flex-direction:column;gap:10px;min-height:0}
+[data-frame="35c"] .at{font-size:13.5px;font-weight:500;padding:0 24px}
+[data-frame="35c"] .flt{margin:0 24px;height:30px;box-sizing:border-box;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:0 10px;color:#a1a1aa}
+[data-frame="35c"] .fin{flex:1;min-width:0;height:28px;border:0;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;outline:none}
+[data-frame="35c"] .scroll{flex:1;min-height:0;overflow:hidden;position:relative;padding:0 24px 16px}
+[data-frame="35c"] .thumb{position:absolute;right:3px;top:2px;width:6px;height:520px;border-radius:3px;background:#3f3f46}
+[data-frame="35c"] .list{display:flex;flex-direction:column;gap:2px;font-size:13px}
+[data-frame="35c"] .row{display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left}
+[data-frame="35c"] .gl{display:flex;align-items:center;gap:6px;min-width:0}
+[data-frame="35c"] .chev{flex:none;color:#a1a1aa}
+[data-frame="35c"] .in{display:flex;flex-direction:column;gap:2px;padding-left:20px}
+[data-frame="35c"] .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+[data-frame="35c"] .n{margin-left:8px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35c"] .foot{height:28px;flex:none;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;padding:0 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a1a1aa}
+[data-frame="35c"] .kbd{border:1px solid #3f3f46;border-radius:2.4px;padding:0 4px;font-size:10px;margin-right:4px}
+  /* 35d */
+[data-frame="35d"] .pg{width:860px;height:900px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+[data-frame="35d"] .hdr{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+[data-frame="35d"] .brand{font-weight:600;letter-spacing:-.015em;margin-right:4px}
+[data-frame="35d"] .inst{height:24px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;margin-right:8px}
+[data-frame="35d"] .nav{padding:5px 10px;border-radius:6px;color:#a1a1aa}
+[data-frame="35d"] .on{background:rgba(255,255,255,.08);color:#fafafa}
+[data-frame="35d"] .sp{flex:1}
+[data-frame="35d"] .av{width:24px;height:24px;border-radius:12px;background:#27272a;font-size:9.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:#d4d4d8}
+[data-frame="35d"] .since{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px 0}
+[data-frame="35d"] .lbl{font-size:12px;color:#a1a1aa}
+[data-frame="35d"] .chip{height:30px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-radius:7px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;color:#a1a1aa}
+[data-frame="35d"] .chipon{border-color:#e7e1d3;color:#fafafa}
+[data-frame="35d"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="35d"] .body{flex:1;min-height:0;display:flex}
+[data-frame="35d"] .main{flex:1;min-width:0;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+[data-frame="35d"] .h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35d"] .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+[data-frame="35d"] .card{height:150px;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#131316;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+[data-frame="35d"] .ch{display:flex;justify-content:space-between;align-items:baseline}
+[data-frame="35d"] .ct{font-size:13.5px;font-weight:500}
+[data-frame="35d"] .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35d"] .val{display:flex;align-items:baseline;gap:8px}
+[data-frame="35d"] .big{font-size:24px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35d"] .up{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#f59e8b}
+[data-frame="35d"] .was{font-size:12px;color:#a1a1aa}
+[data-frame="35d"] .spark{margin-top:auto;height:30px;background:repeating-linear-gradient(90deg,#3f3f46 0 5px,transparent 5px 7px);border-radius:1px}
+[data-frame="35d"] .aside{width:300px;flex:none;box-sizing:border-box;border-left:1px solid rgba(255,255,255,.06);padding-top:20px;display:flex;flex-direction:column;gap:10px;min-height:0}
+[data-frame="35d"] .at{font-size:13.5px;font-weight:500;padding:0 24px}
+[data-frame="35d"] .flt{margin:0 24px;height:30px;box-sizing:border-box;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:0 10px;color:#a1a1aa}
+[data-frame="35d"] .fin{flex:1;min-width:0;height:28px;border:0;background:transparent;color:#fafafa;font:inherit;font-size:12.5px;outline:none}
+[data-frame="35d"] .scroll{flex:1;min-height:0;overflow:hidden;position:relative;padding:0 24px 16px}
+[data-frame="35d"] .thumb{position:absolute;right:3px;top:2px;width:6px;height:400px;border-radius:3px;background:#3f3f46}
+[data-frame="35d"] .list{display:flex;flex-direction:column;gap:2px;font-size:13px}
+[data-frame="35d"] .row{display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left}
+[data-frame="35d"] .gl{display:flex;align-items:center;gap:6px;min-width:0}
+[data-frame="35d"] .chev{flex:none;color:#a1a1aa}
+[data-frame="35d"] .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+[data-frame="35d"] .n{margin-left:8px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35d"] .hot{color:#f59e8b}
+[data-frame="35d"] .foot{height:28px;flex:none;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;padding:0 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a1a1aa}
+[data-frame="35d"] .kbd{border:1px solid #3f3f46;border-radius:2.4px;padding:0 4px;font-size:10px;margin-right:4px}
+  /* 35e */
+[data-frame="35e"] .pg{width:860px;height:900px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+[data-frame="35e"] .hdr{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+[data-frame="35e"] .brand{font-weight:600;letter-spacing:-.015em;margin-right:4px}
+[data-frame="35e"] .inst{height:24px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;margin-right:8px}
+[data-frame="35e"] .nav{padding:5px 10px;border-radius:6px;color:#a1a1aa}
+[data-frame="35e"] .on{background:rgba(255,255,255,.08);color:#fafafa}
+[data-frame="35e"] .sp{flex:1}
+[data-frame="35e"] .av{width:24px;height:24px;border-radius:12px;background:#27272a;font-size:9.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:#d4d4d8}
+[data-frame="35e"] .since{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px 0}
+[data-frame="35e"] .lbl{font-size:12px;color:#a1a1aa}
+[data-frame="35e"] .chip{height:30px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-radius:7px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;color:#a1a1aa}
+[data-frame="35e"] .chipon{border-color:#e7e1d3;color:#fafafa}
+[data-frame="35e"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="35e"] .body{flex:1;min-height:0;display:flex}
+[data-frame="35e"] .main{flex:1;min-width:0;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+[data-frame="35e"] .h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35e"] .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+[data-frame="35e"] .card{height:150px;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#131316;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+[data-frame="35e"] .ch{display:flex;justify-content:space-between;align-items:baseline}
+[data-frame="35e"] .ct{font-size:13.5px;font-weight:500}
+[data-frame="35e"] .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35e"] .val{display:flex;align-items:baseline;gap:8px}
+[data-frame="35e"] .big{font-size:24px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35e"] .up{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#f59e8b}
+[data-frame="35e"] .was{font-size:12px;color:#a1a1aa}
+[data-frame="35e"] .spark{margin-top:auto;height:30px;background:repeating-linear-gradient(90deg,#3f3f46 0 5px,transparent 5px 7px);border-radius:1px}
+[data-frame="35e"] .aside{width:300px;flex:none;box-sizing:border-box;border-left:1px solid rgba(255,255,255,.06);padding-top:20px;display:flex;flex-direction:column;gap:10px;min-height:0}
+[data-frame="35e"] .at{font-size:13.5px;font-weight:500;padding:0 24px}
+[data-frame="35e"] .scroll{flex:1;min-height:0;overflow:hidden;position:relative;padding:0 24px 16px;display:flex;flex-direction:column;gap:10px}
+[data-frame="35e"] .sub{font-size:12px;color:#a1a1aa;padding:0 10px}
+[data-frame="35e"] .list{display:flex;flex-direction:column;gap:2px;font-size:13px}
+[data-frame="35e"] .row{display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left}
+[data-frame="35e"] .gl{display:flex;align-items:center;gap:6px;min-width:0}
+[data-frame="35e"] .chev{flex:none;color:#a1a1aa}
+[data-frame="35e"] .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+[data-frame="35e"] .rt{display:flex;align-items:baseline;gap:8px;flex:none;margin-left:8px}
+[data-frame="35e"] .d{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#f59e8b}
+[data-frame="35e"] .n{flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35e"] .note{color:#a1a1aa}
+[data-frame="35e"] .foot{height:28px;flex:none;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;padding:0 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a1a1aa}
+[data-frame="35e"] .kbd{border:1px solid #3f3f46;border-radius:2.4px;padding:0 4px;font-size:10px;margin-right:4px}
+  /* 35f */
+[data-frame="35f"] .pg{width:860px;height:900px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+[data-frame="35f"] .hdr{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+[data-frame="35f"] .brand{font-weight:600;letter-spacing:-.015em;margin-right:4px}
+[data-frame="35f"] .inst{height:24px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;margin-right:8px}
+[data-frame="35f"] .nav{padding:5px 10px;border-radius:6px;color:#a1a1aa}
+[data-frame="35f"] .on{background:rgba(255,255,255,.08);color:#fafafa}
+[data-frame="35f"] .sp{flex:1}
+[data-frame="35f"] .av{width:24px;height:24px;border-radius:12px;background:#27272a;font-size:9.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:#d4d4d8}
+[data-frame="35f"] .since{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px 0}
+[data-frame="35f"] .lbl{font-size:12px;color:#a1a1aa}
+[data-frame="35f"] .chip{height:30px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-radius:7px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;color:#a1a1aa}
+[data-frame="35f"] .chipon{border-color:#e7e1d3;color:#fafafa}
+[data-frame="35f"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="35f"] .body{flex:1;min-height:0;display:flex}
+[data-frame="35f"] .main{flex:1;min-width:0;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+[data-frame="35f"] .h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35f"] .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+[data-frame="35f"] .card{height:150px;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#131316;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+[data-frame="35f"] .ch{display:flex;justify-content:space-between;align-items:baseline}
+[data-frame="35f"] .ct{font-size:13.5px;font-weight:500}
+[data-frame="35f"] .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35f"] .val{display:flex;align-items:baseline;gap:8px}
+[data-frame="35f"] .big{font-size:24px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35f"] .up{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#f59e8b}
+[data-frame="35f"] .was{font-size:12px;color:#a1a1aa}
+[data-frame="35f"] .spark{margin-top:auto;height:30px;background:repeating-linear-gradient(90deg,#3f3f46 0 5px,transparent 5px 7px);border-radius:1px}
+[data-frame="35f"] .aside{width:300px;flex:none;box-sizing:border-box;border-left:1px solid rgba(255,255,255,.06);padding-top:20px;display:flex;flex-direction:column;gap:10px;min-height:0}
+[data-frame="35f"] .at{font-size:13.5px;font-weight:500;padding:0 24px}
+[data-frame="35f"] .scroll{flex:1;min-height:0;overflow:hidden;position:relative;padding:0 24px 16px;display:flex;flex-direction:column;gap:10px}
+[data-frame="35f"] .thumb{position:absolute;right:3px;top:2px;width:6px;height:560px;border-radius:3px;background:#3f3f46}
+[data-frame="35f"] .sub{font-size:12px;color:#a1a1aa;padding:0 10px}
+[data-frame="35f"] .list{display:flex;flex-direction:column;gap:2px;font-size:13px}
+[data-frame="35f"] .in{display:flex;flex-direction:column;gap:2px;padding-left:20px}
+[data-frame="35f"] .row{display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left}
+[data-frame="35f"] .gl{display:flex;align-items:center;gap:6px;min-width:0}
+[data-frame="35f"] .chev{flex:none;color:#a1a1aa}
+[data-frame="35f"] .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+[data-frame="35f"] .rt{display:flex;align-items:baseline;gap:8px;flex:none;margin-left:8px}
+[data-frame="35f"] .d{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#f59e8b}
+[data-frame="35f"] .n{flex:none;margin-left:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35f"] .note{color:#a1a1aa}
+[data-frame="35f"] .foot{height:28px;flex:none;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;padding:0 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a1a1aa}
+[data-frame="35f"] .kbd{border:1px solid #3f3f46;border-radius:2.4px;padding:0 4px;font-size:10px;margin-right:4px}
+  /* 35g */
+[data-frame="35g"] .pg{width:860px;height:900px;box-sizing:border-box;background:#09090b;color:#fafafa;font-family:ui-sans-serif,system-ui,sans-serif;font-size:14px;display:flex;flex-direction:column;overflow:hidden}
+[data-frame="35g"] .hdr{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}
+[data-frame="35g"] .brand{font-weight:600;letter-spacing:-.015em;margin-right:4px}
+[data-frame="35g"] .inst{height:24px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#d4d4d8;margin-right:8px}
+[data-frame="35g"] .nav{padding:5px 10px;border-radius:6px;color:#a1a1aa}
+[data-frame="35g"] .on{background:rgba(255,255,255,.08);color:#fafafa}
+[data-frame="35g"] .sp{flex:1}
+[data-frame="35g"] .av{width:24px;height:24px;border-radius:12px;background:#27272a;font-size:9.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;color:#d4d4d8}
+[data-frame="35g"] .since{height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px 0}
+[data-frame="35g"] .lbl{font-size:12px;color:#a1a1aa}
+[data-frame="35g"] .chip{height:30px;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-radius:7px;border:1px solid rgba(255,255,255,.1);font-size:12.5px;color:#a1a1aa}
+[data-frame="35g"] .chipon{border-color:#e7e1d3;color:#fafafa}
+[data-frame="35g"] .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+[data-frame="35g"] .body{flex:1;min-height:0;display:flex}
+[data-frame="35g"] .main{flex:1;min-width:0;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+[data-frame="35g"] .h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35g"] .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+[data-frame="35g"] .card{height:150px;box-sizing:border-box;border:1px solid rgba(255,255,255,.1);background:#131316;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+[data-frame="35g"] .ch{display:flex;justify-content:space-between;align-items:baseline}
+[data-frame="35g"] .ct{font-size:13.5px;font-weight:500}
+[data-frame="35g"] .k{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35g"] .val{display:flex;align-items:baseline;gap:8px}
+[data-frame="35g"] .big{font-size:24px;font-weight:600;letter-spacing:-.01em}
+[data-frame="35g"] .up{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#f59e8b}
+[data-frame="35g"] .was{font-size:12px;color:#a1a1aa}
+[data-frame="35g"] .spark{margin-top:auto;height:30px;background:repeating-linear-gradient(90deg,#3f3f46 0 5px,transparent 5px 7px);border-radius:1px}
+[data-frame="35g"] .aside{width:300px;flex:none;box-sizing:border-box;border-left:1px solid rgba(255,255,255,.06);padding:20px 24px 0;display:flex;flex-direction:column;gap:12px}
+[data-frame="35g"] .at{font-size:13.5px;font-weight:500}
+[data-frame="35g"] .list{display:flex;flex-direction:column;gap:2px;font-size:13px}
+[data-frame="35g"] .row{display:flex;justify-content:space-between;align-items:center;width:100%;box-sizing:border-box;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left}
+[data-frame="35g"] .nm{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+[data-frame="35g"] .n{margin-left:8px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a1a1aa}
+[data-frame="35g"] .foot{height:28px;flex:none;box-sizing:border-box;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;padding:0 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#a1a1aa}
+[data-frame="35g"] .kbd{border:1px solid #3f3f46;border-radius:2.4px;padding:0 4px;font-size:10px;margin-right:4px}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Home: many saved hunts</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 35a–35g · Frames 35a–35g: Home's Saved hunts column with 5, 20, 40 and 60 hunts; the picked direction is C (moved first, quiet folded)</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Home: many saved hunts (35a–35g)</h2>
+
+    <div id="35a" data-frame="35a" data-screen-label="35a Today: 40 hunts run under the footer" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#35a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">35a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Today: 40 hunts run under the footer</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">860×1560</span>
+      </div>
+      <div data-crop="35a" style="position:relative; width:860px; height:1560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<div class="hdr">
+<span class="brand">toposcope</span><span class="inst">agental</span>
+<span class="nav on">Home</span><span class="nav">Hunt</span><span class="nav">Watch</span>
+<span class="sp"></span>
+<span class="nav">Access</span><span class="nav">Settings</span><span class="av">IA</span>
+</div>
+<div class="since">
+<span class="lbl">Since</span>
+<span class="chip chipon">the last hour <span class="mono">22:53 → 23:53</span></span>
+<span class="lbl">no mark in the last 24 h</span>
+<span class="sp"></span>
+<span class="chip">+ note</span>
+</div>
+<div class="body">
+<main class="main">
+<h1 class="h1">The last hour, against the hour before</h1>
+<div class="grid">
+<sc-for list="{{f35a_cards}}" as="c" hint-placeholder-count="4">
+<div class="card">
+<div class="ch"><span class="ct">{{c.name}}</span><span class="k">{{c.kind}}</span></div>
+<div class="val"><span class="big">{{c.after}}</span><span class="up">{{c.delta}}</span><span class="was">{{c.was}}</span></div>
+<div class="spark"></div>
+</div>
+</sc-for>
+</div>
+</main>
+<aside class="aside">
+<span class="at">Saved hunts · 40</span>
+<div class="list">
+<sc-for list="{{f35a_rows}}" as="r" hint-placeholder-count="40">
+<button type="button" class="row"><span class="nm">{{r.name}}</span><span class="n">{{r.n}}</span></button>
+</sc-for>
+</div>
+<span class="at" style="margin-top: 12px">Pinned</span>
+<div class="list">
+<button type="button" class="row"><span class="nm">All logs</span><span class="n">pinned</span></button>
+<button type="button" class="row"><span class="nm">Ops board</span><span class="n">6 panels</span></button>
+</div>
+</aside>
+</div>
+<div class="foot">
+<span><span class="kbd">/</span>search</span><span><span class="kbd">↑↓←→</span>focus</span><span><span class="kbd">wheel / + −</span>zoom</span><span><span class="kbd">esc</span>close</span>
+<span class="sp"></span>
+<span>0.08/s</span><span>ClickHouse 349M · disk 10.2/74.8G</span><span>App 71.1/512M</span><span>0.12.1</span>
+</div>
+<div class="below">
+<div class="cap">The window ends here. 18 hunts and Pinned sit below it: the column does not scroll, the page does not either, and the rows paint over the footer.</div>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="35b" data-frame="35b" data-screen-label="35b A · The column scrolls to the footer, 60 hunts" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#35b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">35b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">A · The column scrolls to the footer, 60 hunts</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">860×900</span>
+      </div>
+      <div data-crop="35b" style="position:relative; width:860px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<div class="hdr">
+<span class="brand">toposcope</span><span class="inst">agental</span>
+<span class="nav on">Home</span><span class="nav">Hunt</span><span class="nav">Watch</span>
+<span class="sp"></span>
+<span class="nav">Access</span><span class="nav">Settings</span><span class="av">IA</span>
+</div>
+<div class="since">
+<span class="lbl">Since</span>
+<span class="chip chipon">the last hour <span class="mono">22:53 → 23:53</span></span>
+<span class="lbl">no mark in the last 24 h</span>
+<span class="sp"></span>
+<span class="chip">+ note</span>
+</div>
+<div class="body">
+<main class="main">
+<h1 class="h1">The last hour, against the hour before</h1>
+<div class="grid">
+<sc-for list="{{f35b_cards}}" as="c" hint-placeholder-count="4">
+<div class="card">
+<div class="ch"><span class="ct">{{c.name}}</span><span class="k">{{c.kind}}</span></div>
+<div class="val"><span class="big">{{c.after}}</span><span class="up">{{c.delta}}</span><span class="was">{{c.was}}</span></div>
+<div class="spark"></div>
+</div>
+</sc-for>
+</div>
+</main>
+<aside class="aside">
+<span class="at">Saved hunts · 60</span>
+<div class="scroll">
+<div class="list">
+<sc-for list="{{f35b_rows}}" as="r" hint-placeholder-count="22">
+<button type="button" class="row"><span class="nm">{{r.name}}</span><span class="n">{{r.n}}</span></button>
+</sc-for>
+</div>
+<div class="thumb"></div>
+</div>
+</aside>
+</div>
+<div class="foot">
+<span><span class="kbd">/</span>search</span><span><span class="kbd">↑↓←→</span>focus</span><span><span class="kbd">wheel / + −</span>zoom</span><span><span class="kbd">esc</span>close</span>
+<span class="sp"></span>
+<span>0.08/s</span><span>ClickHouse 349M · disk 10.2/74.8G</span><span>App 71.1/512M</span><span>0.12.1</span>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="35c" data-frame="35c" data-screen-label="35c B · Groups open, 20 hunts" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#35c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">35c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">B · Groups open, 20 hunts</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">860×900</span>
+      </div>
+      <div data-crop="35c" style="position:relative; width:860px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<div class="hdr">
+<span class="brand">toposcope</span><span class="inst">agental</span>
+<span class="nav on">Home</span><span class="nav">Hunt</span><span class="nav">Watch</span>
+<span class="sp"></span>
+<span class="nav">Access</span><span class="nav">Settings</span><span class="av">IA</span>
+</div>
+<div class="since">
+<span class="lbl">Since</span>
+<span class="chip chipon">the last hour <span class="mono">22:53 → 23:53</span></span>
+<span class="lbl">no mark in the last 24 h</span>
+<span class="sp"></span>
+<span class="chip">+ note</span>
+</div>
+<div class="body">
+<main class="main">
+<h1 class="h1">The last hour, against the hour before</h1>
+<div class="grid">
+<sc-for list="{{f35c_cards}}" as="c" hint-placeholder-count="4">
+<div class="card">
+<div class="ch"><span class="ct">{{c.name}}</span><span class="k">{{c.kind}}</span></div>
+<div class="val"><span class="big">{{c.after}}</span><span class="up">{{c.delta}}</span><span class="was">{{c.was}}</span></div>
+<div class="spark"></div>
+</div>
+</sc-for>
+</div>
+</main>
+<aside class="aside">
+<span class="at">Saved hunts · 20</span>
+<label class="flt" for="35c-find">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<input id="35c-find" class="fin" placeholder="Filter 20 by name" aria-label="Filter saved hunts by name">
+</label>
+<div class="scroll">
+<div class="list">
+<sc-for list="{{f35c_groups}}" as="g" hint-placeholder-count="2">
+<button type="button" class="row" aria-expanded="true"><span class="gl"><svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span class="nm">{{g.name}}</span></span><span class="n">{{g.count}}</span></button>
+<div class="in">
+<sc-for list="{{g.items}}" as="it" hint-placeholder-count="3">
+<button type="button" class="row"><span class="nm">{{it.name}}</span><span class="n">{{it.n}}</span></button>
+</sc-for>
+</div>
+</sc-for>
+<sc-for list="{{f35c_rows}}" as="r" hint-placeholder-count="11">
+<button type="button" class="row"><span class="nm">{{r.name}}</span><span class="n">{{r.n}}</span></button>
+</sc-for>
+</div>
+<div class="thumb"></div>
+</div>
+</aside>
+</div>
+<div class="foot">
+<span><span class="kbd">/</span>search</span><span><span class="kbd">↑↓←→</span>focus</span><span><span class="kbd">wheel / + −</span>zoom</span><span><span class="kbd">esc</span>close</span>
+<span class="sp"></span>
+<span>0.08/s</span><span>ClickHouse 349M · disk 10.2/74.8G</span><span>App 71.1/512M</span><span>0.12.1</span>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="35d" data-frame="35d" data-screen-label="35d B · Groups closed, 60 hunts" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#35d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">35d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">B · Groups closed, 60 hunts</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">860×900</span>
+      </div>
+      <div data-crop="35d" style="position:relative; width:860px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<div class="hdr">
+<span class="brand">toposcope</span><span class="inst">agental</span>
+<span class="nav on">Home</span><span class="nav">Hunt</span><span class="nav">Watch</span>
+<span class="sp"></span>
+<span class="nav">Access</span><span class="nav">Settings</span><span class="av">IA</span>
+</div>
+<div class="since">
+<span class="lbl">Since</span>
+<span class="chip chipon">the last hour <span class="mono">22:53 → 23:53</span></span>
+<span class="lbl">no mark in the last 24 h</span>
+<span class="sp"></span>
+<span class="chip">+ note</span>
+</div>
+<div class="body">
+<main class="main">
+<h1 class="h1">The last hour, against the hour before</h1>
+<div class="grid">
+<sc-for list="{{f35d_cards}}" as="c" hint-placeholder-count="4">
+<div class="card">
+<div class="ch"><span class="ct">{{c.name}}</span><span class="k">{{c.kind}}</span></div>
+<div class="val"><span class="big">{{c.after}}</span><span class="up">{{c.delta}}</span><span class="was">{{c.was}}</span></div>
+<div class="spark"></div>
+</div>
+</sc-for>
+</div>
+</main>
+<aside class="aside">
+<span class="at">Saved hunts · 60</span>
+<label class="flt" for="35d-find">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+<input id="35d-find" class="fin" placeholder="Filter 60 by name" aria-label="Filter saved hunts by name">
+</label>
+<div class="scroll">
+<div class="list">
+<sc-for list="{{f35d_groups}}" as="g" hint-placeholder-count="7">
+<button type="button" class="row" aria-expanded="false"><span class="gl"><svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg><span class="nm">{{g.name}}</span></span><span class="n">{{g.count}}</span></button>
+</sc-for>
+<sc-for list="{{f35d_rows}}" as="r" hint-placeholder-count="12">
+<button type="button" class="row"><span class="nm">{{r.name}}</span><span class="n">{{r.n}}</span></button>
+</sc-for>
+</div>
+<div class="thumb"></div>
+</div>
+</aside>
+</div>
+<div class="foot">
+<span><span class="kbd">/</span>search</span><span><span class="kbd">↑↓←→</span>focus</span><span><span class="kbd">wheel / + −</span>zoom</span><span><span class="kbd">esc</span>close</span>
+<span class="sp"></span>
+<span>0.08/s</span><span>ClickHouse 349M · disk 10.2/74.8G</span><span>App 71.1/512M</span><span>0.12.1</span>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="35e" data-frame="35e" data-screen-label="35e C · Moved first, quiet folded, 60 hunts" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#35e" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">35e</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">C · Moved first, quiet folded, 60 hunts</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">860×900</span>
+      </div>
+      <div data-crop="35e" style="position:relative; width:860px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<div class="hdr">
+<span class="brand">toposcope</span><span class="inst">agental</span>
+<span class="nav on">Home</span><span class="nav">Hunt</span><span class="nav">Watch</span>
+<span class="sp"></span>
+<span class="nav">Access</span><span class="nav">Settings</span><span class="av">IA</span>
+</div>
+<div class="since">
+<span class="lbl">Since</span>
+<span class="chip chipon">the last hour <span class="mono">22:53 → 23:53</span></span>
+<span class="lbl">no mark in the last 24 h</span>
+<span class="sp"></span>
+<span class="chip">+ note</span>
+</div>
+<div class="body">
+<main class="main">
+<h1 class="h1">The last hour, against the hour before</h1>
+<div class="grid">
+<sc-for list="{{f35e_cards}}" as="c" hint-placeholder-count="4">
+<div class="card">
+<div class="ch"><span class="ct">{{c.name}}</span><span class="k">{{c.kind}}</span></div>
+<div class="val"><span class="big">{{c.after}}</span><span class="up">{{c.delta}}</span><span class="was">{{c.was}}</span></div>
+<div class="spark"></div>
+</div>
+</sc-for>
+</div>
+</main>
+<aside class="aside">
+<span class="at">Saved hunts · 60</span>
+<div class="scroll">
+<span class="sub">Moved · 5</span>
+<div class="list">
+<sc-for list="{{f35e_moved}}" as="r" hint-placeholder-count="5">
+<button type="button" class="row"><span class="nm">{{r.name}}</span><span class="rt"><span class="d">{{r.d}}</span><span class="n">{{r.n}}</span></span></button>
+</sc-for>
+<button type="button" class="row" aria-expanded="false"><span class="gl"><svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg><span class="nm">Quiet <span class="note">· same as before</span></span></span><span class="n">55</span></button>
+</div>
+<span class="at" style="padding: 8px 0 0">Pinned</span>
+<div class="list">
+<button type="button" class="row"><span class="nm">All logs</span><span class="n">pinned</span></button>
+<button type="button" class="row"><span class="nm">Ops board</span><span class="n">6 panels</span></button>
+</div>
+</div>
+</aside>
+</div>
+<div class="foot">
+<span><span class="kbd">/</span>search</span><span><span class="kbd">↑↓←→</span>focus</span><span><span class="kbd">wheel / + −</span>zoom</span><span><span class="kbd">esc</span>close</span>
+<span class="sp"></span>
+<span>0.08/s</span><span>ClickHouse 349M · disk 10.2/74.8G</span><span>App 71.1/512M</span><span>0.12.1</span>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="35f" data-frame="35f" data-screen-label="35f C · Quiet opened, 20 hunts" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#35f" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">35f</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">C · Quiet opened, 20 hunts</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">860×900</span>
+      </div>
+      <div data-crop="35f" style="position:relative; width:860px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<div class="hdr">
+<span class="brand">toposcope</span><span class="inst">agental</span>
+<span class="nav on">Home</span><span class="nav">Hunt</span><span class="nav">Watch</span>
+<span class="sp"></span>
+<span class="nav">Access</span><span class="nav">Settings</span><span class="av">IA</span>
+</div>
+<div class="since">
+<span class="lbl">Since</span>
+<span class="chip chipon">the last hour <span class="mono">22:53 → 23:53</span></span>
+<span class="lbl">no mark in the last 24 h</span>
+<span class="sp"></span>
+<span class="chip">+ note</span>
+</div>
+<div class="body">
+<main class="main">
+<h1 class="h1">The last hour, against the hour before</h1>
+<div class="grid">
+<sc-for list="{{f35f_cards}}" as="c" hint-placeholder-count="4">
+<div class="card">
+<div class="ch"><span class="ct">{{c.name}}</span><span class="k">{{c.kind}}</span></div>
+<div class="val"><span class="big">{{c.after}}</span><span class="up">{{c.delta}}</span><span class="was">{{c.was}}</span></div>
+<div class="spark"></div>
+</div>
+</sc-for>
+</div>
+</main>
+<aside class="aside">
+<span class="at">Saved hunts · 20</span>
+<div class="scroll">
+<span class="sub">Moved · 1</span>
+<div class="list">
+<button type="button" class="row"><span class="nm">API errors</span><span class="rt"><span class="d">new</span><span class="n">3</span></span></button>
+<button type="button" class="row" aria-expanded="true"><span class="gl"><svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg><span class="nm">Quiet <span class="note">· same as before</span></span></span><span class="n">19</span></button>
+<div class="in">
+<sc-for list="{{f35f_quiet}}" as="r" hint-placeholder-count="19">
+<button type="button" class="row"><span class="nm">{{r.name}}</span><span class="n">{{r.n}}</span></button>
+</sc-for>
+</div>
+</div>
+</div>
+</aside>
+</div>
+<div class="foot">
+<span><span class="kbd">/</span>search</span><span><span class="kbd">↑↓←→</span>focus</span><span><span class="kbd">wheel / + −</span>zoom</span><span><span class="kbd">esc</span>close</span>
+<span class="sp"></span>
+<span>0.08/s</span><span>ClickHouse 349M · disk 10.2/74.8G</span><span>App 71.1/512M</span><span>0.12.1</span>
+</div>
+</div>
+      </div>
+    </div>
+
+    <div id="35g" data-frame="35g" data-screen-label="35g 5 hunts: every direction draws today's list" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#35g" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">35g</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">5 hunts: every direction draws today's list</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">860×900</span>
+      </div>
+      <div data-crop="35g" style="position:relative; width:860px; height:900px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div class="pg">
+<div class="hdr">
+<span class="brand">toposcope</span><span class="inst">agental</span>
+<span class="nav on">Home</span><span class="nav">Hunt</span><span class="nav">Watch</span>
+<span class="sp"></span>
+<span class="nav">Access</span><span class="nav">Settings</span><span class="av">IA</span>
+</div>
+<div class="since">
+<span class="lbl">Since</span>
+<span class="chip chipon">the last hour <span class="mono">22:53 → 23:53</span></span>
+<span class="lbl">no mark in the last 24 h</span>
+<span class="sp"></span>
+<span class="chip">+ note</span>
+</div>
+<div class="body">
+<main class="main">
+<h1 class="h1">The last hour, against the hour before</h1>
+<div class="grid">
+<sc-for list="{{f35g_cards}}" as="c" hint-placeholder-count="4">
+<div class="card">
+<div class="ch"><span class="ct">{{c.name}}</span><span class="k">{{c.kind}}</span></div>
+<div class="val"><span class="big">{{c.after}}</span><span class="up">{{c.delta}}</span><span class="was">{{c.was}}</span></div>
+<div class="spark"></div>
+</div>
+</sc-for>
+</div>
+</main>
+<aside class="aside">
+<span class="at">Saved hunts · 5</span>
+<div class="list">
+<sc-for list="{{f35g_rows}}" as="r" hint-placeholder-count="5">
+<button type="button" class="row"><span class="nm">{{r.name}}</span><span class="n">{{r.n}}</span></button>
+</sc-for>
+</div>
+<span class="at" style="margin-top: 12px">Pinned</span>
+<div class="list">
+<button type="button" class="row"><span class="nm">All logs</span><span class="n">pinned</span></button>
+<button type="button" class="row"><span class="nm">Ops board</span><span class="n">6 panels</span></button>
+</div>
+</aside>
+</div>
+<div class="foot">
+<span><span class="kbd">/</span>search</span><span><span class="kbd">↑↓←→</span>focus</span><span><span class="kbd">wheel / + −</span>zoom</span><span><span class="kbd">esc</span>close</span>
+<span class="sp"></span>
+<span>0.08/s</span><span>ClickHouse 349M · disk 10.2/74.8G</span><span>App 71.1/512M</span><span>0.12.1</span>
+</div>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f35a', new (class {
+renderVals() {
+const names = [
+["Hub 5xx","12"],["Hub latency p99","p99"],["Webhook deliveries","1.24K"],["Sign-ins","41"],["Token refusals","0"],["Worker queue depth","metric"],["Slow boots","0"],["Image pulls failed","0"],["OOM kills","0"],["Egress blocked","0"],["Deploys","2"],["Everything from ovh-01","318"],["Invoices sent","0"],["Cards declined","0"],["Refunds","0"],
+["archive · azure-01 · Disk · removed 2026-10-23","0"],["archive · azure-01 · Memory · removed 2026-10-23","0"],["archive · azure-01 · vCPU · removed 2026-10-23","0"],
+["Disk · ovh-01","0"],["Memory · ovh-01","0"],["vCPU · ovh-01","0"],["Sandbox refused/failed","0"],["New errors after deploy","0"],["Threshold crossed","0"],["Box not answering","0"],["Backup failed","0"],["Box command failed","0"],["API errors","3"],
+["archive · env · Disk · removed 2026-10-23","0"],["archive · env · Memory · removed 2026-10-23","0"],["archive · env · vCPU · removed 2026-10-23","0"],
+["Disk · all boxes","0"],["Memory · all boxes","0"],["vCPU · all boxes","0"],["Shapes · disk","0"],["Shapes · memory","0"],["Shapes · CPU","0"],["Control server","0"],["Capacity, money, queues","0"],["Sandboxes, accounts","0"]
+];
+return {
+rows: names.map(([name, n]) => ({ name, n })),
+cards: [
+{ name: "Hub 5xx", kind: "count", after: "12", delta: "+9", was: "was 3" },
+{ name: "Hub latency p99", kind: "p99 · ms", after: "412", delta: "+40", was: "was 372" },
+{ name: "Webhook deliveries", kind: "count", after: "1.24K", delta: "+140", was: "was 1.10K" },
+{ name: "Sign-ins", kind: "count", after: "41", delta: "+3", was: "was 38" }
+]
+};
+}
+})().renderVals()),
+      ...pre('f35b', new (class {
+renderVals() {
+const names = [
+["Login failures","7"],["Rate-limited callers","0"],["Disk pressure","0"],["Sandbox boots p95","p95"],["Agent errors","0"],["Cron misses","0"],["Queue · dead letters","0"],["Queue · retries","0"],["Queue · backlog","metric"],["Cert renewals","0"],["DNS failures","0"],["Mail bounces","0"],["Billing · payouts","0"],["Billing · refunds","0"],["Billing · cards declined","0"],["Billing · invoices","0"],["Shapes · network","0"],["Disk · azure-01","0"],["Memory · azure-01","0"],["vCPU · azure-01","0"],
+["Hub 5xx","12"],["Hub latency p99","p99"],["Webhook deliveries","1.24K"],["Sign-ins","41"]
+];
+return {
+rows: names.map(([name, n]) => ({ name, n })),
+cards: [
+{ name: "Hub 5xx", kind: "count", after: "12", delta: "+9", was: "was 3" },
+{ name: "Hub latency p99", kind: "p99 · ms", after: "412", delta: "+40", was: "was 372" },
+{ name: "Webhook deliveries", kind: "count", after: "1.24K", delta: "+140", was: "was 1.10K" },
+{ name: "Sign-ins", kind: "count", after: "41", delta: "+3", was: "was 38" }
+]
+};
+}
+})().renderVals()),
+      ...pre('f35c', new (class {
+renderVals() {
+const mk = (xs) => xs.map(([name, n]) => ({ name, n }));
+return {
+groups: [
+{ name: "archive", count: "6", items: mk([["azure-01 · Disk · removed 2026-10-23","0"],["azure-01 · Memory · removed 2026-10-23","0"],["azure-01 · vCPU · removed 2026-10-23","0"],["env · Disk · removed 2026-10-23","0"],["env · Memory · removed 2026-10-23","0"],["env · vCPU · removed 2026-10-23","0"]]) },
+{ name: "Shapes", count: "3", items: mk([["disk","0"],["memory","0"],["CPU","0"]]) }
+],
+rows: mk([["Disk · ovh-01","0"],["Memory · ovh-01","0"],["vCPU · ovh-01","0"],["Backup failed","0"],["Box command failed","0"],["API errors","3"],["Disk · all boxes","0"],["Memory · all boxes","0"],["vCPU · all boxes","0"],["Control server","0"],["Sandboxes, accounts","0"]]),
+cards: [
+{ name: "API errors", kind: "count", after: "3", delta: "new", was: "was 0" },
+{ name: "Disk · ovh-01", kind: "count", after: "0", delta: "", was: "was 0" },
+{ name: "Backup failed", kind: "count", after: "0", delta: "", was: "was 0" },
+{ name: "Control server", kind: "count", after: "0", delta: "", was: "was 0" }
+]
+};
+}
+})().renderVals()),
+      ...pre('f35d', new (class {
+renderVals() {
+const mk = (xs) => xs.map(([name, n]) => ({ name, n }));
+return {
+groups: mk([["Queue","3"],["Billing","4"],["Shapes","4"],["Disk","3"],["Memory","3"],["vCPU","3"],["archive","6"]]).map((g) => ({ name: g.name, count: g.n })),
+rows: mk([["Login failures","7"],["Rate-limited callers","0"],["Disk pressure","0"],["Sandbox boots p95","p95"],["Agent errors","0"],["Cron misses","0"],["Cert renewals","0"],["DNS failures","0"],["Mail bounces","0"],["Hub 5xx","12"],["Hub latency p99","p99"],["Webhook deliveries","1.24K"],["Sign-ins","41"],["Token refusals","0"]]),
+cards: [
+{ name: "Hub 5xx", kind: "count", after: "12", delta: "+9", was: "was 3" },
+{ name: "Hub latency p99", kind: "p99 · ms", after: "412", delta: "+40", was: "was 372" },
+{ name: "Webhook deliveries", kind: "count", after: "1.24K", delta: "+140", was: "was 1.10K" },
+{ name: "Sign-ins", kind: "count", after: "41", delta: "+3", was: "was 38" }
+]
+};
+}
+})().renderVals()),
+      ...pre('f35e', new (class {
+renderVals() {
+return {
+moved: [
+{ name: "Hub 5xx", d: "+9", n: "12" },
+{ name: "Login failures", d: "new", n: "7" },
+{ name: "API errors", d: "new", n: "3" },
+{ name: "Webhook deliveries", d: "+140", n: "1.24K" },
+{ name: "Hub latency p99", d: "+40", n: "p99" }
+],
+cards: [
+{ name: "Hub 5xx", kind: "count", after: "12", delta: "+9", was: "was 3" },
+{ name: "Hub latency p99", kind: "p99 · ms", after: "412", delta: "+40", was: "was 372" },
+{ name: "Webhook deliveries", kind: "count", after: "1.24K", delta: "+140", was: "was 1.10K" },
+{ name: "Sign-ins", kind: "count", after: "41", delta: "+3", was: "was 38" }
+]
+};
+}
+})().renderVals()),
+      ...pre('f35f', new (class {
+renderVals() {
+const names = ["archive · azure-01 · Disk · removed 2026-10-23","archive · azure-01 · Memory · removed 2026-10-23","archive · azure-01 · vCPU · removed 2026-10-23","Disk · ovh-01","Memory · ovh-01","vCPU · ovh-01","Backup failed","Box command failed","archive · env · Disk · removed 2026-10-23","archive · env · Memory · removed 2026-10-23","archive · env · vCPU · removed 2026-10-23","Disk · all boxes","Memory · all boxes","vCPU · all boxes","Shapes · disk","Shapes · memory","Shapes · CPU","Control server","Sandboxes, accounts"];
+return {
+quiet: names.map((name) => ({ name, n: "0" })),
+cards: [
+{ name: "API errors", kind: "count", after: "3", delta: "new", was: "was 0" },
+{ name: "Disk · ovh-01", kind: "count", after: "0", delta: "", was: "was 0" },
+{ name: "Backup failed", kind: "count", after: "0", delta: "", was: "was 0" },
+{ name: "Control server", kind: "count", after: "0", delta: "", was: "was 0" }
+]
+};
+}
+})().renderVals()),
+      ...pre('f35g', new (class {
+renderVals() {
+return {
+rows: [
+{ name: "Hub 5xx", n: "12" },
+{ name: "Hub latency p99", n: "p99" },
+{ name: "Webhook deliveries", n: "1.24K" },
+{ name: "Sign-ins", n: "41" },
+{ name: "API errors", n: "3" }
+],
+cards: [
+{ name: "Hub 5xx", kind: "count", after: "12", delta: "+9", was: "was 3" },
+{ name: "Hub latency p99", kind: "p99 · ms", after: "412", delta: "+40", was: "was 372" },
+{ name: "Webhook deliveries", kind: "count", after: "1.24K", delta: "+140", was: "was 1.10K" },
+{ name: "Sign-ins", kind: "count", after: "41", delta: "+3", was: "was 38" }
+]
+};
+}
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>
