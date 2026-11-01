@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+In Live the facet chips say how old their counts are. The row leads with an age (`18s`) behind a refresh glyph; the counts refresh on the 30s pass while the clock moves every 2s, and the age turns plate when a pass is missed. Hover names the cadence. Live polling now runs on one refresh registry, so every Live list records when it last landed. A failed chip refresh of the same hunt keeps the chips on screen instead of clearing them.
+
 The agent skill's `cost` says what an instance takes since 0.11.1: about 200 MB of memory with nothing arriving, with ClickHouse sized to the machine (at most half its memory, `CLICKHOUSE_MEMORY` caps it), and Docker Compose 2.23.1 or later. It still said 2 GB and a 4 GB ClickHouse limit, and left out port 4319.
 
 ## 0.12.2

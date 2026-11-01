@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { CountText } from "@/components/count-text";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import type { LogLevel } from "../types";
  * The slice as one row of chips under the clock (frame 26d, #260): level · service · host, then
  * the loudest fingerprints as `e1:<hex>` chips, then each pinned attr facet, then + facet.
  * A chip toggles membership in its field's OR group, as the sidebar's rows did.
+ * In Live the row leads with the counts' age, its own group (frame 36c).
  */
 const coreFields: FacetField[] = ["level", "service", "host"];
 const chipsPerField = 6;
@@ -41,6 +42,8 @@ type Props = {
   /** A facet value's count a short source could feed (#139). */
   floorFor?: (field: string, value: string) => boolean;
   locked?: boolean;
+  /** Live only: the counts' age, drawn as the first group (36c). */
+  age?: ReactNode;
 };
 
 function activeList(active: string | string[] | undefined): string[] {
@@ -110,10 +113,11 @@ export function FacetChips(props: Props) {
     group("e1", props.facets.e1 ?? [], e1Chips),
     ...props.attrPins.map((f) => group(f, props.attrFacetValues[f] ?? [], chipsPerField, () => props.onRemoveAttrFacet(f))),
   ].filter(Boolean);
+  const lead = props.age ? [props.age, ...groups] : groups;
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2 px-3 pt-2.5", props.locked && "pointer-events-none opacity-50")} data-kbd="facet">
-      {groups.map((g, i) => (
+      {lead.map((g, i) => (
         <span key={i} className="contents">
           {i > 0 ? <span className="mx-1 h-[18px] w-px bg-white/10" aria-hidden="true" /> : null}
           {g}

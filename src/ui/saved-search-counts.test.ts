@@ -9,7 +9,8 @@ function replaceSearchSuccessArm(src: string): string {
   if (start < 0) {
     throw new Error("replace-search lastMs stamp missing");
   }
-  const end = src.indexOf("void loadFacets(facetQuery);", start);
+  // The arm ends where the replace hands the chip and picker lists to the Live refresh registry.
+  const end = src.indexOf("liveRefresh.runNow(sidebarRefreshKeys);", start);
   if (end < 0) {
     throw new Error("replace-search facet refresh missing");
   }

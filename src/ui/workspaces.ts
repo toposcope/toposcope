@@ -66,6 +66,8 @@ export type WorkspacePaint = {
   metricNames: string[];
   attrKeyOptions: Array<{ k: string; n: number }>;
   lastTo: string | null;
+  /** Live refresh freshness when this paint was taken (registry key → landed ms). */
+  refreshedAt?: Record<string, number>;
   window: SearchWindow | null;
   marks: ChangeMark[];
   markBefore: ChangeMark | null;
