@@ -1,9 +1,11 @@
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { HomeCard, HomeSince } from "../../control/home-since";
 import { formatCompactCount } from "../count-format";
+import { savedColumn } from "../home-saved";
 import { deltaText, firstRunSteps, formatValue, hhmmUtc, markAge, markGlyph, resolvePick, sideText, type HomePick } from "../home-since";
 import type { MonitorView, SavedSearch } from "../types";
 import { AgentBadge, OpenAgent } from "./agent-badge";
@@ -30,6 +32,7 @@ type Props = {
 };
 
 const pickKey = "toposcope.homePick";
+const quietKey = "toposcope.homeQuietOpen";
 
 function readPick(): HomePick | null {
   try {
@@ -57,6 +60,14 @@ export function HomeView(props: Props) {
   const [failed, setFailed] = useState<string | null>(null);
   const [pick, setPick] = useState<HomePick | null>(() => readPick());
   const [note, setNote] = useState<string | null>(null);
+  // 35f: an opened Quiet fold stays open in this browser
+  const [quietOpen, setQuietOpen] = useState(() => {
+    try {
+      return localStorage.getItem(quietKey) === "1";
+    } catch {
+      return false;
+    }
+  });
   const pickRef = useRef(pick);
   pickRef.current = pick;
 
@@ -122,6 +133,15 @@ export function HomeView(props: Props) {
     setPick(next);
   }
 
+  function toggleQuiet(open: boolean) {
+    setQuietOpen(open);
+    try {
+      localStorage.setItem(quietKey, open ? "1" : "0");
+    } catch {
+      // a private window: the fold lasts the page
+    }
+  }
+
   async function addNote(text: string) {
     const title = text.trim();
     if (!title) {
@@ -162,6 +182,26 @@ export function HomeView(props: Props) {
   const openCount = monitors.filter((m) => m.open).length;
   const fp = data.fingerprints;
   const e1Query = fp ? fp.first_seen.map((r) => `e1:${r.hex}`).join(" OR ") : "";
+  const hunts = props.saved.filter((s) => !s.board);
+  const column = savedColumn(hunts, data.cards);
+  const valueOf = (card: HomeCard | undefined) => (card ? (card.kind === "count" ? formatCompactCount(card.after ?? 0) : card.kind) : "");
+  const savedRow = (s: SavedSearch, value: string, delta?: string, up?: boolean) => (
+    <button
+      key={s.id}
+      type="button"
+      className={cn("flex justify-between rounded-md px-2.5 py-[7px] text-left hover:bg-white/[0.04]", s.id === selectedId && "bg-white/[0.06]")}
+      onClick={() => props.onOpenSaved(s, window, selectedId)}
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="truncate">{s.name}</span>
+        {s.saved_by?.agent ? <AgentBadge name={s.saved_by.name} onOpen={props.onOpenAgents} /> : null}
+      </span>
+      <span className="ml-2 flex shrink-0 items-baseline gap-2 font-mono text-[12px] text-muted-foreground">
+        {delta ? <span className={cn("text-[11.5px]", up && "text-red-300")}>{delta}</span> : null}
+        {value}
+      </span>
+    </button>
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -307,31 +347,48 @@ export function HomeView(props: Props) {
           </div>
         </main>
 
-        <aside className="hidden w-[300px] shrink-0 flex-col gap-3 border-l border-white/[0.06] px-6 pt-5 lg:flex">
-          <span className="text-[13.5px] font-medium">Saved hunts · {props.saved.filter((s) => !s.board).length}</span>
-          <div className="flex flex-col gap-0.5 text-[13px]">
-            {props.saved
-              .filter((s) => !s.board)
-              .map((s) => {
-                const card = cardById.get(s.id);
-                return (
+        <aside className="hidden min-h-0 w-[300px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-white/[0.06] px-6 pt-5 pb-6 lg:flex">
+          <span className="text-[13.5px] font-medium">Saved hunts · {hunts.length}</span>
+          {column.fold ? (
+            <>
+              <span className="px-2.5 text-[12px] text-muted-foreground">Moved · {column.moved.length || "none"}</span>
+              <div className="flex flex-col gap-0.5 text-[13px]">
+                {column.moved.map(({ item, card }) => {
+                  const delta = deltaText(card.before, card.after, card.kind);
+                  return savedRow(item, valueOf(card), delta.text, delta.up && since.kind !== "hour");
+                })}
+                {column.quiet.length > 0 ? (
                   <button
-                    key={s.id}
                     type="button"
-                    className={cn("flex justify-between rounded-md px-2.5 py-[7px] text-left hover:bg-white/[0.04]", s.id === selectedId && "bg-white/[0.06]")}
-                    onClick={() => props.onOpenSaved(s, window, selectedId)}
+                    aria-expanded={quietOpen}
+                    className="flex justify-between rounded-md px-2.5 py-[7px] text-left hover:bg-white/[0.04]"
+                    onClick={() => toggleQuiet(!quietOpen)}
                   >
                     <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate">{s.name}</span>
-                      {s.saved_by?.agent ? <AgentBadge name={s.saved_by.name} onOpen={props.onOpenAgents} /> : null}
+                      {quietOpen ? <ChevronDown className="size-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3 shrink-0 text-muted-foreground" />}
+                      <span className="truncate">
+                        Quiet <span className="text-muted-foreground">· same as before</span>
+                      </span>
                     </span>
-                    <span className="ml-2 font-mono text-[12px] text-muted-foreground">
-                      {card ? (card.kind === "count" ? formatCompactCount(card.after ?? 0) : card.kind) : ""}
-                    </span>
+                    <span className="ml-2 font-mono text-[12px] text-muted-foreground">{column.quiet.length}</span>
                   </button>
-                );
-              })}
-          </div>
+                ) : null}
+                {quietOpen ? (
+                  <div className="flex flex-col gap-0.5 pl-5">
+                    {column.quiet.map((s) => (
+                      savedRow(s, valueOf(cardById.get(s.id)))
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-0.5 text-[13px]">
+              {column.items.map((s) => (
+                savedRow(s, valueOf(cardById.get(s.id)))
+              ))}
+            </div>
+          )}
           {props.saved.some((s) => s.pinned || s.board) ? (
             <>
               <span className="mt-3 text-[13.5px] font-medium">Pinned</span>
