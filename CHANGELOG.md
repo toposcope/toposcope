@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+The agent skill's `cost` says what an instance takes since 0.11.1: about 200 MB of memory with nothing arriving, with ClickHouse sized to the machine (at most half its memory, `CLICKHOUSE_MEMORY` caps it), and Docker Compose 2.23.1 or later. It still said 2 GB and a 4 GB ClickHouse limit, and left out port 4319.
+
 ## 0.12.2
 
 Home's Saved hunts column ends at the footer and scrolls inside itself; with 40 hunts it used to run under the footer, out of reach, with Pinned below it. Past 8 hunts the ones whose card moved come first, new before the largest change, with their change beside the value, and the rest fold into one **Quiet · same as before** line with its count; an opened fold stays open in that browser. Up to 8 hunts it is one list, as before.
