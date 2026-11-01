@@ -231,6 +231,9 @@ import { heldView } from "./held-view";
 import { HeldPill, ScopeChipView } from "@/components/held-tells";
 import { OutageBand, OutageChip, OutageScreen } from "@/components/outage-view";
 import { backEvent, isNoAnswer, useOutage } from "./outage";
+import { LiveRefresh } from "./live-refresh";
+import { blankOnFailedRefresh, oldestFetchedAt } from "./live-updated";
+import { FacetAge } from "@/components/facet-age";
 import { useHeld } from "./use-held";
 import {
   deriveLiveSeries,
@@ -293,6 +296,19 @@ function facetOnlyParams(facetQuery: string): URLSearchParams {
 
 function stampSeries(data: Omit<SeriesData, "fetchedAt">): SeriesData {
   return { ...data, fetchedAt: Date.now() };
+}
+
+/** Live cadences. The 2s delta and the 30s full pass share one lane. */
+const liveDeltaMs = 2_000;
+const liveFullMs = 30_000;
+const searchRefreshKeys = ["search:delta", "search:full"];
+/** Whole-window chip and picker lists: refreshed by a search and on the 30s clock. */
+const sidebarRefreshKeys = ["facets", "numeric-keys", "metric-names", "attr-keys"];
+/** Every key whose age the facet chips report. */
+const facetRefreshKeys = ["facets", "attr-facets"];
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === "AbortError";
 }
 
 async function fetchHbarSeries(
@@ -543,6 +559,9 @@ export function App() {
   const linkedRef = useRef(linked);
   linkedRef.current = linked;
   const lastFacetQueryRef = useRef<string | null>(null);
+  /** The query whose facets / attr facets are on screen: a failed refresh of it keeps last paint. */
+  const landedFacetQueryRef = useRef<string | null>(null);
+  const landedAttrFacetQueryRef = useRef<string | null>(null);
   const [attrFacetValues, setAttrFacetValues] = useState<Record<string, FacetValue[]>>(
     {},
   );
@@ -719,11 +738,8 @@ export function App() {
   const widgetsRef = useRef(widgets);
   const logsOnRef = useRef(logsOn);
   const lastToRef = useRef<string | null>(null);
-  const livePollsRef = useRef(0);
+  const [liveRefresh] = useState(() => new LiveRefresh());
   const abortRef = useRef<AbortController | null>(null);
-  const fullPollAcRef = useRef<AbortController | null>(null);
-  const extraAbortRef = useRef<AbortController | null>(null);
-  const extraInflightRef = useRef(false);
   const hbarAbortRef = useRef<AbortController | null>(null);
   const fieldsAbortRef = useRef<AbortController | null>(null);
   const fieldsRef = useRef<FieldsResponse | null>(null);
@@ -922,30 +938,37 @@ export function App() {
     setSaved(json.searches);
   }, []);
 
-  const loadFacets = useCallback(async (query: string) => {
+  const loadFacets = useCallback(async (query: string, signal?: AbortSignal) => {
     const gen = viewGenRef.current;
     lastFacetQueryRef.current = query;
     setFacetsLoading(true);
     try {
       // Linked, the toposcope group counts each source in this hunt (#139).
-      const res = await fetch(`/api/facets?${query}${linkedRef.current ? "&fields=toposcope" : ""}`);
+      const res = await fetch(`/api/facets?${query}${linkedRef.current ? "&fields=toposcope" : ""}`, { signal });
       if (viewGenRef.current !== gen) {
-        return;
+        return false;
       }
       if (!res.ok) {
-        setFacets(emptyFacets);
-        return;
+        if (blankOnFailedRefresh(query, landedFacetQueryRef.current)) {
+          setFacets(emptyFacets);
+        }
+        return false;
       }
       const json = (await res.json()) as Facets;
-      if (viewGenRef.current !== gen) {
-        return;
+      if (viewGenRef.current !== gen || signal?.aborted) {
+        return false;
       }
       setFacets(json);
-    } catch {
-      if (viewGenRef.current !== gen) {
-        return;
+      landedFacetQueryRef.current = query;
+      return true;
+    } catch (err) {
+      if (viewGenRef.current !== gen || isAbortError(err)) {
+        return false;
       }
-      setFacets(emptyFacets);
+      if (blankOnFailedRefresh(query, landedFacetQueryRef.current)) {
+        setFacets(emptyFacets);
+      }
+      return false;
     } finally {
       if (viewGenRef.current === gen) {
         setFacetsLoading(false);
@@ -959,7 +982,7 @@ export function App() {
     }
   }, [linked, loadFacets]);
 
-  const loadMetricNames = useCallback(async (query: string) => {
+  const loadMetricNames = useCallback(async (query: string, signal?: AbortSignal) => {
     const gen = viewGenRef.current;
     try {
       const params = metricWindowParams(query);
@@ -967,28 +990,33 @@ export function App() {
       if (pickedMetricsRef.current.length > 0) {
         params.set("picked", pickedMetricsRef.current.join(","));
       }
-      const res = await fetch(`/api/metric-names?${params.toString()}`);
+      const res = await fetch(`/api/metric-names?${params.toString()}`, { signal });
       if (viewGenRef.current !== gen) {
-        return;
+        return false;
       }
       if (!res.ok) {
         setMetricNames([]);
         setMetricCatalog({ entries: [], total: 0, picked: {} });
-        return;
+        return false;
       }
       const json = (await res.json()) as MetricNamesReply;
+      if (viewGenRef.current !== gen || signal?.aborted) {
+        return false;
+      }
       setMetricNames(json.keys.map((item) => item.k));
       setMetricCatalog({
         entries: json.keys.map(metricEntry),
         total: json.total ?? json.keys.length,
         picked: Object.fromEntries((json.picked ?? []).map((item) => [item.k, metricEntry(item)])),
       });
-    } catch {
-      if (viewGenRef.current !== gen) {
-        return;
+      return true;
+    } catch (err) {
+      if (viewGenRef.current !== gen || isAbortError(err)) {
+        return false;
       }
       setMetricNames([]);
       setMetricCatalog({ entries: [], total: 0, picked: {} });
+      return false;
     }
   }, []);
 
@@ -1022,41 +1050,51 @@ export function App() {
     }
   }, []);
 
-  const loadNumericKeys = useCallback(async (query: string) => {
+  const loadNumericKeys = useCallback(async (query: string, signal?: AbortSignal) => {
     const gen = viewGenRef.current;
     try {
-      const res = await fetch(`/api/numeric-keys?${query}`);
+      const res = await fetch(`/api/numeric-keys?${query}`, { signal });
       if (viewGenRef.current !== gen) {
-        return;
+        return false;
       }
       if (!res.ok) {
         setNumericKeys([]);
-        return;
+        return false;
       }
       const json = (await res.json()) as { keys: Array<{ k: string; n: number }> };
+      if (viewGenRef.current !== gen || signal?.aborted) {
+        return false;
+      }
       setNumericKeys(json.keys.map((item) => item.k));
-    } catch {
-      if (viewGenRef.current !== gen) {
-        return;
+      return true;
+    } catch (err) {
+      if (viewGenRef.current !== gen || isAbortError(err)) {
+        return false;
       }
       setNumericKeys([]);
+      return false;
     }
   }, []);
 
-  const loadAttrKeys = useCallback(async (query: string) => {
+  const loadAttrKeys = useCallback(async (query: string, signal?: AbortSignal) => {
     const gen = viewGenRef.current;
     try {
-      const res = await fetch(`/api/attr-keys?${query}`);
+      const res = await fetch(`/api/attr-keys?${query}`, { signal });
       if (viewGenRef.current !== gen) {
-        return;
+        return false;
       }
       if (!res.ok) {
-        return;
+        return false;
       }
       const json = (await res.json()) as { keys: Array<{ k: string; n: number }> };
+      if (viewGenRef.current !== gen || signal?.aborted) {
+        return false;
+      }
       setAttrKeyOptions(json.keys);
+      return true;
     } catch {
       // keep last list
+      return false;
     }
   }, []);
 
@@ -1109,37 +1147,45 @@ export function App() {
   );
 
   const loadAttrFacets = useCallback(
-    async (pins: string[], query: string) => {
+    async (pins: string[], query: string, signal?: AbortSignal) => {
       const gen = viewGenRef.current;
       if (pins.length === 0) {
         if (viewGenRef.current === gen) {
           setAttrFacetValues({});
           setAttrFacetsLoading(false);
         }
-        return;
+        return true;
       }
       setAttrFacetsLoading(true);
+      const params = new URLSearchParams(query);
+      params.set("attrs", pins.join(","));
+      const asked = params.toString();
       try {
-        const params = new URLSearchParams(query);
-        params.set("attrs", pins.join(","));
-        const res = await fetch(`/api/attr-facets?${params.toString()}`);
+        const res = await fetch(`/api/attr-facets?${asked}`, { signal });
         if (viewGenRef.current !== gen) {
-          return;
+          return false;
         }
         if (!res.ok) {
-          setAttrFacetValues({});
-          return;
+          if (blankOnFailedRefresh(asked, landedAttrFacetQueryRef.current)) {
+            setAttrFacetValues({});
+          }
+          return false;
         }
         const json = (await res.json()) as Record<string, FacetValue[]>;
-        if (viewGenRef.current !== gen) {
-          return;
+        if (viewGenRef.current !== gen || signal?.aborted) {
+          return false;
         }
         setAttrFacetValues(json);
-      } catch {
-        if (viewGenRef.current !== gen) {
-          return;
+        landedAttrFacetQueryRef.current = asked;
+        return true;
+      } catch (err) {
+        if (viewGenRef.current !== gen || isAbortError(err)) {
+          return false;
         }
-        setAttrFacetValues({});
+        if (blankOnFailedRefresh(asked, landedAttrFacetQueryRef.current)) {
+          setAttrFacetValues({});
+        }
+        return false;
       } finally {
         if (viewGenRef.current === gen) {
           setAttrFacetsLoading(false);
@@ -1170,8 +1216,13 @@ export function App() {
   }, []);
 
   const runSearch = useCallback(
+    /**
+     * `poll` is the 2s Live delta (`since=`); `poll-full` is the 30s whole-window
+     * pass. The Live refresh registry starts both with its signal.
+     * Resolves `true` only when the response landed on screen.
+     */
     async (
-      mode: "replace" | "append" | "poll",
+      mode: "replace" | "append" | "poll" | "poll-full",
       overrides?: {
         q?: string;
         from?: string;
@@ -1188,41 +1239,34 @@ export function App() {
         widgets?: WidgetDef[];
         park?: ReturnType<typeof parkedCutLine>;
       },
-    ) => {
+      signal?: AbortSignal,
+    ): Promise<boolean> => {
+      const poll = mode === "poll" || mode === "poll-full";
+      const incremental = mode === "poll";
+      if (signal?.aborted) {
+        return false;
+      }
       setError(null);
       setUnauthorized(false);
-      if (mode !== "poll") {
+      if (!poll) {
         setScanRefuse(null);
       }
-      if (mode === "poll" && blockingSearchRef.current) {
-        return;
+      if (poll && blockingSearchRef.current) {
+        return false;
       }
-      const wouldIncremental =
-        mode === "poll" && (livePollsRef.current + 1) % 15 !== 0;
-      if (
-        wouldIncremental &&
-        fullPollAcRef.current &&
-        !fullPollAcRef.current.signal.aborted
-      ) {
-        return;
-      }
-      if (mode !== "poll") {
+      if (!poll) {
         setSearching(true);
-        livePollsRef.current = 0;
         blockingSearchRef.current = true;
+        liveRefresh.abort(searchRefreshKeys);
+        hbarAbortRef.current?.abort();
       }
       if (mode === "replace") {
         loadTowardTsRef.current = null;
       }
-      if (mode !== "poll" || !wouldIncremental) {
-        extraAbortRef.current?.abort();
-      }
       abortRef.current?.abort();
-      if (mode !== "poll") {
-        hbarAbortRef.current?.abort();
-      }
       const ac = new AbortController();
       abortRef.current = ac;
+      signal?.addEventListener("abort", () => ac.abort(), { once: true });
       const params = new URLSearchParams();
       const isLive = overrides?.live ?? live;
       const activeRange = overrides?.range ?? range;
@@ -1242,14 +1286,14 @@ export function App() {
       }
       const qVal = (overrides?.q ?? q).trim();
       if (compileQuery(qVal).faults.length > 0) {
-        if (mode === "poll") {
-          return;
+        if (poll) {
+          return false;
         }
         if (mode === "replace") {
           setShowFaults(true);
           blockingSearchRef.current = false;
           setSearching(false);
-          return;
+          return false;
         }
       }
       if (qVal) params.set("q", qVal);
@@ -1297,13 +1341,13 @@ export function App() {
         widgets: activeWidgets,
       });
       const gen = viewGenRef.current;
-      if (mode !== "poll") {
+      if (!poll) {
         skipAttrFacetGen.current = null;
       }
       if (mode === "append" && !activeLogs) {
         blockingSearchRef.current = false;
         setSearching(false);
-        return;
+        return false;
       }
       if (mode !== "append") {
         if (activeSplit !== "level") {
@@ -1336,11 +1380,6 @@ export function App() {
           params.set("cursor", cursor);
         }
       }
-      const incremental =
-        mode === "poll" && ++livePollsRef.current % 15 !== 0;
-      if (mode === "poll" && !incremental) {
-        fullPollAcRef.current = ac;
-      }
       if (incremental) {
         const since = activeLogs
           ? selectionRef.current.events[0]?.ts ?? lastToRef.current
@@ -1363,9 +1402,9 @@ export function App() {
         }
         const json = (await res.json()) as SearchResult;
         if (viewGenRef.current !== gen || ac.signal.aborted) {
-          return;
+          return false;
         }
-        if (mode === "replace" || (mode === "poll" && !incremental)) {
+        if (mode === "replace" || mode === "poll-full") {
           setScanRefuse(json.scan?.source === "refused" ? json.scan : null);
         } else if (mode === "append" && json.scan?.events) {
           setScanRefuse(json.scan);
@@ -1379,7 +1418,7 @@ export function App() {
         if (mode !== "append") {
           const histRefused = json.scan?.histogram === true;
           const mergedHist =
-            mode === "poll" && !histRefused
+            poll && !histRefused
               ? mergeHistogramBuckets(histogramRef.current, json.histogram)
               : json.histogram;
           const filled =
@@ -1410,7 +1449,7 @@ export function App() {
           if (activeMetric) {
             if (json.agg) {
               const buckets =
-                mode === "poll"
+                poll
                   ? mergeAggBuckets(
                       aggSeriesRef.current?.buckets ?? [],
                       json.agg.buckets,
@@ -1419,7 +1458,7 @@ export function App() {
               nextAgg = { ...json.agg, buckets };
               if (json.agg.splits) {
                 nextAgg.splits =
-                  mode === "poll"
+                  poll
                     ? mergeAggSplits(aggSeriesRef.current?.splits, json.agg.splits)
                     : json.agg.splits;
               }
@@ -1439,11 +1478,11 @@ export function App() {
                 );
           } else if (json.agg) {
             const buckets =
-              mode === "poll" && json.agg.source !== "refused"
+              poll && json.agg.source !== "refused"
                 ? mergeAggBuckets(aggSeriesRef.current?.buckets ?? [], json.agg.buckets)
                 : json.agg.buckets;
             nextAgg = { ...json.agg, buckets };
-          } else if (mode === "poll") {
+          } else if (poll) {
             nextAgg = aggSeriesRef.current;
           }
           setAggSeries(nextAgg);
@@ -1491,7 +1530,7 @@ export function App() {
               hbarFetch.attrKeys.length > 0 ||
               hbarFetch.coreLimit !== null ||
               hbarFetch.none) &&
-            (mode === "replace" || (mode === "poll" && !incremental));
+            (mode === "replace" || mode === "poll-full");
           if (fetchFullExtras) {
             const extraEntries = await Promise.all(
               extraNetwork.map(async (item) => {
@@ -1558,15 +1597,12 @@ export function App() {
             );
             Object.assign(map, derived);
             if (viewGenRef.current !== gen || ac.signal.aborted) {
-              return;
+              return false;
             }
             setSeriesByKey(map);
           } else if (incremental) {
             let extraPatch: Record<string, SeriesData> = {};
-            if (extraLive.length > 0 && !extraInflightRef.current) {
-              extraInflightRef.current = true;
-              const extraAc = new AbortController();
-              extraAbortRef.current = extraAc;
+            if (extraLive.length > 0) {
               try {
                 extraPatch = await fetchIncrementalExtras(
                   extraLive,
@@ -1576,20 +1612,14 @@ export function App() {
                   histFrom,
                   histTo,
                   intervalMs,
-                  extraAc.signal,
+                  ac.signal,
                 );
-              } catch (err) {
-                if (!(err instanceof Error && err.name === "AbortError")) {
-                  extraPatch = {};
-                }
-              } finally {
-                if (extraAbortRef.current === extraAc) {
-                  extraInflightRef.current = false;
-                }
+              } catch {
+                extraPatch = {};
               }
             }
             if (viewGenRef.current !== gen || ac.signal.aborted) {
-              return;
+              return false;
             }
             setSeriesByKey((prev) => ({
               ...prev,
@@ -1606,7 +1636,7 @@ export function App() {
           }
         }
         if (viewGenRef.current !== gen || ac.signal.aborted) {
-          return;
+          return false;
         }
         if (mode !== "append" && histFrom && histTo) {
           try {
@@ -1617,7 +1647,7 @@ export function App() {
               signal: ac.signal,
             });
             if (viewGenRef.current !== gen || ac.signal.aborted) {
-              return;
+              return false;
             }
             if (marksRes.ok) {
               const body = (await marksRes.json()) as {
@@ -1635,7 +1665,7 @@ export function App() {
             }
           } catch (err) {
             if (err instanceof Error && err.name === "AbortError") {
-              return;
+              return false;
             }
             if (mode === "replace") {
               setWindowMarks([]);
@@ -1646,13 +1676,13 @@ export function App() {
         }
         lastPaintHuntRef.current = hunt;
         setIngested((prev) =>
-          nextIngested(prev, mode, {
+          nextIngested(prev, poll ? "poll" : mode, {
             ingested: json.ingested,
             events: json.events,
             histogramTotal: windowTotal,
           }),
         );
-        if (mode !== "poll") {
+        if (!poll) {
           setNextCursor(activeLogs ? json.nextCursor : null);
         }
         if (!activeLogs) {
@@ -1671,7 +1701,7 @@ export function App() {
               ...json.events.filter((row) => !seen.has(eventKey(row))),
             ];
           });
-        } else if (mode === "poll") {
+        } else if (poll) {
           const sel = selectionRef.current;
           const merged = histFrom
             ? mergeLiveEvents(sel.events, json.events, histFrom, livePageSize)
@@ -1697,49 +1727,81 @@ export function App() {
           setDetailOpen(next.detailOpen);
           setPinnedEvent(next.pinned);
         }
-        if (mode === "replace" || (mode === "poll" && !incremental)) {
-          if (mode === "replace") {
-            setLastMs(Date.now() - started);
-            if (qVal) {
-              setQueryHistory((prev) =>
-                [qVal, ...prev.filter((item) => item !== qVal)].slice(0, 10),
-              );
-            }
-          }
-          void loadFacets(facetQuery);
-          void loadNumericKeys(facetQuery);
-          void loadMetricNames(facetQuery);
-          void loadAttrKeys(facetQuery);
-          if (mode === "poll") {
-            void loadAttrFacets(attrFacetsRef.current, facetQuery);
-          }
+        if (mode !== "append") {
+          lastFacetQueryRef.current = facetQuery;
         }
+        if (mode === "replace") {
+          setLastMs(Date.now() - started);
+          if (qVal) {
+            setQueryHistory((prev) =>
+              [qVal, ...prev.filter((item) => item !== qVal)].slice(0, 10),
+            );
+          }
+          // A replace is a fresh full window: the Live clocks restart from here.
+          liveRefresh.touch(searchRefreshKeys, true);
+          liveRefresh.runNow(sidebarRefreshKeys);
+        }
+        return true;
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
-          return;
+          return false;
         }
         if (viewGenRef.current !== gen) {
-          return;
+          return false;
         }
         lastPaintHuntRef.current = hunt;
         // No answer at all is the outage band's to say (33k), not a red line in the plot head.
         if (isNoAnswer(err)) {
-          return;
+          return false;
         }
         const message = err instanceof Error ? err.message : "Search failed";
         setError(message);
+        return false;
       } finally {
-        if (mode === "poll" && !incremental && fullPollAcRef.current === ac) {
-          fullPollAcRef.current = null;
-        }
-        if (mode !== "poll" && abortRef.current === ac) {
+        if (!poll && abortRef.current === ac) {
           blockingSearchRef.current = false;
           setSearching(false);
         }
       }
     },
-    [from, to, range, q, live, split, step, chart, agg, logsOn, nextCursor, loadFacets, loadNumericKeys, loadMetricNames, loadAttrKeys, loadAttrFacets],
+    [from, to, range, q, live, split, step, chart, agg, logsOn, nextCursor, liveRefresh],
   );
+  const runSearchRef = useRef(runSearch);
+  runSearchRef.current = runSearch;
+
+  // One clock for every Live resource (live-refresh.ts): cadence, abort and fetchedAt per entry.
+  useEffect(() => {
+    liveRefresh.register({
+      key: "search:delta",
+      everyMs: liveDeltaMs,
+      lane: "search",
+      run: (signal) => runSearchRef.current("poll", undefined, signal),
+    });
+    liveRefresh.register({
+      key: "search:full",
+      everyMs: liveFullMs,
+      lane: "search",
+      covers: ["search:delta"],
+      run: (signal) => runSearchRef.current("poll-full", undefined, signal),
+    });
+    const lists: Array<[string, (query: string, signal: AbortSignal) => Promise<boolean>]> = [
+      ["facets", loadFacets],
+      ["numeric-keys", loadNumericKeys],
+      ["metric-names", loadMetricNames],
+      ["attr-keys", loadAttrKeys],
+      ["attr-facets", (query, signal) => loadAttrFacets(attrFacetsRef.current, query, signal)],
+    ];
+    for (const [key, load] of lists) {
+      liveRefresh.register({
+        key,
+        everyMs: liveFullMs,
+        run: async (signal) => {
+          const query = lastFacetQueryRef.current;
+          return query ? load(query, signal) : false;
+        },
+      });
+    }
+  }, [liveRefresh, loadFacets, loadNumericKeys, loadMetricNames, loadAttrKeys, loadAttrFacets]);
 
   useEffect(() => {
     const target = loadTowardTsRef.current;
@@ -1919,10 +1981,13 @@ export function App() {
       return;
     }
     const id = setInterval(() => {
-      void runSearch("poll");
-    }, 2000);
-    return () => clearInterval(id);
-  }, [live, view, wsKind, runSearch, readingPaused]);
+      liveRefresh.tick();
+    }, liveDeltaMs);
+    return () => {
+      clearInterval(id);
+      liveRefresh.abort(searchRefreshKeys);
+    };
+  }, [live, view, wsKind, liveRefresh, readingPaused]);
 
   useEffect(() => {
     if (!searching) {
@@ -2093,8 +2158,12 @@ export function App() {
     if (skipAttrFacetGen.current === viewGenRef.current) {
       return;
     }
-    void loadAttrFacets(attrFacets, windowParams().toString());
-  }, [attrFacets, loadAttrFacets, windowParams, wsKind]);
+    void loadAttrFacets(attrFacets, windowParams().toString()).then((landed) => {
+      if (landed) {
+        liveRefresh.touch(["attr-facets"], true);
+      }
+    });
+  }, [attrFacets, loadAttrFacets, windowParams, wsKind, liveRefresh]);
 
   useEffect(() => {
     const item = saved.find((row) => row.id === savedId);
@@ -2832,6 +2901,7 @@ export function App() {
             metricNames,
             attrKeyOptions,
             lastTo: lastToRef.current,
+            refreshedAt: liveRefresh.snapshot(),
             window: searchWindow,
             marks: windowMarks,
             markBefore,
@@ -2886,7 +2956,7 @@ export function App() {
 
   function clearUnboundBoard() {
     abortRef.current?.abort();
-    extraAbortRef.current?.abort();
+    liveRefresh.abort();
     hbarAbortRef.current?.abort();
     blockingSearchRef.current = false;
     loadTowardTsRef.current = null;
@@ -2907,10 +2977,8 @@ export function App() {
 
   function abortActiveSearch() {
     abortRef.current?.abort();
-    extraAbortRef.current?.abort();
+    liveRefresh.abort();
     hbarAbortRef.current?.abort();
-    fullPollAcRef.current = null;
-    extraInflightRef.current = false;
     blockingSearchRef.current = false;
     loadTowardTsRef.current = null;
     setSearching(false);
@@ -3050,6 +3118,7 @@ export function App() {
     setMetricNames(paint.metricNames);
     setAttrKeyOptions(paint.attrKeyOptions);
     lastToRef.current = paint.lastTo;
+    liveRefresh.restore(paint.refreshedAt ?? {});
   }
 
   function applySnap(snap: WorkspaceSnap, search: boolean) {
@@ -4674,6 +4743,14 @@ export function App() {
               onOpenAddFacet={() => void onOpenAddFacet()}
               floorFor={heldV?.facetFloor}
               locked={boardOn}
+              age={
+                live && !boardOn && !isReaderKind(wsKind) ? (
+                  <FacetAge
+                    fetchedAt={() => oldestFetchedAt(facetRefreshKeys.map((key) => liveRefresh.fetchedAt(key)))}
+                    paused={readingPaused}
+                  />
+                ) : null
+              }
             />
             {logsOn ? (
               <>
