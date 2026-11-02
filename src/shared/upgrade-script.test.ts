@@ -259,6 +259,19 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     expect(r.all).toContain("0.6.1 is not newer than the running 0.6.1. To go back, run: ./upgrade.sh rollback");
   });
 
+  test("an unedited vector.yaml is replaced on an install upgrade.sh never ran on before", async () => {
+    // A fresh install has no releases/<running>/ folder to keep the running release's vector.yaml in.
+    const files = releaseFiles("0.6.2");
+    files["vector.yaml"] = "sources: { new: {} }\n";
+    files.SHA256SUMS = Object.entries(files).filter(([n]) => n !== "SHA256SUMS").map(([n, b]) => `${sha(b)}  ${n}`).join("\n") + "\n";
+    releases["0.6.2"] = files;
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(0);
+    expect(readFileSync(join(install, "vector.yaml"), "utf8")).toBe("sources: { new: {} }\n");
+    expect(existsSync(join(install, "vector.yaml.new"))).toBe(false);
+    expect(r.all).not.toContain("was edited here");
+  });
+
   test("an edited vector.yaml is kept, the new one beside it", async () => {
     releases["0.6.2"] = { ...releaseFiles("0.6.2") };
     writeFileSync(join(install, "vector.yaml"), "sources: { mine: {} }\n");

@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+`upgrade.sh` replaces an unedited `vector.yaml`. On an install it had not upgraded before, it could not fetch the running release's `vector.yaml` to compare with, so it kept the old file, wrote the new one as `vector.yaml.new` and said the file "was edited here". After upgrading such an install to 0.14.0, `vector.yaml.new` is the shipped file with host metrics: if you never edited `vector.yaml`, move it into place.
+
 ## 0.14.0
 
 **Before you upgrade:** take a backup (`./upgrade.sh` takes one first). Every board is rewritten into panels at boot, and a pin back to 0.13.1 does not undo that: 0.13.1 opens a board without its window input and without panels made on 0.14.0. Restoring the backup puts boards back as they were. Vector users who run the shipped `vector.yaml` start sending this machine's health as metrics; delete the `machine` source to opt out.
