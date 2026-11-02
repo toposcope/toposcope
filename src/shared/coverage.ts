@@ -330,7 +330,16 @@ function worstGap(s: CoverageService): { key: CoverageKey | "marks"; v: number }
   return worst;
 }
 
-/** One line for each service that is not complete, as Home lists them (37k): the worst first. */
+/** How much of a service View trace misses: "most", "a third", "some" (37k, 37s). */
+function traceMissing(v: number): string {
+  const missing = 1 - v;
+  return missing > 0.5 ? "most" : missing >= 0.3 ? "a third" : "some";
+}
+
+/**
+ * One line for each service that is not complete, as Home lists them (37k): a mismatch on the
+ * selected mark first, then the services with the most rows (37s).
+ */
 export function coverageGaps(c: Coverage, selectedMarkId: string | null): CoverageGap[] {
   const out: Array<CoverageGap & { rank: number }> = [];
   const marked = c.mismatches.find((m) => m.kind === "version" && m.mark_id === selectedMarkId);
@@ -354,7 +363,8 @@ export function coverageGaps(c: Coverage, selectedMarkId: string | null): Covera
       continue;
     }
     const pct = coveragePercent(gap.v);
-    const rank = gap.v + ["version", "stack", "trace_id", "host", "marks"].indexOf(gap.key) * 1e-3;
+    // 37s: the services this answer reads the most rows from come first (services are by rows)
+    const rank = out.length;
     if (gap.key === "version") {
       const noMark = s.marks.count === 0 && !s.accepted?.includes("marks");
       out.push({
@@ -378,7 +388,7 @@ export function coverageGaps(c: Coverage, selectedMarkId: string | null): Covera
     } else if (gap.key === "trace_id") {
       out.push({
         service: s.service,
-        what: `trace_id on ${pct} of rows: View trace is missing on ${gap.v < 0.5 ? "most" : "some"} of them`,
+        what: `trace_id on ${pct} of rows: View trace is missing on ${traceMissing(gap.v)} of them`,
         fix: "Log inside a span ↗",
         href: keysDocUrl,
         rank,
@@ -463,4 +473,34 @@ export function mismatchSo(m: CoverageMismatch): string {
 /** Whether a service's missing stacks are an accepted gap that holds: the event panel says nothing then (37l). */
 export function stackAccepted(c: Coverage | null, service: string): boolean {
   return c?.services.find((s) => s.service === service)?.accepted?.includes("stack") ?? false;
+}
+
+/** Fields shows this many services with gaps before "N more with gaps" (37q). */
+export const COVERAGE_GAPS_SHOWN = 8;
+
+/**
+ * Coverage's two groups (37q, 37r): services with a gap that is not accepted, and services that
+ * are complete or whose only gaps are accepted, each largest first. With `find`, only services
+ * whose name holds it, in either group.
+ */
+export function coverageGroups(c: Coverage, find = ""): { gaps: CoverageService[]; done: CoverageService[] } {
+  const q = find.trim().toLowerCase();
+  const all = q ? c.services.filter((s) => s.service.toLowerCase().includes(q)) : c.services;
+  return { gaps: all.filter((s) => !s.complete), done: all.filter((s) => s.complete) };
+}
+
+/** "billing / billing-api · api's mark v1.4.2 / rows 1.4.2 · +1" (37q). */
+export function namesSummary(mismatches: CoverageMismatch[], shown = 2): string {
+  const pair = (m: CoverageMismatch) => (m.kind === "service" ? `${m.service} / ${m.other}` : `${m.service}'s mark ${m.mark_value} / rows ${m.rows_value}`);
+  const parts = mismatches.slice(0, shown).map(pair);
+  if (mismatches.length > shown) {
+    parts.push(`+${mismatches.length - shown}`);
+  }
+  return parts.join(" · ");
+}
+
+/** "api, checkout, search, cart, orders, +12" (37q). */
+export function doneSummary(done: CoverageService[], shown = 5): string {
+  const names = done.slice(0, shown).map((s) => s.service);
+  return done.length > shown ? `${names.join(", ")}, +${done.length - shown}` : names.join(", ");
 }
