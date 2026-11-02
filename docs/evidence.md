@@ -31,9 +31,99 @@ Fix them where they are made: set `OTEL_SERVICE_NAME` and `service.version` from
 
 A mark is the anchor Home and the hunt measure from, so every change that can break production should leave one: deploys, flag flips, config pushes, migrations, incidents. The [GitHub Actions and GitLab CI samples](ingest.md#github-actions) cover releases. For the rest:
 
-- **A deploy tool that can post JSON.** Point its notification at `POST /v1/marks` with the ingest token, a stable `id` (`deploy-<service>-<version>`), `kind`, `service`, and `attrs.version` and `attrs.sha`.
-- **A tool with a fixed webhook body** (a flag service, an incident tool). Let Vector take the webhook with an `http_server` source, `remap` it into a mark, and send it on with an `http` sink to `/v1/marks`. Toposcope does not take third-party webhook shapes itself.
+- **A deploy tool that can post JSON.** Point its notification at `POST /v1/marks` with the ingest token, a stable `id` (`deploy-<service>-<version>`), `kind`, `service`, and `attrs.version`, `attrs.sha` and `attrs.repo`. [Argo CD](#argo-cd) below is the worked example.
+- **A tool with a fixed webhook body** (a flag service, an incident tool). Let Vector take the webhook and turn it into a mark: [a Vector relay](#a-vector-relay-for-webhooks) below. Toposcope does not take third-party webhook shapes itself.
 - **A person.** The marks panel's note form, for the change no tool recorded.
+
+### Argo CD
+
+Argo CD's notifications post a deploy mark when an application has synced and is healthy, once per revision. In `argocd-notifications-cm`:
+
+```yaml
+data:
+  service.webhook.toposcope: |
+    url: https://toposcope.example.com
+    headers:
+    - name: Authorization
+      value: Bearer $toposcope-ingest-token
+    - name: Content-Type
+      value: application/json
+  template.toposcope-deploy: |
+    webhook:
+      toposcope:
+        method: POST
+        path: /v1/marks
+        body: |
+          {"kind":"deploy",
+           "title":"{{index .app.metadata.annotations "toposcope/version"}}",
+           "id":"deploy-{{.app.metadata.name}}-{{.app.status.sync.revision}}",
+           "service":"{{.app.metadata.name}}",
+           "attrs":{"version":"{{index .app.metadata.annotations "toposcope/version"}}",
+                    "sha":"{{.app.status.sync.revision}}",
+                    "repo":"{{.app.spec.source.repoURL}}",
+                    "source":"argocd"}}
+  trigger.on-deployed: |
+    - when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+      oncePer: app.status.sync.revision
+      send: [toposcope-deploy]
+```
+
+`toposcope-ingest-token` is a key in `argocd-notifications-secret` holding the ingest token. Then subscribe each application:
+
+```yaml
+metadata:
+  annotations:
+    notifications.argoproj.io/subscribe.on-deployed.toposcope: ""
+    toposcope/version: "1.4.2"
+```
+
+Argo CD does not know the release, so the pipeline that bumps the image also sets `toposcope/version` to the same string the app reports as `service.version`; that is what ties the mark to its rows. The service is the application's name: if the app reports another `service.name`, put that in the body instead. The `id` is stable per revision, so a re-sync of the same revision is still one mark.
+
+### A Vector relay for webhooks
+
+A tool that posts its own body shape goes through Vector: an `http_server` source takes the webhook, `remap` writes the mark, and an `http` sink posts it to `/v1/marks`. This example takes a flag service's body like `{"id":"evt_81","flag":"new-checkout","state":"on","service":"checkout","by":"maya"}`; change the field paths to your tool's.
+
+```yaml
+sources:
+  flag_hooks:
+    type: http_server
+    address: 0.0.0.0:9000
+    path: /hooks/flags
+    decoding:
+      codec: json
+
+transforms:
+  to_mark:
+    type: remap
+    inputs: [flag_hooks]
+    source: |-
+      flag = string!(.flag)
+      state = string!(.state)
+      . = {
+        "kind": "flag",
+        "title": flag + " " + state,
+        "id": "flag-" + string!(.id),
+        "service": string(.service) ?? "",
+        "attrs": {"flag": flag, "state": state, "by": string(.by) ?? "", "source": "flags"}
+      }
+
+sinks:
+  toposcope_marks:
+    type: http
+    inputs: [to_mark]
+    uri: "${TOPOSCOPE_URL}/v1/marks"
+    method: post
+    encoding:
+      codec: json
+    batch:
+      max_events: 1
+    request:
+      headers:
+        Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"
+        Content-Type: application/json
+```
+
+Point the tool's webhook at `http://<vector-host>:9000/hooks/flags`. The mark's `id` comes from the tool's own event id, so a webhook the tool sends twice is still one mark. `batch.max_events: 1` posts each mark on its own, as one JSON object. The listener takes any POST to that path, so keep it on a network only the tool can reach, or put it behind the same reverse proxy as Toposcope. An incident tool works the same way with `kind: incident`, opening with one event and closing with another that sends the same `id` and an `end_ts`.
 
 `attrs.sha` is the commit. The marks panel shows the first six characters beside the source, so the deploy names its code.
 
