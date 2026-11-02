@@ -573,7 +573,7 @@ export function readMonitorFields(
     return { error: "Saved search not found", status: 404 };
   }
   if (saved.board) {
-    return { error: boardWatchRefuse(saved), status: 400 };
+    return { error: boardWatchRefuse(), status: 400 };
   }
   const measure = rec.measure === undefined ? (existing?.measure ?? "series") : parseMonitorMeasure(rec.measure);
   if (!measure) {

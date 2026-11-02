@@ -96,31 +96,19 @@ describe("workspaceLiveLabel", () => {
     ).toBe("level:error");
   });
 
-  test("board name plus bound values; unbound is the board name only", () => {
-    expect(
-      workspaceLiveLabel({
-        kind: "search",
-        q: "level:warn status:4*",
-        savedName: "HTTP attacks by install",
-        savedDirty: false,
-        follow: null,
-        surrAnchor: null,
-        board: true,
-        boardBinds: ["acme-eu"],
-      }),
-    ).toBe("HTTP attacks by install · acme-eu");
-    expect(
-      workspaceLiveLabel({
-        kind: "search",
-        q: "level:warn status:4*",
-        savedName: "HTTP attacks by install",
-        savedDirty: false,
-        follow: null,
-        surrAnchor: null,
-        board: true,
-        boardBinds: [],
-      }),
-    ).toBe("HTTP attacks by install");
+  test("a board tab is its name; an Edit panel tab names the panel (39f)", () => {
+    const base = {
+      kind: "search" as const,
+      q: "",
+      savedName: "Checkout incident",
+      savedDirty: false,
+      follow: null,
+      surrAnchor: null,
+    };
+    expect(workspaceLiveLabel({ ...base, board: true })).toBe("Checkout incident");
+    expect(workspaceLiveLabel({ ...base, savedName: null, q: "service:b", editPanel: "special on service B" })).toBe(
+      "Edit · special on service B",
+    );
   });
 
   test("follow and surroundings use the thing the tab is", () => {

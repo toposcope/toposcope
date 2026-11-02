@@ -88,7 +88,7 @@ function fromRow(row: SavedRow): SavedSearch {
     pinned: Boolean(row.pinned),
     shared: row.shared !== 0,
     widgets: parseSavedLayout(row.widgets),
-    board: parseBoard(row.board),
+    board: parseBoard(row.board, { query: row.query, widgets: parseSavedLayout(row.widgets), agg: row.agg }),
     cols: parsePromotedCols(row.cols),
   };
 }
@@ -164,8 +164,8 @@ export function parseSavedFields(
   if (board && typeof board === "object" && "error" in board) {
     return board;
   }
-  if (board?.win && (!range || !isRelativeRange(range))) {
-    return { error: "A board window is a relative range — Quick or Last N only." };
+  if (board && range && !isRelativeRange(range)) {
+    return { error: "A board window is a relative range: Quick or Last N." };
   }
   const cols = parseSavedCols(rec, fallback);
   if (!Array.isArray(cols)) {
@@ -185,7 +185,12 @@ function parseSavedBoard(
   if (rec.board === null) {
     return null;
   }
-  const parsed = parseBoard(rec.board);
+  // A body in the shape boards had before #410 (keys and a template query) still saves: its widgets become panels.
+  const parsed = parseBoard(rec.board, {
+    query: typeof rec.query === "string" ? rec.query : (fallback?.query ?? ""),
+    widgets: "widgets" in rec ? parseSavedLayout(rec.widgets) : (fallback?.widgets ?? null),
+    agg: typeof rec.agg === "string" ? rec.agg : (fallback?.agg ?? null),
+  });
   if (rec.board && !parsed) {
     return { error: "Invalid board" };
   }
@@ -487,7 +492,7 @@ export async function runSavedSearch(c: Context): Promise<Response> {
     return c.json({ error: "Saved search not found" }, 404);
   }
   if (saved.board) {
-    return c.json({ error: boardWatchRefuse(saved) }, 400);
+    return c.json({ error: boardWatchRefuse() }, 400);
   }
   const filters = {
     q: saved.query,
@@ -534,7 +539,7 @@ export async function testSavedSearch(c: Context): Promise<Response> {
     return c.json({ error: "Saved search not found" }, 404);
   }
   if (saved.board) {
-    return c.json({ error: boardWatchRefuse(saved) }, 400);
+    return c.json({ error: boardWatchRefuse() }, 400);
   }
   const filters = {
     q: saved.query,

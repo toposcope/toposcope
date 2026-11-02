@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { ExtraPanel } from "@/components/extra-panel";
+import { AddToBoardButton, type BoardChoice } from "@/components/add-to-board";
 import { SharePanelsDialog } from "@/components/share-panels-dialog";
 import { defaultHbarN } from "../../shared/widgets";
 import { panelRange } from "../share-from-panel";
@@ -119,6 +120,8 @@ type Props = {
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
   compareFold?: CompareFoldHunt | null;
+  /** Add to board (#410, 39e): on each panel's ⋯ menu and in the pinned plot's head. */
+  addToBoard?: { boards: BoardChoice[]; onPick: (widget: WidgetDef, boardId: string | null) => void } | null;
 };
 
 type Drag = {
@@ -217,6 +220,7 @@ export function WidgetCanvas({
   focusMarkId = null,
   onFocusMark,
   compareFold = null,
+  addToBoard = null,
 }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const widgetsRef = useRef(widgets);
@@ -1046,6 +1050,11 @@ export function WidgetCanvas({
                   editor={editorFor(widget)}
                   lineInfo={legendInfo(linesOf(widget))}
                   compactToolbar={widget.w < 8}
+                  boardAction={
+                    addToBoard && !locked ? (
+                      <AddToBoardButton boards={addToBoard.boards} onPick={(boardId) => addToBoard.onPick(widget, boardId)} />
+                    ) : null
+                  }
                   lockChrome={locked}
                   retentionMs={retentionMs}
                   scanReason={scanReason}
@@ -1128,6 +1137,11 @@ export function WidgetCanvas({
                     );
                   }}
                   onMovePointerDown={(e) => beginDrag(e, widget, "move")}
+                  addToBoard={
+                    addToBoard && !locked
+                      ? { boards: addToBoard.boards, onPick: (boardId) => addToBoard.onPick(widget, boardId) }
+                      : undefined
+                  }
                 >
                   {extraBody(widget, data, updated)}
                 </ExtraPanel>

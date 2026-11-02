@@ -25,10 +25,12 @@ import { SpanFlamegraph } from "@/components/span-flamegraph";
 import { EventTable } from "@/components/event-table";
 import { WorkspaceStrip } from "@/components/workspace-strip";
 import { FacetChips } from "@/components/facet-chips";
-import { HuntCrumb } from "@/components/hunt-crumb";
+import { EditPanelCrumb, HuntCrumb } from "@/components/hunt-crumb";
 import { MarksPanel } from "@/components/marks-panel";
 import { WatchThisSheet, type WatchThisInput } from "@/components/watch-this-sheet";
-import { BoardInputs } from "@/components/board-inputs";
+import { BoardView } from "@/components/board-view";
+import { BoardNameDialog } from "@/components/board-name-dialog";
+import type { BoardChoice } from "@/components/add-to-board";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
 import { InstanceMenu, instanceTitle, type InstanceInfo } from "@/components/instance-menu";
 import { marksHuntWindow, monitorHuntRange, pushHuntRange, sourceOf, watchCounts, type WatchFilter, type WatchRange } from "./watch";
@@ -44,7 +46,6 @@ import { TimeRangePicker } from "@/components/time-range-picker";
 import { SharesDialog } from "@/components/shares-dialog";
 import { ThroughputMeter } from "@/components/throughput-meter";
 import { WidgetCanvas, type SeriesData } from "@/components/widget-canvas";
-import { BoardEmpty } from "@/components/board-inputs";
 import type { HbarCommand } from "@/components/hbar-widget";
 import { Button } from "@/components/ui/button";
 import { CountText } from "@/components/count-text";
@@ -106,6 +107,7 @@ import {
   type Workspace,
   type WorkspaceFollow,
   type WorkspaceKind,
+  type PanelEdit,
   type WorkspacePaint,
   type WorkspaceSnap,
 } from "./workspaces";
@@ -118,14 +120,16 @@ import {
 import { compareFoldWindows, type CompareFoldSnap } from "./compare-fold";
 import { fillHistogram, rangeDurationMs } from "./fill-histogram";
 import {
+  addBoardPanel,
   bindForBoard,
-  boardSlotCount,
-  boundQuery,
-  isBoardUnbound,
-  storedBoardQuery,
+  duplicateBoardPanel,
+  panelQuery,
+  panelViewOf,
+  removeBoardPanel,
+  type BoardPanel,
   type BoardSlots,
 } from "./boards";
-import { compileQuery, isCoreField } from "../query/compile";
+import { compileQuery } from "../query/compile";
 import {
   logsScanBudgetRefuseReason,
   mergeAggBuckets,
@@ -146,7 +150,6 @@ import {
   applySeriesSearchParams,
   defaultLayout,
   isDefaultLayout,
-  isSingleHistogram,
   patchWidget,
   primaryTimeseries,
   seriesQueryKey,
@@ -193,7 +196,7 @@ import {
   surroundingMaxN,
   surroundingStepN,
 } from "../query/surrounding";
-import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, queryFieldKeys, toggleFingerprintCutFilter } from "./query-tokens";
+import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, toggleFingerprintCutFilter } from "./query-tokens";
 import {
   histogramTotal,
   livePageSize,
@@ -464,9 +467,11 @@ export function App() {
   const [live, setLive] = useState(boot.live);
   const [savedId, setSavedId] = useState<string | null>(boot.saved);
   const [bind, setBind] = useState<Record<string, string>>(boot.bind);
-  const [boardBindValues, setBoardBindValues] = useState<Record<string, FacetValue[]>>(
-    {},
-  );
+  /** An Edit panel tab (#410, 39f): the board panel this hunt edits. */
+  const [edit, setEdit] = useState<PanelEdit | null>(null);
+  const [boardSaveAs, setBoardSaveAs] = useState(false);
+  /** New board… from Add to board (39e): the panel waiting for its new board. */
+  const [newBoardFor, setNewBoardFor] = useState<{ name: string; q: string; view: BoardPanel["view"]; widget: WidgetDef } | null>(null);
   const [view, setView] = useState<OperatorView>(boot.view);
   // Home's "Names that do not match ›" opens Fields at them (37k); any other way in opens at the top
   const [fieldsNames, setFieldsNames] = useState(false);
@@ -1857,26 +1862,14 @@ export function App() {
           ? json.searches.find((row) => row.id === boot.saved)
           : undefined;
         if (item?.board) {
-          const nextBind = bindForBoard(boot.bind, item.board.keys);
-          setBind(nextBind);
-          const nextQ = boundQuery(item.query, nextBind);
-          setQ(nextQ);
-          if (isSingleHistogram(boot.widgets) && item.widgets) {
-            setLogsOn(item.widgets.logs);
-            setWidgets(item.widgets.widgets);
+          // A board (#410) reads each panel on its own: the hunt's search does not run.
+          setBind(bindForBoard(boot.bind, item.board.keys));
+          setQ("");
+          if (boot.range === "custom") {
+            setRange(item.range && parseRangeMs(item.range) !== null ? item.range : "1h");
           }
-          if (isBoardUnbound(item.board, nextBind)) {
-            blockingSearchRef.current = false;
-            setSearching(false);
-            setEvents([]);
-            setHistogram([]);
-            setSearchWindow(null);
-            setAggSeries(null);
-            setTotal(0);
-            setSeriesByKey({});
-            return;
-          }
-          void runSearch("replace", { q: nextQ });
+          blockingSearchRef.current = false;
+          setSearching(false);
           return;
         }
         void runSearch("replace");
@@ -1984,8 +1977,10 @@ export function App() {
 
   // Live pauses while reading (#261, 26e): no polls while an event is open; the next poll's since= catches up.
   const readingPaused = live && detailOpen && view === "search";
+  // A board's panels keep their own Live clock (board-view.tsx).
+  const boardTab = Boolean(saved.find((row) => row.id === savedId)?.board);
   useEffect(() => {
-    if (!live || view !== "search" || isReaderKind(wsKind) || readingPaused) {
+    if (!live || view !== "search" || isReaderKind(wsKind) || readingPaused || boardTab) {
       return;
     }
     const id = setInterval(() => {
@@ -1995,7 +1990,7 @@ export function App() {
       clearInterval(id);
       liveRefresh.abort(searchRefreshKeys);
     };
-  }, [live, view, wsKind, liveRefresh, readingPaused]);
+  }, [live, view, wsKind, liveRefresh, readingPaused, boardTab]);
 
   useEffect(() => {
     if (!searching) {
@@ -2173,66 +2168,6 @@ export function App() {
     });
   }, [attrFacets, loadAttrFacets, windowParams, wsKind, liveRefresh]);
 
-  useEffect(() => {
-    const item = saved.find((row) => row.id === savedId);
-    if (!item?.board || isReaderKind(wsKind)) {
-      return;
-    }
-    const keys = item.board.keys;
-    if (keys.length === 0) {
-      setBoardBindValues({});
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      const next: Record<string, FacetValue[]> = {};
-      await Promise.all(
-        keys.map(async (key) => {
-          const others = { ...bind };
-          delete others[key];
-          const qVal = boundQuery(item.query, others).trim();
-          const params = new URLSearchParams();
-          if (range !== "custom") {
-            params.set("range", range);
-          } else {
-            const fromIso = isoFromLocal(from);
-            const toIso = isoFromLocal(to);
-            if (fromIso) params.set("from", fromIso);
-            if (toIso) params.set("to", toIso);
-          }
-          if (qVal) {
-            params.set("q", qVal);
-          }
-          params.set("omit", "0");
-          if (isCoreField(key)) {
-            if (key === "toposcope") {
-              params.set("fields", "toposcope");
-            }
-            const res = await fetch(`/api/facets?${params.toString()}`);
-            if (!res.ok) {
-              return;
-            }
-            const json = (await res.json()) as Facets & { toposcope?: FacetValue[] };
-            next[key] = json[key] ?? [];
-            return;
-          }
-          params.set("attrs", key);
-          const res = await fetch(`/api/attr-facets?${params.toString()}`);
-          if (!res.ok) {
-            return;
-          }
-          const json = (await res.json()) as Record<string, FacetValue[]>;
-          next[key] = json[key] ?? [];
-        }),
-      );
-      if (!cancelled) {
-        setBoardBindValues(next);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [saved, savedId, bind, range, from, to, wsKind]);
 
   useEffect(() => {
     const entries = Object.entries(attrPrefixes).filter(
@@ -2322,49 +2257,24 @@ export function App() {
     setSearching(false);
   }
 
-  function bindFromQuery(query: string, keys: string[]): Record<string, string> {
-    const active = activeFacetValues(query, keys);
-    const out: Record<string, string> = {};
-    for (const key of keys) {
-      const value = active[key]?.[0];
-      if (value) {
-        out[key] = value;
-      }
-    }
-    return out;
-  }
-
-  function applySavedBoard(item: SavedSearch) {
-    if (!item.board) {
-      return;
-    }
-    const nextBind = bindForBoard(
-      { ...bindFromQuery(q, item.board.keys), ...bind },
-      item.board.keys,
-    );
-    setBind(nextBind);
-    setQ(boundQuery(item.query, nextBind));
-  }
-
-  function savedFields(board: BoardSlots | null) {
+  function savedFields() {
     const layout = { logs: logsOn, widgets };
     return {
-      query: board ? storedBoardQuery(q, board.keys) : q,
+      query: q,
       range: range === "custom" ? null : range,
       from_ts: range === "custom" ? isoFromLocal(from) ?? null : null,
       to_ts: range === "custom" && !live ? isoFromLocal(to) ?? null : null,
       agg,
       widgets: isDefaultLayout(layout) ? null : layout,
-      board,
       cols,
     };
   }
 
-  async function createSaved(name: string, board: BoardSlots | null = null) {
+  async function createSaved(name: string) {
     const res = await fetch("/api/saved-searches", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, ...savedFields(board) }),
+      body: JSON.stringify({ name, ...savedFields() }),
     });
     if (!res.ok) {
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -2373,42 +2283,80 @@ export function App() {
     }
     const created = (await res.json()) as SavedSearch;
     setSavedId(created.id);
-    applySavedBoard(created);
-    toast.success(created.board ? "Saved board" : "Saved search");
+    toast.success("Saved hunt");
     await loadSaved();
   }
 
-  async function updateActiveSaved(name: string, board: BoardSlots | null) {
+  async function updateActiveSaved(name: string) {
     if (!savedId) {
-      await createSaved(name, board);
+      await createSaved(name);
       return;
     }
     const res = await fetch(`/api/saved-searches/${savedId}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, ...savedFields(board) }),
+      body: JSON.stringify({ name, ...savedFields() }),
     });
     if (!res.ok) {
       const json = (await res.json().catch(() => null)) as { error?: string } | null;
       toast.error(json?.error ?? `Save failed (${res.status})`);
       throw new Error("save failed");
     }
-    const updated = (await res.json()) as SavedSearch;
-    applySavedBoard(updated);
-    toast.success(updated.board ? "Board updated" : "Saved");
+    await res.json();
+    toast.success("Saved");
     await loadSaved();
   }
 
   function onSaveClick() {
-    if (!savedId || saved.find((item) => item.id === savedId)?.board) {
-      setSaveUpdate(Boolean(savedId));
+    const item = saved.find((row) => row.id === savedId);
+    if (item?.board) {
+      void saveBoard(item, { range: boardRange(range) });
+      return;
+    }
+    if (!savedId) {
+      setSaveUpdate(false);
       setSaveAsOpen(true);
       return;
     }
-    void updateActiveSaved(
-      saved.find((item) => item.id === savedId)?.name ?? "Untitled",
-      null,
-    );
+    void updateActiveSaved(item?.name ?? "Untitled");
+  }
+
+  /** A board's changes save as they are made (#410); its window saves on Save. */
+  async function saveBoard(item: SavedSearch, fields: { board?: BoardSlots; range?: string; name?: string }): Promise<SavedSearch | null> {
+    const res = await fetch(`/api/saved-searches/${item.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(fields),
+    });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(json?.error ?? `Save failed (${res.status})`);
+      return null;
+    }
+    const updated = (await res.json()) as SavedSearch;
+    setSaved((list) => list.map((row) => (row.id === updated.id ? updated : row)));
+    return updated;
+  }
+
+  async function createBoard(name: string, board: BoardSlots, boardRangeValue: string): Promise<SavedSearch | null> {
+    const res = await fetch("/api/saved-searches", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, query: "", range: boardRangeValue, board }),
+    });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(json?.error ?? `Save failed (${res.status})`);
+      return null;
+    }
+    const created = (await res.json()) as SavedSearch;
+    setSaved((list) => [created, ...list]);
+    return created;
+  }
+
+  /** A board's window is relative (Quick or Last N); a custom one saves as `1h`. */
+  function boardRange(mode: RangeMode): string {
+    return mode !== "custom" && parseRangeMs(mode) !== null ? mode : "1h";
   }
 
   /** Watch this (#264): the hunt becomes a saved hunt if it is not one, then a monitor on it. */
@@ -2642,15 +2590,27 @@ export function App() {
     item: SavedSearch,
     nextBind: Record<string, string>,
   ): WorkspaceSnap {
+    if (item.board) {
+      // A board (#410): its saved id, its inputs and its window. Each panel carries its own query.
+      return {
+        ...blankSearchSnap(),
+        kind: "search",
+        q: "",
+        savedId: item.id,
+        bind: bindForBoard(nextBind, item.board.keys),
+        range: item.range && parseRangeMs(item.range) !== null ? item.range : "1h",
+        live: false,
+      };
+    }
     const layout = item.widgets ?? defaultLayout({ agg: item.agg ?? null });
     const primary = primaryTimeseries(layout.widgets);
     const relative = Boolean(item.range && parseRangeMs(item.range) !== null);
     return {
       ...blankSearchSnap(),
       kind: "search",
-      q: item.board ? boundQuery(item.query, nextBind) : item.query,
+      q: item.query,
       savedId: item.id,
-      bind: item.board ? nextBind : {},
+      bind: {},
       range: relative ? item.range! : "custom",
       from: item.from_ts ? toLocalInput(new Date(item.from_ts)) : from,
       to: item.to_ts ? toLocalInput(new Date(item.to_ts)) : to,
@@ -2674,9 +2634,11 @@ export function App() {
   function onRangeChange(next: RangeMode) {
     const item = saved.find((row) => row.id === savedId);
     if (item?.board) {
-      if (!item.board.win || next === "custom") {
-        return;
+      // A board's window (#410): its panels read it themselves.
+      if (next !== "custom") {
+        setRange(next);
       }
+      return;
     }
     setExplore(null);
     setRange(next);
@@ -2732,6 +2694,7 @@ export function App() {
 
   function onLiveChange(on: boolean) {
     if (saved.find((row) => row.id === savedId)?.board) {
+      setLive(on);
       return;
     }
     if (on) {
@@ -2842,9 +2805,7 @@ export function App() {
       surrAnchor,
       focusMark,
       board,
-      boardBinds: item?.board
-        ? item.board.keys.map((key) => bind[key] ?? "").filter((value) => value.length > 0)
-        : [],
+      editPanel: edit?.name ?? null,
     });
   }
 
@@ -2865,11 +2826,7 @@ export function App() {
         surrAnchor: snap.surrAnchor,
         focusMark: snap.focusMark,
         board,
-        boardBinds: item?.board
-          ? item.board.keys
-              .map((key) => snap.bind[key] ?? "")
-              .filter((value) => value.length > 0)
-          : [],
+        editPanel: snap.edit?.name ?? null,
       }),
     };
   }
@@ -2959,6 +2916,7 @@ export function App() {
       marksMuted,
       cut,
       compare,
+      edit,
     };
   }
 
@@ -3141,8 +3099,9 @@ export function App() {
     setRange(snap.range);
     setFrom(snap.from);
     setTo(snap.to);
-    setLive(board ? false : snap.live);
+    setLive(snap.live);
     setSavedId(snap.savedId);
+    setEdit(snap.edit);
     setBind(snap.bind);
     setSplit(snap.split);
     setChart(snap.chart);
@@ -3172,7 +3131,7 @@ export function App() {
     setPinnedEvent(snap.pinnedEvent);
     setSurrAnchor(snap.surrAnchor);
     setSurrSel(snap.surrSel);
-    if (snap.live && !board) {
+    if (snap.live) {
       liveWindowMs.current =
         snap.range === "custom"
           ? rangeDurationMs(snap.from, snap.to)
@@ -3197,7 +3156,7 @@ export function App() {
     lastPaintHuntRef.current = null;
     skipAttrFacetGen.current = null;
     if (search) {
-      if (board && isBoardUnbound(board, snap.bind)) {
+      if (board) {
         clearUnboundBoard();
         return;
       }
@@ -3221,7 +3180,7 @@ export function App() {
         range: snap.range,
         from: snap.from,
         to: snap.to,
-        live: board ? false : snap.live,
+        live: snap.live,
         split: snap.split,
         step: snap.step,
         agg: snap.agg,
@@ -3499,19 +3458,148 @@ export function App() {
     void runSearch("replace", { q: next });
   }
 
-  function onPickBind(key: string, value: string) {
-    const item = saved.find((row) => row.id === savedId);
+  function onBoardBind(key: string, value: string | null) {
+    setBind((prev) => {
+      const next = { ...prev };
+      if (value) {
+        next[key] = value;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  }
+
+  /** A board change (#410): panels, inputs and fixed windows save as they are made. */
+  function onBoardChange(item: SavedSearch, next: BoardSlots) {
+    setSaved((list) => list.map((row) => (row.id === item.id ? { ...row, board: next } : row)));
+    void saveBoard(item, { board: next });
+  }
+
+  /** The hunt layout a board panel opens as: the pinned plot reads its view, or it sits beside it. */
+  function panelHuntLayout(panel: BoardPanel): { widgets: WidgetDef[]; logsOn: boolean; widgetId: string } {
+    const base = defaultLayout().widgets;
+    if (panel.view === "histogram") {
+      const pinned = { ...base[0]!, ...panel.widget, id: "a", x: 0, y: 0, w: base[0]!.w, h: base[0]!.h, kind: "timeseries" as const };
+      return { widgets: [pinned], logsOn: true, widgetId: "a" };
+    }
+    if (panel.view === "events") {
+      return { widgets: base, logsOn: true, widgetId: "events" };
+    }
+    const pinned = { ...base[0]!, w: 8 };
+    const own = { ...panel.widget, id: "b", x: 8, y: 0, w: 4, h: base[0]!.h };
+    return { widgets: [pinned, own], logsOn: true, widgetId: "b" };
+  }
+
+  function panelHuntSnap(panel: BoardPanel, panelQ: string, panelEdit: PanelEdit | null): WorkspaceSnap {
+    const layout = panelHuntLayout(panel);
+    const primary = primaryTimeseries(layout.widgets);
+    return {
+      ...blankSearchSnap(),
+      kind: "search",
+      q: panelQ,
+      range: panel.fixed ?? range,
+      from,
+      to,
+      live,
+      widgets: layout.widgets,
+      logsOn: layout.logsOn,
+      agg: primary?.metric ? null : (primary?.agg ?? null),
+      split: primary?.split ?? "level",
+      chart: primary?.chart ?? "stacked",
+      logScale: primary?.logScale ?? false,
+      replaceY: primary?.replaceY ?? false,
+      edit: panelEdit ? { ...panelEdit, widgetId: layout.widgetId } : null,
+    };
+  }
+
+  /** Open as hunt (39d): the panel's query and the set inputs, on the board's window. */
+  function openPanelAsHunt(item: SavedSearch, panel: BoardPanel) {
+    addWorkspace(panelHuntSnap(panel, panelQuery(panel.q, item.board?.keys ?? [], bind), null), false);
+  }
+
+  /** Edit panel (39f): the panel's own query, board inputs off, Cancel / Update panel. */
+  function editBoardPanel(item: SavedSearch, panel: BoardPanel) {
+    addWorkspace(panelHuntSnap(panel, panel.q, { boardId: item.id, panelId: panel.id, name: panel.name, widgetId: "a" }), false);
+  }
+
+  function boardTabFor(boardId: string): number | null {
+    return wsList.find((tab) => tab.id !== wsId && tab.snap.savedId === boardId && !tab.snap.edit)?.id ?? null;
+  }
+
+  /** Back from an Edit panel tab to its board: the board's tab, or a new one. */
+  function leaveEdit(boardId: string) {
+    const editId = wsId;
+    const back = boardTabFor(boardId);
+    const item = saved.find((row) => row.id === boardId);
+    if (back !== null) {
+      goWs(back);
+    } else if (item) {
+      addWorkspace(snapFromSaved(item, {}), true);
+    }
+    setWsList((list) => list.filter((tab) => tab.id !== editId));
+  }
+
+  async function updateEditedPanel() {
+    if (!edit) {
+      return;
+    }
+    if (compileQuery(q).faults.length > 0) {
+      setShowFaults(true);
+      return;
+    }
+    const item = saved.find((row) => row.id === edit.boardId);
+    const panel = item?.board?.panels.find((p) => p.id === edit.panelId);
+    if (!item?.board || !panel) {
+      toast.error("That panel is no longer on the board");
+      return;
+    }
+    const source = edit.widgetId === "events" ? null : widgets.find((w) => w.id === edit.widgetId);
+    const view = edit.widgetId === "events" ? "events" : source ? panelViewOf(source) : panel.view;
+    const widget = source ? { ...source, id: panel.id, x: panel.widget.x, y: panel.widget.y, w: panel.widget.w, h: panel.widget.h } : panel.widget;
+    const next: BoardSlots = {
+      ...item.board,
+      panels: item.board.panels.map((p) => (p.id === panel.id ? { ...p, q: q.trim(), view, widget } : p)),
+    };
+    const updated = await saveBoard(item, { board: next });
+    if (updated) {
+      toast.success("Panel updated");
+      leaveEdit(item.id);
+    }
+  }
+
+  /** Add to board (39e): the hunt panel's query and view, without the hunt's window. */
+  async function addToBoard(widget: WidgetDef, boardId: string | null) {
+    const view = panelViewOf(widget);
+    const draft = { name: widget.title ?? "", q: q.trim(), view, widget };
+    if (!boardId) {
+      setNewBoardFor(draft);
+      return;
+    }
+    const item = saved.find((row) => row.id === boardId);
     if (!item?.board) {
       return;
     }
-    const nextBind = { ...bind, [key]: value };
-    const nextQ = boundQuery(item.query, nextBind);
-    setBind(nextBind);
-    setQ(nextQ);
-    if (isBoardUnbound(item.board, nextBind)) {
+    const next = addBoardPanel(item.board, draft);
+    if (!next) {
+      toast.error("A board holds six panels");
       return;
     }
-    void runSearch("replace", { q: nextQ });
+    if (await saveBoard(item, { board: next })) {
+      toast.success(`Added to ${item.name}`);
+    }
+  }
+
+  async function createBoardWith(name: string) {
+    const draft = newBoardFor;
+    const board = draft ? addBoardPanel({ keys: [], panels: [] }, draft) : { keys: [], panels: [] };
+    if (!board) {
+      return;
+    }
+    const created = await createBoard(name, board, "1h");
+    if (created) {
+      toast.success(`Added to ${created.name}`);
+    }
   }
 
   /** Latest render's opener: the read below awaits, and tabs may change meanwhile. */
@@ -3834,9 +3922,9 @@ export function App() {
       : undefined;
   const activeSaved = saved.find((item) => item.id === savedId);
   const boardOn = Boolean(activeSaved?.board);
-  const boardUnbound = Boolean(
-    activeSaved?.board && isBoardUnbound(activeSaved.board, bind),
-  );
+  const boardChoices: BoardChoice[] = saved
+    .filter((item) => item.board)
+    .map((item) => ({ id: item.id, name: item.name, count: item.board!.panels.length }));
   const railSurface = cutRailSurface({
     hasCut: Boolean(cut),
     detailOpen,
@@ -4110,7 +4198,6 @@ export function App() {
                   live={live}
                   liveWindowMs={liveWindowMs.current}
                   lockAbsolute={boardOn}
-                  disabled={boardOn && !activeSaved?.board?.win}
                   onRangeChange={onRangeChange}
                   onCustomRange={onCustomRange}
                 />
@@ -4119,7 +4206,6 @@ export function App() {
                   size="sm"
                   variant={live ? "secondary" : "outline"}
                   aria-pressed={live}
-                  className={boardOn ? "pointer-events-none opacity-50" : undefined}
                   onClick={() => onLiveChange(!live)}
                 >
                   <span
@@ -4356,7 +4442,50 @@ export function App() {
                 onCancel={() => setWatchThisOpen(false)}
               />
             ) : null}
-            {isSurr ? (
+            {boardOn && activeSaved?.board ? (
+              <>
+                <HuntCrumb
+                  name={activeSaved.name}
+                  board
+                  badge={`board · ${activeSaved.board.panels.length} panel${activeSaved.board.panels.length === 1 ? "" : "s"}`}
+                  dirty={(activeSaved.range ?? "1h") !== boardRange(range)}
+                  pinned={Boolean(activeSaved.pinned)}
+                  mark={null}
+                  saveDisabled={isViewer}
+                  onHome={() => setView("home")}
+                  onCloseMark={() => undefined}
+                  onSave={onSaveClick}
+                  onSaveAs={() => setBoardSaveAs(true)}
+                  onPin={() => void togglePinned(activeSaved)}
+                  onDelete={isViewer ? null : () => void onDelete(activeSaved.id)}
+                  onWatch={null}
+                  onShare={() => void copyLink()}
+                />
+                <BoardView
+                  board={activeSaved.board}
+                  bind={bind}
+                  win={range === "custom" ? { from: isoFromLocal(from) ?? "", to: isoFromLocal(to) ?? "" } : { range }}
+                  winLabel={range === "custom" ? boardRange(range) : range}
+                  live={live}
+                  readOnly={isViewer}
+                  onBind={onBoardBind}
+                  onBoard={(next) => onBoardChange(activeSaved, next)}
+                  onOpenHunt={(panel) => openPanelAsHunt(activeSaved, panel)}
+                  onEditPanel={(panel) => editBoardPanel(activeSaved, panel)}
+                  onDuplicate={(panel) => {
+                    const next = activeSaved.board ? duplicateBoardPanel(activeSaved.board, panel.id) : null;
+                    if (next) {
+                      onBoardChange(activeSaved, next);
+                    }
+                  }}
+                  onRemove={(panel) => {
+                    if (activeSaved.board) {
+                      onBoardChange(activeSaved, removeBoardPanel(activeSaved.board, panel.id));
+                    }
+                  }}
+                />
+              </>
+            ) : isSurr ? (
               activeInspect ? (
                 <>
                   <ContextTabs
@@ -4509,6 +4638,17 @@ export function App() {
               )
             ) : (
             <>
+            {edit ? (
+              <EditPanelCrumb
+                boardName={saved.find((row) => row.id === edit.boardId)?.name ?? "board"}
+                panelName={edit.name}
+                updateDisabled={qErrOn}
+                onHome={() => setView("home")}
+                onBoard={() => leaveEdit(edit.boardId)}
+                onCancel={() => leaveEdit(edit.boardId)}
+                onUpdate={() => void updateEditedPanel()}
+              />
+            ) : (
             <HuntCrumb
               name={activeSaved?.name ?? null}
               board={boardOn}
@@ -4528,6 +4668,7 @@ export function App() {
               onWatch={isViewer ? null : () => setWatchThisOpen(true)}
               onShare={() => void copyLink()}
             />
+            )}
             <form
               className="relative flex shrink-0 flex-wrap items-center gap-1.5 px-3 py-2"
               onSubmit={onSubmit}
@@ -4597,18 +4738,6 @@ export function App() {
                 </span>
               ) : null}
             </form>
-            {boardUnbound && activeSaved?.board ? (
-              <BoardEmpty
-                keys={activeSaved.board.keys}
-                template={activeSaved.query}
-                groups={activeSaved.board.keys.map((key) => ({
-                  key,
-                  value: bind[key] ?? null,
-                  values: boardBindValues[key] ?? [],
-                }))}
-                onPick={onPickBind}
-              />
-            ) : (
             <>
             <div
               className={cn(
@@ -4625,6 +4754,11 @@ export function App() {
               <SeriesCatalogContext.Provider value={seriesCatalog}>
                 <HeldContext.Provider value={heldV}>
                 <WidgetCanvas
+                  addToBoard={
+                    edit || isViewer || wsKind !== "search"
+                      ? null
+                      : { boards: boardChoices, onPick: (widget, boardId) => void addToBoard(widget, boardId) }
+                  }
                   head={huntHead}
                   query={q}
                   widgets={widgets}
@@ -4739,17 +4873,6 @@ export function App() {
                 </HeldContext.Provider>
               </SeriesCatalogContext.Provider>
             </div>
-            {activeSaved?.board ? (
-              <div className="px-3 pt-2">
-                <BoardInputs
-                  capLabel={`${boardSlotCount(activeSaved.board)} of 4`}
-                  fields={activeSaved.board.keys.map((key) => ({ key, value: bind[key] ?? null, values: boardBindValues[key] ?? [] }))}
-                  windowLabel={activeSaved.board.win ? rangeTriggerLabel(range, from, to) : null}
-                  onPick={onPickBind}
-                  onWindow={() => clockRef.current?.click()}
-                />
-              </div>
-            ) : null}
             <FacetChips
               facets={facets}
               activeFacets={activeFacets}
@@ -5051,7 +5174,6 @@ export function App() {
               </>
             ) : null}
             </>
-            )}
             </>
             )}
           </div>
@@ -5125,18 +5247,31 @@ export function App() {
         defaultName={activeSaved?.name ?? ""}
         query={q}
         rangeLabel={rangeTriggerLabel(range, from, to)}
-        rangeIsCustom={range === "custom"}
-        slotKeys={[
-          ...new Set([
-            ...queryFieldKeys(q),
-            ...(activeSaved?.board?.keys ?? []),
-          ]),
-        ]}
-        defaultBoard={saveUpdate ? (activeSaved?.board ?? null) : null}
-        onSave={(name, board) =>
-          saveUpdate ? updateActiveSaved(name, board) : createSaved(name, board)
-        }
+        onSave={(name) => (saveUpdate ? updateActiveSaved(name) : createSaved(name))}
         onSaveAs={saveUpdate ? createSaved : undefined}
+      />
+      <BoardNameDialog
+        open={newBoardFor !== null || boardSaveAs}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNewBoardFor(null);
+            setBoardSaveAs(false);
+          }
+        }}
+        title={boardSaveAs ? "Save board as" : "New board"}
+        action={boardSaveAs ? "Save" : "Create board"}
+        defaultName={boardSaveAs && activeSaved ? `${activeSaved.name} copy` : ""}
+        onSubmit={async (name) => {
+          if (boardSaveAs && activeSaved?.board) {
+            const created = await createBoard(name, activeSaved.board, boardRange(range));
+            if (created) {
+              setSavedId(created.id);
+              toast.success("Saved board");
+            }
+            return;
+          }
+          await createBoardWith(name);
+        }}
       />
       <NewMonitorDialog
         open={newMonitor !== null}

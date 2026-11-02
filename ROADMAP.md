@@ -63,4 +63,4 @@ Up to 0.9, a link copied log rows and change marks, and nothing else, so an inst
 
 Do not send these as PRs expecting a merge. They are a different product.
 
-PromQL, Grafana, Helm, k8s, S3 / cold volume, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q`, generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, an upgrade button or upgrading on its own.
+PromQL, Grafana, Helm, k8s, S3 / cold volume, audit log, email, GELF, Lucene / regex / infix globs, per-widget `q` in a hunt (a hunt has one `q`; board panels each carry their own, #410), generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, an upgrade button or upgrading on its own.

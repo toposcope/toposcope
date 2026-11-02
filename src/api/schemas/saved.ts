@@ -23,7 +23,7 @@ const saved = {
   to_ts: v.nullish(described(v.string(), "Where a fixed window ends, an ISO time; read only when range is null.")),
   agg: v.nullish(described(v.string(), "The series it reads, as search's agg takes it; null counts rows.")),
   widgets: v.nullish(described(v.unknown(), "The canvas: its widgets and their places, as the app saves them.")),
-  board: v.nullish(described(v.unknown(), "A board's slots and window, as the app saves them; null makes it a plain hunt.")),
+  board: v.nullish(described(v.unknown(), "A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt.")),
   cols: v.nullish(described(v.union([v.string(), v.array(v.string())]), "Attribute keys shown as columns, a list or separated by commas.")),
   pinned: v.nullish(described(v.boolean(), "Pinned for the caller; each person pins their own.")),
   // A shared that is not true or false is the handler's 403, as before.

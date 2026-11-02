@@ -90,7 +90,7 @@ describe("a Home saved search (#109)", () => {
 
   test("a board cannot be Home", () => {
     expect(r.boardHome!.status).toBe(400);
-    expect(JSON.parse(r.boardHome!.body).error).toBe("A board cannot be Home: it opens with its inputs unset.");
+    expect(JSON.parse(r.boardHome!.body).error).toBe("A board cannot be Home.");
   });
 
   test("unmarking Home, or deleting it, brings back All logs", () => {

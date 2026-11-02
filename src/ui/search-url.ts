@@ -235,8 +235,9 @@ function parseAggParam(raw: string | null): string | null {
 export function serializeSearchUrl(state: SearchUrlState): string {
   const params = new URLSearchParams();
   const q = state.q.trim();
+  // A board (#410) is its saved id, the set inputs and the window: each panel carries its own query.
   const boardKeys = state.boardKeys ?? [];
-  if (boardKeys.length > 0 && state.saved) {
+  if (state.boardKeys && state.saved) {
     params.set("saved", state.saved);
     for (const key of boardKeys) {
       const value = (state.bind ?? {})[key];

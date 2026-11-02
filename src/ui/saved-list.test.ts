@@ -89,7 +89,7 @@ describe("names that share the words before a colon", () => {
 
 describe("what each item is", () => {
   test("a board, a watched search, a search kept for its panels, a plain one", () => {
-    const board = saved("Customer drill-down", { board: { keys: ["customer"], win: true } });
+    const board = saved("Customer drill-down", { board: { keys: ["customer"], panels: [] } });
     const watched = saved("Prod 5xx");
     const kept = saved("vCPU · all boxes", { widgets: panels });
     const plain = saved("Checkout errors");

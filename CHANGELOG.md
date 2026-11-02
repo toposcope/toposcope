@@ -4,6 +4,12 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+**Changes stored data:** every board is rewritten at boot to the new shape below. A board saved before this keeps its inputs and becomes one panel per widget it had, each on its template query; its window becomes the board's (`1h` if it had none).
+
+**Boards of copied panels** (#410). A board is now a screen of up to six panels, each with its own query. **Add to board**, on a hunt panel's ⋯ menu and in the pinned plot's head, copies that panel's query and view onto a board, or onto a new one; it does not copy the hunt's window. A panel is a copy: editing or deleting the saved hunt never changes the board. The board has one window that every panel follows, unless a panel has a **Fixed window** (`24h · fixed`). Inputs are field values ANDed onto every panel's query; an input left at `any` adds nothing, so a board opens without asking for them. A panel's menu has **Open as hunt**, **Edit panel** (a hunt on the panel's own query, with Cancel and **Update panel**), Fixed window…, Duplicate, Copy…, Export… and Remove. A panel that an input leaves empty says so: `No rows with region:eu`, then the field's values on that panel's rows, or that those rows have no such field in the window. In Live, each panel refreshes as a hunt's extra panel does. A board still cannot be watched; watch a saved hunt. Saving a hunt no longer offers to make it a board.
+
 ## 0.13.1
 
 Home's **What this answer stands on** no longer gets cut off on a full page: the card took its height from what was left of the column and clipped its lines, where it should push the column to scroll.

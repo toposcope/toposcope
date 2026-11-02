@@ -4,6 +4,7 @@ import { migrateTwoStep } from "./two-step";
 import { migrateRemembered } from "./remembered";
 import { migrateOidc } from "./oidc";
 import { migrateRepositories } from "./repositories";
+import { migrateBoardPanels } from "./board-panels-migrate";
 import { mkdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { pingClickHouse } from "../shared/clickhouse";
@@ -395,6 +396,7 @@ export function migrateControlDb(db: Database): void {
   migrateOidc(db, addColumnIfMissing);
   // Where each service's code lives, set by an Operator (#393).
   migrateRepositories(db);
+  migrateBoardPanels(db);
 }
 
 /**
