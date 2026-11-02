@@ -4,10 +4,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import {
   COVERAGE_COMPLETE,
+  COVERAGE_GAPS_SHOWN,
   coverageGaps,
-  coverageNotes,
+  coverageGroups,
+  doneSummary,
+  namesSummary,
   coveragePercent,
-  evidenceDocUrl,
   gapShare,
   keysDocUrl,
   marksDocUrl,
@@ -75,6 +77,9 @@ export function useCoverage(): Coverage | null {
   }, []);
   return data;
 }
+
+/** Home lists this many gaps at most (37s). */
+const HOME_GAP_LINES = 3;
 
 const coverageGrid = "grid grid-cols-[160px_100px_repeat(4,minmax(0,1fr))_150px] items-center";
 const namesGrid = "grid grid-cols-[230px_230px_minmax(0,1fr)_140px] gap-3";
@@ -250,10 +255,59 @@ function sideB(m: CoverageMismatch): { name: string; on: string } {
     : { name: m.mark_value, on: `deploy mark ▲ ${hhmmUtc(m.mark_ts)}` };
 }
 
-/** Settings › Fields, above the keys (37j): each service's share of the keys, and the names that do not match. */
+/** Which Coverage groups are open in this browser (37r); nothing of it is in the URL. */
+type OpenGroups = { gaps: boolean; done: boolean; names: boolean };
+const openKey = "toposcope.coverageOpen";
+
+function readOpen(): OpenGroups {
+  try {
+    const raw = JSON.parse(localStorage.getItem(openKey) ?? "{}") as Partial<OpenGroups>;
+    return { gaps: raw.gaps === true, done: raw.done === true, names: raw.names === true };
+  } catch {
+    return { gaps: false, done: false, names: false };
+  }
+}
+
+function writeOpen(next: OpenGroups): void {
+  try {
+    localStorage.setItem(openKey, JSON.stringify(next));
+  } catch {
+    // a private window: the groups stay open for the page
+  }
+}
+
+const headRow = `${coverageGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`;
+const foldLine = "flex w-full items-baseline gap-1.5 border-b border-white/[0.05] px-4 py-2.5 text-left text-[12.5px] hover:bg-white/[0.02]";
+
+function ServiceRow({ s, actions }: { s: CoverageService; actions: GapActions }) {
+  return (
+    <div className={`${coverageGrid} border-b border-white/[0.05] px-4 py-[9px] font-mono text-[12.5px]`}>
+      <span className="truncate">{s.service}</span>
+      <span className="text-muted-foreground">{formatCompactCount(s.rows)}</span>
+      <Cell s={s} k="version" actions={actions} />
+      <Cell s={s} k="host" actions={actions} />
+      <Cell s={s} k="trace_id" actions={actions} />
+      <Cell s={s} k="stack" actions={actions} />
+      <MarksCell s={s} actions={actions} />
+    </div>
+  );
+}
+
+/**
+ * Settings › Fields, above the keys (37j, 37q): services with gaps first, largest first, 8 of them;
+ * the rest, the complete or accepted, and the names that do not match fold into a line each.
+ * Find a service (37r) searches every group, folded or not.
+ */
 export function CoverageSection({ coverage, focusNames, canAccept = false }: { coverage: Coverage | null; focusNames?: boolean; canAccept?: boolean }) {
   const namesRef = useRef<HTMLDivElement | null>(null);
   const [listOpen, setListOpen] = useState(false);
+  const [find, setFind] = useState("");
+  const [open, setOpenState] = useState<OpenGroups>(() => readOpen());
+  const setOpen = (patch: Partial<OpenGroups>) => {
+    const next = { ...open, ...patch };
+    setOpenState(next);
+    writeOpen(next);
+  };
   const write = async (method: "POST" | "DELETE", service: string, key: GapKey) => {
     const res =
       method === "POST"
@@ -268,123 +322,192 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
   };
   const actions: GapActions = { canAccept, onAccept: (svc, key) => write("POST", svc, key), onUndo: (svc, key) => write("DELETE", svc, key) };
   const hasNames = (coverage?.mismatches.length ?? 0) > 0;
+  // Home's "Names that do not match ›" opens them
   useEffect(() => {
     if (focusNames && hasNames) {
-      namesRef.current?.scrollIntoView({ block: "start" });
+      setOpenState((cur) => ({ ...cur, names: true }));
+      setFind("");
+      requestAnimationFrame(() => namesRef.current?.scrollIntoView({ block: "start" }));
     }
   }, [focusNames, hasNames]);
   if (!coverage || coverage.services.length === 0) {
     return null;
   }
-  const notes = coverageNotes(coverage);
   const accepted = coverage.accepted ?? [];
-  const traceNone = coverage.services.some((s) => s.trace_id === null);
+  const finding = find.trim() !== "";
+  const all = coverageGroups(coverage);
+  const { gaps, done } = coverageGroups(coverage, find);
+  const shownGaps = finding || open.gaps ? gaps : gaps.slice(0, COVERAGE_GAPS_SHOWN);
+  const hidden = gaps.slice(COVERAGE_GAPS_SHOWN);
+  const smallest = hidden[hidden.length - 1];
+  const doneHead = (
+    <div className={headRow}>
+      <span className="col-span-7">Complete or accepted · {done.length}</span>
+    </div>
+  );
   return (
     <section aria-label="Coverage" className="mb-3.5 overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
-      <div className="flex items-baseline gap-3 px-4 pt-3 pb-2">
+      <div className="flex flex-wrap items-center gap-3 px-4 pt-2.5 pb-2">
         <h2 className="m-0 text-[13.5px] font-medium">Coverage</h2>
         <span className="text-[12px] text-muted-foreground">
-          share of each service's rows that carry the key · {coverage.complete} of {coverage.services.length} complete
-          {accepted.length > 0 ? " · " : ""}
-          {accepted.length > 0 ? (
-            <button type="button" aria-expanded={listOpen} className="text-foreground underline underline-offset-[3px] hover:text-white" onClick={() => setListOpen(!listOpen)}>
-              {acceptedText(accepted)}
-            </button>
-          ) : null}
+          {finding ? (
+            <>
+              {gaps.length + done.length} of {coverage.services.length} services match <span className="text-foreground">{find.trim()}</span>
+            </>
+          ) : (
+            <>
+              {coverage.services.length} services · {all.gaps.length} with gaps · {all.done.length} complete or accepted
+              {accepted.length > 0 ? " · " : ""}
+              {accepted.length > 0 ? (
+                <button type="button" aria-expanded={listOpen} className="text-foreground underline underline-offset-[3px] hover:text-white" onClick={() => setListOpen(!listOpen)}>
+                  {acceptedText(accepted)}
+                </button>
+              ) : null}
+            </>
+          )}
         </span>
         <span className="flex-1" />
-        <a href={evidenceDocUrl} target="_blank" rel="noreferrer" className={link}>
-          What an investigation reads ↗
-        </a>
-      </div>
-      <div className={`${coverageGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`}>
-        <span>Service</span>
-        <span>Rows</span>
-        <span>version</span>
-        <span>host</span>
-        <span>trace_id</span>
-        <span>stack on errors</span>
-        <span>Deploy marks</span>
-      </div>
-      {coverage.services.map((s) => (
-        <div key={s.service} className={`${coverageGrid} border-b border-white/[0.05] px-4 py-[9px] font-mono text-[12.5px]`}>
-          <span className="truncate">{s.service}</span>
-          <span className="text-muted-foreground">{formatCompactCount(s.rows)}</span>
-          <Cell s={s} k="version" actions={actions} />
-          <Cell s={s} k="host" actions={actions} />
-          <Cell s={s} k="trace_id" actions={actions} />
-          <Cell s={s} k="stack" actions={actions} />
-          <MarksCell s={s} actions={actions} />
-        </div>
-      ))}
-      {notes.length > 0 ? (
-        <p className="m-0 px-4 pt-2.5 pb-1 text-[12px] leading-[1.5] text-zinc-400">
-          {notes.map((n, i) => (
-            <span key={n.service}>
-              {i > 0 ? " " : ""}
-              {n.kind === "version" ? (
-                <>
-                  {n.service} sends no <span className="font-mono text-foreground">version</span>
-                  {n.noMark ? " and no deploy mark, so Home cannot say what changed on it." : ", so Home cannot tell its releases apart."}
-                </>
-              ) : (
-                `${n.service} logs errors without a stack: ${n.missing} of them are fingerprinted from the message alone, so a reworded message reads as a new error.`
-              )}
-            </span>
-          ))}
-        </p>
-      ) : null}
-      <p className={cn("m-0 px-4 pb-3 text-[11.5px] leading-[1.5] text-muted-foreground", notes.length === 0 && "pt-2.5")}>
-        A key is complete at {Math.round(COVERAGE_COMPLETE * 100)}% of the service's rows.
-        {traceNone ? (
-          <>
-            {" "}
-            <span className="font-mono">—</span> under trace_id: the service sends no spans, so it is not counted.
-          </>
+        <label htmlFor="coverage-find" className="text-[12.5px] text-muted-foreground">
+          Find a service
+        </label>
+        <input
+          id="coverage-find"
+          value={find}
+          placeholder="name"
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(e) => setFind(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && find) {
+              e.stopPropagation();
+              setFind("");
+            }
+          }}
+          className="h-[30px] w-[210px] rounded-md border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none focus:border-white/25"
+        />
+        {finding ? (
+          <button type="button" className="h-[30px] rounded-md border border-white/15 px-2.5 text-[12.5px] hover:bg-white/[0.04]" onClick={() => setFind("")}>
+            Clear
+          </button>
         ) : null}
-      </p>
-      <p className="m-0 -mt-1.5 px-4 pb-3 text-[11.5px] leading-[1.5] text-muted-foreground">
-        Click a gap to accept it or see how to send it. An accepted cell reads <span className="text-zinc-300">accepted · undo</span>; it comes back as a gap if its number later
-        falls further. Accepting is an Operator's; a Viewer reads the same table.
-      </p>
-      {listOpen && accepted.length > 0 ? <AcceptedList accepted={accepted} actions={actions} /> : null}
-      {hasNames ? (
-        <div ref={namesRef} id="coverage-names" className="scroll-mt-4 border-t border-white/[0.08]">
-          <div className="flex items-baseline gap-3 px-4 pt-3 pb-2">
-            <h3 className="m-0 text-[13px] font-medium">Names that do not match</h3>
+      </div>
+      {gaps.length > 0 ? (
+        <>
+          <div className={headRow}>
+            <span>With gaps · {gaps.length}</span>
+            <span>Rows</span>
+            <span>version</span>
+            <span>host</span>
+            <span>trace_id</span>
+            <span>stack on errors</span>
+            <span>Deploy marks</span>
+          </div>
+          {shownGaps.map((s) => (
+            <ServiceRow key={s.service} s={s} actions={actions} />
+          ))}
+        </>
+      ) : (
+        <div className={headRow}>
+          <span>{finding ? "With gaps · 0" : "Service"}</span>
+          <span>Rows</span>
+          <span>version</span>
+          <span>host</span>
+          <span>trace_id</span>
+          <span>stack on errors</span>
+          <span>Deploy marks</span>
+        </div>
+      )}
+      {!finding && hidden.length > 0 ? (
+        <button type="button" aria-expanded={open.gaps} className={foldLine} onClick={() => setOpen({ gaps: !open.gaps })}>
+          {open.gaps ? (
+            <span className="text-zinc-300">{gaps.length} with gaps, all shown</span>
+          ) : (
+            <>
+              <span className="text-zinc-300">{hidden.length} more with gaps, smaller first</span>
+              <span className="text-muted-foreground">
+                · the smallest has {smallest ? formatCompactCount(smallest.rows) : 0} {smallest?.rows === 1 ? "row" : "rows"}
+              </span>
+            </>
+          )}
+          <span className="flex-1" />
+          <span className="text-zinc-300">{open.gaps ? "Show fewer" : "Show all"}</span>
+        </button>
+      ) : null}
+      {finding ? (
+        done.length > 0 ? (
+          <>
+            {doneHead}
+            {done.map((s) => (
+              <ServiceRow key={s.service} s={s} actions={actions} />
+            ))}
+          </>
+        ) : null
+      ) : done.length > 0 ? (
+        open.done ? (
+          <>
+            <button type="button" aria-expanded className={cn(headRow, "w-full text-left")} onClick={() => setOpen({ done: false })}>
+              <span className="col-span-6">Complete or accepted · {done.length}</span>
+              <span className="text-right normal-case tracking-normal text-[12px] text-zinc-300">Hide</span>
+            </button>
+            {done.map((s) => (
+              <ServiceRow key={s.service} s={s} actions={actions} />
+            ))}
+          </>
+        ) : (
+          <button type="button" aria-expanded={false} className={foldLine} onClick={() => setOpen({ done: true })}>
+            <span className="text-muted-foreground">Complete or accepted · {done.length}</span>
+            <span className="min-w-0 truncate text-muted-foreground">· {doneSummary(done)}</span>
+            <span className="flex-1" />
+            <span className="text-zinc-300">Show</span>
+          </button>
+        )
+      ) : null}
+      {!finding && listOpen && accepted.length > 0 ? <AcceptedList accepted={accepted} actions={actions} /> : null}
+      {!finding && hasNames ? (
+        <div ref={namesRef} id="coverage-names" className="scroll-mt-4">
+          <button type="button" aria-expanded={open.names} className={cn(foldLine, "items-baseline gap-3 border-b-0")} onClick={() => setOpen({ names: !open.names })}>
+            <span className="text-[13px] font-medium text-foreground">Names that do not match</span>
             <span className="font-mono text-[12px] text-foreground">{coverage.mismatches.length}</span>
-            <span className="text-[12px] text-muted-foreground">the same thing under two names, so the two sides never join</span>
-          </div>
-          <div className={`${namesGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`}>
-            <span>One side says</span>
-            <span>The other says</span>
-            <span>So</span>
-            <span />
-          </div>
-          {coverage.mismatches.map((m) => {
-            const a = sideA(m);
-            const b = sideB(m);
-            return (
-              <div key={`${m.kind}:${a.name}:${b.name}`} className={`${namesGrid} items-baseline border-b border-white/[0.05] px-4 py-2.5 text-[12.5px]`}>
-                <span className="flex min-w-0 flex-col gap-[3px]">
-                  <span className="truncate font-mono">{a.name}</span>
-                  <span className="text-[11.5px] text-muted-foreground">{a.on}</span>
-                </span>
-                <span className="flex min-w-0 flex-col gap-[3px]">
-                  <span className="truncate font-mono">{b.name}</span>
-                  <span className="text-[11.5px] text-muted-foreground">{b.on}</span>
-                </span>
-                <span className="leading-[1.45] text-zinc-300">{mismatchSo(m)}</span>
-                <a href={namesDocUrl} target="_blank" rel="noreferrer" className={cn(link, "text-right")}>
-                  Fix at the source ↗
-                </a>
+            <span className="min-w-0 truncate text-[12px] text-muted-foreground">
+              {open.names ? "the same thing under two names, so the two sides never join" : namesSummary(coverage.mismatches)}
+            </span>
+            <span className="flex-1" />
+            <span className="text-zinc-300">{open.names ? "Hide" : "Show"}</span>
+          </button>
+          {open.names ? (
+            <>
+              <div className={`${namesGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`}>
+                <span>One side says</span>
+                <span>The other says</span>
+                <span>So</span>
+                <span />
               </div>
-            );
-          })}
-          <p className="m-0 px-4 pt-2.5 pb-3 text-[11.5px] leading-[1.5] text-muted-foreground">
-            Listed when one name is the other with a <span className="font-mono">v</span>, a case, or an <span className="font-mono">-api</span> /{" "}
-            <span className="font-mono">-svc</span> suffix more or less. Stored rows keep their names; a fix applies from the next row on.
-          </p>
+              {coverage.mismatches.map((m) => {
+                const a = sideA(m);
+                const b = sideB(m);
+                return (
+                  <div key={`${m.kind}:${a.name}:${b.name}`} className={`${namesGrid} items-baseline border-b border-white/[0.05] px-4 py-2.5 text-[12.5px]`}>
+                    <span className="flex min-w-0 flex-col gap-[3px]">
+                      <span className="truncate font-mono">{a.name}</span>
+                      <span className="text-[11.5px] text-muted-foreground">{a.on}</span>
+                    </span>
+                    <span className="flex min-w-0 flex-col gap-[3px]">
+                      <span className="truncate font-mono">{b.name}</span>
+                      <span className="text-[11.5px] text-muted-foreground">{b.on}</span>
+                    </span>
+                    <span className="leading-[1.45] text-zinc-300">{mismatchSo(m)}</span>
+                    <a href={namesDocUrl} target="_blank" rel="noreferrer" className={cn(link, "text-right")}>
+                      Fix at the source ↗
+                    </a>
+                  </div>
+                );
+              })}
+              <p className="m-0 px-4 pt-2.5 pb-3 text-[11.5px] leading-[1.5] text-muted-foreground">
+                Listed when one name is the other with a <span className="font-mono">v</span>, a case, or an <span className="font-mono">-api</span> /{" "}
+                <span className="font-mono">-svc</span> suffix more or less. Stored rows keep their names; a fix applies from the next row on.
+              </p>
+            </>
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -501,12 +624,16 @@ export function EvidenceGaps({
     return null;
   }
   const names = coverage.mismatches.length;
+  const withGaps = coverage.services.filter((s) => !s.complete).length;
+  // 37s: three lines at most; the rest is one line to Fields
+  const shown = gaps.slice(0, HOME_GAP_LINES);
+  const more = withGaps - shown.filter((g) => !g.mark).length;
   return (
     <section aria-label="What this answer stands on" className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
       <div className="flex flex-wrap items-baseline gap-3 px-4 pt-3 pb-2">
         <h2 className="m-0 text-[13.5px] font-medium">What this answer stands on</h2>
         <span className="text-[12px] text-muted-foreground">
-          gaps in the last 24 h · {coverage.complete} of {coverage.services.length} services complete
+          {withGaps} of {coverage.services.length} services {withGaps === 1 ? "has" : "have"} gaps
           {names > 0 ? ` · ${names} ${names === 1 ? "name does" : "names do"} not match` : ""}
         </span>
         <span className="flex-1" />
@@ -514,7 +641,7 @@ export function EvidenceGaps({
           Coverage in Fields ›
         </button>
       </div>
-      {gaps.map((g) => (
+      {shown.map((g) => (
         <div key={g.service} className="grid grid-cols-[120px_minmax(0,1fr)_170px] items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-[12.5px]">
           <span className="truncate font-mono">{g.service}</span>
           <span className="text-zinc-300">{g.what}</span>
@@ -529,6 +656,17 @@ export function EvidenceGaps({
           )}
         </div>
       ))}
+      {more > 0 ? (
+        <div className="flex items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-[12.5px]">
+          <span className="text-muted-foreground">
+            and {more} more {more === 1 ? "service" : "services"} with gaps, the largest first
+          </span>
+          <span className="flex-1" />
+          <button type="button" className={link} onClick={() => onOpenFields(false)}>
+            See them in Fields ›
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

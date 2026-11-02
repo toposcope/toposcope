@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyAccepted, buildCoverage, coverageGaps, coverageNotes, mismatchSo, nameKey, stackAccepted, type CoverageInput } from "./coverage";
+import { applyAccepted, buildCoverage, coverageGaps, coverageGroups, coverageNotes, doneSummary, mismatchSo, nameKey, namesSummary, stackAccepted, type CoverageInput } from "./coverage";
 
 /** Sheet 37's instance (37j / 37k), as rollup counts. */
 function sheet(): CoverageInput {
@@ -72,16 +72,16 @@ describe("coverage (#391)", () => {
     expect(nameKey("v1.2")).toBe("1.2");
   });
 
-  test("Home's lines: the selected mark's mismatch first, then the worst gap of each service", () => {
+  test("Home's lines: the selected mark's mismatch first, then each service's worst gap, the largest service first", () => {
     const c = buildCoverage(sheet());
     expect(coverageGaps(c, "m3")).toEqual([
       expect.objectContaining({ service: "api", mark: true, what: "this mark says v1.4.2, its rows say 1.4.2: the rows it shipped cannot be told from the ones before", fix: "Names that do not match ›" }),
       expect.objectContaining({ service: "billing", what: "no version and no deploy mark: a billing release never becomes the mark Home measures from", fix: "Send version ↗" }),
-      expect.objectContaining({ service: "worker", what: "88% of its errors carry no stack: their fingerprint comes from the message, so a reworded one reads as new", fix: "Attach the exception ↗" }),
       expect.objectContaining({ service: "auth", what: "trace_id on 12% of rows: View trace is missing on most of them", fix: "Log inside a span ↗" }),
+      expect.objectContaining({ service: "worker", what: "88% of its errors carry no stack: their fingerprint comes from the message, so a reworded one reads as new", fix: "Attach the exception ↗" }),
     ]);
     // another mark selected: api is complete, so it has no line
-    expect(coverageGaps(c, "m2").map((g) => g.service)).toEqual(["billing", "worker", "auth"]);
+    expect(coverageGaps(c, "m2").map((g) => g.service)).toEqual(["billing", "auth", "worker"]);
   });
 
   test("the notes under the table name what costs Home its answer", () => {
@@ -132,5 +132,30 @@ describe("coverage (#391)", () => {
       input.deploys.push({ id: "b1", ts: "2026-11-02T13:00:00.000Z", service: "billing", version: "" });
       expect(applyAccepted(buildCoverage(input), [{ service: "billing", key: "marks", share: 0, by: null, at }]).cleared).toHaveLength(1);
     });
+  });
+});
+
+describe("many services (#401)", () => {
+  test("gaps and the complete or accepted, each largest first; find searches both", () => {
+    const c = buildCoverage(sheet());
+    const all = coverageGroups(c);
+    expect(all.gaps.map((s) => s.service)).toEqual(["billing", "auth", "worker"]);
+    expect(all.done.map((s) => s.service)).toEqual(["api", "checkout"]);
+    const found = coverageGroups(c, " I");
+    expect(found.gaps.map((s) => s.service)).toEqual(["billing"]);
+    expect(found.done.map((s) => s.service)).toEqual(["api"]);
+    expect(doneSummary(all.done, 1)).toBe("api, +1");
+  });
+
+  test("the names line: the first two pairs and how many more", () => {
+    const c = buildCoverage(sheet());
+    expect(namesSummary(c.mismatches)).toBe("billing / billing-api · api's mark v1.4.2 / rows 1.4.2");
+    expect(namesSummary(c.mismatches, 1)).toBe("billing / billing-api · +1");
+  });
+
+  test("trace_id on 64% misses a third", () => {
+    const input = sheet();
+    input.keys = input.keys.map((k) => (k.service === "auth" ? { ...k, trace_id: 243 } : k));
+    expect(coverageGaps(buildCoverage(input), null).find((g) => g.service === "auth")!.what).toBe("trace_id on 63% of rows: View trace is missing on a third of them");
   });
 });
