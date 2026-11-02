@@ -110,6 +110,9 @@ let server: ReturnType<typeof Bun.serve>;
 let reply: unknown = {};
 let seen: Array<{ authorization: string | null; q: string | null; range: string | null }> = [];
 let checks: Array<{ authorization: string | null; agent: string | null; body: Record<string, unknown> }> = [];
+/** What `GET /api/service-signals` answers, and what `check spans` asked it (#420). */
+let signals: unknown = {};
+let signalsSeen: Array<{ authorization: string | null; service: string | null; range: string | null }> = [];
 /** A stand-in release on loopback, for `up` (#195): file name → body; absent names answer 404. */
 let releaseFiles: Record<string, string> = {};
 
@@ -138,6 +141,14 @@ beforeAll(() => {
           body: (await request.json()) as Record<string, unknown>,
         });
         return Response.json({ ingested: 1, created: [] });
+      }
+      if (url.pathname === "/api/service-signals") {
+        signalsSeen.push({
+          authorization: request.headers.get("authorization"),
+          service: url.searchParams.get("service"),
+          range: url.searchParams.get("range"),
+        });
+        return Response.json(signals);
       }
       if (url.pathname !== "/api/search") {
         return new Response("not found", { status: 404 });
@@ -260,6 +271,69 @@ describe("check", () => {
   });
 });
 
+/** What the service-signals route answers for a service that sent these. */
+function sent(spans: number, metrics: string[], histograms: string[] = []): unknown {
+  return {
+    service: "billing",
+    from: "2026-10-07T12:00:00.000Z",
+    to: "2026-10-07T12:15:00.000Z",
+    spans,
+    span_names: spans > 0 ? ["GET /charge", "POST /refund"] : [],
+    metrics: metrics.length,
+    metric_names: metrics,
+    histograms,
+  };
+}
+
+describe("check spans <service> (#420)", () => {
+  test("says spans and metrics, with the names it read and the histograms for the latency panel", async () => {
+    signals = sent(42, ["http.server.request.duration", "process.cpu.time"], ["http.server.request.duration"]);
+    signalsSeen = [];
+    const { code, out, err } = await run("check", "spans", "billing api");
+    expect(code).toBe(0);
+    expect(out.split("\n")[0]).toBe("spans and metrics");
+    expect(out).toContain("spans: 42, the busiest: GET /charge, POST /refund\n");
+    expect(out).toContain("metric names: 2, the busiest: http.server.request.duration, process.cpu.time\n");
+    expect(out).toContain("histograms: http.server.request.duration\n");
+    expect(out).toContain("window: the last 15 minutes (2026-10-07T12:00:00.000Z to 2026-10-07T12:15:00.000Z)");
+    expect(out + err).not.toContain(readToken);
+    expect(signalsSeen).toEqual([{ authorization: `Bearer ${readToken}`, service: "billing api", range: "15m" }]);
+  });
+
+  test("says spans only, metrics only or neither, each with what to look at", async () => {
+    for (const [answer, first, look] of [
+      [sent(3, []), "spans only", "OTEL_METRICS_EXPORTER=otlp"],
+      [sent(0, ["process.cpu.time"]), "metrics only", "OTEL_TRACES_EXPORTER=otlp"],
+      [sent(0, []), "neither", "starts through the instrumentation"],
+    ] as const) {
+      signals = answer;
+      const { code, out } = await run("check", "spans", "billing");
+      expect(code).toBe(0);
+      expect(out.split("\n")[0]).toBe(first);
+      expect(out).toContain(look);
+    }
+  });
+
+  test("names one service, and sends nothing without it", async () => {
+    signalsSeen = [];
+    for (const args of [["check", "spans"], ["check", "spans", "a", "b"]]) {
+      const { code, err } = await run(...args);
+      expect(code).not.toBe(0);
+      expect(err).toContain("check spans <service>");
+    }
+    expect(signalsSeen).toEqual([]);
+  });
+
+  test("a monitor named spans still sends a result", async () => {
+    checks = [];
+    signalsSeen = [];
+    const { code } = await run("check", "spans", "--", "true");
+    expect(code).toBe(0);
+    expect(checks[0]!.body).toMatchObject({ monitor: "spans", status: 0 });
+    expect(signalsSeen).toEqual([]);
+  });
+});
+
 describe("marker", () => {
   test("prints one word that is a single search token", async () => {
     const { code, out } = await run("marker");
@@ -282,6 +356,7 @@ describe("app-env", () => {
       `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20${token}`,
       "OTEL_LOGS_EXPORTER=otlp",
       "OTEL_METRICS_EXPORTER=otlp",
+      "OTEL_TRACES_EXPORTER=otlp",
       "OTEL_SERVICE_NAME=billing",
       "OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2",
       `TOPOSCOPE_INGEST_TOKEN=${token}`,

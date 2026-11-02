@@ -1,11 +1,11 @@
 ---
 name: toposcope
-description: Stand up a local Toposcope (a self-hosted log manager) for the app in this repo, get the app's error logs into it with the exception's type and stack on the row, prove they arrive as stack fingerprints, then propose and save its monitors, its Home panels and the CI step that marks a deploy, each previewed first. Use when asked to set up Toposcope, to send an app's logs or errors to Toposcope, to check that its errors arrive there, or to watch an app with it.
+description: Stand up a local Toposcope (a self-hosted log manager) for the app in this repo, get the app's error logs into it with the exception's type and stack on the row, prove they arrive as stack fingerprints, turn on its spans and metrics and check they arrive, then propose and save its monitors, its Home panels and the CI step that marks a deploy, each previewed first. Use when asked to set up Toposcope, to send an app's logs, errors, traces or metrics to Toposcope, to check that they arrive there, or to watch an app with it.
 ---
 
 # Toposcope
 
-Four jobs, in this order: stand up one instance on this machine, get this app’s errors into it, check that they arrive with a fingerprint that came from the stack, and design what watches it. Instrumenting is not done until the check says **frames**, and designing starts only then.
+Four jobs, in this order: stand up one instance on this machine, get this app’s errors, spans and metrics into it, check that the errors arrive with a fingerprint that came from the stack and that the spans and metrics arrive too, and design what watches it. Instrumenting is not done until the checks say **frames** and **spans and metrics**. Designing starts only after **frames**.
 
 Everything that touches the instance goes through `toposcope.sh`, in this skill’s directory:
 
@@ -22,6 +22,7 @@ bash <this skill's directory>/toposcope.sh <command>
 | `app-env <file>` | Writes the settings an app needs into a file. |
 | `marker` | Prints one word to put in a test error. |
 | `check <word>` | Reads that error back: **frames**, **message**, or **nothing arrived**. |
+| `check spans <service>` | Reads back the spans and metric names that service sent: **spans and metrics**, **spans only**, **metrics only**, or **neither**. |
 | `check <monitor> -- <command>` | Runs a command and sends how it went to a push monitor. |
 | `agent <name>` | Makes this agent’s Operator identity, `agent: <name>`, and writes its token to a file. |
 | `mcp [--json <file>]` | Prints how an MCP client connects as the agent, or writes a client’s JSON config to a file. |
@@ -49,7 +50,7 @@ Run `stop` only when the user asks.
 
 ## 2. Instrument
 
-The goal is this app’s error logs in the instance, each with the exception’s type and stack on the log row.
+The goal is this app’s error logs in the instance, each with the exception’s type and stack on the log row, and then its requests as spans and metrics.
 
 Look first at what the app already has. If it already exports OpenTelemetry, or a collector already ships its logs, point that at the instance. Otherwise ask the user which of three ways they want, and propose the first:
 
@@ -59,9 +60,11 @@ Look first at what the app already has. If it already exports OpenTelemetry, or 
 
 Then:
 
-1. Run `app-env <file> --service <name> --version <version>`, with a file the app’s runtime loads and git ignores. It writes the endpoint, the protocol, the token header, the service name and version, and it turns the OTLP metrics exporter on. Add the file to `.gitignore` if it is not already covered.
+1. Run `app-env <file> --service <name> --version <version>`, with a file the app’s runtime loads and git ignores. It writes the endpoint, the protocol, the token header, the service name and version, and it turns the OTLP logs, metrics and traces exporters on. Add the file to `.gitignore` if it is not already covered.
 2. Wire the way that was chosen through the app’s existing logger. Do not write a logging library.
 3. Make one change in app code, whichever way was chosen: a single uncaught-error path that logs the exception through the app’s own logger, so its type and stack ride on the log row. Look first at whether the logger already attaches them; many do.
+4. After the error path, turn on the zero-code instrumentation OpenTelemetry publishes for the app’s runtime. Add it through the app’s package manager, and start the app through it the way its docs say, with the same file loaded. It sends a span for each request and a histogram of how long requests take, to the same endpoint with the same token. If the app already has OpenTelemetry instrumentation, turn its traces and metrics exporters on instead of adding a second. Do not write spans by hand.
+5. If the errors go by a collector or a direct post, set `OTEL_LOGS_EXPORTER=none` in the file, so the instrumentation does not send the same logs a second time.
 
 What has to arrive is the section below. It is the ingest guide’s, word for word, and its links point into that guide.
 
@@ -98,6 +101,7 @@ OTEL_SERVICE_NAME=billing
 OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2
 OTEL_LOGS_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
+OTEL_TRACES_EXPORTER=otlp
 ```
 
 An exporter left on gRPC, which several are by default, needs the other address and no protocol line: `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4319`, with the same header. See [OTLP over gRPC](#otlp-over-grpc).
@@ -147,6 +151,12 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
    - **message** — the row arrived, but its fingerprint fell back to the log line: the exception’s type and stack are not on the row, or the stack is not in a format ingest reads. Fix the uncaught-error path and check again.
    - **nothing arrived** — no row. Look at the endpoint and its port (8080 for HTTP, 4319 for gRPC), the token, and whether the exporter flushed before the process ended. Then check again.
 
+4. Once it says **frames**, send a few requests through the app, then run `check spans <service>` with the service name `app-env` wrote, and relay its first line exactly. A metric exporter sends once a minute by default, so it waits up to 75 seconds for both. It is one of:
+   - **spans and metrics** — done. Requests show in the waterfall. Keep the histogram names it prints for the latency panel.
+   - **spans only** — no metric points. Look at `OTEL_METRICS_EXPORTER=otlp` in the file the app loads, and give the exporter its minute. Then check again.
+   - **metrics only** — no spans. Look at `OTEL_TRACES_EXPORTER=otlp` in the file the app loads, at whether the app starts through the instrumentation, and at `OTEL_TRACES_SAMPLER` if it is set. Then check again.
+   - **neither** — nothing from that service. Look at whether the app starts through the instrumentation with the file loaded, at the service name, at the endpoint and its port, and at the token. Then check again.
+
 Check once for each app.
 
 ## 4. Design
@@ -174,7 +184,7 @@ One message, each part numbered, so the person can say yes to some and no to oth
 1. **Its errors.** The saved search `<service> errors`, `service:<service> level:error` over `15m`, and a `search` monitor on it that opens at a number of rows in its window, set from what the preview shows.
 2. **A new fingerprint after a deploy.** A `fingerprints` monitor on the same saved search, `threshold: 1`: it opens when an error not seen before the last deploy arrives.
 3. **Its health URL**, if it has one. An `http` monitor on it, `every: "1m"`, `fail_after: 2`. The instance calls it from its container, where 127.0.0.1 is the container: on Docker Desktop an app on this machine is `host.docker.internal`. `monitor_send` runs the check once; show what it got.
-4. **Two Home panels.** Errors: `kind: "timeseries"`, `split: "level"`, `chart: "bars"`, titled `<service> errors`. Latency: `kind: "timeseries"` with `agg: "p99(<key>)"` on the duration key `numeric_keys` found, or, when the service sends a duration histogram, `metric: <its name>` with `metricLabels: {"service.name": "<service>"}`, titled `<service> p99`. A row panel reads the query of the saved search it is on: if Home is marked and its query is not this service, say so and propose the panels on the saved search `<service>` (`service:<service>`) instead. If none is marked, propose that saved search, shared, marked Home.
+4. **Two Home panels.** Errors: `kind: "timeseries"`, `split: "level"`, `chart: "bars"`, titled `<service> errors`. Latency: `kind: "timeseries"`, titled `<service> p99`. When `check spans` printed the server’s duration histogram (`http.server.request.duration`, or `http.server.duration` from older instrumentation), use it: `metric: "p99:<its name>"` with `metricLabels: {"service": "<service>"}`. Only when there is none, use `agg: "p99(<key>)"` on the duration key `numeric_keys` found. A row panel reads the query of the saved search it is on: if Home is marked and its query is not this service, say so and propose the panels on the saved search `<service>` (`service:<service>`) instead. If none is marked, propose that saved search, shared, marked Home.
 6. **Marking Home**, only when none is marked and part 4 needs it. Home is everyone’s: marking it changes what every person here opens on, so it is a part of its own, with its own yes. The instance lets an agent mark Home only where none is marked, and never move or unmark someone’s.
 5. **The CI step that marks a deploy**, in the pipeline file the repository has: the lines it would add, and where.
 
