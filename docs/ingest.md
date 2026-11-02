@@ -36,6 +36,7 @@ OTEL_SERVICE_NAME=billing
 OTEL_RESOURCE_ATTRIBUTES=service.version=1.4.2
 OTEL_LOGS_EXPORTER=otlp
 OTEL_METRICS_EXPORTER=otlp
+OTEL_TRACES_EXPORTER=otlp
 ```
 
 An exporter left on gRPC, which several are by default, needs the other address and no protocol line: `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4319`, with the same header. See [OTLP over gRPC](#otlp-over-grpc).

@@ -245,6 +245,7 @@ cmd_app_env() {
       printf 'OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%%20%s\n' "$token"
       printf 'OTEL_LOGS_EXPORTER=otlp\n'
       printf 'OTEL_METRICS_EXPORTER=otlp\n'
+      printf 'OTEL_TRACES_EXPORTER=otlp\n'
       [ -z "$service" ] || printf 'OTEL_SERVICE_NAME=%s\n' "$service"
       [ -z "$version" ] || printf 'OTEL_RESOURCE_ATTRIBUTES=service.version=%s\n' "$version"
       printf 'TOPOSCOPE_URL=http://127.0.0.1:8080\n'
@@ -252,7 +253,7 @@ cmd_app_env() {
     } >"$file"
   )
   chmod 600 "$file"
-  printf 'Wrote %s. It sets the OTLP endpoint, protocol, token header, logs and metrics exporters on' "$file"
+  printf 'Wrote %s. It sets the OTLP endpoint, protocol, token header, logs, metrics and traces exporters on' "$file"
   [ -z "$service" ] || printf ', service name'
   [ -z "$version" ] || printf ', service version'
   printf ', and TOPOSCOPE_URL and TOPOSCOPE_INGEST_TOKEN for a direct post. Values are not shown. It holds the ingest token: keep it out of git.\n'
@@ -579,6 +580,68 @@ cmd_check() {
   printf '\nopen: http://127.0.0.1:8080/?q=%s%%20OR%%20exception.message:%s&range=15m\n' "$word" "$word"
 }
 
+# What one service sent besides logs in the last 15 minutes (#420): its spans and its metric names,
+# read with the same read token as `check`. Exporters batch, and a metric exporter sends once a
+# minute by default, so it waits up to TOPOSCOPE_CHECK_WAIT (75 s) for both to show.
+cmd_check_spans() {
+  local service="${1:-}"
+  [ -n "$service" ] && [ "$#" -eq 1 ] || die "Usage: check spans <service>, with the service name app-env wrote."
+  need curl
+  local token body="" waited=0 wait="${TOPOSCOPE_CHECK_WAIT:-75}" spans=0 metrics=0
+  token="$(read_token)"
+  while :; do
+    body="$(printf 'header = "authorization: Bearer %s"\n' "$token" |
+      curl -q --noproxy '*' -fsS -m 15 -K - -G "$URL/api/service-signals" \
+        --data-urlencode "service=$service" --data-urlencode "range=15m")" ||
+      die "Could not read from the instance at $URL. Run: status"
+    spans="$(printf '%s' "$body" | sed -n 's/.*"spans":\([0-9]*\).*/\1/p')"
+    metrics="$(printf '%s' "$body" | sed -n 's/.*"metrics":\([0-9]*\).*/\1/p')"
+    spans="${spans:-0}"
+    metrics="${metrics:-0}"
+    [ "$spans" -eq 0 ] || [ "$metrics" -eq 0 ] || break
+    [ "$waited" -lt "$wait" ] || break
+    sleep 5
+    waited=$((waited + 5))
+  done
+
+  local span_names metric_names histograms from to
+  span_names="$(json_list "$body" span_names)"
+  metric_names="$(json_list "$body" metric_names)"
+  histograms="$(json_list "$body" histograms)"
+  from="$(printf '%s' "$body" | sed -n 's/.*"from":"\([^"]*\)".*/\1/p')"
+  to="$(printf '%s' "$body" | sed -n 's/.*"to":"\([^"]*\)".*/\1/p')"
+
+  if [ "$spans" -gt 0 ] && [ "$metrics" -gt 0 ]; then
+    printf 'spans and metrics\n'
+    printf 'Both arrived. Requests show in the waterfall, and the metrics can be panels.\n'
+  elif [ "$spans" -gt 0 ]; then
+    printf 'spans only\n'
+    printf 'No metric points from %s. Look at OTEL_METRICS_EXPORTER=otlp in the env file the app loads, and give the exporter its minute: it sends once a minute by default. Then check again.\n' "$service"
+  elif [ "$metrics" -gt 0 ]; then
+    printf 'metrics only\n'
+    printf 'No spans from %s. Look at OTEL_TRACES_EXPORTER=otlp in the env file the app loads, at whether the app starts through the instrumentation, and at OTEL_TRACES_SAMPLER if it is set. Send a request through the app, then check again.\n' "$service"
+  else
+    printf 'neither\n'
+    printf 'No spans and no metric points from %s. Look at whether the app starts through the instrumentation and loads the env file, at the service name (OTEL_SERVICE_NAME), the endpoint and its port (8080 for HTTP, 4319 for gRPC), and the token. Send a request through the app, then check again.\n' "$service"
+  fi
+  printf 'spans: %s' "$spans"
+  [ -z "$span_names" ] || printf ', the busiest: %s' "$span_names"
+  printf '\nmetric names: %s' "$metrics"
+  [ -z "$metric_names" ] || printf ', the busiest: %s' "$metric_names"
+  printf '\n'
+  [ -z "$histograms" ] || printf 'histograms: %s\n' "$histograms"
+  printf 'window: the last 15 minutes'
+  [ -z "$from" ] || [ -z "$to" ] || printf ' (%s to %s)' "$from" "$to"
+  printf '\n'
+}
+
+# A list of strings in a JSON answer, as text separated by ", ": quotes and control characters
+# dropped. The names are data the app sent.
+json_list() {
+  printf '%s' "$1" | LC_ALL=C sed -n "s/.*\"$2\":\[\([^]]*\)\].*/\1/p" |
+    LC_ALL=C sed -e 's/\\"//g' -e 's/","/, /g' -e 's/^"//' -e 's/"$//' | LC_ALL=C tr -d '\000-\037'
+}
+
 # A string's JSON text, without its quotes. Control characters other than tab,
 # newline and carriage return are dropped.
 json_text() {
@@ -660,6 +723,19 @@ cmd_check_monitor() {
   return "$code"
 }
 
+# `check <monitor> -- <command>` sends a result; `check spans <service>` reads spans and metric names
+# back; `check <word>` reads a test error back. A monitor named spans still takes `--`.
+check_any() {
+  if [ "${2:-}" = "--" ]; then
+    cmd_check_monitor "$@"
+  elif [ "${1:-}" = "spans" ]; then
+    shift
+    cmd_check_spans "$@"
+  else
+    cmd_check "$@"
+  fi
+}
+
 case "${1:-}" in
   cost) cmd_cost ;;
   up) cmd_up ;;
@@ -672,9 +748,8 @@ case "${1:-}" in
   agent) shift; cmd_agent "$@" ;;
   mcp) shift; cmd_mcp "$@" ;;
   call) shift; cmd_call "$@" ;;
-  # `check <word>` reads a test error back; `check <monitor> -- <command>` sends a result.
-  check) shift; if [ "${2:-}" = "--" ]; then cmd_check_monitor "$@"; else cmd_check "$@"; fi ;;
+  check) shift; check_any "$@" ;;
   *)
-    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | agent <name> | mcp [--agent <name>] [--json <file>] | call [--agent <name>] <tool> ['<json>' | -] | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check <monitor> -- <command>"
+    die "Usage: toposcope.sh cost | up | status | stop | owner-link <email> | service-token <account> <role> [name] | agent <name> | mcp [--agent <name>] [--json <file>] | call [--agent <name>] <tool> ['<json>' | -] | app-env <file> [--service <name>] [--version <version>] | marker | check <word> | check spans <service> | check <monitor> -- <command>"
     ;;
 esac

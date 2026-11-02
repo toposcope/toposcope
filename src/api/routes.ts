@@ -64,6 +64,7 @@ import { fingerprintSeenRoute } from "../query/fingerprint-seen";
 import { followSpanRoute } from "../query/follow-span";
 import { marksRoute } from "../query/marks";
 import { probesRoute } from "../query/probes";
+import { serviceSignalsRoute } from "../query/service-signals";
 import { profilesRoute } from "../query/profiles";
 import { systemRoute } from "../query/system";
 import { throughputRoute } from "../query/throughput";
@@ -86,7 +87,7 @@ import { upgradeBody } from "./schemas/instance";
 import { monitorBody, monitorDraftBody, monitorPreviewQuery, monitorsQuery, sendBody, testCallBody } from "./schemas/monitors";
 import { feedCreateBody, feedReadQuery, linkConfirmBody, linkInviteBody, linkOfferBody, linkPreviewBody, linkUpdateBody } from "./schemas/links";
 import { shareCreateBody, sharePutBody } from "./schemas/shares";
-import { aroundQuery, attrFacetsQuery, compareQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, metricSeriesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery } from "./schemas/search";
+import { aroundQuery, attrFacetsQuery, compareQuery, attrKeysQuery, attrValuesQuery, contextQuery, cutQuery, facetsQuery, fingerprintSeenQuery, followSpanQuery, marksQuery, metricLabelsQuery, metricNamesQuery, metricSeriesQuery, numericKeysQuery, probesQuery, profilesQuery, revisionsQuery, searchQuery, serviceSignalsQuery } from "./schemas/search";
 
 /**
  * The described API (#356), in the order the app registers it: a fixed path comes before a
@@ -126,6 +127,7 @@ export const apiRoutes: ApiRoute[] = [
   { id: "metric_names", method: "GET", path: "/api/metric-names", area: "Search", action: "read", summary: "The metric names with points in a window.", query: metricNamesQuery, body: null, handler: metricNamesRoute },
   { id: "metric_series", method: "GET", path: "/api/metrics/series", area: "Search", action: "read", summary: "One metric's series in a window, by name and label matchers, split by a label when asked.", query: metricSeriesQuery, body: null, handler: metricSeriesRoute },
   { id: "metric_labels", method: "GET", path: "/api/metric-labels", area: "Search", action: "read", summary: "The label keys one metric's points carry in a window, with how many values each.", query: metricLabelsQuery, body: null, handler: metricLabelsRoute },
+  { id: "service_signals", method: "GET", path: "/api/service-signals", area: "Search", action: "read", summary: "What one service sent besides logs in a window: how many spans and their busiest names, and its metric names.", query: serviceSignalsQuery, body: null, handler: serviceSignalsRoute },
 
   // Home and saved searches
   { id: "home", method: "GET", path: "/api/home", area: "Saved searches", action: "read", summary: "The saved search marked Home, if any.", query: null, body: null, handler: getHome },

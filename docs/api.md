@@ -423,6 +423,21 @@ Query:
 | `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
 | `name` | string | yes | The metric's name. |
 
+### GET /api/service-signals
+
+What one service sent besides logs in a window: how many spans and their busiest names, and its metric names.
+
+Role: **Viewer** · `service_signals`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `from` | string |  | Where the window starts, an ISO time. |
+| `to` | string |  | Where the window ends, an ISO time. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `service` | string | yes | The service, as its rows name it. |
+
 ## Saved searches
 
 ### GET /api/home

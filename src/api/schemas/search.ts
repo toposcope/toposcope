@@ -32,6 +32,11 @@ export const probesQuery = v.object({
   service: optionalText("Only probes of this service."),
 });
 
+export const serviceSignalsQuery = v.object({
+  ...window,
+  service: requiredText("The service, as its rows name it.", "service is required"),
+});
+
 export const profilesQuery = v.object({
   trace_id: requiredText("The trace, 32 hex characters.", "trace_id must be 32-character hex and span_id 16-character hex"),
   span_id: requiredText("The span, 16 hex characters.", "trace_id must be 32-character hex and span_id 16-character hex"),
