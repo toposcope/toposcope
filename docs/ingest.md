@@ -570,6 +570,7 @@ UDP has no delivery acknowledgement or HTTP-style backpressure. Use a collector 
 
 ## Related documentation
 
+- [What an investigation reads](evidence.md)
 - [Query language](query.md)
 - [Operations](operations.md)
 - [Architecture](ARCHITECTURE.md)

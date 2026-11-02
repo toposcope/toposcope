@@ -78,7 +78,7 @@ Logs, ingested metrics, spans, profile samples, and change marks are stored in C
 
 ## Send data
 
-An app speaks OpenTelemetry to Toposcope: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional — add one for a disk buffer or enrichment. Vector is the canonical collector; Fluent Bit and Alloy are supported alternatives. Collectors own buffering, parsing, sampling, and enrichment. The ingest guide says [what an app sends](docs/ingest.md#what-an-app-sends).
+An app speaks OpenTelemetry to Toposcope: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional — add one for a disk buffer or enrichment. Vector is the canonical collector; Fluent Bit and Alloy are supported alternatives. Collectors own buffering, parsing, sampling, and enrichment. The ingest guide says [what an app sends](docs/ingest.md#what-an-app-sends), and [what an investigation reads](docs/evidence.md) says why each key matters.
 
 A coding agent can do this for an app: the [toposcope skill](skills/toposcope/SKILL.md) stands up one local instance, gets the app’s errors into it, and checks that they arrive with a stack fingerprint.
 Then it designs: as its own Operator identity, over MCP or `toposcope.sh call`, it proposes the app’s monitors, two Home panels and the CI step that marks a deploy, previews each over the last 7 days, and saves only what you say yes to, with the call that undoes each.
@@ -141,6 +141,7 @@ Local development runs ClickHouse in Docker and the Bun API plus Vite UI on the 
 - [API](docs/api.md): every `/api` route a token may call, its role and what it takes; `GET /api/openapi.json` is the same as OpenAPI 3.1
 - [MCP](docs/mcp.md): an agent calls the API as tools at `/mcp`, with the same token
 - [Ingest guide](docs/ingest.md)
+- [What an investigation reads](docs/evidence.md): the keys Home and the hunt need on each row, and what goes missing without them
 - [Operations guide](docs/operations.md)
 - [Query language](docs/query.md)
 - [Architecture](docs/ARCHITECTURE.md)
