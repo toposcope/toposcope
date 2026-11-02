@@ -467,6 +467,13 @@ export function App() {
     {},
   );
   const [view, setView] = useState<OperatorView>(boot.view);
+  // Home's "Names that do not match ›" opens Fields at them (37k); any other way in opens at the top
+  const [fieldsNames, setFieldsNames] = useState(false);
+  useEffect(() => {
+    if (view !== "fields") {
+      setFieldsNames(false);
+    }
+  }, [view]);
   const [split, setSplit] = useState<HistogramSplit>(boot.split);
   const [chart, setChart] = useState<HistogramChartKind>(boot.chart);
   const [logScale, setLogScale] = useState(boot.logScale);
@@ -4234,6 +4241,10 @@ export function App() {
           onOpenAccess={() => setView("access")}
           onOpenAgents={isViewer ? undefined : openAgents}
           onOpenBoard={(item) => openSavedTab(item)}
+          onOpenFields={(names) => {
+            setFieldsNames(names);
+            setView("fields");
+          }}
         />
       ) : view === "access" && sharePage ? (
         <SharePage
@@ -4313,6 +4324,7 @@ export function App() {
           elapsedMs={fieldsElapsedMs}
           failed={fieldsFailed}
           onSettings={() => setView("settings")}
+          focusNames={fieldsNames}
           onStop={cancelFields}
           onSave={saveFields}
         />
