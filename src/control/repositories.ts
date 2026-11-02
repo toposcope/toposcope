@@ -2,7 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { Context } from "hono";
 import { getChangeMarkById, mapRow, markSelect, type MarkRow } from "../query/marks";
 import { clickhouseQuery } from "../shared/clickhouse";
-import { parseRepo, repoResourceKey, type Repo } from "../shared/code-links";
+import { parseRepo, parseRepoPath, repoResourceKey, type Repo } from "../shared/code-links";
 import type { ChangeMark } from "../shared/change-mark";
 import { actorName, currentActorRef, type ActorName } from "./actors";
 import { getDb } from "./index";
@@ -11,13 +11,14 @@ import { getDb } from "./index";
  * Where each service's code lives (#393, frame 37i). A service's repository comes from
  * `vcs.repository.url.full` on its resource, else `repo` on its newest deploy mark, else a row an
  * Operator set here; one set here wins over both. Links only: nothing is fetched, no token is kept.
+ * A row set here may also name the folder the service's stack paths start in (#413, 41e).
  */
 
 export type RepoFrom = "set" | "resource" | "mark";
 
 export type ServiceRepo = {
   service: string;
-  repository: (Repo & { from: RepoFrom }) | null;
+  repository: (Repo & { from: RepoFrom; path: string | null }) | null;
   /** The deploy mark `repo` was read from, when it is the one that counts or the fallback. */
   mark: { id: string; version: string } | null;
   set_by: ActorName | null;
@@ -33,12 +34,16 @@ export function migrateRepositories(db: Database): void {
       set_at INTEGER NOT NULL
     );
   `);
+  const cols = db.query("PRAGMA table_info(repositories)").all() as { name: string }[];
+  if (!cols.some((col) => col.name === "path")) {
+    db.run("ALTER TABLE repositories ADD COLUMN path TEXT");
+  }
 }
 
-type SetRow = { service: string; url: string; set_by: string | null; set_at: number };
+type SetRow = { service: string; url: string; path: string | null; set_by: string | null; set_at: number };
 
 function setRows(db: Database = getDb()): SetRow[] {
-  return db.query("SELECT service, url, set_by, set_at FROM repositories ORDER BY service").all() as SetRow[];
+  return db.query("SELECT service, url, path, set_by, set_at FROM repositories ORDER BY service").all() as SetRow[];
 }
 
 /** Rows a sender's resource names, newest first per service: the minute rollup, then spans and a short logs scan for a URL too long for the rollup. */
@@ -118,11 +123,11 @@ export function pickRepo(
   const fromResource = resource ? parseRepo(resource) : null;
   const fromSet = set ? parseRepo(set.url) : null;
   const repository = fromSet
-    ? { ...fromSet, from: "set" as const }
+    ? { ...fromSet, from: "set" as const, path: set?.path || null }
     : fromResource
-      ? { ...fromResource, from: "resource" as const }
+      ? { ...fromResource, from: "resource" as const, path: null }
       : fromMark
-        ? { ...fromMark, from: "mark" as const }
+        ? { ...fromMark, from: "mark" as const, path: null }
         : null;
   return {
     service,
@@ -155,22 +160,36 @@ export async function listRepositoriesRoute(c: Context): Promise<Response> {
   });
 }
 
-/** `PUT /api/repositories/:service`: set one by hand; it wins over the resource and the marks. */
+/**
+ * `PUT /api/repositories/:service`: set one by hand; it wins over the resource and the marks.
+ * `path` sets the folder ("" clears it); left out, the folder stays while the repository does.
+ */
 export async function setRepositoryRoute(c: Context): Promise<Response> {
   const service = decodeURIComponent(c.req.param("service") ?? "").trim();
   if (!service) {
     return c.json({ error: "service is required" }, 400);
   }
-  const body = (await c.req.json().catch(() => null)) as { url?: unknown } | null;
+  const body = (await c.req.json().catch(() => null)) as { url?: unknown; path?: unknown } | null;
   const raw = typeof body?.url === "string" ? body.url : "";
   const repo = parseRepo(raw);
   if (!repo) {
     return c.json({ error: "url must be a repository: https://host/owner/name, host/owner/name or git@host:owner/name", field: "url" }, 400);
   }
   const db = getDb();
+  let path: string | null;
+  if (body?.path === undefined) {
+    const was = setRows(db).find((r) => r.service === service);
+    path = was && was.url === repo.url ? was.path : null;
+  } else {
+    const folder = typeof body.path === "string" ? parseRepoPath(body.path) : null;
+    if (folder === null) {
+      return c.json({ error: "path must be a folder in the repository, like services/pay", field: "path" }, 400);
+    }
+    path = folder || null;
+  }
   db.query(
-    "INSERT INTO repositories (service, url, set_by, set_at) VALUES (?, ?, ?, ?) ON CONFLICT(service) DO UPDATE SET url = excluded.url, set_by = excluded.set_by, set_at = excluded.set_at",
-  ).run(service, repo.url, currentActorRef(), Date.now());
+    "INSERT INTO repositories (service, url, path, set_by, set_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(service) DO UPDATE SET url = excluded.url, path = excluded.path, set_by = excluded.set_by, set_at = excluded.set_at",
+  ).run(service, repo.url, path, currentActorRef(), Date.now());
   return c.json(await repoFor(service, db));
 }
 

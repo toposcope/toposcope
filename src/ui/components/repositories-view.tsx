@@ -1,21 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { parseRepo, repoDisplay, repoHostWords, repoResourceKey } from "../../shared/code-links";
-import type { ServiceRow } from "../repositories";
-import { knownFromWords, pickHandService } from "../repositories";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { parseRepo, parseRepoPath, repoDisplay, repoFilePath, repoHostWords, repoResourceKey, type Repo } from "../../shared/code-links";
+import type { KnownRepo, ServiceRow } from "../repositories";
+import { knownFromWords, knownRepos, servicesWords } from "../repositories";
 
 /**
- * Settings › Repositories (#393, frame 37i): where each service's code lives, so a sha and a
- * stack frame open it. An Operator sets one by hand or clears it; a Viewer reads the table.
+ * Settings › Repositories (#393, frame 37i; #413, frames 41a–41e): where each service's code
+ * lives, so a sha and a stack frame open it. An Operator picks a repository Toposcope already
+ * knows or pastes one, sets several services at once, and gives a service a folder when its
+ * stack paths start in one; a Viewer reads the table.
  */
 export function RepositoriesView(props: { onSettings: () => void; canWrite: boolean }) {
   const [rows, setRows] = useState<ServiceRow[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [service, setService] = useState<string | null>(null);
-  const [url, setUrl] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // The open popover: a row's ("change" / "pick" / "folder"), or the selection bar's ("" service).
+  const [open, setOpen] = useState<{ service: string; mode: "change" | "pick" | "folder" } | null>(null);
   const [busy, setBusy] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/repositories");
@@ -25,51 +28,97 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
     }
     const body = (await res.json()) as { repositories: ServiceRow[] };
     setRows(body.repositories);
-    setService((cur) => pickHandService(body.repositories, cur));
+    setSelected((cur) => new Set([...cur].filter((s) => body.repositories.some((r) => r.service === s))));
   }, []);
   useEffect(() => {
     void load().catch(() => setFailed(true));
   }, [load]);
 
-  async function save() {
-    if (!service) {
-      return;
+  async function put(service: string, body: { url: string; path?: string }): Promise<string | null> {
+    const res = await fetch(`/api/repositories/${encodeURIComponent(service)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      return null;
     }
+    const json = (await res.json().catch(() => null)) as { error?: string } | null;
+    return json?.error ?? `Save failed (${res.status})`;
+  }
+
+  async function setRepo(services: string[], url: string) {
     setBusy(true);
     try {
-      const res = await fetch(`/api/repositories/${encodeURIComponent(service)}`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
-      });
-      const json = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) {
-        toast.error(json?.error ?? `Save failed (${res.status})`);
-        return;
+      const errors = (await Promise.all(services.map((s) => put(s, { url })))).filter((e): e is string => e !== null);
+      const repo = parseRepo(url);
+      if (errors.length) {
+        toast.error(errors[0]!);
+      } else {
+        toast.success(services.length === 1 ? `${services[0]}'s repository saved` : `${services.length} services set to ${repo?.name ?? url}`);
+        setOpen(null);
+        if (services.length > 1 || open?.service === "") {
+          setSelected(new Set());
+        }
       }
-      toast.success(`${service}'s repository saved`);
-      setUrl("");
-      setService(null);
       await load();
     } finally {
       setBusy(false);
     }
   }
 
-  async function clear(name: string) {
-    const res = await fetch(`/api/repositories/${encodeURIComponent(name)}`, { method: "DELETE" });
-    if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as { error?: string } | null;
-      toast.error(json?.error ?? `Clear failed (${res.status})`);
-      return;
+  async function setFolder(service: string, url: string, path: string) {
+    setBusy(true);
+    try {
+      const error = await put(service, { url, path });
+      if (error) {
+        toast.error(error);
+        return;
+      }
+      toast.success(path ? `${service}'s folder saved` : `${service}'s folder cleared`);
+      setOpen(null);
+      await load();
+    } finally {
+      setBusy(false);
     }
-    toast.success(`${name}'s repository cleared`);
-    await load();
   }
 
-  const typed = url.trim() ? parseRepo(url) : null;
+  async function clear(services: string[]) {
+    setBusy(true);
+    try {
+      const results = await Promise.all(services.map((s) => fetch(`/api/repositories/${encodeURIComponent(s)}`, { method: "DELETE" })));
+      const bad = results.find((res) => !res.ok);
+      if (bad) {
+        const json = (await bad.json().catch(() => null)) as { error?: string } | null;
+        toast.error(json?.error ?? `Clear failed (${bad.status})`);
+      } else {
+        toast.success(services.length === 1 ? `${services[0]}'s repository cleared` : `${services.length} repositories cleared`);
+        setOpen(null);
+        setSelected(new Set());
+      }
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const known = rows ? knownRepos(rows) : [];
+  const picked = rows ? rows.filter((r) => selected.has(r.service)).map((r) => r.service) : [];
+  const pickedSetHere = rows ? rows.filter((r) => selected.has(r.service) && r.repository?.from === "set").map((r) => r.service) : [];
+  const allPicked = rows !== null && rows.length > 0 && picked.length === rows.length;
+  const toggle = (service: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(service)) {
+        next.delete(service);
+      } else {
+        next.add(service);
+      }
+      return next;
+    });
   const th = "px-4 py-2.5 text-left whitespace-nowrap text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase";
   const td = "px-4 py-3 align-middle";
+  const cols = props.canWrite ? 6 : 5;
 
   return (
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
@@ -92,10 +141,37 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
             <p className="text-sm">Could not read the repositories.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+          <div className="overflow-x-auto rounded-[10px] border border-white/10 bg-[#131316]">
+            {props.canWrite && picked.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] bg-[#18181b] px-4 py-2 text-[12.5px]">
+                <span>{picked.length} selected</span>
+                <Popover open={open?.service === ""} onOpenChange={(o) => setOpen(o ? { service: "", mode: "pick" } : null)}>
+                  <PopoverTrigger asChild>
+                    <Button type="button" size="sm" disabled={busy}>
+                      Set repository ▾
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[420px] p-1">
+                    <RepoMenu services={picked} known={known} busy={busy} onPick={(url) => void setRepo(picked, url)} />
+                  </PopoverContent>
+                </Popover>
+                <Button type="button" size="sm" variant="outline" disabled={busy || pickedSetHere.length === 0} title={pickedSetHere.length === 0 ? "None of these is set here" : undefined} onClick={() => void clear(pickedSetHere)}>
+                  Clear
+                </Button>
+                <span className="flex-1" />
+                <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setSelected(new Set())}>
+                  Cancel
+                </Button>
+              </div>
+            ) : null}
             <table className="w-full border-collapse text-[12.5px]">
               <thead>
                 <tr className="border-b border-white/[0.06]">
+                  {props.canWrite ? (
+                    <th className="w-4 py-2.5 pr-0 pl-4 text-left">
+                      <input type="checkbox" aria-label="Select all services" className="accent-[#e7e1d3]" checked={allPicked} disabled={!rows?.length} onChange={() => setSelected(allPicked || !rows ? new Set() : new Set(rows.map((r) => r.service)))} />
+                    </th>
+                  ) : null}
                   <th className={th}>Service</th>
                   <th className={th}>Repository</th>
                   <th className={th}>Known from</th>
@@ -106,76 +182,66 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
               <tbody>
                 {rows === null ? (
                   <tr>
-                    <td colSpan={5} className={`${td} text-muted-foreground`}>
+                    <td colSpan={cols} className={`${td} text-muted-foreground`}>
                       reading…
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className={`${td} text-muted-foreground`}>
+                    <td colSpan={cols} className={`${td} text-muted-foreground`}>
                       No service has sent a row in the last 7 days.
                     </td>
                   </tr>
                 ) : (
-                  rows.map((r) => (
-                    <tr key={r.service} className="border-b border-white/[0.06]">
-                      <td className={`${td} font-mono`}>{r.service}</td>
-                      <td className={`${td} font-mono ${r.repository ? "" : "text-muted-foreground"}`}>{r.repository ? repoDisplay(r.repository) : "none"}</td>
-                      <td className={`${td} whitespace-nowrap text-muted-foreground`} title={r.set_at ? new Date(r.set_at).toISOString().replace("T", " ").slice(0, 16) + " UTC" : undefined}>
-                        {knownFromWords(r)}
-                      </td>
-                      <td className={`${td} whitespace-nowrap text-muted-foreground`}>{r.repository ? repoHostWords[r.repository.host] : "—"}</td>
-                      <td className={`${td} text-right`}>
-                        {!props.canWrite ? null : r.repository?.from === "set" ? (
-                          <Button type="button" size="sm" variant="outline" onClick={() => void clear(r.service)}>
-                            Clear
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setService(r.service);
-                              input.current?.focus();
-                            }}
-                          >
-                            Set
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                  rows.map((r) => {
+                    const repo = r.repository;
+                    const rowOpen = open?.service === r.service ? open : null;
+                    return (
+                      <tr key={r.service} className={`border-b border-white/[0.06] ${selected.has(r.service) ? "bg-[#e7e1d3]/[0.05]" : rowOpen ? "bg-white/[0.03]" : ""}`}>
+                        <Popover open={rowOpen !== null} onOpenChange={(o) => setOpen(o ? { service: r.service, mode: repo?.from === "set" ? "change" : "pick" } : null)}>
+                          {props.canWrite ? (
+                            <td className="w-4 py-3 pr-0 pl-4 align-middle">
+                              <input type="checkbox" aria-label={`Select ${r.service}`} className="accent-[#e7e1d3]" checked={selected.has(r.service)} onChange={() => toggle(r.service)} />
+                            </td>
+                          ) : null}
+                          <td className={`${td} font-mono`}>{r.service}</td>
+                          <td className={`${td} font-mono ${repo ? "" : "text-muted-foreground"}`}>
+                            {repo ? repoDisplay(repo) : "none"}
+                            {repo?.path ? <span className="text-muted-foreground"> · {repo.path}</span> : null}
+                          </td>
+                          <td className={`${td} whitespace-nowrap text-muted-foreground`} title={r.set_at ? new Date(r.set_at).toISOString().replace("T", " ").slice(0, 16) + " UTC" : undefined}>
+                            {knownFromWords(r)}
+                          </td>
+                          <td className={`${td} whitespace-nowrap text-muted-foreground`}>{repo ? repoHostWords[repo.host] : "—"}</td>
+                          <td className={`${td} text-right`}>
+                            {props.canWrite ? (
+                              <PopoverTrigger asChild>
+                                <Button type="button" size="sm" variant="outline" disabled={busy} aria-haspopup="menu">
+                                  {repo?.from === "set" ? "Change" : "Set"}
+                                </Button>
+                              </PopoverTrigger>
+                            ) : null}
+                          </td>
+                          <PopoverContent align="end" className={rowOpen?.mode === "change" ? "w-[200px] p-1" : rowOpen?.mode === "folder" ? "w-[440px] p-3" : "w-[420px] p-1"}>
+                            {rowOpen?.mode === "change" && repo ? (
+                              <div role="menu" aria-label={`Change ${r.service}'s repository`} className="flex flex-col">
+                                <MenuItem onClick={() => setOpen({ service: r.service, mode: "pick" })}>Repository…</MenuItem>
+                                <MenuItem onClick={() => setOpen({ service: r.service, mode: "folder" })}>Folder…</MenuItem>
+                                <MenuItem disabled={busy} onClick={() => void clear([r.service])}>
+                                  Clear
+                                </MenuItem>
+                              </div>
+                            ) : rowOpen?.mode === "folder" && repo ? (
+                              <FolderForm service={r.service} repo={repo} busy={busy} onCancel={() => setOpen(null)} onSave={(path) => void setFolder(r.service, repo.url, path)} />
+                            ) : (
+                              <RepoMenu services={[r.service]} known={known} busy={busy} onPick={(url) => void setRepo([r.service], url)} />
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </tr>
+                    );
+                  })
                 )}
-                {props.canWrite && service ? (
-                  <tr>
-                    <td className={`${td} text-muted-foreground`}>Set one by hand</td>
-                    <td className={td}>
-                      <input
-                        ref={input}
-                        aria-label={`Repository for ${service}`}
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && typed) {
-                            void save();
-                          }
-                        }}
-                        placeholder="https://git.example.com/owner/name"
-                        className="h-8 w-full min-w-0 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12.5px] outline-none"
-                      />
-                    </td>
-                    <td className={`${td} text-muted-foreground`}>
-                      for <span className="font-mono text-foreground">{service}</span>
-                    </td>
-                    <td className={`${td} whitespace-nowrap text-muted-foreground`}>{typed ? repoHostWords[typed.host] : "—"}</td>
-                    <td className={`${td} text-right`}>
-                      <Button type="button" size="sm" disabled={!typed || busy} onClick={() => void save()}>
-                        Save
-                      </Button>
-                    </td>
-                  </tr>
-                ) : null}
               </tbody>
             </table>
           </div>
@@ -186,5 +252,140 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
         </p>
       </div>
     </main>
+  );
+}
+
+function MenuItem(props: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
+  return (
+    <button type="button" role="menuitem" disabled={props.disabled} onClick={props.onClick} className="w-full rounded-[4.4px] px-2 py-[7px] text-left text-[12.5px] hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50">
+      {props.children}
+    </button>
+  );
+}
+
+/** 41b / 41c: the repositories Toposcope knows, each with its services, then Paste a URL…. */
+function RepoMenu(props: { services: string[]; known: KnownRepo[]; busy: boolean; onPick: (url: string) => void }) {
+  const [paste, setPaste] = useState(props.known.length === 0);
+  const [url, setUrl] = useState("");
+  const typed = url.trim() ? parseRepo(url) : null;
+  const forWords = <span className="font-mono text-zinc-300">{servicesWords(props.services)}</span>;
+
+  if (paste) {
+    return (
+      <form
+        aria-label={`Paste a repository URL for ${servicesWords(props.services)}`}
+        className="flex flex-col gap-2 p-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (typed) {
+            props.onPick(url.trim());
+          }
+        }}
+      >
+        {props.known.length > 0 ? (
+          <button type="button" className="self-start text-[11.5px] text-muted-foreground hover:text-foreground" onClick={() => setPaste(false)}>
+            ‹ Known repositories
+          </button>
+        ) : null}
+        <label htmlFor="repo-url" className="text-[12px] text-muted-foreground">
+          Repository URL for {forWords}
+        </label>
+        <input
+          id="repo-url"
+          autoFocus
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://git.example.com/owner/name"
+          className="h-[30px] w-full min-w-0 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12px] outline-none focus:border-[#e7e1d3]"
+        />
+        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          <span className="min-w-0 truncate">
+            {typed ? (
+              <>
+                Links as {repoHostWords[typed.host]} · <span className="font-mono text-zinc-300">{repoDisplay(typed)}</span>
+              </>
+            ) : url.trim() ? (
+              "Not a repository URL"
+            ) : null}
+          </span>
+          <span className="flex-1" />
+          <Button type="submit" size="sm" disabled={!typed || props.busy}>
+            Save
+          </Button>
+        </div>
+      </form>
+    );
+  }
+  return (
+    <div role="menu" aria-label={`Set a repository for ${servicesWords(props.services)}`} className="flex flex-col">
+      <div className="px-2 pt-1.5 pb-1 text-[11px] text-muted-foreground">For {forWords}</div>
+      {props.known.map((k) => (
+        <button
+          key={k.repo.url}
+          type="button"
+          role="menuitem"
+          disabled={props.busy}
+          onClick={() => props.onPick(k.repo.url)}
+          className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-[4.4px] px-2 py-[7px] text-left text-[12.5px] hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50"
+        >
+          <span className="truncate font-mono">{repoDisplay(k.repo)}</span>
+          <span className="text-[11.5px] text-muted-foreground">{servicesWords(k.services)}</span>
+        </button>
+      ))}
+      <div className="my-1 h-px bg-white/[0.08]" />
+      <MenuItem onClick={() => setPaste(true)}>Paste a URL…</MenuItem>
+    </div>
+  );
+}
+
+/** 41e: the folder a service's stack paths start in, with a frame it would open. */
+function FolderForm(props: { service: string; repo: Repo & { path: string | null }; busy: boolean; onCancel: () => void; onSave: (path: string) => void }) {
+  const [text, setText] = useState(props.repo.path ?? "");
+  const folder = parseRepoPath(text);
+  const example = "src/index.ts";
+  return (
+    <form
+      aria-label={`Folder for ${props.service}`}
+      className="flex flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (folder !== null) {
+          props.onSave(folder);
+        }
+      }}
+    >
+      <label htmlFor="repo-folder" className="text-[12px] text-muted-foreground">
+        Folder for <span className="font-mono text-foreground">{props.service}</span> in <span className="font-mono text-foreground">{props.repo.name}</span>
+      </label>
+      <input
+        id="repo-folder"
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="services/pay"
+        className="h-[30px] w-full min-w-0 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12px] outline-none focus:border-[#e7e1d3]"
+      />
+      <p className="m-0 text-[12px] leading-normal text-muted-foreground">
+        {folder === null ? (
+          "Not a folder in the repository."
+        ) : folder ? (
+          <>
+            A stack frame <span className="font-mono text-zinc-300">{example}:41</span> opens <span className="font-mono text-foreground">{repoFilePath({ ...props.repo, path: folder }, example)}</span> line 41.
+          </>
+        ) : (
+          <>
+            A stack frame <span className="font-mono text-zinc-300">{example}:41</span> opens <span className="font-mono text-foreground">{example}</span> line 41, at the root.
+          </>
+        )}
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="outline" onClick={props.onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" disabled={folder === null || props.busy}>
+          Save
+        </Button>
+      </div>
+    </form>
   );
 }
