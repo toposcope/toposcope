@@ -23,6 +23,8 @@ import type { FieldRole } from "../../shared/fields";
 import { canFollowField, joinTraceRef } from "../../shared/ids";
 import { formatFieldToken } from "../query-tokens";
 import type { LogEvent } from "@/types";
+import { stackAccepted, stackDocUrl } from "../../shared/coverage";
+import { useCoverage } from "./coverage-section";
 
 const notFilterable = new Set(["ts", "message"]);
 
@@ -117,6 +119,14 @@ export function EventDetail({
   const [tab, setTab] = useState<"fields" | "json" | "stack">("fields");
   const stack = stackOf(event);
   const fp = typeof event.attrs?.e1 === "string" ? (event.attrs.e1 as string) : null;
+  const coverage = useCoverage();
+  // 37l: an error whose e1 came from its message says so, until its service's gap is accepted
+  const fromMessage =
+    fp !== null &&
+    (event.level === "error" || event.level === "fatal") &&
+    !stack &&
+    event.attrs?.["exception.frames"] === undefined &&
+    !stackAccepted(coverage, event.service);
   const seen = useFingerprintSeen(fp);
   const followKey = followKeyOf(event, roles);
   const json = JSON.stringify(event, null, 2);
@@ -189,6 +199,7 @@ export function EventDetail({
       {fp ? (
         <FingerprintLine
           hex={fp}
+          fromMessage={fromMessage}
           seen={seen}
           marks={marks}
           onFingerprints={onFingerprints}
@@ -465,7 +476,20 @@ export function markBeforeFirstSeen(firstTs: string | null, marks: ChangeMark[])
   return before ? { mark: before, minutes: Math.round((t - Date.parse(before.ts)) / 60_000) } : null;
 }
 
-function FingerprintLine({ hex, seen, marks, onFingerprints }: { hex: string; seen: Seen; marks: ChangeMark[]; onFingerprints?: (mark: ChangeMark) => void }) {
+function FingerprintLine({ hex, fromMessage, seen, marks, onFingerprints }: { hex: string; fromMessage: boolean; seen: Seen; marks: ChangeMark[]; onFingerprints?: (mark: ChangeMark) => void }) {
+  if (fromMessage) {
+    return (
+      <div className="flex shrink-0 items-start gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-[12.5px]">
+        <span className="max-w-[88px] shrink-0 font-mono break-all text-plate" title={`e1:${hex}`}>
+          e1:{shortId(hex)}
+        </span>
+        <span className="min-w-0 flex-1 leading-[1.45] text-muted-foreground">from the message: no stack on this row, so a reworded message reads as a new error</span>
+        <a href={stackDocUrl} target="_blank" rel="noreferrer" className="shrink-0 text-zinc-300 no-underline hover:text-foreground">
+          Attach the exception ↗
+        </a>
+      </div>
+    );
+  }
   const after = markBeforeFirstSeen(seen?.first_ts ?? null, marks);
   const first = seen?.first_ts ? new Date(seen.first_ts).toISOString().slice(11, 16) : null;
   return (

@@ -4325,6 +4325,7 @@ export function App() {
           failed={fieldsFailed}
           onSettings={() => setView("settings")}
           focusNames={fieldsNames}
+          canAccept={!isViewer}
           onStop={cancelFields}
           onSave={saveFields}
         />
@@ -4717,6 +4718,10 @@ export function App() {
                           huntFromMs: windowFromMs,
                           huntToMs: windowToMs,
                           onClose: () => setCompare(null),
+                          onNames: () => {
+                            setFieldsNames(true);
+                            setView("fields");
+                          },
                         }
                       : null
                   }

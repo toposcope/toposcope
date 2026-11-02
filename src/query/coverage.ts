@@ -1,4 +1,3 @@
-import type { Context } from "hono";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { fallbackChangeMarkId } from "../shared/change-mark";
 import { buildCoverage, type Coverage, type CoverageInput } from "../shared/coverage";
@@ -119,8 +118,4 @@ export async function readCoverage(now = Date.now()): Promise<Coverage> {
     metrics: metrics?.map((r) => ({ service: r.service, names: num(r.names) })) ?? null,
   };
   return buildCoverage(input);
-}
-
-export async function coverageRoute(c: Context): Promise<Response> {
-  return c.json(await readCoverage());
 }

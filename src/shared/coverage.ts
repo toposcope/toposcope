@@ -11,6 +11,27 @@ export const COVERAGE_COMPLETE = 0.9;
 /** The keys a row of Coverage counts, in the order the table draws them. */
 export const coverageKeys = ["version", "host", "trace_id", "stack"] as const;
 export type CoverageKey = (typeof coverageKeys)[number];
+/** What a gap can be on: a key, or the service's deploy marks. */
+export const gapKeys = [...coverageKeys, "marks"] as const;
+export type GapKey = (typeof gapKeys)[number];
+
+export function isGapKey(v: unknown): v is GapKey {
+  return typeof v === "string" && (gapKeys as readonly string[]).includes(v);
+}
+
+/** An accepted gap (#392), as Fields lists it (37o). */
+export type AcceptedGap = {
+  service: string;
+  key: GapKey;
+  /** The share when it was accepted (0 for a deploy mark). */
+  share: number;
+  /** The share now, or null when the window has nothing to measure it on. */
+  now: number | null;
+  by: string | null;
+  at: number;
+  /** holds: not counted as a gap; back: its share fell below `share`, so it counts again. */
+  state: "holds" | "back";
+};
 
 export type CoverageService = {
   service: string;
@@ -26,6 +47,8 @@ export type CoverageService = {
   stack: number | null;
   marks: { count: number; last: string | null };
   complete: boolean;
+  /** Gaps accepted on this service that still hold (#392). */
+  accepted?: GapKey[];
 };
 
 export type CoverageMismatch =
@@ -62,6 +85,8 @@ export type Coverage = {
   /** Services with every applicable key complete and a deploy mark in the window. */
   complete: number;
   mismatches: CoverageMismatch[];
+  /** Every accepted gap in force, holding or come back (#392). */
+  accepted?: AcceptedGap[];
 };
 
 export type CoverageInput = {
@@ -99,8 +124,61 @@ function otherVersion(value: string): string {
 }
 
 export function isComplete(s: Omit<CoverageService, "complete">): boolean {
-  const shares = [s.version, s.host, s.trace_id, s.stack].filter((v): v is number => v !== null);
-  return s.marks.count > 0 && shares.every((v) => v >= COVERAGE_COMPLETE);
+  const held = new Set(s.accepted ?? []);
+  const shares = coverageKeys.filter((k) => !held.has(k)).map((k) => s[k]).filter((v): v is number => v !== null);
+  return (s.marks.count > 0 || held.has("marks")) && shares.every((v) => v >= COVERAGE_COMPLETE);
+}
+
+/** A gap's share now: the key's share, or for marks 1 with one and 0 without. */
+export function gapShare(s: CoverageService, key: GapKey): number | null {
+  return key === "marks" ? (s.marks.count > 0 ? 1 : 0) : s[key];
+}
+
+/** Whether this cell is a gap: under 90%, or no deploy mark. */
+export function isGap(s: CoverageService, key: GapKey): boolean {
+  const v = gapShare(s, key);
+  return v !== null && v < COVERAGE_COMPLETE;
+}
+
+export type AcceptedRow = { service: string; key: GapKey; share: number; by: string | null; at: number };
+
+/**
+ * Fold the accepted gaps into a coverage answer (#392). An accepted gap holds while its share is
+ * at least what it was when accepted; below that it comes back and counts again. One whose key has
+ * reached 90% (or whose service got a deploy mark) is in `cleared`, for the store to drop.
+ */
+export function applyAccepted(c: Coverage, rows: AcceptedRow[]): { coverage: Coverage; cleared: AcceptedRow[] } {
+  const bySvc = new Map(c.services.map((s) => [s.service, s]));
+  const accepted: AcceptedGap[] = [];
+  const cleared: AcceptedRow[] = [];
+  const holds = new Map<string, GapKey[]>();
+  for (const r of rows) {
+    const s = bySvc.get(r.service);
+    const now = s ? gapShare(s, r.key) : null;
+    if (now !== null && now >= COVERAGE_COMPLETE) {
+      cleared.push(r);
+      continue;
+    }
+    // compared at the table's own precision, so 12.4% → 12.1% is no fall
+    const back = now !== null && Math.floor(now * 100) < Math.floor(r.share * 100);
+    accepted.push({ ...r, now, state: back ? "back" : "holds" });
+    if (!back) {
+      holds.set(r.service, [...(holds.get(r.service) ?? []), r.key]);
+    }
+  }
+  const services = c.services.map((s) => {
+    const keys = holds.get(s.service);
+    if (!keys) {
+      return s;
+    }
+    const next = { ...s, accepted: keys };
+    return { ...next, complete: isComplete(next) };
+  });
+  accepted.sort((a, b) => b.at - a.at);
+  return {
+    coverage: { ...c, services, complete: services.filter((s) => s.complete).length, accepted },
+    cleared,
+  };
 }
 
 export function buildCoverage(input: CoverageInput): Coverage {
@@ -229,21 +307,22 @@ export type CoverageGap = {
 const docs = "https://github.com/toposcope/toposcope/blob/main/docs";
 export const evidenceDocUrl = `${docs}/evidence.md`;
 export const namesDocUrl = `${docs}/evidence.md#names-have-to-match`;
-const keysDocUrl = `${docs}/evidence.md#the-keys`;
-const marksDocUrl = `${docs}/evidence.md#mark-every-change`;
-const stackDocUrl = `${docs}/ingest.md#exception-fingerprints`;
+export const keysDocUrl = `${docs}/evidence.md#the-keys`;
+export const marksDocUrl = `${docs}/evidence.md#mark-every-change`;
+export const stackDocUrl = `${docs}/ingest.md#exception-fingerprints`;
 
 /** The one gap a service's line on Home names: its lowest share, a missing mark last. */
 function worstGap(s: CoverageService): { key: CoverageKey | "marks"; v: number } | null {
   const order: CoverageKey[] = ["version", "stack", "trace_id", "host"];
+  const held = new Set(s.accepted ?? []);
   let worst: { key: CoverageKey | "marks"; v: number } | null = null;
   for (const key of order) {
-    const v = s[key];
+    const v = held.has(key) ? null : s[key];
     if (v !== null && v < COVERAGE_COMPLETE && (worst === null || v < worst.v)) {
       worst = { key, v };
     }
   }
-  if (worst === null && s.marks.count === 0) {
+  if (worst === null && s.marks.count === 0 && !held.has("marks")) {
     return { key: "marks", v: 0 };
   }
   return worst;
@@ -275,7 +354,7 @@ export function coverageGaps(c: Coverage, selectedMarkId: string | null): Covera
     const pct = coveragePercent(gap.v);
     const rank = gap.v + ["version", "stack", "trace_id", "host", "marks"].indexOf(gap.key) * 1e-3;
     if (gap.key === "version") {
-      const noMark = s.marks.count === 0;
+      const noMark = s.marks.count === 0 && !s.accepted?.includes("marks");
       out.push({
         service: s.service,
         what:
@@ -334,9 +413,10 @@ export type CoverageNote =
 export function coverageNotes(c: Coverage): CoverageNote[] {
   const out: CoverageNote[] = [];
   for (const s of c.services) {
-    if (s.version === 0) {
-      out.push({ service: s.service, kind: "version", noMark: s.marks.count === 0 });
-    } else if (s.stack !== null && s.stack < 0.5) {
+    const held = new Set(s.accepted ?? []);
+    if (s.version === 0 && !held.has("version")) {
+      out.push({ service: s.service, kind: "version", noMark: s.marks.count === 0 && !held.has("marks") });
+    } else if (s.stack !== null && s.stack < 0.5 && !held.has("stack")) {
       out.push({ service: s.service, kind: "stack", missing: coveragePercent(1 - s.stack) });
     }
   }
@@ -376,4 +456,9 @@ export function mismatchSo(m: CoverageMismatch): string {
           ? "the metrics"
           : "the deploy marks";
   return `Its ${where} and its logs read as two services: a hunt on service:${m.service} never shows ${lost} beside its rows.`;
+}
+
+/** Whether a service's missing stacks are an accepted gap that holds: the event panel says nothing then (37l). */
+export function stackAccepted(c: Coverage | null, service: string): boolean {
+  return c?.services.find((s) => s.service === service)?.accepted?.includes("stack") ?? false;
 }
