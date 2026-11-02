@@ -170,6 +170,12 @@ describe("mapping", () => {
     expect(out.kinds.get("items_total")).toBe("gauge");
   });
 
+  test("help that is only the family's name, as Vector sends it, is not a description", () => {
+    const { map } = mapper();
+    const out = map(request([series("queue_depth", {}, [{ value: 1, timestamp: 1_000 }])], [{ type: 2, metricFamilyName: "queue_depth", help: "queue_depth" }]));
+    expect(out.descriptions.has("queue_depth")).toBe(false);
+  });
+
   test("metadata that says counter makes a name with no suffix a counter", () => {
     const { map } = mapper();
     const meta = [{ type: 1, metricFamilyName: "jobs_done" }];

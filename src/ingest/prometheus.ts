@@ -280,7 +280,8 @@ export function mapPrometheusWrite(
     // A text exposition names a counter's family `x_total`, OpenMetrics `x`.
     const about = types.about(role.family) ?? types.about(rawName);
     const describe = (stored: string) => {
-      const description = metricDescriptionOf(about?.help);
+      // Vector sends a family's name as its help: that says nothing.
+      const description = about?.help.toLowerCase() === role.family ? null : metricDescriptionOf(about?.help);
       const unit = metricUnitOf(about?.unit);
       if (description) descriptions.set(stored, description);
       if (unit) units.set(stored, unit);
