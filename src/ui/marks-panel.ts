@@ -31,10 +31,10 @@ export function markFrom(mark: ChangeMark): string {
   return mark.kind === "note" ? "here" : "";
 }
 
-/** The selected mark's attrs in one mono line: "version=v0.9 · service=billing · by github-actions". */
+/** The selected mark's attrs in one mono line: "version=v0.9 · service=billing · by github-actions". `repo` is the code row's (37g), not this line's. */
 export function attrLine(mark: ChangeMark): string {
   const parts = Object.entries(mark.attrs)
-    .filter(([k]) => k !== "source" && k !== "sha" && k !== "commit" && k !== "by")
+    .filter(([k]) => k !== "source" && k !== "sha" && k !== "commit" && k !== "by" && k !== "repo")
     .map(([k, v]) => `${k}=${v}`);
   if (mark.service) {
     parts.push(`service=${mark.service}`);

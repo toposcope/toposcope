@@ -28,12 +28,21 @@ import { guideExamples, guideSection } from "./ingest-guide-examples";
 const APP_URL = envValue("TOPOSCOPE_URL") ?? "http://127.0.0.1:8080";
 
 // #360: a monitor saved with a token is previewed first, so every save here previews its body the way an agent does.
+// #335: every monitor names its service, so a rule or monitor saved here without one is about the service `e2e`.
 {
   const plainFetch = globalThis.fetch;
   const { previewMonitorFirst } = await import("../src/design/preview-for-scripts");
   globalThis.fetch = Object.assign(
     async (input: string | URL | Request, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
+      const newRule = url === `${APP_URL}/api/alert-rules` && init?.method === "POST";
+      const putMonitor = url.startsWith(`${APP_URL}/api/monitors/`) && !url.startsWith(`${APP_URL}/api/monitors/preview`) && init?.method === "PUT";
+      if ((newRule || putMonitor) && typeof init?.body === "string") {
+        const body = JSON.parse(init.body) as Record<string, unknown>;
+        if (!("service" in body)) {
+          init = { ...init, body: JSON.stringify({ ...body, service: "e2e" }) };
+        }
+      }
       if (url.startsWith(APP_URL) && init?.body !== undefined) {
         await previewMonitorFirst((req) => plainFetch(req), url, { method: init.method, headers: init.headers, body: init.body });
       }

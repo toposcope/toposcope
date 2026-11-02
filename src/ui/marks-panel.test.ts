@@ -19,6 +19,7 @@ describe("the marks panel (#262, 26f)", () => {
     expect(markFrom(v09)).toBe("ci · sha 4f9c1e");
     expect(markFrom(m("n", "note", "2026-10-26T08:40:00Z"))).toBe("here");
     expect(attrLine(v09)).toBe("version=v0.9 · service=billing · by github-actions");
+    expect(attrLine({ ...v09, attrs: { ...v09.attrs, repo: "https://github.com/acme/billing" } })).toBe("version=v0.9 · service=billing · by github-actions");
   });
   test("how many sit in the hunt's window", () => {
     const marks = [m("a", "deploy", "2026-10-26T12:48:00Z"), m("b", "deploy", "2026-10-26T09:12:00Z")];
