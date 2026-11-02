@@ -323,7 +323,8 @@ swap_files() {
     cp "$dir/$file" "$ROOT/.$file.new" && mv -f "$ROOT/.$file.new" "$ROOT/$file"
   done
   chmod +x "$ROOT/upgrade.sh" "$ROOT/toposcope.sh"
-  [ -f "$old_vector" ] || curl -fsSL "$RELEASES/v$from/vector.yaml" -o "$old_vector" 2>/dev/null || true
+  # An install upgrade.sh never ran on has no releases/<running>/ yet: curl does not make it.
+  [ -f "$old_vector" ] || { mkdir -p "${old_vector%/*}" && curl -fsSL "$RELEASES/v$from/vector.yaml" -o "$old_vector" 2>/dev/null; } || true
   if [ ! -f "$ROOT/vector.yaml" ] || { [ -f "$old_vector" ] && cmp -s "$ROOT/vector.yaml" "$old_vector"; }; then
     cp "$dir/vector.yaml" "$ROOT/vector.yaml"
   elif ! cmp -s "$ROOT/vector.yaml" "$dir/vector.yaml"; then
