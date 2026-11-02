@@ -27,7 +27,7 @@ const panel: BoardPanel = {
 
 /** What `/api/search?…&metric=host_cpu_seconds_total&ml=mode:user&msplit=host` answers: lines in `splits`, none in `buckets`. */
 const data: PanelData = {
-  histogram: times.map((time) => ({ t: time, n: 0 })),
+  histogram: times.map((time) => ({ t: time, n: 0, series: {}, by_level: {} })),
   agg: {
     expr: "host_cpu_seconds_total",
     source: "metric",
