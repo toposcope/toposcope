@@ -446,7 +446,7 @@ function AcceptedList({ accepted, actions }: { accepted: AcceptedGap[]; actions:
               {a.service} · {keyLabel[a.key]}
             </span>
             <span className="flex flex-col gap-[3px]">
-              <span>{a.by ?? "—"}</span>
+              <span title={a.by_role ? `${a.by_role[0]!.toUpperCase()}${a.by_role.slice(1)}` : undefined}>{a.by ?? "—"}</span>
               <span className="text-[11.5px] text-muted-foreground">{acceptedWhen(a.at)}</span>
             </span>
             <span className="flex flex-col gap-[3px]">

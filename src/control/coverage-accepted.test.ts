@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { acceptGap, readAccepted, undoGap } from "./coverage-accepted";
+import { acceptGap, readAccepted, undoGap, withNames } from "./coverage-accepted";
+import type { Coverage } from "../shared/coverage";
 
 function memDb(): Database {
   const db = new Database(":memory:");
@@ -21,6 +22,20 @@ describe("accepted coverage gaps (#392)", () => {
     expect(log).toEqual([
       { action: "accept", at: 1000 },
       { action: "undo", at: 2000 },
+    ]);
+  });
+
+  test("the list names who accepted, with their role for the hover; a token keeps its name", () => {
+    const db = memDb();
+    db.run("CREATE TABLE people (id TEXT PRIMARY KEY, kind TEXT, name TEXT, role TEXT, revoked_at INTEGER, agent INTEGER)");
+    db.run("INSERT INTO people VALUES ('p1', 'person', 'Maya K.', 'operator', NULL, 0)");
+    const c = { accepted: [
+      { service: "auth", key: "trace_id", share: 0.12, now: 0.12, by: "p1", at: 1, state: "holds" },
+      { service: "worker", key: "stack", share: 0.12, now: 0.04, by: "token:ci", at: 2, state: "back" },
+    ] } as unknown as Coverage;
+    expect(withNames(c, db).accepted!.map((a) => [a.by, a.by_role])).toEqual([
+      ["Maya K.", "operator"],
+      ["ci", undefined],
     ]);
   });
 });
