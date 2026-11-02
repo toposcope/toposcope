@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Home's **What this answer stands on** no longer gets cut off on a full page: the card took its height from what was left of the column and clipped its lines, where it should push the column to scroll.
+
 `upgrade.sh` keeps `toposcope.sh` runnable. It put the new release's `toposcope.sh` in place without its execute bit, so `./toposcope.sh` answered "permission denied" after every upgrade, though the upgrade's own messages name it; `bash toposcope.sh` worked meanwhile.
 
 ## 0.13.0
