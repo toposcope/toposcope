@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+`upgrade.sh` keeps `toposcope.sh` runnable. It put the new release's `toposcope.sh` in place without its execute bit, so `./toposcope.sh` answered "permission denied" after every upgrade, though the upgrade's own messages name it; `bash toposcope.sh` worked meanwhile.
+
 ## 0.13.0
 
 **Changes stored data:** three new tables, `coverage_accepted`, `coverage_accepted_log` and `repositories`. ClickHouse is unchanged.

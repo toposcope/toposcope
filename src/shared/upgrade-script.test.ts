@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, statSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -184,6 +184,8 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     expect(existsSync(join(state, "removed"))).toBe(false);
     // 0.6.2's env.example names the same settings as 0.6.1's.
     expect(r.all).not.toContain("New settings");
+    // Both scripts it puts here still run as ./upgrade.sh and ./toposcope.sh.
+    for (const f of ["upgrade.sh", "toposcope.sh"]) expect(statSync(join(install, f)).mode & 0o111).not.toBe(0);
   });
 
   test("Before you upgrade is the paragraph that starts with it, not a mention of it in another", async () => {
