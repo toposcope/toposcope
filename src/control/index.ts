@@ -337,6 +337,30 @@ export function migrateControlDb(db: Database): void {
       metric_label TEXT NOT NULL
     );
   `);
+  // Accepted coverage gaps (#392): see src/control/coverage-accepted.ts. The log keeps every
+  // accept, undo and clear with who and when; the table holds the ones in force.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS coverage_accepted (
+      service TEXT NOT NULL,
+      key TEXT NOT NULL,
+      share REAL NOT NULL,
+      by_id TEXT,
+      by_name TEXT,
+      at INTEGER NOT NULL,
+      PRIMARY KEY (service, key)
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS coverage_accepted_log (
+      service TEXT NOT NULL,
+      key TEXT NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('accept', 'undo', 'clear')),
+      share REAL,
+      by_id TEXT,
+      by_name TEXT,
+      at INTEGER NOT NULL
+    );
+  `);
   // Shares (#225): a scope of data and the hash of its secret; see src/share/store.ts.
   db.run(`
     CREATE TABLE IF NOT EXISTS shares (

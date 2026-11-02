@@ -25,6 +25,7 @@ import {
   fieldsWaveLabel,
 } from "../fields-load";
 import { formatSearchElapsed, scanningRangeLabel } from "../time-range";
+import { CoverageSection, useCoverage } from "./coverage-section";
 
 const grid =
   "grid grid-cols-[minmax(120px,1.1fr)_72px_92px_minmax(196px,1fr)_minmax(200px,1.2fr)] items-center gap-2";
@@ -38,6 +39,10 @@ type Props = {
   elapsedMs: number;
   failed: boolean;
   onSettings: () => void;
+  /** Opened from Home's "Names that do not match ›": scroll to them. */
+  focusNames?: boolean;
+  /** An Operator may accept a coverage gap (37n). */
+  canAccept?: boolean;
   onStop: () => void;
   onSave: (
     roles: Record<string, FieldRole>,
@@ -62,9 +67,12 @@ export function FieldsView({
   elapsedMs,
   failed,
   onSettings,
+  focusNames,
+  canAccept,
   onStop,
   onSave,
 }: Props) {
+  const coverage = useCoverage();
   const [roles, setRoles] = useState(catalog?.roles ?? {});
   const [links, setLinks] = useState(catalog?.links ?? {});
   const [writes, setWrites] = useState<Record<string, WriteState>>({});
@@ -141,8 +149,7 @@ export function FieldsView({
           <div className="flex flex-wrap items-baseline gap-3.5">
             <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Fields</h1>
             <p className="m-0 text-[12px] text-muted-foreground">
-              What each log key is for, and which key is the same thing as a metric label.
-              {catalog ? ` ${catalog.keys.length} keys seen in the last 24 h.` : ""}
+              What each log key is for, and how much of each service carries the keys an investigation reads.
             </p>
           </div>
           <span className="font-mono text-[12px] text-muted-foreground">last 24 h · counts from the minute rollups</span>
@@ -158,6 +165,7 @@ export function FieldsView({
           </div>
         ) : (
           <>
+            <CoverageSection coverage={coverage} focusNames={focusNames} canAccept={canAccept} />
             <div className="mb-2 flex items-center gap-2.5">
               {wave ? (
                 <div

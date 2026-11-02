@@ -991,6 +991,38 @@ Query:
 | `wave` | "" \| "keys" \| "values" \| "suggest" |  | One slice of the catalog: keys, values or suggest; all of it when left out or empty. |
 | `cheap` | string |  | With wave=suggest: keys to suggest from cheaply, separated by commas. |
 
+### GET /api/coverage
+
+Each service's share of rows carrying version, host, trace_id and a stack on errors in the last 24 h, its deploy marks, the names that do not match, and the gaps accepted.
+
+Role: **Viewer** · `coverage`
+
+### POST /api/coverage/accepted
+
+Accept a coverage gap at its share now, so Home and the counts stop naming it until it falls further.
+
+Role: **Operator** · `coverage_accept`
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `service` | string | yes | The service, as Coverage lists it. |
+| `key` | string | yes | The gap: version, host, trace_id, stack (on error rows) or marks (a deploy mark). |
+
+### DELETE /api/coverage/accepted
+
+Undo an accepted coverage gap; it counts as a gap again.
+
+Role: **Operator** · `coverage_undo`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `service` | string | yes | The service, as Coverage lists it. |
+| `key` | string | yes | The gap: version, host, trace_id, stack (on error rows) or marks (a deploy mark). |
+
 ### PUT /api/fields
 
 Set fields' roles and the metric links.

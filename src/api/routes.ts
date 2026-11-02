@@ -2,6 +2,7 @@ import { accessRoute } from "../access/list";
 import { monitorPreviewRoute } from "../alerts/preview";
 import { testAlertCallRoute } from "../alerts/test-call";
 import { createAlertRule, deleteAlertRule, getAlert, listAlertRules, monitorsNamed } from "../control/alerts";
+import { acceptGapRoute, coverageRoute, undoGapRoute } from "../control/coverage-accepted";
 import { getFields, putFields } from "../control/fields";
 import { getHome, putHome } from "../control/home";
 import { homeSinceRoute } from "../control/home-since";
@@ -76,7 +77,7 @@ import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
 import { settingsBody, signInSettingsBody } from "./schemas/settings";
 import { agentBody, ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
-import { fieldsBody, fieldsQuery } from "./schemas/fields";
+import { coverageGapBody, coverageGapQuery, fieldsBody, fieldsQuery } from "./schemas/fields";
 import { codeQuery, repositoryBody } from "./schemas/repositories";
 import { fieldRoleBody, noteBody, panelBody } from "./schemas/design";
 import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
@@ -171,6 +172,9 @@ export const apiRoutes: ApiRoute[] = [
 
   // Fields
   { id: "fields", method: "GET", path: "/api/fields", area: "Fields", action: "read", summary: "The fields rows carry, their roles, and the metric links.", query: fieldsQuery, body: null, handler: getFields },
+  { id: "coverage", method: "GET", path: "/api/coverage", area: "Fields", action: "read", summary: "Each service's share of rows carrying version, host, trace_id and a stack on errors in the last 24 h, its deploy marks, the names that do not match, and the gaps accepted.", query: null, body: null, handler: coverageRoute },
+  { id: "coverage_accept", method: "POST", path: "/api/coverage/accepted", area: "Fields", action: "change fields", summary: "Accept a coverage gap at its share now, so Home and the counts stop naming it until it falls further.", query: null, body: coverageGapBody, handler: acceptGapRoute },
+  { id: "coverage_undo", method: "DELETE", path: "/api/coverage/accepted", area: "Fields", action: "change fields", summary: "Undo an accepted coverage gap; it counts as a gap again.", query: coverageGapQuery, body: null, handler: undoGapRoute },
   { id: "fields_set", method: "PUT", path: "/api/fields", area: "Fields", action: "change fields", summary: "Set fields' roles and the metric links.", query: null, body: fieldsBody, handler: putFields },
   // Repositories (#393): links only, nothing is fetched
   { id: "repositories", method: "GET", path: "/api/repositories", area: "Repositories", action: "read", summary: "Each service's repository and where it is known from: its resource, its newest deploy mark, or set here.", query: null, body: null, handler: listRepositoriesRoute },

@@ -3,6 +3,8 @@ import { isFingerprintKey } from "../../shared/fingerprint-attr";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
+import type { CoverageMismatch } from "../../shared/coverage";
+import { useCoverage } from "./coverage-section";
 import {
   compareFoldKind,
   compareFoldMinus,
@@ -51,6 +53,8 @@ export type CompareFoldProps = {
   plotReady?: boolean;
   onPaintLines?: (lines: number) => void;
   onClose: () => void;
+  /** Settings › Fields at the names that do not match (37m). */
+  onNames?: () => void;
   /** Where the pinned plot starts, so the fold lines up under it. */
   plotLeft?: number;
 };
@@ -229,8 +233,11 @@ export function CompareFold({
   plotReady = true,
   onPaintLines,
   onClose,
+  onNames,
   plotLeft = 47,
 }: CompareFoldProps) {
+  const coverage = useCoverage();
+  const mixed = coverage?.mismatches.find((m) => m.kind === "version" && m.mark_id === mark.id) ?? null;
   const countFormat = useCountFormat();
   const formatCount = (n: number) => formatFieldCount(n, countFormat);
   const windows = compareFoldWindows({mark, openedAt, from, to, live, huntFromMs, huntToMs});
@@ -454,6 +461,7 @@ export function CompareFold({
     : `after ${hms(windows.afterFrom)} → ${hms(windows.afterTo)} · before ${hms(windows.beforeFrom)} → ${hms(windows.beforeTo)} — equal windows on the hunt's own slice`;
 
   return (
+    <>
     <div
       data-compare-fold=""
       title={title}
@@ -574,6 +582,31 @@ export function CompareFold({
           <DismissFold onClose={onClose} />
         </>
       )}
+    </div>
+    {mixed?.kind === "version" ? <MixedReleases m={mixed} onNames={onNames} plotLeft={plotLeft} /> : null}
+    </>
+  );
+}
+
+/**
+ * 37m: the selected deploy mark's version is not a `version` on its service's rows, so the after
+ * side holds both releases and nothing tells them apart. Before and after stay measured by time.
+ */
+function MixedReleases({ m, onNames, plotLeft }: { m: Extract<CoverageMismatch, { kind: "version" }>; onNames?: () => void; plotLeft: number }) {
+  return (
+    <div
+      className="mt-1.5 mr-2.5 flex min-w-0 shrink-0 items-baseline gap-3 rounded-[4.4px] border border-white/10 bg-[#0f0f11] px-2.5 py-1.5 text-[12px]"
+      style={{ marginLeft: plotLeft }}
+    >
+      <span className="min-w-0 flex-1 leading-[1.45] text-zinc-300">
+        After the mark the window holds both releases while {m.rows_value} rolled out, and the rows cannot be told apart: the mark says{" "}
+        <span className="font-mono text-foreground">{m.mark_value}</span>, {m.service}'s rows say <span className="font-mono text-foreground">{m.rows_value}</span>.
+      </span>
+      {onNames ? (
+        <button type="button" className="shrink-0 text-zinc-300 hover:text-foreground" onClick={onNames}>
+          Names that do not match ›
+        </button>
+      ) : null}
     </div>
   );
 }
