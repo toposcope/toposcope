@@ -187,7 +187,7 @@ One JSON object returns `{ ingested, id }`. A JSON array returns `{ ingested, id
 curl -X POST http://127.0.0.1:8080/v1/marks \
   -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
   -H 'content-type: application/json' \
-  -d '{"kind":"deploy","title":"v0.9","service":"billing","id":"deploy-billing-v0.9","attrs":{"version":"v0.9","sha":"abc123","source":"ci · deploy-bot"}}'
+  -d '{"kind":"deploy","title":"v0.9","service":"billing","id":"deploy-billing-v0.9","attrs":{"version":"v0.9","sha":"abc123","repo":"https://github.com/acme/billing","source":"ci · deploy-bot"}}'
 ```
 
 ```bash
@@ -220,7 +220,7 @@ On a published release (set `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN` as repo
     curl -fsS -X POST "${TOPOSCOPE_URL}/v1/marks" \
       -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
       -H "content-type: application/json" \
-      -d "{\"kind\":\"deploy\",\"title\":\"${GITHUB_REF_NAME}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${GITHUB_REF_NAME}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\",\"source\":\"github\"}}"
+      -d "{\"kind\":\"deploy\",\"title\":\"${GITHUB_REF_NAME}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${GITHUB_REF_NAME}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${GITHUB_REF_NAME}\",\"sha\":\"${GITHUB_SHA}\",\"repo\":\"${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}\",\"source\":\"github\"}}"
 ```
 
 The `id` is stable for that service and tag, so a re-run is still one glyph. Omit `TOPOSCOPE_SERVICE` and the id is `deploy-<tag>`.
@@ -239,7 +239,7 @@ mark_deploy:
       curl -fsS -X POST "${TOPOSCOPE_URL}/v1/marks" \
         -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
         -H "content-type: application/json" \
-        -d "{\"kind\":\"deploy\",\"title\":\"${CI_COMMIT_TAG}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${CI_COMMIT_TAG}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${CI_COMMIT_TAG}\",\"sha\":\"${CI_COMMIT_SHA}\",\"source\":\"gitlab\"}}"
+        -d "{\"kind\":\"deploy\",\"title\":\"${CI_COMMIT_TAG}\",\"id\":\"deploy-${TOPOSCOPE_SERVICE:+${TOPOSCOPE_SERVICE}-}${CI_COMMIT_TAG}\",\"service\":\"${TOPOSCOPE_SERVICE}\",\"attrs\":{\"version\":\"${CI_COMMIT_TAG}\",\"sha\":\"${CI_COMMIT_SHA}\",\"repo\":\"${CI_PROJECT_URL}\",\"source\":\"gitlab\"}}"
 ```
 
 ## Check results (push monitors)

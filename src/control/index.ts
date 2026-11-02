@@ -3,6 +3,7 @@ import { migrateActors } from "./actors";
 import { migrateTwoStep } from "./two-step";
 import { migrateRemembered } from "./remembered";
 import { migrateOidc } from "./oidc";
+import { migrateRepositories } from "./repositories";
 import { mkdirSync } from "node:fs";
 import { Database } from "bun:sqlite";
 import { pingClickHouse } from "../shared/clickhouse";
@@ -392,6 +393,8 @@ export function migrateControlDb(db: Database): void {
   // A session a remembered browser started without the code (34e): when that browser's remembering ends.
   addColumnIfMissing(db, "sessions", "remembered_until", "INTEGER");
   migrateOidc(db, addColumnIfMissing);
+  // Where each service's code lives, set by an Operator (#393).
+  migrateRepositories(db);
 }
 
 /**

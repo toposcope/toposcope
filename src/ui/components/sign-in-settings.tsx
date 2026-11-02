@@ -35,6 +35,7 @@ export const roleTable: Array<{ what: string; viewer: boolean; operator: boolean
   { what: "Write notes on the clock", viewer: false, operator: true },
   { what: "Make and change monitors, webhooks", viewer: false, operator: true },
   { what: "Change Fields roles and metric links", viewer: false, operator: true },
+  { what: "Set or clear a service's repository", viewer: false, operator: true },
   { what: "Add panels to an existing share", viewer: false, operator: true },
   { what: "Invite people, change roles", viewer: false, operator: false },
   { what: "Make or revoke tokens, links, shares", viewer: false, operator: false },

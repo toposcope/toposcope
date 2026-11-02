@@ -13,6 +13,7 @@ Home and the hunt answer one question: *what changed since this deploy?* They an
 | `exception.type` with `exception.stacktrace` or `exception.frames` | error logs | the logger bridged to the exporter, with the exception attached | `e1` falls back to the type and the message, so a reworded message reads as a new error in Fingerprints and on Home, and the Stack tab is empty. See [exception fingerprints](ingest.md#exception-fingerprints). |
 | `trace_id` | logs | an OpenTelemetry logger bridge inside a span, or a `trace_id` / `request_id` attr of 32 hex | No View trace. A `req-…` id still works for Follow, not for the waterfall. |
 | A deploy mark | `change_marks` | CI on release (`POST /v1/marks`), with `service`, `attrs.version` and `attrs.sha` | Home falls back to the last hour against the hour before. Compare and Fingerprints have nothing to stand on. |
+| The service's repository | the resource's `vcs.repository.url.full`, a deploy mark's `attrs.repo`, or **Settings › Repositories** | `OTEL_RESOURCE_ATTRIBUTES=vcs.repository.url.full=…`; in CI, the repository's URL on the mark | A deploy's sha and a stack frame are text. See [Link the code](#link-the-code). |
 
 `service`, `level`, `message` and the time are the floor. Each row past that adds one question Toposcope can answer.
 
@@ -36,12 +37,32 @@ A mark is the anchor Home and the hunt measure from, so every change that can br
 
 `attrs.sha` is the commit. The marks panel shows the first six characters beside the source, so the deploy names its code.
 
+## Link the code
+
+A sha and a stack frame open the code on the service's git host once Toposcope knows where the code lives. These are links only: Toposcope never fetches a repository and keeps no token, so the git host stays the source of the code and its permissions.
+
+A service's repository comes from, in order:
+
+1. a row an Operator set in **Settings › Repositories**, which wins over the other two;
+2. `vcs.repository.url.full` on its resource (OpenTelemetry's name for it), on its logs or spans;
+3. `attrs.repo` on its newest deploy mark.
+
+Any of `https://github.com/acme/api`, `github.com/acme/api` or `git@github.com:acme/api.git` reads as the same repository. The link shape follows the host: GitHub, GitLab and Bitbucket by name (`github.com`, `gitlab.com`, `bitbucket.org`, or a host named `github.…`, `gitlab.…`, `bitbucket.…`); any other host links the way Gitea and Forgejo do. Settings › Repositories lists every service, where its repository is known from, and how it links.
+
+With a repository known:
+
+- **The marks panel.** A selected deploy gets a `code` row: the commit at the mark's `attrs.sha`, and *changes since* the previous deploy of the same service, the host's compare page between the two shas.
+- **The Stack tab.** Frames under the app's own paths link to that line of that file. The app's own paths are the roots the `e1` fingerprint strips: `/app`, `/usr/src/app`, `/src`, `/var/www…` and `/home/<user>`, so `/app/src/billing/charge.js:41` opens `src/billing/charge.js` at line 41. Library frames (`node_modules`, `site-packages`, `vendor`, …) and frames elsewhere stay text. The line is read at the sha of the deploy mark of the same service whose `attrs.version` equals the row's `version`; with no such mark, it is read on the default branch, and the tab's header says so.
+
+So the same rule as above holds: a mark's `version` and the rows' `version` must match, letter for letter, for a frame to open the code that ran.
+
 ## Check what arrived
 
 - `service:otlp` in the bar finds OTLP rows that came without a service name.
 - **Settings → Fields** opens with **Coverage**: for each service in the last 24 h, the share of its rows that carry `version`, `host` and `trace_id`, the share of its error and fatal rows that carry a stack (`exception.stacktrace` or `exception.frames`), and its deploy marks. A key is complete at 90% of the service's rows; `trace_id` counts only for a service that sends spans. The counts come from the minute rollups and the marks, so the table costs no scan of the rows. Below it, **Names that do not match** lists the pairs from [Names have to match](#names-have-to-match) that differ only by case, a leading `v`, or an `-api` / `-svc` suffix: a service on spans, metrics or marks beside the one on logs, and a deploy mark's `version` beside the one on its rows. `GET /api/coverage` is the same answer for a script.
 - **Home** lists what its answer stands on under the cards: each service that is not complete, with the gap that costs it most and how to send it. A mark whose `version` does not match its rows comes first when it is the selected mark. With nothing missing, the list is not there.
 - The keys table under Coverage lists every key that arrived in the window. A key from the table above that is missing there is missing on every row.
+- **Settings › Repositories** shows which services have a repository and where it came from. A service listed as `none` links no code.
 - An error row in the event panel has a Stack tab when its exception arrived with a stack. Without one, the fingerprint line says its `e1` came from the message: check that the exception reached the log record, not only the span.
 - Under the Compare fold, a deploy mark whose `version` is not a `version` on its service's rows says so: the after side holds both releases, and nothing tells them apart.
 - A gap a service is not meant to close (a worker with no spans, a job that never deploys) can be accepted on Coverage by an Operator: Home, the counts and the event panel stop naming it, and the cell keeps its number marked accepted. It counts again if its share falls below what it was when accepted, and is cleared once the key reaches 90%. The Accepted gaps list says who accepted each and when.

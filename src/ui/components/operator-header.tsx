@@ -22,9 +22,9 @@ export function accessLit(view: OperatorView): boolean {
   return view === "access" || view === "links";
 }
 
-/** Settings stays lit on its own page and on Fields, which lives under it (28b, #292). */
+/** Settings stays lit on its own page and on Fields, Sign-in and Repositories, which live under it (28b, #292). */
 export function settingsLit(view: OperatorView): boolean {
-  return view === "settings" || view === "fields" || view === "sign-in";
+  return view === "settings" || view === "fields" || view === "sign-in" || view === "repositories";
 }
 
 /** What the header's field does with what was typed: Enter opens a hunt with it; empty Enter opens the hunt as it was. */

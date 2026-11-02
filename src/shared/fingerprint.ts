@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { appRootPattern, cleanFramePath } from "./app-path";
 import { parseExceptionFrames, type ExceptionFrame } from "./exception";
 import type { LogLevel } from "./log-event";
 import { fingerprintAttr, fingerprintHexLength, isFingerprintKey } from "./fingerprint-attr";
@@ -24,16 +25,9 @@ function framesForHash(frames: ExceptionFrame[]): ExceptionFrame[] {
 
 /** Normalize hash input only; stored frame paths remain the sender's paths. */
 function normalizedFile(file: string): string {
-  let path = file
-    .replace(/\\/g, "/")
-    .replace(/:\d+(?::\d+)?$/, "")
-    .replace(/^file:\/\//i, "")
-    .replace(/^[a-z]:\//i, "/")
-    .replace(/\/{2,}/g, "/")
-    .replace(/\/releases\/(?:\d{8,14}|\d{4}-\d{2}-\d{2})(?=\/)/gi, "");
-  const root = /^(?:\/usr\/src\/app|\/var\/www[^/]*|\/app|\/src|\/home\/[^/]+)(?=\/|$)/i;
-  if (root.test(path)) {
-    path = path.replace(root, "").replace(/^\//, "");
+  let path = cleanFramePath(file);
+  if (appRootPattern.test(path)) {
+    path = path.replace(appRootPattern, "").replace(/^\//, "");
   } else if (path.startsWith("/") || /^[a-z][a-z0-9+.-]*:\//i.test(path)) {
     path = path.split("/").filter(Boolean).slice(-3).join("/");
   }

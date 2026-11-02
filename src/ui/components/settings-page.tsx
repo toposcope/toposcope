@@ -32,7 +32,7 @@ export function bytes(n: number | null | undefined): string {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
 }
 
-export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void; onOpenSignIn: () => void; readOnly?: boolean; owners?: string[] }) {
+export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void; onOpenSignIn: () => void; onOpenRepositories: () => void; readOnly?: boolean; owners?: string[] }) {
   const [body, setBody] = useState<SettingsBody | null>(null);
   const [name, setName] = useState("");
   const [days, setDays] = useState("30");
@@ -349,6 +349,17 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             <div>
               <Button type="button" size="sm" variant="outline" onClick={props.onOpenFields}>
                 Open fields →
+              </Button>
+            </div>
+          </section>
+          <section className={card}>
+            <h2 className="m-0 text-[13.5px] font-medium">Repositories</h2>
+            <span className="text-[12px] leading-[1.5] text-muted-foreground">
+              Where each service's code lives, so a deploy's sha and a stack frame open it on GitHub, GitLab, Gitea / Forgejo or Bitbucket. Links only: nothing is fetched, no token is kept.
+            </span>
+            <div>
+              <Button type="button" size="sm" variant="outline" onClick={props.onOpenRepositories}>
+                Open repositories →
               </Button>
             </div>
           </section>

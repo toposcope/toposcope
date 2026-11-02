@@ -1050,6 +1050,50 @@ Body:
 | --- | --- | --- | --- |
 | `role` | "chart" \| "lookup" \| "ignore" | yes | chart (the default: a facet with its values counted), lookup (an id you follow, never charted) or ignore (not charted); a role applies to rows that arrive after it. |
 
+## Repositories
+
+### GET /api/repositories
+
+Each service's repository and where it is known from: its resource, its newest deploy mark, or set here.
+
+Role: **Viewer** · `repositories`
+
+### PUT /api/repositories/{service}
+
+Set a service's repository by hand; it wins over the resource and the deploy marks.
+
+Role: **Operator** · `repository_set`
+
+Path: `service`.
+
+Body:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `url` | string | yes | The repository: https://host/owner/name, host/owner/name or git@host:owner/name. |
+
+### DELETE /api/repositories/{service}
+
+Clear the repository set here for a service; its resource or deploy mark counts again.
+
+Role: **Operator** · `repository_clear`
+
+Path: `service`.
+
+### GET /api/code
+
+What a code link needs: a deploy mark, its service's repository and the previous deploy, or the deploy mark of a service's version.
+
+Role: **Viewer** · `code`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `mark` | string |  | A deploy mark's id: the answer has its service's repository and the previous deploy of that service. |
+| `service` | string |  | A service, when there is no mark: the answer has its repository. |
+| `version` | string |  | With service: the deploy mark whose version this is. |
+
 ## Shares
 
 ### GET /api/shares

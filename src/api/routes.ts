@@ -38,6 +38,7 @@ import {
 } from "../control/people-routes";
 import type { Action } from "../control/roles";
 import { createSavedSearch, deleteSavedSearch, listSavedSearches, runSavedSearch, testSavedSearch, updateSavedSearch } from "../control/saved-searches";
+import { clearRepositoryRoute, codeRoute, listRepositoriesRoute, setRepositoryRoute } from "../control/repositories";
 import { getSettings, putSettings } from "../control/settings";
 import { createApiToken, deleteApiToken, listApiTokens } from "../control/tokens";
 import { createFeedRoute, listFeedsRoute, readFeedRoute } from "../feed/feed";
@@ -77,6 +78,7 @@ import { routeFor, type ApiRoute } from "./registry";
 import { settingsBody, signInSettingsBody } from "./schemas/settings";
 import { agentBody, ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
 import { coverageGapBody, coverageGapQuery, fieldsBody, fieldsQuery } from "./schemas/fields";
+import { codeQuery, repositoryBody } from "./schemas/repositories";
 import { fieldRoleBody, noteBody, panelBody } from "./schemas/design";
 import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
 import { upgradeBody } from "./schemas/instance";
@@ -174,6 +176,11 @@ export const apiRoutes: ApiRoute[] = [
   { id: "coverage_accept", method: "POST", path: "/api/coverage/accepted", area: "Fields", action: "change fields", summary: "Accept a coverage gap at its share now, so Home and the counts stop naming it until it falls further.", query: null, body: coverageGapBody, handler: acceptGapRoute },
   { id: "coverage_undo", method: "DELETE", path: "/api/coverage/accepted", area: "Fields", action: "change fields", summary: "Undo an accepted coverage gap; it counts as a gap again.", query: coverageGapQuery, body: null, handler: undoGapRoute },
   { id: "fields_set", method: "PUT", path: "/api/fields", area: "Fields", action: "change fields", summary: "Set fields' roles and the metric links.", query: null, body: fieldsBody, handler: putFields },
+  // Repositories (#393): links only, nothing is fetched
+  { id: "repositories", method: "GET", path: "/api/repositories", area: "Repositories", action: "read", summary: "Each service's repository and where it is known from: its resource, its newest deploy mark, or set here.", query: null, body: null, handler: listRepositoriesRoute },
+  { id: "repository_set", method: "PUT", path: "/api/repositories/:service", area: "Repositories", action: "set repositories", summary: "Set a service's repository by hand; it wins over the resource and the deploy marks.", query: null, body: repositoryBody, handler: setRepositoryRoute },
+  { id: "repository_clear", method: "DELETE", path: "/api/repositories/:service", area: "Repositories", action: "set repositories", summary: "Clear the repository set here for a service; its resource or deploy mark counts again.", query: null, body: null, handler: clearRepositoryRoute },
+  { id: "code", method: "GET", path: "/api/code", area: "Repositories", action: "read", summary: "What a code link needs: a deploy mark, its service's repository and the previous deploy, or the deploy mark of a service's version.", query: codeQuery, body: null, handler: codeRoute },
   { id: "field_role_set", method: "PUT", path: "/api/fields/roles/:key", area: "Fields", action: "change fields", summary: "Set one field's role, leaving every other role and link as it is.", query: null, body: fieldRoleBody, handler: putFieldRoleRoute },
 
   // Shares

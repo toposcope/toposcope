@@ -36,6 +36,7 @@ import { monitorQuery } from "../shared/push";
 import { SettingsPage } from "@/components/settings-page";
 import { MeMenu, type Me } from "@/components/me-menu";
 import { SignInSettings } from "@/components/sign-in-settings";
+import { RepositoriesView } from "@/components/repositories-view";
 import { StatusFooter } from "@/components/status-footer";
 import { SystemMeters } from "@/components/system-meters";
 import { VersionFooter } from "@/components/version-footer";
@@ -4216,6 +4217,7 @@ export function App() {
           onSignOut={() => void signOut()}
           onOpenFields={() => setView("fields")}
           onOpenSignIn={() => setView("sign-in")}
+          onOpenRepositories={() => setView("repositories")}
           readOnly={!isOwner}
           owners={me?.owners ?? []}
         />
@@ -4316,6 +4318,8 @@ export function App() {
 
       ) : view === "sign-in" ? (
         <SignInSettings onSettings={() => setView("settings")} />
+      ) : view === "repositories" ? (
+        <RepositoriesView onSettings={() => setView("settings")} canWrite={!isViewer} />
       ) : view === "fields" ? (
         <FieldsView
           catalog={fields}
