@@ -1,0 +1,8 @@
+{
+ "content-encoding": "snappy",
+ "content-length": "31990",
+ "content-type": "application/x-protobuf",
+ "host": "host.docker.internal:39999",
+ "user-agent": "Prometheus/3.5.0",
+ "x-prometheus-remote-write-version": "0.1.0"
+}

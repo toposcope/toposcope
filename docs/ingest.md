@@ -1,6 +1,6 @@
 # Ingest
 
-Toposcope accepts logs, metrics, change marks, check results, probes, traces, and profiles over HTTP. An app speaks OpenTelemetry to it: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional; when there is one, the canonical collector is Vector.
+Toposcope accepts logs, metrics, change marks, check results, probes, traces, and profiles over HTTP, and Prometheus remote write. An app speaks OpenTelemetry to it: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional; when there is one, the canonical collector is Vector.
 
 Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/checks`, `POST /v1/probes`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token. A push monitor's keyed URL, `/ping/<key>`, is the one route that takes none: its key is the credential.
 
@@ -145,7 +145,7 @@ The six formats are tested against stacks captured from real runtimes with a fra
 
 ## Metrics
 
-Metrics use the same bearer token as logs. This is not Prometheus scrape; that stays `GET /api/metrics`.
+Metrics use the same bearer token as logs. Toposcope does not scrape: something sends to it, an app over OTLP, or Prometheus and its kin over [remote write](#prometheus-remote-write). `GET /api/metrics` is Toposcope's own numbers, for a Prometheus to scrape.
 
 `POST /v1/metrics` takes two shapes. An OpenTelemetry exporter sends OTLP — JSON, protobuf, or either gzipped — and what fits a point is stored:
 
@@ -168,6 +168,40 @@ curl -X POST http://127.0.0.1:8080/v1/metrics \
   -H 'content-type: application/json' \
   -d '{"name":"cpu_seconds","value":0.42,"unit":"s","description":"CPU time the job used.","labels":{"service":"api"}}'
 ```
+
+### Prometheus remote write
+
+A Prometheus that already scrapes your exporters sends what it scrapes to `POST /v1/prometheus/write`, with the ingest token. Its scrape config and exporters stay as they are:
+
+```yaml
+remote_write:
+  - url: http://127.0.0.1:8080/v1/prometheus/write
+    authorization:
+      credentials_file: /etc/prometheus/toposcope-token   # the ingest token, alone in the file
+```
+
+Prometheus in agent mode, Grafana Alloy (`prometheus.remote_write`) and Vector (`prometheus_remote_write`) send the same request. It is remote write 1.0, protobuf compressed with snappy, at most 1 MB decompressed; Prometheus's default batch of 2,000 samples fits. A 2.0 request gets **415**, and Prometheus falls back to 1.0.
+
+Each series is stored the way the same metric would be from OTLP:
+
+- A name ending `_total`, or one Prometheus's metadata calls a counter, is a **counter**: its running total becomes the amount per interval.
+- `_bucket` series with `le` are a **histogram**'s buckets, under the name without `_bucket`, read as `avg` or a percentile like any histogram; `_count` and `_sum` become `<name>.count` and `<name>.sum`.
+- A **summary** keeps `<name>.count` and `<name>.sum`; its `quantile` series are not stored.
+- Everything else is a **gauge**. Metadata that calls a name a gauge wins over its suffix.
+
+Names keep Prometheus's spelling, in lower case: `node_cpu_seconds_total`, `node_memory_memavailable_bytes`. A name with a `:`, as a recording rule's has, cannot be stored. Labels become labels. `job` is also the series' `service` and `instance`, without its port, its `host`, unless the series has labels of those names.
+
+Prometheus does not say when a series started, so the first total Toposcope sees of each counter is only its baseline, after every restart of Toposcope too: that series is counted from its second scrape. A histogram's bucket series come in pieces, spread over parallel requests, so its buckets wait in memory for the same histogram's next scrape, or 30 seconds, and are written whole; on a stop they are written at once. Stale markers are not stored, and native histograms are not read yet.
+
+| Status | Meaning | Prometheus |
+| --- | --- | --- |
+| `204` | Stored. | |
+| `400` | Unreadable body. Nothing stored. | Drops the batch. |
+| `401` | Missing or wrong token. | Drops the batch. |
+| `413` | Over 1 MB decompressed. | Lower `queue_config.max_samples_per_send`. |
+| `415` | Remote write 2.0, or an encoding other than snappy. | 2.0 falls back to 1.0. |
+| `429` | ClickHouse is busy; `Retry-After: 1`. | Retries. |
+| `503` | Not ready, or the insert failed. | Retries. |
 
 ## Change marks
 

@@ -210,8 +210,8 @@ export const elsewhere: Array<{ name: string; doc: string; what: string; routes:
   {
     name: "Ingest",
     doc: "ingest.md",
-    what: "Senders write logs, metrics, traces, profiles, marks and check results with an ingest token, over OTLP or Toposcope's own JSON.",
-    routes: ["POST /api/ingest", "POST /v1/logs", "POST /v1/metrics", "POST /v1/traces", "POST /v1/profiles", "POST /v1/marks", "POST /v1/probes", "POST /v1/checks", "GET /ping/{key}"],
+    what: "Senders write logs, metrics, traces, profiles, marks and check results with an ingest token, over OTLP, Prometheus remote write or Toposcope's own JSON.",
+    routes: ["POST /api/ingest", "POST /v1/logs", "POST /v1/metrics", "POST /v1/prometheus/write", "POST /v1/traces", "POST /v1/profiles", "POST /v1/marks", "POST /v1/probes", "POST /v1/checks", "GET /ping/{key}"],
   },
   {
     name: "Links between instances",
