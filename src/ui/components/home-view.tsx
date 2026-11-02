@@ -9,6 +9,7 @@ import { savedColumn } from "../home-saved";
 import { deltaText, firstRunSteps, formatValue, hhmmUtc, markAge, markGlyph, resolvePick, sideText, type HomePick } from "../home-since";
 import type { MonitorView, SavedSearch } from "../types";
 import { AgentBadge, OpenAgent } from "./agent-badge";
+import { EvidenceGaps, useCoverage } from "./coverage-section";
 
 export type HomeWindow = { from: string; to: string };
 
@@ -29,6 +30,8 @@ type Props = {
   /** An agent's badge opens its row in Access (#357); absent for a Viewer, who sees no Access. */
   onOpenAgents?: () => void;
   onOpenBoard: (item: SavedSearch) => void;
+  /** Settings › Fields, at its Coverage or at the names that do not match (37k). */
+  onOpenFields?: (names: boolean) => void;
 };
 
 const pickKey = "toposcope.homePick";
@@ -60,6 +63,7 @@ export function HomeView(props: Props) {
   const [failed, setFailed] = useState<string | null>(null);
   const [pick, setPick] = useState<HomePick | null>(() => readPick());
   const [note, setNote] = useState<string | null>(null);
+  const coverage = useCoverage();
   // 35f: an opened Quiet fold stays open in this browser
   const [quietOpen, setQuietOpen] = useState(() => {
     try {
@@ -297,6 +301,8 @@ export function HomeView(props: Props) {
               })}
             </div>
           )}
+
+          {props.onOpenFields ? <EvidenceGaps coverage={coverage} selectedMarkId={selectedId} onOpenFields={props.onOpenFields} /> : null}
 
           <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
             <section className="flex flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#131316] px-[18px] py-4">

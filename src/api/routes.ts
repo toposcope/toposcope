@@ -56,6 +56,7 @@ import {
   surroundingRoute,
 } from "../query";
 import { compareRoute } from "../query/compare";
+import { coverageRoute } from "../query/coverage";
 import { fingerprintCutRoute, fingerprintRevisionsRoute } from "../query/fingerprint-cut";
 import { fingerprintSeenRoute } from "../query/fingerprint-seen";
 import { followSpanRoute } from "../query/follow-span";
@@ -169,6 +170,7 @@ export const apiRoutes: ApiRoute[] = [
 
   // Fields
   { id: "fields", method: "GET", path: "/api/fields", area: "Fields", action: "read", summary: "The fields rows carry, their roles, and the metric links.", query: fieldsQuery, body: null, handler: getFields },
+  { id: "coverage", method: "GET", path: "/api/coverage", area: "Fields", action: "read", summary: "Each service's share of rows carrying version, host, trace_id and a stack on errors in the last 24 h, its deploy marks, and the names that do not match.", query: null, body: null, handler: coverageRoute },
   { id: "fields_set", method: "PUT", path: "/api/fields", area: "Fields", action: "change fields", summary: "Set fields' roles and the metric links.", query: null, body: fieldsBody, handler: putFields },
   { id: "field_role_set", method: "PUT", path: "/api/fields/roles/:key", area: "Fields", action: "change fields", summary: "Set one field's role, leaving every other role and link as it is.", query: null, body: fieldRoleBody, handler: putFieldRoleRoute },
 

@@ -991,6 +991,12 @@ Query:
 | `wave` | "" \| "keys" \| "values" \| "suggest" |  | One slice of the catalog: keys, values or suggest; all of it when left out or empty. |
 | `cheap` | string |  | With wave=suggest: keys to suggest from cheaply, separated by commas. |
 
+### GET /api/coverage
+
+Each service's share of rows carrying version, host, trace_id and a stack on errors in the last 24 h, its deploy marks, and the names that do not match.
+
+Role: **Viewer** · `coverage`
+
 ### PUT /api/fields
 
 Set fields' roles and the metric links.

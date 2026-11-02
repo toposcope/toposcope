@@ -8,6 +8,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 A new page, [What an investigation reads](docs/evidence.md), lists the keys Home and the hunt read on each row (`service`, `host`, `version`, `level`, the exception, `trace_id`, and a deploy mark), what goes missing without each, which names must match across logs, spans, metrics and marks, and how to check what arrived.
 
+**Settings › Fields** opens with Coverage: for each service in the last 24 h, the share of its rows carrying `version`, `host` and `trace_id` (counted only for a service that sends spans), the share of its errors with a stack, and its deploy marks, with how many services are complete (every key at 90% and a deploy mark). Under it, **Names that do not match** lists a service on spans, metrics or marks that is a logs service but for case, a `v`, or an `-api` / `-svc` suffix, and a deploy mark's `version` that its rows send with or without the `v`. Home lists the gaps under its cards as **What this answer stands on**, the selected mark's mismatch first, and leaves it out when nothing is missing. It all comes from the minute rollups and the marks; `GET /api/coverage` is the same answer for a script.
+
 ## 0.12.3
 
 In Live the facet chips say how old their counts are. The row leads with an age (`18s`) behind a refresh glyph; the counts refresh on the 30s pass while the clock moves every 2s, and the age turns plate when a pass is missed. Hover names the cadence. Live polling now runs on one refresh registry, so every Live list records when it last landed. A failed chip refresh of the same hunt keeps the chips on screen instead of clearing them.

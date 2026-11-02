@@ -39,7 +39,9 @@ A mark is the anchor Home and the hunt measure from, so every change that can br
 ## Check what arrived
 
 - `service:otlp` in the bar finds OTLP rows that came without a service name.
-- **Settings → Fields** lists the keys that arrived in the window. A key from the table above that is missing there is missing on every row.
+- **Settings → Fields** opens with **Coverage**: for each service in the last 24 h, the share of its rows that carry `version`, `host` and `trace_id`, the share of its error and fatal rows that carry a stack (`exception.stacktrace` or `exception.frames`), and its deploy marks. A key is complete at 90% of the service's rows; `trace_id` counts only for a service that sends spans. The counts come from the minute rollups and the marks, so the table costs no scan of the rows. Below it, **Names that do not match** lists the pairs from [Names have to match](#names-have-to-match) that differ only by case, a leading `v`, or an `-api` / `-svc` suffix: a service on spans, metrics or marks beside the one on logs, and a deploy mark's `version` beside the one on its rows. `GET /api/coverage` is the same answer for a script.
+- **Home** lists what its answer stands on under the cards: each service that is not complete, with the gap that costs it most and how to send it. A mark whose `version` does not match its rows comes first when it is the selected mark. With nothing missing, the list is not there.
+- The keys table under Coverage lists every key that arrived in the window. A key from the table above that is missing there is missing on every row.
 - An error row in the event panel has a Stack tab when its exception arrived with a stack. No Stack tab means its `e1` came from the message: check that the exception reached the log record, not only the span.
 - A Home with no deploy in a day that had one means the mark never arrived. Check the CI step's reply: a valid mark is always `200` with `ingested`.
 
