@@ -404,18 +404,8 @@ function BoardPanelCard(props: CardProps) {
   const widget = panel.widget;
   const total = data?.total ?? 0;
   const empty = Boolean(data && !data.error && total === 0 && props.setKeys.length > 0);
-  const numeric = panel.view === "histogram" && Boolean(widget.agg || widget.metric);
-  const lastValue = numeric ? lastAggValue(data) : null;
   const [armed, setArmed] = useState(false);
-  const statNumeric = panel.view === "stat" && Boolean(widget.metric || (widget.agg && widget.agg !== "count"));
-  const head =
-    data === null
-      ? null
-      : numeric && total > 0
-        ? { n: lastValue === null ? "—" : formatAggStat(lastValue), label: props.live ? "now" : "last" }
-        : statNumeric && total > 0
-          ? null
-          : { n: null, label: "matching" };
+  const head = panelHead(panel, data, props.live);
   return (
     <div className="group/panel flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-card">
       {armed ? (
@@ -480,6 +470,22 @@ function BoardPanelCard(props: CardProps) {
       </div>
     </div>
   );
+}
+
+/** What a panel's head says: its series' last value, or how many rows match; null when its body says it. */
+export function panelHead(panel: BoardPanel, data: PanelData | null, live: boolean): { n: string | null; label: string } | null {
+  const widget = panel.widget;
+  const total = data?.total ?? 0;
+  const numeric = panel.view === "histogram" && Boolean(widget.agg || widget.metric);
+  const statNumeric = panel.view === "stat" && Boolean(widget.metric || (widget.agg && widget.agg !== "count"));
+  if (data === null) {
+    return null;
+  }
+  if (numeric && total > 0) {
+    const lastValue = lastAggValue(data);
+    return { n: lastValue === null ? "—" : formatAggStat(lastValue), label: live ? "now" : "last" };
+  }
+  return statNumeric && total > 0 ? null : { n: null, label: "matching" };
 }
 
 function lastAggValue(data: PanelData | null): number | null {
@@ -842,7 +848,7 @@ function PanelBody({
 }
 
 /** A board panel's plot: bars by its split, or its series as a filled line (39b). */
-function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: PanelData; live: boolean }) {
+export function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: PanelData; live: boolean }) {
   const widget = panel.widget;
   const buckets = data.histogram;
   const fromMs = data.from ? Date.parse(data.from) : NaN;
