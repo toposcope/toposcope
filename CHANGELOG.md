@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.13.1
 
 Home's **What this answer stands on** no longer gets cut off on a full page: the card took its height from what was left of the column and clipped its lines, where it should push the column to scroll.
 
