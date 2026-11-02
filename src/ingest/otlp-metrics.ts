@@ -244,7 +244,7 @@ function exponentialBuckets(point: Record<string, unknown>): Buckets | "none" | 
  * The buckets worth a row: a bound stays when something was counted under it,
  * or under the next one, whose bucket it starts. Null when nothing was counted.
  */
-function sparse(le: number[], n: number[]): Buckets | null {
+export function sparse(le: number[], n: number[]): Buckets | null {
   const keptLe: number[] = [];
   const keptN: number[] = [];
   for (let i = 0; i < le.length; i++) {
