@@ -424,7 +424,7 @@ Tested with OpenTelemetry Python 1.45.1 on its gRPC default, OpenTelemetry JS 0.
 
 A collector between the app and Toposcope is optional, and without one nothing else changes: the app exports straight to Toposcope. Add one when what the app sends must outlive a Toposcope outage longer than its exporter keeps retrying, or when rows need enrichment on the way. The shipped `vector.yaml` is that collector, for Vector 0.51 or newer.
 
-Vector listens for OTLP from apps, over HTTP on port 4318 and gRPC on 4317, keeps what it receives on disk until Toposcope has taken it, and forwards each request as the app sent it, to `/v1/logs`, `/v1/traces` and `/v1/metrics`. The app changes one setting, the address, and needs no token, because Vector adds it:
+Vector listens for OTLP from apps, over HTTP on port 4318 and gRPC on 4317, keeps what it receives on disk until Toposcope has taken it, and forwards each request as the app sent it, to `/v1/logs`, `/v1/traces` and `/v1/metrics`. It also sends the machine's own health and any `/metrics` page you list; see [Host metrics](#host-metrics) and [Scrape a /metrics page](#scrape-a-metrics-page). The app changes one setting, the address, and needs no token, because Vector adds it:
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
@@ -447,6 +447,48 @@ VECTOR_DATA_DIR=vector-data vector -c vector.yaml
 - Vector listens on `127.0.0.1`. Whatever reaches those two ports is forwarded with the ingest token, so open them only to hosts you trust.
 
 The file also holds the smoke source the quick start uses: three events under `service:smoke` on every start.
+
+### Host metrics
+
+The same file sends the health of the machine Vector runs on, every 15 seconds, through [Prometheus remote write](#prometheus-remote-write) on a disk buffer of its own: CPU, memory and swap, load, disks, filesystems and network. Every series carries `host`, the machine's hostname, so one panel splits by machine. The names start with `host_`:
+
+| Name | Kind | Labels |
+| --- | --- | --- |
+| `host_cpu_seconds_total` | counter | `cpu`, `mode` |
+| `host_memory_used_bytes`, `host_memory_available_bytes`, `host_memory_total_bytes`, `host_memory_swap_used_bytes` | gauge | |
+| `host_load1`, `host_load5`, `host_load15` | gauge | |
+| `host_filesystem_used_bytes`, `host_filesystem_used_ratio`, `host_filesystem_total_bytes` | gauge | `device`, `filesystem`, `mountpoint` |
+| `host_disk_read_bytes_total`, `host_disk_written_bytes_total` | counter | `device` |
+| `host_network_receive_bytes_total`, `host_network_transmit_bytes_total` | counter | `device` |
+
+To leave it out, delete the `machine` source and take it out of the `toposcope_prometheus` inputs.
+
+Vector in a container reads the container, not the machine, unless it is given the machine's `/proc`, `/sys` and hostname:
+
+```bash
+docker run -d --name vector --restart unless-stopped --network host \
+  --hostname "$(hostname)" \
+  -v /proc:/host/proc:ro -v /sys:/host/sys:ro -e PROCFS_ROOT=/host/proc -e SYSFS_ROOT=/host/sys \
+  -v "$PWD/vector.yaml":/etc/vector/vector.yaml:ro -v vector-data:/var/lib/vector \
+  -e TOPOSCOPE_INGEST_TOKEN -e VECTOR_DATA_DIR=/var/lib/vector \
+  timberio/vector:0.51.1-alpine
+```
+
+### Scrape a /metrics page
+
+Postgres, Redis and nginx exporters, node_exporter and most Go services only offer a `/metrics` page. The file has a `prometheus_scrape` source for them, commented out. Uncomment it, list the pages, and add `exporters` to the `toposcope_prometheus` inputs:
+
+```yaml
+  exporters:
+    type: prometheus_scrape
+    endpoints:
+      - http://127.0.0.1:9187/metrics     # postgres_exporter
+      - http://127.0.0.1:9121/metrics     # redis_exporter
+    scrape_interval_secs: 15
+    instance_tag: instance
+```
+
+A page's address becomes the series' `instance`, and its host part `host`. Names keep the page's spelling, in lower case, and are read as [remote write](#prometheus-remote-write) reads them: `_total` a counter, `_bucket` a histogram, the rest a gauge. A team that already runs Prometheus does not need this: point Prometheus at Toposcope with `remote_write` instead.
 
 ## Fluent Bit
 
