@@ -59,9 +59,19 @@ export async function coverageWithAccepted(db: Database = getDb()): Promise<Cove
   return coverage;
 }
 
-/** Names on the list: who accepted each gap, as the UI shows a stamp. */
+/** Names on the list: who accepted each gap, as the UI shows a stamp, and their role for the hover. */
 export function withNames(c: Coverage, db: Database = getDb()): Coverage {
-  return { ...c, accepted: c.accepted?.map((a) => ({ ...a, by: a.by ? (actorName(a.by, db)?.name ?? a.by) : null })) };
+  return {
+    ...c,
+    accepted: c.accepted?.map((a) => {
+      if (!a.by) {
+        return a;
+      }
+      const stored = db.query("SELECT by_name FROM coverage_accepted WHERE service = ? AND key = ?").get(a.service, a.key) as { by_name: string | null } | null;
+      const role = db.query("SELECT role FROM people WHERE id = ?").get(a.by) as { role: string } | null;
+      return { ...a, by: actorName(a.by, db)?.name ?? stored?.by_name ?? a.by, ...(role ? { by_role: role.role } : {}) };
+    }),
+  };
 }
 
 export async function coverageRoute(c: Context): Promise<Response> {

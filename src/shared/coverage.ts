@@ -28,6 +28,8 @@ export type AcceptedGap = {
   /** The share now, or null when the window has nothing to measure it on. */
   now: number | null;
   by: string | null;
+  /** The accepter's role now (viewer, operator, owner), for the hover; absent for a token. */
+  by_role?: string;
   at: number;
   /** holds: not counted as a gap; back: its share fell below `share`, so it counts again. */
   state: "holds" | "back";
