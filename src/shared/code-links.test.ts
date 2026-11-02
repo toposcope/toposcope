@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appRelativePath } from "./app-path";
-import { blobUrl, commitUrl, compareUrl, isLibraryPath, parseRepo, parseRepoPath, repoDisplay, repoFilePath, stackPieces, treeUrl } from "./code-links";
+import { blobUrl, commitUrl, compareUrl, isLibraryPath, parseRepo, parseRepoPath, repoDisplay, repoHostGuessed, repoFilePath, stackPieces, treeUrl } from "./code-links";
 
 describe("parseRepo (#393)", () => {
   test("reads the forms a sender or an Operator writes", () => {
@@ -66,6 +66,16 @@ describe("link shapes by host", () => {
     expect(treeUrl(gh, "4f9c1e")).toBe("https://github.com/acme/api/tree/4f9c1e");
     expect(treeUrl(gl, "4f9c1e")).toBe("https://gitlab.com/acme/shop/-/tree/4f9c1e");
     expect(treeUrl(gh, null)).toBe("https://github.com/acme/api");
+  });
+});
+
+describe("the host's link shape is named only where it is a guess", () => {
+  test("github.com, gitlab.com and bitbucket.org say it themselves; a self-hosted address does not", () => {
+    expect(repoHostGuessed(parseRepo("github.com/acme/api")!)).toBe(false);
+    expect(repoHostGuessed(parseRepo("https://GitLab.com/acme/shop")!)).toBe(false);
+    expect(repoHostGuessed(parseRepo("bitbucket.org/acme/api")!)).toBe(false);
+    expect(repoHostGuessed(parseRepo("git.acme.dev/ops/worker")!)).toBe(true);
+    expect(repoHostGuessed(parseRepo("github.acme.dev/ops/worker")!)).toBe(true);
   });
 });
 

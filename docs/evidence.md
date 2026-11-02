@@ -137,7 +137,7 @@ A service's repository comes from, in order:
 2. `vcs.repository.url.full` on its resource (OpenTelemetry's name for it), on its logs or spans;
 3. `attrs.repo` on its newest deploy mark.
 
-Any of `https://github.com/acme/api`, `github.com/acme/api` or `git@github.com:acme/api.git` reads as the same repository. The link shape follows the host: GitHub, GitLab and Bitbucket by name (`github.com`, `gitlab.com`, `bitbucket.org`, or a host named `github.…`, `gitlab.…`, `bitbucket.…`); any other host links the way Gitea and Forgejo do. Settings › Repositories lists every service, where its repository is known from, and how it links.
+Any of `https://github.com/acme/api`, `github.com/acme/api` or `git@github.com:acme/api.git` reads as the same repository. The link shape follows the host: GitHub, GitLab and Bitbucket by name (`github.com`, `gitlab.com`, `bitbucket.org`, or a host named `github.…`, `gitlab.…`, `bitbucket.…`); any other host links the way Gitea and Forgejo do. Settings › Repositories lists every service and where its repository is known from; a self-hosted address also says which host's links it uses (`· links as Gitea / Forgejo`).
 
 Many services can share one repository: Set on a service lists the repositories Toposcope already knows, each with the services using it, so a second service from the same repository is a pick, not a URL to type again. Tick several services to set one repository for all of them. There is no "project" to declare; a service is the unit, and the repository is a value it points at.
 
