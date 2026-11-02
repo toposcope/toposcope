@@ -20,6 +20,10 @@ The Python exporter refuses `http/json`, so Python has no JSON request.
 
 `otlp/<language>.traces.bin` and `.json` are the request bodies an exporter posted to `/v1/traces` for one span that recorded an exception, captured on 2026-10-08. `otlp/<language>.traces.logs.bin` and `.json` are the log request of the same run, for the same exception. In Node the program records it, with `span.recordException(err)`, and logs it with pino. In Python the exception leaves the span and the library records it by itself; the program logs it with `logging` where it catches it. `programs/<language>-otlp-traces/` has the app and the small server that stood in for Toposcope.
 
+## Prometheus remote write requests
+
+`prometheus/*.bin` are request bodies, snappy-compressed as sent, that Prometheus 3.5.0 posted with remote write 1.0 while it scraped node_exporter 1.9.1 and itself every 5 s, captured on 2026-11-02. `metadata.bin` is one of the requests that carry only metadata, about one in three; `scrape-1.bin` and `scrape-2.bin` are two whole scrapes 5 s apart; `split-1.bin` and `split-2.bin` are a scrape that did not fit Prometheus's 2,000-sample batch and went out in two requests, the second also holding the start of the next scrape. `headers.json` is what came with them. `programs/prometheus-remote-write/` has the Prometheus config and the small server that stood in for Toposcope.
+
 ## What the captures showed
 
 - **PHP 8.4 and later** name a closure frame `{closure:/app/public/index.php:15}`. The path and the line are in the function name, so the same error got a different `e1` in each deploy directory. Since 0.4.11 the frame is hashed without the line and with its path normalized.
@@ -31,6 +35,9 @@ The Python exporter refuses `http/json`, so Python has no JSON request.
 - **Metrics with the delta setting:** 23 names and nothing refused. The request-duration histogram’s count is the twenty requests served. An up-down counter still arrives as a running total, which is a level.
 - **Metrics with no setting:** every counter and histogram is a running total, so nine points are refused and only the gauges are stored.
 - **A resource’s attributes ride on every point.** A stock Node resource has about twenty, so each point is stored with about that many labels.
+
+- **Prometheus sends metadata in requests of its own**, apart from the samples, so the first samples of a name can arrive before anything says what it is.
+- **A scrape is cut wherever the batch fills**, so one histogram's bucket series can land in two requests.
 
 ## Capturing again
 
@@ -45,5 +52,14 @@ docker run --rm -v "$PWD/fixtures/ingest/programs/node":/src:ro -v "$PWD/out":/o
 ```
 
 The others follow the same shape with `pip install -r requirements.txt` and `python app.py`; `mvn package` and `java -jar`; `dotnet publish -c Release` and `dotnet billing.dll`; `composer install` and `php public/index.php`; `go mod tidy`, `go build`, and the binary. The two OTLP programs run `node capture.js` and `python capture.py` with the exporter pointed at `http://127.0.0.1:4318`. The two trace programs run the same way with `OTEL_LOGS_EXPORTER=otlp` and `OTEL_METRICS_EXPORTER=none`, and Python with `OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true`. The metrics program runs `node capture.js` the same way, with `OTEL_METRICS_EXPORTER=otlp`, `OTEL_LOGS_EXPORTER=none`, `OTEL_METRIC_EXPORT_INTERVAL=1000` and `SERVED=20`.
+
+Prometheus runs in its official image next to node_exporter, with `capture.ts` on the host as the endpoint its config names:
+
+```bash
+bun run fixtures/ingest/programs/prometheus-remote-write/capture.ts out &
+docker network create promcap
+docker run -d --rm --name promcap-node --network promcap --network-alias node-exporter prom/node-exporter:v1.9.1
+docker run -d --rm --name promcap-prom --network promcap -v "$PWD/fixtures/ingest/programs/prometheus-remote-write/prometheus.yml":/etc/prometheus/prometheus.yml:ro prom/prometheus:v3.5.0
+```
 
 Replace a fixture whole. Do not edit one by hand: a capture that fails a test is a finding, not something to trim.

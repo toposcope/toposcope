@@ -53,6 +53,7 @@ import { finishSignIn, oidcConfig, passwordsOn, startSignIn } from "./control/oi
 import { qrSvg } from "./shared/qr";
 import { ingestRoute, insertEvents } from "./ingest";
 import { ingestMetricsRoute } from "./ingest/metrics";
+import { flushPrometheusBuckets, prometheusWriteRoute } from "./ingest/prometheus";
 import { ingestMarksRoute } from "./ingest/marks";
 import { ingestProbesRoute } from "./ingest/probes";
 import { ingestChecksRoute, pingRoute } from "./ingest/checks";
@@ -537,6 +538,7 @@ app.use("/*", async (c, next) => {
     (c.req.path === "/api/ingest" ||
       c.req.path === "/v1/logs" ||
       c.req.path === "/v1/metrics" ||
+      c.req.path === "/v1/prometheus/write" ||
       c.req.path === "/v1/marks" ||
       c.req.path === "/v1/probes" ||
       c.req.path === "/v1/checks" ||
@@ -596,6 +598,7 @@ app.post("/api/sign-out", (c) => {
 app.post("/api/ingest", ingestRoute);
 app.post("/v1/logs", otlpLogsRoute);
 app.post("/v1/metrics", ingestMetricsRoute);
+app.post("/v1/prometheus/write", prometheusWriteRoute);
 app.post("/v1/marks", ingestMarksRoute);
 app.post("/v1/probes", ingestProbesRoute);
 app.post("/v1/checks", ingestChecksRoute);
@@ -684,6 +687,8 @@ async function stop(): Promise<void> {
   stopping = true;
   // Refuses new connections and resolves once every request in flight has its reply.
   await Promise.all([server?.stop(), stopSyslog(), stopGrpc()]);
+  // Histogram buckets that were waiting for the rest of their scrape (#417).
+  await flushPrometheusBuckets().catch((err) => console.error("prometheus buckets not written on stop", err));
   process.exit(0);
 }
 

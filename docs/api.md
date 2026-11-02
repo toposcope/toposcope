@@ -13,7 +13,7 @@ A refusal is one shape, with the route's status: `{ "error": "<sentence>", "fiel
 These keep their own pages and are not in the spec:
 
 - **Sign-in** ([people.md](people.md)): A person signs in with a browser, by password or the provider, sets up the second step, and joins by invite or owner link; a token never calls these. `POST /api/sign-in`, `POST /api/sign-out`, `POST /api/setup`, `POST /api/join`, `POST /api/two-step/verify`, `POST /api/two-step/setup`, `POST /api/two-step/finish`, `GET /auth/start`, `GET /auth/callback`.
-- **Ingest** ([ingest.md](ingest.md)): Senders write logs, metrics, traces, profiles, marks and check results with an ingest token, over OTLP or Toposcope's own JSON. `POST /api/ingest`, `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/traces`, `POST /v1/profiles`, `POST /v1/marks`, `POST /v1/probes`, `POST /v1/checks`, `GET /ping/{key}`.
+- **Ingest** ([ingest.md](ingest.md)): Senders write logs, metrics, traces, profiles, marks and check results with an ingest token, over OTLP, Prometheus remote write or Toposcope's own JSON. `POST /api/ingest`, `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/prometheus/write`, `POST /v1/traces`, `POST /v1/profiles`, `POST /v1/marks`, `POST /v1/probes`, `POST /v1/checks`, `GET /ping/{key}`.
 - **Links between instances** ([access.md](access.md#links)): Another Toposcope pulls rows with a link's own secret, never a person's token. `POST /link/v1/lookup`, `POST /link/v1/claim`, `GET /link/v1/feed`, `POST /link/v1/remove`, `POST /link/v1/ask`, `POST /link/v1/rows`.
 - **Shares, public side** ([shares.md](shares.md)): A page or an app reads a share's counts and series with the share's secret or a ticket. `POST /share/v1/tickets`, `GET /share/v1/series`, `GET /share/v1/top`, `GET /share/v1/names`, `GET /share/v1/panels/{name}`.
 - **Open** ([operations.md](operations.md)): Health and Prometheus metrics answer without signing in. `GET /api/health`, `GET /api/metrics`.
@@ -1109,6 +1109,48 @@ Query:
 | `mark` | string |  | A deploy mark's id: the answer has its service's repository and the previous deploy of that service. |
 | `service` | string |  | A service, when there is no mark: the answer has its repository. |
 | `version` | string |  | With service: the deploy mark whose version this is. |
+
+### GET /api/github
+
+Whether GitHub is connected, the code waiting while it connects, and the accounts and count of repositories the Toposcope App can see.
+
+Role: **Viewer** · `github`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `fresh` | string |  | 1 asks GitHub again for the accounts and repositories instead of the list read in the last 30 seconds. |
+
+### POST /api/github/connect
+
+Ask GitHub for a device code to connect this instance; enter it on github.com/login/device.
+
+Role: **Owner** · `github_connect`
+
+### DELETE /api/github/connect
+
+Stop waiting for the device code.
+
+Role: **Owner** · `github_connect_cancel`
+
+### DELETE /api/github
+
+Forget GitHub's token; repositories set here stay.
+
+Role: **Owner** · `github_disconnect`
+
+### GET /api/github/repositories
+
+The repositories the Toposcope App can see, matching q, for Set.
+
+Role: **Operator** · `github_repositories`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `q` | string |  | Part of a repository's owner/name; empty lists them all. At most 50 come back. |
 
 ## Shares
 

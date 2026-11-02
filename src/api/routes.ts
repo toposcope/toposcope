@@ -38,6 +38,7 @@ import {
 } from "../control/people-routes";
 import type { Action } from "../control/roles";
 import { createSavedSearch, deleteSavedSearch, listSavedSearches, runSavedSearch, testSavedSearch, updateSavedSearch } from "../control/saved-searches";
+import { githubCancelRoute, githubConnectRoute, githubDisconnectRoute, githubRepositoriesRoute, githubRoute } from "../control/github";
 import { clearRepositoryRoute, codeRoute, listRepositoriesRoute, setRepositoryRoute } from "../control/repositories";
 import { getSettings, putSettings } from "../control/settings";
 import { createApiToken, deleteApiToken, listApiTokens } from "../control/tokens";
@@ -79,7 +80,7 @@ import { routeFor, type ApiRoute } from "./registry";
 import { settingsBody, signInSettingsBody } from "./schemas/settings";
 import { agentBody, ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
 import { coverageGapBody, coverageGapQuery, fieldsBody, fieldsQuery } from "./schemas/fields";
-import { codeQuery, repositoryBody } from "./schemas/repositories";
+import { codeQuery, githubQuery, githubRepositoriesQuery, repositoryBody } from "./schemas/repositories";
 import { fieldRoleBody, noteBody, panelBody } from "./schemas/design";
 import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
 import { upgradeBody } from "./schemas/instance";
@@ -183,6 +184,11 @@ export const apiRoutes: ApiRoute[] = [
   { id: "repository_set", method: "PUT", path: "/api/repositories/:service", area: "Repositories", action: "set repositories", summary: "Set a service's repository by hand; it wins over the resource and the deploy marks.", query: null, body: repositoryBody, handler: setRepositoryRoute },
   { id: "repository_clear", method: "DELETE", path: "/api/repositories/:service", area: "Repositories", action: "set repositories", summary: "Clear the repository set here for a service; its resource or deploy mark counts again.", query: null, body: null, handler: clearRepositoryRoute },
   { id: "code", method: "GET", path: "/api/code", area: "Repositories", action: "read", summary: "What a code link needs: a deploy mark, its service's repository and the previous deploy, or the deploy mark of a service's version.", query: codeQuery, body: null, handler: codeRoute },
+  { id: "github", method: "GET", path: "/api/github", area: "Repositories", action: "read", summary: "Whether GitHub is connected, the code waiting while it connects, and the accounts and count of repositories the Toposcope App can see.", query: githubQuery, body: null, handler: githubRoute },
+  { id: "github_connect", method: "POST", path: "/api/github/connect", area: "Repositories", action: "connect GitHub", summary: "Ask GitHub for a device code to connect this instance; enter it on github.com/login/device.", query: null, body: null, handler: githubConnectRoute },
+  { id: "github_connect_cancel", method: "DELETE", path: "/api/github/connect", area: "Repositories", action: "connect GitHub", summary: "Stop waiting for the device code.", query: null, body: null, handler: githubCancelRoute },
+  { id: "github_disconnect", method: "DELETE", path: "/api/github", area: "Repositories", action: "connect GitHub", summary: "Forget GitHub's token; repositories set here stay.", query: null, body: null, handler: githubDisconnectRoute },
+  { id: "github_repositories", method: "GET", path: "/api/github/repositories", area: "Repositories", action: "set repositories", summary: "The repositories the Toposcope App can see, matching q, for Set.", query: githubRepositoriesQuery, body: null, handler: githubRepositoriesRoute },
   { id: "field_role_set", method: "PUT", path: "/api/fields/roles/:key", area: "Fields", action: "change fields", summary: "Set one field's role, leaving every other role and link as it is.", query: null, body: fieldRoleBody, handler: putFieldRoleRoute },
 
   // Shares

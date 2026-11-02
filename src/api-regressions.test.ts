@@ -19,6 +19,7 @@ const ingestPaths = [
   "/api/ingest",
   "/v1/logs",
   "/v1/metrics",
+  "/v1/prometheus/write",
   "/v1/marks",
   "/v1/probes",
   "/v1/traces",
