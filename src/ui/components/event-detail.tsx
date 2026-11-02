@@ -23,6 +23,8 @@ import type { FieldRole } from "../../shared/fields";
 import { canFollowField, joinTraceRef } from "../../shared/ids";
 import { formatFieldToken } from "../query-tokens";
 import type { LogEvent } from "@/types";
+import { blobUrl, commitUrl, stackPieces, treeUrl } from "../../shared/code-links";
+import { isFrameLine, rowVersion, shortSha, useCode } from "../code-links";
 
 const notFilterable = new Set(["ts", "message"]);
 
@@ -214,9 +216,7 @@ export function EventDetail({
             {json}
           </pre>
         ) : tab === "stack" && stack ? (
-          <pre className="m-3 rounded-lg border bg-background/60 p-2.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-300">
-            {stack}
-          </pre>
+          <StackView stack={stack} event={event} />
         ) : (
           <dl className="m-3 overflow-hidden rounded-lg border">
             {fieldsOf(event).map((field) => (
@@ -487,6 +487,64 @@ function FingerprintLine({ hex, seen, marks, onFingerprints }: { hex: string; se
           Fingerprints →
         </button>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The Stack tab (26e) with code links (#393, frame 37h): frames under the app's own paths open
+ * that line at the sha of the deploy mark whose version is the row's, else on the default branch,
+ * and the header says which. Library frames stay text. With no repository known, today's stack.
+ */
+function StackView({ stack, event }: { stack: string; event: LogEvent }) {
+  const version = rowVersion(event.attrs);
+  const query = new URLSearchParams({ service: event.service, ...(version ? { version } : {}) }).toString();
+  const code = useCode(query);
+  const repo = code?.repository ?? null;
+  if (!repo) {
+    return (
+      <pre className="m-3 rounded-lg border bg-background/60 p-2.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-300">
+        {stack}
+      </pre>
+    );
+  }
+  const sha = code?.mark?.sha ?? null;
+  return (
+    <div className="m-3 overflow-hidden rounded-lg border bg-background/60">
+      <div className="flex flex-wrap items-baseline gap-x-1.5 border-b border-white/[0.06] px-2.5 py-2 text-[12px] text-muted-foreground">
+        <span>code at</span>
+        <a href={sha ? commitUrl(repo, sha) : treeUrl(repo, null)} target="_blank" rel="noreferrer noopener" className="font-mono text-[11.5px] text-zinc-200 hover:text-foreground">
+          {repo.name} @ {sha ? shortSha(sha) : "default branch"} ↗
+        </a>
+        <span>
+          ·{" "}
+          {sha
+            ? `the sha of the ${version} deploy mark`
+            : version
+              ? `no deploy mark for ${version}, so the default branch`
+              : "the row has no version, so the default branch"}
+        </span>
+      </div>
+      <pre className="m-0 p-2.5 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-300">
+        {stack.split("\n").map((line, i) => {
+          const pieces = stackPieces(line);
+          const linked = pieces.some((p) => p.path);
+          return (
+            <span key={i} className={cn(!linked && isFrameLine(line) && "text-muted-foreground")}>
+              {i > 0 ? "\n" : ""}
+              {pieces.map((p, j) =>
+                p.path ? (
+                  <a key={j} href={blobUrl(repo, sha, p.path, p.line ?? null)} target="_blank" rel="noreferrer noopener" className="text-zinc-100 underline decoration-white/40 underline-offset-2 hover:decoration-white">
+                    {p.text}
+                  </a>
+                ) : (
+                  p.text
+                ),
+              )}
+            </span>
+          );
+        })}
+      </pre>
     </div>
   );
 }

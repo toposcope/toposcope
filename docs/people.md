@@ -26,6 +26,7 @@ The same command, for an Owner's email, is the way back in. The link gives that 
 | Write notes on the clock | — | ✓ | ✓ |
 | Make and change monitors, webhooks | — | ✓ | ✓ |
 | Change Fields roles and metric links | — | ✓ | ✓ |
+| Set or clear a service's repository | — | ✓ | ✓ |
 | Add panels to an existing share | — | ✓ | ✓ |
 | Invite people, change roles | — | — | ✓ |
 | Make or revoke tokens, links, shares | — | — | ✓ |

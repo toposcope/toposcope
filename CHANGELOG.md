@@ -8,6 +8,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 A new page, [What an investigation reads](docs/evidence.md), lists the keys Home and the hunt read on each row (`service`, `host`, `version`, `level`, the exception, `trace_id`, and a deploy mark), what goes missing without each, which names must match across logs, spans, metrics and marks, and how to check what arrived.
 
+A deploy and a stack frame open their code (#393). With a service's repository known, a selected deploy in the marks panel gets a `code` row: its commit, and the changes since the previous deploy of the same service. The Stack tab links frames under the app's own paths (the roots `e1` strips) to that line at the sha of the deploy mark of the row's `version`, or on the default branch, which its header then says; library frames stay text. The repository comes from `vcs.repository.url.full` on the service's resource, else `repo` on its newest deploy mark, else **Settings › Repositories**, where an Operator sets or clears one, and one set there wins. GitHub, GitLab, Gitea / Forgejo and Bitbucket link in their own shapes. Links only: nothing is fetched and no token is kept. The CI samples in the ingest guide now send `attrs.repo`.
+
 ## 0.12.3
 
 In Live the facet chips say how old their counts are. The row leads with an age (`18s`) behind a refresh glyph; the counts refresh on the 30s pass while the clock moves every 2s, and the age turns plate when a pass is missed. Hover names the cadence. Live polling now runs on one refresh registry, so every Live list records when it last landed. A failed chip refresh of the same hunt keeps the chips on screen instead of clearing them.

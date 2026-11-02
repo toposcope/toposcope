@@ -7,6 +7,8 @@ import { changeMarkKinds, type ChangeMark, type ChangeMarkKind } from "../../sha
 import { formatChangeMarkLabel } from "../change-marks";
 import { hhmmUtc, markGlyph } from "../home-since";
 import { attrLine, inWindow, markFrom, panelRows, utcDayStart } from "../marks-panel";
+import { commitUrl, compareUrl } from "../../shared/code-links";
+import { deployName, shortSha, useCode } from "../code-links";
 
 /**
  * The marks panel (#262, frame 26f): every mark of the day from the rail's `marks · N` chip, in
@@ -140,6 +142,7 @@ export function MarksPanel(props: {
               {on ? (
                 <div className="flex flex-col gap-2.5 pb-3 pl-[70px]">
                   {attrLine(m) ? <span className="font-mono text-[11.5px] text-muted-foreground">{attrLine(m)}</span> : null}
+                  {m.kind === "deploy" ? <CodeRow markId={m.id} /> : null}
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" size="sm" onClick={() => props.onCompare(m)}>
                       Compare around it
@@ -196,5 +199,32 @@ export function MarksPanel(props: {
       </form>
       )}
     </aside>
+  );
+}
+
+/**
+ * A deploy's code (#393, frame 37g): its commit and what changed since the previous deploy of the
+ * same service, on the service's git host. With no repository known, no row.
+ */
+function CodeRow({ markId }: { markId: string }) {
+  const code = useCode(`mark=${encodeURIComponent(markId)}`);
+  const repo = code?.repository;
+  const sha = code?.mark?.sha;
+  if (!repo || !sha) {
+    return null;
+  }
+  const prev = code.previous?.sha ? code.previous : null;
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12px]">
+      <span className="w-[40px] shrink-0 font-mono text-[11.5px] text-muted-foreground">code</span>
+      <a href={commitUrl(repo, sha)} target="_blank" rel="noreferrer noopener" className="font-mono text-[11.5px] text-zinc-200 hover:text-foreground">
+        {repo.name} @ {shortSha(sha)} ↗
+      </a>
+      {prev ? (
+        <a href={compareUrl(repo, prev.sha!, sha)} target="_blank" rel="noreferrer noopener" className="text-zinc-200 hover:text-foreground">
+          changes since {deployName(prev)} ↗
+        </a>
+      ) : null}
+    </div>
   );
 }
