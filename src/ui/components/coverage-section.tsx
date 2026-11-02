@@ -647,7 +647,7 @@ export function EvidenceGaps({
   const shown = gaps.slice(0, HOME_GAP_LINES);
   const more = withGaps - shown.filter((g) => !g.mark).length;
   return (
-    <section aria-label="What this answer stands on" className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+    <section aria-label="What this answer stands on" className="shrink-0 overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
       <div className="flex flex-wrap items-baseline gap-3 px-4 pt-3 pb-2">
         <h2 className="m-0 text-[13.5px] font-medium">What this answer stands on</h2>
         <span className="text-[12px] text-muted-foreground">
