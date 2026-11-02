@@ -282,6 +282,17 @@ export type WorkspaceSnap = {
   marksMuted: string[];
   cut: FingerprintCutSnap | null;
   compare: CompareFoldSnap | null;
+  /** An Edit panel tab (#410, 39f): the board panel this hunt edits; Update panel writes it back. */
+  edit: PanelEdit | null;
+};
+
+/** Which board panel an Edit panel tab edits, and which of the hunt's panels stands for it. */
+export type PanelEdit = {
+  boardId: string;
+  panelId: string;
+  name: string;
+  /** The hunt widget that holds the panel's view; `events` is the event table. */
+  widgetId: string;
 };
 
 export type Workspace = {
@@ -371,6 +382,7 @@ export function blankSearchSnap(): WorkspaceSnap {
     marksMuted: [],
     cut: null,
     compare: null,
+    edit: null,
   };
 }
 
@@ -387,7 +399,8 @@ export function workspaceLiveLabel(input: {
   surrAnchor: LogEvent | null;
   focusMark?: ChangeMark | null;
   board?: boolean;
-  boardBinds?: string[];
+  /** The panel an Edit panel tab edits (#410, 39f). */
+  editPanel?: string | null;
   /** A Home tab keeps its name, edited or not (frame 12j). */
   home?: boolean;
 }): string {
@@ -402,11 +415,11 @@ export function workspaceLiveLabel(input: {
   if (input.kind === "follow" && input.follow) {
     return `${input.follow.key}:${input.follow.value}`;
   }
+  if (input.editPanel) {
+    return `Edit · ${input.editPanel}`;
+  }
   if (input.board && input.savedName) {
-    const binds = (input.boardBinds ?? []).filter((item) => item.length > 0);
-    return binds.length > 0
-      ? `${input.savedName} · ${binds.join(" · ")}`
-      : input.savedName;
+    return input.savedName;
   }
   if (input.savedName && !input.savedDirty) {
     return input.savedName;

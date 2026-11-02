@@ -10,7 +10,7 @@ const board: SavedSearch = {
   from_ts: null,
   to_ts: null,
   range: "1h",
-  board: { keys: ["host"], win: false },
+  board: { keys: ["host"], panels: [] },
   created_at: 1,
 };
 const plain: SavedSearch = { ...board, id: "p1", name: "box commands", board: null };

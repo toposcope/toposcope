@@ -140,7 +140,7 @@ export async function testAlertCallRoute(c: Context): Promise<Response> {
     return c.json({ error: "Saved search not found" }, 404);
   }
   if (saved.board) {
-    return c.json({ error: boardWatchRefuse(saved) }, 400);
+    return c.json({ error: boardWatchRefuse() }, 400);
   }
   const name = typeof rec.name === "string" && rec.name.trim() ? rec.name.trim() : saved.name;
   const rule = { id: typeof rec.id === "string" ? rec.id : "test", name, threshold, webhook_url: webhook, ...body };

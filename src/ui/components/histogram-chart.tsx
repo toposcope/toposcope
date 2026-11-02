@@ -122,6 +122,8 @@ type Props = {
   head?: ReactNode;
   /** The panel's own editor (#169): its lines, their names, its title and note. */
   editor?: ReactNode;
+  /** Add to board (#410, 39e), at the end of the plot's head. */
+  boardAction?: ReactNode;
   /** What each drawn line is (#169, 17f): its metric, its labels, what its sender said. */
   lineInfo?: Record<string, { metric: string; labels: string; description: string | null }>;
   className?: string;
@@ -414,6 +416,7 @@ export function HistogramChart({
   updated = null,
   head = null,
   editor = null,
+  boardAction = null,
   lineInfo,
   className,
   compactToolbar = false,
@@ -1315,6 +1318,7 @@ export function HistogramChart({
         ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          {boardAction ? <span className="mr-1.5">{boardAction}</span> : null}
           {updated}
           {metric && replaceY ? editor : null}
           <WidgetExportMenu

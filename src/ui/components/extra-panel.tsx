@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { WidgetCopyMenu } from "@/components/widget-copy-menu";
 import { WidgetExportMenu } from "@/components/widget-export-menu";
+import { AddToBoardList, type BoardChoice } from "@/components/add-to-board";
 import {
   Popover,
   PopoverContent,
@@ -40,6 +41,8 @@ type Props = {
   onShare?: () => void;
   /** Controls a panel kind puts in its head, before the actions: a metric panel's chart (#237, 25a). */
   headControls?: ReactNode;
+  /** Add to board on the ⋯ menu (#410, 39e): copies this panel's query and view onto a board. */
+  addToBoard?: { boards: BoardChoice[]; onPick: (boardId: string | null) => void };
   children: ReactNode;
 };
 
@@ -78,6 +81,7 @@ function OverflowMenus({
   onDuplicate,
   onCopy,
   onExport,
+  addToBoard,
 }: {
   atCap: boolean;
   exportDisabled?: boolean;
@@ -85,9 +89,10 @@ function OverflowMenus({
   onDuplicate: () => void;
   onCopy: (format: WidgetExportFormat) => void;
   onExport: (format: WidgetExportFormat) => void;
+  addToBoard?: Props["addToBoard"];
 }) {
   const [open, setOpen] = useState(false);
-  const [page, setPage] = useState<ExtraOverflowPage>("more");
+  const [page, setPage] = useState<ExtraOverflowPage | "board">("more");
 
   function close() {
     setOpen(false);
@@ -108,7 +113,7 @@ function OverflowMenus({
         <button
           type="button"
           className={iconBtn}
-          title="Duplicate, copy, export"
+          title={addToBoard ? "Duplicate, copy, export, add to board" : "Duplicate, copy, export"}
           aria-label="More panel actions"
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -122,7 +127,7 @@ function OverflowMenus({
       <PopoverContent
         align="end"
         collisionPadding={8}
-        className={cn("bg-[#18181b] p-1", onShare && page === "more" ? "w-[210px]" : "w-[168px]")}
+        className={cn("bg-[#18181b] p-1", (onShare && page === "more") || page === "board" ? "w-[210px]" : "w-[168px]")}
         onPointerDown={(e) => e.stopPropagation()}
       >
         {page === "more" ? (
@@ -171,7 +176,20 @@ function OverflowMenus({
                 file
               </span>
             </button>
+            {addToBoard ? (
+              <>
+                <div className="my-1 h-px bg-white/[0.08]" />
+                <button type="button" className={overflowRow} onClick={() => setPage("board")}>
+                  <span className="flex-1">Add to board</span>
+                  <span className="text-[10px] text-muted-foreground" aria-hidden>
+                    ▸
+                  </span>
+                </button>
+              </>
+            ) : null}
           </>
+        ) : page === "board" && addToBoard ? (
+          <AddToBoardList boards={addToBoard.boards} onPick={addToBoard.onPick} close={close} />
         ) : (
           widgetExportFormats.map((format) => (
             <button
@@ -219,6 +237,7 @@ export function ExtraPanel({
   onMovePointerDown,
   onShare,
   headControls,
+  addToBoard,
   children,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -294,7 +313,7 @@ export function ExtraPanel({
             <span className="min-w-0 flex-1" />
             <div className="flex shrink-0 items-center gap-1">
               {headControls}
-              {collapsed ? (
+              {collapsed || addToBoard ? (
                 <OverflowMenus
                   atCap={atCap}
                   exportDisabled={exportDisabled}
@@ -302,6 +321,7 @@ export function ExtraPanel({
                   onDuplicate={onDuplicate}
                   onCopy={onCopy}
                   onExport={onExport}
+                  addToBoard={addToBoard}
                 />
               ) : null}
               {showPct ? (

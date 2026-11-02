@@ -4,8 +4,8 @@ import { getDb } from "./index";
 import { actorOf } from "../actor-context";
 import { canSee, getSaved, type SavedSearch } from "./saved-searches";
 
-/** "A board opens with its inputs unset", so it would land on nothing (12h). */
-export const boardHomeRefuse = "A board cannot be Home: it opens with its inputs unset.";
+/** Home is a saved hunt (12h); a board is a screen of panels, not one hunt. */
+export const boardHomeRefuse = "A board cannot be Home.";
 
 /** The saved search the bare address opens on (#109), the instance's own: one password, one home. */
 export function homeSavedId(db: Database = getDb()): string | null {

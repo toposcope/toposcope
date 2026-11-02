@@ -90,7 +90,7 @@ export async function savedPreviewRoute(c: Context): Promise<Response> {
     return c.json({ error: fields.error }, 400);
   }
   if (fields.board) {
-    return c.json({ error: "A board opens with its inputs unset, so it finds nothing until they are: preview it with its inputs in the query" }, 400);
+    return c.json({ error: "A board has a query on each panel: preview a saved hunt." }, 400);
   }
   const range = fields.range ?? (fields.from_ts || fields.to_ts ? undefined : "1h");
   try {

@@ -18,6 +18,8 @@ import { hhmmUtc, markGlyph } from "../home-since";
 export function HuntCrumb(props: {
   name: string | null;
   board: boolean;
+  /** `board · 6 panels` beside a board's name (39b). */
+  badge?: string;
   dirty: boolean;
   pinned: boolean;
   mark: ChangeMark | null;
@@ -42,6 +44,11 @@ export function HuntCrumb(props: {
         ›
       </span>
       <span className="max-w-[420px] truncate font-medium text-foreground">{props.name ?? "hunt"}</span>
+      {props.badge ? (
+        <span className="rounded-[4px] border border-white/15 px-1.5 font-mono text-[11.5px] leading-[19px] text-muted-foreground">
+          {props.badge}
+        </span>
+      ) : null}
       {props.mark ? (
         <span className="ml-1.5 inline-flex h-6 items-center gap-1.5 rounded-[6.4px] border border-plate bg-[#141416] pr-1 pl-[9px] text-[12px] whitespace-nowrap">
           <span style={{ color: markGlyph[props.mark.kind].color }}>{markGlyph[props.mark.kind].glyph}</span>
@@ -66,7 +73,6 @@ export function HuntCrumb(props: {
           size="sm"
           variant="outline"
           className="rounded-r-none border-r-0"
-          title={props.board ? "Edit this board — its template, window and inputs" : undefined}
           disabled={props.saveDisabled && !props.board}
           onClick={props.onSave}
         >
@@ -87,7 +93,7 @@ export function HuntCrumb(props: {
               <>
                 <div className="-mx-1 my-1 h-px bg-border" role="separator" />
                 <DropdownMenuItem className="text-red-300" onSelect={props.onDelete}>
-                  Delete this saved hunt
+                  {props.board ? "Delete this board" : "Delete this saved hunt"}
                 </DropdownMenuItem>
               </>
             ) : null}
@@ -101,6 +107,47 @@ export function HuntCrumb(props: {
       ) : null}
       <Button type="button" size="sm" variant="outline" onClick={props.onShare}>
         Share
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * An Edit panel tab's crumb row (#410, 39f): Home › the board › Edit panel, then Cancel and
+ * Update panel in place of Save, Watch this and Share.
+ */
+export function EditPanelCrumb(props: {
+  boardName: string;
+  panelName: string;
+  updateDisabled: boolean;
+  onHome: () => void;
+  onBoard: () => void;
+  onCancel: () => void;
+  onUpdate: () => void;
+}) {
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2.5 text-[13px]">
+      <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onHome}>
+        Home
+      </button>
+      <span className="text-zinc-600" aria-hidden="true">
+        ›
+      </span>
+      <button type="button" className="max-w-[320px] truncate text-muted-foreground hover:text-foreground" onClick={props.onBoard}>
+        {props.boardName}
+      </button>
+      <span className="text-zinc-600" aria-hidden="true">
+        ›
+      </span>
+      <span className="font-medium text-foreground">Edit panel</span>
+      <span className="max-w-[320px] truncate text-muted-foreground">{props.panelName}</span>
+      <div className="flex-1" />
+      <span className="text-[12.5px] text-muted-foreground">Board inputs are off while you edit.</span>
+      <Button type="button" size="sm" variant="outline" onClick={props.onCancel}>
+        Cancel
+      </Button>
+      <Button type="button" size="sm" disabled={props.updateDisabled} onClick={props.onUpdate}>
+        Update panel
       </Button>
     </div>
   );

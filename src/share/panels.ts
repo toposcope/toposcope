@@ -82,7 +82,7 @@ function isLogPanel(p: SharePanel): boolean {
 /**
  * The fence the panels need (26k "derived from the panels"): their metric names, the labels they
  * all read under, the keys they split or count by, and the label keys they narrow by. Logs keep the
- * `q` given, since a panel has no `q` of its own (per-widget `q` stays out).
+ * `q` given, since a hunt panel has no `q` of its own (a hunt has one `q`; board panels carry their own, #410).
  */
 export function deriveShareScope(panels: SharePanel[], logs: string | null): ShareScope | { error: string } {
   if (panels.some(isLogPanel) && !logs) {

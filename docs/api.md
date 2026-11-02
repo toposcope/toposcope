@@ -480,7 +480,7 @@ Body:
 | `to_ts` | string \| null |  | Where a fixed window ends, an ISO time; read only when range is null. |
 | `agg` | string \| null |  | The series it reads, as search's agg takes it; null counts rows. |
 | `widgets` | any \| null |  | The canvas: its widgets and their places, as the app saves them. |
-| `board` | any \| null |  | A board's slots and window, as the app saves them; null makes it a plain hunt. |
+| `board` | any \| null |  | A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt. |
 | `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
@@ -502,7 +502,7 @@ Body:
 | `to_ts` | string \| null |  | Where a fixed window ends, an ISO time; read only when range is null. |
 | `agg` | string \| null |  | The series it reads, as search's agg takes it; null counts rows. |
 | `widgets` | any \| null |  | The canvas: its widgets and their places, as the app saves them. |
-| `board` | any \| null |  | A board's slots and window, as the app saves them; null makes it a plain hunt. |
+| `board` | any \| null |  | A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt. |
 | `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
@@ -526,7 +526,7 @@ Body:
 | `to_ts` | string \| null |  | Where a fixed window ends, an ISO time; read only when range is null. |
 | `agg` | string \| null |  | The series it reads, as search's agg takes it; null counts rows. |
 | `widgets` | any \| null |  | The canvas: its widgets and their places, as the app saves them. |
-| `board` | any \| null |  | A board's slots and window, as the app saves them; null makes it a plain hunt. |
+| `board` | any \| null |  | A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt. |
 | `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
