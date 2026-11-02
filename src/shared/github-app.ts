@@ -5,8 +5,8 @@
  * `TOPOSCOPE_GITHUB_CLIENT_ID` and `TOPOSCOPE_GITHUB_APP` point an instance at an App of its own.
  */
 
-/** The shipped App's client ID; empty until the App is registered, which hides Connect GitHub. */
-const shippedClientId = "";
+/** The shipped App's client ID (github.com/apps/toposcope); empty would hide Connect GitHub. */
+const shippedClientId = "Iv23linB0NGInmOJyfG2";
 
 const slug = process.env.TOPOSCOPE_GITHUB_APP?.trim() || "toposcope";
 
