@@ -10,7 +10,7 @@ Home and the hunt answer one question: *what changed since this deploy?* They an
 | `host` | logs, metrics, spans | the resource's `host.name`, or the collector | Compare cannot split by host, so one bad box hides in the average. |
 | `version` | logs (from `service.version`), a deploy mark's `attrs.version` | `OTEL_RESOURCE_ATTRIBUTES=service.version=…`; in CI, the tag | Nothing says which release a row ran. `version:v0.9` finds nothing, and a rollout's two versions read as one. |
 | `level` | logs | the record's severity | `level:error`, the error rate and every monitor on it count nothing. |
-| `exception.type` with `exception.stacktrace` or `exception.frames` | error logs | the logger bridged to the exporter, with the exception attached | No `e1`. Fingerprints and Home's new and stopped errors skip that error; it counts only as volume. See [exception fingerprints](ingest.md#exception-fingerprints). |
+| `exception.type` with `exception.stacktrace` or `exception.frames` | error logs | the logger bridged to the exporter, with the exception attached | `e1` falls back to the type and the message, so a reworded message reads as a new error in Fingerprints and on Home, and the Stack tab is empty. See [exception fingerprints](ingest.md#exception-fingerprints). |
 | `trace_id` | logs | an OpenTelemetry logger bridge inside a span, or a `trace_id` / `request_id` attr of 32 hex | No View trace. A `req-…` id still works for Follow, not for the waterfall. |
 | A deploy mark | `change_marks` | CI on release (`POST /v1/marks`), with `service`, `attrs.version` and `attrs.sha` | Home falls back to the last hour against the hour before. Compare and Fingerprints have nothing to stand on. |
 
@@ -40,7 +40,7 @@ A mark is the anchor Home and the hunt measure from, so every change that can br
 
 - `service:otlp` in the bar finds OTLP rows that came without a service name.
 - **Settings → Fields** lists the keys that arrived in the window. A key from the table above that is missing there is missing on every row.
-- An error row in the event panel shows its fingerprint line. No line means no `e1`: check that the exception reached the log record, not only the span.
+- An error row in the event panel has a Stack tab when its exception arrived with a stack. No Stack tab means its `e1` came from the message: check that the exception reached the log record, not only the span.
 - A Home with no deploy in a day that had one means the mark never arrived. Check the CI step's reply: a valid mark is always `200` with `ingested`.
 
 ## Related documentation
