@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyAccepted, buildCoverage, coverageGaps, coverageGroups, coverageNotes, doneSummary, mismatchSo, nameKey, namesSummary, stackAccepted, type CoverageInput } from "./coverage";
+import { applyAccepted, buildCoverage, coverageGaps, coverageGroups, doneSummary, mismatchSo, nameKey, namesSummary, stackAccepted, type CoverageInput } from "./coverage";
 
 /** Sheet 37's instance (37j / 37k), as rollup counts. */
 function sheet(): CoverageInput {
@@ -84,13 +84,6 @@ describe("coverage (#391)", () => {
     expect(coverageGaps(c, "m2").map((g) => g.service)).toEqual(["billing", "auth", "worker"]);
   });
 
-  test("the notes under the table name what costs Home its answer", () => {
-    expect(coverageNotes(buildCoverage(sheet()))).toEqual([
-      { service: "billing", kind: "version", noMark: true },
-      { service: "worker", kind: "stack", missing: "88%" },
-    ]);
-  });
-
   describe("accepted gaps (#392)", () => {
     const at = Date.parse("2026-11-02T14:40:00Z");
     test("a held gap leaves Home, the notes and the count; the cell keeps its number", () => {
@@ -107,7 +100,6 @@ describe("coverage (#391)", () => {
       expect(coverageGaps(coverage, null).map((g) => g.service)).toEqual(["billing", "worker"]);
       // worker's next gap is its version, once its stack is accepted
       expect(coverageGaps(coverage, null)[1]!.what).toBe("version on 71% of rows: the rest cannot be told apart by release");
-      expect(coverageNotes(coverage).map((n) => n.service)).toEqual(["billing"]);
       expect(stackAccepted(coverage, "worker")).toBe(true);
     });
 
@@ -127,7 +119,6 @@ describe("coverage (#391)", () => {
     test("a deploy mark can be accepted, and is cleared when one arrives", () => {
       const held = applyAccepted(buildCoverage(sheet()), [{ service: "billing", key: "marks", share: 0, by: null, at }]);
       expect(held.coverage.accepted![0]!.state).toBe("holds");
-      expect(coverageNotes(held.coverage)).toContainEqual({ service: "billing", kind: "version", noMark: false });
       const input = sheet();
       input.deploys.push({ id: "b1", ts: "2026-11-02T13:00:00.000Z", service: "billing", version: "" });
       expect(applyAccepted(buildCoverage(input), [{ service: "billing", key: "marks", share: 0, by: null, at }]).cleared).toHaveLength(1);

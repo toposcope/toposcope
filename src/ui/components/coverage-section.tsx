@@ -10,6 +10,7 @@ import {
   doneSummary,
   namesSummary,
   coveragePercent,
+  evidenceDocUrl,
   gapShare,
   keysDocUrl,
   marksDocUrl,
@@ -367,6 +368,9 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
           )}
         </span>
         <span className="flex-1" />
+        <a href={evidenceDocUrl} target="_blank" rel="noreferrer" className={link}>
+          What an investigation reads ↗
+        </a>
         <label htmlFor="coverage-find" className="text-[12.5px] text-muted-foreground">
           Find a service
         </label>
@@ -461,6 +465,17 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
             <span className="text-zinc-300">Show</span>
           </button>
         )
+      ) : null}
+      {!finding ? (
+        <p className="m-0 border-b border-white/[0.05] px-4 py-2.5 text-[11.5px] leading-[1.5] text-muted-foreground">
+          A key is complete at {Math.round(COVERAGE_COMPLETE * 100)}% of the service's rows.
+          {coverage.services.some((s) => s.trace_id === null) ? (
+            <>
+              {" "}
+              <span className="font-mono">—</span> under trace_id: the service sends no spans, so it is not counted.
+            </>
+          ) : null}
+        </p>
       ) : null}
       {!finding && listOpen && accepted.length > 0 ? <AcceptedList accepted={accepted} actions={actions} /> : null}
       {!finding && hasNames ? (
