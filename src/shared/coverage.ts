@@ -414,27 +414,6 @@ export function coverageGaps(c: Coverage, selectedMarkId: string | null): Covera
   return out.sort((a, b) => a.rank - b.rank).map(({ rank: _rank, ...g }) => g);
 }
 
-export type CoverageNote =
-  | { service: string; kind: "version"; noMark: boolean }
-  | { service: string; kind: "stack"; missing: string };
-
-/**
- * The sentences under the Coverage table (37j), for the gaps that cost Home its answer: a service
- * with no `version` at all, else one whose errors mostly come without a stack. One for each service.
- */
-export function coverageNotes(c: Coverage): CoverageNote[] {
-  const out: CoverageNote[] = [];
-  for (const s of c.services) {
-    const held = new Set(s.accepted ?? []);
-    if (s.version === 0 && !held.has("version")) {
-      out.push({ service: s.service, kind: "version", noMark: s.marks.count === 0 && !held.has("marks") });
-    } else if (s.stack !== null && s.stack < 0.5 && !held.has("stack")) {
-      out.push({ service: s.service, kind: "stack", missing: coveragePercent(1 - s.stack) });
-    }
-  }
-  return out;
-}
-
 /** Where a mismatch's other name was seen: "spans · 210K · metrics · 14 names". */
 export function mismatchOn(m: CoverageMismatch, count: (n: number) => string): string {
   if (m.kind === "version") {
