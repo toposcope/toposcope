@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import { fieldRoles } from "../../shared/fields";
-import { optionalChoice, optionalText, window } from "./common";
+import { optionalChoice, optionalText, requiredText, window } from "./common";
 
 export const fieldsQuery = v.object({
   ...window,
@@ -18,4 +18,16 @@ export const fieldsBody = v.object({
   links: v.nullish(
     v.pipe(v.record(v.string(), v.string()), v.description("Each field's metric label, so Graph opens its metric; replaces every link.")),
   ),
+});
+
+const gapKeyWords = "version, host, trace_id, stack (on error rows) or marks (a deploy mark)";
+
+export const coverageGapBody = v.object({
+  service: v.pipe(v.string("service is required"), v.description("The service, as Coverage lists it.")),
+  key: v.pipe(v.string("key is required"), v.description(`The gap: ${gapKeyWords}.`)),
+});
+
+export const coverageGapQuery = v.object({
+  service: requiredText("The service, as Coverage lists it.", "service is required"),
+  key: requiredText(`The gap: ${gapKeyWords}.`, "key is required"),
 });

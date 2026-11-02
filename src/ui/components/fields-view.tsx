@@ -41,6 +41,8 @@ type Props = {
   onSettings: () => void;
   /** Opened from Home's "Names that do not match ›": scroll to them. */
   focusNames?: boolean;
+  /** An Operator may accept a coverage gap (37n). */
+  canAccept?: boolean;
   onStop: () => void;
   onSave: (
     roles: Record<string, FieldRole>,
@@ -66,6 +68,7 @@ export function FieldsView({
   failed,
   onSettings,
   focusNames,
+  canAccept,
   onStop,
   onSave,
 }: Props) {
@@ -162,7 +165,7 @@ export function FieldsView({
           </div>
         ) : (
           <>
-            <CoverageSection coverage={coverage} focusNames={focusNames} />
+            <CoverageSection coverage={coverage} focusNames={focusNames} canAccept={canAccept} />
             <div className="mb-2 flex items-center gap-2.5">
               {wave ? (
                 <div

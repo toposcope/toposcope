@@ -2,6 +2,7 @@ import { accessRoute } from "../access/list";
 import { monitorPreviewRoute } from "../alerts/preview";
 import { testAlertCallRoute } from "../alerts/test-call";
 import { createAlertRule, deleteAlertRule, getAlert, listAlertRules, monitorsNamed } from "../control/alerts";
+import { acceptGapRoute, coverageRoute, undoGapRoute } from "../control/coverage-accepted";
 import { getFields, putFields } from "../control/fields";
 import { getHome, putHome } from "../control/home";
 import { homeSinceRoute } from "../control/home-since";
@@ -56,7 +57,6 @@ import {
   surroundingRoute,
 } from "../query";
 import { compareRoute } from "../query/compare";
-import { coverageRoute } from "../query/coverage";
 import { fingerprintCutRoute, fingerprintRevisionsRoute } from "../query/fingerprint-cut";
 import { fingerprintSeenRoute } from "../query/fingerprint-seen";
 import { followSpanRoute } from "../query/follow-span";
@@ -76,7 +76,7 @@ import { openApiDocument } from "./openapi";
 import { routeFor, type ApiRoute } from "./registry";
 import { settingsBody, signInSettingsBody } from "./schemas/settings";
 import { agentBody, ingestTokenBody, inviteBody, personBody, serviceAccountBody, tokenBody } from "./schemas/access";
-import { fieldsBody, fieldsQuery } from "./schemas/fields";
+import { coverageGapBody, coverageGapQuery, fieldsBody, fieldsQuery } from "./schemas/fields";
 import { fieldRoleBody, noteBody, panelBody } from "./schemas/design";
 import { homeBody, homeSinceQuery, savedCreateBody, savedUpdateBody } from "./schemas/saved";
 import { upgradeBody } from "./schemas/instance";
@@ -170,7 +170,9 @@ export const apiRoutes: ApiRoute[] = [
 
   // Fields
   { id: "fields", method: "GET", path: "/api/fields", area: "Fields", action: "read", summary: "The fields rows carry, their roles, and the metric links.", query: fieldsQuery, body: null, handler: getFields },
-  { id: "coverage", method: "GET", path: "/api/coverage", area: "Fields", action: "read", summary: "Each service's share of rows carrying version, host, trace_id and a stack on errors in the last 24 h, its deploy marks, and the names that do not match.", query: null, body: null, handler: coverageRoute },
+  { id: "coverage", method: "GET", path: "/api/coverage", area: "Fields", action: "read", summary: "Each service's share of rows carrying version, host, trace_id and a stack on errors in the last 24 h, its deploy marks, the names that do not match, and the gaps accepted.", query: null, body: null, handler: coverageRoute },
+  { id: "coverage_accept", method: "POST", path: "/api/coverage/accepted", area: "Fields", action: "change fields", summary: "Accept a coverage gap at its share now, so Home and the counts stop naming it until it falls further.", query: null, body: coverageGapBody, handler: acceptGapRoute },
+  { id: "coverage_undo", method: "DELETE", path: "/api/coverage/accepted", area: "Fields", action: "change fields", summary: "Undo an accepted coverage gap; it counts as a gap again.", query: coverageGapQuery, body: null, handler: undoGapRoute },
   { id: "fields_set", method: "PUT", path: "/api/fields", area: "Fields", action: "change fields", summary: "Set fields' roles and the metric links.", query: null, body: fieldsBody, handler: putFields },
   { id: "field_role_set", method: "PUT", path: "/api/fields/roles/:key", area: "Fields", action: "change fields", summary: "Set one field's role, leaving every other role and link as it is.", query: null, body: fieldRoleBody, handler: putFieldRoleRoute },
 

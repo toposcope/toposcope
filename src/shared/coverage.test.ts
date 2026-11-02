@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildCoverage, coverageGaps, coverageNotes, mismatchSo, nameKey, type CoverageInput } from "./coverage";
+import { applyAccepted, buildCoverage, coverageGaps, coverageNotes, mismatchSo, nameKey, stackAccepted, type CoverageInput } from "./coverage";
 
 /** Sheet 37's instance (37j / 37k), as rollup counts. */
 function sheet(): CoverageInput {
@@ -89,5 +89,48 @@ describe("coverage (#391)", () => {
       { service: "billing", kind: "version", noMark: true },
       { service: "worker", kind: "stack", missing: "88%" },
     ]);
+  });
+
+  describe("accepted gaps (#392)", () => {
+    const at = Date.parse("2026-11-02T14:40:00Z");
+    test("a held gap leaves Home, the notes and the count; the cell keeps its number", () => {
+      const { coverage, cleared } = applyAccepted(buildCoverage(sheet()), [
+        { service: "auth", key: "trace_id", share: 0.12, by: null, at },
+        { service: "worker", key: "stack", share: 0.12, by: null, at },
+      ]);
+      expect(cleared).toEqual([]);
+      expect(coverage.accepted!.map((a) => a.state)).toEqual(["holds", "holds"]);
+      const auth = coverage.services.find((s) => s.service === "auth")!;
+      expect(auth.trace_id).toBeCloseTo(0.121, 2);
+      expect(auth.complete).toBe(true);
+      expect(coverage.complete).toBe(3);
+      expect(coverageGaps(coverage, null).map((g) => g.service)).toEqual(["billing", "worker"]);
+      // worker's next gap is its version, once its stack is accepted
+      expect(coverageGaps(coverage, null)[1]!.what).toBe("version on 71% of rows: the rest cannot be told apart by release");
+      expect(coverageNotes(coverage).map((n) => n.service)).toEqual(["billing"]);
+      expect(stackAccepted(coverage, "worker")).toBe(true);
+    });
+
+    test("a gap comes back below its share at accept, and is cleared at 90%", () => {
+      const input = sheet();
+      input.keys = input.keys.map((k) => (k.service === "worker" ? { ...k, stack: 4 } : k.service === "auth" ? { ...k, trace_id: 380 } : k));
+      const { coverage, cleared } = applyAccepted(buildCoverage(input), [
+        { service: "auth", key: "trace_id", share: 0.12, by: null, at },
+        { service: "worker", key: "stack", share: 0.12, by: null, at },
+      ]);
+      expect(cleared.map((r) => r.service)).toEqual(["auth"]);
+      expect(coverage.accepted).toEqual([expect.objectContaining({ service: "worker", key: "stack", now: 0.04, state: "back" })]);
+      expect(stackAccepted(coverage, "worker")).toBe(false);
+      expect(coverageGaps(coverage, null).map((g) => g.service)).toContain("worker");
+    });
+
+    test("a deploy mark can be accepted, and is cleared when one arrives", () => {
+      const held = applyAccepted(buildCoverage(sheet()), [{ service: "billing", key: "marks", share: 0, by: null, at }]);
+      expect(held.coverage.accepted![0]!.state).toBe("holds");
+      expect(coverageNotes(held.coverage)).toContainEqual({ service: "billing", kind: "version", noMark: false });
+      const input = sheet();
+      input.deploys.push({ id: "b1", ts: "2026-11-02T13:00:00.000Z", service: "billing", version: "" });
+      expect(applyAccepted(buildCoverage(input), [{ service: "billing", key: "marks", share: 0, by: null, at }]).cleared).toHaveLength(1);
+    });
   });
 });
