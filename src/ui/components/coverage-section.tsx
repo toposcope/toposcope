@@ -371,29 +371,32 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
         <a href={evidenceDocUrl} target="_blank" rel="noreferrer" className={link}>
           What an investigation reads ↗
         </a>
-        <label htmlFor="coverage-find" className="text-[12.5px] text-muted-foreground">
-          Find a service
-        </label>
-        <input
-          id="coverage-find"
-          value={find}
-          placeholder="name"
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(e) => setFind(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && find) {
-              e.stopPropagation();
-              setFind("");
-            }
-          }}
-          className="h-[30px] w-[210px] rounded-md border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none focus:border-white/25"
-        />
-        {finding ? (
-          <button type="button" className="h-[30px] rounded-md border border-white/15 px-2.5 text-[12.5px] hover:bg-white/[0.04]" onClick={() => setFind("")}>
-            Clear
-          </button>
-        ) : null}
+        {/* The label, its field and Clear wrap as one, so a narrow head never parts them. */}
+        <span className="flex items-center gap-3">
+          <label htmlFor="coverage-find" className="text-[12.5px] text-muted-foreground">
+            Find a service
+          </label>
+          <input
+            id="coverage-find"
+            value={find}
+            placeholder="name"
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(e) => setFind(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && find) {
+                e.stopPropagation();
+                setFind("");
+              }
+            }}
+            className="h-[30px] w-[210px] rounded-md border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none focus:border-white/25"
+          />
+          {finding ? (
+            <button type="button" className="h-[30px] rounded-md border border-white/15 px-2.5 text-[12.5px] hover:bg-white/[0.04]" onClick={() => setFind("")}>
+              Clear
+            </button>
+          ) : null}
+        </span>
       </div>
       {gaps.length > 0 ? (
         <>
