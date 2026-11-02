@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+**The machine's health and /metrics pages, through `vector.yaml`** (#418, #419). The shipped Vector config now sends the health of the machine it runs on every 15 seconds: CPU, memory and swap, load, disks, filesystems and network, as `host_*` names with `host` on every series. It also has a `prometheus_scrape` source, commented out, for exporters and services that only offer a `/metrics` page; uncomment it and list the pages. Both go through Prometheus remote write on a disk buffer of their own. Vector in a container needs the machine's `/proc`, `/sys` and hostname; the ingest guide has the `docker run` line.
+
 **Prometheus remote write in** (#417). A Prometheus, or anything that speaks its remote write (Prometheus in agent mode, Grafana Alloy, Vector), sends what it scrapes to `POST /v1/prometheus/write` with the ingest token: one `remote_write:` block, and its exporters and scrape config stay as they are. A `_total` name or a counter in its metadata is a counter, stored as the amount per interval; `_bucket` series are a histogram's buckets, read as an average or a percentile, with `_count` and `_sum` as `<name>.count` and `<name>.sum`; a summary keeps its count and sum; everything else is a gauge. `job` gives `service` and `instance` gives `host`. The first total of each counter is its baseline. Remote write 1.0 only; native histograms are not read yet.
 
 **Changes stored data:** every board is rewritten at boot to the new shape below. A board saved before this keeps its inputs and becomes one panel per widget it had, each on its template query; its window becomes the board's (`1h` if it had none).

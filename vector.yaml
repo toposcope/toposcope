@@ -8,6 +8,11 @@
 # what it receives on disk until Toposcope has taken it, and forwards each
 # request as the app sent it: logs, traces and metrics.
 #
+# It also sends this machine's health every 15 s (CPU, memory, load, disks,
+# filesystems, network), and any /metrics page you list under `exporters`,
+# through Prometheus remote write. In a container, mount the host's /proc and
+# /sys and set PROCFS_ROOT and SYSFS_ROOT, or it reports the container.
+#
 # The app changes one setting, the address, and needs no token: Vector adds it.
 #
 #   OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318    # http/protobuf
@@ -39,6 +44,26 @@ sources:
       address: 127.0.0.1:4317
     # Keep each request in OTLP's own shape, so it is forwarded unchanged.
     use_otlp_decoding: true
+
+  # This machine's health. Every row carries `host`, its hostname. To turn it
+  # off, delete this source and take `machine` out of `toposcope_prometheus`.
+  machine:
+    type: host_metrics
+    namespace: host
+    scrape_interval_secs: 15
+    collectors: [cpu, memory, load, disk, filesystem, network]
+
+  # A /metrics page: node_exporter, a Postgres, Redis or nginx exporter, most Go
+  # services. Uncomment, list the pages, and add `exporters` to the inputs of
+  # `toposcope_prometheus`. A page's address becomes `instance`, and its host
+  # part `host`.
+  #
+  # exporters:
+  #   type: prometheus_scrape
+  #   endpoints:
+  #     - http://127.0.0.1:9187/metrics
+  #   scrape_interval_secs: 15
+  #   instance_tag: instance
 
   smoke:
     type: demo_logs
@@ -124,6 +149,22 @@ sinks:
       request:
         headers:
           Authorization: "Bearer ${TOPOSCOPE_INGEST_TOKEN}"
+    buffer:
+      type: disk
+      max_size: 268435488
+      when_full: block
+
+  # Host metrics and /metrics pages, as Prometheus remote write.
+  toposcope_prometheus:
+    type: prometheus_remote_write
+    inputs: [machine]
+    endpoint: "${TOPOSCOPE_URL:-http://127.0.0.1:8080}/v1/prometheus/write"
+    auth:
+      strategy: bearer
+      token: "${TOPOSCOPE_INGEST_TOKEN}"
+    # Vector's check before the first send is not a remote write; a wrong token shows in its log on the first send.
+    healthcheck:
+      enabled: false
     buffer:
       type: disk
       max_size: 268435488
