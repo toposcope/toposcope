@@ -267,8 +267,17 @@ describe("vector example", () => {
     }
     // The smoke source shares the logs sink.
     expect(yaml).toContain("inputs: [apps.logs, to_toposcope]");
-    expect(yaml.match(/type: disk\n      max_size: 268435488\n      when_full: block/g)).toHaveLength(3);
+    expect(yaml.match(/type: disk\n      max_size: 268435488\n      when_full: block/g)).toHaveLength(4);
     expect(yaml.match(/Authorization: "Bearer \$\{TOPOSCOPE_INGEST_TOKEN\}"/g)).toHaveLength(3);
+  });
+
+  test("sends this machine's health, and any /metrics page listed, as Prometheus remote write (#418, #419)", async () => {
+    const yaml = await vector;
+    expect(yaml).toContain("type: host_metrics");
+    expect(yaml).toContain("#   type: prometheus_scrape");
+    expect(yaml).toContain("type: prometheus_remote_write\n    inputs: [machine]");
+    expect(yaml).toContain('endpoint: "${TOPOSCOPE_URL:-http://127.0.0.1:8080}/v1/prometheus/write"');
+    expect(yaml).toContain('strategy: bearer\n      token: "${TOPOSCOPE_INGEST_TOKEN}"');
   });
 
   test("sends one event to a request, so Toposcope's limits apply to what the app sent", async () => {
