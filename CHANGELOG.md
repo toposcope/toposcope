@@ -4,11 +4,9 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.13.0
 
-What an investigation reads has two more ways to mark a change: an Argo CD notifications template that posts a deploy mark once per synced revision, and a Vector relay that turns a tool's own webhook body, such as a flag service's, into a mark.
-
-A new page, [What an investigation reads](docs/evidence.md), lists the keys Home and the hunt read on each row (`service`, `host`, `version`, `level`, the exception, `trace_id`, and a deploy mark), what goes missing without each, which names must match across logs, spans, metrics and marks, and how to check what arrived.
+**Changes stored data:** three new tables, `coverage_accepted`, `coverage_accepted_log` and `repositories`. ClickHouse is unchanged.
 
 **Settings › Fields** opens with Coverage: for each service in the last 24 h, the share of its rows carrying `version`, `host` and `trace_id` (counted only for a service that sends spans), the share of its errors with a stack, and its deploy marks, with how many services are complete (every key at 90% and a deploy mark). Under it, **Names that do not match** lists a service on spans, metrics or marks that is a logs service but for case, a `v`, or an `-api` / `-svc` suffix, and a deploy mark's `version` that its rows send with or without the `v`. Home lists the gaps under its cards as **What this answer stands on**, the selected mark's mismatch first, and leaves it out when nothing is missing. It all comes from the minute rollups and the marks; `GET /api/coverage` is the same answer for a script.
 
@@ -17,6 +15,10 @@ Gaps say what they cost where they cost it. An error row whose fingerprint came 
 A deploy and a stack frame open their code (#393). With a service's repository known, a selected deploy in the marks panel gets a `code` row: its commit, and the changes since the previous deploy of the same service. The Stack tab links frames under the app's own paths (the roots `e1` strips) to that line at the sha of the deploy mark of the row's `version`, or on the default branch, which its header then says; library frames stay text. The repository comes from `vcs.repository.url.full` on the service's resource, else `repo` on its newest deploy mark, else **Settings › Repositories**, where an Operator sets or clears one, and one set there wins. GitHub, GitLab, Gitea / Forgejo and Bitbucket link in their own shapes. Links only: nothing is fetched and no token is kept. The CI samples in the ingest guide now send `attrs.repo`.
 
 Coverage stays short with many services. On Fields, services with gaps come first, the largest first, eight of them, then one line for the rest; services that are complete or whose only gaps are accepted fold into one line, and so do the names that do not match. **Find a service** searches every group, folded or not, and a group you open stays open in that browser. The keys table is back on the first screen. Home's **What this answer stands on** shows three lines at most, the services this answer reads the most rows from, then how many more and a link to see them in Fields; it no longer scrolls inside itself.
+
+A new page, [What an investigation reads](docs/evidence.md), lists the keys Home and the hunt read on each row (`service`, `host`, `version`, `level`, the exception, `trace_id`, and a deploy mark), what goes missing without each, which names must match across logs, spans, metrics and marks, and how to check what arrived.
+
+What an investigation reads has two more ways to mark a change: an Argo CD notifications template that posts a deploy mark once per synced revision, and a Vector relay that turns a tool's own webhook body, such as a flag service's, into a mark.
 
 ## 0.12.3
 
