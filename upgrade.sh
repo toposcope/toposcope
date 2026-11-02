@@ -137,7 +137,7 @@ fetch_release() {
     got="$(sha256_of "$dir/$file")"
     [ "$got" = "$expected" ] || die "$file from the $version release does not match its SHA256SUMS. Nothing was changed."
   done
-  chmod +x "$dir/upgrade.sh"
+  chmod +x "$dir/upgrade.sh" "$dir/toposcope.sh"
 }
 
 latest_release() {
@@ -322,7 +322,7 @@ swap_files() {
   for file in compose.yml env.example LICENSE toposcope.sh upgrade.sh; do
     cp "$dir/$file" "$ROOT/.$file.new" && mv -f "$ROOT/.$file.new" "$ROOT/$file"
   done
-  chmod +x "$ROOT/upgrade.sh"
+  chmod +x "$ROOT/upgrade.sh" "$ROOT/toposcope.sh"
   [ -f "$old_vector" ] || curl -fsSL "$RELEASES/v$from/vector.yaml" -o "$old_vector" 2>/dev/null || true
   if [ ! -f "$ROOT/vector.yaml" ] || { [ -f "$old_vector" ] && cmp -s "$ROOT/vector.yaml" "$old_vector"; }; then
     cp "$dir/vector.yaml" "$ROOT/vector.yaml"
