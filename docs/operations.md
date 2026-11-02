@@ -254,6 +254,7 @@ Toposcope calls out only where this list says. Everything but the first item is 
 - **HTTP(S), TCP and certificate monitors**: the addresses and ports they check, from this node.
 - **Links**: the instances this one pulls from or serves, as each link says.
 - **`TOPOSCOPE_WATCHDOG_URL`**: the check-in after each monitor pass, when it is set.
+- **GitHub, once an Owner connects it** on Settings › Repositories: `github.com/login/device/code` and `github.com/login/oauth/access_token` while a device code waits, then `api.github.com/user/installations` and each installation's repositories when Repositories is open or Set lists them (a list is reused for 30 seconds). The token is GitHub's and is kept in SQLite (`github_connection`), never sent to a browser; it reads repository names and nothing else. Disconnect, or revoke the Toposcope App on GitHub, ends it. `TOPOSCOPE_GITHUB_CLIENT_ID` and `TOPOSCOPE_GITHUB_APP` (its slug) point the instance at a GitHub App of your own instead of Toposcope's.
 
 **Paging on a new release.** The first time the check sees a version newer than the running one, Toposcope writes one row, `service:toposcope event:update_available`, with `running`, `latest`, `step` (`patch`, `minor` or `major`), `behind` and `url`. It writes one row per version, never again for the same one. To be paged:
 1. Save a search for `service:toposcope event:update_available` over 1 day.

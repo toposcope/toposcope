@@ -27,6 +27,7 @@ The same command, for an Owner's email, is the way back in. The link gives that 
 | Make and change monitors, webhooks | — | ✓ | ✓ |
 | Change Fields roles and metric links | — | ✓ | ✓ |
 | Set or clear a service's repository | — | ✓ | ✓ |
+| Connect or disconnect GitHub | — | — | ✓ |
 | Add panels to an existing share | — | ✓ | ✓ |
 | Invite people, change roles | — | — | ✓ |
 | Make or revoke tokens, links, shares | — | — | ✓ |
