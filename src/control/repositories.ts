@@ -10,7 +10,8 @@ import { getDb } from "./index";
 /**
  * Where each service's code lives (#393, frame 37i). A service's repository comes from
  * `vcs.repository.url.full` on its resource, else `repo` on its newest deploy mark, else a row an
- * Operator set here; one set here wins over both. Links only: nothing is fetched, no token is kept.
+ * Operator set here; one set here wins over both. Links only: no repository content is fetched, and
+ * the one token, Connect GitHub's (#416, control/github.ts), only lists repositories for Set.
  * A row set here may also name the folder the service's stack paths start in (#413, 41e).
  */
 

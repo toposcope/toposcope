@@ -129,7 +129,7 @@ Point the tool's webhook at `http://<vector-host>:9000/hooks/flags`. The mark's 
 
 ## Link the code
 
-A sha and a stack frame open the code on the service's git host once Toposcope knows where the code lives. These are links only: Toposcope never fetches a repository and keeps no token, so the git host stays the source of the code and its permissions.
+A sha and a stack frame open the code on the service's git host once Toposcope knows where the code lives. These are links: Toposcope never fetches a repository's contents, so the git host stays the source of the code and its permissions.
 
 A service's repository comes from, in order:
 
@@ -140,6 +140,8 @@ A service's repository comes from, in order:
 Any of `https://github.com/acme/api`, `github.com/acme/api` or `git@github.com:acme/api.git` reads as the same repository. The link shape follows the host: GitHub, GitLab and Bitbucket by name (`github.com`, `gitlab.com`, `bitbucket.org`, or a host named `github.…`, `gitlab.…`, `bitbucket.…`); any other host links the way Gitea and Forgejo do. Settings › Repositories lists every service and where its repository is known from; a self-hosted address also says which host's links it uses (`· links as Gitea / Forgejo`).
 
 Many services can share one repository: Set on a service lists the repositories Toposcope already knows, each with the services using it, so a second service from the same repository is a pick, not a URL to type again. Tick several services to set one repository for all of them. There is no "project" to declare; a service is the unit, and the repository is a value it points at.
+
+**Connect GitHub** (an Owner, at the top of Settings › Repositories) lets Set list the repositories you choose instead of a URL to paste. It uses one Toposcope GitHub App that reads repository names and nothing else, with no webhook and no callback: Toposcope shows a code, you enter it at `github.com/login/device`, and GitHub hands the token to this instance alone. Install the App on the accounts or organizations whose repositories you want listed, and pick the repositories there (**Choose repositories ↗**). Disconnecting forgets the token and keeps every repository already set; revoking the App on GitHub ends the connection the same way. GitLab, Gitea and Bitbucket stay **Paste a URL…**.
 
 A **folder** is only for a repository where a service is built from a subfolder, so its stack paths start there: in `acme/services`, `pay` builds from `services/pay/`, and its frame `/app/src/charge.ts:41` is `services/pay/src/charge.ts` in the repository. Set it from **Change › Folder…** on a service set here. Leave it empty when services share one codebase built from the root: their paths already start at the root. A path that already starts with the folder is not given it twice. Commit and compare links are the whole repository's and do not use it.
 
