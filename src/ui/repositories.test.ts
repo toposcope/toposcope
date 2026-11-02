@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { parseRepo } from "../shared/code-links";
 import { isFrameLine, rowVersion } from "./code-links";
-import { knownFromWords, pickHandService, type ServiceRow } from "./repositories";
+import { knownFromWords, knownRepos, servicesWords, type ServiceRow } from "./repositories";
 
-const repo = (raw: string, from: "set" | "resource" | "mark") => ({ ...parseRepo(raw)!, from });
+const repo = (raw: string, from: "set" | "resource" | "mark") => ({ ...parseRepo(raw)!, from, path: null });
 const rows: ServiceRow[] = [
   { service: "api", repository: repo("github.com/acme/api", "resource"), mark: null, set_by: null, set_at: null },
   { service: "auth", repository: repo("github.com/acme/auth", "mark"), mark: { id: "d", version: "2.3.0" }, set_by: null, set_at: null },
@@ -23,11 +23,21 @@ describe("Settings › Repositories (37i)", () => {
     ]);
   });
 
-  test("Set one by hand is for the row picked, else the first with none", () => {
-    expect(pickHandService(rows, null)).toBe("billing");
-    expect(pickHandService(rows, "worker")).toBe("worker");
-    expect(pickHandService(rows, "gone")).toBe("billing");
-    expect(pickHandService(rows.slice(0, 3), null)).toBeNull();
+  test("Set lists each known repository once, the most used first (41b)", () => {
+    const shared: ServiceRow[] = [...rows, { service: "support", repository: repo("https://gitlab.com/acme/shop", "resource"), mark: null, set_by: null, set_at: null }];
+    expect(knownRepos(shared).map((k) => [k.repo.name, k.services])).toEqual([
+      ["acme/shop", ["checkout", "support"]],
+      ["acme/api", ["api"]],
+      ["acme/auth", ["auth"]],
+    ]);
+    expect(knownRepos(shared)[0]!.repo).toEqual({ url: "https://gitlab.com/acme/shop", host: "gitlab", name: "acme/shop" });
+    expect(knownRepos(rows.slice(3))).toEqual([]);
+  });
+
+  test("the services a menu is for, cut after three", () => {
+    expect(servicesWords(["billing"])).toBe("billing");
+    expect(servicesWords(["billing", "accounting", "support"])).toBe("billing, accounting, support");
+    expect(servicesWords(["a", "b", "c", "d", "e"])).toBe("a, b, c +2");
   });
 });
 

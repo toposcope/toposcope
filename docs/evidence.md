@@ -139,6 +139,10 @@ A service's repository comes from, in order:
 
 Any of `https://github.com/acme/api`, `github.com/acme/api` or `git@github.com:acme/api.git` reads as the same repository. The link shape follows the host: GitHub, GitLab and Bitbucket by name (`github.com`, `gitlab.com`, `bitbucket.org`, or a host named `github.…`, `gitlab.…`, `bitbucket.…`); any other host links the way Gitea and Forgejo do. Settings › Repositories lists every service, where its repository is known from, and how it links.
 
+Many services can share one repository: Set on a service lists the repositories Toposcope already knows, each with the services using it, so a second service from the same repository is a pick, not a URL to type again. Tick several services to set one repository for all of them. There is no "project" to declare; a service is the unit, and the repository is a value it points at.
+
+A **folder** is only for a repository where a service is built from a subfolder, so its stack paths start there: in `acme/services`, `pay` builds from `services/pay/`, and its frame `/app/src/charge.ts:41` is `services/pay/src/charge.ts` in the repository. Set it from **Change › Folder…** on a service set here. Leave it empty when services share one codebase built from the root: their paths already start at the root. A path that already starts with the folder is not given it twice. Commit and compare links are the whole repository's and do not use it.
+
 With a repository known:
 
 - **The marks panel.** A selected deploy gets a `code` row: the commit at the mark's `attrs.sha`, and *changes since* the previous deploy of the same service, the host's compare page between the two shas.

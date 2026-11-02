@@ -3,7 +3,7 @@ import { repoResourceKey, type Repo } from "../shared/code-links";
 /** One row of `GET /api/repositories` (#393, frame 37i). */
 export type ServiceRow = {
   service: string;
-  repository: (Repo & { from: "set" | "resource" | "mark" }) | null;
+  repository: (Repo & { from: "set" | "resource" | "mark"; path: string | null }) | null;
   mark: { id: string; version: string } | null;
   set_by: { name: string } | null;
   set_at: number | null;
@@ -23,10 +23,25 @@ export function knownFromWords(row: ServiceRow): string {
   }
 }
 
-/** The service the Set one by hand row is for: the one picked, else the first with none. */
-export function pickHandService(rows: ServiceRow[], current: string | null): string | null {
-  if (current && rows.some((r) => r.service === current)) {
-    return current;
+/** A repository Toposcope already knows, and the services that use it (#413, 41b). */
+export type KnownRepo = { repo: Repo; services: string[] };
+
+/** The Set menu's list: every repository on a row, the most used first, then by name. */
+export function knownRepos(rows: ServiceRow[]): KnownRepo[] {
+  const byUrl = new Map<string, KnownRepo>();
+  for (const row of rows) {
+    if (!row.repository) {
+      continue;
+    }
+    const { url, host, name } = row.repository;
+    const known = byUrl.get(url) ?? { repo: { url, host, name }, services: [] };
+    known.services.push(row.service);
+    byUrl.set(url, known);
   }
-  return rows.find((r) => !r.repository)?.service ?? null;
+  return [...byUrl.values()].sort((a, b) => b.services.length - a.services.length || a.repo.name.localeCompare(b.repo.name));
+}
+
+/** "support", "billing, support", "api, auth, billing +2". */
+export function servicesWords(services: string[], max = 3): string {
+  return services.length > max ? `${services.slice(0, max).join(", ")} +${services.length - max}` : services.join(", ");
 }

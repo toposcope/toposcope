@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appRelativePath } from "./app-path";
-import { blobUrl, commitUrl, compareUrl, isLibraryPath, parseRepo, repoDisplay, stackPieces, treeUrl } from "./code-links";
+import { blobUrl, commitUrl, compareUrl, isLibraryPath, parseRepo, parseRepoPath, repoDisplay, repoFilePath, stackPieces, treeUrl } from "./code-links";
 
 describe("parseRepo (#393)", () => {
   test("reads the forms a sender or an Operator writes", () => {
@@ -66,6 +66,34 @@ describe("link shapes by host", () => {
     expect(treeUrl(gh, "4f9c1e")).toBe("https://github.com/acme/api/tree/4f9c1e");
     expect(treeUrl(gl, "4f9c1e")).toBe("https://gitlab.com/acme/shop/-/tree/4f9c1e");
     expect(treeUrl(gh, null)).toBe("https://github.com/acme/api");
+  });
+});
+
+describe("a service's folder in a shared repository (#413, 41e)", () => {
+  const mono = { ...parseRepo("github.com/acme/services")!, path: "services/pay" };
+
+  test("a folder reads without its slashes, and a path out of the repository is refused", () => {
+    expect(parseRepoPath(" /services/pay/ ")).toBe("services/pay");
+    expect(parseRepoPath("./services//pay")).toBe("services/pay");
+    expect(parseRepoPath("")).toBe("");
+    expect(parseRepoPath("/")).toBe("");
+    expect(parseRepoPath("../etc")).toBeNull();
+    expect(parseRepoPath("services/./pay")).toBeNull();
+    expect(parseRepoPath("services\\pay")).toBeNull();
+    expect(parseRepoPath("pay#L1")).toBeNull();
+    expect(parseRepoPath("a".repeat(201))).toBeNull();
+  });
+
+  test("a stack path opens under the folder, unless it already starts there", () => {
+    expect(repoFilePath(mono, "src/charge.ts")).toBe("services/pay/src/charge.ts");
+    expect(repoFilePath(mono, "services/pay/src/charge.ts")).toBe("services/pay/src/charge.ts");
+    expect(repoFilePath({ ...mono, path: null }, "src/charge.ts")).toBe("src/charge.ts");
+    expect(blobUrl(mono, "4f9c1e", "src/charge.ts", 41)).toBe("https://github.com/acme/services/blob/4f9c1e/services/pay/src/charge.ts#L41");
+  });
+
+  test("commit and compare links are the whole repository's", () => {
+    expect(commitUrl(mono, "4f9c1e")).toBe(commitUrl(parseRepo("github.com/acme/services")!, "4f9c1e"));
+    expect(treeUrl(mono, null)).toBe("https://github.com/acme/services");
   });
 });
 

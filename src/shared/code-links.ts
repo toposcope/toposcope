@@ -15,14 +15,45 @@ export const repoHostWords: Record<RepoHost, string> = {
   bitbucket: "Bitbucket",
 };
 
-/** A repository as a link base: `https://github.com/acme/api`, its host's shape, and `acme/api`. */
-export type Repo = { url: string; host: RepoHost; name: string };
+/**
+ * A repository as a link base: `https://github.com/acme/api`, its host's shape, and `acme/api`.
+ * `path` is the folder a service's stack paths start in when that is not the root (#413, 41e).
+ */
+export type Repo = { url: string; host: RepoHost; name: string; path?: string | null };
 
 /** The resource attribute OpenTelemetry names a service's repository with. */
 export const repoResourceKey = "vcs.repository.url.full";
 
 /** Longest repository URL a row may set; a longer one is not a repository. */
 export const maxRepoUrlLength = 300;
+
+/** Longest folder a row may set. */
+export const maxRepoPathLength = 200;
+
+/**
+ * Read a folder an Operator wrote: `services/pay`, `/services/pay/` and `./services/pay` all read
+ * as `services/pay`, and an empty one as "" (the root). Null for one that is not a folder in a
+ * repository: a `..` or `.` part, a backslash, `?` or `#`, or a control character.
+ */
+export function parseRepoPath(raw: string): string | null {
+  const path = raw.trim().replace(/^\.\//, "").replace(/\/{2,}/g, "/").replace(/^\/+|\/+$/g, "");
+  if (path.length > maxRepoPathLength || /[\\?#\u0000-\u001f\u007f]/.test(path)) {
+    return null;
+  }
+  if (path && path.split("/").some((part) => part === "." || part === "..")) {
+    return null;
+  }
+  return path;
+}
+
+/** A stack path inside the repository: under its folder, unless the path already starts there. */
+export function repoFilePath(repo: Repo, path: string): string {
+  const folder = repo.path;
+  if (!folder || path === folder || path.startsWith(folder + "/")) {
+    return path;
+  }
+  return `${folder}/${path}`;
+}
 
 /**
  * Read a repository from what a sender or an Operator wrote: `https://github.com/acme/api`,
@@ -126,11 +157,11 @@ export function compareUrl(repo: Repo, from: string, to: string): string {
 }
 
 /**
- * A file at a line. `sha` null is the repository's default branch, which Toposcope does not know
+ * A file at a line, under the repository's folder when it has one. `sha` null is the repository's default branch, which Toposcope does not know
  * by name: GitHub, GitLab and Bitbucket read `HEAD` as it, Gitea / Forgejo's `src/<path>` does.
  */
 export function blobUrl(repo: Repo, sha: string | null, path: string, line: number | null): string {
-  const p = encPath(path);
+  const p = encPath(repoFilePath(repo, path));
   const ref = sha ? encodeURIComponent(sha) : "HEAD";
   switch (repo.host) {
     case "gitlab":

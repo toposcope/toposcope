@@ -1071,6 +1071,7 @@ Body:
 | Field | Type | Required | What |
 | --- | --- | --- | --- |
 | `url` | string | yes | The repository: https://host/owner/name, host/owner/name or git@host:owner/name. |
+| `path` | string |  | The folder the service's stack paths start in, like services/pay; empty for the root. Left out, it stays while the repository does. |
 
 ### DELETE /api/repositories/{service}
 

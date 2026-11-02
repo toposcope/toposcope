@@ -62,6 +62,13 @@ beforeAll(async () => {
     await go("bad", "/api/repositories/checkout", "PUT", { url: "javascript:alert(1)" });
     await go("set", "/api/repositories/checkout", "PUT", { url: "https://gitlab.com/acme/shop.git" });
     await go("override", "/api/repositories/api", "PUT", { url: "https://git.acme.dev/ops/api" });
+    await go("folder", "/api/repositories/checkout", "PUT", { url: "https://gitlab.com/acme/shop", path: "/services/shop/" });
+    await go("folderKept", "/api/repositories/checkout", "PUT", { url: "gitlab.com/acme/shop" });
+    await go("badFolder", "/api/repositories/checkout", "PUT", { url: "gitlab.com/acme/shop", path: "../etc" });
+    await go("code", "/api/code?service=checkout");
+    await go("folderGone", "/api/repositories/checkout", "PUT", { url: "gitlab.com/acme/other" });
+    await go("folderCleared", "/api/repositories/checkout", "PUT", { url: "gitlab.com/acme/other", path: "services/x" });
+    await go("folderClearedAgain", "/api/repositories/checkout", "PUT", { url: "gitlab.com/acme/other", path: "" });
     await go("after", "/api/repositories", "GET", undefined, "viewer");
     await go("clear", "/api/repositories/api", "DELETE");
     await go("clearAgain", "/api/repositories/api", "DELETE");
@@ -89,7 +96,7 @@ const row = (key: string, service: string) => (r[key]!.body.repositories as Arra
 describe("a service's repository (#393, 37i)", () => {
   test("the resource, else the newest deploy mark's repo, else none", () => {
     expect(r.before!.status).toBe(200);
-    expect(row("before", "api").repository).toEqual({ url: "https://github.com/acme/api", host: "github", name: "acme/api", from: "resource" });
+    expect(row("before", "api").repository).toEqual({ url: "https://github.com/acme/api", host: "github", name: "acme/api", from: "resource", path: null });
     expect(row("before", "auth").repository).toMatchObject({ url: "https://github.com/acme/auth", from: "mark" });
     expect(row("before", "auth").mark).toEqual({ id: "deploy-auth-2.3.0", version: "2.3.0" });
     expect(row("before", "billing").repository).toBeNull();
@@ -100,7 +107,18 @@ describe("a service's repository (#393, 37i)", () => {
     expect(r.bad!.status).toBe(400);
     expect(r.bad!.body.field).toBe("url");
     expect(r.set!.status).toBe(200);
-    expect(r.set!.body.repository).toEqual({ url: "https://gitlab.com/acme/shop", host: "gitlab", name: "acme/shop", from: "set" });
+    expect(r.set!.body.repository).toEqual({ url: "https://gitlab.com/acme/shop", host: "gitlab", name: "acme/shop", from: "set", path: null });
+  });
+
+  test("a folder is kept while the repository is, and refused outside it (41e)", () => {
+    expect(r.folder!.body.repository.path).toBe("services/shop");
+    expect(r.folderKept!.body.repository.path).toBe("services/shop");
+    expect(r.badFolder!.status).toBe(400);
+    expect(r.badFolder!.body.field).toBe("path");
+    expect(r.code!.body.repository).toMatchObject({ name: "acme/shop", path: "services/shop" });
+    expect(r.folderGone!.body.repository).toMatchObject({ name: "acme/other", path: null });
+    expect(r.folderCleared!.body.repository.path).toBe("services/x");
+    expect(r.folderClearedAgain!.body.repository.path).toBeNull();
   });
 
   test("one set here wins over the resource, and says who set it", () => {
