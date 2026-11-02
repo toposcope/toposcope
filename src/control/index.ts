@@ -3,6 +3,7 @@ import { migrateActors } from "./actors";
 import { migrateTwoStep } from "./two-step";
 import { migrateRemembered } from "./remembered";
 import { migrateOidc } from "./oidc";
+import { migrateGithub } from "./github";
 import { migrateRepositories } from "./repositories";
 import { migrateBoardPanels } from "./board-panels-migrate";
 import { mkdirSync } from "node:fs";
@@ -396,6 +397,7 @@ export function migrateControlDb(db: Database): void {
   migrateOidc(db, addColumnIfMissing);
   // Where each service's code lives, set by an Operator (#393).
   migrateRepositories(db);
+  migrateGithub(db);
   migrateBoardPanels(db);
 }
 

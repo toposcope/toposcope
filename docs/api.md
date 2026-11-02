@@ -1095,6 +1095,48 @@ Query:
 | `service` | string |  | A service, when there is no mark: the answer has its repository. |
 | `version` | string |  | With service: the deploy mark whose version this is. |
 
+### GET /api/github
+
+Whether GitHub is connected, the code waiting while it connects, and the accounts and count of repositories the Toposcope App can see.
+
+Role: **Viewer** · `github`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `fresh` | string |  | 1 asks GitHub again for the accounts and repositories instead of the list read in the last 30 seconds. |
+
+### POST /api/github/connect
+
+Ask GitHub for a device code to connect this instance; enter it on github.com/login/device.
+
+Role: **Owner** · `github_connect`
+
+### DELETE /api/github/connect
+
+Stop waiting for the device code.
+
+Role: **Owner** · `github_connect_cancel`
+
+### DELETE /api/github
+
+Forget GitHub's token; repositories set here stay.
+
+Role: **Owner** · `github_disconnect`
+
+### GET /api/github/repositories
+
+The repositories the Toposcope App can see, matching q, for Set.
+
+Role: **Operator** · `github_repositories`
+
+Query:
+
+| Field | Type | Required | What |
+| --- | --- | --- | --- |
+| `q` | string |  | Part of a repository's owner/name; empty lists them all. At most 50 come back. |
+
 ## Shares
 
 ### GET /api/shares
