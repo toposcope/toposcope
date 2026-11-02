@@ -2,7 +2,7 @@ import { appRelativePath } from "./app-path";
 
 /**
  * Code links (#393, frames 37g–37i): a service's repository, and the URLs a sha, two deploys or a
- * stack frame open on its git host. Links only: Toposcope never fetches a repository and keeps no
+ * stack frame open on its git host. Links only: Toposcope never fetches a repository and needs no
  * token, so every URL here is built from strings it already has.
  */
 

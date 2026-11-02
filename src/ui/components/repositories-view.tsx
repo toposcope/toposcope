@@ -1,8 +1,10 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { GithubBand, useGithub } from "@/components/github-band";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { parseRepo, parseRepoPath, repoDisplay, repoFilePath, repoHostGuessed, repoHostWords, repoResourceKey, type Repo } from "../../shared/code-links";
+import type { GithubRepo, GithubState } from "../github";
 import type { KnownRepo, ServiceRow } from "../repositories";
 import { knownFromWords, knownRepos, servicesWords } from "../repositories";
 
@@ -10,9 +12,11 @@ import { knownFromWords, knownRepos, servicesWords } from "../repositories";
  * Settings › Repositories (#393, frame 37i; #413, frames 41a–41e): where each service's code
  * lives, so a sha and a stack frame open it. An Operator picks a repository Toposcope already
  * knows or pastes one, sets several services at once, and gives a service a folder when its
- * stack paths start in one; a Viewer reads the table.
+ * stack paths start in one; a Viewer reads the table. With GitHub connected (#416, 42a–42h), Set
+ * also lists the repositories the Toposcope App can see.
  */
-export function RepositoriesView(props: { onSettings: () => void; canWrite: boolean }) {
+export function RepositoriesView(props: { onSettings: () => void; canWrite: boolean; canConnect: boolean }) {
+  const gh = useGithub();
   const [rows, setRows] = useState<ServiceRow[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -134,8 +138,9 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
         </nav>
         <div className="mb-3.5 flex flex-wrap items-baseline gap-3.5">
           <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Repositories</h1>
-          <p className="m-0 text-[12px] text-muted-foreground">Where each service's code lives, so a sha and a stack frame open it. Links only: nothing is fetched, no token is kept.</p>
+          <p className="m-0 text-[12px] text-muted-foreground">Where each service's code lives, so a sha and a stack frame open it.</p>
         </div>
+        {gh.github?.configured ? <GithubBand github={gh.github} canConnect={props.canConnect} onChange={gh.set} /> : null}
         {failed && !rows ? (
           <div className="rounded-lg border bg-card px-3 py-8 text-center">
             <p className="text-sm">Could not read the repositories.</p>
@@ -152,7 +157,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[420px] p-1">
-                    <RepoMenu services={picked} known={known} busy={busy} onPick={(url) => void setRepo(picked, url)} />
+                    <RepoMenu services={picked} known={known} github={gh.github} busy={busy} onPick={(url) => void setRepo(picked, url)} />
                   </PopoverContent>
                 </Popover>
                 <Button type="button" size="sm" variant="outline" disabled={busy || pickedSetHere.length === 0} title={pickedSetHere.length === 0 ? "None of these is set here" : undefined} onClick={() => void clear(pickedSetHere)}>
@@ -233,7 +238,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                             ) : rowOpen?.mode === "folder" && repo ? (
                               <FolderForm service={r.service} repo={repo} busy={busy} onCancel={() => setOpen(null)} onSave={(path) => void setFolder(r.service, repo.url, path)} />
                             ) : (
-                              <RepoMenu services={[r.service]} known={known} busy={busy} onPick={(url) => void setRepo([r.service], url)} />
+                              <RepoMenu services={[r.service]} known={known} github={gh.github} busy={busy} onPick={(url) => void setRepo([r.service], url)} />
                             )}
                           </PopoverContent>
                         </Popover>
@@ -262,12 +267,52 @@ function MenuItem(props: { onClick: () => void; disabled?: boolean; children: Re
   );
 }
 
-/** 41b / 41c: the repositories Toposcope knows, each with its services, then Paste a URL…. */
-function RepoMenu(props: { services: string[]; known: KnownRepo[]; busy: boolean; onPick: (url: string) => void }) {
-  const [paste, setPaste] = useState(props.known.length === 0);
+/** The repositories the Toposcope App can see that match `q`, read as `q` settles. */
+function useGithubRepos(on: boolean, q: string): { repos: GithubRepo[]; matching: number; total: number } | null {
+  const [found, setFound] = useState<{ repos: GithubRepo[]; matching: number; total: number } | null>(null);
+  useEffect(() => {
+    if (!on) {
+      return;
+    }
+    let live = true;
+    const t = setTimeout(() => {
+      void fetch(`/api/github/repositories?q=${encodeURIComponent(q.trim())}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json: { repositories: GithubRepo[]; matching: number; total: number } | null) => {
+          if (live && json) {
+            setFound({ repos: json.repositories, matching: json.matching, total: json.total });
+          }
+        })
+        .catch(() => {});
+    }, 200);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [on, q]);
+  return on ? found : null;
+}
+
+const sectionHead = "px-2 pt-2 pb-0.5 text-[10.5px] tracking-[0.04em] text-muted-foreground uppercase";
+const repoItem =
+  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-[4.4px] px-2 py-[7px] text-left text-[12.5px] hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50";
+
+/**
+ * 41b / 41c / 42e: the repositories used here, each with its services; with GitHub connected, a
+ * search and the repositories the App can see; then Paste a URL….
+ */
+function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: GithubState | null; busy: boolean; onPick: (url: string) => void }) {
+  const ghOn = props.github?.state === "on" && (props.github.repositories ?? 0) > 0;
+  const [paste, setPaste] = useState(props.known.length === 0 && !ghOn);
   const [url, setUrl] = useState("");
+  const [q, setQ] = useState("");
+  const found = useGithubRepos(ghOn && !paste, q);
   const typed = url.trim() ? parseRepo(url) : null;
   const forWords = <span className="font-mono text-zinc-300">{servicesWords(props.services)}</span>;
+  const needle = q.trim().toLowerCase();
+  const usedHere = needle ? props.known.filter((k) => k.repo.name.toLowerCase().includes(needle) || repoDisplay(k.repo).toLowerCase().includes(needle)) : props.known;
+  const usedUrls = new Set(props.known.map((k) => k.repo.url.toLowerCase()));
+  const onGithub = (found?.repos ?? []).filter((repo) => !usedUrls.has(repo.url.toLowerCase()));
 
   if (paste) {
     return (
@@ -281,9 +326,9 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; busy: boolean
           }
         }}
       >
-        {props.known.length > 0 ? (
+        {props.known.length > 0 || ghOn ? (
           <button type="button" className="self-start text-[11.5px] text-muted-foreground hover:text-foreground" onClick={() => setPaste(false)}>
-            ‹ Known repositories
+            ‹ {ghOn ? "Repositories" : "Known repositories"}
           </button>
         ) : null}
         <label htmlFor="repo-url" className="text-[12px] text-muted-foreground">
@@ -318,21 +363,51 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; busy: boolean
   return (
     <div role="menu" aria-label={`Set a repository for ${servicesWords(props.services)}`} className="flex flex-col">
       <div className="px-2 pt-1.5 pb-1 text-[11px] text-muted-foreground">For {forWords}</div>
-      {props.known.map((k) => (
-        <button
-          key={k.repo.url}
-          type="button"
-          role="menuitem"
-          disabled={props.busy}
-          onClick={() => props.onPick(k.repo.url)}
-          className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-[4.4px] px-2 py-[7px] text-left text-[12.5px] hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50"
-        >
+      {ghOn ? (
+        <div className="p-1">
+          <input
+            aria-label="Find a repository"
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Find a repository"
+            className="h-7 w-full min-w-0 rounded-[6px] border border-white/10 bg-[#0d0d0f] px-2 font-mono text-[12px] outline-none focus:border-[#e7e1d3]"
+          />
+        </div>
+      ) : null}
+      {ghOn && usedHere.length > 0 ? <div className={sectionHead}>Used here</div> : null}
+      {usedHere.map((k) => (
+        <button key={k.repo.url} type="button" role="menuitem" disabled={props.busy} onClick={() => props.onPick(k.repo.url)} className={repoItem}>
           <span className="truncate font-mono">{repoDisplay(k.repo)}</span>
           <span className="text-[11.5px] text-muted-foreground">{servicesWords(k.services)}</span>
         </button>
       ))}
+      {ghOn ? (
+        <>
+          <div className={sectionHead}>{found ? `On GitHub · ${onGithub.length} of ${found.total}` : "On GitHub · reading…"}</div>
+          <div className="max-h-[240px] overflow-y-auto">
+            {onGithub.map((repo) => (
+              <button key={repo.url} type="button" role="menuitem" disabled={props.busy} onClick={() => props.onPick(repo.url)} className={repoItem}>
+                <span className="truncate font-mono">{repoDisplay({ url: repo.url, host: "github", name: repo.name })}</span>
+                <span className="text-[11.5px] text-muted-foreground">
+                  {repo.owner}
+                  {repo.private ? " · private" : ""}
+                </span>
+              </button>
+            ))}
+            {found && onGithub.length === 0 ? <div className="px-2 py-[7px] text-[12px] text-muted-foreground">{q.trim() ? `No repository matches ${q.trim()}` : "Every one is used here"}</div> : null}
+          </div>
+        </>
+      ) : null}
       <div className="my-1 h-px bg-white/[0.08]" />
-      <MenuItem onClick={() => setPaste(true)}>Paste a URL…</MenuItem>
+      <div className="flex items-center justify-between gap-2">
+        <MenuItem onClick={() => setPaste(true)}>Paste a URL…</MenuItem>
+        {ghOn && props.github ? (
+          <a href={props.github.install_url} target="_blank" rel="noreferrer noopener" className="shrink-0 px-2 py-[7px] text-[11.5px] whitespace-nowrap text-muted-foreground hover:text-foreground">
+            Not listed? Choose repositories ↗
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }

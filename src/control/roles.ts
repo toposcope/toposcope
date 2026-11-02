@@ -12,6 +12,7 @@ import type { Role } from "./people";
  * | Make and change monitors, webhooks               |   —    |    ✓     |   ✓   |
  * | Change Fields roles and metric links             |   —    |    ✓     |   ✓   |
  * | Set or clear a service's repository              |   —    |    ✓     |   ✓   |
+ * | Connect or disconnect GitHub                     |   —    |    —     |   ✓   |
  * | Add panels to an existing share                  |   —    |    ✓     |   ✓   |
  * | Invite people, change roles                      |   —    |    —     |   ✓   |
  * | Make or revoke tokens, links, shares             |   —    |    —     |   ✓   |
@@ -24,6 +25,7 @@ export type Action =
   | "change monitors"
   | "change fields"
   | "set repositories"
+  | "connect GitHub"
   | "add share panels"
   | "see access"
   | "let people in"
@@ -38,6 +40,7 @@ export const actionRole: Record<Action, Role> = {
   "change monitors": "operator",
   "change fields": "operator",
   "set repositories": "operator",
+  "connect GitHub": "owner",
   "add share panels": "operator",
   "see access": "operator",
   "let people in": "owner",
@@ -54,6 +57,7 @@ export const actionWords: Record<Action, string> = {
   "change monitors": "make or change monitors and webhooks",
   "change fields": "change Fields roles and metric links",
   "set repositories": "set or clear a service's repository",
+  "connect GitHub": "connect or disconnect GitHub",
   "add share panels": "add panels to a share",
   "see access": "see Access",
   "let people in": "invite people or change roles",

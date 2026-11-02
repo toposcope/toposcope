@@ -4405,7 +4405,7 @@ export function App() {
       ) : view === "sign-in" ? (
         <SignInSettings onSettings={() => setView("settings")} />
       ) : view === "repositories" ? (
-        <RepositoriesView onSettings={() => setView("settings")} canWrite={!isViewer} />
+        <RepositoriesView onSettings={() => setView("settings")} canWrite={!isViewer} canConnect={isOwner} />
       ) : view === "fields" ? (
         <FieldsView
           catalog={fields}
