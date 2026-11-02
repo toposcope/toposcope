@@ -83,15 +83,14 @@
 </sc-if>
 <div style="display: grid; grid-template-columns: {{f41a_cols}}; gap: 12px; padding: 8px 16px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #8a8a93; border-bottom: 1px solid rgba(255,255,255,0.08)">
 <sc-if value="{{f41a_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" aria-label="Select all services" style="margin: 0; accent-color: #e7e1d3"></sc-if>
-<span>Service</span><span>Repository</span><span>Known from</span><span>Links as</span><span></span>
+<span>Service</span><span>Repository</span><span>Known from</span><span></span>
 </div>
 <sc-for list="{{f41a_rows}}" as="r" hint-placeholder-count="8">
 <div style="position: relative; display: grid; grid-template-columns: {{f41a_cols}}; gap: 12px; padding: 10px 16px; font-size: 12.5px; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: baseline; background: {{r.bg}}">
 <sc-if value="{{f41a_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" checked="{{r.checked}}" aria-label="Select {{r.svc}}" style="margin: 0; accent-color: #e7e1d3"></sc-if>
 <span style="font-family: ui-monospace, Menlo, monospace">{{r.svc}}</span>
-<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span></span>
+<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span><span style="font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #8a8a93">{{r.note}}</span></span>
 <span style="font-size: 12px; color: #a1a1aa">{{r.from}}</span>
-<span style="font-size: 12px; color: #a1a1aa">{{r.kind}}</span>
 <span style="justify-self: end; display: flex; gap: 6px">
 <sc-for list="{{r.actions}}" as="a" hint-placeholder-count="1">
 <button type="button" aria-haspopup="{{a.popup}}" style="height: 24px; padding: 0 8px; border-radius: 6.4px; border: 1px solid {{a.border}}; background: transparent; color: #fafafa; font-size: 12px">{{a.label}}</button>
@@ -147,7 +146,6 @@
 <label for="41a-41a-repo-svc" style="font-size: 12px; color: #8a8a93">Set one by hand</label>
 <input id="41a-41a-repo-svc" value="" placeholder="https://git.example.com/owner/name" style="height: 30px; box-sizing: border-box; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); background: #0d0d0f; color: #fafafa; padding: 0 10px; font-family: ui-monospace, Menlo, monospace; font-size: 12px">
 <span style="font-size: 12px; color: #a1a1aa">for <span style="font-family: ui-monospace, Menlo, monospace; color: #fafafa">accounting</span></span>
-<span style="font-size: 12px; color: #a1a1aa">—</span>
 <button type="submit" disabled style="justify-self: end; height: 28px; padding: 0 10px; border-radius: 6.4px; border: 0; background: #e7e1d3; color: #09090b; font-size: 12px; opacity: 0.5">Save</button>
 </form>
 </sc-if>
@@ -201,15 +199,14 @@
 </sc-if>
 <div style="display: grid; grid-template-columns: {{f41b_cols}}; gap: 12px; padding: 8px 16px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #8a8a93; border-bottom: 1px solid rgba(255,255,255,0.08)">
 <sc-if value="{{f41b_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" aria-label="Select all services" style="margin: 0; accent-color: #e7e1d3"></sc-if>
-<span>Service</span><span>Repository</span><span>Known from</span><span>Links as</span><span></span>
+<span>Service</span><span>Repository</span><span>Known from</span><span></span>
 </div>
 <sc-for list="{{f41b_rows}}" as="r" hint-placeholder-count="8">
 <div style="position: relative; display: grid; grid-template-columns: {{f41b_cols}}; gap: 12px; padding: 10px 16px; font-size: 12.5px; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: baseline; background: {{r.bg}}">
 <sc-if value="{{f41b_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" checked="{{r.checked}}" aria-label="Select {{r.svc}}" style="margin: 0; accent-color: #e7e1d3"></sc-if>
 <span style="font-family: ui-monospace, Menlo, monospace">{{r.svc}}</span>
-<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span></span>
+<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span><span style="font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #8a8a93">{{r.note}}</span></span>
 <span style="font-size: 12px; color: #a1a1aa">{{r.from}}</span>
-<span style="font-size: 12px; color: #a1a1aa">{{r.kind}}</span>
 <span style="justify-self: end; display: flex; gap: 6px">
 <sc-for list="{{r.actions}}" as="a" hint-placeholder-count="1">
 <button type="button" aria-haspopup="{{a.popup}}" style="height: 24px; padding: 0 8px; border-radius: 6.4px; border: 1px solid {{a.border}}; background: transparent; color: #fafafa; font-size: 12px">{{a.label}}</button>
@@ -265,7 +262,6 @@
 <label for="41b-41a-repo-svc" style="font-size: 12px; color: #8a8a93">Set one by hand</label>
 <input id="41b-41a-repo-svc" value="" placeholder="https://git.example.com/owner/name" style="height: 30px; box-sizing: border-box; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); background: #0d0d0f; color: #fafafa; padding: 0 10px; font-family: ui-monospace, Menlo, monospace; font-size: 12px">
 <span style="font-size: 12px; color: #a1a1aa">for <span style="font-family: ui-monospace, Menlo, monospace; color: #fafafa">accounting</span></span>
-<span style="font-size: 12px; color: #a1a1aa">—</span>
 <button type="submit" disabled style="justify-self: end; height: 28px; padding: 0 10px; border-radius: 6.4px; border: 0; background: #e7e1d3; color: #09090b; font-size: 12px; opacity: 0.5">Save</button>
 </form>
 </sc-if>
@@ -319,15 +315,14 @@
 </sc-if>
 <div style="display: grid; grid-template-columns: {{f41c_cols}}; gap: 12px; padding: 8px 16px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #8a8a93; border-bottom: 1px solid rgba(255,255,255,0.08)">
 <sc-if value="{{f41c_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" aria-label="Select all services" style="margin: 0; accent-color: #e7e1d3"></sc-if>
-<span>Service</span><span>Repository</span><span>Known from</span><span>Links as</span><span></span>
+<span>Service</span><span>Repository</span><span>Known from</span><span></span>
 </div>
 <sc-for list="{{f41c_rows}}" as="r" hint-placeholder-count="8">
 <div style="position: relative; display: grid; grid-template-columns: {{f41c_cols}}; gap: 12px; padding: 10px 16px; font-size: 12.5px; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: baseline; background: {{r.bg}}">
 <sc-if value="{{f41c_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" checked="{{r.checked}}" aria-label="Select {{r.svc}}" style="margin: 0; accent-color: #e7e1d3"></sc-if>
 <span style="font-family: ui-monospace, Menlo, monospace">{{r.svc}}</span>
-<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span></span>
+<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span><span style="font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #8a8a93">{{r.note}}</span></span>
 <span style="font-size: 12px; color: #a1a1aa">{{r.from}}</span>
-<span style="font-size: 12px; color: #a1a1aa">{{r.kind}}</span>
 <span style="justify-self: end; display: flex; gap: 6px">
 <sc-for list="{{r.actions}}" as="a" hint-placeholder-count="1">
 <button type="button" aria-haspopup="{{a.popup}}" style="height: 24px; padding: 0 8px; border-radius: 6.4px; border: 1px solid {{a.border}}; background: transparent; color: #fafafa; font-size: 12px">{{a.label}}</button>
@@ -383,7 +378,6 @@
 <label for="41c-41a-repo-svc" style="font-size: 12px; color: #8a8a93">Set one by hand</label>
 <input id="41c-41a-repo-svc" value="" placeholder="https://git.example.com/owner/name" style="height: 30px; box-sizing: border-box; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); background: #0d0d0f; color: #fafafa; padding: 0 10px; font-family: ui-monospace, Menlo, monospace; font-size: 12px">
 <span style="font-size: 12px; color: #a1a1aa">for <span style="font-family: ui-monospace, Menlo, monospace; color: #fafafa">accounting</span></span>
-<span style="font-size: 12px; color: #a1a1aa">—</span>
 <button type="submit" disabled style="justify-self: end; height: 28px; padding: 0 10px; border-radius: 6.4px; border: 0; background: #e7e1d3; color: #09090b; font-size: 12px; opacity: 0.5">Save</button>
 </form>
 </sc-if>
@@ -437,15 +431,14 @@
 </sc-if>
 <div style="display: grid; grid-template-columns: {{f41d_cols}}; gap: 12px; padding: 8px 16px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #8a8a93; border-bottom: 1px solid rgba(255,255,255,0.08)">
 <sc-if value="{{f41d_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" aria-label="Select all services" style="margin: 0; accent-color: #e7e1d3"></sc-if>
-<span>Service</span><span>Repository</span><span>Known from</span><span>Links as</span><span></span>
+<span>Service</span><span>Repository</span><span>Known from</span><span></span>
 </div>
 <sc-for list="{{f41d_rows}}" as="r" hint-placeholder-count="8">
 <div style="position: relative; display: grid; grid-template-columns: {{f41d_cols}}; gap: 12px; padding: 10px 16px; font-size: 12.5px; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: baseline; background: {{r.bg}}">
 <sc-if value="{{f41d_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" checked="{{r.checked}}" aria-label="Select {{r.svc}}" style="margin: 0; accent-color: #e7e1d3"></sc-if>
 <span style="font-family: ui-monospace, Menlo, monospace">{{r.svc}}</span>
-<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span></span>
+<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span><span style="font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #8a8a93">{{r.note}}</span></span>
 <span style="font-size: 12px; color: #a1a1aa">{{r.from}}</span>
-<span style="font-size: 12px; color: #a1a1aa">{{r.kind}}</span>
 <span style="justify-self: end; display: flex; gap: 6px">
 <sc-for list="{{r.actions}}" as="a" hint-placeholder-count="1">
 <button type="button" aria-haspopup="{{a.popup}}" style="height: 24px; padding: 0 8px; border-radius: 6.4px; border: 1px solid {{a.border}}; background: transparent; color: #fafafa; font-size: 12px">{{a.label}}</button>
@@ -501,7 +494,6 @@
 <label for="41d-41a-repo-svc" style="font-size: 12px; color: #8a8a93">Set one by hand</label>
 <input id="41d-41a-repo-svc" value="" placeholder="https://git.example.com/owner/name" style="height: 30px; box-sizing: border-box; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); background: #0d0d0f; color: #fafafa; padding: 0 10px; font-family: ui-monospace, Menlo, monospace; font-size: 12px">
 <span style="font-size: 12px; color: #a1a1aa">for <span style="font-family: ui-monospace, Menlo, monospace; color: #fafafa">accounting</span></span>
-<span style="font-size: 12px; color: #a1a1aa">—</span>
 <button type="submit" disabled style="justify-self: end; height: 28px; padding: 0 10px; border-radius: 6.4px; border: 0; background: #e7e1d3; color: #09090b; font-size: 12px; opacity: 0.5">Save</button>
 </form>
 </sc-if>
@@ -555,15 +547,14 @@
 </sc-if>
 <div style="display: grid; grid-template-columns: {{f41e_cols}}; gap: 12px; padding: 8px 16px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: #8a8a93; border-bottom: 1px solid rgba(255,255,255,0.08)">
 <sc-if value="{{f41e_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" aria-label="Select all services" style="margin: 0; accent-color: #e7e1d3"></sc-if>
-<span>Service</span><span>Repository</span><span>Known from</span><span>Links as</span><span></span>
+<span>Service</span><span>Repository</span><span>Known from</span><span></span>
 </div>
 <sc-for list="{{f41e_rows}}" as="r" hint-placeholder-count="8">
 <div style="position: relative; display: grid; grid-template-columns: {{f41e_cols}}; gap: 12px; padding: 10px 16px; font-size: 12.5px; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: baseline; background: {{r.bg}}">
 <sc-if value="{{f41e_several}}" hint-placeholder-val="{{false}}"><input type="checkbox" checked="{{r.checked}}" aria-label="Select {{r.svc}}" style="margin: 0; accent-color: #e7e1d3"></sc-if>
 <span style="font-family: ui-monospace, Menlo, monospace">{{r.svc}}</span>
-<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span></span>
+<span style="font-family: ui-monospace, Menlo, monospace; color: {{r.repoColor}}">{{r.repo}}<span style="color: #8a8a93">{{r.folder}}</span><span style="font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; color: #8a8a93">{{r.note}}</span></span>
 <span style="font-size: 12px; color: #a1a1aa">{{r.from}}</span>
-<span style="font-size: 12px; color: #a1a1aa">{{r.kind}}</span>
 <span style="justify-self: end; display: flex; gap: 6px">
 <sc-for list="{{r.actions}}" as="a" hint-placeholder-count="1">
 <button type="button" aria-haspopup="{{a.popup}}" style="height: 24px; padding: 0 8px; border-radius: 6.4px; border: 1px solid {{a.border}}; background: transparent; color: #fafafa; font-size: 12px">{{a.label}}</button>
@@ -619,7 +610,6 @@
 <label for="41e-41a-repo-svc" style="font-size: 12px; color: #8a8a93">Set one by hand</label>
 <input id="41e-41a-repo-svc" value="" placeholder="https://git.example.com/owner/name" style="height: 30px; box-sizing: border-box; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); background: #0d0d0f; color: #fafafa; padding: 0 10px; font-family: ui-monospace, Menlo, monospace; font-size: 12px">
 <span style="font-size: 12px; color: #a1a1aa">for <span style="font-family: ui-monospace, Menlo, monospace; color: #fafafa">accounting</span></span>
-<span style="font-size: 12px; color: #a1a1aa">—</span>
 <button type="submit" disabled style="justify-self: end; height: 28px; padding: 0 10px; border-radius: 6.4px; border: 0; background: #e7e1d3; color: #09090b; font-size: 12px; opacity: 0.5">Save</button>
 </form>
 </sc-if>
@@ -647,7 +637,7 @@ const btn = (label, popup) => ({ label, popup: popup ? 'menu' : 'false', border:
 const setBtn = today ? [btn('Set')] : [btn('Set', true)];
 const setHereBtn = today ? [btn('Clear')] : [btn('Change', true)];
 const r = (svc, repo, from, kind, actions, extra) => Object.assign({
-  svc, repo, from, kind, actions, folder: '',
+  svc, repo, from, kind, actions, folder: '', note: '',
   repoColor: repo === 'none' ? '#8a8a93' : '#fafafa', bg: 'transparent', checked: false,
   pick: false, paste: false, folderEdit: false, changeMenu: false
 }, extra || {});
@@ -659,7 +649,7 @@ const platform = (svc) => v === 'folder'
 const rows = [
   platform('accounting'),
   r('api', 'github.com/acme/api', 'resource · vcs.repository.url.full', 'GitHub', setBtn),
-  r('auth', 'github.com/acme/auth', 'deploy mark ▲ 2.3.0 · repo', 'GitHub', setBtn),
+  r('auth', 'git.acme.dev/ops/auth', 'deploy mark ▲ 2.3.0 · repo', 'Gitea / Forgejo', setBtn, { note: ' · links as Gitea / Forgejo' }),
   Object.assign(platform('billing'), v === 'pick' ? { pick: true, bg: 'rgba(255,255,255,0.03)' } : v === 'paste' ? { paste: true, bg: 'rgba(255,255,255,0.03)' } : {}),
   r('checkout', 'gitlab.com/acme/shop', byMaya, 'GitLab', setHereBtn),
   r('pay', 'github.com/acme/services', byMaya, 'GitHub', setHereBtn, v === 'folder' ? { folder: ' · services/pay', folderEdit: true, changeMenu: false, bg: 'rgba(255,255,255,0.03)' } : {}),
@@ -677,10 +667,10 @@ const known = [
   k('github.com/acme/platform', 'support', true),
   k('github.com/acme/services', 'pay'),
   k('github.com/acme/api', 'api'),
-  k('github.com/acme/auth', 'auth'),
+  k('git.acme.dev/ops/auth', 'auth'),
   k('gitlab.com/acme/shop', 'checkout')
 ];
-const cols = several ? '16px 120px minmax(0,1fr) 230px 110px 80px' : '130px minmax(0,1fr) 240px 120px 80px';
+const cols = several ? '16px 120px minmax(0,1fr) 250px 80px' : '130px minmax(0,1fr) 260px 80px';
 return { today, several, rows, known, cols };
 }
 })().renderVals()),
@@ -693,7 +683,7 @@ const btn = (label, popup) => ({ label, popup: popup ? 'menu' : 'false', border:
 const setBtn = today ? [btn('Set')] : [btn('Set', true)];
 const setHereBtn = today ? [btn('Clear')] : [btn('Change', true)];
 const r = (svc, repo, from, kind, actions, extra) => Object.assign({
-  svc, repo, from, kind, actions, folder: '',
+  svc, repo, from, kind, actions, folder: '', note: '',
   repoColor: repo === 'none' ? '#8a8a93' : '#fafafa', bg: 'transparent', checked: false,
   pick: false, paste: false, folderEdit: false, changeMenu: false
 }, extra || {});
@@ -705,7 +695,7 @@ const platform = (svc) => v === 'folder'
 const rows = [
   platform('accounting'),
   r('api', 'github.com/acme/api', 'resource · vcs.repository.url.full', 'GitHub', setBtn),
-  r('auth', 'github.com/acme/auth', 'deploy mark ▲ 2.3.0 · repo', 'GitHub', setBtn),
+  r('auth', 'git.acme.dev/ops/auth', 'deploy mark ▲ 2.3.0 · repo', 'Gitea / Forgejo', setBtn, { note: ' · links as Gitea / Forgejo' }),
   Object.assign(platform('billing'), v === 'pick' ? { pick: true, bg: 'rgba(255,255,255,0.03)' } : v === 'paste' ? { paste: true, bg: 'rgba(255,255,255,0.03)' } : {}),
   r('checkout', 'gitlab.com/acme/shop', byMaya, 'GitLab', setHereBtn),
   r('pay', 'github.com/acme/services', byMaya, 'GitHub', setHereBtn, v === 'folder' ? { folder: ' · services/pay', folderEdit: true, changeMenu: false, bg: 'rgba(255,255,255,0.03)' } : {}),
@@ -723,10 +713,10 @@ const known = [
   k('github.com/acme/platform', 'support', true),
   k('github.com/acme/services', 'pay'),
   k('github.com/acme/api', 'api'),
-  k('github.com/acme/auth', 'auth'),
+  k('git.acme.dev/ops/auth', 'auth'),
   k('gitlab.com/acme/shop', 'checkout')
 ];
-const cols = several ? '16px 120px minmax(0,1fr) 230px 110px 80px' : '130px minmax(0,1fr) 240px 120px 80px';
+const cols = several ? '16px 120px minmax(0,1fr) 250px 80px' : '130px minmax(0,1fr) 260px 80px';
 return { today, several, rows, known, cols };
 }
 })().renderVals()),
@@ -739,7 +729,7 @@ const btn = (label, popup) => ({ label, popup: popup ? 'menu' : 'false', border:
 const setBtn = today ? [btn('Set')] : [btn('Set', true)];
 const setHereBtn = today ? [btn('Clear')] : [btn('Change', true)];
 const r = (svc, repo, from, kind, actions, extra) => Object.assign({
-  svc, repo, from, kind, actions, folder: '',
+  svc, repo, from, kind, actions, folder: '', note: '',
   repoColor: repo === 'none' ? '#8a8a93' : '#fafafa', bg: 'transparent', checked: false,
   pick: false, paste: false, folderEdit: false, changeMenu: false
 }, extra || {});
@@ -751,7 +741,7 @@ const platform = (svc) => v === 'folder'
 const rows = [
   platform('accounting'),
   r('api', 'github.com/acme/api', 'resource · vcs.repository.url.full', 'GitHub', setBtn),
-  r('auth', 'github.com/acme/auth', 'deploy mark ▲ 2.3.0 · repo', 'GitHub', setBtn),
+  r('auth', 'git.acme.dev/ops/auth', 'deploy mark ▲ 2.3.0 · repo', 'Gitea / Forgejo', setBtn, { note: ' · links as Gitea / Forgejo' }),
   Object.assign(platform('billing'), v === 'pick' ? { pick: true, bg: 'rgba(255,255,255,0.03)' } : v === 'paste' ? { paste: true, bg: 'rgba(255,255,255,0.03)' } : {}),
   r('checkout', 'gitlab.com/acme/shop', byMaya, 'GitLab', setHereBtn),
   r('pay', 'github.com/acme/services', byMaya, 'GitHub', setHereBtn, v === 'folder' ? { folder: ' · services/pay', folderEdit: true, changeMenu: false, bg: 'rgba(255,255,255,0.03)' } : {}),
@@ -769,10 +759,10 @@ const known = [
   k('github.com/acme/platform', 'support', true),
   k('github.com/acme/services', 'pay'),
   k('github.com/acme/api', 'api'),
-  k('github.com/acme/auth', 'auth'),
+  k('git.acme.dev/ops/auth', 'auth'),
   k('gitlab.com/acme/shop', 'checkout')
 ];
-const cols = several ? '16px 120px minmax(0,1fr) 230px 110px 80px' : '130px minmax(0,1fr) 240px 120px 80px';
+const cols = several ? '16px 120px minmax(0,1fr) 250px 80px' : '130px minmax(0,1fr) 260px 80px';
 return { today, several, rows, known, cols };
 }
 })().renderVals()),
@@ -785,7 +775,7 @@ const btn = (label, popup) => ({ label, popup: popup ? 'menu' : 'false', border:
 const setBtn = today ? [btn('Set')] : [btn('Set', true)];
 const setHereBtn = today ? [btn('Clear')] : [btn('Change', true)];
 const r = (svc, repo, from, kind, actions, extra) => Object.assign({
-  svc, repo, from, kind, actions, folder: '',
+  svc, repo, from, kind, actions, folder: '', note: '',
   repoColor: repo === 'none' ? '#8a8a93' : '#fafafa', bg: 'transparent', checked: false,
   pick: false, paste: false, folderEdit: false, changeMenu: false
 }, extra || {});
@@ -797,7 +787,7 @@ const platform = (svc) => v === 'folder'
 const rows = [
   platform('accounting'),
   r('api', 'github.com/acme/api', 'resource · vcs.repository.url.full', 'GitHub', setBtn),
-  r('auth', 'github.com/acme/auth', 'deploy mark ▲ 2.3.0 · repo', 'GitHub', setBtn),
+  r('auth', 'git.acme.dev/ops/auth', 'deploy mark ▲ 2.3.0 · repo', 'Gitea / Forgejo', setBtn, { note: ' · links as Gitea / Forgejo' }),
   Object.assign(platform('billing'), v === 'pick' ? { pick: true, bg: 'rgba(255,255,255,0.03)' } : v === 'paste' ? { paste: true, bg: 'rgba(255,255,255,0.03)' } : {}),
   r('checkout', 'gitlab.com/acme/shop', byMaya, 'GitLab', setHereBtn),
   r('pay', 'github.com/acme/services', byMaya, 'GitHub', setHereBtn, v === 'folder' ? { folder: ' · services/pay', folderEdit: true, changeMenu: false, bg: 'rgba(255,255,255,0.03)' } : {}),
@@ -815,10 +805,10 @@ const known = [
   k('github.com/acme/platform', 'support', true),
   k('github.com/acme/services', 'pay'),
   k('github.com/acme/api', 'api'),
-  k('github.com/acme/auth', 'auth'),
+  k('git.acme.dev/ops/auth', 'auth'),
   k('gitlab.com/acme/shop', 'checkout')
 ];
-const cols = several ? '16px 120px minmax(0,1fr) 230px 110px 80px' : '130px minmax(0,1fr) 240px 120px 80px';
+const cols = several ? '16px 120px minmax(0,1fr) 250px 80px' : '130px minmax(0,1fr) 260px 80px';
 return { today, several, rows, known, cols };
 }
 })().renderVals()),
@@ -831,7 +821,7 @@ const btn = (label, popup) => ({ label, popup: popup ? 'menu' : 'false', border:
 const setBtn = today ? [btn('Set')] : [btn('Set', true)];
 const setHereBtn = today ? [btn('Clear')] : [btn('Change', true)];
 const r = (svc, repo, from, kind, actions, extra) => Object.assign({
-  svc, repo, from, kind, actions, folder: '',
+  svc, repo, from, kind, actions, folder: '', note: '',
   repoColor: repo === 'none' ? '#8a8a93' : '#fafafa', bg: 'transparent', checked: false,
   pick: false, paste: false, folderEdit: false, changeMenu: false
 }, extra || {});
@@ -843,7 +833,7 @@ const platform = (svc) => v === 'folder'
 const rows = [
   platform('accounting'),
   r('api', 'github.com/acme/api', 'resource · vcs.repository.url.full', 'GitHub', setBtn),
-  r('auth', 'github.com/acme/auth', 'deploy mark ▲ 2.3.0 · repo', 'GitHub', setBtn),
+  r('auth', 'git.acme.dev/ops/auth', 'deploy mark ▲ 2.3.0 · repo', 'Gitea / Forgejo', setBtn, { note: ' · links as Gitea / Forgejo' }),
   Object.assign(platform('billing'), v === 'pick' ? { pick: true, bg: 'rgba(255,255,255,0.03)' } : v === 'paste' ? { paste: true, bg: 'rgba(255,255,255,0.03)' } : {}),
   r('checkout', 'gitlab.com/acme/shop', byMaya, 'GitLab', setHereBtn),
   r('pay', 'github.com/acme/services', byMaya, 'GitHub', setHereBtn, v === 'folder' ? { folder: ' · services/pay', folderEdit: true, changeMenu: false, bg: 'rgba(255,255,255,0.03)' } : {}),
@@ -861,10 +851,10 @@ const known = [
   k('github.com/acme/platform', 'support', true),
   k('github.com/acme/services', 'pay'),
   k('github.com/acme/api', 'api'),
-  k('github.com/acme/auth', 'auth'),
+  k('git.acme.dev/ops/auth', 'auth'),
   k('gitlab.com/acme/shop', 'checkout')
 ];
-const cols = several ? '16px 120px minmax(0,1fr) 230px 110px 80px' : '130px minmax(0,1fr) 240px 120px 80px';
+const cols = several ? '16px 120px minmax(0,1fr) 250px 80px' : '130px minmax(0,1fr) 260px 80px';
 return { today, several, rows, known, cols };
 }
 })().renderVals()),

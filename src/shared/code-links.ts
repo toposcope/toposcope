@@ -106,6 +106,17 @@ export function parseRepo(raw: string): Repo | null {
 }
 
 /** The link shape a host speaks; a host Toposcope cannot tell is Gitea / Forgejo, the self-hosted one. */
+/** True when the link shape is read from a self-hosted address, not github.com, gitlab.com or bitbucket.org. */
+export function repoHostGuessed(repo: Repo): boolean {
+  let hostname: string;
+  try {
+    hostname = new URL(repo.url).hostname.toLowerCase();
+  } catch {
+    return true;
+  }
+  return !["github.com", "gitlab.com", "bitbucket.org"].includes(hostname);
+}
+
 export function repoHostOf(host: string): RepoHost {
   const h = host.replace(/:\d+$/, "");
   if (h === "github.com" || /(^|\.)github\./.test(h)) {

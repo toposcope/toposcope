@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { parseRepo, parseRepoPath, repoDisplay, repoFilePath, repoHostWords, repoResourceKey, type Repo } from "../../shared/code-links";
+import { parseRepo, parseRepoPath, repoDisplay, repoFilePath, repoHostGuessed, repoHostWords, repoResourceKey, type Repo } from "../../shared/code-links";
 import type { KnownRepo, ServiceRow } from "../repositories";
 import { knownFromWords, knownRepos, servicesWords } from "../repositories";
 
@@ -118,7 +118,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
     });
   const th = "px-4 py-2.5 text-left whitespace-nowrap text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase";
   const td = "px-4 py-3 align-middle";
-  const cols = props.canWrite ? 6 : 5;
+  const cols = props.canWrite ? 5 : 4;
 
   return (
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
@@ -175,7 +175,6 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                   <th className={th}>Service</th>
                   <th className={th}>Repository</th>
                   <th className={th}>Known from</th>
-                  <th className={th}>Links as</th>
                   <th className={th} aria-label="Actions" />
                 </tr>
               </thead>
@@ -208,11 +207,11 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                           <td className={`${td} font-mono ${repo ? "" : "text-muted-foreground"}`}>
                             {repo ? repoDisplay(repo) : "none"}
                             {repo?.path ? <span className="text-muted-foreground"> · {repo.path}</span> : null}
+                            {repo && repoHostGuessed(repo) ? <span className="font-sans text-[12px] text-muted-foreground"> · links as {repoHostWords[repo.host]}</span> : null}
                           </td>
                           <td className={`${td} whitespace-nowrap text-muted-foreground`} title={r.set_at ? new Date(r.set_at).toISOString().replace("T", " ").slice(0, 16) + " UTC" : undefined}>
                             {knownFromWords(r)}
                           </td>
-                          <td className={`${td} whitespace-nowrap text-muted-foreground`}>{repo ? repoHostWords[repo.host] : "—"}</td>
                           <td className={`${td} text-right`}>
                             {props.canWrite ? (
                               <PopoverTrigger asChild>
