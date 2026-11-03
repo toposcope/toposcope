@@ -428,7 +428,7 @@ If a ClickHouse data directory from an older release refuses to start after the 
 
 `GET /api/health` is **200** only when `phase` is `ready` and both stores ping; otherwise **503** with `phase`. Either way the body carries `version`, the running release — the same string as the image tag.
 
-`GET /api/metrics` returns Prometheus text.
+`GET /api/metrics` returns Prometheus text. `toposcope_syslog_dropped_total` is the syslog UDP rows that were not stored, by reason ([Syslog](ingest.md#syslog)).
 
 ```bash
 curl -fsS http://127.0.0.1:8080/api/health

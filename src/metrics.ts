@@ -3,6 +3,9 @@ type CounterName =
   | "ingest_metrics"
   | "ingest_marks"
   | "syslog_packets"
+  | "syslog_dropped_queue_full"
+  | "syslog_dropped_insert_failed"
+  | "syslog_dropped_unparsed"
   | "otlp_events"
   | "otlp_spans"
   | "otlp_profile_samples"
@@ -14,6 +17,9 @@ const counters: Record<CounterName, number> = {
   ingest_metrics: 0,
   ingest_marks: 0,
   syslog_packets: 0,
+  syslog_dropped_queue_full: 0,
+  syslog_dropped_insert_failed: 0,
+  syslog_dropped_unparsed: 0,
   otlp_events: 0,
   otlp_spans: 0,
   otlp_profile_samples: 0,
@@ -39,6 +45,11 @@ export function renderMetrics(): string {
     "# HELP toposcope_syslog_packets_total Syslog UDP packets accepted",
     "# TYPE toposcope_syslog_packets_total counter",
     `toposcope_syslog_packets_total ${counters.syslog_packets}`,
+    "# HELP toposcope_syslog_dropped_total Syslog UDP rows not stored, by reason (#465)",
+    "# TYPE toposcope_syslog_dropped_total counter",
+    `toposcope_syslog_dropped_total{reason="queue_full"} ${counters.syslog_dropped_queue_full}`,
+    `toposcope_syslog_dropped_total{reason="insert_failed"} ${counters.syslog_dropped_insert_failed}`,
+    `toposcope_syslog_dropped_total{reason="unparsed"} ${counters.syslog_dropped_unparsed}`,
     "# HELP toposcope_otlp_events_total Events mapped from OTLP JSON",
     "# TYPE toposcope_otlp_events_total counter",
     `toposcope_otlp_events_total ${counters.otlp_events}`,
