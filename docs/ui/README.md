@@ -12,7 +12,7 @@ Tailwind names, so classes read `text-sm`, `rounded-lg`, `bg-surface-1`.
 | Surfaces | `ground` (the page) · `surface-1` (band, well, plot ground, panel body) · `surface-2` (card, panel head, chip) · `overlay` (menu, popover, dialog, tooltip) · `control` (secondary fill, selected row). |
 | Levels | `level-debug` · `level-info` · `level-warn` · `level-error` · `level-fatal`; `levelHex` in `src/ui/level.ts` mirrors them for canvas and SVG. |
 | States | `danger` · `warn` · `ok` · `info`, each with `-fg` (text) and `-soft` (fill); `plate` is the one accent (selection, Live). Errors are `danger-fg`; a refusal is `warn`. |
-| Text | `foreground`, `muted-foreground`, `faint` (never on `control`). |
+| Text | `foreground`, `muted-foreground`, `faint` (never on `control`). No steps between them: not `text-foreground/85`. |
 | Radius | `rounded-sm` 2.4 (kbd, marks, badge) · `md` 4.4 (controls) · `lg` 6.4 (cards, panels, menus) · `xl` 10 (dialogs, sheets, palette) · `full`. |
 | Heights | `xs` 18 · `sm` 22 · `md` 26 (default) · `lg` 30, on Button, Input and Chip. |
 | Spacing | `0.5 1 1.5 2 3 4 6` (2–24px). `2.5` and `3.5` only inside primitives. Gutters: page 24, card 16, panel 12, row 8. |
@@ -43,7 +43,7 @@ The UI's terms: **hunt**, **saved hunt**, **board**, **panel**, **query**, **win
 
 ## Lint ratchet
 
-`src/ui/design-lint.test.ts` scans `src/ui/components` and fails when a file adds a `text-[Npx]`, a `[#hex]` colour, a raw palette class (`text-red-300`, `bg-amber-500/20`, `text-zinc-400`…), a `rounded-[Npx]`, a bracketed spacing, a `<button>` with `h-[…]`, or an `outline-none` with no focus state. Each file's counts are in `src/ui/design-lint.baseline.json`; they only go down. When you remove some, lower the baseline with `DESIGN_LINT_UPDATE=1 bun test src/ui/design-lint.test.ts`. Chart palettes (`histogram-series.ts`, `flame.ts`, `waterfall.ts`) are not scanned.
+`src/ui/design-lint.test.ts` scans `src/ui/components` and fails when a file adds a `text-[Npx]`, a `[#hex]` colour, a raw palette class (`text-red-300`, `bg-amber-500/20`, `text-zinc-400`…), a `rounded-[Npx]`, a bracketed spacing, a `<button>` with `h-[…]`, an `outline-none` with no focus state, text at a foreground alpha (`text-foreground/85`, `text-muted-foreground/70`), or a hex in an inline `style`. Each file's counts are in `src/ui/design-lint.baseline.json`; they only go down. When you remove some, lower the baseline with `DESIGN_LINT_UPDATE=1 bun test src/ui/design-lint.test.ts`. Chart palettes (`histogram-series.ts`, `flame.ts`, `waterfall.ts`) are not scanned.
 
 ## Contrast
 
@@ -74,4 +74,4 @@ One look on every control, shown on `focus-visible` only:
 - **Fields** (inputs, text areas, the query bar, a box around an input): the border lifts to fg 40% (`focus-visible:border-foreground/40`, or `focus-within:` on the box). Plate stays for selection and Live.
 - **Rows** in menus and lists: the control fill (`focus:bg-control`, `data-[highlighted]:bg-control`), not a ring.
 
-Every `outline-none` keeps one of these; the lint ratchet counts the ones that do not.
+Every `outline-none` keeps one of these; the lint ratchet counts the ones that do not. One exception: the command palette's input draws no ring, as the sheet draws it. It is the palette's only field and always has the caret, so the dialog's border is its focus. It stays in the baseline.

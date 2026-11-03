@@ -18,7 +18,8 @@
     "raw palette class": 7
   },
   "src/ui/components/alert-body-field.tsx": {
-    "raw palette class": 1
+    "raw palette class": 1,
+    "text at a foreground alpha": 4
   },
   "src/ui/components/alert-rule-dialog.tsx": {
     "outline-none with no focus": 4
@@ -39,10 +40,12 @@
     "outline-none with no focus": 1
   },
   "src/ui/components/compare-fold.tsx": {
-    "raw palette class": 2
+    "raw palette class": 2,
+    "style hex colour": 2
   },
   "src/ui/components/context-view.tsx": {
-    "<button with h-[…]": 2
+    "<button with h-[…]": 2,
+    "text at a foreground alpha": 1
   },
   "src/ui/components/coverage-section.tsx": {
     "[#hex] colour": 1,
@@ -54,7 +57,11 @@
     "<button with h-[…]": 3
   },
   "src/ui/components/event-table-marks.tsx": {
-    "<button with h-[…]": 2
+    "<button with h-[…]": 2,
+    "text at a foreground alpha": 4
+  },
+  "src/ui/components/event-table.tsx": {
+    "text at a foreground alpha": 1
   },
   "src/ui/components/facet-chips.tsx": {
     "raw palette class": 1
@@ -68,7 +75,11 @@
     "<button with h-[…]": 2
   },
   "src/ui/components/fingerprint-cut-panel.tsx": {
-    "<button with h-[…]": 1
+    "<button with h-[…]": 1,
+    "text at a foreground alpha": 4
+  },
+  "src/ui/components/follow-opened-chip.tsx": {
+    "text at a foreground alpha": 1
   },
   "src/ui/components/hbar-widget.tsx": {
     "<button with h-[…]": 3
@@ -76,12 +87,17 @@
   "src/ui/components/head-picker.tsx": {
     "<button with h-[…]": 1
   },
+  "src/ui/components/held-tells.tsx": {
+    "style hex colour": 1
+  },
   "src/ui/components/histogram-chart.tsx": {
-    "<button with h-[…]": 2
+    "<button with h-[…]": 2,
+    "text at a foreground alpha": 4
   },
   "src/ui/components/histogram-marks.tsx": {
     "raw palette class": 1,
-    "<button with h-[…]": 4
+    "<button with h-[…]": 4,
+    "text at a foreground alpha": 2
   },
   "src/ui/components/home-view.tsx": {
     "raw palette class": 9,
@@ -135,6 +151,7 @@
   "src/ui/components/panel-editor.tsx": {
     "raw palette class": 2,
     "<button with h-[…]": 4,
+    "text at a foreground alpha": 1,
     "outline-none with no focus": 1
   },
   "src/ui/components/people-groups.tsx": {
@@ -158,6 +175,7 @@
   "src/ui/components/series-picker.tsx": {
     "[#hex] colour": 1,
     "<button with h-[…]": 2,
+    "text at a foreground alpha": 1,
     "outline-none with no focus": 1
   },
   "src/ui/components/settings-page.tsx": {
@@ -182,6 +200,9 @@
   "src/ui/components/time-range-picker.tsx": {
     "<button with h-[…]": 4
   },
+  "src/ui/components/trace-waterfall.tsx": {
+    "text at a foreground alpha": 1
+  },
   "src/ui/components/ui/chip.tsx": {
     "raw palette class": 1
   },
@@ -199,7 +220,8 @@
   "src/ui/components/watch-view.tsx": {
     "[#hex] colour": 1,
     "raw palette class": 6,
-    "<button with h-[…]": 1
+    "<button with h-[…]": 1,
+    "text at a foreground alpha": 5
   },
   "src/ui/components/widget-canvas.tsx": {
     "raw palette class": 4,
