@@ -38,3 +38,47 @@ jobs:
         run: bun test
       - name: Typecheck
         run: bun run typecheck
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLICKHOUSE_URL: http://127.0.0.1:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: toposcope
+      SQLITE_PATH: ${{ github.workspace }}/e2e.sqlite
+      TOPOSCOPE_DEV: "1"
+      TOPOSCOPE_INGEST_TOKEN: e2e-ingest-test
+      TOPOSCOPE_URL: http://127.0.0.1:8080
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:26.3
+        env:
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: toposcope
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "clickhouse-client --user default --password toposcope --query 'SELECT 1'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+          --health-start-period 15s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build the UI
+        run: bun run build:ui
+      - name: Start the app
+        run: |
+          PORT=8080 HOST=127.0.0.1 nohup bun run src/index.ts > app.log 2>&1 &
+          curl -fsS --retry 60 --retry-delay 1 --retry-all-errors http://127.0.0.1:8080/api/health
+      - name: e2e
+        run: bun run e2e
+      - name: App log
+        if: failure()
+        run: tail -200 app.log
