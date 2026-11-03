@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import type { KeyboardEvent } from "react";
+import { Skeleton } from "@/components/ui/states";
 
 type Props = {
   field: string;
@@ -103,7 +104,7 @@ export function FacetGroup({
       {loading && values.length === 0 ? (
         <div className="flex flex-col gap-1">
           {Array.from({ length: 3 }, (_, i) => (
-            <span key={i} className="h-3 animate-pulse rounded-md bg-muted" />
+            <Skeleton key={i} kind="block" className="h-3" />
           ))}
         </div>
       ) : values.length === 0 ? (

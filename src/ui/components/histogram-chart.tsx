@@ -70,6 +70,7 @@ import { CompareFold, type CompareFoldHunt } from "./compare-fold";
 import { monitorBandH } from "./monitor-band";
 import { endLabelMax, lastValue, sparkLines, spreadLabels, unitAxes, type SparkLine } from "./metric-spark";
 import { UnitsSay } from "./panel-words";
+import { Refused, Skeleton } from "@/components/ui/states";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
@@ -1384,7 +1385,7 @@ export function HistogramChart({
         </div>
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {loading && buckets.length === 0 ? (
-            <div className="min-h-0 flex-1 animate-pulse" />
+            <Skeleton kind="bars" />
           ) : buckets.length === 0 ? (
             <div className="min-h-0 flex-1" />
           ) : (
@@ -1834,9 +1835,9 @@ export function HistogramChart({
       {agg || metric || scanReason ? (
         <div className="mt-1 pr-2.5 text-xs text-muted-foreground" style={{ paddingLeft: plotLeft }}>
           {scanReason ? (
-            <span>{scanReason}</span>
+            <Refused reason={scanReason} />
           ) : aggResult?.source === "refused" ? (
-            <span>{aggResult.reason}</span>
+            <Refused reason={aggResult.reason} />
           ) : unitsNote && !metricQuiet ? (
             // #331, 33e: the one line that says why the lines are apart, as a panel says it.
             <span className="flex flex-wrap items-center gap-1.5">

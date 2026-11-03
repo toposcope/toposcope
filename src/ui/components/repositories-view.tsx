@@ -7,6 +7,7 @@ import { parseRepo, parseRepoPath, repoDisplay, repoFilePath, repoHostGuessed, r
 import type { GithubRepo, GithubState } from "../github";
 import type { KnownRepo, ServiceRow } from "../repositories";
 import { knownFromWords, knownRepos, servicesWords } from "../repositories";
+import { Empty } from "@/components/ui/states";
 
 /**
  * Settings › Repositories (#393, frame 37i; #413, frames 41a–41e): where each service's code
@@ -142,9 +143,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
         </div>
         {gh.github?.configured ? <GithubBand github={gh.github} canConnect={props.canConnect} onChange={gh.set} /> : null}
         {failed && !rows ? (
-          <div className="rounded-lg border bg-card px-3 py-8 text-center">
-            <p className="text-sm">Could not read the repositories.</p>
-          </div>
+          <Empty title={<span className="text-danger-fg">Could not read the repositories.</span>} />
         ) : (
           <div className="overflow-x-auto rounded-xl border border-white/10 bg-surface-2">
             {props.canWrite && picked.length > 0 ? (

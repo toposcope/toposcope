@@ -10,6 +10,7 @@ import { KindChips } from "./kind-boxes";
 import { MintDialog, PasteDialog } from "./link-dialogs";
 import { AgentsGroup, InviteSheet, MakeTokenSheet, PeopleCards, PeopleGroup, PersonTokenRows, ServiceAccountsGroup, type PeopleBody, type Role } from "./people-groups";
 import { AgentMade, AgentStep, type MadeAgent } from "./agent-step";
+import { Empty } from "@/components/ui/states";
 
 /**
  * Access (#265, frames 26i and 26j; the one door since 29a, #295): every way in or out of this
@@ -277,7 +278,7 @@ export function AccessView(props: {
           <ServiceAccountsGroup accounts={people.service_accounts} nowMs={nowMs} isOwner={isOwner} onChanged={() => void loadPeople()} />
         ) : null}
 
-        {data && rows.length === 0 ? <p className="text-sm text-muted-foreground">Nothing here yet. Let someone in makes the first.</p> : null}
+        {data && rows.length === 0 ? <Empty title="Nothing here yet." line="Let someone in makes the first." /> : null}
         {accessGroups
           .filter((g) => props.filter === "all" || props.filter === g.filter)
           .map((g) => {

@@ -10,6 +10,7 @@ import { deltaText, firstRunSteps, formatValue, hhmmUtc, markAge, markGlyph, res
 import type { MonitorView, SavedSearch } from "../types";
 import { AgentBadge, OpenAgent } from "./agent-badge";
 import { EvidenceGaps, useCoverage } from "./coverage-section";
+import { Empty } from "@/components/ui/states";
 
 export type HomeWindow = { from: string; to: string };
 
@@ -286,9 +287,7 @@ export function HomeView(props: Props) {
           </div>
 
           {data.cards.length === 0 ? (
-            <section className="rounded-xl border border-white/10 bg-surface-2 p-4 text-sm text-muted-foreground">
-              Save a hunt and it is a card here, with its before → after around the mark.
-            </section>
+            <Empty title="Save a hunt and it is a card here, with its before → after around the mark." />
           ) : (
             <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
               {data.cards.map((card) => {

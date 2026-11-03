@@ -38,6 +38,7 @@ import type { FacetValue, LogLevel } from "../types";
 import { levelText } from "../level";
 import { usePlotTheme } from "../plot-theme";
 import { endLabelMax, lastValue, sparkLines, sparkTimes, spreadLabels } from "./metric-spark";
+import { LiveAge, Refused, Skeleton } from "@/components/ui/states";
 
 const quickFixed = ["15m", "1h", "4h", "24h", "7d"] as const;
 const liveDeltaMs = 2_000;
@@ -826,7 +827,7 @@ function InputChip({
             </span>
           </button>
         ))}
-        {values === null ? <div className="mx-2 my-1.5 h-3 w-24 animate-pulse rounded-md bg-muted" /> : null}
+        {values === null ? <Skeleton kind="block" className="mx-2 my-1.5 h-3 w-24" /> : null}
         {readOnly ? null : (
           <>
             <div className="my-1 h-px bg-white/[0.08]" />
@@ -943,6 +944,7 @@ function BoardPanelCard(props: CardProps) {
           </span>
         ) : null}
         <span className="min-w-1 flex-1" />
+        {props.live && data ? <LiveAge fetchedAt={data.fetchedAt} cadence={panelMergeable(panel) ? "2s" : "30s"} /> : null}
         {head ? (
           <span className="shrink-0 font-mono text-sm whitespace-nowrap text-muted-foreground">
             <b className="font-medium text-foreground">{head.n ?? <CountText n={total} />}</b> {head.label}
@@ -978,13 +980,13 @@ function BoardPanelCard(props: CardProps) {
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col">
         {data?.error ? (
-          <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-warn-fg">{data.error}</div>
+          <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-danger-fg">{data.error}</div>
         ) : data?.refused && total === 0 ? (
-          <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-warn-fg">{data.refused}</div>
+          <Refused form="block" reason={data.refused} className="flex-1" />
         ) : empty ? (
           <EmptyTell panel={panel} setKeys={props.setKeys} win={props.win} />
         ) : loading && !data ? (
-          <div className="m-3 flex-1 animate-pulse rounded-md bg-muted/40" />
+          <Skeleton kind={panel.view === "histogram" ? "bars" : "block"} className="m-3 flex-1" />
         ) : data ? (
           <PanelBody panel={panel} data={data} win={props.win} live={props.live} marks={props.marks} />
         ) : null}
@@ -1325,9 +1327,13 @@ function PanelBody({
             <span className="font-mono text-display leading-none font-medium tracking-[-0.025em] tabular-nums">{value}</span>
             {unit ? <span className="font-mono text-lg text-muted-foreground">{unit}</span> : null}
           </div>
-          <span className={cn("mt-2 font-mono text-sm", refused ? "text-warn-fg" : "text-muted-foreground")}>
-            {refused ? data.agg?.reason : isCount ? `in ${windowWords(win).replace("the ", "")}` : <><CountText n={data.total} /> rows</>}
-          </span>
+          {refused ? (
+            <Refused reason={data.agg?.reason} className="mt-2 font-mono text-sm" />
+          ) : (
+            <span className="mt-2 font-mono text-sm text-muted-foreground">
+              {isCount ? `in ${windowWords(win).replace("the ", "")}` : <><CountText n={data.total} /> rows</>}
+            </span>
+          )}
         </div>
       );
     }

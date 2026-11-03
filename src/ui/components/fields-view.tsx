@@ -24,8 +24,9 @@ import {
   fieldsSlowAdvice,
   fieldsWaveLabel,
 } from "../fields-load";
-import { formatSearchElapsed, scanningRangeLabel } from "../time-range";
+import { scanningRangeLabel } from "../time-range";
 import { CoverageSection, useCoverage } from "./coverage-section";
+import { Busy, busyDim, Empty, Skeleton } from "@/components/ui/states";
 
 const grid =
   "grid grid-cols-[minmax(120px,1.1fr)_72px_92px_minmax(196px,1fr)_minmax(200px,1.2fr)] items-center gap-2";
@@ -97,8 +98,6 @@ export function FieldsView({
   const skel = fresh && wave === "keys";
   const valuesPending = wave === "keys" || wave === "values";
   const suggestPending = wave !== null;
-  const elapsed =
-    wave && elapsedMs >= 100 ? ` ${formatSearchElapsed(elapsedMs)}` : "";
 
   async function commit(
     key: string,
@@ -156,44 +155,15 @@ export function FieldsView({
         </div>
 
         {failed && !catalog ? (
-          <div className="rounded-lg border bg-card px-3 py-8 text-center">
-            <p className="text-sm">Could not load fields for the last 24 h.</p>
-          </div>
+          <Empty title={<span className="text-danger-fg">Could not load fields for the last 24 h.</span>} />
         ) : emptyEvents && !skel ? (
-          <div className="rounded-lg border bg-card px-3 py-8 text-center">
-            <p className="text-sm">No events in the last 24 h.</p>
-          </div>
+          <Empty title="No events in the last 24 h." />
         ) : (
           <>
             <CoverageSection coverage={coverage} focusNames={focusNames} canAccept={canAccept} />
             <div className="mb-2 flex items-center gap-2.5">
               {wave ? (
-                <div
-                  className={cn(
-                    "flex h-[26px] min-w-0 items-center gap-2 rounded-md border py-0 pr-1 pl-2.5",
-                    slow
-                      ? "border-warn/45 bg-warn/10"
-                      : "border-input",
-                  )}
-                >
-                  <span className="size-[11px] shrink-0 animate-spin rounded-full border-[1.5px] border-white/25 border-t-foreground" />
-                  <span className="shrink-0 text-xs whitespace-nowrap">
-                    {fieldsWaveLabel(wave)}…{elapsed}
-                  </span>
-                  {slow ? (
-                    <span className="min-w-0 truncate border-l border-white/12 pl-2 text-xs text-warn-fg">
-                      {fieldsSlowAdvice(rangeLabel, keys.length)}
-                    </span>
-                  ) : null}
-                  <Button size="xs"
-                    type="button"
-                    variant="ghost"
-                    className="shrink-0 rounded-sm px-2 text-xs"
-                    onClick={onStop}
-                  >
-                    Stop
-                  </Button>
-                </div>
+                <Busy label={fieldsWaveLabel(wave)} elapsedMs={elapsedMs} slow={slow} hint={fieldsSlowAdvice(rangeLabel, keys.length)} onStop={onStop} />
               ) : (
                 <span className="font-mono text-xs text-muted-foreground">
                   {keys.length} keys · {rangeLabel}
@@ -214,16 +184,12 @@ export function FieldsView({
               </span>
             </div>
             {emptyKeys ? (
-              <p className="mb-2 text-xs text-muted-foreground">
-                No attr keys in the last 24 h.
-              </p>
+              <Empty className="mb-2" title="No attr keys in the last 24 h." />
             ) : null}
             <div
               className={cn(
                 "relative overflow-hidden rounded-xl border border-white/10 bg-surface-2 transition-opacity duration-100",
-                warm && wave
-                  ? "pointer-events-none opacity-45"
-                  : "opacity-100",
+                warm && wave ? busyDim : "opacity-100",
               )}
             >
               {wave ? (
@@ -241,9 +207,12 @@ export function FieldsView({
                 <span>Same as the metric label</span>
               </div>
               {skel ? (
-                Array.from({ length: 12 }, (_, i) => (
-                  <FieldSkeleton key={i} i={i} />
-                ))
+                <Skeleton
+                  kind="rows"
+                  rows={12}
+                  rowClassName={`${grid} h-[38px] border-b border-white/[0.07] px-3`}
+                  cells={(i) => [`${34 + ((i * 37) % 44)}%`, "62%", `${40 + ((i * 23) % 38)}%`, undefined, `${i % 3 === 0 ? 46 : 30}%`]}
+                />
               ) : (
                 keys.map((row) => (
                   <FieldRow
@@ -313,29 +282,6 @@ export function FieldsView({
   );
 }
 
-function FieldSkeleton({ i }: { i: number }) {
-  return (
-    <div
-      className={`${grid} h-[38px] animate-toposcope-shimmer border-b border-white/[0.07] px-3`}
-    >
-      <div
-        className="h-2 rounded-sm bg-white/10"
-        style={{ width: `${34 + ((i * 37) % 44)}%` }}
-      />
-      <div className="ml-auto h-2 w-[62%] rounded-sm bg-white/10" />
-      <div
-        className="ml-auto h-2 rounded-sm bg-white/10"
-        style={{ width: `${40 + ((i * 23) % 38)}%` }}
-      />
-      <div className="h-[22px] w-full rounded-md bg-white/[0.07]" />
-      <div
-        className="h-[22px] rounded-md bg-white/[0.07]"
-        style={{ width: `${i % 3 === 0 ? 46 : 30}%` }}
-      />
-    </div>
-  );
-}
-
 function FieldRow({
   row,
   role,
@@ -370,7 +316,7 @@ function FieldRow({
   const canAddLink = row.linkable && !link && !atCap;
   const rail =
     write === "failed"
-      ? "bg-destructive"
+      ? "bg-danger"
       : write === "writing"
         ? "animate-toposcope-shimmer bg-white/50"
         : pending

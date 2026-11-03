@@ -39,6 +39,7 @@ import {
   EventSeam,
   useMarkDismiss,
 } from "./event-table-marks";
+import { Skeleton } from "@/components/ui/states";
 
 const gridClass = "grid gap-2";
 
@@ -349,31 +350,14 @@ export function EventTableSkeleton({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <Header style={style} promoted={promoted} suggested={[]} other={[]} atCap={false} metrics={{}} />
-      <div className="min-h-0 flex-1 overflow-auto border bg-card">
-        {Array.from({ length: 16 }, (_, i) => (
-          <div
-            key={i}
-            className={`${gridClass} h-[26px] items-center border-b border-white/[0.06] px-2 last:border-0`}
-            style={style}
-          >
-            <span className="h-2 animate-pulse rounded-sm bg-white/10" />
-            <span className="h-2 w-10 animate-pulse rounded-sm bg-white/10" />
-            <span className="h-2 w-[60px] animate-pulse rounded-sm bg-white/10" />
-            <span className="h-2 w-[50px] animate-pulse rounded-sm bg-white/[0.08]" />
-            {promoted.map((key, j) => (
-              <span
-                key={key}
-                className="h-2 animate-pulse rounded-sm bg-white/[0.08]"
-                style={{ width: `${26 + ((i + j * 3) * 17) % 32}px` }}
-              />
-            ))}
-            <span
-              className="h-2 animate-pulse rounded-sm bg-white/10"
-              style={{ width: `${38 + ((i * 41) % 55)}%` }}
-            />
-          </div>
-        ))}
-      </div>
+      <Skeleton
+        kind="rows"
+        rows={16}
+        className="min-h-0 flex-1 overflow-auto border bg-card"
+        rowClassName={`${gridClass} h-[26px] items-center border-b border-white/[0.06] px-2 last:border-0`}
+        rowStyle={style}
+        cells={(i) => [undefined, "40px", "60px", "50px", ...promoted.map((_, j) => `${26 + (((i + j * 3) * 17) % 32)}px`), `${38 + ((i * 41) % 55)}%`]}
+      />
       <Footer loaded={0} total={0} events={[]} q="" range="1h" />
     </div>
   );

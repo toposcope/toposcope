@@ -29,7 +29,6 @@ import { FitName } from "@/components/fit-name";
 import { PanelNote, PanelNoteField, PanelTells, PanelTitle, PanelTitleField } from "@/components/panel-words";
 import { PanelEditor } from "@/components/panel-editor";
 import { panelLines, panelNote, type PanelLines } from "../panel-lines";
-import { WidgetUpdated } from "@/components/widget-updated";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -79,6 +78,7 @@ import {
   widgetSeriesQuery,
   type WidgetDef,
 } from "../../shared/widgets";
+import { LiveAge } from "@/components/ui/states";
 
 export type SeriesData = {
   histogram: HistogramBucket[];
@@ -162,7 +162,6 @@ export function WidgetCanvas({
 }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const widgetsRef = useRef(widgets);
-  const [now, setNow] = useState(() => Date.now());
   const [compareLines, setCompareLines] = useState(1);
   // Share… (#236): the panels ticked when the dialog opens; null while it is shut.
   const [sharing, setSharing] = useState<string[] | null>(null);
@@ -172,14 +171,6 @@ export function WidgetCanvas({
   const held = useHeldView();
   const [fresh, setFresh] = useState<string | null>(null);
   widgetsRef.current = widgets;
-
-  useEffect(() => {
-    if (!live) {
-      return;
-    }
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [live]);
 
   useEffect(() => {
     if (!fresh) {
@@ -722,7 +713,7 @@ export function WidgetCanvas({
         {displayWidgets.map((widget) => {
           const data = lookup(widget);
           const updated: ReactNode = live ? (
-            <WidgetUpdated fetchedAt={data.fetchedAt} now={now} />
+            <LiveAge fetchedAt={data.fetchedAt} cadence="2s, or 30s for a whole-window figure," className="h-auto px-1" />
           ) : null;
           const pinned = isPinnedHistogram(widget);
           const moving = grid.moving === widget.id;

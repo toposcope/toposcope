@@ -15,6 +15,7 @@ import type { FacetField, FacetValue, Facets } from "@/types";
 import { maxAttrFacets } from "../../shared/attrs";
 import { levelHex } from "@/level";
 import type { LogLevel } from "../types";
+import { Skeleton } from "@/components/ui/states";
 
 /**
  * The slice as one row of chips under the clock (frame 26d, #260): level · service · host, then
@@ -121,7 +122,7 @@ export function FacetChips(props: Props) {
           {g}
         </span>
       ))}
-      {props.loading && groups.length === 0 ? <span className="h-[26px] w-24 animate-pulse rounded-lg bg-muted" /> : null}
+      {props.loading && groups.length === 0 ? <Skeleton kind="block" className="h-6.5 w-24 rounded-md" /> : null}
       <DropdownMenu
         onOpenChange={(open) => {
           if (open) {

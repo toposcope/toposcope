@@ -454,11 +454,11 @@ export function AlertRuleDialog({
               {fingerprints || !selected ? null : (
                 <span className="flex flex-col gap-1 rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2">
                   {fewerProblem ? (
-                    <span className="text-sm text-destructive">{fewerProblem[0]!.toUpperCase() + fewerProblem.slice(1)}.</span>
+                    <span className="text-sm text-danger-fg">{fewerProblem[0]!.toUpperCase() + fewerProblem.slice(1)}.</span>
                   ) : probeLoading && !probe ? (
                     <span className="text-sm text-muted-foreground">Checking…</span>
                   ) : probe?.refused ? (
-                    <span className="text-sm text-destructive">{probe.reason ?? "This series cannot be evaluated."}</span>
+                    <span className="text-sm text-danger-fg">{probe.reason ?? "This series cannot be evaluated."}</span>
                   ) : probe ? (
                     <span className="flex min-w-0 items-center gap-2 text-sm">
                       <span className="shrink-0 font-mono">now {formatAggStat(probe.value)}</span>
@@ -553,7 +553,7 @@ export function AlertRuleDialog({
             (editing.consecutive_failures > 0 ||
               editing.last_status === "refused" ||
               editing.last_status === "error") ? (
-              <p className="text-sm text-destructive" title={editing.last_error ?? undefined}>
+              <p className="text-sm text-danger-fg" title={editing.last_error ?? undefined}>
                 Last attempt {editing.last_status ?? "error"}
                 {editing.consecutive_failures > 1 ? ` ×${editing.consecutive_failures}` : ""}
                 {editing.last_attempt_at
@@ -581,7 +581,7 @@ export function AlertRuleDialog({
               <Button size="lg"
                 type="button"
                 variant="ghost"
-                className="text-destructive"
+                className="text-danger-fg"
                 disabled={busy}
                 onClick={() => void remove()}
               >

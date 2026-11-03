@@ -16,6 +16,7 @@ import { formatCompactCount } from "@/count-format";
 import { cn } from "@/lib/utils";
 import { expiresSoon, limitsLine, scopeLine, shareIsLive, type ShareView } from "@/share-cover";
 import { announceShares } from "@/use-shares";
+import { Empty } from "@/components/ui/states";
 
 type Props = {
   open: boolean;
@@ -310,14 +311,16 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
         </DialogHeader>
         <div className="flex flex-col border-t border-white/[0.08]">
           {shares.length === 0 ? (
-            <div className="my-3 flex flex-col items-center gap-2.5 rounded-lg border border-dashed border-white/12 px-4 py-7 text-center">
-              <span className="text-sm font-medium">No shares yet</span>
-              <span className="text-sm leading-[1.5] text-muted-foreground">
-                Start from the chart you want to show: <span className="text-foreground">Share…</span> in a panel's copy menu, or{" "}
-                <span className="text-foreground">Share panels…</span> on a board.
-              </span>
-              <span className="text-sm text-faint">This list is where you see how each share is used, change it, or revoke it.</span>
-            </div>
+            <Empty
+              className="my-3"
+              title="No shares yet"
+              line={
+                <>
+                  Start from the chart you want to show: <span className="text-foreground">Share…</span> in a panel's copy menu, or{" "}
+                  <span className="text-foreground">Share panels…</span> on a board. This list is where you see how each share is used, change it, or revoke it.
+                </>
+              }
+            />
           ) : null}
           {shares.map((share) => {
             const live = shareIsLive(share, now);

@@ -296,7 +296,7 @@ export function MintDialog({
                 />
               </label>
               {faults.length > 0 ? (
-                <span className="text-xs text-destructive">{faults[0]?.msg}</span>
+                <span className="text-xs text-danger-fg">{faults[0]?.msg}</span>
               ) : (
                 <span className="text-xs text-muted-foreground">
                   {offer
@@ -330,7 +330,7 @@ export function MintDialog({
                       onChange={(e) => setUntil(e.target.value)}
                       className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none"
                     />
-                    <span className={cn("text-xs", untilOk ? "text-muted-foreground" : "text-destructive")}>
+                    <span className={cn("text-xs", untilOk ? "text-muted-foreground" : "text-danger-fg")}>
                       {Number.isFinite(days) ? `in ${days} days · max 30` : "max 30 days"}
                     </span>
                   </label>
