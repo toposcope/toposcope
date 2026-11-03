@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { PanelNote, PanelNoteField } from "@/components/panel-words";
 import { WidgetCopyMenu } from "@/components/widget-copy-menu";
 import { WidgetExportMenu } from "@/components/widget-export-menu";
 import { AddToBoardList, type BoardChoice } from "@/components/add-to-board";
@@ -43,6 +44,10 @@ type Props = {
   headControls?: ReactNode;
   /** Add to board on the ⋯ menu (#410, 39e): copies this panel's query and view onto a board. */
   addToBoard?: { boards: BoardChoice[]; onPick: (boardId: string | null) => void };
+  /** A note on any panel (sheet 44): Add note / Edit note on ⋯, the field under the head. */
+  onNote?: (note: string) => void;
+  /** Draw the note under the head; a metric panel says it in its body instead. */
+  showNote?: boolean;
   children: ReactNode;
 };
 
@@ -82,7 +87,11 @@ function OverflowMenus({
   onCopy,
   onExport,
   addToBoard,
+  noteLabel,
+  onNoteEdit,
 }: {
+  noteLabel?: string;
+  onNoteEdit?: () => void;
   atCap: boolean;
   exportDisabled?: boolean;
   onShare?: () => void;
@@ -93,6 +102,7 @@ function OverflowMenus({
 }) {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<ExtraOverflowPage | "board">("more");
+  const keepFocus = useRef(false);
 
   function close() {
     setOpen(false);
@@ -127,6 +137,13 @@ function OverflowMenus({
       <PopoverContent
         align="end"
         collisionPadding={8}
+        // The note field takes focus; the menu does not hand it back to ⋯.
+        onCloseAutoFocus={(e) => {
+          if (keepFocus.current) {
+            e.preventDefault();
+            keepFocus.current = false;
+          }
+        }}
         className={cn("bg-[#18181b] p-1", (onShare && page === "more") || page === "board" ? "w-[210px]" : "w-[168px]")}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -137,6 +154,19 @@ function OverflowMenus({
                 <ShareRow onShare={onShare} close={close} />
                 <div className="my-1 h-px bg-white/[0.08]" />
               </>
+            ) : null}
+            {onNoteEdit ? (
+              <button
+                type="button"
+                className={overflowRow}
+                onClick={() => {
+                  keepFocus.current = true;
+                  close();
+                  onNoteEdit();
+                }}
+              >
+                <span className="flex-1">{noteLabel}</span>
+              </button>
             ) : null}
             <button
               type="button"
@@ -238,10 +268,19 @@ export function ExtraPanel({
   onShare,
   headControls,
   addToBoard,
+  onNote,
+  showNote = true,
   children,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const noteRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [noting, setNoting] = useState(false);
+  useEffect(() => {
+    if (noting) {
+      noteRef.current?.querySelector("textarea")?.focus();
+    }
+  }, [noting]);
   const showPct = widget.kind === "hbar" && onPct;
 
   useLayoutEffect(() => {
@@ -271,7 +310,7 @@ export function ExtraPanel({
           moving ? "cursor-grabbing" : "cursor-grab",
           lockChrome && "pointer-events-none opacity-50",
         )}
-        title="Drag to move · corner to resize"
+        title="Drag to move · an edge to resize"
         onPointerDown={onMovePointerDown}
       >
         {armed ? (
@@ -313,8 +352,10 @@ export function ExtraPanel({
             <span className="min-w-0 flex-1" />
             <div className="flex shrink-0 items-center gap-1">
               {headControls}
-              {collapsed || addToBoard ? (
+              {collapsed || addToBoard || onNote ? (
                 <OverflowMenus
+                  noteLabel={widget.note ? "Edit note" : "Add note"}
+                  onNoteEdit={onNote ? () => setNoting(true) : undefined}
                   atCap={atCap}
                   exportDisabled={exportDisabled}
                   onShare={onShare}
@@ -388,6 +429,27 @@ export function ExtraPanel({
           </>
         )}
       </div>
+      {noting && onNote ? (
+        <div
+          ref={noteRef}
+          className="shrink-0"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setNoting(false);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" || (e.key === "Enter" && !e.shiftKey)) {
+              e.preventDefault();
+              setNoting(false);
+            }
+          }}
+        >
+          <PanelNoteField widget={widget} onNote={onNote} />
+        </div>
+      ) : showNote && widget.note ? (
+        <PanelNote note={{ text: widget.note, sender: false }} leftOff={[]} />
+      ) : null}
       {children}
     </div>
   );

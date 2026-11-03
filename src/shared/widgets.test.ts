@@ -5,6 +5,7 @@ import {
   addStat,
   clampHbarN,
   defaultLayout,
+  clampWidget,
   defaultTimeseries,
   duplicateWidget,
   formatSavedLayout,
@@ -527,5 +528,21 @@ describe("pickerAttrKeys", () => {
         "user_id",
       ]),
     ).toEqual(["request_id", "status", "path"]);
+  });
+});
+
+describe("a note on every panel (sheet 44)", () => {
+  test("stat, top-N and plain timeseries keep a note through the URL", () => {
+    const widgets = [
+      clampWidget({ ...defaultTimeseries({ id: "a" }) }),
+      clampWidget({ ...defaultTimeseries({ id: "b", x: 0, y: 4, w: 4, h: 2 }), kind: "stat", agg: "count", note: "SLO 800 ms. Page #payments" }),
+      clampWidget({ ...defaultTimeseries({ id: "c", x: 4, y: 4, w: 6, h: 3 }), kind: "hbar", attr: "status", pct: true, note: "5xx above 2% pages on-call" }),
+      clampWidget({ ...defaultTimeseries({ id: "d", x: 0, y: 7, w: 6, h: 3 }), agg: "rate", note: "per second" }),
+    ];
+    const back = parseWidgetsParam(formatWidgetsParam(widgets));
+    expect(back.map((w) => w.note)).toEqual([undefined, "SLO 800 ms. Page #payments", "5xx above 2% pages on-call", "per second"]);
+    expect(back[2]!.attr).toBe("status");
+    expect(back[2]!.pct).toBe(true);
+    expect(back[3]!.agg).toBe("rate");
   });
 });

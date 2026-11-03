@@ -597,7 +597,7 @@ Body:
 | `lines[].labels` | { [key]: string } |  |  |
 | `names` | { [key]: string } |  | A name for each line: 0 to 3 for merged lines, a label value for a split's. |
 | `title` | string |  | timeseries: a title of its own, up to 80 characters. |
-| `note` | string |  | timeseries: what it is for, up to 160 characters. |
+| `note` | string |  | What the panel is for, up to 160 characters; any kind. |
 
 ### POST /api/saved-searches/{id}/panels
 
@@ -634,7 +634,7 @@ Body:
 | `lines[].labels` | { [key]: string } |  |  |
 | `names` | { [key]: string } |  | A name for each line: 0 to 3 for merged lines, a label value for a split's. |
 | `title` | string |  | timeseries: a title of its own, up to 80 characters. |
-| `note` | string |  | timeseries: what it is for, up to 160 characters. |
+| `note` | string |  | What the panel is for, up to 160 characters; any kind. |
 
 ### PUT /api/saved-searches/{id}/panels/{panel}
 
@@ -671,7 +671,7 @@ Body:
 | `lines[].labels` | { [key]: string } |  |  |
 | `names` | { [key]: string } |  | A name for each line: 0 to 3 for merged lines, a label value for a split's. |
 | `title` | string |  | timeseries: a title of its own, up to 80 characters. |
-| `note` | string |  | timeseries: what it is for, up to 160 characters. |
+| `note` | string |  | What the panel is for, up to 160 characters; any kind. |
 
 ### DELETE /api/saved-searches/{id}/panels/{panel}
 

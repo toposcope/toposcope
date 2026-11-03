@@ -47,6 +47,7 @@ import {
 } from "@/export-series";
 import { cn } from "@/lib/utils";
 import { GridHandles, GridSizeChip, useGridGestures, useGridSlide } from "../grid-gestures";
+import { HoverTimeProvider } from "../hover-time";
 import { gravity, gridEdges } from "../../shared/grid-gravity";
 import type { FacetValue, HistogramBucket, SearchAggResult } from "@/types";
 import type {
@@ -415,6 +416,7 @@ export function WidgetCanvas({
             namedLines={Boolean(lines?.legend.length)}
             held={metricShort}
             marks={panelMarks}
+            timeId={widget.id}
           />
         );
         const editing = editingId === widget.id;
@@ -609,6 +611,7 @@ export function WidgetCanvas({
   }
 
   return (
+    <HoverTimeProvider>
     <div className="flex min-h-0 flex-col">
       <div
         className={cn(
@@ -933,6 +936,8 @@ export function WidgetCanvas({
                     );
                   }}
                   onMovePointerDown={(e) => grid.beginMove(e, widget.id)}
+                  onNote={locked ? undefined : (note) => onWidgets(patchWidget(widgets, widget.id, { note }))}
+                  showNote={!(widget.kind === "timeseries" && widget.metric)}
                   addToBoard={
                     addToBoard && !locked
                       ? { boards: addToBoard.boards, onPick: (boardId) => addToBoard.onPick(widget, boardId) }
@@ -965,6 +970,7 @@ export function WidgetCanvas({
         range={panelRange(spanMs)}
       />
     </div>
+    </HoverTimeProvider>
   );
 }
 
