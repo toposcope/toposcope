@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
+import { overlayMotion } from "@/components/ui/motion";
 
 function DropdownMenu({
   ...props
@@ -29,7 +30,8 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "z-50 min-w-32 overflow-hidden rounded-lg border border-white/12 bg-overlay p-1 text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
+          "z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-lg border border-white/12 bg-overlay p-1 text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
+          overlayMotion,
           className,
         )}
         {...props}

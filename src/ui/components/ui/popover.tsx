@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "@/lib/utils";
+import { overlayMotion } from "@/components/ui/motion";
 
 function Popover({
   ...props
@@ -30,6 +31,7 @@ function PopoverContent({
         collisionPadding={collisionPadding}
         className={cn(
           "z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-lg border bg-popover p-2 text-popover-foreground shadow-md outline-none",
+          overlayMotion,
           className,
         )}
         {...props}

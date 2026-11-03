@@ -2,6 +2,7 @@ import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { overlayMotion } from "@/components/ui/motion";
 
 function Select({
   ...props
@@ -48,7 +49,8 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "relative z-50 max-h-96 min-w-32 overflow-hidden rounded-lg border border-white/12 bg-overlay text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
+          "relative z-50 max-h-96 min-w-32 origin-(--radix-select-content-transform-origin) overflow-hidden rounded-lg border border-white/12 bg-overlay text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
+          overlayMotion,
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,

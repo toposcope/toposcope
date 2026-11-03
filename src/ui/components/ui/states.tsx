@@ -212,7 +212,7 @@ export function LiveAge({
   const { label, late } = view;
   const text = tip ? tip(label) : `Refreshes every ${cadence} in Live · last ${label} ago`;
   return (
-    <Tooltip delayDuration={400}>
+    <Tooltip>
       <TooltipTrigger asChild>
         <span
           className={cn(

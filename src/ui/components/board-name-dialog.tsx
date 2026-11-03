@@ -71,7 +71,7 @@ export function BoardNameDialog({
           </DialogField>
           <DialogFooter>
             <DialogClose type="button">Cancel</DialogClose>
-            <Button size="lg" type="submit" disabled={saving || !name.trim()}>
+            <Button size="lg" type="submit" busy={saving} disabled={!name.trim()}>
               {action}
             </Button>
           </DialogFooter>
