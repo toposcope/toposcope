@@ -63,7 +63,6 @@ These need a drawing or an explicit choice before they are work:
 
 - Histogram-chip catch-up
 - CSV / table export matching promoted columns
-- Bound the syslog UDP queue and expose dropped-event accounting
 - Enterprise under `ee/` (the root `LICENSE` already reserves it): SAML, SCIM with directory groups to roles, roles with a data fence, an audit log — after an HA design, since a team that needs these needs an instance that survives a node
 - A map, by a country or region the collector adds to each row (a local GeoIP lookup in Vector, as the enrich recipes do); Toposcope never looks up an address itself
 
