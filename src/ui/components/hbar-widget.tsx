@@ -28,6 +28,7 @@ import {
 } from "../../shared/widgets";
 import { extraSelectClass } from "@/components/extra-panel";
 import { formatFieldToken } from "../query-tokens";
+import { Skeleton } from "@/components/ui/states";
 
 export type HbarCommand = "filter" | "exclude";
 
@@ -347,7 +348,7 @@ export function HbarWidget({
       ) : (
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto px-3 py-2">
         {loading && bars.length === 0 ? (
-          <div className="h-full animate-pulse rounded-md bg-muted/40" />
+          <Skeleton kind="rows" rows={5} cells={(i) => [`${80 - i * 12}%`]} className="flex h-full flex-col gap-3 pt-1" />
         ) : (
           bars.map((bar, i) => {
             const width = Math.max(2, (bar.n / peak) * 100);

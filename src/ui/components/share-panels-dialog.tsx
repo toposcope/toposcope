@@ -29,6 +29,7 @@ import {
 } from "@/share-from-panel";
 import { announceShares, useShares } from "@/use-shares";
 import type { WidgetDef } from "../../shared/widgets";
+import { Skeleton } from "@/components/ui/states";
 
 export type SharePanel = { widget: WidgetDef; title: string };
 
@@ -421,7 +422,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                 {preview ? (
                   <iframe title="Preview through the share" src={preview} className="h-[240px] w-full rounded-lg border border-white/10" />
                 ) : (
-                  <div className="h-[240px] animate-pulse rounded-lg bg-muted/40" />
+                  <Skeleton kind="block" className="h-[240px] rounded-lg" />
                 )}
                 <span className="text-xs text-muted-foreground">Live, through the share: exactly what the site can read.</span>
               </div>

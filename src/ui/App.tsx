@@ -212,7 +212,7 @@ import {
   type OperatorView,
   type RangeMode,
 } from "./search-url";
-import { formatSpanShort, SEARCH_SLOW_AFTER_MS, formatSearchElapsed, rangeTriggerLabel } from "./time-range";
+import { formatSpanShort, SEARCH_SLOW_AFTER_MS, rangeTriggerLabel } from "./time-range";
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
 import {
@@ -237,8 +237,7 @@ import { HeldPill, ScopeChipView } from "@/components/held-tells";
 import { OutageBand, OutageChip, OutageScreen } from "@/components/outage-view";
 import { backEvent, isNoAnswer, useOutage } from "./outage";
 import { LiveRefresh } from "./live-refresh";
-import { blankOnFailedRefresh, oldestFetchedAt } from "./live-updated";
-import { FacetAge } from "@/components/facet-age";
+import { blankOnFailedRefresh, facetAgeTip, oldestFetchedAt } from "./live-updated";
 import { useHeld } from "./use-held";
 import {
   deriveLiveSeries,
@@ -247,6 +246,7 @@ import {
   mergeIncrementalExtraSeries,
   skipKeysFromFieldRoles,
 } from "./live-widget-clock";
+import { Busy, BusyBar, busyDim, Empty, LiveAge, Refused } from "@/components/ui/states";
 
 const emptyFacets: Facets = { level: [], service: [], host: [] };
 
@@ -4092,9 +4092,7 @@ export function App() {
         )}
       </span>
       {scanRefuse?.histogram ? (
-        <span className="text-sm text-warn-fg">
-          too wide to count · narrow the window or add a service: filter
-        </span>
+        <Refused reason="too wide to count · narrow the window or add a service: filter" className="text-sm" />
       ) : (
         <span className="text-sm text-muted-foreground">matching</span>
       )}
@@ -4102,9 +4100,9 @@ export function App() {
       {heldV?.chip ? <ScopeChipView chip={heldV.chip} /> : null}
       {qErrOn && !chipInField ? <QueryErrorChip faults={qFaults} /> : null}
       {unauthorized ? (
-        <span className="text-xs text-destructive">Unauthorized. Sign in again.</span>
+        <span className="text-xs text-danger-fg">Unauthorized. Sign in again.</span>
       ) : error && outage.status === "ok" ? (
-        <span className="min-w-0 truncate text-xs text-destructive">{error}</span>
+        <span className="min-w-0 truncate text-xs text-danger-fg">{error}</span>
       ) : null}
       <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
         {explore ? (
@@ -4671,11 +4669,7 @@ export function App() {
               className="relative flex shrink-0 flex-wrap items-center gap-1.5 px-3 py-2"
               onSubmit={onSubmit}
             >
-              {searching ? (
-                <div className="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 overflow-hidden bg-white/[0.06]">
-                  <div className="h-full w-1/3 animate-toposcope-indeterminate rounded-full bg-gradient-to-r from-transparent via-primary to-transparent" />
-                </div>
-              ) : null}
+              {searching ? <BusyBar /> : null}
               <SearchQueryField
                 value={q}
                 onChange={setQ}
@@ -4697,38 +4691,7 @@ export function App() {
                 inputRef={searchRef}
                 locked={boardOn}
               />
-              {searching ? (
-                <div
-                  className={cn(
-                    "flex h-8 min-w-0 items-center gap-2 py-0 pr-1 pl-2.5",
-                    "rounded-md border",
-                    searchSlow
-                      ? "border-warn/45 bg-warn/10"
-                      : "border-input",
-                  )}
-                >
-                  <span className="size-[11px] shrink-0 animate-spin rounded-full border-[1.5px] border-white/25 border-t-foreground" />
-                  <span className="shrink-0 text-xs whitespace-nowrap">
-                    Searching…
-                    {searchElapsedMs >= 100
-                      ? ` ${formatSearchElapsed(searchElapsedMs)}`
-                      : ""}
-                  </span>
-                  {searchSlow ? (
-                    <span className="min-w-0 truncate border-l border-white/12 pl-2 text-xs text-warn-fg">
-                      narrow the window or add a service: filter
-                    </span>
-                  ) : null}
-                  <Button size="sm"
-                    type="button"
-                    variant="ghost"
-                    className="shrink-0 rounded-sm px-2.5 text-xs"
-                    onClick={cancelSearch}
-                  >
-                    Stop
-                  </Button>
-                </div>
-              ) : null}
+              {searching ? <Busy elapsedMs={searchElapsedMs} slow={searchSlow} onStop={cancelSearch} /> : null}
               {!searching && lastMs !== null && !qErrOn ? (
                 <span className="flex h-8 shrink-0 items-center font-mono text-xs whitespace-nowrap text-muted-foreground">
                   {lastMs} ms
@@ -4745,7 +4708,7 @@ export function App() {
                   : logsOn
                     ? "max-h-[55%] min-h-0 overflow-auto"
                     : "min-h-0 flex-1 overflow-auto",
-                inFlightDim ? "pointer-events-none opacity-50" : "",
+                inFlightDim ? busyDim : "",
               )}
             >
               <SeriesCatalogContext.Provider value={seriesCatalog}>
@@ -4886,9 +4849,13 @@ export function App() {
               locked={boardOn}
               age={
                 live && !boardOn && !isReaderKind(wsKind) ? (
-                  <FacetAge
+                  <LiveAge
                     fetchedAt={() => oldestFetchedAt(facetRefreshKeys.map((key) => liveRefresh.fetchedAt(key)))}
+                    cadence="30s"
                     paused={readingPaused}
+                    minAgeMs={0}
+                    tip={facetAgeTip}
+                    className="h-6.5"
                   />
                 ) : null
               }
@@ -4960,36 +4927,24 @@ export function App() {
               ) : (
                 <div
                   className={`flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-2.5 transition-opacity ${
-                    inFlightDim ? "pointer-events-none opacity-50" : ""
+                    inFlightDim ? busyDim : ""
                   }`}
                 >
-                  {!searching && !error && events.length === 0 ? (
-                    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 rounded-lg border bg-card px-6 py-14 text-center">
-                      <p className="text-sm font-medium">
-                        {scanRefuse?.events
-                          ? scanRefuse.reason
-                          : emptyIngest
-                            ? "No events ingested yet."
-                            : "No events in this range."}
-                      </p>
-                      <p className="max-w-[360px] text-sm leading-relaxed text-muted-foreground">
-                        {scanRefuse?.events
-                          ? "Narrow the range or simplify q."
-                          : emptyIngest
-                            ? "POST to /api/ingest, /v1/logs, or syslog UDP 5514."
-                            : "Widen the range or clear filters."}
-                      </p>
-                      {!emptyIngest && q.trim() !== "" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="mt-0.5"
-                          onClick={() => applyQuery("")}
-                        >
-                          Clear query
-                        </Button>
-                      ) : null}
-                    </div>
+                  {!searching && !error && events.length === 0 && scanRefuse?.events ? (
+                    <Refused form="block" title={scanRefuse.reason} reason="Narrow the range or simplify q." className="min-h-0 flex-1 rounded-lg border bg-surface-1 py-14" />
+                  ) : !searching && !error && events.length === 0 ? (
+                    <Empty
+                      className="min-h-0 flex-1 py-14"
+                      title={emptyIngest ? "No events ingested yet." : "No events in this range."}
+                      line={emptyIngest ? "POST to /api/ingest, /v1/logs, or syslog UDP 5514." : "Widen the range or clear filters."}
+                      action={
+                        !emptyIngest && q.trim() !== "" ? (
+                          <Button type="button" variant="outline" onClick={() => applyQuery("")}>
+                            Clear query
+                          </Button>
+                        ) : null
+                      }
+                    />
                   ) : (
                     <EventTable
                       events={events}

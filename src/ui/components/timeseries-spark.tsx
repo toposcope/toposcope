@@ -19,6 +19,7 @@ import { MetricSpark, MetricSplitPicker, sparkTimes } from "./metric-spark";
 import type { MetricHeld } from "../held-view";
 import type { ChangeMark } from "../../shared/change-mark";
 import { bucketSpan, TimeLayer } from "../hover-time";
+import { Refused, Skeleton } from "@/components/ui/states";
 
 const LINE = "#a78bfa";
 
@@ -129,7 +130,7 @@ export function TimeseriesSpark({
     <>
       <PlotArea id={timeId} span={span} marks={marks} className={plotClass}>
         {loading && buckets.length === 0 && !aggResult ? (
-          <div className="h-full animate-pulse rounded-md bg-muted/40" />
+          <Skeleton kind="bars" className="h-full" />
         ) : view && !refused ? (
           <MetricSpark
             times={sparkTimes(times, aggResult)}
@@ -147,9 +148,7 @@ export function TimeseriesSpark({
         ) : numeric ? (
           <div className="relative min-h-0 flex-1">
             {refused ? (
-              <span className="font-mono text-2xs text-warn-fg">
-                {aggResult?.reason}
-              </span>
+              <Refused reason={aggResult?.reason} className="font-mono text-2xs" />
             ) : (
               <>
                 <svg

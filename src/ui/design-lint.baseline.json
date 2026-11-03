@@ -127,9 +127,6 @@
   "src/ui/components/operator-header.tsx": {
     "outline-none with no focus": 1
   },
-  "src/ui/components/outage-view.tsx": {
-    "[#hex] colour": 6
-  },
   "src/ui/components/panel-editor.tsx": {
     "raw palette class": 2,
     "<button with h-[…]": 4,

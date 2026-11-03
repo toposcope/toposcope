@@ -304,7 +304,7 @@ export function ContextView({
         }}
       >
         {error ? (
-          <p className="px-2.5 py-2 text-xs text-destructive">{error}</p>
+          <p className="px-2.5 py-2 text-xs text-danger-fg">{error}</p>
         ) : data === null ? (
           <p className="px-2.5 py-2 text-xs text-muted-foreground">Loading…</p>
         ) : (

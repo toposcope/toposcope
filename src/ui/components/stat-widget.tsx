@@ -17,6 +17,7 @@ import { pickedEntry, useSeriesCatalog } from "../series-catalog";
 import { formatMetricRef, histogramReadings, parseHistogramReading } from "../../shared/metric";
 import { metricView, statWords } from "../series-list";
 import { SeriesPicker } from "./series-picker";
+import { Skeleton } from "@/components/ui/states";
 
 const FN = "#a78bfa";
 
@@ -179,7 +180,7 @@ export function StatWidget({
     <>
       <div className="flex min-h-0 flex-1 flex-col justify-center px-3 pb-3">
         {loading ? (
-          <div className="h-8 w-24 animate-pulse rounded-md bg-muted" />
+          <Skeleton kind="block" className="h-8 w-24" />
         ) : (
           <>
             <div className="flex items-baseline gap-1">

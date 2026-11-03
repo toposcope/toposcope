@@ -336,7 +336,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
                 "flex-1 text-xs leading-snug",
                 apply && !(absTouched && !absOk)
                   ? "text-faint"
-                  : "text-destructive",
+                  : "text-danger-fg",
               )}
             >
               {absTouched

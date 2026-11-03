@@ -55,6 +55,7 @@ import {
   type SourceStanding,
   type WatchPlace,
 } from "@/watch";
+import { Empty } from "@/components/ui/states";
 
 type Props = {
   data: MonitorsResponse | null;
@@ -1012,19 +1013,21 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
         </div>
 
         {monitors.length === 0 && away.length === 0 ? (
-          <div className="rounded-lg border bg-card px-3 py-8 text-center">
-            <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {canCreate
+          <Empty
+            title={data ? "No monitors yet." : "Loading monitors…"}
+            line={
+              canCreate
                 ? "A monitor opens when its search has at least, or fewer than, N lines in its window, or a URL, a port or a certificate it checks fails its conditions; it reminds while open, and says when it resolved."
-                : "An Operator makes monitors; you see each one here as it opens and resolves."}
-            </p>
-            {canCreate ? (
-              <Button type="button" className="mt-3" onClick={onNew}>
-                New monitor
-              </Button>
-            ) : null}
-          </div>
+                : "An Operator makes monitors; you see each one here as it opens and resolves."
+            }
+            action={
+              canCreate ? (
+                <Button type="button" onClick={onNew}>
+                  New monitor
+                </Button>
+              ) : null
+            }
+          />
         ) : !placeShows(place, null) ? null : (
           <div className={cn("relative rounded-lg border bg-card", sources.length > 0 ? "pb-1" : "py-1")}>
             {sources.length > 0 ? (

@@ -199,7 +199,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
           ) : null}
           <section className={card}>
             <span className="text-sm text-muted-foreground">Where it stands</span>
-            {link.last_error ? <span className="text-sm text-warn-fg">last call failed: {link.last_error}</span> : null}
+            {link.last_error ? <span className="text-sm text-danger-fg">last call failed: {link.last_error}</span> : null}
             {link.holes.map((h) => (
               <span key={h.from} className="text-sm text-warn-fg">
                 a gap from {h.from.slice(0, 16).replace("T", " ")} to {h.to.slice(0, 16).replace("T", " ")} · drawn as a floor
