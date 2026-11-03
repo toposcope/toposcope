@@ -116,7 +116,7 @@ export function SaveSearchDialog({
                 Save as…
               </Button>
             ) : null}
-            <Button size="lg" type="submit" disabled={saving || !canSubmit}>
+            <Button size="lg" type="submit" busy={saving} disabled={!canSubmit}>
               {mode === "update" ? "Update" : "Save"}
             </Button>
           </DialogFooter>

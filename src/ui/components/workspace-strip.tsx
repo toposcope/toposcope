@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Copy, House, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { stepIndex } from "@/keyboard";
@@ -106,6 +106,12 @@ export function WorkspaceStrip({
     }
   }, [activeId, tabs.length]);
 
+  const [underline, setUnderline] = useState<{ left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = tabRefs.current.get(activeId);
+    setUnderline(el ? { left: el.offsetLeft + 8, width: Math.max(0, el.offsetWidth - 16) } : null);
+  }, [activeId, tabs]);
+
   function onTabKey(e: KeyboardEvent, tabId: number) {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
       return;
@@ -126,8 +132,16 @@ export function WorkspaceStrip({
       <div
         ref={scrollerRef}
         data-kbd="tabs"
-        className="ws-scroll flex h-[33px] min-w-0 flex-1 items-end gap-0.5 overflow-x-auto overflow-y-hidden"
+        className="ws-scroll relative flex h-[33px] min-w-0 flex-1 items-end gap-0.5 overflow-x-auto overflow-y-hidden"
       >
+        {/* The plate underline slides to the active tab (sheet 45, --duration-3); the content does not move. */}
+        {underline ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute bottom-0 h-0.5 rounded-full bg-plate transition-[left,width] duration-(--duration-3) ease-(--ease-out)"
+            style={{ left: underline.left, width: underline.width }}
+          />
+        ) : null}
         {tabs.map((tab) => {
           const on = tab.id === activeId;
           const kind = tab.board ? "Board" : kindWord[tab.kind];
