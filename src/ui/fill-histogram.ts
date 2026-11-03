@@ -1,4 +1,5 @@
 import { histogramIntervalMs } from "../query/histogram";
+import { formatCompactCount } from "./count-format";
 import type { HistogramBucket } from "./types";
 
 const MINUTE_MS = 60_000;
@@ -79,22 +80,6 @@ export function histogramClockPrecision(
   return "hm";
 }
 
-export function abbrevCount(n: number): string {
-  if (!Number.isFinite(n)) {
-    return "0";
-  }
-  const abs = Math.abs(Math.round(n));
-  if (abs >= 1_000_000) {
-    const v = abs / 1_000_000;
-    return `${v >= 10 ? v.toFixed(0) : v.toFixed(1).replace(/\.0$/, "")}M`;
-  }
-  if (abs >= 1000) {
-    const v = abs / 1000;
-    return `${v >= 10 ? v.toFixed(0) : v.toFixed(1).replace(/\.0$/, "")}k`;
-  }
-  return String(abs);
-}
-
 /** Legend totals: exact under 10k, abbreviated after — same as the v2 mock. */
 export function formatSeriesTotal(n: number): string {
   if (!Number.isFinite(n)) {
@@ -102,7 +87,7 @@ export function formatSeriesTotal(n: number): string {
   }
   const abs = Math.abs(Math.round(n));
   if (abs >= 10_000) {
-    return abbrevCount(abs);
+    return formatCompactCount(abs);
   }
   return abs.toLocaleString("en-US");
 }
@@ -113,7 +98,7 @@ export function formatAggStat(n: number | null | undefined): string {
   }
   const abs = Math.abs(n);
   if (abs >= 1000) {
-    return abbrevCount(n);
+    return formatCompactCount(n);
   }
   if (Number.isInteger(n) || abs >= 100) {
     return String(Math.round(n));

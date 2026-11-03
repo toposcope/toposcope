@@ -3,7 +3,8 @@ import { overWhatIsHereWords } from "../../shared/held-words";
 import { type ReactNode } from "react";
 import { HeadPicker } from "@/components/head-picker";
 import { downloadWidgetSeries, statExport } from "@/export-series";
-import { abbrevCount, formatAggStat } from "@/fill-histogram";
+import { formatAggStat } from "@/fill-histogram";
+import { formatFieldCount, useCountFormat } from "@/count-format";
 import { printUnit, unitsDifferWords } from "../metric-unit";
 import type { SearchAggResult } from "@/types";
 import { seriesLabel } from "../../query/agg";
@@ -144,6 +145,7 @@ export function StatWidget({
   updated = null,
 }: Props) {
   const catalog = useSeriesCatalog();
+  const countFormat = useCountFormat();
   const held = useHeldView();
   // #331: a sum or a count over a short source is a floor; an average or a percentile is partial.
   const metricShort = useMetricHeld(metric ? aggResult : null, metricLabels);
@@ -170,7 +172,7 @@ export function StatWidget({
       : statWords(view.kind, catalog.window, view.reading)
     : `window ${label}`;
   const value = isCount
-    ? `${heldNote ? "≥" : ""}${abbrevCount(total)}`
+    ? `${heldNote ? "≥" : ""}${formatFieldCount(total, countFormat)}`
     : aggResult?.source === "refused"
       ? "—"
       : `${metricShort?.floor && !quiet ? "≥" : ""}${formatAggStat(shown.stat)}`;

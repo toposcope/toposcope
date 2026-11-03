@@ -6,7 +6,6 @@ import {
   rangeDurationMs,
   resolveHistogramStepMs,
   bucketIndexAt,
-  abbrevCount,
   formatAggStat,
   formatSeriesTotal,
   histogramYTicks,
@@ -204,21 +203,11 @@ describe("rangeDurationMs", () => {
   });
 });
 
-describe("abbrevCount", () => {
-  test("uses k and M suffixes", () => {
-    expect(abbrevCount(0)).toBe("0");
-    expect(abbrevCount(999)).toBe("999");
-    expect(abbrevCount(1200)).toBe("1.2k");
-    expect(abbrevCount(15000)).toBe("15k");
-    expect(abbrevCount(1_200_000)).toBe("1.2M");
-  });
-});
-
 describe("formatSeriesTotal", () => {
   test("keeps exact counts under 10k", () => {
     expect(formatSeriesTotal(2184)).toBe("2,184");
     expect(formatSeriesTotal(9999)).toBe("9,999");
-    expect(formatSeriesTotal(10_000)).toBe("10k");
+    expect(formatSeriesTotal(10_000)).toBe("10K");
   });
 });
 

@@ -32,13 +32,14 @@ import {
   type PanelData,
   type PanelWindow,
 } from "../board-panel-data";
-import { abbrevCount, formatAggStat, histogramAxisLabels } from "../fill-histogram";
+import { formatAggStat, histogramAxisLabels } from "../fill-histogram";
 import { seriesColor, seriesKeys, seriesValue } from "../histogram-series";
 import type { FacetValue, LogLevel } from "../types";
 import { levelText } from "../level";
 import { usePlotTheme } from "../plot-theme";
 import { endLabelMax, lastValue, sparkLines, sparkTimes, spreadLabels } from "./metric-spark";
 import { LiveAge, Refused, Skeleton } from "@/components/ui/states";
+import { Panel, PanelArmed, PanelDots, PanelHead, PanelQuery, PanelTitle, PanelValue, panelIconButton, panelMenuRow } from "@/components/ui/panel";
 
 const quickFixed = ["15m", "1h", "4h", "24h", "7d"] as const;
 const liveDeltaMs = 2_000;
@@ -402,8 +403,7 @@ function headingOf(panels: BoardPanel[], id: string): string | null {
   return best?.id ?? null;
 }
 
-const textMenuRow =
-  "flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+const textMenuRow = panelMenuRow;
 
 /** ⋯ on a heading or a note (sheet 44). */
 function TextPanelMenu({ label, items }: { label: string; items: Array<{ text: string; run: () => void; danger?: boolean; disabled?: boolean }> }) {
@@ -413,14 +413,10 @@ function TextPanelMenu({ label, items }: { label: string; items: Array<{ text: s
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex size-[26px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent"
+          className={panelIconButton}
           aria-label={label}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <circle cx="5" cy="12" r="1.6" />
-            <circle cx="12" cy="12" r="1.6" />
-            <circle cx="19" cy="12" r="1.6" />
-          </svg>
+          <PanelDots />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[180px] bg-overlay p-1" onCloseAutoFocus={(e) => e.preventDefault()}>
@@ -599,6 +595,7 @@ function BoardNote({
   onRemove: () => void;
 }) {
   const [renaming, setRenaming] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [draft, setDraft] = useState(panel.text ?? "");
   const text = panel.text ?? "";
   function finish(keep: boolean) {
@@ -608,16 +605,18 @@ function BoardNote({
     }
   }
   return (
-    <div
-      className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card",
-        lifted ? "border-plate/55 shadow-[0_14px_36px_rgb(0_0_0/0.55)]" : "border-white/10",
-      )}
-    >
-      <div
-        className={cn("flex shrink-0 touch-none items-center gap-2 pt-2.5 pr-2 pl-3", onMovePointerDown && "cursor-grab active:cursor-grabbing")}
-        onPointerDown={onMovePointerDown}
-      >
+    <Panel lifted={lifted}>
+      {armed ? (
+        <PanelArmed
+          name={panel.name}
+          onRemove={() => {
+            setArmed(false);
+            onRemove();
+          }}
+          onCancel={() => setArmed(false)}
+        />
+      ) : (
+      <PanelHead className={cn(onMovePointerDown && "cursor-grab active:cursor-grabbing")} onPointerDown={onMovePointerDown}>
         {renaming ? (
           <NameField
             value={panel.name}
@@ -629,7 +628,7 @@ function BoardNote({
             }}
           />
         ) : (
-          <span className="min-w-0 truncate text-base font-semibold">{panel.name}</span>
+          <PanelTitle>{panel.name}</PanelTitle>
         )}
         <span className="min-w-1 flex-1" />
         {readOnly ? null : (
@@ -639,12 +638,13 @@ function BoardNote({
               { text: "Edit text", run: () => { setDraft(text); onEditing(true); } },
               { text: "Rename", run: () => setRenaming(true) },
               { text: "Duplicate", run: onDuplicate, disabled: atCap },
-              { text: "Remove", run: onRemove, danger: true },
+              { text: "Remove", run: () => setArmed(true), danger: true },
             ]}
           />
         )}
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto px-3 pt-1.5 pb-2.5">
+      </PanelHead>
+      )}
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto p-3">
         {editing ? (
           <textarea
             aria-label="Note text"
@@ -673,7 +673,7 @@ function BoardNote({
           <span className="text-sm text-muted-foreground">Empty note</span>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -900,60 +900,36 @@ function BoardPanelCard(props: CardProps) {
   const [armed, setArmed] = useState(false);
   const head = panelHead(panel, data, props.live);
   return (
-    <div
-      className={cn(
-        "group/panel flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card",
-        props.lifted ? "border-plate/55 shadow-[0_14px_36px_rgb(0_0_0/0.55)]" : "border-white/10",
-      )}
-    >
+    <Panel lifted={props.lifted}>
       {armed ? (
-        // Remove confirms in the panel's head, as a hunt panel's does.
-        <div className="flex shrink-0 items-center gap-2 bg-destructive/14 py-2 pr-2 pl-3">
-          <span className="min-w-0 truncate text-sm text-danger-fg">Remove {panel.name}?</span>
-          <span className="min-w-1 flex-1" />
-          <button
-            type="button"
-            className="h-[26px] rounded-md border border-destructive/55 bg-destructive/16 px-[9px] text-sm text-danger-fg hover:bg-destructive/26"
-            onClick={() => {
-              setArmed(false);
-              props.onRemove();
-            }}
-          >
-            Remove
-          </button>
-          <button
-            type="button"
-            className="h-[26px] rounded-md border border-input px-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-            onClick={() => setArmed(false)}
-          >
-            Cancel
-          </button>
-        </div>
+        <PanelArmed
+          name={panel.name}
+          onRemove={() => {
+            setArmed(false);
+            props.onRemove();
+          }}
+          onCancel={() => setArmed(false)}
+        />
       ) : (
-      <div
-        className={cn("flex shrink-0 touch-none items-center gap-2 pt-2.5 pr-2 pl-3", props.onMovePointerDown && "cursor-grab active:cursor-grabbing")}
-        onPointerDown={props.onMovePointerDown}
-      >
-        <span className="min-w-0 shrink truncate text-base font-semibold">{panel.name}</span>
-        <span className="min-w-0 shrink truncate font-mono text-xs text-muted-foreground">
-          {panelWhat(panel.view, widget)}
-        </span>
-        {panel.fixed ? (
-          <span className="shrink-0 rounded-md border border-white/40 px-1.5 font-mono text-xs leading-[17px]">
-            {panel.fixed} · fixed
-          </span>
-        ) : null}
-        <span className="min-w-1 flex-1" />
-        {props.live && data ? <LiveAge fetchedAt={data.fetchedAt} cadence={panelMergeable(panel) ? "2s" : "30s"} /> : null}
-        {head ? (
-          <span className="shrink-0 font-mono text-sm whitespace-nowrap text-muted-foreground">
-            <b className="font-medium text-foreground">{head.n ?? <CountText n={total} />}</b> {head.label}
-          </span>
-        ) : null}
-        <PanelMenu {...props} onRemove={() => setArmed(true)} />
-      </div>
+        <PanelHead className={cn(props.onMovePointerDown && "cursor-grab active:cursor-grabbing")} onPointerDown={props.onMovePointerDown}>
+          <PanelTitle>{panel.name}</PanelTitle>
+          <PanelQuery>{panelWhat(panel.view, widget)}</PanelQuery>
+          {panel.fixed ? (
+            <span className="shrink-0 rounded-sm border border-white/40 px-1.5 font-mono text-2xs leading-4">
+              {panel.fixed} · fixed
+            </span>
+          ) : null}
+          <span className="min-w-1 flex-1" />
+          {props.live && data ? <LiveAge fetchedAt={data.fetchedAt} cadence={panelMergeable(panel) ? "2s" : "30s"} /> : null}
+          {head ? (
+            <PanelValue>
+              <b className="font-medium text-foreground">{head.n ?? <CountText n={total} />}</b> {head.label}
+            </PanelValue>
+          ) : null}
+          <PanelMenu {...props} onRemove={() => setArmed(true)} />
+        </PanelHead>
       )}
-      <div className="flex shrink-0 items-center gap-3 truncate px-3 pt-1 text-sm">
+      <div className="flex shrink-0 items-center gap-3 truncate px-3 pt-2 text-xs">
         {panel.q ? <QueryText q={panel.q} /> : <span className="font-mono text-muted-foreground">all logs</span>}
         {props.inputs ? <span className="font-mono">{props.inputs}</span> : null}
       </div>
@@ -991,7 +967,7 @@ function BoardPanelCard(props: CardProps) {
           <PanelBody panel={panel} data={data} win={props.win} live={props.live} marks={props.marks} />
         ) : null}
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -1030,8 +1006,7 @@ function PanelMenu(props: CardProps) {
   const [open, setOpen] = useState(false);
   const keepFocus = useRef(false);
   const [page, setPage] = useState<"more" | "fixed" | "copy" | "export">("more");
-  const row =
-    "flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+  const row = panelMenuRow;
   const sep = <div className="my-1 h-px bg-white/[0.08]" />;
   function close() {
     setOpen(false);
@@ -1063,14 +1038,10 @@ function PanelMenu(props: CardProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex size-[26px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent"
+          className={panelIconButton}
           aria-label="Panel actions"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <circle cx="5" cy="12" r="1.6" />
-            <circle cx="12" cy="12" r="1.6" />
-            <circle cx="19" cy="12" r="1.6" />
-          </svg>
+          <PanelDots />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -1290,7 +1261,7 @@ function EmptyTell({
             <div className="flex flex-wrap justify-center gap-1.5">
               {tell.values.map((item) => (
                 <span key={item.v} className="rounded-md border border-input px-2 py-0.5 font-mono text-sm">
-                  {item.v} <span className="text-muted-foreground">{abbrevCount(item.n)}</span>
+                  {item.v} <CountText n={item.n} className="text-muted-foreground" />
                 </span>
               ))}
             </div>
@@ -1319,7 +1290,7 @@ function PanelBody({
     case "stat": {
       const isCount = !widget.metric && (!widget.agg || widget.agg === "count");
       const refused = data.agg?.source === "refused";
-      const value = isCount ? abbrevCount(data.total) : refused ? "—" : formatAggStat(data.agg?.stat ?? null);
+      const value = isCount ? <CountText n={data.total} /> : refused ? "—" : formatAggStat(data.agg?.stat ?? null);
       const unit = isCount ? null : (msUnit(widget.agg) ?? data.agg?.unit ?? null);
       return (
         <div className="flex flex-1 flex-col justify-center px-3 pb-3">
