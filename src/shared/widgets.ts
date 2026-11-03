@@ -412,7 +412,8 @@ export function clampWidget(widget: WidgetDef): WidgetDef {
     widget.kind === "timeseries" && metric && !metricSplit ? normalizeMergedLines(widget.lines, metric, metricLabels) : [];
   const names = widget.kind === "timeseries" && metric ? normalizeLineNames(widget.names) : {};
   const title = widget.kind === "timeseries" ? normalizePanelText(widget.title, maxPanelTitle) : undefined;
-  const note = widget.kind === "timeseries" ? normalizePanelText(widget.note, maxPanelNote) : undefined;
+  // Every panel kind can carry a note (sheet 44); the title stays a timeseries' own.
+  const note = normalizePanelText(widget.note, maxPanelNote);
   const { lines: _lines, names: _names, title: _title, note: _note, metricChart: _chart, topView: _view, ...rest } = widget;
   return {
     ...rest,
@@ -1155,6 +1156,8 @@ function parseWidgetToken(raw: string): WidgetDef | null {
   let topView: "donut" | undefined;
   let words: Pick<WidgetDef, "lines" | "names" | "title" | "note"> = {};
   const rest = parts.slice(6);
+  // A note on a panel that has no words of its own goes last (sheet 44).
+  const trailingNote = rest[rest.length - 1]?.startsWith("o:") ? decodeTextToken(rest.pop()!.slice(2)) : undefined;
   if (kind === "timeseries") {
     if (rest[0] && (histogramSplits as readonly string[]).includes(rest[0])) {
       split = rest[0] as HistogramSplit;
@@ -1230,6 +1233,7 @@ function parseWidgetToken(raw: string): WidgetDef | null {
     metricChart,
     topView,
     ...words,
+    ...(trailingNote && !words.note ? { note: trailingNote } : {}),
   });
 }
 
@@ -1305,6 +1309,13 @@ export function formatWidgetsParam(widgets: WidgetDef[]): string {
 }
 
 function formatWidgetToken(widget: WidgetDef): string {
+  const token = widgetToken(widget);
+  // A metric timeseries says its note among its words; any other panel puts it last (sheet 44).
+  const ownWords = widget.kind === "timeseries" && widget.metric;
+  return widget.note && !ownWords ? `${token}.o:${encodeTextToken(widget.note)}` : token;
+}
+
+function widgetToken(widget: WidgetDef): string {
   const geo = `${widget.id}.${kindToken(widget.kind)}.${widget.x}.${widget.y}.${widget.w}.${widget.h}`;
   switch (widget.kind) {
     case "timeseries": {

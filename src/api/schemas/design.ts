@@ -31,7 +31,7 @@ export const panelBody = v.object({
   lines: v.optional(described(v.array(v.object({ metric: v.string(), labels: v.optional(labels) })), "timeseries with a metric: up to three more metrics of its unit on its axis.")),
   names: v.optional(described(labels, "A name for each line: 0 to 3 for merged lines, a label value for a split's.")),
   title: v.optional(described(v.string(), "timeseries: a title of its own, up to 80 characters.")),
-  note: v.optional(described(v.string(), "timeseries: what it is for, up to 160 characters.")),
+  note: v.optional(described(v.string(), "What the panel is for, up to 160 characters; any kind.")),
 });
 
 export const fieldRoleBody = v.object({

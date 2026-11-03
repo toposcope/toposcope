@@ -11,6 +11,9 @@ import { parseRangeMs } from "../../query/relative";
 import { widgetGridCols, widgetGapPx, widgetRowPx, hbarRows, maxWidgetH, widgetMinSize, type WidgetDef } from "../../shared/widgets";
 import { gravity, gridEdges } from "../../shared/grid-gravity";
 import { GridHandles, GridSizeChip, useGridGestures, useGridSlide } from "../grid-gestures";
+import { PanelNote, PanelNoteField } from "@/components/panel-words";
+import { HoverTimeProvider, TimeLayer } from "../hover-time";
+import type { ChangeMark } from "../../shared/change-mark";
 import {
   BOARD_MAX,
   BOARD_PANEL_MAX,
@@ -136,6 +139,50 @@ export function BoardView(props: Props) {
     };
   }, [live, keys]);
 
+  // The change marks over every panel's window (sheet 44), read again as the window moves.
+  const marksSpan = useMemo(() => {
+    let from = Infinity;
+    let to = -Infinity;
+    for (const d of Object.values(data)) {
+      if (d.from && d.to) {
+        from = Math.min(from, Date.parse(d.from));
+        to = Math.max(to, Date.parse(d.to));
+      }
+    }
+    return Number.isFinite(from) && Number.isFinite(to)
+      ? { from: new Date(Math.floor(from / 60_000) * 60_000).toISOString(), to: new Date(Math.ceil(to / 60_000) * 60_000).toISOString() }
+      : null;
+  }, [data]);
+  const [marks, setMarks] = useState<ChangeMark[]>([]);
+  useEffect(() => {
+    if (!marksSpan) {
+      return;
+    }
+    const ac = new AbortController();
+    void fetch(`/api/marks?${new URLSearchParams(marksSpan).toString()}`, { signal: ac.signal })
+      .then((res) => (res.ok ? (res.json() as Promise<{ marks?: ChangeMark[] }>) : null))
+      .then((body) => {
+        if (body && Array.isArray(body.marks)) {
+          setMarks(body.marks);
+        }
+      })
+      .catch(() => undefined);
+    return () => ac.abort();
+  }, [marksSpan?.from, marksSpan?.to]);
+  // A note is typed here and saved once, when its field closes.
+  const [noting, setNoting] = useState<{ id: string; note: string } | null>(null);
+  function closeNote() {
+    const done = noting;
+    setNoting(null);
+    const panel = done ? board.panels.find((p) => p.id === done.id) : undefined;
+    if (!done || !panel || (panel.widget.note ?? "") === done.note.trim()) {
+      return;
+    }
+    props.onBoard({
+      ...board,
+      panels: board.panels.map((p) => (p.id === done.id ? { ...p, widget: { ...p.widget, note: done.note.trim() || undefined } } : p)),
+    });
+  }
   // Sheet 44, E: panels float up so no hole is left; drag a head to move, an edge to resize.
   const gridRef = useRef<HTMLDivElement>(null);
   const settled = gravity(
@@ -161,6 +208,7 @@ export function BoardView(props: Props) {
   useGridSlide(gridRef, grid.cells.map((c) => `${c.id}:${c.x},${c.y},${c.w},${c.h}`).join(" "), grid.moving);
   const rows = Math.max(1, ...grid.cells.map((cell) => cell.y + cell.h)) + (grid.dragging ? 2 : 0);
   return (
+    <HoverTimeProvider>
     <div className="flex min-h-0 flex-1 flex-col">
       <BoardInputsRow
         keys={board.keys}
@@ -230,6 +278,11 @@ export function BoardView(props: Props) {
                   onDuplicate={() => props.onDuplicate(item.panel)}
                   onRemove={() => props.onRemove(item.panel)}
                   onMovePointerDown={props.readOnly ? undefined : (e) => grid.beginMove(e, item.panel.id)}
+                  noting={noting?.id === item.panel.id ? noting.note : null}
+                  onNoteEdit={() => setNoting({ id: item.panel.id, note: item.panel.widget.note ?? "" })}
+                  onNotingDone={closeNote}
+                  marks={marks}
+                  onNote={(note) => setNoting({ id: item.panel.id, note })}
                   lifted={moving}
                 />
                 {props.readOnly || (grid.dragging && !sizing) ? null : (
@@ -247,6 +300,7 @@ export function BoardView(props: Props) {
         )}
       </div>
     </div>
+    </HoverTimeProvider>
   );
 }
 
@@ -437,6 +491,14 @@ type CardProps = {
   onFixed: (fixed: string | null) => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  /** A note under the panel's title (sheet 44): any panel kind, 160 characters. */
+  onNote: (note: string) => void;
+  onNoteEdit: () => void;
+  /** The note being typed, while its field is open. */
+  noting: string | null;
+  /** The board window's change marks (sheet 44), drawn on every time chart. */
+  marks?: readonly ChangeMark[];
+  onNotingDone: () => void;
   /** Starts a move from the panel's head (sheet 44, E); absent where the board is read-only. */
   onMovePointerDown?: (e: PointerEvent) => void;
   lifted?: boolean;
@@ -521,6 +583,27 @@ function BoardPanelCard(props: CardProps) {
         {panel.q ? <QueryText q={panel.q} /> : <span className="font-mono text-muted-foreground">all logs</span>}
         {props.inputs ? <span className="font-mono">{props.inputs}</span> : null}
       </div>
+      {props.noting !== null ? (
+        <div
+          className="shrink-0"
+          ref={(el) => el?.querySelector("textarea")?.focus()}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              props.onNotingDone();
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" || (e.key === "Enter" && !e.shiftKey)) {
+              e.preventDefault();
+              props.onNotingDone();
+            }
+          }}
+        >
+          <PanelNoteField widget={{ ...widget, note: props.noting }} onNote={props.onNote} />
+        </div>
+      ) : widget.note ? (
+        <PanelNote note={{ text: widget.note, sender: false }} leftOff={[]} />
+      ) : null}
       <div className="flex min-h-0 flex-1 flex-col">
         {data?.error ? (
           <div className="flex flex-1 items-center justify-center px-4 text-center text-[12.5px] text-amber-400">{data.error}</div>
@@ -531,7 +614,7 @@ function BoardPanelCard(props: CardProps) {
         ) : loading && !data ? (
           <div className="m-3 flex-1 animate-pulse rounded bg-muted/40" />
         ) : data ? (
-          <PanelBody panel={panel} data={data} win={props.win} live={props.live} />
+          <PanelBody panel={panel} data={data} win={props.win} live={props.live} marks={props.marks} />
         ) : null}
       </div>
     </div>
@@ -571,6 +654,7 @@ function lastAggValue(data: PanelData | null): number | null {
 
 function PanelMenu(props: CardProps) {
   const [open, setOpen] = useState(false);
+  const keepFocus = useRef(false);
   const [page, setPage] = useState<"more" | "fixed" | "copy" | "export">("more");
   const row =
     "flex h-[30px] w-full items-center gap-2 rounded-[3.4px] px-2 text-left text-[13px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
@@ -615,7 +699,15 @@ function PanelMenu(props: CardProps) {
           </svg>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className={cn("bg-[#18181b] p-1", page === "fixed" ? "w-[300px]" : "w-[196px]")}>
+      <PopoverContent
+        align="end"
+        // The note field takes focus; the menu does not hand it back to ⋯.
+        onCloseAutoFocus={(e) => {
+          if (keepFocus.current) {
+            e.preventDefault();
+            keepFocus.current = false;
+          }
+        }} className={cn("bg-[#18181b] p-1", page === "fixed" ? "w-[300px]" : "w-[196px]")}>
         {page === "more" ? (
           <>
             <button type="button" className={row} onClick={() => { close(); props.onOpenHunt(); }}>
@@ -628,6 +720,9 @@ function PanelMenu(props: CardProps) {
                 </button>
                 <button type="button" className={row} onClick={() => setPage("fixed")}>
                   Fixed window…
+                </button>
+                <button type="button" className={row} onClick={() => { keepFocus.current = true; close(); props.onNoteEdit(); }}>
+                  {panel.widget.note ? "Edit note" : "Add note"}
                 </button>
               </>
             )}
@@ -845,11 +940,13 @@ function PanelBody({
   data,
   win,
   live,
+  marks,
 }: {
   panel: BoardPanel;
   data: PanelData;
   win: PanelWindow;
   live: boolean;
+  marks?: readonly ChangeMark[];
 }) {
   const widget = panel.widget;
   switch (panel.view) {
@@ -909,7 +1006,7 @@ function PanelBody({
         </div>
       );
     case "histogram":
-      return <PanelPlot panel={panel} data={data} live={live} />;
+      return <PanelPlot panel={panel} data={data} live={live} marks={marks} timeId={panel.id} />;
     default: {
       const _exhaustive: never = panel.view;
       return _exhaustive;
@@ -918,11 +1015,33 @@ function PanelBody({
 }
 
 /** A board panel's plot: bars by its split, or its series as a filled line (39b). */
-export function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: PanelData; live: boolean }) {
+export function PanelPlot({
+  panel,
+  data,
+  live,
+  marks,
+  timeId,
+}: {
+  panel: BoardPanel;
+  data: PanelData;
+  live: boolean;
+  marks?: readonly ChangeMark[];
+  /** The panel's id on the board's shared hover line (sheet 44). */
+  timeId?: string;
+}) {
   const widget = panel.widget;
   const buckets = data.histogram;
   const fromMs = data.from ? Date.parse(data.from) : NaN;
   const spanMs = data.from && data.to ? Date.parse(data.to) - fromMs : 0;
+  // The plot, on the shared hover line with the window's marks (sheet 44).
+  const frame = (className: string, children: ReactNode) =>
+    timeId && spanMs > 0 ? (
+      <TimeLayer id={timeId} from={fromMs} to={fromMs + spanMs} marks={marks} inset={12} className={className}>
+        {children}
+      </TimeLayer>
+    ) : (
+      <div className={className}>{children}</div>
+    );
   const ticks = widget.w >= 8 ? 5 : 3;
   const labels = histogramAxisLabels(fromMs, spanMs, live, Date.now(), ticks);
   const numeric = Boolean(widget.agg || widget.metric);
@@ -938,7 +1057,7 @@ export function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: Pane
       return <div className="flex flex-1 items-center justify-center px-4 text-[12.5px] text-amber-400">{data.agg.reason}</div>;
     }
     if (data.agg?.splits) {
-      return <SplitPlot data={data} axis={axis} />;
+      return frame("flex min-h-0 flex-1 flex-col", <SplitPlot data={data} axis={axis} />);
     }
     const byT = new Map((data.agg?.buckets ?? []).map((b) => [b.t, b.v]));
     const vals = buckets.length > 0 ? buckets.map((b) => byT.get(b.t) ?? null) : (data.agg?.buckets ?? []).map((b) => b.v);
@@ -954,8 +1073,9 @@ export function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: Pane
     });
     const first = pts[0]?.split(",")[0];
     const last = pts.at(-1)?.split(",")[0];
-    return (
-      <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2.5">
+    return frame(
+      "flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2.5",
+      <>
         <svg viewBox="0 0 200 60" preserveAspectRatio="none" className="min-h-0 w-full flex-1">
           {pts.length > 1 ? <polygon points={`${first},60 ${pts.join(" ")} ${last},60`} fill="oklch(0.68 0.15 237 / 14%)" /> : null}
           <polyline
@@ -968,13 +1088,14 @@ export function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: Pane
           />
         </svg>
         {axis}
-      </div>
+      </>,
     );
   }
   const keys = seriesKeys(buckets, widget.split);
   const peak = Math.max(1, ...buckets.map((bucket) => bucket.n));
-  return (
-    <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2.5">
+  return frame(
+    "flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2.5",
+    <>
       <div className="flex min-h-0 flex-1 items-end gap-[3px]">
         {buckets.map((bucket) => (
           <div key={bucket.t} className="flex h-full min-w-0 flex-1 flex-col-reverse">
@@ -995,7 +1116,7 @@ export function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: Pane
         ))}
       </div>
       {axis}
-    </div>
+    </>,
   );
 }
 

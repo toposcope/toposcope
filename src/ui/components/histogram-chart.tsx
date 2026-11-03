@@ -1,6 +1,7 @@
 import { HeldHatch } from "@/components/held-hatch";
 import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { bucketSpan, useHoverTime } from "../hover-time";
 import { printUnit, unitsDifferWords, withUnit } from "../metric-unit";
 import {
   abbrevCount,
@@ -564,6 +565,27 @@ export function HistogramChart({
   const liveRef = useRef({ buckets, spanMs, stepMs, onWindow, retentionMs });
   liveRef.current = { buckets, spanMs, stepMs, onWindow, retentionMs };
   const hoverBucket = hover !== null ? buckets[hover] : undefined;
+  // Sheet 44: the volume plot leads the hunt's shared hover line, and shows it when another chart is hovered.
+  const sharedHover = useHoverTime();
+  const sharedRef = useRef(sharedHover);
+  sharedRef.current = sharedHover;
+  const plotSpan = bucketSpan(buckets.map((bucket) => bucket.t));
+  const hoverTs = hoverBucket && plotSpan ? Date.parse(hoverBucket.t) + (plotSpan.to - plotSpan.from) / buckets.length / 2 : null;
+  useEffect(() => {
+    const shared = sharedRef.current;
+    if (!shared) {
+      return;
+    }
+    if (hoverTs !== null) {
+      shared.set({ ts: hoverTs, source: "pinned" });
+    } else if (shared.value?.source === "pinned") {
+      shared.set(null);
+    }
+  }, [hoverTs]);
+  const otherHover =
+    sharedHover?.value && sharedHover.value.source !== "pinned" && plotSpan && sharedHover.value.ts >= plotSpan.from && sharedHover.value.ts <= plotSpan.to
+      ? (sharedHover.value.ts - plotSpan.from) / (plotSpan.to - plotSpan.from)
+      : null;
   const lo = brush ? Math.min(brush.start, brush.end) : -1;
   const hi = brush ? Math.max(brush.start, brush.end) : -1;
   const binCount = buckets.length;
@@ -1457,6 +1479,12 @@ export function HistogramChart({
                 onPointerCancel={() => endGesture()}
                 onLostPointerCapture={(e) => onPlotUp(e)}
               >
+              {otherHover !== null ? (
+                <span
+                  className="pointer-events-none absolute top-1 bottom-1 z-[6] w-px bg-foreground/50"
+                  style={{ left: `calc(4px + ${otherHover * 100}% - ${otherHover * 8}px)` }}
+                />
+              ) : null}
               <div
                 className="pointer-events-none absolute inset-0"
                 style={

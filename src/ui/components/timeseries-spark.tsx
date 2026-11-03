@@ -18,6 +18,7 @@ import { SeriesPicker, SeriesReading } from "./series-picker";
 import { MetricSpark, MetricSplitPicker, sparkTimes } from "./metric-spark";
 import type { MetricHeld } from "../held-view";
 import type { ChangeMark } from "../../shared/change-mark";
+import { bucketSpan, TimeLayer } from "../hover-time";
 
 const LINE = "#a78bfa";
 
@@ -51,6 +52,8 @@ type Props = {
   held?: MetricHeld | null;
   /** The board's marks (#331, 33e): a deploy a metric's unit changed around is drawn on its plot. */
   marks?: readonly ChangeMark[];
+  /** The panel's id on the shared hover line (sheet 44); with it, the plot also draws the window's marks. */
+  timeId?: string;
 };
 
 /** The bar width of a card's series, as the plot would label it. Empty when there are not two bars to tell. */
@@ -82,6 +85,7 @@ export function TimeseriesSpark({
   metricChart = "line",
   held = null,
   marks,
+  timeId,
 }: Props) {
   const numeric = Boolean(agg || metric);
   const refused = aggResult?.source === "refused";
@@ -119,9 +123,11 @@ export function TimeseriesSpark({
         .join(" · ")
     : peakText;
 
+  const span = timeId ? bucketSpan(times) : null;
+  const plotClass = "flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2";
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2">
+      <PlotArea id={timeId} span={span} marks={marks} className={plotClass}>
         {loading && buckets.length === 0 && !aggResult ? (
           <div className="h-full animate-pulse rounded bg-muted/40" />
         ) : view && !refused ? (
@@ -212,7 +218,7 @@ export function TimeseriesSpark({
             ) : null}
           </>
         )}
-      </div>
+      </PlotArea>
       {/* #169: the edit row shows on hover and while editing, not at rest (17b). */}
       <div
         className={cn(
@@ -262,5 +268,29 @@ export function TimeseriesSpark({
         {updated}
       </div>
     </>
+  );
+}
+
+/** The plot, on the shared hover line with the window's marks when the panel has a time id (sheet 44). */
+function PlotArea({
+  id,
+  span,
+  marks,
+  className,
+  children,
+}: {
+  id?: string;
+  span: { from: number; to: number } | null;
+  marks?: readonly ChangeMark[];
+  className: string;
+  children: ReactNode;
+}) {
+  if (!id || !span) {
+    return <div className={className}>{children}</div>;
+  }
+  return (
+    <TimeLayer id={id} from={span.from} to={span.to} marks={marks} inset={12} className={className}>
+      {children}
+    </TimeLayer>
   );
 }
