@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0}</style>
+<title>Toposcope Design System</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+</head>
+<body>
+<style>
+/* Layout: a sticky sheet bar (tabs + Today/Proposed + motion), then one tab at a time: Tokens, Components, Command palette, For agents.
+   Dark-first like the app; light is the app's own embed theme (.light). */
+:root {
+  --ground: #09090b; --s1: #0f0f11; --s2: #131316; --overlay: #18181b; --control: #27272a;
+  --fg: #fafafa; --muted: #a1a1aa; --faint: #84848e; --line: rgba(255,255,255,.10); --input: rgba(255,255,255,.15);
+  --hover: rgba(255,255,255,.04); --primary: #e4e4e7; --primary-fg: #18181b; --plate: #e7e1d3; --plate-soft: rgba(231,225,211,.10);
+  --danger: #ef4444; --danger-fg: #f87171; --danger-soft: rgba(239,68,68,.16);
+  --warn: #f59e0b; --warn-fg: #fbbf24; --warn-soft: rgba(245,158,11,.16);
+  --info: #0ea5e9; --info-fg: #38bdf8; --info-soft: rgba(14,165,233,.16);
+  --ok: #10b981; --ok-fg: #34d399;
+  --lv-debug: #52525b; --lv-info: #0ea5e9; --lv-warn: #f59e0b; --lv-error: #ef4444; --lv-fatal: #fca5a5;
+  --shadow: rgba(0,0,0,.55);
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --t-2xs: 10.5px; --t-xs: 11.5px; --t-sm: 12.5px; --t-base: 14px; --t-lg: 17px; --t-xl: 22px; --t-display: 34px;
+  --r-sm: 2.4px; --r-md: 4.4px; --r-lg: 6.4px; --r-xl: 10px;
+  --h-xs: 18px; --h-sm: 22px; --h-md: 26px; --h-lg: 30px;
+  --ease: cubic-bezier(.2,0,0,1); --d1: 90ms; --d2: 150ms; --d3: 220ms;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --ground: #ffffff; --s1: #fafafa; --s2: #f4f4f5; --overlay: #ffffff; --control: #e4e4e7;
+  --fg: #18181b; --muted: #52525b; --faint: #71717a; --line: rgba(0,0,0,.10); --input: rgba(0,0,0,.15);
+  --hover: rgba(0,0,0,.04); --primary: #18181b; --primary-fg: #fafafa; --plate: #7c6232; --plate-soft: rgba(124,98,50,.10);
+  --danger: #dc2626; --danger-fg: #b91c1c; --danger-soft: rgba(220,38,38,.10);
+  --warn: #d97706; --warn-fg: #b45309; --warn-soft: rgba(217,119,6,.12);
+  --info: #0284c7; --info-fg: #0369a1; --info-soft: rgba(2,132,199,.10);
+  --ok: #059669; --ok-fg: #047857;
+  --lv-debug: #a1a1aa; --lv-info: #0284c7; --lv-warn: #d97706; --lv-error: #dc2626; --lv-fatal: #f87171;
+  --shadow: rgba(0,0,0,.16); color-scheme: light } }
+:root[data-theme="light"] {
+  --ground: #ffffff; --s1: #fafafa; --s2: #f4f4f5; --overlay: #ffffff; --control: #e4e4e7;
+  --fg: #18181b; --muted: #52525b; --faint: #71717a; --line: rgba(0,0,0,.10); --input: rgba(0,0,0,.15);
+  --hover: rgba(0,0,0,.04); --primary: #18181b; --primary-fg: #fafafa; --plate: #7c6232; --plate-soft: rgba(124,98,50,.10);
+  --danger: #dc2626; --danger-fg: #b91c1c; --danger-soft: rgba(220,38,38,.10);
+  --warn: #d97706; --warn-fg: #b45309; --warn-soft: rgba(217,119,6,.12);
+  --info: #0284c7; --info-fg: #0369a1; --info-soft: rgba(2,132,199,.10);
+  --ok: #059669; --ok-fg: #047857;
+  --lv-debug: #a1a1aa; --lv-info: #0284c7; --lv-warn: #d97706; --lv-error: #dc2626; --lv-fatal: #f87171;
+  --shadow: rgba(0,0,0,.16); color-scheme: light }
+:root[data-motion="reduced"] { --d1: 0ms; --d2: 0ms; --d3: 0ms; }
+
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--fg); font-family: var(--sans); font-size: var(--t-base); line-height: 1.45; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+code, .mono { font-family: var(--mono); }
+code { font-size: .92em; }
+:focus-visible { outline: 1px solid var(--muted); outline-offset: 1px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; font-weight: 600; }
+
+/* sheet bar */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--ground); border-bottom: 1px solid var(--line); }
+.bar .wrap { display: flex; align-items: center; gap: 12px; min-height: 40px; flex-wrap: wrap; padding-block: 6px; }
+.mark { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: var(--t-sm); }
+.mark svg { color: var(--plate); }
+.sheet { color: var(--faint); font-size: var(--t-xs); font-family: var(--mono); }
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+.tab { all: unset; cursor: pointer; height: var(--h-md); padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--r-md); color: var(--muted); font-size: var(--t-sm); }
+.tab:hover { background: var(--hover); color: var(--fg); }
+.tab[aria-selected="true"] { background: var(--control); color: var(--fg); }
+.tab:focus-visible { outline: 1px solid var(--muted); }
+.spacer { flex: 1; }
+.seg { display: inline-flex; border: 1px solid var(--input); border-radius: var(--r-md); padding: 1px; gap: 1px; }
+.seg button { all: unset; cursor: pointer; height: 22px; padding: 0 8px; border-radius: 3.4px; font-size: var(--t-xs); color: var(--muted); display: inline-flex; align-items: center; }
+.seg button[aria-pressed="true"] { background: var(--control); color: var(--fg); }
+.seg button:focus-visible { outline: 1px solid var(--muted); }
+.seg-label { font-size: var(--t-xs); color: var(--faint); }
+
+main .wrap { padding-block: 24px 64px; display: grid; gap: 28px; }
+.intro { display: grid; gap: 10px; }
+.intro h1 { font-size: var(--t-xl); }
+.intro p { margin: 0; color: var(--muted); max-width: 70ch; font-size: var(--t-base); }
+.deltas { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.delta { padding: 10px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; gap: 2px; margin: 0 -1px -1px 0; }
+.delta b { font-family: var(--mono); font-size: var(--t-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.delta b s { color: var(--faint); text-decoration-thickness: 1px; font-weight: 400; }
+.delta span { color: var(--muted); font-size: var(--t-xs); }
+
+section.pane { display: grid; gap: 28px; }
+.block { display: grid; gap: 12px; }
+.block > header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.block h2 { font-size: var(--t-lg); }
+.block > header p { margin: 0; color: var(--muted); font-size: var(--t-sm); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.card { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.card h3 { font-size: var(--t-sm); font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cap { color: var(--faint); font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.tag { font-size: var(--t-2xs); font-weight: 500; padding: 0 6px; height: var(--h-xs); display: inline-flex; align-items: center; border-radius: var(--r-sm); border: 1px solid var(--line); color: var(--muted); }
+.tag.new { color: var(--plate); border-color: var(--plate); background: var(--plate-soft); }
+.tag.motion { color: var(--info-fg); border-color: color-mix(in srgb, var(--info) 45%, transparent); }
+.muted { color: var(--muted); }
+.small { font-size: var(--t-xs); }
+
+/* type */
+.typelist { display: grid; gap: 0; font-size: var(--t-sm); }
+.trow { display: grid; grid-template-columns: 58px 1fr 52px; gap: 10px; align-items: center; padding: 3px 6px; border-radius: var(--r-md); transition: background var(--d2) var(--ease), opacity var(--d2) var(--ease); }
+.trow .px { font-family: var(--mono); color: var(--muted); font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+.trow .n { font-family: var(--mono); color: var(--faint); font-size: var(--t-xs); text-align: right; font-variant-numeric: tabular-nums; }
+.trow .sample { font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.trow.dim { opacity: .28; }
+.trow.hit { background: var(--plate-soft); }
+.nrow { display: grid; grid-template-columns: 70px 1fr; gap: 10px; padding: 7px 8px; border-radius: var(--r-md); cursor: default; border: 1px solid transparent; }
+.nrow:hover, .nrow:focus-visible { border-color: var(--line); background: var(--hover); outline: none; }
+.nrow .tok { font-family: var(--mono); font-size: var(--t-xs); color: var(--plate); }
+.nrow .tok small { display: block; color: var(--faint); }
+.nrow .spec { min-width: 0; display: grid; gap: 2px; }
+.nrow .spec .s { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nrow .spec .r { color: var(--muted); font-size: var(--t-xs); }
+.bar-n { height: 3px; background: var(--control); border-radius: 2px; overflow: hidden; }
+.bar-n i { display: block; height: 100%; background: var(--plate); }
+
+/* swatches */
+.swatches { display: grid; gap: 8px; }
+.sw { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; }
+.chipbox { width: 44px; height: 32px; border-radius: var(--r-md); border: 1px solid var(--line); }
+.sw .meta { display: grid; gap: 3px; min-width: 0; }
+.sw .meta b { font-family: var(--mono); font-size: var(--t-xs); font-weight: 600; }
+.sw .meta b em { font-style: normal; color: var(--faint); font-weight: 400; }
+.from { display: flex; flex-wrap: wrap; gap: 4px; }
+.from span { font-family: var(--mono); font-size: var(--t-2xs); color: var(--muted); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 4px; display: inline-flex; gap: 4px; align-items: center; }
+.from span i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+.nest { border-radius: var(--r-lg); padding: 12px; background: var(--ground); border: 1px solid var(--line); display: grid; gap: 8px; font-size: var(--t-xs); color: var(--muted); }
+.nest .l1 { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 10px; display: grid; gap: 8px; }
+.nest .l2 { background: var(--s2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 10px; display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.nest .l3 { background: var(--overlay); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 4px; box-shadow: 0 8px 24px var(--shadow); min-width: 140px; }
+.nest .l3 div { padding: 3px 8px; border-radius: var(--r-md); color: var(--fg); }
+.nest .l3 div:first-child { background: var(--control); }
+
+/* levels */
+table.lv { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+table.lv th { text-align: left; font-weight: 500; color: var(--faint); font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: .06em; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+table.lv td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.scroll { overflow-x: auto; }
+.fill { width: 36px; height: 10px; border-radius: 2px; display: inline-block; }
+.rail { width: 3px; height: 18px; border-radius: 1px; display: inline-block; vertical-align: middle; }
+.badge { display: inline-flex; align-items: center; height: var(--h-xs); padding: 0 6px; border-radius: var(--r-sm); font-size: var(--t-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.b-debug { background: var(--control); color: var(--muted); }
+.b-info { background: var(--info-soft); color: var(--info-fg); }
+.b-warn { background: var(--warn-soft); color: var(--warn-fg); }
+.b-error { background: var(--danger-soft); color: var(--danger-fg); }
+.b-fatal { background: var(--danger); color: #fff; }
+.where { display: flex; flex-wrap: wrap; gap: 6px; }
+.where code { font-size: var(--t-2xs); color: var(--muted); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 1px 5px; }
+
+/* radius + heights */
+.radii { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+.rad { display: grid; gap: 6px; }
+.rad .box { height: 54px; border: 1px solid var(--input); background: var(--s2); }
+.rad b { font-family: var(--mono); font-size: var(--t-xs); color: var(--plate); font-weight: 500; }
+.rad span { font-size: var(--t-xs); color: var(--muted); }
+.hrow { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.hrow:last-child { border-bottom: 0; }
+.hrow .k { font-family: var(--mono); font-size: var(--t-xs); }
+.hrow .k b { color: var(--plate); font-weight: 500; display: block; }
+.hrow .k span { color: var(--faint); font-size: var(--t-2xs); }
+.hrow .v { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
+
+/* motion demo */
+.mdemo { display: grid; gap: 8px; }
+.track { position: relative; height: 22px; background: var(--s2); border-radius: var(--r-md); border: 1px solid var(--line); overflow: hidden; }
+.track i { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 3px; background: var(--plate); transition: transform var(--dur, 150ms) var(--ease); }
+.track.go i { transform: translateX(calc(var(--w, 200px) - 22px)); }
+ul.rules { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); font-size: var(--t-sm); }
+ul.rules b { color: var(--fg); font-weight: 500; }
+
+/* ===== components ===== */
+.btn { appearance: none; border: 1px solid transparent; font: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; font-weight: 500;
+  height: var(--h-md); padding: 0 10px; font-size: var(--t-sm); border-radius: var(--r-md); transition: background var(--d2) var(--ease), color var(--d2) var(--ease), transform var(--d1) var(--ease), width var(--d2) var(--ease), opacity var(--d2) var(--ease); position: relative; overflow: hidden; }
+.btn svg { width: 14px; height: 14px; flex: none; }
+.btn:active:not([aria-busy="true"]):not(:disabled) { transform: scale(.97); }
+:root[data-motion="reduced"] .btn:active { transform: none; }
+.btn.primary { background: var(--primary); color: var(--primary-fg); }
+.btn.primary:hover { background: color-mix(in srgb, var(--primary) 88%, var(--fg)); }
+.btn.secondary { background: var(--control); color: var(--fg); }
+.btn.secondary:hover { background: color-mix(in srgb, var(--control) 80%, var(--fg)); }
+.btn.outline { border-color: var(--input); color: var(--fg); background: transparent; }
+.btn.outline:hover, .btn.ghost:hover { background: var(--hover); color: var(--fg); }
+.btn.ghost { color: var(--muted); background: transparent; }
+.btn.danger { background: var(--danger); color: #fff; }
+.btn.danger:hover { background: color-mix(in srgb, var(--danger) 88%, #000); }
+.btn.xs { height: var(--h-xs); padding: 0 6px; font-size: var(--t-xs); border-radius: var(--r-sm); gap: 4px; }
+.btn.xs svg { width: 11px; height: 11px; }
+.btn.sm { height: var(--h-sm); padding: 0 8px; font-size: var(--t-xs); }
+.btn.sm svg { width: 12px; height: 12px; }
+.btn.lg { height: var(--h-lg); padding: 0 12px; }
+.btn.icon { width: var(--h-sm); height: var(--h-sm); padding: 0; color: var(--muted); background: transparent; }
+.btn.icon:hover { background: var(--hover); color: var(--fg); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn[aria-busy="true"] { cursor: progress; }
+.btn .lbl { display: inline-block; transition: opacity var(--d2) var(--ease), filter var(--d2) var(--ease); }
+.btn .lbl.swap { opacity: 0; filter: blur(2px); }
+.spin { width: 12px; height: 12px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+:root[data-motion="reduced"] .spin { animation-duration: 1.6s; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.demo { background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.contract { display: grid; grid-template-columns: 76px 1fr; gap: 4px 10px; margin: 0; font-size: var(--t-xs); }
+.contract dt { color: var(--faint); }
+.contract dd { margin: 0; color: var(--muted); }
+.contract dd b { color: var(--fg); font-weight: 500; }
+
+/* today vs proposed toolbar */
+.tb { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 6px; }
+.only-today, .only-new { display: none; }
+body[data-mode="today"] .only-today { display: flex; }
+body[data-mode="new"] .only-new { display: flex; }
+.note-mode { font-size: var(--t-2xs); color: var(--faint); font-family: var(--mono); }
+.t-raw { appearance: none; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+/* field */
+.field { display: grid; gap: 5px; }
+.field label { font-size: var(--t-xs); color: var(--muted); }
+.inp { display: flex; align-items: center; gap: 8px; height: var(--h-lg); border: 1px solid var(--input); border-radius: var(--r-lg); padding: 0 8px; background: var(--s1); transition: border-color var(--d2) var(--ease); min-width: 0; }
+.inp:focus-within { border-color: color-mix(in srgb, var(--fg) 40%, transparent); }
+.inp input { all: unset; flex: 1; min-width: 0; font-family: var(--mono); font-size: var(--t-sm); }
+.inp input::placeholder { color: var(--faint); }
+.inp .err { display: none; font-size: var(--t-2xs); color: var(--danger-fg); background: var(--danger-soft); border-radius: var(--r-sm); padding: 1px 6px; white-space: nowrap; font-family: var(--mono); }
+.inp.bad { border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
+.inp.bad .err { display: inline-block; }
+.inp .ms { font-family: var(--mono); font-size: var(--t-2xs); color: var(--faint); }
+kbd { font-family: var(--mono); font-size: var(--t-2xs); color: var(--muted); border: 1px solid var(--input); border-radius: var(--r-sm); padding: 0 4px; line-height: 15px; display: inline-block; min-width: 16px; text-align: center; }
+
+/* chips */
+.chip { appearance: none; font: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: var(--h-sm); padding: 0 8px; border-radius: var(--r-md); border: 1px solid var(--line); background: transparent; color: var(--fg); font-size: var(--t-xs); transition: background var(--d2) var(--ease), border-color var(--d2) var(--ease); }
+.chip:hover { background: var(--hover); }
+.chip .ct { font-family: var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip .dot { width: 6px; height: 6px; border-radius: 2px; }
+.chip[aria-pressed="true"] { background: var(--plate-soft); border-color: color-mix(in srgb, var(--plate) 55%, transparent); }
+.chip[aria-pressed="true"] .ct { color: var(--fg); }
+
+/* workspace tabs */
+.wtabs { position: relative; display: flex; gap: 0; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.wtab { all: unset; cursor: pointer; height: var(--h-lg); padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
+.wtab[aria-selected="true"] { color: var(--fg); }
+.wtab:focus-visible { outline: 1px solid var(--muted); outline-offset: -3px; }
+.wtab .k { font-family: var(--mono); font-size: var(--t-2xs); color: var(--faint); }
+.ind { position: absolute; bottom: -1px; height: 2px; background: var(--plate); border-radius: 1px; transition: transform var(--d3) var(--ease), width var(--d3) var(--ease); left: 0; }
+
+/* switch */
+.sw2 { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: var(--t-sm); user-select: none; }
+.sw2 button { all: unset; width: 28px; height: 16px; border-radius: 99px; background: var(--control); position: relative; transition: background var(--d2) var(--ease); cursor: pointer; }
+.sw2 button::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--fg); transition: transform var(--d2) var(--ease); }
+.sw2 button[aria-checked="true"] { background: var(--plate); }
+.sw2 button[aria-checked="true"]::after { transform: translateX(12px); background: var(--primary-fg); }
+.sw2 button:focus-visible { outline: 1px solid var(--muted); outline-offset: 2px; }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.live-on .live-dot { background: var(--plate); }
+
+/* menu */
+.menuwrap { position: relative; display: inline-block; }
+.menu { position: absolute; z-index: 4; top: calc(100% + 4px); right: 0; min-width: 168px; background: var(--overlay); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 4px; box-shadow: 0 10px 30px var(--shadow); transform-origin: top right; transition: opacity var(--d2) var(--ease), transform var(--d2) var(--ease); }
+.menu[hidden] { display: block !important; opacity: 0; transform: scale(.97) translateY(-2px); pointer-events: none; visibility: hidden; }
+.menu [role="menuitem"] { all: unset; display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; height: var(--h-md); padding: 0 8px; border-radius: var(--r-md); font-size: var(--t-sm); cursor: pointer; }
+.menu [role="menuitem"] svg { width: 13px; height: 13px; color: var(--muted); }
+.menu [role="menuitem"]:focus, .menu [role="menuitem"]:hover { background: var(--control); }
+.menu [role="menuitem"].bad { color: var(--danger-fg); }
+.menu [role="menuitem"].bad svg { color: var(--danger-fg); }
+.menu .sep { height: 1px; background: var(--line); margin: 4px 0; }
+.menu .hint { margin-left: auto; font-family: var(--mono); font-size: var(--t-2xs); color: var(--faint); }
+.panelhead { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 10px; border: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; background: var(--s2); font-size: var(--t-sm); }
+.panelhead .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panelbody { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--r-lg) var(--r-lg); height: 64px; background: var(--s1); display: flex; align-items: flex-end; gap: 2px; padding: 8px 10px; }
+.panelbody i { flex: 1; background: var(--lv-info); opacity: .7; border-radius: 1px 1px 0 0; }
+.panelbody i.e { background: var(--lv-error); opacity: .9; }
+
+/* tooltip */
+.tip { position: fixed; z-index: 30; pointer-events: none; background: var(--overlay); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-md); padding: 3px 7px; font-size: var(--t-xs); box-shadow: 0 6px 18px var(--shadow); opacity: 0; transform: translateY(2px); transition: opacity var(--d2) var(--ease), transform var(--d2) var(--ease); white-space: nowrap; }
+.tip.on { opacity: 1; transform: none; }
+.tip kbd { margin-left: 6px; }
+
+/* toasts */
+.toasts { position: fixed; z-index: 40; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); width: min(320px, calc(100vw - 24px)); height: 0; }
+.toast { position: absolute; top: 0; right: 0; left: 0; background: var(--overlay); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 9px 12px; display: flex; gap: 8px; align-items: center; font-size: var(--t-sm); box-shadow: 0 10px 28px var(--shadow); transition: transform var(--d3) var(--ease), opacity var(--d3) var(--ease); }
+.toast svg { width: 14px; height: 14px; flex: none; }
+.toast.ok svg { color: var(--ok-fg); }
+.toast.bad svg { color: var(--danger-fg); }
+.toast .sub { color: var(--muted); font-size: var(--t-xs); margin-left: auto; font-family: var(--mono); }
+
+/* skeleton + live table */
+.sk { height: 10px; border-radius: 2px; background: var(--control); animation: shimmer 1.5s ease-in-out infinite; }
+:root[data-motion="reduced"] .sk { animation: none; opacity: .6; }
+@keyframes shimmer { 0%,100% { opacity: .4 } 50% { opacity: .75 } }
+.evt { display: grid; grid-template-columns: 3px 92px 54px 1fr; gap: 8px; align-items: center; font-family: var(--mono); font-size: var(--t-sm); padding: 3px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.evt .ts { color: var(--muted); font-size: var(--t-xs); }
+.evt .msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* palette */
+.pal { width: min(620px, 100%); background: var(--overlay); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: 0 24px 60px var(--shadow); overflow: hidden; display: grid; }
+.pal .pin { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; border-bottom: 1px solid var(--line); }
+.pal .pin svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+.pal .pin input { all: unset; flex: 1; min-width: 0; font-size: var(--t-base); }
+.pal .pin input::placeholder { color: var(--faint); }
+.pal .list { max-height: 360px; overflow-y: auto; padding: 6px; }
+.pal .grp { font-size: var(--t-2xs); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; padding: 8px 8px 4px; }
+.pal .opt { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: var(--r-md); font-size: var(--t-sm); cursor: pointer; min-width: 0; }
+.pal .opt svg { width: 14px; height: 14px; color: var(--muted); flex: none; }
+.pal .opt .lab { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pal .opt .q { font-family: var(--mono); color: var(--muted); font-size: var(--t-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.pal .opt .r { margin-left: auto; display: flex; gap: 4px; flex: none; }
+.pal .opt[aria-selected="true"] { background: var(--control); }
+.pal .empty { padding: 18px 10px; color: var(--muted); font-size: var(--t-sm); }
+.pal .foot { display: flex; gap: 14px; align-items: center; border-top: 1px solid var(--line); padding: 7px 12px; font-size: var(--t-xs); color: var(--faint); flex-wrap: wrap; }
+.pal .foot span { display: inline-flex; gap: 5px; align-items: center; }
+mark { background: transparent; color: var(--plate); font-weight: 600; }
+.scrim { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.45); display: flex; justify-content: center; align-items: flex-start; padding: max(12vh, 16px) max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); opacity: 0; transition: opacity var(--d2) var(--ease); }
+.scrim.on { opacity: 1; }
+.scrim .pal { transform: scale(.98); transition: transform var(--d2) var(--ease); }
+.scrim.on .pal { transform: none; }
+.palstage { display: flex; justify-content: center; padding: 28px 12px; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-lg); }
+
+/* patterns */
+.today { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.today .cap { margin-right: 4px; }
+.today span.v { font-family: var(--mono); font-size: var(--t-2xs); color: var(--muted); border: 1px dashed var(--line); border-radius: var(--r-sm); padding: 0 5px; line-height: 16px; }
+.hcard { border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--ground); }
+.hband { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 12px; font-size: var(--t-sm); border-bottom: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); background: var(--warn-soft); flex-wrap: nowrap; min-width: 0; }
+.hband .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); flex: none; }
+.hband .m { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hbar { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.hbar .inp { flex: 1; min-width: 180px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; height: var(--h-md); padding: 0 3px 0 9px; border: 1px solid var(--input); border-radius: var(--r-md); font-size: var(--t-xs); white-space: nowrap; }
+.pill.slow { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); }
+.pill .hint { color: var(--warn-fg); border-left: 1px solid var(--line); padding-left: 8px; }
+.prog { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; background: var(--hover); }
+.prog i { position: absolute; top: 0; bottom: 0; width: 33%; background: linear-gradient(90deg, transparent, var(--primary), transparent); animation: prog 1.1s ease-in-out infinite; }
+:root[data-motion="reduced"] .prog i { animation: none; left: 0; width: 100%; opacity: .35; }
+@keyframes prog { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
+.hhead { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px 6px; flex-wrap: wrap; }
+.hhead b { font-family: var(--mono); font-size: var(--t-lg); font-weight: 600; }
+.hhead .why { color: var(--warn-fg); font-size: var(--t-sm); }
+.age { display: inline-flex; align-items: center; gap: 5px; height: var(--h-sm); font-family: var(--mono); font-size: var(--t-xs); color: var(--muted); margin-left: auto; }
+.age.late { color: var(--plate); }
+.age svg { width: 12px; height: 12px; }
+.hrows { padding: 0 12px 10px; transition: opacity var(--d2) var(--ease); }
+.hrows.dim { opacity: .5; pointer-events: none; }
+.estate { margin: 0 12px 12px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--s1); padding: 28px 16px; display: grid; justify-items: center; gap: 8px; text-align: center; }
+.estate b { font-size: var(--t-base); font-weight: 500; }
+.estate span { color: var(--muted); font-size: var(--t-sm); max-width: 44ch; }
+.estate.warn b { color: var(--warn-fg); }
+.panel { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--s1); overflow: hidden; min-width: 0; }
+.panel .ph { display: flex; align-items: center; gap: 6px; height: var(--h-lg); padding: 0 4px 0 12px; border-bottom: 1px solid var(--line); background: var(--s2); transition: background var(--d2) var(--ease); min-width: 0; }
+.panel .ph .tt { font-size: var(--t-sm); font-weight: 600; white-space: nowrap; }
+.panel .ph .wl { font-family: var(--mono); font-size: var(--t-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.panel .ph .vv { font-family: var(--mono); font-size: var(--t-xs); color: var(--muted); white-space: nowrap; }
+.panel .ph.armed { background: var(--danger-soft); }
+.panel .ph.armed .tt { color: var(--danger-fg); font-weight: 500; }
+.panel .pb { padding: 12px; display: grid; gap: 4px; }
+.panel .stat { font-family: var(--mono); font-size: var(--t-display); line-height: 1; font-weight: 500; }
+.btn.dangerq { border-color: color-mix(in srgb, var(--danger) 55%, transparent); background: var(--danger-soft); color: var(--danger-fg); }
+.ladder { display: grid; gap: 6px; }
+.lrow { display: grid; grid-template-columns: 74px 1fr 64px; gap: 10px; align-items: center; font-size: var(--t-xs); }
+.lrow .tk { font-family: var(--mono); color: var(--plate); }
+.lrow .tk.off { color: var(--faint); text-decoration: line-through; }
+.lrow .bx { height: 12px; display: flex; align-items: center; }
+.lrow .bx i { display: block; height: 12px; background: var(--plate-soft); border: 1px solid color-mix(in srgb, var(--plate) 55%, transparent); border-radius: 2px; }
+.lrow .n { font-family: var(--mono); color: var(--faint); text-align: right; font-variant-numeric: tabular-nums; }
+.wbars { display: grid; gap: 6px; }
+.wbar { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; font-size: var(--t-xs); }
+.wbar i { display: block; height: 18px; border-radius: var(--r-sm); background: var(--s2); border: 1px solid var(--line); }
+.wbar i.p { background: var(--plate-soft); border-color: color-mix(in srgb, var(--plate) 55%, transparent); }
+.wbar b { font-family: var(--mono); font-weight: 500; }
+.ctab td.ok { color: var(--ok-fg); }
+.ctab td.no { color: var(--danger-fg); }
+.pal8 { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.pal8 span { height: 28px; border-radius: var(--r-sm); }
+.qline { font-family: var(--mono); font-size: var(--t-sm); background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 7px 10px; overflow-x: auto; white-space: nowrap; }
+.terms { display: flex; flex-wrap: wrap; gap: 6px; }
+.terms span { font-size: var(--t-xs); border: 1px solid var(--line); border-radius: var(--r-md); padding: 2px 8px; }
+.terms span s { color: var(--faint); margin-left: 4px; }
+.icn { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; color: var(--fg); }
+.icn span { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-xs); color: var(--muted); }
+.icn svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; color: var(--fg); }
+
+/* real screens */
+.wipe { position: relative; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: #09090b; aspect-ratio: 1440 / 900; max-width: 100%; touch-action: pan-y; }
+.wipe img { display: block; width: 100%; height: auto; }
+.wipe-top { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--cut, 50%)); }
+.wipe-line { position: absolute; top: 0; bottom: 0; left: var(--cut, 50%); width: 2px; margin-left: -1px; background: var(--plate); pointer-events: none; }
+.wipe-line span { position: absolute; top: 8px; font-size: var(--t-2xs); font-family: var(--mono); background: #18181b; color: #e7e1d3; border: 1px solid rgba(255,255,255,.12); border-radius: var(--r-sm); padding: 1px 6px; white-space: nowrap; }
+.wipe-line span:first-child { right: 8px; }
+.wipe-line span:last-child { left: 8px; }
+.wipe input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+
+/* agents */
+pre.code { margin: 0; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px; font-family: var(--mono); font-size: var(--t-xs); line-height: 1.6; overflow-x: auto; color: var(--fg); }
+pre.code .c { color: var(--faint); }
+pre.code .k { color: var(--plate); }
+table.lint { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+table.lint td, table.lint th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+table.lint th { color: var(--faint); font-size: var(--t-2xs); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+table.lint td.n { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .contract { grid-template-columns: 1fr; }
+  .contract dt { margin-top: 4px; }
+  .evt { grid-template-columns: 3px 70px 1fr; }
+  .evt .badge { display: none; }
+  .nrow { grid-template-columns: 58px 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="full"]) { --d1: 0ms; --d2: 0ms; --d3: 0ms; } }
+</style>
+
+<header class="bar">
+  <div class="wrap">
+    <span class="mark">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/><rect x="2" y="7" width="8" height="2" rx="1" fill="currentColor" opacity=".7"/><rect x="2" y="11" width="10" height="2" rx="1" fill="currentColor" opacity=".45"/></svg>
+      Design system
+    </span>
+    <span class="sheet">45 · upstream/main 0.14.2</span>
+    <nav class="tabs" role="tablist" aria-label="Sheet">
+      <button class="tab" role="tab" id="t-tokens" aria-controls="tokens" aria-selected="true">Tokens</button>
+      <button class="tab" role="tab" id="t-screens" aria-controls="screens" aria-selected="false">Real screens</button>
+      <button class="tab" role="tab" id="t-components" aria-controls="components" aria-selected="false">Components</button>
+      <button class="tab" role="tab" id="t-patterns" aria-controls="patterns" aria-selected="false">Patterns</button>
+      <button class="tab" role="tab" id="t-palette" aria-controls="palette" aria-selected="false">Command palette <span class="tag new">New</span></button>
+      <button class="tab" role="tab" id="t-agents" aria-controls="agents" aria-selected="false">For agents</button>
+    </nav>
+    <span class="spacer"></span>
+    <span class="seg-label">Show</span>
+    <span class="seg" id="mode" role="group" aria-label="Show">
+      <button type="button" data-v="today" aria-pressed="false">Today</button>
+      <button type="button" data-v="new" aria-pressed="true">Proposed</button>
+    </span>
+    <span class="seg-label">Motion</span>
+    <span class="seg" id="motion" role="group" aria-label="Motion">
+      <button type="button" data-v="full" aria-pressed="true">Full</button>
+      <button type="button" data-v="reduced" aria-pressed="false">Reduced</button>
+    </span>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+  <div class="intro">
+    <h1>One scale for every screen</h1>
+    <p>Counted in <code>src/ui</code> on upstream/main 0.14.2, tests excluded. Each proposed token lists the values it replaces.</p>
+    <div class="deltas" id="deltas"></div>
+  </div>
+
+  <!-- ===================== TOKENS ===================== -->
+  <section class="pane" id="tokens" role="tabpanel" aria-labelledby="t-tokens">
+    <div class="block">
+      <header><h2>Type</h2><p>23 sizes in 1,406 bracketed classes become 7 steps. Hover a step to see the sizes it absorbs.</p></header>
+      <div class="cols">
+        <div class="card"><div class="cap">Today · <span class="mono">text-[Npx]</span> · uses</div><div class="typelist" id="typeToday"></div></div>
+        <div class="card"><div class="cap">Proposed · <span class="mono">text-*</span></div><div id="typeNew" style="display:grid;gap:2px"></div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Surfaces</h2><p>10 dark hexes written inline (172 uses) become 5 steps on the existing tokens.</p></header>
+      <div class="cols">
+        <div class="card"><div class="swatches" id="surf"></div></div>
+        <div class="card">
+          <div class="cap">Stacked</div>
+          <div class="nest">ground · the page
+            <div class="l1">surface-1 · band, well, plot ground
+              <div class="l2"><span>surface-2 · card on a page</span>
+                <div class="l3" role="presentation"><div>Duplicate</div><div>Copy…</div><div>Export…</div></div>
+              </div>
+            </div>
+          </div>
+          <span class="small muted">overlay · menu, popover, dialog, tooltip</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Levels and states</h2><p>Level colours live in four files today. One <code>--level-*</code> set feeds bars, rails, badges and chart exports.</p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="scroll">
+            <table class="lv">
+              <thead><tr><th>Level</th><th>Bar</th><th>Rail</th><th>Badge</th><th>Token</th></tr></thead>
+              <tbody id="levels"></tbody>
+            </table>
+          </div>
+          <div class="cap">Defined today in</div>
+          <div class="where"><code>level.ts · levelFill, levelRail</code><code>histogram-series.ts · levelHex</code><code>ui/badge.tsx · variants</code><code>board-view.tsx · text-red-300…</code></div>
+        </div>
+        <div class="card">
+          <div class="cap">States · 431 raw palette classes become these</div>
+          <div class="swatches" id="states"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Radius</h2><p>14 bracketed values and 6 named ones become 5. The theme already has sm, md and lg; most code skips them.</p></header>
+      <div class="card"><div class="radii" id="radii"></div></div>
+    </div>
+
+    <div class="block">
+      <header><h2>Control height</h2><p>11 heights become 4. Button's default is 32px today while most hand-built controls are 26px, which is why 308 buttons skip it.</p></header>
+      <div class="card" id="heights"></div>
+    </div>
+
+    <div class="block">
+      <header><h2>Motion</h2><p>Three durations, one curve. Motion is for controls only.</p></header>
+      <div class="cols">
+        <div class="card mdemo" id="motionDemo"></div>
+        <div class="card">
+          <ul class="rules">
+            <li><b>Data never moves.</b> Bars, counts and rows repaint in place; live polls keep the last paint.</li>
+            <li><b>Press</b> scales a button to 0.97 for <span class="mono">--d1</span>.</li>
+            <li><b>Colour and opacity</b> ease over <span class="mono">--d2</span>: hover, menus, tooltips, toasts.</li>
+            <li><b>Position</b> eases over <span class="mono">--d3</span>: the tab indicator, a label that changes width.</li>
+            <li><b>Reduced motion</b> sets all three to 0. Spinners slow down and skeletons stop pulsing.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== REAL SCREENS ===================== -->
+  <section class="pane" id="screens" role="tabpanel" aria-labelledby="t-screens" hidden>
+    <div class="block">
+      <header><h2>Six screens, same data</h2><p>0.14.2 against a trial branch with the tokens swapped in, both reading one throwaway instance seeded with the billing v0.9 story. Drag the line to compare.</p></header>
+      <div class="row">
+        <span class="seg" id="scrPick" role="group" aria-label="Screen"></span>
+        <span class="spacer"></span>
+        <span class="small muted mono" id="scrDiff"></span>
+      </div>
+      <div class="wipe" id="wipe">
+        <img id="imgToday" alt="Today" width="1440" height="900">
+        <div class="wipe-top" id="wipeTop"><img id="imgNew" alt="Proposed" width="1440" height="900"></div>
+        <div class="wipe-line" id="wipeLine"><span>Today</span><span>Proposed</span></div>
+        <input type="range" id="wipeR" min="0" max="100" value="50" aria-label="Compare Today and Proposed">
+      </div>
+      <p class="small muted" id="scrNote" style="margin:0"></p>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h3>What the trial changed</h3>
+        <ul class="rules">
+          <li><b>1,406</b> bracketed font sizes to the 7 steps.</li>
+          <li><b>154 of 172</b> inline surface hexes to surface tokens. The rest are text colours or <code>#141416</code>, which the trial missed.</li>
+          <li><b>332</b> bracketed radii to <code>rounded-sm|md|lg|xl</code>.</li>
+          <li>Button sizes <b>xs 18 · sm 22 · md 26 · lg 30</b>; the 63 <code>size="sm"</code> callers move to md.</li>
+          <li>Nothing else: hand-built heights, spacing and icons are as they are.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>What it showed</h3>
+        <ul class="rules">
+          <li><b>Dense screens hold.</b> Hunt changes 9.8% of pixels, mostly 12 → 12.5px text; no row wraps and no column moves.</li>
+          <li><b>Button's <code>sm</code> was a second default.</b> It was 32px like md; mapping it to 22px left Settings' Save buttons too small, so those callers move to md.</li>
+          <li><b>42 Buttons override their own height</b> (<code>h-8</code> ×15, <code>h-7</code> ×8, <code>h-[26px]</code> ×8…). Hunt's split Save ▾ kept a 32px chevron beside a 26px Save until its override went. It becomes a Split button.</li>
+          <li><b>Reading text grows a little.</b> 13.5 → 14 on Settings and Access; the header pages go 13 → 12.5.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== COMPONENTS ===================== -->
+  <section class="pane" id="components" role="tabpanel" aria-labelledby="t-components" hidden>
+    <div class="block">
+      <header><h2>A hunt toolbar</h2><p>Switch Show to compare. Today's strip is put together from heights and radii counted in the code, not copied from one screen.</p></header>
+      <div class="card">
+        <div class="tb only-today" aria-label="Today">
+          <button class="t-raw" style="height:26px;padding:0 9px;border-radius:7px;border:1px solid var(--input);background:transparent;color:var(--fg);font-size:12px">15m</button>
+          <button class="t-raw" style="height:26px;padding:0 9px;border-radius:4.4px;border:0;background:var(--control);color:var(--fg);font-size:11.5px">1h</button>
+          <button class="t-raw" style="height:24px;padding:0 8px;border-radius:4px;border:0;background:transparent;color:var(--muted);font-size:12.5px">24h</button>
+          <span class="t-raw" style="height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--input);color:var(--fg);font-size:13px"><span class="live-dot"></span>Live</span>
+          <button class="t-raw" style="height:32px;padding:0 10px;border-radius:4.4px;border:0;background:var(--primary);color:var(--primary-fg);font-size:13px;font-weight:500">Save</button>
+          <button class="t-raw" style="height:30px;padding:0 10px;border-radius:10px;border:1px solid var(--input);background:transparent;color:var(--fg);font-size:12.5px">Add panel</button>
+          <span class="note-mode">26 · 26 · 24 · 28 · 32 · 30 px</span>
+        </div>
+        <div class="tb only-new" aria-label="Proposed">
+          <span class="seg"><button type="button" aria-pressed="true">15m</button><button type="button" aria-pressed="false">1h</button><button type="button" aria-pressed="false">24h</button></span>
+          <button class="btn outline"><span class="live-dot"></span>Live</button>
+          <button class="btn primary">Save</button>
+          <button class="btn outline">Add panel</button>
+          <span class="note-mode">all md · 26 px · r-md</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cols" id="comps">
+      <!-- Button -->
+      <div class="card">
+        <h3>Button <span class="tag">Exists · resized</span> <span class="tag motion">Motion added</span></h3>
+        <div class="demo">
+          <div class="row"><button class="btn primary">Run</button><button class="btn secondary">Duplicate</button><button class="btn outline">Cancel</button><button class="btn ghost">Reset</button><button class="btn danger">Remove</button></div>
+          <div class="row"><button class="btn outline xs">xs 18</button><button class="btn outline sm">sm 22</button><button class="btn outline">md 26</button><button class="btn outline lg">lg 30</button></div>
+          <div class="row">
+            <button class="btn primary" id="saveBtn"><span class="lbl">Save hunt</span></button>
+            <button class="btn outline" id="busyBtn"><span class="lbl">Check now</span></button>
+            <span class="small muted">Click both</span>
+          </div>
+        </div>
+        <dl class="contract">
+          <dt>Use for</dt><dd>One action. <b>One primary</b> per surface.</dd>
+          <dt>Not for</dt><dd>On/off (Switch or Chip), going somewhere (a link).</dd>
+          <dt>Keys</dt><dd><kbd>Enter</kbd> <kbd>Space</kbd></dd>
+          <dt>Access</dt><dd>Native button. Busy sets <code>aria-busy</code> and keeps focus; icon-only needs <code>aria-label</code>.</dd>
+          <dt>Motion</dt><dd>Press 0.97. A new label fades while the width eases.</dd>
+        </dl>
+      </div>
+
+      <!-- Query field -->
+      <div class="card">
+        <h3>Query field <span class="tag">Exists · tokens</span></h3>
+        <div class="demo">
+          <div class="field">
+            <label for="qf">Query</label>
+            <div class="inp" id="qwrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex:none" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="qf" value="level:error sevrity:high" spellcheck="false" autocomplete="off" aria-describedby="qerr">
+              <span class="err" id="qerr" role="status">Unknown field sevrity</span>
+              <span class="ms" id="qms" hidden>38 ms</span>
+              <kbd>/</kbd>
+            </div>
+          </div>
+          <span class="small muted">Press <kbd>Enter</kbd>. Fix the field name and press it again.</span>
+        </div>
+        <dl class="contract">
+          <dt>Use for</dt><dd>The query bar and any <code>key:value</code> input. Mono, <b>lg 30</b>.</dd>
+          <dt>Errors</dt><dd>Inside the field after Enter, never while typing.</dd>
+          <dt>Keys</dt><dd><kbd>/</kbd> focus · <kbd>Enter</kbd> run · <kbd>Esc</kbd> close menu, then blur</dd>
+        </dl>
+      </div>
+
+      <!-- Chips -->
+      <div class="card">
+        <h3>Chip <span class="tag">Exists · tokens</span></h3>
+        <div class="demo">
+          <div class="row" id="chips">
+            <button class="chip" aria-pressed="true"><i class="dot" style="background:var(--lv-error)"></i>error <span class="ct">1.24K</span></button>
+            <button class="chip" aria-pressed="false"><i class="dot" style="background:var(--lv-fatal)"></i>fatal <span class="ct">38</span></button>
+            <button class="chip" aria-pressed="false"><i class="dot" style="background:var(--lv-warn)"></i>warn <span class="ct">3.04K</span></button>
+            <button class="chip" aria-pressed="false"><i class="dot" style="background:var(--lv-info)"></i>info <span class="ct">212K</span></button>
+          </div>
+          <code class="small muted" id="chipq">level:error</code>
+        </div>
+        <dl class="contract">
+          <dt>Use for</dt><dd>Facet values and toggles that write <code>q</code>. <b>sm 22</b>.</dd>
+          <dt>Access</dt><dd><code>aria-pressed</code>; the count is part of the name.</dd>
+          <dt>Motion</dt><dd>Colour only. Counts swap in place.</dd>
+        </dl>
+      </div>
+
+      <!-- Badge -->
+      <div class="card">
+        <h3>Level badge <span class="tag">Exists · tokens</span></h3>
+        <div class="demo">
+          <div class="row"><span class="badge b-debug">debug</span><span class="badge b-info">info</span><span class="badge b-warn">warn</span><span class="badge b-error">error</span><span class="badge b-fatal">fatal</span></div>
+          <div id="evts"></div>
+        </div>
+        <dl class="contract">
+          <dt>Use for</dt><dd>A level, nothing else. <b>xs 18</b>, 2xs type.</dd>
+          <dt>Not for</dt><dd>Status of a monitor or a share (use a state colour).</dd>
+        </dl>
+      </div>
+
+      <!-- Workspace tabs -->
+      <div class="card">
+        <h3>Workspace tabs <span class="tag">Exists</span> <span class="tag motion">Motion added</span></h3>
+        <div class="demo">
+          <div class="wtabs" role="tablist" aria-label="Workspaces" id="wtabs">
+            <button class="wtab" role="tab" aria-selected="true" tabindex="0">Search</button>
+            <button class="wtab" role="tab" aria-selected="false" tabindex="-1">Follow <span class="k">req-9f2c</span></button>
+            <button class="wtab" role="tab" aria-selected="false" tabindex="-1">Surroundings</button>
+            <button class="wtab" role="tab" aria-selected="false" tabindex="-1">checkout 5xx</button>
+            <span class="ind" id="ind"></span>
+          </div>
+          <span class="small muted">Click a tab, or focus one and use <kbd>←</kbd> <kbd>→</kbd>.</span>
+        </div>
+        <dl class="contract">
+          <dt>Keys</dt><dd><kbd>←</kbd> <kbd>→</kbd> switch, <kbd>Home</kbd> <kbd>End</kbd>.</dd>
+          <dt>Motion</dt><dd>The plate underline slides over <code>--d3</code>. Content does not animate.</dd>
+        </dl>
+      </div>
+
+      <!-- Switch -->
+      <div class="card">
+        <h3>Switch <span class="tag">Exists · tokens</span></h3>
+        <div class="demo">
+          <div class="row">
+            <label class="sw2" id="liveSw"><button role="switch" aria-checked="false" aria-label="Live"></button><span class="live-dot"></span>Live</label>
+            <span class="small muted mono" id="liveAge"></span>
+          </div>
+        </div>
+        <dl class="contract">
+          <dt>Use for</dt><dd>A setting that applies at once: Live, Count format, Timestamps.</dd>
+          <dt>Keys</dt><dd><kbd>Space</kbd></dd>
+        </dl>
+      </div>
+
+      <!-- Menu + icon buttons -->
+      <div class="card">
+        <h3>Panel head, icon button, menu <span class="tag">Exists · tokens</span></h3>
+        <div class="demo">
+          <div>
+            <div class="panelhead">
+              <span class="t">errors by service</span>
+              <button class="btn icon" data-tip="Duplicate" aria-label="Duplicate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+              <button class="btn icon" data-tip="Export" aria-label="Export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg></button>
+              <span class="menuwrap">
+                <button class="btn icon" id="moreBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu" aria-label="More" data-tip="More"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>
+                <div class="menu" id="moreMenu" role="menu" aria-labelledby="moreBtn" hidden>
+                  <button role="menuitem" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 10h16"/></svg>Open as hunt</button>
+                  <button role="menuitem" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>Edit panel</button>
+                  <button role="menuitem" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>Duplicate</button>
+                  <button role="menuitem" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 4h10v14H8z"/><path d="M4 8v12h10"/></svg>Copy…</button>
+                  <div class="sep" role="separator"></div>
+                  <button role="menuitem" tabindex="-1" class="bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Remove</button>
+                </div>
+              </span>
+            </div>
+            <div class="panelbody" id="pbars"></div>
+          </div>
+        </div>
+        <dl class="contract">
+          <dt>Icon button</dt><dd><b>sm 22</b>, tooltip after 400 ms on hover or focus, <code>aria-label</code> always.</dd>
+          <dt>Menu keys</dt><dd><kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> run · <kbd>Esc</kbd> close and return focus.</dd>
+          <dt>Motion</dt><dd>Menu fades and scales from 0.97 at its anchor.</dd>
+        </dl>
+      </div>
+
+      <!-- Toast -->
+      <div class="card">
+        <h3>Toast <span class="tag">Exists · sonner, restyled</span></h3>
+        <div class="demo">
+          <div class="row">
+            <button class="btn outline" data-toast="ok|Saved hunt|checkout 5xx">Save hunt</button>
+            <button class="btn outline" data-toast="ok|Monitor created|api /health">Create monitor</button>
+            <button class="btn outline" data-toast="bad|This monitor's saved hunt is gone|">Fail</button>
+          </div>
+          <span class="small muted">Send three, then hover the stack at the top right.</span>
+        </div>
+        <dl class="contract">
+          <dt>Use for</dt><dd>The result of an action, in its past tense: Saved, Created, Removed.</dd>
+          <dt>Not for</dt><dd>Query errors (in the field) or outages (the outage band).</dd>
+          <dt>Motion</dt><dd>Stacks of 3; fans out on hover. sonner does this by default.</dd>
+        </dl>
+      </div>
+
+      <!-- Skeleton -->
+      <div class="card">
+        <h3>Skeleton <span class="tag">Exists · tokens</span></h3>
+        <div class="demo" style="gap:7px">
+          <div class="sk" style="width:72%"></div><div class="sk" style="width:54%"></div><div class="sk" style="width:64%"></div>
+        </div>
+        <dl class="contract">
+          <dt>Use for</dt><dd>An empty first paint only.</dd>
+          <dt>Not for</dt><dd>A re-query or a Live poll. Those keep the last paint, dimmed or not.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PATTERNS ===================== -->
+  <section class="pane" id="patterns" role="tabpanel" aria-labelledby="t-patterns" hidden>
+    <div class="deltas" id="pdeltas"></div>
+
+    <div class="block">
+      <header><h2>Data states</h2><p>Every panel, table and page shows the same states the same way. Pick one.</p></header>
+      <div class="row"><span class="seg" id="stPick" role="group" aria-label="State"></span></div>
+      <div class="hcard" id="hcard">
+        <div class="hband" id="hBand" hidden><span class="dot"></span><span>Lost ClickHouse at 13:18:02</span><span class="m">retrying in 4 s · showing the last paint</span><button class="btn outline sm" style="margin-left:auto">Retry now</button></div>
+        <div class="hbar">
+          <span class="inp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex:none" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input aria-label="Query" value="level:error service:billing" readonly></span>
+          <span id="hRight"></span>
+          <span class="prog" id="hProg" hidden><i></i></span>
+        </div>
+        <div class="hhead" id="hHead"></div>
+        <div id="hBody"></div>
+      </div>
+      <div class="cols">
+        <div class="card">
+          <div class="today"><span class="cap">Today</span><span class="v">refused · 6 renderings</span><span class="v">empty · 8 card shells</span><span class="v">skeleton · 4 builds</span><span class="v">live age · 2 builds</span><span class="v">error text · 4 colours</span><span class="v">dim .5 / embed .4</span></div>
+          <ul class="rules">
+            <li><b>Searching</b> keeps the last paint at half opacity. Stop sits in the bar; the 2px bar runs under the field.</li>
+            <li><b>Slow</b> (5 s) turns the pill warn and adds one hint.</li>
+            <li><b>Refused</b> is warn, never danger: the count reads “—” and one line says what to narrow.</li>
+            <li><b>Empty</b> is one block: a title, one line, at most one action. The copy says which empty it is.</li>
+            <li><b>Live</b> never dims or skeletons. A muted age shows only after a missed poll; past 35 s it turns plate.</li>
+            <li><b>Errors</b> are <span class="mono">danger-fg</span>, everywhere.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="cap">Components</div>
+          <dl class="contract">
+            <dt><code>&lt;Busy&gt;</code></dt><dd>Pill, elapsed, Stop, bar. Replaces the copies in App and Fields.</dd>
+            <dt><code>&lt;Refused&gt;</code></dt><dd>Inline (count, footnote) or block (table, panel).</dd>
+            <dt><code>&lt;Empty&gt;</code></dt><dd>title · line · action.</dd>
+            <dt><code>&lt;Skeleton&gt;</code></dt><dd>rows | bars | block; first paint only.</dd>
+            <dt><code>&lt;LiveAge&gt;</code></dt><dd>Facets, extra panels and board panels.</dd>
+            <dt><code>&lt;Band&gt;</code></dt><dd>Outage and back, top of the page.</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Panel</h2><p>Hunt panels and board panels are two builds today. One shell, both places.</p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="panel" id="pnl">
+            <div class="ph" id="pnlHead"></div>
+            <div class="pb"><span class="stat">4.25K</span><span class="small muted mono">level:error service:billing · last 1h</span></div>
+          </div>
+          <span class="small muted">Open ⋯ → Remove to arm the head.</span>
+        </div>
+        <div class="card">
+          <div class="today"><span class="cap">Today</span><span class="v">head 30 px mono 11.5 / no height, sans 13.5</span><span class="v">⋯ 22 / 26</span><span class="v">menu rows 26 / 30</span><span class="v">“Remove?” / “Remove name?”</span><span class="v">stat 34 / 40</span><span class="v">count 4.25K / 4.2k</span></div>
+          <dl class="contract">
+            <dt>Head</dt><dd>lg 30 · surface-2 · title sm semibold · query xs mono muted · value xs mono.</dd>
+            <dt>Actions</dt><dd>icon sm 22; ⋯ menu rows md 26. Board menus add Open as hunt, Edit panel, Fixed window….</dd>
+            <dt>Remove</dt><dd>Arms the head: “Remove <i>name</i>?” · Remove · Cancel. <kbd>Esc</kbd> cancels.</dd>
+            <dt>Body</dt><dd>12 px padding; stat value display 34; one count format.</dd>
+            <dt>Grid</dt><dd>12 columns · 64 px rows · 8 px gap (unchanged).</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Overlays and side panels</h2><p>Dialogs come in 8 widths and 2 footer layouts; side panels in 5 widths.</p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="cap">Dialog · 440 520 560 640 880 900 1080 1140 → 3</div>
+          <div class="wbars">
+            <div class="wbar"><b>sm 440</b><i class="p" style="width:39%"></i></div>
+            <div class="wbar"><b>md 640</b><i class="p" style="width:56%"></i></div>
+            <div class="wbar"><b>lg 1080</b><i class="p" style="width:95%"></i></div>
+          </div>
+          <div class="cap" style="margin-top:6px">Footer · one layout</div>
+          <div class="row" style="justify-content:flex-end;border-top:1px solid var(--line);padding-top:10px"><button class="btn ghost">Cancel</button><button class="btn primary">Save hunt</button></div>
+          <span class="small muted">Right-aligned; Cancel then the one primary. A destructive primary is danger.</span>
+        </div>
+        <div class="card">
+          <div class="cap">Side panel · 300 330 376 398 560 → 2</div>
+          <div class="wbars">
+            <div class="wbar"><b>rail 376</b><i class="p" style="width:34%"></i></div>
+            <div class="wbar"><b>detail 560</b><i class="p" style="width:50%"></i></div>
+          </div>
+          <dl class="contract" style="margin-top:6px">
+            <dt>Rail</dt><dd>Home aside, monitor rail, span detail, flame graph. Max 34%.</dd>
+            <dt>Detail</dt><dd>Event detail and marks panel. Max 40%, r-xl, surface-2.</dd>
+            <dt>Sheet</dt><dd>One <code>&lt;Sheet side&gt;</code>; the unused <code>ui/sheet</code> and two custom sheets fold into it.</dd>
+            <dt>Confirm</dt><dd>In place, never a dialog: <code>&lt;Armed&gt;</code> for “Sure? Revoke” and the panel head.</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Layout and spacing</h2><p>37 bracketed max-widths and 199 bracketed spacings. Spacing moves to one ladder; odd steps live only inside primitives.</p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="cap">Gap ladder · uses today</div>
+          <div class="ladder" id="ladder"></div>
+        </div>
+        <div class="card">
+          <dl class="contract">
+            <dt>Header</dt><dd>40 px · <code>h-10</code> (unchanged)</dd>
+            <dt>Footer</dt><dd>28 px · hints xs</dd>
+            <dt>Pages</dt><dd>reading 820 (Home) · page 1040 (Repositories) · full (Hunt, Watch, boards, Settings, Access)</dd>
+            <dt>Gutters</dt><dd>page 24 · card 16 · panel 12 · row 8</dd>
+            <dt>Page title</dt><dd>xl 22 (20 today, 6 places)</dd>
+          </dl>
+          <span class="small muted">Repositories is 980 today and becomes 1040.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Icons and focus</h2><p>Lucide at three sizes with one stroke. One focus look on every control.</p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="today"><span class="cap">Today</span><span class="v">37 inline svgs</span><span class="v">strokes 1 · 1.3 · 1.4 · 1.5 · 1.6 · 1.7 · 1.75 · 1.8 · 1.9 · 2 · 2.2 · 3</span><span class="v">sizes 10 · 12 · 13 · 14 · 16</span></div>
+          <div class="icn">
+            <span><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>12 · xs, sm controls</span>
+            <span><svg width="14" height="14" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>14 · md, lg controls</span>
+            <span><svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>16 · header</span>
+          </div>
+          <span class="small muted">Stroke 2. Mark glyphs (deploy, flag, incident, note) stay custom at the same stroke.</span>
+        </div>
+        <div class="card">
+          <div class="today"><span class="cap">Today</span><span class="v">ring-1 ×3</span><span class="v">border plate ×5</span><span class="v">border ring ×2</span><span class="v">border white/25</span><span class="v">bg white/8 ×2</span><span class="v">outline-none ×78</span></div>
+          <div class="row"><button class="btn outline">Tab to me</button><span class="inp" style="width:200px"><input aria-label="Focus example" value="service:api"></span></div>
+          <dl class="contract">
+            <dt>Controls</dt><dd>1 px ring in <code>--ring</code>, focus-visible only.</dd>
+            <dt>Fields</dt><dd>Border lifts to fg 40%. Plate stays for selection and Live.</dd>
+            <dt>Rows</dt><dd>Menus and lists use the control fill, not a ring.</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Contrast</h2><p>WCAG ratio of each text colour on each dark surface. Small text needs 4.5.</p></header>
+      <div class="card scroll">
+        <table class="lint ctab" id="ctab"></table>
+      </div>
+      <span class="small muted">Today's faint text is zinc-500 or muted at 45–80% alpha (78 uses) and falls under 4.5. The proposed <code>faint</code> passes everywhere but on control. Debug's grey is a fill, not text.</span>
+    </div>
+
+    <div class="block">
+      <header><h2>Charts and the query bar</h2><p>One palette file. Today it is copied four times, and the copies disagree on the sixth colour.</p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="cap">chart-1 … chart-8 · dark</div>
+          <div class="pal8" id="pal8"></div>
+          <div class="today"><span class="cap">Copies</span><span class="v">histogram-series.ts</span><span class="v">plot-theme.ts (6th #e2e8f0)</span><span class="v">waterfall.ts</span><span class="v">flame.ts</span></div>
+          <dl class="contract">
+            <dt>Ticks</dt><dd>2xs 10.5; legend and hover xs 11.5 (9.5–13 today).</dd>
+            <dt>Light</dt><dd>Embeds keep their own light palette, read from the same file.</dd>
+            <dt>Exports</dt><dd>SVG and PNG stay dark.</dd>
+          </dl>
+        </div>
+        <div class="card">
+          <div class="cap">Query colours as tokens</div>
+          <div class="qline" id="qline"></div>
+          <dl class="contract">
+            <dt>key</dt><dd><code>--q-key</code> = muted</dd>
+            <dt>op</dt><dd><code>--q-op</code> = chart-2</dd>
+            <dt>string</dt><dd><code>--q-str</code> = chart-3</dd>
+            <dt>glob</dt><dd><code>--q-glob</code> = warn-fg</dd>
+            <dt>fault</dt><dd>wavy underline in <code>danger</code></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="block">
+      <header><h2>Numbers, time and words</h2><p>One formatter per kind. Board stats print 4.2k while chips print 4.25K.</p></header>
+      <div class="cols">
+        <div class="card scroll">
+          <table class="lint">
+            <thead><tr><th>Kind</th><th>Today</th><th>Proposed</th></tr></thead>
+            <tbody>
+              <tr><td>Count</td><td><code>formatCompactCount</code> 4.25K · <code>abbrevCount</code> 4.2k</td><td><code>formatCount</code> 4.25K · raw in Settings</td></tr>
+              <tr><td>Duration</td><td>10 helpers: <code>formatSpanShort</code>, <code>formatRun</code>, <code>formatOpenFor</code>…</td><td><code>formatDuration(ms, short | long | precise)</code></td></tr>
+              <tr><td>Elapsed</td><td><code>formatSearchElapsed</code> 1.2s · <code>formatLiveUpdatedAge</code> 4s</td><td>same, through <code>formatDuration</code></td></tr>
+              <tr><td>Time</td><td>compact · full; UTC</td><td>unchanged</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="cap">Terms in the UI</div>
+          <div class="terms"><span>hunt</span><span>saved hunt</span><span>board</span><span>panel</span><span>query</span><span>window<s>clock</s></span><span>input</span><span>Add to board</span><span>Edit panel</span></div>
+          <ul class="rules">
+            <li>Labels and short facts. A helper line only when an action does something unexpected.</li>
+            <li>Results in the past tense: Saved, Removed, Copied.</li>
+            <li>No internals in copy: no rollups, budgets or table names.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PALETTE ===================== -->
+  <section class="pane" id="palette" role="tabpanel" aria-labelledby="t-palette" hidden>
+    <div class="block">
+      <header><h2>Command palette</h2><p>Not in the app today. <kbd>⌘</kbd> <kbd>K</kbd> or <kbd>Ctrl</kbd> <kbd>K</kbd> opens it anywhere; <kbd>/</kbd> still focuses the query bar.</p></header>
+      <div class="palstage"><div id="palInline"></div></div>
+      <div class="row"><button class="btn outline" id="openPal">Open as overlay <kbd>⌘K</kbd></button><span class="small muted">Try <span class="mono">bill</span>, <span class="mono">live</span>, or a query like <span class="mono">status:5*</span>.</span></div>
+    </div>
+  </section>
+
+  <!-- ===================== AGENTS ===================== -->
+  <section class="pane" id="agents" role="tabpanel" aria-labelledby="t-agents" hidden>
+    <div class="block">
+      <header><h2>Tokens in <code>styles.css</code></h2><p>Added to the existing <code>@theme inline</code>. Tailwind names, so classes read <code>text-sm</code>, <code>rounded-lg</code>, <code>bg-surface-1</code>.</p></header>
+<pre class="code"><span class="k">@theme inline</span> {
+  <span class="c">/* type: 23 sizes → 7 */</span>
+  --text-2xs: 10.5px;  --text-xs: 11.5px;  --text-sm: 12.5px;  --text-base: 14px;
+  --text-lg: 17px;     --text-xl: 22px;    --text-display: 34px;
+  <span class="c">/* surfaces: 10 hexes → 5 */</span>
+  --color-ground: var(--background);  --color-surface-1: #0f0f11;  --color-surface-2: #131316;
+  --color-overlay: var(--popover);    --color-control: var(--secondary);
+  <span class="c">/* levels: 4 maps → 1 */</span>
+  --color-level-debug: #52525b;  --color-level-info: #0ea5e9;  --color-level-warn: #f59e0b;
+  --color-level-error: #ef4444;  --color-level-fatal: #fca5a5;
+  <span class="c">/* states */</span>
+  --color-danger: var(--destructive);  --color-warn: #f59e0b;  --color-ok: #10b981;  --color-info: #0ea5e9;
+  <span class="c">/* radius: sm 2.4, md 4.4, lg 6.4 exist; add xl */</span>
+  --radius-xl: 10px;
+  <span class="c">/* motion */</span>
+  --ease-out: cubic-bezier(.2, 0, 0, 1);  --duration-1: 90ms;  --duration-2: 150ms;  --duration-3: 220ms;
+}
+<span class="c">/* Button, Input, Chip: size xs 18 · sm 22 · md 26 (default) · lg 30 */</span></pre>
+      <span class="small muted">Overriding <code>text-xs</code> and <code>text-sm</code> moves the 63 named uses too; they migrate in the same change.</span>
+    </div>
+
+    <div class="block">
+      <header><h2>One Markdown page per component</h2><p><code>docs/ui/&lt;name&gt;.md</code>, linked from AGENTS.md. Short enough to read before every UI change.</p></header>
+<pre class="code"><span class="k"># Button</span>  <span class="c">src/ui/components/ui/button.tsx</span>
+
+One action. One primary per surface.
+
+<span class="k">## Props</span>
+variant  primary | secondary | outline | ghost | danger     (primary)
+size     xs 18 | sm 22 | md 26 | lg 30                      (md)
+busy     boolean · sets aria-busy, swallows clicks, keeps focus
+
+<span class="k">## Use</span>
+- Toolbars and dialog footers: md. Panel heads: icon (sm 22). In-row: xs.
+- A label that changes (Save hunt → Saved) is children; the width eases.
+
+<span class="k">## Do not</span>
+- Hand-build a &lt;button&gt; with h-[26px] and rounded-[7px]. Use size.
+- Use Button for on/off. That is Switch or Chip.
+- Disable while busy. Busy keeps focus; disabled drops it.
+
+<span class="k">## Keys and access</span>
+Enter, Space. Icon-only needs aria-label and a Tooltip.
+
+<span class="k">## Motion</span>
+Press 0.97 (--duration-1). Reduced motion: none.</pre>
+    </div>
+
+    <div class="block">
+      <header><h2>Lint, so it stays fixed</h2><p>A <code>bun test</code> check over <code>src/ui/components</code>, failing on new uses. Today's counts are the baseline it ratchets down from.</p></header>
+      <div class="card scroll">
+        <table class="lint">
+          <thead><tr><th>Pattern</th><th>Use instead</th><th style="text-align:right">Today</th></tr></thead>
+          <tbody>
+            <tr><td><code>text-[Npx]</code></td><td><code>text-2xs … text-display</code></td><td class="n">1,406</td></tr>
+            <tr><td><code>#rrggbb</code> outside chart palettes</td><td>surface, level and state tokens</td><td class="n">~320</td></tr>
+            <tr><td><code>text-red-400</code>, <code>bg-amber-500/20</code>…</td><td><code>text-danger</code>, <code>bg-warn/20</code>…</td><td class="n">431</td></tr>
+            <tr><td><code>rounded-[Npx]</code></td><td><code>rounded-sm|md|lg|xl|full</code></td><td class="n">321</td></tr>
+            <tr><td><code>&lt;button</code> with <code>h-[…]</code></td><td><code>&lt;Button size&gt;</code></td><td class="n">308 raw</td></tr>
+            <tr><td><code>&lt;input</code></td><td><code>&lt;Input&gt;</code></td><td class="n">76 raw</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <span class="small muted">Chart palettes stay hex: <code>histogram-series.ts</code>, <code>flame.ts</code>, <code>waterfall.ts</code> (about 40 uses).</span>
+    </div>
+  </section>
+</div>
+</main>
+
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+  const fmt = (n) => n.toLocaleString("en-US");
+  const icon = {
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+    hunt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 10h16"/></svg>',
+    board: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg>',
+    go: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>',
+    act: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 5 5 9-10"/></svg>',
+    bad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 3.5v.5"/></svg>',
+  };
+
+  /* ---------- deltas ---------- */
+  const deltas = [
+    ["23", "7", "font sizes"], ["10", "5", "surface colours"], ["20", "5", "corner radii"],
+    ["11", "4", "control heights"], ["4", "1", "level colour maps"], ["32", "26", "Button default height, px"],
+  ];
+  $("#deltas").innerHTML = deltas.map(([a, b, l]) => `<div class="delta"><b><s>${a}</s> → ${b}</b><span>${l}</span></div>`).join("");
+
+  /* ---------- type ---------- */
+  const today = [[8,3],[9,4],[9.5,13],[10,46],[10.5,142],[11,178],[11.5,207],[12,379],[12.5,188],[13,158],[13.5,37],[14,15],[14.5,1],[15,8],[16,3],[17,6],[18,1],[20,11],[22,2],[24,1],[26,1],[34,1],[40,1]];
+  const steps = [
+    { name: "2xs", px: 10.5, role: "kbd, axis ticks, level badges", from: [8,9,9.5,10,10.5], s: "UTC · 1m bars" },
+    { name: "xs", px: 11.5, role: "meta, counts, timestamps", from: [11,11.5], s: "14:02:11.384 · 1.24K" },
+    { name: "sm", px: 12.5, role: "default UI: controls, table, menus, query", from: [12,12.5,13], s: "level:error service:api" },
+    { name: "base", px: 14, role: "reading text, dialog body", from: [13.5,14,14.5,15], s: "Board inputs are off while you edit." },
+    { name: "lg", px: 17, role: "dialog and section titles", from: [16,17,18], s: "Add to board" },
+    { name: "xl", px: 22, role: "page titles", from: [20,22,24], s: "Watch" },
+    { name: "display", px: 34, role: "one big number", from: [26,34,40], s: "3.04M" },
+  ];
+  const max = Math.max(...today.map((t) => t[1]));
+  $("#typeToday").innerHTML = today.map(([px, n]) =>
+    `<div class="trow" data-px="${px}"><span class="px">${px}px</span><span class="sample" style="font-size:${px}px">level:error service:api</span><span class="n">${n}</span></div>`).join("");
+  $("#typeNew").innerHTML = steps.map((s) => {
+    const n = today.filter((t) => s.from.includes(t[0])).reduce((a, t) => a + t[1], 0);
+    return `<div class="nrow" tabindex="0" data-from="${s.from.join(",")}"><span class="tok">text-${s.name}<small>${s.px}px · ${fmt(n)}</small></span>
+      <span class="spec"><span class="s" style="font-size:${s.px}px">${s.s}</span><span class="r">${s.role} · from ${s.from.join(", ")}</span>
+      <span class="bar-n"><i style="width:${Math.max(2, (n / 725) * 100)}%"></i></span></span></div>`;
+  }).join("");
+  const rows = $$("#typeToday .trow");
+  $$("#typeNew .nrow").forEach((el) => {
+    const on = () => { const f = el.dataset.from.split(",").map(Number); rows.forEach((r) => { const hit = f.includes(Number(r.dataset.px)); r.classList.toggle("hit", hit); r.classList.toggle("dim", !hit); }); };
+    const off = () => rows.forEach((r) => r.classList.remove("hit", "dim"));
+    el.addEventListener("mouseenter", on); el.addEventListener("focus", on);
+    el.addEventListener("mouseleave", off); el.addEventListener("blur", off);
+  });
+
+  /* ---------- surfaces ---------- */
+  const surf = [
+    { tok: "ground", v: "--ground", role: "the page", from: [["#09090b", 2]], note: "--background" },
+    { tok: "surface-1", v: "--s1", role: "bands, wells, plot ground", from: [["#0d0d0f", 38], ["#0f0f11", 29]] },
+    { tok: "surface-2", v: "--s2", role: "a card on a page, chip, table head", from: [["#121214", 8], ["#131316", 29], ["#141416", 5], ["#141417", 1]] },
+    { tok: "overlay", v: "--overlay", role: "menu, popover, dialog, tooltip", from: [["#18181b", 43], ["#1f1f23", 4]], note: "--popover" },
+    { tok: "control", v: "--control", role: "secondary fill, selected row", from: [["#27272a", 13]], note: "--secondary" },
+  ];
+  $("#surf").innerHTML = surf.map((s) => `<div class="sw"><span class="chipbox" style="background:var(${s.v})"></span><span class="meta">
+    <b>${s.tok} ${s.note ? `<em>= ${s.note}</em>` : ""}</b><span class="small muted">${s.role}</span>
+    <span class="from">${s.from.map(([h, n]) => `<span><i style="background:${h}"></i>${h} · ${n}</span>`).join("")}</span></span></div>`).join("");
+
+  /* ---------- levels + states ---------- */
+  const lv = ["debug", "info", "warn", "error", "fatal"];
+  $("#levels").innerHTML = lv.map((l) => `<tr><td class="mono">${l}</td><td><span class="fill" style="background:var(--lv-${l})"></span></td>
+    <td><span class="rail" style="background:${l === "debug" || l === "info" ? "transparent;outline:1px dashed var(--line)" : `var(--lv-${l})`}"></span></td>
+    <td><span class="badge b-${l}">${l}</span></td><td class="mono small muted">level-${l}</td></tr>`).join("");
+  const states = [
+    { tok: "danger", v: "--danger", role: "errors, Remove, monitor down", from: "red · 129" },
+    { tok: "warn", v: "--warn", role: "degraded, refused, held", from: "amber · 125" },
+    { tok: "ok", v: "--ok", role: "up, sent, checked", from: "emerald" },
+    { tok: "info", v: "--info", role: "info level, links", from: "sky" },
+    { tok: "plate", v: "--plate", role: "the one accent: selection, Live, focus of attention", from: "--plate · unchanged" },
+  ];
+  $("#states").innerHTML = states.map((s) => `<div class="sw"><span class="chipbox" style="background:var(${s.v})"></span><span class="meta"><b>${s.tok}</b><span class="small muted">${s.role}</span><span class="from"><span>${s.from}</span></span></span></div>`).join("");
+
+  /* ---------- radii ---------- */
+  const radii = [
+    { n: "sm", v: "--r-sm", px: "2.4", role: "kbd, marks, level badge", from: "1, 2, 2.4, 3, 3.4" },
+    { n: "md", v: "--r-md", px: "4.4", role: "controls: button, input, chip", from: "4, 4.4, 5, 6, bare rounded" },
+    { n: "lg", v: "--r-lg", px: "6.4", role: "cards, panels, menus", from: "6.4, 7, 8" },
+    { n: "xl", v: "--r-xl", px: "10", role: "dialogs, sheets, palette", from: "10, 12" },
+    { n: "full", v: "", px: "", role: "pills, dots, switch", from: "rounded-full" },
+  ];
+  $("#radii").innerHTML = radii.map((r) => `<div class="rad"><div class="box" style="border-radius:${r.v ? `var(${r.v})` : "999px"}"></div>
+    <b>rounded-${r.n}${r.px ? ` · ${r.px}` : ""}</b><span>${r.role}</span><span class="mono" style="color:var(--faint);font-size:var(--t-2xs)">from ${r.from}</span></div>`).join("");
+
+  /* ---------- heights ---------- */
+  const hs = [
+    { n: "xs", px: 18, from: "18, 20", use: "in a row: badge, count, row action" },
+    { n: "sm", px: 22, from: "22, 24, 25", use: "panel head icons, chips, segmented" },
+    { n: "md", px: 26, from: "26, 28", use: "toolbars, dialog fields (default)" },
+    { n: "lg", px: 30, from: "30, 32, 34, 36", use: "query bar, dialog footer" },
+  ];
+  $("#heights").innerHTML = hs.map((h) => `<div class="hrow"><span class="k"><b>${h.n} · ${h.px}</b><span>from ${h.from}</span></span><span class="v">
+    <button class="btn outline ${h.n === "md" ? "" : h.n}">Button</button>
+    <span class="inp" style="height:${h.px}px;width:150px;border-radius:var(${h.n === "lg" ? "--r-lg" : h.n === "xs" ? "--r-sm" : "--r-md"})"><input aria-label="Example ${h.n}" value="service:api" style="font-size:${h.n === "xs" || h.n === "sm" ? "var(--t-xs)" : "var(--t-sm)"}"></span>
+    <span class="small muted">${h.use}</span></span></div>`).join("");
+
+  /* ---------- motion demo ---------- */
+  const md = [["--d1", "90ms", "press"], ["--d2", "150ms", "colour, fade, menus"], ["--d3", "220ms", "slide, width"]];
+  $("#motionDemo").innerHTML = md.map(([v, ms, u]) => `<div class="row" style="flex-wrap:nowrap"><span class="mono small" style="width:96px;flex:none">${v} ${ms}</span><div class="track" style="flex:1;--dur:var(${v})"><i></i></div><span class="small muted" style="width:130px;flex:none">${u}</span></div>`).join("") +
+    `<div class="row"><button class="btn outline sm" id="playM">Play</button><span class="small muted">curve <span class="mono">cubic-bezier(.2, 0, 0, 1)</span></span></div>`;
+  $("#playM").addEventListener("click", () => $$("#motionDemo .track").forEach((t) => { t.style.setProperty("--w", t.clientWidth + "px"); t.classList.toggle("go"); }));
+
+  /* ---------- sheet tabs, mode, motion ---------- */
+  /* ---------- patterns ---------- */
+  const pd = [["6", "1", "refused renderings"], ["8", "1", "empty-state shells"], ["2", "1", "panel builds"], ["8", "3", "dialog widths"],
+    ["5", "2", "side panel widths"], ["8", "1", "focus styles"], ["10", "1", "duration formatters"], ["4", "1", "chart palette copies"]];
+  $("#pdeltas").innerHTML = pd.map(([a, b, l]) => `<div class="delta"><b><s>${a}</s> → ${b}</b><span>${l}</span></div>`).join("");
+
+  const hrows = [["13:18:33", "error", "POST /v1/charge 502 upstream timeout"], ["13:18:32", "error", "invoice PDF render failed"], ["13:18:32", "warn", "retry 2/3 billing-db pool exhausted"], ["13:18:31", "error", "stripe webhook 409"], ["13:18:30", "fatal", "worker exited: out of memory"]];
+  const rowsHtml = hrows.map(([t, l, m]) =>
+    `<div class="evt"><span class="rail" style="height:16px;background:${l === "info" ? "transparent" : `var(--lv-${l})`}"></span><span class="ts">${t}</span><span class="badge b-${l}">${l}</span><span class="msg">${m}</span></div>`).join("");
+  const spinI = '<span class="spin" aria-hidden="true"></span>';
+  const ageI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>';
+  const ST = {
+    idle: { l: "Done", right: '<span class="mono small muted">38 ms</span>', head: "<b>4.25K</b><span class=\"muted\">matching</span>", body: `<div class="hrows">${rowsHtml}</div>` },
+    busy: { l: "Searching", prog: 1, dim: 1, right: `<span class="pill">${spinI}<span>Searching… <span class="mono">1.2s</span></span><button class="btn ghost xs">Stop</button></span>`, head: "<b>4.25K</b><span class=\"muted\">matching</span>" },
+    slow: { l: "Slow", prog: 1, dim: 1, right: `<span class="pill slow">${spinI}<span>Searching… <span class="mono">6.4s</span></span><span class="hint">narrow the window or add a service: filter</span><button class="btn ghost xs">Stop</button></span>`, head: "<b>4.25K</b><span class=\"muted\">matching</span>" },
+    refused: { l: "Refused", right: "", head: '<b class="muted">—</b><span class="why">too wide to count · narrow the window or add a service: filter</span>',
+      body: '<div class="estate warn"><b>Too wide to count</b><span>Narrow the window or add a service: filter.</span></div>' },
+    range: { l: "Quiet range", right: '<span class="mono small muted">21 ms</span>', head: "<b>0</b><span class=\"muted\">matching</span>",
+      body: '<div class="estate"><b>No events in this range.</b><span>Widen the range or clear filters.</span><button class="btn outline">Clear query</button></div>' },
+    never: { l: "Nothing yet", right: "", head: "<b>0</b><span class=\"muted\">matching</span>",
+      body: '<div class="estate"><b>No events ingested yet.</b><span>POST to <code>/api/ingest</code>, <code>/v1/logs</code>, or syslog UDP 5514.</span></div>' },
+    live: { l: "Live, late", right: "", head: `<b>4.31K</b><span class="muted">matching</span><span class="age late" title="Counts refresh every 30s in Live">${ageI}41s</span>` },
+    down: { l: "Outage", band: 1, right: "", head: "<b>4.25K</b><span class=\"muted\">matching</span>" },
+  };
+  $("#stPick").innerHTML = Object.entries(ST).map(([k, s]) => `<button type="button" data-v="${k}" aria-pressed="false">${s.l}</button>`).join("");
+  function setSt(k) {
+    const s = ST[k] || ST.idle;
+    $$("#stPick button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === k)));
+    $("#hRight").innerHTML = s.right; $("#hProg").hidden = !s.prog; $("#hBand").hidden = !s.band;
+    $("#hHead").innerHTML = s.head;
+    $("#hBody").innerHTML = s.body || `<div class="hrows${s.dim ? " dim" : ""}">${rowsHtml}</div>`;
+    store.set("ds-st", k);
+  }
+  $$("#stPick button").forEach((b) => b.addEventListener("click", () => setSt(b.dataset.v)));
+  setSt(store.get("ds-st") || "busy");
+
+  const dots = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
+  const ph = $("#pnlHead");
+  function pnlIdle() {
+    ph.classList.remove("armed");
+    ph.innerHTML = `<span class="tt">errors</span><span class="wl">level:error service:billing</span><span class="vv">4.25K matching</span>
+      <span class="menuwrap"><button class="btn icon" id="pMore" aria-haspopup="menu" aria-expanded="false" aria-label="Panel menu">${dots}</button>
+      <div class="menu" role="menu" hidden id="pMenu"><button role="menuitem" tabindex="-1">Open as hunt</button><button role="menuitem" tabindex="-1">Edit panel</button><button role="menuitem" tabindex="-1">Duplicate</button><div class="sep" role="separator"></div><button role="menuitem" tabindex="-1" class="bad" id="pRm">Remove</button></div></span>`;
+    const pm = $("#pMenu"), pb = $("#pMore"), its = $$('[role="menuitem"]', pm);
+    const close = () => { pm.hidden = true; pb.setAttribute("aria-expanded", "false"); };
+    pb.addEventListener("click", () => { pm.hidden = !pm.hidden; pb.setAttribute("aria-expanded", String(!pm.hidden)); if (!pm.hidden) its[0].focus(); });
+    pm.addEventListener("keydown", (e) => {
+      const i = its.indexOf(document.activeElement);
+      if (e.key === "ArrowDown") { e.preventDefault(); its[(i + 1) % its.length].focus(); }
+      if (e.key === "ArrowUp") { e.preventDefault(); its[(i - 1 + its.length) % its.length].focus(); }
+      if (e.key === "Escape") { close(); pb.focus(); }
+    });
+    its.forEach((it) => it.addEventListener("click", () => { close(); if (it.id === "pRm") pnlArm(); else toast("ok", it.textContent === "Duplicate" ? "Duplicated panel" : it.textContent, "errors"); }));
+    document.addEventListener("pointerdown", (e) => { if (!pm.hidden && !pm.parentElement.contains(e.target)) close(); });
+  }
+  function pnlArm() {
+    ph.classList.add("armed");
+    ph.innerHTML = `<span class="tt">Remove errors?</span><span style="flex:1"></span><button class="btn sm dangerq" id="pYes">Remove</button><button class="btn sm outline" id="pNo">Cancel</button>`;
+    $("#pNo").focus();
+    $("#pNo").addEventListener("click", pnlIdle);
+    $("#pYes").addEventListener("click", () => { toast("ok", "Removed panel", "errors"); pnlIdle(); });
+    ph.addEventListener("keydown", function k(e) { if (e.key === "Escape") { ph.removeEventListener("keydown", k); pnlIdle(); } });
+  }
+  pnlIdle();
+
+  const lad = [["0.5", 2, 40], ["1", 4, 64], ["1.5", 6, 146], ["2", 8, 204], ["2.5", 10, 85, 1], ["3", 12, 72], ["3.5", 14, 31, 1], ["4", 16, 20], ["6", 24, 0], ["[Npx]", 0, 199, 1]];
+  $("#ladder").innerHTML = lad.map(([k, px, n, off]) => `<div class="lrow"><span class="tk${off ? " off" : ""}">gap-${k}${px ? ` · ${px}` : ""}</span><span class="bx">${px ? `<i style="width:${px * 4}px"></i>` : ""}</span><span class="n">${n}</span></div>`).join("");
+
+  const lum = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const bgs = [["ground", "#09090b"], ["surface-1", "#0f0f11"], ["surface-2", "#131316"], ["overlay", "#18181b"], ["control", "#27272a"]];
+  const fgs = [["fg", "#fafafa"], ["muted", "#a1a1aa"], ["faint today · zinc-500", "#71717a"], ["muted at 60% (≈)", "#64646a"], ["faint proposed", "#84848e"], ["plate", "#e7e1d3"], ["danger-fg", "#f87171"], ["warn-fg", "#fbbf24"], ["info-fg", "#38bdf8"], ["ok-fg", "#34d399"]];
+  $("#ctab").innerHTML = `<thead><tr><th>Text</th>${bgs.map(([n]) => `<th style="text-align:right">${n}</th>`).join("")}</tr></thead><tbody>` +
+    fgs.map(([n, c]) => `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};margin-right:6px;vertical-align:-1px"></span>${n}</td>${bgs.map(([, b]) => { const r = ratio(c, b); return `<td class="n ${r >= 4.5 ? "ok" : "no"}">${r.toFixed(1)}</td>`; }).join("")}</tr>`).join("") + "</tbody>";
+
+  const P8 = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#94a3b8", "#c084fc", "#2dd4bf"];
+  $("#pal8").innerHTML = P8.map((c, i) => `<span title="chart-${i + 1} ${c}" style="background:${c}"></span>`).join("");
+  $("#qline").innerHTML = `<span style="color:var(--muted)">level</span><span>:error </span><span style="color:${P8[1]}">-</span><span style="color:var(--muted)">service</span><span>:billing </span><span style="color:${P8[1]}">OR</span> <span style="color:var(--muted)">status</span><span>:</span><span style="color:var(--warn-fg)">5*</span> <span style="color:var(--muted)">message</span><span>:</span><span style="color:${P8[2]}">"card declined"</span> <span style="text-decoration:underline wavy var(--danger);text-underline-offset:3px"><span style="color:var(--muted)">sevrity</span>:high</span>`;
+
+  /* ---------- real screens ---------- */
+  const SCR = [
+    { id: "home", l: "Home", d: 4.3, n: "" },
+    { id: "hunt", l: "Hunt", d: 9.8, n: "Table, facets and plot keep their layout. Save ▾ is one height again once Button stops overriding it." },
+    { id: "board", l: "Board", d: 6.8, n: "" },
+    { id: "watch", l: "Watch", d: 2.7, n: "" },
+    { id: "access", l: "Access", d: 6.0, n: "" },
+    { id: "settings", l: "Settings", d: 6.5, n: "Save buttons are md 26; they were 32." },
+  ];
+  const cut = (v) => { $("#wipe").style.setProperty("--cut", v + "%"); };
+  function pickScr(id) {
+    const s = SCR.find((x) => x.id === id) || SCR[1];
+    $$("#scrPick button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === s.id)));
+    $("#imgToday").src = `design-system/${s.id}-today.webp`;
+    $("#imgNew").src = `design-system/${s.id}-proposed.webp`;
+    $("#scrDiff").textContent = `${s.d}% of pixels changed`;
+    $("#scrNote").textContent = s.n;
+    store.set("ds-scr", s.id);
+  }
+  $("#scrPick").innerHTML = SCR.map((s) => `<button type="button" data-v="${s.id}" aria-pressed="false">${s.l}</button>`).join("");
+  $$("#scrPick button").forEach((b) => b.addEventListener("click", () => pickScr(b.dataset.v)));
+  $("#wipeR").addEventListener("input", (e) => cut(e.target.value));
+  pickScr(store.get("ds-scr") || "hunt");
+  cut(50);
+
+  const panes = ["tokens", "screens", "components", "patterns", "palette", "agents"];
+  function show(id) {
+    if (!panes.includes(id)) id = "tokens";
+    panes.forEach((p) => { $("#" + p).hidden = p !== id; $("#t-" + p).setAttribute("aria-selected", String(p === id)); });
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+    store.set("ds-tab", id);
+    if (id === "components") placeInd();
+  }
+  panes.forEach((p) => $("#t-" + p).addEventListener("click", () => show(p)));
+  $$(".tabs .tab").forEach((t, i, all) => t.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const n = all[(i + (e.key === "ArrowRight" ? 1 : all.length - 1)) % all.length]; n.focus(); n.click();
+  }));
+  function seg(id, attrTarget, attr, key, def) {
+    const btns = $$("#" + id + " button");
+    const set = (v) => { btns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === v))); attrTarget.setAttribute(attr, v); store.set(key, v); };
+    btns.forEach((b) => b.addEventListener("click", () => set(b.dataset.v)));
+    set(store.get(key) || def);
+  }
+  seg("mode", document.body, "data-mode", "ds-mode", "new");
+  seg("motion", document.documentElement, "data-motion", "ds-motion",
+    matchMedia("(prefers-reduced-motion: reduce)").matches ? "reduced" : "full");
+
+  /* ---------- segmented in toolbar ---------- */
+  $$(".tb .seg").forEach((sg) => $$("button", sg).forEach((b) => b.addEventListener("click", () => $$("button", sg).forEach((x) => x.setAttribute("aria-pressed", String(x === b))))));
+
+  /* ---------- label morph ---------- */
+  function morph(btn, text) {
+    const lbl = $(".lbl", btn);
+    const from = btn.getBoundingClientRect().width;
+    lbl.classList.add("swap");
+    const reduced = document.documentElement.dataset.motion === "reduced";
+    setTimeout(() => {
+      lbl.textContent = text;
+      btn.style.width = "";
+      const to = btn.getBoundingClientRect().width;
+      btn.style.width = from + "px";
+      requestAnimationFrame(() => { btn.style.width = to + "px"; lbl.classList.remove("swap"); });
+      setTimeout(() => { btn.style.width = ""; }, 260);
+    }, reduced ? 0 : 120);
+  }
+  const save = $("#saveBtn");
+  save.addEventListener("click", () => {
+    if (save.dataset.s === "saved") { morph(save, "Save hunt"); save.dataset.s = ""; return; }
+    morph(save, "Saved"); save.dataset.s = "saved";
+  });
+  const busy = $("#busyBtn");
+  busy.addEventListener("click", () => {
+    if (busy.getAttribute("aria-busy") === "true") return;
+    busy.setAttribute("aria-busy", "true");
+    busy.insertAdjacentHTML("afterbegin", '<span class="spin" aria-hidden="true"></span>');
+    morph(busy, "Checking");
+    setTimeout(() => { $(".spin", busy)?.remove(); busy.removeAttribute("aria-busy"); morph(busy, "Up · 212 ms"); setTimeout(() => morph(busy, "Check now"), 2200); }, 1400);
+  });
+
+  /* ---------- query field ---------- */
+  const qf = $("#qf"), qwrap = $("#qwrap"), qms = $("#qms");
+  qf.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const bad = qf.value.split(/\s+/).find((t) => /^[a-z_.]+:/i.test(t) && !/^(level|service|host|status|duration_ms|trace_id|path|client_ip|severity|region):/i.test(t));
+      qwrap.classList.toggle("bad", !!bad);
+      $("#qerr").textContent = bad ? "Unknown field " + bad.split(":")[0] : "";
+      qms.hidden = !!bad;
+      if (!bad) qms.textContent = (20 + Math.round(Math.random() * 40)) + " ms";
+    } else if (e.key === "Escape") { qf.blur(); }
+  });
+  qf.addEventListener("input", () => { qms.hidden = true; });
+  document.addEventListener("keydown", (e) => {
+    const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || "");
+    if (e.key === "/" && !typing && !$("#components").hidden) { e.preventDefault(); qf.focus(); qf.select(); }
+  });
+
+  /* ---------- chips ---------- */
+  const chips = $$("#chips .chip");
+  const writeQ = () => {
+    const on = chips.filter((c) => c.getAttribute("aria-pressed") === "true").map((c) => "level:" + c.firstChild.nextSibling.textContent.trim());
+    $("#chipq").textContent = on.length === 0 ? "(no level filter)" : on.length === 1 ? on[0] : "(" + on.join(" OR ") + ")";
+  };
+  chips.forEach((c) => c.addEventListener("click", () => { c.setAttribute("aria-pressed", String(c.getAttribute("aria-pressed") !== "true")); writeQ(); }));
+  writeQ();
+
+  /* ---------- event rows ---------- */
+  const evs = [["14:02:11.384", "error", "POST /v1/charge 502 upstream timeout"], ["14:02:11.120", "warn", "retry 2/3 billing-db pool exhausted"], ["14:02:10.977", "info", "GET /health 200 3ms"], ["14:02:10.501", "fatal", "worker exited: out of memory"]];
+  $("#evts").innerHTML = evs.map(([t, l, m]) => `<div class="evt"><span class="rail" style="height:16px;background:${l === "info" ? "transparent" : `var(--lv-${l})`}"></span><span class="ts">${t}</span><span class="badge b-${l}">${l}</span><span class="msg">${m}</span></div>`).join("");
+
+  /* ---------- workspace tabs ---------- */
+  const wt = $$("#wtabs .wtab"), ind = $("#ind");
+  function placeInd() {
+    const a = wt.find((t) => t.getAttribute("aria-selected") === "true");
+    if (!a || !a.offsetWidth) return;
+    ind.style.width = a.offsetWidth - 16 + "px";
+    ind.style.transform = `translateX(${a.offsetLeft + 8}px)`;
+  }
+  function selectW(t) { wt.forEach((x) => { x.setAttribute("aria-selected", String(x === t)); x.tabIndex = x === t ? 0 : -1; }); placeInd(); }
+  wt.forEach((t, i) => {
+    t.addEventListener("click", () => selectW(t));
+    t.addEventListener("keydown", (e) => {
+      let j = null;
+      if (e.key === "ArrowRight") j = (i + 1) % wt.length;
+      if (e.key === "ArrowLeft") j = (i - 1 + wt.length) % wt.length;
+      if (e.key === "Home") j = 0;
+      if (e.key === "End") j = wt.length - 1;
+      if (j !== null) { e.preventDefault(); wt[j].focus(); selectW(wt[j]); }
+    });
+  });
+  addEventListener("resize", placeInd);
+
+  /* ---------- switch ---------- */
+  const sw = $("#liveSw"), swb = $("button", sw);
+  let liveT = null, age = 0;
+  swb.addEventListener("click", (e) => {
+    e.preventDefault();
+    const on = swb.getAttribute("aria-checked") !== "true";
+    swb.setAttribute("aria-checked", String(on)); sw.classList.toggle("live-on", on);
+    clearInterval(liveT); age = 0; $("#liveAge").textContent = on ? "polling every 2s" : "";
+    if (on) liveT = setInterval(() => { age = (age + 1) % 3; $("#liveAge").textContent = age === 2 ? "updated 4s ago" : "polling every 2s"; }, 2000);
+  });
+
+  /* ---------- panel bars ---------- */
+  const pb = $("#pbars");
+  pb.innerHTML = Array.from({ length: 36 }, (_, i) => { const h = 18 + Math.round(40 * Math.abs(Math.sin(i * 0.7) * Math.cos(i * 0.21))); return `<i class="${i === 23 || i === 24 ? "e" : ""}" style="height:${i === 23 || i === 24 ? 46 : h}px"></i>`; }).join("");
+
+  /* ---------- menu ---------- */
+  const mb = $("#moreBtn"), mm = $("#moreMenu"), items = $$('[role="menuitem"]', mm);
+  function openMenu(focusIdx) { mm.hidden = false; mb.setAttribute("aria-expanded", "true"); hideTip(); items[focusIdx ?? 0].focus(); }
+  function closeMenu(ret) { mm.hidden = true; mb.setAttribute("aria-expanded", "false"); if (ret) mb.focus(); }
+  mb.addEventListener("click", () => (mm.hidden ? openMenu(0) : closeMenu(true)));
+  mb.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { e.preventDefault(); openMenu(0); } if (e.key === "ArrowUp") { e.preventDefault(); openMenu(items.length - 1); } });
+  mm.addEventListener("keydown", (e) => {
+    const i = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    if (e.key === "Home") { e.preventDefault(); items[0].focus(); }
+    if (e.key === "End") { e.preventDefault(); items[items.length - 1].focus(); }
+    if (e.key === "Escape" || e.key === "Tab") { e.preventDefault(); closeMenu(true); }
+  });
+  items.forEach((it) => it.addEventListener("click", () => {
+    closeMenu(true);
+    const t = it.textContent.trim().replace("…", "");
+    toast(it.classList.contains("bad") ? "bad" : "ok", t === "Remove" ? "Removed panel" : t === "Duplicate" ? "Duplicated panel" : t === "Copy" ? "Copied panel" : t, "errors by service");
+  }));
+  document.addEventListener("pointerdown", (e) => { if (!mm.hidden && !mm.contains(e.target) && e.target !== mb && !mb.contains(e.target)) closeMenu(false); });
+
+  /* ---------- tooltip ---------- */
+  const tip = $("#tip"); let tipT = null;
+  function showTip(el) {
+    clearTimeout(tipT);
+    tipT = setTimeout(() => {
+      if (el.getAttribute("aria-expanded") === "true") return;
+      tip.textContent = el.dataset.tip;
+      const r = el.getBoundingClientRect();
+      tip.style.left = Math.min(innerWidth - 120, Math.max(8, r.left + r.width / 2 - 30)) + "px";
+      tip.style.top = r.bottom + 6 + "px";
+      tip.classList.add("on");
+    }, 400);
+  }
+  function hideTip() { clearTimeout(tipT); tip.classList.remove("on"); }
+  $$("[data-tip]").forEach((el) => { el.addEventListener("mouseenter", () => showTip(el)); el.addEventListener("focus", () => showTip(el)); el.addEventListener("mouseleave", hideTip); el.addEventListener("blur", hideTip); });
+
+  /* ---------- toasts ---------- */
+  const tz = $("#toasts"); let stack = []; let fanned = false;
+  function layout() {
+    stack.forEach((t, i) => {
+      const y = fanned ? i * (t.offsetHeight + 6) : i * 8;
+      const s = fanned ? 1 : 1 - i * 0.05;
+      t.style.transform = `translateY(${y}px) scale(${s})`;
+      t.style.opacity = i > 2 ? "0" : "1";
+      t.style.zIndex = String(10 - i);
+    });
+    tz.style.height = fanned && stack[0] ? stack.slice(0, 3).reduce((a, t) => a + t.offsetHeight + 6, 0) + "px" : (stack[0]?.offsetHeight || 0) + 16 + "px";
+  }
+  function toast(kind, text, sub) {
+    const t = document.createElement("div");
+    t.className = "toast " + kind; t.setAttribute("role", "status");
+    t.innerHTML = (kind === "ok" ? icon.ok : icon.bad) + `<span>${text}</span>` + (sub ? `<span class="sub">${sub}</span>` : "");
+    t.style.transform = "translateY(-12px)"; t.style.opacity = "0";
+    tz.prepend(t); stack.unshift(t);
+    requestAnimationFrame(() => requestAnimationFrame(layout));
+    setTimeout(() => { if (fanned) { t.dataset.exp = "1"; return; } drop(t); }, 4000);
+  }
+  function drop(t) { t.style.opacity = "0"; stack = stack.filter((x) => x !== t); layout(); setTimeout(() => t.remove(), 260); }
+  tz.addEventListener("mouseenter", () => { fanned = true; layout(); });
+  tz.addEventListener("mouseleave", () => { fanned = false; stack.filter((t) => t.dataset.exp).forEach(drop); layout(); });
+  $$("[data-toast]").forEach((b) => b.addEventListener("click", () => { const [k, t, s] = b.dataset.toast.split("|"); toast(k, t, s); }));
+
+  /* ---------- command palette ---------- */
+  const DATA = [
+    { g: "Saved hunts", i: "hunt", l: "checkout 5xx", q: "service:checkout status:5*" },
+    { g: "Saved hunts", i: "hunt", l: "billing p99 over 800 ms", q: "service:billing duration_ms:>800" },
+    { g: "Saved hunts", i: "hunt", l: "login failures", q: "service:auth message:\"login failed\"" },
+    { g: "Boards", i: "board", l: "billing on call", q: "4 panels · host" },
+    { g: "Boards", i: "board", l: "edge latency", q: "6 panels · region" },
+    { g: "Go to", i: "go", l: "Home", k: ["g", "h"] },
+    { g: "Go to", i: "go", l: "Hunt", k: ["g", "s"] },
+    { g: "Go to", i: "go", l: "Watch", k: ["g", "w"] },
+    { g: "Go to", i: "go", l: "Access" },
+    { g: "Go to", i: "go", l: "Settings" },
+    { g: "Go to", i: "go", l: "Fields" },
+    { g: "Actions", i: "act", l: "New hunt tab" },
+    { g: "Actions", i: "act", l: "Turn Live on" },
+    { g: "Actions", i: "act", l: "Copy link to this hunt" },
+    { g: "Actions", i: "act", l: "Add to board…" },
+    { g: "Actions", i: "act", l: "Save hunt", k: ["⌘", "S"] },
+  ];
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function hl(text, q) {
+    if (!q) return esc(text);
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    return i < 0 ? esc(text) : esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length));
+  }
+  function buildPalette(host, onClose) {
+    host.innerHTML = `<div class="pal" role="dialog" aria-label="Command palette">
+      <div class="pin">${icon.search}<input type="text" placeholder="Go to, run, or type a query" aria-label="Command" role="combobox" aria-expanded="true" aria-autocomplete="list" spellcheck="false" autocomplete="off"><kbd>esc</kbd></div>
+      <div class="list" role="listbox"></div>
+      <div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> run</span><span><kbd>esc</kbd> close</span><span style="margin-left:auto">Toposcope</span></div></div>`;
+    const inp = $("input", host), list = $(".list", host);
+    const lid = "pl" + Math.random().toString(36).slice(2, 7);
+    list.id = lid; inp.setAttribute("aria-controls", lid);
+    let sel = 0, opts = [];
+    function render() {
+      const q = inp.value.trim();
+      const looksQuery = /[a-z_.]+:\S/i.test(q);
+      let items = DATA.filter((d) => !q || looksQuery ? !q || (d.q || "").toLowerCase().includes(q.toLowerCase()) || d.l.toLowerCase().includes(q.toLowerCase()) : (d.l + " " + (d.q || "")).toLowerCase().includes(q.toLowerCase()));
+      if (looksQuery) items = [{ g: "Search", i: "search", l: "Hunt for", q, run: true }].concat(items);
+      else if (q) items = items.concat([{ g: "Search", i: "search", l: "Hunt for", q, run: true }]);
+      opts = items; sel = Math.min(sel, Math.max(0, items.length - 1));
+      let html = "", g = null;
+      items.forEach((d, i) => {
+        if (d.g !== g) { g = d.g; html += `<div class="grp" role="presentation">${g}</div>`; }
+        const id = lid + "-" + i;
+        html += `<div class="opt" role="option" id="${id}" data-i="${i}" aria-selected="${i === sel}">${icon[d.i]}<span class="lab">${d.run ? d.l : hl(d.l, q)}</span>${d.q ? `<span class="q">${d.run ? esc(d.q) : hl(d.q, q)}</span>` : '<span style="flex:1"></span>'}${d.k ? `<span class="r">${d.k.map((k) => `<kbd>${k}</kbd>`).join("")}</span>` : ""}</div>`;
+      });
+      list.innerHTML = html || `<div class="empty">Nothing matches “${esc(q)}”.</div>`;
+      inp.setAttribute("aria-activedescendant", items.length ? lid + "-" + sel : "");
+      $$(".opt", list).forEach((o) => {
+        o.addEventListener("mousemove", () => { if (sel !== +o.dataset.i) { sel = +o.dataset.i; mark(); } });
+        o.addEventListener("click", () => run(opts[+o.dataset.i]));
+      });
+    }
+    function mark() {
+      $$(".opt", list).forEach((o) => o.setAttribute("aria-selected", String(+o.dataset.i === sel)));
+      inp.setAttribute("aria-activedescendant", lid + "-" + sel);
+      $(`#${lid}-${sel}`)?.scrollIntoView({ block: "nearest" });
+    }
+    function run(d) {
+      if (!d) return;
+      toast("ok", d.run ? "Searched" : d.g === "Go to" ? "Opened " + d.l : d.g === "Actions" ? d.l.replace("…", "") : "Opened " + d.l, d.run ? d.q : d.q && d.g !== "Boards" ? d.q : "");
+      if (onClose) onClose(); else { inp.value = ""; sel = 0; render(); }
+    }
+    inp.addEventListener("input", () => { sel = 0; render(); });
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); sel = (sel + 1) % Math.max(1, opts.length); mark(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); sel = (sel - 1 + opts.length) % Math.max(1, opts.length); mark(); }
+      else if (e.key === "Enter") { e.preventDefault(); run(opts[sel]); }
+      else if (e.key === "Escape") { e.preventDefault(); if (onClose) onClose(); else { inp.value = ""; sel = 0; render(); inp.blur(); } }
+    });
+    render();
+    return inp;
+  }
+  buildPalette($("#palInline"));
+  let scrim = null, lastFocus = null;
+  function openPal() {
+    if (scrim) return;
+    lastFocus = document.activeElement;
+    scrim = document.createElement("div"); scrim.className = "scrim";
+    const host = document.createElement("div"); host.style.width = "min(620px, 100%)";
+    scrim.appendChild(host); document.body.appendChild(scrim);
+    const inp = buildPalette(host, closePal);
+    scrim.addEventListener("pointerdown", (e) => { if (e.target === scrim) closePal(); });
+    requestAnimationFrame(() => scrim.classList.add("on"));
+    inp.focus();
+  }
+  function closePal() {
+    if (!scrim) return;
+    const s = scrim; scrim = null; s.classList.remove("on");
+    setTimeout(() => s.remove(), 160); lastFocus?.focus?.();
+  }
+  $("#openPal").addEventListener("click", openPal);
+  document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); scrim ? closePal() : openPal(); } });
+
+  /* ---------- start ---------- */
+  const h = (location.hash || "").slice(1);
+  show(panes.includes(h) ? h : store.get("ds-tab") || "tokens");
+  requestAnimationFrame(placeInd);
+})();
+</script>
+</body>
+</html>
