@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HbarWidget } from "@/components/hbar-widget";
@@ -29,6 +29,8 @@ import {
 import { abbrevCount, formatAggStat, histogramAxisLabels } from "../fill-histogram";
 import { seriesColor, seriesKeys, seriesValue } from "../histogram-series";
 import type { FacetValue } from "../types";
+import { usePlotTheme } from "../plot-theme";
+import { endLabelMax, lastValue, sparkLines, sparkTimes, spreadLabels } from "./metric-spark";
 
 const quickFixed = ["15m", "1h", "4h", "24h", "7d"] as const;
 const liveDeltaMs = 2_000;
@@ -404,18 +406,8 @@ function BoardPanelCard(props: CardProps) {
   const widget = panel.widget;
   const total = data?.total ?? 0;
   const empty = Boolean(data && !data.error && total === 0 && props.setKeys.length > 0);
-  const numeric = panel.view === "histogram" && Boolean(widget.agg || widget.metric);
-  const lastValue = numeric ? lastAggValue(data) : null;
   const [armed, setArmed] = useState(false);
-  const statNumeric = panel.view === "stat" && Boolean(widget.metric || (widget.agg && widget.agg !== "count"));
-  const head =
-    data === null
-      ? null
-      : numeric && total > 0
-        ? { n: lastValue === null ? "—" : formatAggStat(lastValue), label: props.live ? "now" : "last" }
-        : statNumeric && total > 0
-          ? null
-          : { n: null, label: "matching" };
+  const head = panelHead(panel, data, props.live);
   return (
     <div className="group/panel flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-card">
       {armed ? (
@@ -480,6 +472,26 @@ function BoardPanelCard(props: CardProps) {
       </div>
     </div>
   );
+}
+
+/** What a panel's head says: its series' last value, or how many rows match; null when its body says it. */
+export function panelHead(panel: BoardPanel, data: PanelData | null, live: boolean): { n: string | null; label: string } | null {
+  const widget = panel.widget;
+  const total = data?.total ?? 0;
+  const numeric = panel.view === "histogram" && Boolean(widget.agg || widget.metric);
+  const statNumeric = panel.view === "stat" && Boolean(widget.metric || (widget.agg && widget.agg !== "count"));
+  if (data === null) {
+    return null;
+  }
+  if (numeric && total > 0) {
+    // A split's lines each say their own last value, at their ends or in the legend.
+    if (data.agg?.splits) {
+      return null;
+    }
+    const last = lastAggValue(data);
+    return { n: last === null ? "—" : formatAggStat(last), label: live ? "now" : "last" };
+  }
+  return statNumeric && total > 0 ? null : { n: null, label: "matching" };
 }
 
 function lastAggValue(data: PanelData | null): number | null {
@@ -842,7 +854,7 @@ function PanelBody({
 }
 
 /** A board panel's plot: bars by its split, or its series as a filled line (39b). */
-function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: PanelData; live: boolean }) {
+export function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: PanelData; live: boolean }) {
   const widget = panel.widget;
   const buckets = data.histogram;
   const fromMs = data.from ? Date.parse(data.from) : NaN;
@@ -860,6 +872,9 @@ function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: PanelData; 
   if (numeric) {
     if (data.agg?.source === "refused") {
       return <div className="flex flex-1 items-center justify-center px-4 text-[12.5px] text-amber-400">{data.agg.reason}</div>;
+    }
+    if (data.agg?.splits) {
+      return <SplitPlot data={data} axis={axis} />;
     }
     const byT = new Map((data.agg?.buckets ?? []).map((b) => [b.t, b.v]));
     const vals = buckets.length > 0 ? buckets.map((b) => byT.get(b.t) ?? null) : (data.agg?.buckets ?? []).map((b) => b.v);
@@ -916,6 +931,90 @@ function PanelPlot({ panel, data, live }: { panel: BoardPanel; data: PanelData; 
         ))}
       </div>
       {axis}
+    </div>
+  );
+}
+
+/**
+ * A metric split by a label (#429): one line per value, drawn as the hunt's split draws them —
+ * its colours and order, named at their ends up to three, in a legend past that (13e, 13g).
+ */
+function SplitPlot({ data, axis }: { data: PanelData; axis: ReactNode }) {
+  const theme = usePlotTheme();
+  const times = sparkTimes(
+    data.histogram.map((b) => b.t),
+    data.agg,
+  );
+  const lines = sparkLines(times, data.agg, theme);
+  const finite = lines.flatMap((l) => l.vals.filter((v): v is number => v !== null && Number.isFinite(v)));
+  const peak = Math.max(1e-9, ...finite);
+  const n = Math.max(1, times.length);
+  const y = (v: number) => 60 - (v / peak) * 56;
+  const named = lines.length <= endLabelMax;
+  const plotRef = useRef<HTMLDivElement>(null);
+  const [plotH, setPlotH] = useState(120);
+  useEffect(() => {
+    const el = plotRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setPlotH(el.clientHeight));
+    ro.observe(el);
+    setPlotH(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
+  const labelYs = named
+    ? spreadLabels(
+        lines.map((l) => {
+          const v = lastValue(l.vals);
+          return v === null ? 0 : (y(v) / 60) * plotH - 7;
+        }),
+        13,
+        Math.max(0, plotH - 13),
+      )
+    : [];
+  return (
+    <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2.5">
+      <div ref={plotRef} className={cn("relative min-h-0 flex-1", named && "mr-[92px]")}>
+        <svg viewBox="0 0 200 60" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
+          {lines.map((l) => (
+            <polyline
+              key={l.key}
+              points={l.vals
+                .map((v, i) => (v === null || !Number.isFinite(v) ? null : `${(((i + 0.5) / n) * 200).toFixed(2)},${y(v).toFixed(2)}`))
+                .filter((pt): pt is string => pt !== null)
+                .join(" ")}
+              fill="none"
+              stroke={l.color}
+              strokeWidth="1.4"
+              strokeDasharray={l.dashed ? "3 3" : undefined}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+        </svg>
+        {named
+          ? lines.map((l, i) => (
+              <span
+                key={l.key}
+                className="absolute left-full ml-1.5 w-[88px] truncate font-mono text-[10.5px]"
+                style={{ top: `${labelYs[i] ?? 0}px`, color: l.color }}
+              >
+                {l.key} {formatAggStat(lastValue(l.vals))}
+              </span>
+            ))
+          : null}
+      </div>
+      {axis}
+      {named ? null : (
+        <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-0.5 font-mono text-[10.5px]">
+          {lines.map((l) => (
+            <span key={l.key} className="flex min-w-0 items-center gap-1.5">
+              <span className="h-0 w-3 shrink-0 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />
+              <span className="min-w-0 truncate">{l.key}</span>
+              <span className="ml-auto text-muted-foreground">{formatAggStat(lastValue(l.vals))}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

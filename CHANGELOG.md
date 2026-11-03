@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+A board panel of a metric split by a label draws its lines (#429). A hunt panel such as `host_cpu_seconds_total` split by `host`, added to a board, painted an empty plot and read `— last` in its head: the board drew only the metric's one line, which a split leaves empty. It now draws one line per value as the hunt does, in the same colours and order, named at their ends up to three and in a legend past that; its head no longer names one last value.
+
 `upgrade.sh` replaces an unedited `vector.yaml`. On an install it had not upgraded before, it could not fetch the running release's `vector.yaml` to compare with, so it kept the old file, wrote the new one as `vector.yaml.new` and said the file "was edited here". After upgrading such an install to 0.14.0, `vector.yaml.new` is the shipped file with host metrics: if you never edited `vector.yaml`, move it into place.
 
 ## 0.14.0
