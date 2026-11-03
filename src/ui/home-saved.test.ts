@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { HomeCard } from "../control/home-since";
-import { cardMoved, foldPast, savedColumn } from "./home-saved";
+import { cardMoved, foldPast, pinnedTag, savedColumn } from "./home-saved";
+import type { BoardPanel } from "../shared/boards";
 import type { SavedSearch } from "./types";
 
 const hunt = (id: string): SavedSearch => ({ id, name: id }) as SavedSearch;
@@ -50,5 +51,29 @@ describe("Home's Saved hunts column (35a–35g)", () => {
     const column = savedColumn(items, items.map((s) => card(s.id, 0, 0)));
     expect(column.fold && column.moved.length).toBe(0);
     expect(column.fold && column.quiet.length).toBe(40);
+  });
+});
+
+describe("Home's Pinned list", () => {
+  const panel = (id: string, view: BoardPanel["view"]): BoardPanel => ({ id, name: id, q: "", view, widget: {} as BoardPanel["widget"], fixed: null });
+
+  test("a board counts its panels, not its template layout (#410)", () => {
+    // A 0.14 board has no `widgets`; its panels read 0 before.
+    const board = {
+      ...hunt("b1"),
+      widgets: null,
+      board: { keys: [], panels: [panel("u", "histogram"), panel("v", "stat"), panel("w", "top"), panel("x", "events"), panel("y", "histogram")] },
+    } as SavedSearch;
+    expect(pinnedTag(board)).toBe("5 panels");
+  });
+
+  test("sections and notes count, as on the board page", () => {
+    const board = { ...hunt("b2"), board: { keys: [], panels: [panel("u", "section"), panel("v", "note"), panel("w", "stat")] } } as SavedSearch;
+    expect(pinnedTag(board)).toBe("3 panels");
+  });
+
+  test("one panel is singular; a pinned hunt is pinned", () => {
+    expect(pinnedTag({ ...hunt("b3"), board: { keys: [], panels: [panel("u", "stat")] } } as SavedSearch)).toBe("1 panel");
+    expect(pinnedTag({ ...hunt("h1"), pinned: true, board: null } as SavedSearch)).toBe("pinned");
   });
 });
