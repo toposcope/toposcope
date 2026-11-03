@@ -54,7 +54,7 @@ export function ThroughputMeter({ onOpenHour }: Props) {
       : `${formatRate(perSecond)} events/s · last hour`;
 
   return (
-    <Tooltip delayDuration={200}>
+    <Tooltip>
       <TooltipTrigger asChild>
         <button
           type="button"

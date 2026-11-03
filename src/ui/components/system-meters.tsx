@@ -40,7 +40,7 @@ function Chip({
   const aria = [label, mem, disk ? `disk ${disk}` : null].filter(Boolean).join(" ");
 
   return (
-    <Tooltip delayDuration={200}>
+    <Tooltip>
       <TooltipTrigger asChild>
         <span
           className={cn(
