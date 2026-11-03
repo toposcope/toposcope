@@ -378,11 +378,11 @@ export function HistogramHover({
         </div>
       ))}
       {markLines.length > 2 ? (
-        <div className="mt-0.5 text-2xs text-muted-foreground/80">
+        <div className="mt-0.5 text-2xs text-faint">
           +{markLines.length - 2} more marks
         </div>
       ) : null}
-      <div className="mt-1 text-2xs text-muted-foreground/70">{hint}</div>
+      <div className="mt-1 text-2xs text-faint">{hint}</div>
     </div>
   );
 }
@@ -1354,7 +1354,7 @@ export function HistogramChart({
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
           className={cn(
-            "flex shrink-0 flex-col justify-between py-[3px] text-right font-mono text-2xs text-muted-foreground/70",
+            "flex shrink-0 flex-col justify-between py-[3px] text-right font-mono text-2xs text-faint",
             axisUnit ? "w-12 whitespace-nowrap" : "w-8",
           )}
           style={{
@@ -1472,7 +1472,7 @@ export function HistogramChart({
                 data-kbd="plot"
                 tabIndex={0}
                 data-g={gCursor}
-                className="relative min-h-0 flex-1 overflow-hidden p-1 touch-none outline-none"
+                className="relative min-h-0 flex-1 overflow-hidden p-1 touch-none outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 onPointerDown={(e) => onPlotDown(e)}
                 onPointerMove={(e) => onPlotMove(e)}
                 onPointerUp={(e) => onPlotUp(e)}
@@ -1824,7 +1824,7 @@ export function HistogramChart({
         ) : null}
       </div>
       <div
-        className="mt-1 flex shrink-0 justify-between pr-2.5 font-mono text-2xs text-muted-foreground/70"
+        className="mt-1 flex shrink-0 justify-between pr-2.5 font-mono text-2xs text-faint"
         style={{ paddingLeft: plotLeft, paddingRight: underPlotPadRight }}
       >
         {axis.map((label, i) => (
@@ -1881,7 +1881,7 @@ export function HistogramChart({
                   style={{ background: seriesColor(key, split, i) }}
                 />
                 {key}
-                <span className="font-mono text-muted-foreground/65">
+                <span className="font-mono text-faint">
                   {formatSeriesTotal(seriesTotal(buckets, key, split))}
                 </span>
               </span>
@@ -1897,7 +1897,7 @@ export function HistogramChart({
                 onFocus={() => setLegendLine(line.key)}
                 onBlur={() => setLegendLine(null)}
                 className={cn(
-                  "relative flex items-center gap-[5px] rounded-md px-1 text-muted-foreground outline-none",
+                  "relative flex items-center gap-[5px] rounded-md px-1 text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   lineInfo ? "text-sm" : "font-mono text-xs",
                   legendLine === line.key && lineInfo?.[line.key] && "bg-accent text-foreground",
                 )}
@@ -1926,7 +1926,7 @@ export function HistogramChart({
                   style={{ borderColor: line.color, borderStyle: line.dashed ? "dashed" : "solid" }}
                 />
                 {line.key}
-                <span className="font-mono text-xs text-muted-foreground/65">
+                <span className="font-mono text-xs text-faint">
                   {lineInfo ? withUnit(formatAggStat(lastValue(line.vals)), aggResult?.unit) : formatAggStat(lastValue(line.vals))}
                 </span>
               </span>
@@ -1939,7 +1939,7 @@ export function HistogramChart({
             />
             {metricReadingText ? `${metricReadingText} ` : ""}
             {overlayLabel}
-            <span className="font-mono text-muted-foreground/65">
+            <span className="font-mono text-faint">
               {withUnit(formatAggStat(aggResult?.stat), aggResult?.unit)}
             </span>
           </span>

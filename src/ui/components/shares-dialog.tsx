@@ -316,7 +316,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
                 Start from the chart you want to show: <span className="text-foreground">Share…</span> in a panel's copy menu, or{" "}
                 <span className="text-foreground">Share panels…</span> on a board.
               </span>
-              <span className="text-sm text-muted-foreground/70">This list is where you see how each share is used, change it, or revoke it.</span>
+              <span className="text-sm text-faint">This list is where you see how each share is used, change it, or revoke it.</span>
             </div>
           ) : null}
           {shares.map((share) => {

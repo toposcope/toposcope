@@ -93,7 +93,7 @@ function KindSelect({ value, modes, onPick }: { value: NetMode; modes: readonly 
     <SelectPrimitive.Root value={value} onValueChange={(v) => onPick(v as NetMode)}>
       <SelectPrimitive.Trigger
         aria-label="Kind"
-        className={cn(box, "ml-3 w-[86px] justify-between bg-transparent font-mono outline-none focus-visible:border-plate")}
+        className={cn(box, "ml-3 w-[86px] justify-between bg-transparent font-mono outline-none focus-visible:border-foreground/40")}
       >
         <SelectPrimitive.Value />
         <SelectPrimitive.Icon asChild>
@@ -548,7 +548,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                                 setLines((t) => setTimeLimit(t, limit.ms + (e.key === "ArrowLeft" ? -10 : 10), source));
                               }
                             }}
-                            className="absolute top-0.5 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize touch-none outline-none"
+                            className="absolute top-0.5 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize touch-none outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             style={{ left: `${(timing.marker * 100).toFixed(2)}%` }}
                           >
                             <span className="absolute inset-y-0 left-1/2 border-l-2 border-warn-fg" />

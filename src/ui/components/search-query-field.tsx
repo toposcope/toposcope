@@ -294,7 +294,7 @@ export function SearchQueryField({
         qErr
           ? "border-danger"
           : focus
-            ? "border-ring ring-1 ring-ring/35"
+            ? "border-foreground/40"
             : "border-input",
         locked && "opacity-50",
       )}
@@ -321,7 +321,7 @@ export function SearchQueryField({
           ))}
         </div>
         {value ? null : (
-          <span className="pointer-events-none absolute inset-0 flex items-center font-mono text-sm text-muted-foreground/65">
+          <span className="pointer-events-none absolute inset-0 flex items-center font-mono text-sm text-faint">
             level:error OR level:fatal status:5*
           </span>
         )}
@@ -393,7 +393,7 @@ export function SearchQueryField({
                   ? "recent queries"
                   : "fields"}
             </span>
-            <span className="font-mono text-2xs text-muted-foreground/70">
+            <span className="font-mono text-2xs text-faint">
               {menuKind === "value"
                 ? coreValue
                   ? "facets"
@@ -422,7 +422,7 @@ export function SearchQueryField({
               </div>
             ))}
             {cand.length > MAX_ROWS ? (
-              <span className="flex h-6 items-center px-1.5 text-xs text-muted-foreground/70">
+              <span className="flex h-6 items-center px-1.5 text-xs text-faint">
                 +{cand.length - MAX_ROWS} more — keep typing to filter
               </span>
             ) : null}

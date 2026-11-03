@@ -72,7 +72,7 @@ function StackRow({ stack }: { stack: string }) {
       <dt className="flex min-w-0 flex-col gap-0.5 font-mono text-xs leading-4 text-muted-foreground @max-[340px]:flex-row @max-[340px]:items-center @max-[340px]:gap-2">
         <span>stacktrace</span>
         {fold.hidden ? (
-          <span className="flex items-center gap-1 font-sans text-xs text-muted-foreground/80">
+          <span className="flex items-center gap-1 font-sans text-xs text-faint">
             {fold.lines} lines
             <button
               type="button"
@@ -131,7 +131,7 @@ function ResourceGroup({ fields }: { fields: SpanField[] }) {
           Resource · {fields.length}
         </span>
         {open ? null : (
-          <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground/80 @max-[340px]:hidden">
+          <span className="min-w-0 flex-1 truncate font-mono text-xs text-faint @max-[340px]:hidden">
             {resourcePreview(fields)}
           </span>
         )}

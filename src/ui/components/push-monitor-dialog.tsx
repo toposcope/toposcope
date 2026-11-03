@@ -46,7 +46,7 @@ type Props = {
 const fld = "grid grid-cols-[110px_minmax(0,1fr)] items-start gap-3";
 const lab = "pt-1.5 text-sm text-muted-foreground";
 const box =
-  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm outline-none focus-within:border-white/40";
+  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm outline-none focus-within:border-foreground/40";
 const code =
   "block overflow-hidden rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2 text-left font-mono text-xs leading-[1.55] whitespace-pre text-zinc-200 hover:border-white/25";
 

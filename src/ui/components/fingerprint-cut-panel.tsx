@@ -165,7 +165,7 @@ export function FingerprintCutPanel({
         <div className="flex flex-col gap-0.5 border-b px-2.5 py-2">
           {lines.map((row) => (
             <div key={row.k} className="flex gap-2">
-              <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
+              <span className="w-[52px] shrink-0 font-mono text-2xs text-faint">
                 {row.k}
               </span>
               <span className="font-mono text-xs text-foreground/88 whitespace-nowrap">
@@ -175,7 +175,7 @@ export function FingerprintCutPanel({
           ))}
           {inside.length > 0 ? (
             <div className="flex gap-2">
-              <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
+              <span className="w-[52px] shrink-0 font-mono text-2xs text-faint">
                 inside
               </span>
               <span className="flex min-w-0 flex-col gap-0.5">
@@ -226,7 +226,7 @@ export function FingerprintCutPanel({
         ) : null}
       </div>
       <div className="shrink-0 border-t bg-card/45 px-2.5 py-2">
-        <p className="text-2xs leading-snug text-pretty text-muted-foreground/80">
+        <p className="text-2xs leading-snug text-pretty text-faint">
           {result?.held ? heldFoot : foot}
         </p>
       </div>
@@ -265,7 +265,7 @@ function CutSet({
             {set.cantTell ? ` · ${set.cantTell} can't tell` : ""}
           </span>
         )}
-        <span className="ml-auto min-w-0 truncate text-2xs text-muted-foreground/65">
+        <span className="ml-auto min-w-0 truncate text-2xs text-faint">
           {set.def}
         </span>
       </div>
@@ -283,7 +283,7 @@ function CutSet({
         />
       ))}
       {set.rows.length === 0 && !set.waiting ? (
-        <div className="px-2.5 pt-0.5 pb-2 text-xs text-muted-foreground/60">
+        <div className="px-2.5 pt-0.5 pb-2 text-xs text-faint">
           none
         </div>
       ) : null}
@@ -393,7 +393,7 @@ function CutRow({
           {row.service}
         </span>
         {row.extra ? (
-          <span className="font-mono text-2xs text-muted-foreground/70">
+          <span className="font-mono text-2xs text-faint">
             {row.extra}
           </span>
         ) : null}

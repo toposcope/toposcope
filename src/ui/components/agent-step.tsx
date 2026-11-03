@@ -50,7 +50,7 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
         <label htmlFor="agent-name" className={lab}>
           Name · shown on everything it saves
         </label>
-        <input id="agent-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus className="h-[34px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none" />
+        <input id="agent-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus className="h-[34px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40" />
         <span className={cn("text-sm", problem && name.trim() ? "text-danger-fg" : "text-muted-foreground")}>
           {problem && name.trim() ? (
             problem

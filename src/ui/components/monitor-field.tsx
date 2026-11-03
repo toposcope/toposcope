@@ -61,4 +61,4 @@ export function MonitorSwitch<T extends string>({
 
 /** 18j's box: a 30px field with a hairline border. */
 export const monitorBox =
-  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm";
+  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm focus-within:border-foreground/40";

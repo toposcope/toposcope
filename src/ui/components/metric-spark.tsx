@@ -322,7 +322,7 @@ function LineSpark({
           ) : (
             <span>{quiet ? "" : withUnit(formatAggStat(peak), unit)}</span>
           )}
-          <span className="text-muted-foreground/60">0</span>
+          <span className="text-faint">0</span>
         </div>
         <div
           ref={plotRef}
@@ -571,7 +571,7 @@ export function MetricChartPicker({
             title={off ? stackable : undefined}
             className={`h-[22px] px-2 text-xs ${i > 0 ? "border-l border-input" : ""} ${
               value === id ? "bg-plate/15 text-foreground" : "text-muted-foreground hover:text-foreground"
-            } disabled:cursor-not-allowed disabled:text-muted-foreground/40 disabled:hover:text-muted-foreground/40`}
+            } disabled:cursor-not-allowed disabled:text-faint disabled:hover:text-faint`}
             onClick={() => onChange(id)}
           >
             {label}

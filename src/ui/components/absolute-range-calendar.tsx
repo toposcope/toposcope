@@ -170,7 +170,7 @@ export function AbsoluteRangeCalendar({
             {WEEKDAYS.map((w, i) => (
               <span
                 key={`${w}-${i}`}
-                className="flex h-[18px] items-center justify-center font-mono text-2xs text-muted-foreground/70"
+                className="flex h-[18px] items-center justify-center font-mono text-2xs text-faint"
               >
                 {w}
               </span>
@@ -203,7 +203,7 @@ export function AbsoluteRangeCalendar({
                       : inBand
                         ? "bg-white/10 text-foreground"
                         : !inMonth || ahead
-                          ? "bg-transparent text-muted-foreground/45"
+                          ? "bg-transparent text-faint"
                           : "bg-transparent text-foreground",
                   )}
                   onMouseEnter={() => setHoverDay(ms)}
@@ -259,7 +259,7 @@ export function AbsoluteRangeCalendar({
                 key={part}
                 className="flex h-[132px] min-w-0 flex-1 flex-col gap-[3px]"
               >
-                <span className="block text-center font-mono text-2xs tracking-[0.06em] text-muted-foreground/75">
+                <span className="block text-center font-mono text-2xs tracking-[0.06em] text-faint">
                   {part === "h" ? "HH" : part === "m" ? "mm" : "ss"}
                 </span>
                 <TimeColumn
@@ -278,7 +278,7 @@ export function AbsoluteRangeCalendar({
               </div>
             ))}
             <div className="flex min-w-0 shrink-0 basis-[52px] flex-col gap-[3px]">
-              <span className="block text-center font-mono text-2xs tracking-[0.06em] text-muted-foreground/75">
+              <span className="block text-center font-mono text-2xs tracking-[0.06em] text-faint">
                 .mmm
               </span>
               <input
@@ -288,7 +288,7 @@ export function AbsoluteRangeCalendar({
                 inputMode="numeric"
                 aria-label="Milliseconds"
                 className={cn(
-                  "h-[22px] w-full min-w-0 rounded-sm border bg-background px-[5px] text-center font-mono text-xs outline-none",
+                  "h-[22px] w-full min-w-0 rounded-sm border bg-background px-[5px] text-center font-mono text-xs outline-none focus-visible:border-foreground/40",
                   msOk ? "border-white/15" : "border-destructive/65",
                 )}
                 onChange={(event) => {
@@ -341,7 +341,7 @@ export function AbsoluteRangeCalendar({
       )}
 
       <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 text-2xs leading-snug text-muted-foreground/80">
+        <span className="min-w-0 flex-1 text-2xs leading-snug text-faint">
           {phase === "time"
             ? `${pick === "to" ? "End" : "Start"} time · click hour, minute, second — ms typed`
             : pick === "to"

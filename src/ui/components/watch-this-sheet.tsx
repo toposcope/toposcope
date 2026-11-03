@@ -201,13 +201,13 @@ export function WatchThisSheet(props: {
             <label htmlFor="watch-name" className="text-sm text-muted-foreground">
               Name
             </label>
-            <input id="watch-name" value={shownName} onChange={(e) => setName(e.target.value)} className="h-[34px] w-[420px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none" />
+            <input id="watch-name" value={shownName} onChange={(e) => setName(e.target.value)} className="h-[34px] w-[420px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40" />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="watch-service" className="text-sm text-muted-foreground">
               Service *
             </label>
-            <input id="watch-service" aria-required list="watch-services" value={service} placeholder={seenServices[0] ?? "api"} spellCheck={false} autoComplete="off" onChange={(e) => setService(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none placeholder:text-muted-foreground" />
+            <input id="watch-service" aria-required list="watch-services" value={service} placeholder={seenServices[0] ?? "api"} spellCheck={false} autoComplete="off" onChange={(e) => setService(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none placeholder:text-muted-foreground focus-visible:border-foreground/40" />
             <datalist id="watch-services">
               {seenServices.map((v) => (
                 <option key={v} value={v} />
@@ -218,7 +218,7 @@ export function WatchThisSheet(props: {
             <label htmlFor="watch-host" className="text-sm text-muted-foreground">
               Host · optional
             </label>
-            <input id="watch-host" value={host} placeholder="optional" spellCheck={false} autoComplete="off" onChange={(e) => setHost(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none placeholder:text-muted-foreground" />
+            <input id="watch-host" value={host} placeholder="optional" spellCheck={false} autoComplete="off" onChange={(e) => setHost(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none placeholder:text-muted-foreground focus-visible:border-foreground/40" />
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
@@ -230,7 +230,7 @@ export function WatchThisSheet(props: {
               <option value="at_least">at least</option>
               <option value="fewer_than">fewer than</option>
             </select>
-            <input aria-label="Amount" value={threshold} onChange={(e) => setThreshold(e.target.value)} className="h-[32px] w-[80px] rounded-lg border border-white/10 bg-surface-1 px-2 text-right font-mono text-sm outline-none" />
+            <input aria-label="Amount" value={threshold} onChange={(e) => setThreshold(e.target.value)} className="h-[32px] w-[80px] rounded-lg border border-white/10 bg-surface-1 px-2 text-right font-mono text-sm outline-none focus-visible:border-foreground/40" />
             {props.agg ? null : (
               <select aria-label="Rows or a share of all rows" value={measure} onChange={(e) => setMeasure(e.target.value as "series" | "share")} className="h-[32px] rounded-lg border border-white/10 bg-surface-1 px-2 text-sm">
                 <option value="series">rows</option>
@@ -281,7 +281,7 @@ export function WatchThisSheet(props: {
                   }
                 }}
                 placeholder="https://…"
-                className="h-[30px] w-[220px] rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none"
+                className="h-[30px] w-[220px] rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none focus-visible:border-foreground/40"
               />
               <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={addTarget}>
                 + webhook
@@ -339,7 +339,7 @@ export function WatchThisSheet(props: {
           {preview?.refused ? <span>{preview.refused}</span> : null}
           {(preview?.opens ?? []).slice(-3).reverse().map((o) => (
             <span key={o.from}>
-              <span className={o.to ? "text-zinc-500" : "text-danger-fg"}>●</span> {o.from.slice(11, 16)} → {o.to ? o.to.slice(11, 16) : "now"}
+              <span className={o.to ? "text-faint" : "text-danger-fg"}>●</span> {o.from.slice(11, 16)} → {o.to ? o.to.slice(11, 16) : "now"}
             </span>
           ))}
         </div>

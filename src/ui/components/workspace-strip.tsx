@@ -186,7 +186,7 @@ export function WorkspaceStrip({
       {tabs.length > 5 ? (
         <span
           title={`${tabs.length} tabs open`}
-          className="mb-2 shrink-0 font-mono text-2xs tabular-nums text-muted-foreground/70"
+          className="mb-2 shrink-0 font-mono text-2xs tabular-nums text-faint"
         >
           {tabs.length}
         </span>

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** Same heights as Button (sheet 45); the query bar is lg. */
 const inputVariants = cva(
-  "flex w-full rounded-md border border-input bg-transparent py-1 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+  "flex w-full rounded-md border border-input bg-transparent py-1 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       size: {

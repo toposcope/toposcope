@@ -256,7 +256,7 @@ export function HomeView(props: Props) {
               }}
               placeholder="what you did, in one line"
               aria-label="Note mark"
-              className="h-[30px] w-[260px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none"
+              className="h-[30px] w-[260px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40"
             />
             <Button type="submit" variant="outline">
               ○ Add

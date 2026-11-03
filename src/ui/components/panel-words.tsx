@@ -27,7 +27,7 @@ export function PanelTitle({ widget, unit }: { widget: WidgetDef; unit: string }
       </span>
       {unit ? <span className="shrink-0 font-mono text-xs text-muted-foreground">{unit}</span> : null}
       <span className="min-w-0 flex-1" />
-      <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">{panelKindTag(widget)}</span>
+      <span className="shrink-0 font-mono text-2xs text-faint">{panelKindTag(widget)}</span>
     </div>
   );
 }
@@ -102,7 +102,7 @@ export function UnitsSay({ text }: { text: string }) {
 }
 
 const panelFieldClass =
-  "rounded-md border border-white/14 bg-ground px-2 outline-none placeholder:text-muted-foreground/60 focus:border-plate/55";
+  "rounded-md border border-white/14 bg-ground px-2 outline-none placeholder:text-faint focus-visible:border-foreground/40";
 
 /**
  * The title while the panel is edited, where it shows (17d): its placeholder is

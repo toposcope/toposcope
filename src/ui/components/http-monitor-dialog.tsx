@@ -554,7 +554,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                                 setLines((t) => setTimeLimit(t, limit.ms + (e.key === "ArrowLeft" ? -10 : 10)));
                               }
                             }}
-                            className="absolute top-0.5 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize touch-none outline-none"
+                            className="absolute top-0.5 bottom-0 w-3 -translate-x-1/2 cursor-ew-resize touch-none outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             style={{ left: `${(timing.marker * 100).toFixed(2)}%` }}
                           >
                             <span className="absolute inset-y-0 left-1/2 border-l-2 border-warn-fg" />
@@ -660,7 +660,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                                 onMouseLeave={() => setHover((h) => (h === i ? null : h))}
                                 onClick={() => (offers[0] ? addPicked(offers[0]) : undefined)}
                                 className={cn(
-                                  "flex h-6 items-center gap-1.5 px-2.5 font-mono text-sm outline-none",
+                                  "flex h-6 items-center gap-1.5 px-2.5 font-mono text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
                                   offers.length > 0 ? "cursor-pointer" : "",
                                   on ? "bg-[rgba(231,225,211,.08)] outline-1 -outline-offset-1 outline-[rgba(231,225,211,.35)]" : "",
                                 )}
@@ -718,7 +718,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                                 onMouseLeave={() => setHover((h) => (h === i ? null : h))}
                                 onClick={() => (offer ? addPicked(offer) : undefined)}
                                 className={cn(
-                                  "flex min-h-6 items-center gap-1.5 px-2.5 font-mono text-sm outline-none",
+                                  "flex min-h-6 items-center gap-1.5 px-2.5 font-mono text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
                                   offer ? "cursor-pointer" : "",
                                   on ? "bg-[rgba(231,225,211,.08)] outline-1 -outline-offset-1 outline-[rgba(231,225,211,.35)]" : "",
                                 )}
@@ -815,7 +815,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                         placeholder="Authorization: Bearer …"
                         onChange={(e) => setReqHeaders(e.target.value)}
                         className={cn(
-                          "resize-y rounded-md border bg-transparent px-[9px] py-[7px] font-mono text-sm leading-[1.6] outline-none placeholder:text-muted-foreground/60",
+                          "resize-y rounded-md border bg-transparent px-[9px] py-[7px] font-mono text-sm leading-[1.6] outline-none placeholder:text-faint focus-visible:border-foreground/40",
                           headersError ? "border-danger" : "border-white/15",
                         )}
                       />
@@ -836,7 +836,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                           spellCheck={false}
                           rows={Math.max(1, reqBody.split("\n").length)}
                           onChange={(e) => setReqBody(e.target.value)}
-                          className="resize-y rounded-md border border-white/15 bg-transparent px-[9px] py-[7px] font-mono text-sm leading-[1.6] outline-none"
+                          className="resize-y rounded-md border border-white/15 bg-transparent px-[9px] py-[7px] font-mono text-sm leading-[1.6] outline-none focus-visible:border-foreground/40"
                         />
                       </label>
                     ) : null}

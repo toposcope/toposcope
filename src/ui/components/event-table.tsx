@@ -168,7 +168,7 @@ function Header({
               type="button"
               title={`Remove ${key}`}
               aria-label={`Remove ${key}`}
-              className="flex size-[13px] shrink-0 items-center justify-center rounded-sm text-sm leading-none text-muted-foreground/55 hover:bg-white/12 hover:text-foreground"
+              className="flex size-[13px] shrink-0 items-center justify-center rounded-sm text-sm leading-none text-faint hover:bg-white/12 hover:text-foreground"
               onClick={() => onColsChange(promoted.filter((item) => item !== key))}
             >
               ×
@@ -192,7 +192,7 @@ function Header({
                 }
                 className={`ml-auto flex size-[18px] shrink-0 items-center justify-center rounded-sm text-base leading-none ${
                   atCap
-                    ? "text-muted-foreground/55"
+                    ? "text-faint"
                     : "text-muted-foreground hover:bg-white/10 hover:text-foreground"
                 }`}
               >
@@ -214,7 +214,7 @@ function Header({
               </div>
               {suggested.length > 0 ? (
                 <>
-                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
+                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-faint uppercase">
                     Suggested
                   </div>
                   <PickRows items={suggested} onToggle={(key) => onColsChange(togglePromotedCol(promoted, key))} />
@@ -222,7 +222,7 @@ function Header({
               ) : null}
               {other.length > 0 ? (
                 <>
-                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
+                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-faint uppercase">
                     Other keys on this page
                   </div>
                   <PickRows items={other} onToggle={(key) => onColsChange(togglePromotedCol(promoted, key))} />
@@ -771,7 +771,7 @@ export function EventTable({
             <span
               key={key}
               className={`min-w-0 truncate ${numeric ? "text-right tabular-nums" : ""} ${
-                value === null ? "text-muted-foreground/40" : "text-muted-foreground"
+                value === null ? "text-faint" : "text-muted-foreground"
               }`}
               title={value === null ? `${key} — not on this event` : `${key}=${value}`}
             >

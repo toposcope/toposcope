@@ -40,7 +40,7 @@ export function InstanceMenu({
   const label = info.name ?? info.address;
   return (
     <>
-      <span aria-hidden="true" className="text-base text-zinc-600">
+      <span aria-hidden="true" className="text-base text-faint">
         /
       </span>
       <DropdownMenu>

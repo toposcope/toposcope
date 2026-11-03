@@ -253,7 +253,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
             >
               <span className={sectionLabel}>Absolute</span>
               {lockAbsolute ? (
-                <span className="px-0.5 text-xs leading-snug text-muted-foreground/80">
+                <span className="px-0.5 text-xs leading-snug text-faint">
                   A board window is a relative range — Quick or Last N only.
                 </span>
               ) : null}
@@ -335,7 +335,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
               className={cn(
                 "flex-1 text-xs leading-snug",
                 apply && !(absTouched && !absOk)
-                  ? "text-muted-foreground/80"
+                  ? "text-faint"
                   : "text-destructive",
               )}
             >

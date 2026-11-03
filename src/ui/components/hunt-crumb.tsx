@@ -36,7 +36,7 @@ export function HuntCrumb(props: {
       <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onHome}>
         Home
       </button>
-      <span className="text-zinc-600" aria-hidden="true">
+      <span className="text-faint" aria-hidden="true">
         ›
       </span>
       <span className="max-w-[420px] truncate font-medium text-foreground">{props.name ?? "hunt"}</span>
@@ -117,13 +117,13 @@ export function EditPanelCrumb(props: {
       <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onHome}>
         Home
       </button>
-      <span className="text-zinc-600" aria-hidden="true">
+      <span className="text-faint" aria-hidden="true">
         ›
       </span>
       <button type="button" className="max-w-[320px] truncate text-muted-foreground hover:text-foreground" onClick={props.onBoard}>
         {props.boardName}
       </button>
-      <span className="text-zinc-600" aria-hidden="true">
+      <span className="text-faint" aria-hidden="true">
         ›
       </span>
       <span className="font-medium text-foreground">Edit panel</span>
