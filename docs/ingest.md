@@ -639,6 +639,8 @@ echo '<27>Aug 14 01:02:03 api-1 nginx: timeout' | nc -u -w1 127.0.0.1 5514
 
 UDP has no delivery acknowledgement or HTTP-style backpressure. Use a collector and HTTP ingest when delivery and buffering matter.
 
+At most 10,000 syslog rows wait for ClickHouse. A packet that arrives when they are all waiting is dropped, as is a batch of up to 500 whose insert fails, and a packet that is not RFC 3164. `GET /api/metrics` counts each in `toposcope_syslog_dropped_total{reason="queue_full"|"insert_failed"|"unparsed"}`, and while drops happen the app writes at most one line a minute to stderr with the counts since the last one. `toposcope_syslog_packets_total` counts the packets taken.
+
 ## Notes
 
 - `http/protobuf` is the default OTLP HTTP encoding.
