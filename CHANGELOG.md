@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+Home's Pinned list counts a board's panels. Since 0.14.0 it counted the layout boards had before then, so a board made on 0.14 read `0 panels` whatever it held. It now shows the number the board's own page shows, sections and notes included, and `1 panel` for one.
+
 ## 0.14.2
 
 A board can have section headings and note panels (sheet 44). **Add section** puts a full-width heading at the bottom; the panels under it, down to the next heading, are its section: drag the heading and they move with it, fold it and they are put away (the panels below move up), unfold it and they come back where they were. Rename and Remove heading are on its ⋯ menu; removing a heading keeps its panels. **Add note** puts a note panel at the bottom: a name and up to 1,000 characters of plain text, with web links live, for who to page or a runbook. Headings and notes read no rows, so they have no query or window, and they count toward the board's 26 panels. In the board's JSON they are `view: "section"` (with `folded`) and `view: "note"` (with `text`).

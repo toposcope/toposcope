@@ -47,3 +47,15 @@ export function savedColumn(items: readonly SavedSearch[], cards: readonly HomeC
   moved.sort((a, b) => moveSize(b.card) - moveSize(a.card));
   return { fold: true, moved, quiet };
 }
+
+/**
+ * A row's tag in Home's Pinned list: a board names its panels as the board page's crumb does
+ * (sections and notes count); a hunt is `pinned`. Panels live in `board.panels` since #410.
+ */
+export function pinnedTag(item: SavedSearch): string {
+  if (!item.board) {
+    return "pinned";
+  }
+  const n = item.board.panels.length;
+  return `${n} panel${n === 1 ? "" : "s"}`;
+}

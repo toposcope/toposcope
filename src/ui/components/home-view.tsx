@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { HomeCard, HomeSince } from "../../control/home-since";
 import { formatCompactCount } from "../count-format";
-import { savedColumn } from "../home-saved";
+import { pinnedTag, savedColumn } from "../home-saved";
 import { deltaText, firstRunSteps, formatValue, hhmmUtc, markAge, markGlyph, resolvePick, sideText, type HomePick } from "../home-since";
 import type { MonitorView, SavedSearch } from "../types";
 import { AgentBadge, OpenAgent } from "./agent-badge";
@@ -409,7 +409,7 @@ export function HomeView(props: Props) {
                       onClick={() => (s.board ? props.onOpenBoard(s) : props.onOpenSaved(s, window, selectedId))}
                     >
                       <span className="truncate">{s.name}</span>
-                      <span className="ml-2 font-mono text-[12px] text-muted-foreground">{s.board ? `${s.widgets?.widgets.length ?? 0} panels` : "pinned"}</span>
+                      <span className="ml-2 font-mono text-[12px] text-muted-foreground">{pinnedTag(s)}</span>
                     </button>
                   ))}
               </div>
