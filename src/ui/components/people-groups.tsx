@@ -466,7 +466,7 @@ function Sheet(props: { label: string; width: number; onClose: () => void; child
 }
 
 const lab = "text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase";
-const input = "h-9 rounded-lg border border-white/10 bg-surface-1 px-3 text-base outline-none";
+const input = "h-9 rounded-lg border border-white/10 bg-surface-1 px-3 text-base outline-none focus-visible:border-foreground/40";
 
 function ShownOnce(props: { label: string; value: string; note: React.ReactNode }) {
   return (

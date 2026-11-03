@@ -208,7 +208,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                     const r = readsBy.get(p.widget.id)!;
                     const off = !("reads" in r) && r.offers.length === 0;
                     return (
-                      <label key={p.widget.id} className={`flex items-center gap-2.5 border-b border-white/[0.08] px-3 py-2 text-sm last:border-b-0 ${off ? "text-muted-foreground/60" : ""}`}>
+                      <label key={p.widget.id} className={`flex items-center gap-2.5 border-b border-white/[0.08] px-3 py-2 text-sm last:border-b-0 ${off ? "text-faint" : ""}`}>
                         <input
                           type="checkbox"
                           disabled={off}

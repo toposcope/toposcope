@@ -137,7 +137,7 @@ export function FieldsView({
     <div className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
       <div className="w-full">
         <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-sm">
-          <button type="button" className="text-[#8a8a93] hover:text-foreground" onClick={onSettings}>
+          <button type="button" className="text-faint hover:text-foreground" onClick={onSettings}>
             Settings
           </button>
           <span className="text-[#3f3f46]">›</span>

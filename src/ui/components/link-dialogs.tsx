@@ -103,7 +103,7 @@ function NameField({ value, onChange, who }: { value: string; onChange: (v: stri
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="e.g. edge-fra"
-        className="h-9 rounded-md border border-white/20 bg-transparent px-2.5 font-mono text-sm outline-none focus:border-ring"
+        className="h-9 rounded-md border border-white/20 bg-transparent px-2.5 font-mono text-sm outline-none focus-visible:border-foreground/40"
       />
       <span className="text-xs text-muted-foreground">{who} sees this name. Asked once; after that it lives in Settings.</span>
     </label>
@@ -283,7 +283,7 @@ export function MintDialog({
                   ))}
                 </select>
               ) : null}
-              <label className="flex h-9 items-center gap-2 rounded-md border border-white/15 px-2.5 focus-within:border-ring">
+              <label className="flex h-9 items-center gap-2 rounded-md border border-white/15 px-2.5 focus-within:border-foreground/40">
                 <Search className="size-3.5 shrink-0 text-muted-foreground" />
                 <input
                   value={q}
@@ -292,7 +292,7 @@ export function MintDialog({
                     setSavedId("");
                   }}
                   placeholder={offer ? "level:error service:api" : "level:error OR level:fatal"}
-                  className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground/60"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-faint"
                 />
               </label>
               {faults.length > 0 ? (
@@ -323,7 +323,7 @@ export function MintDialog({
                   ))}
                 </div>
                 {many ? (
-                  <label className="flex h-9 items-center gap-2 rounded-md border border-white/15 px-2.5">
+                  <label className="flex h-9 items-center gap-2 rounded-md border border-white/15 px-2.5 focus-within:border-foreground/40">
                     <input
                       type="datetime-local"
                       value={until}
@@ -513,7 +513,7 @@ export function PasteDialog({
             }}
             placeholder="tsl2_…"
             spellCheck={false}
-            className="h-9 rounded-md border border-white/15 bg-transparent px-2.5 font-mono text-sm outline-none focus:border-ring"
+            className="h-9 rounded-md border border-white/15 bg-transparent px-2.5 font-mono text-sm outline-none focus-visible:border-foreground/40"
           />
           {notKey ? (
             <div className="rounded-lg border border-white/10 bg-background/60 px-3 py-2.5">

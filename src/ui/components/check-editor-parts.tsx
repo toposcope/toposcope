@@ -12,7 +12,7 @@ import type { RemindId } from "../../shared/monitor";
  * and calls rows under it.
  */
 
-export const box = "box-border flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm";
+export const box = "box-border flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm focus-within:border-foreground/40";
 export const btn2 = "h-[30px] rounded-md border border-white/15 bg-transparent px-3 text-sm text-foreground hover:bg-accent disabled:opacity-50";
 export const btn = "h-[30px] rounded-md bg-[#e4e4e7] px-3.5 text-sm font-medium text-primary-foreground hover:bg-white disabled:opacity-50";
 const add =
@@ -176,7 +176,7 @@ export function ConditionsPanel({
             const next = e.target.value;
             setLines(() => next);
           }}
-          className="resize-y rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2 font-mono text-xs leading-[1.55] text-[#d4d4d8] outline-none"
+          className="resize-y rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2 font-mono text-xs leading-[1.55] text-[#d4d4d8] outline-none focus-visible:border-foreground/40"
         />
       </label>
     </>

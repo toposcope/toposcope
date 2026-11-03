@@ -259,7 +259,7 @@ export function TraceWaterfall({
         </div>
       ) : (
         <>
-          <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-1.5 text-xs text-muted-foreground/80">
+          <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-1.5 text-xs text-faint">
             {loading ? "Loading spans…" : startLabel}
           </div>
           <div

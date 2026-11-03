@@ -26,7 +26,7 @@ function ago(iso: string, nowMs: number): string {
 function InspectRow({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex gap-2">
-      <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
+      <span className="w-[52px] shrink-0 font-mono text-2xs text-faint">
         {k}
       </span>
       <span className="font-mono text-xs text-foreground/88 whitespace-nowrap">
@@ -75,7 +75,7 @@ function MarkInspectCard({
         compareActive={compareActive}
         onFocusLogs={onFocusLogs}
       />
-      <p className="mt-1.5 text-2xs leading-snug text-muted-foreground/80">
+      <p className="mt-1.5 text-2xs leading-snug text-faint">
         Hiding is per-hunt visibility. The store is not edited from this panel.
       </p>
     </div>
@@ -356,7 +356,7 @@ export function EventFold({
               </button>
             ))}
           </div>
-          <div className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground/80">
+          <div className="border-t px-2.5 py-1.5 text-2xs text-faint">
             A row inspects its mark · hide mutes it for this hunt only.
           </div>
         </div>
@@ -388,7 +388,7 @@ export function EventMarksPeek({
         {count} {count === 1 ? "mark" : "marks"} below the loaded rows — nearest{" "}
         {formatChangeMarkLabel(nearest)} · {nearest.ts.slice(11, 19)}
       </span>
-      <span className="ml-auto text-muted-foreground/70">▾</span>
+      <span className="ml-auto text-faint">▾</span>
     </button>
   );
 }

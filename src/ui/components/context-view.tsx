@@ -282,7 +282,7 @@ export function ContextView({
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {tape.to}
         </span>
-        <span className="min-w-0 truncate text-xs text-muted-foreground/70">
+        <span className="min-w-0 truncate text-xs text-faint">
           {tape.label}
         </span>
       </div>
@@ -378,7 +378,7 @@ export function ContextView({
               </button>
             ) : null}
             {n >= surroundingMaxN ? (
-              <p className="px-2.5 py-2 text-center text-xs text-muted-foreground/70">
+              <p className="px-2.5 py-2 text-center text-xs text-faint">
                 Context caps at {surroundingMaxN} each way
               </p>
             ) : null}

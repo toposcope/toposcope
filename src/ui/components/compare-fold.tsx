@@ -478,14 +478,14 @@ export function CompareFold({
             <span className="min-w-[56px] truncate text-sm font-semibold whitespace-nowrap">
               vs {formatChangeMarkLabel(mark)}
             </span>
-            <span className="font-mono text-xs text-muted-foreground/45">·</span>
+            <span className="font-mono text-xs text-faint">·</span>
             <span
               className="min-w-[34px] truncate font-mono text-2xs whitespace-nowrap"
               style={{ color: series.overlay ? "#a78bfa" : "oklch(0.985 0 0 / 85%)" }}
             >
               {series.text}
             </span>
-            <span className="font-mono text-xs text-muted-foreground/45">·</span>
+            <span className="font-mono text-xs text-faint">·</span>
             <span className="text-2xs text-muted-foreground whitespace-nowrap">
               split
             </span>
@@ -529,14 +529,14 @@ export function CompareFold({
           <span className="min-w-[56px] truncate text-sm font-semibold whitespace-nowrap">
             vs {formatChangeMarkLabel(mark)}
           </span>
-          <span className="font-mono text-xs text-muted-foreground/45">·</span>
+          <span className="font-mono text-xs text-faint">·</span>
           <span
             className="min-w-[34px] truncate font-mono text-2xs whitespace-nowrap"
             style={{ color: series.overlay ? "#a78bfa" : "oklch(0.985 0 0 / 85%)" }}
           >
             {series.text}
           </span>
-          <span className="font-mono text-xs text-muted-foreground/45">·</span>
+          <span className="font-mono text-xs text-faint">·</span>
           <span className="text-2xs text-muted-foreground whitespace-nowrap">
             before
           </span>
@@ -554,7 +554,7 @@ export function CompareFold({
           </span>
           {showDelta && delta != null ? (
             <>
-              <span className="font-mono text-xs text-muted-foreground/45">
+              <span className="font-mono text-xs text-faint">
                 ·
               </span>
               <span className="font-mono text-xs whitespace-nowrap tabular-nums">
@@ -696,7 +696,7 @@ function StackRow({
       <span className="w-[52px] shrink-0 text-right font-mono text-xs whitespace-nowrap tabular-nums">
         {loaded ? `${held?.after ? "≥" : ""}${formatSide(kind, after, formatCount)}` : "—"}
       </span>
-      <span className="font-mono text-xs text-muted-foreground/45">·</span>
+      <span className="font-mono text-xs text-faint">·</span>
       <span className="w-[58px] shrink-0 text-right font-mono text-xs whitespace-nowrap tabular-nums">
         {showDelta && delta != null ? formatAbs(kind, delta, formatCount) : "—"}
       </span>

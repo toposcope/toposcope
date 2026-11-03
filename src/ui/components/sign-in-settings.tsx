@@ -104,14 +104,14 @@ export function SignInSettings(props: { onSettings: () => void }) {
   const card = "flex flex-col gap-3 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4";
   const row = "grid grid-cols-[150px_minmax(0,1fr)] items-center gap-3 text-sm";
   const k = "text-muted-foreground";
-  const input = "h-8 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none";
+  const input = "h-8 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40";
   const status = body?.status;
   const working = body?.oidc && status?.last_sign_in_at && (!status.last_error_at || status.last_sign_in_at > status.last_error_at);
 
   return (
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-3.5 pb-6">
       <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm">
-        <button type="button" className="text-[#8a8a93] hover:text-foreground" onClick={props.onSettings}>
+        <button type="button" className="text-faint hover:text-foreground" onClick={props.onSettings}>
           Settings
         </button>
         <span className="text-[#3f3f46]">›</span>
@@ -272,8 +272,8 @@ export function SignInSettings(props: { onSettings: () => void }) {
               {roleTable.map((r) => (
                 <tr key={r.what}>
                   <td className="border-b border-white/[0.06] px-2 py-[7px] text-zinc-300">{r.what}</td>
-                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.viewer ? "text-ok-fg" : "text-zinc-600")}>{r.viewer ? "✓" : "—"}</td>
-                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.operator ? "text-ok-fg" : "text-zinc-600")}>{r.operator ? "✓" : "—"}</td>
+                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.viewer ? "text-ok-fg" : "text-faint")}>{r.viewer ? "✓" : "—"}</td>
+                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.operator ? "text-ok-fg" : "text-faint")}>{r.operator ? "✓" : "—"}</td>
                   <td className="border-b border-white/[0.06] px-2 text-center text-ok-fg">✓</td>
                 </tr>
               ))}

@@ -99,7 +99,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
         <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onBack}>
           Access
         </button>
-        <span className="text-zinc-600">›</span>
+        <span className="text-faint">›</span>
         <span className="font-medium text-foreground">{linkTitle(link)}</span>
         <span className="ml-1 inline-flex h-[22px] items-center gap-1.5 rounded-md border border-white/10 px-2 text-xs whitespace-nowrap text-zinc-300">
           <span className="text-plate">{linkKind(link).glyph}</span>
@@ -147,7 +147,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
                 >
                   <div className="flex gap-1.5">
                     {link.scope_here ? (
-                      <input aria-label="Scope" value={editing} onChange={(e) => setEditing(e.target.value)} className="h-7 min-w-0 flex-1 rounded-md border border-white/10 bg-surface-1 px-2 font-mono text-sm outline-none" />
+                      <input aria-label="Scope" value={editing} onChange={(e) => setEditing(e.target.value)} className="h-7 min-w-0 flex-1 rounded-md border border-white/10 bg-surface-1 px-2 font-mono text-sm outline-none focus-visible:border-foreground/40" />
                     ) : (
                       <span className="min-w-0 flex-1 truncate font-mono">{link.q || "every row"}</span>
                     )}

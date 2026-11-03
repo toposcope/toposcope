@@ -147,7 +147,7 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           <div className="grid grid-cols-2 gap-x-7 gap-y-2.5 rounded-xl border border-dashed border-plate bg-ground px-6 py-5 font-mono text-lg tracking-[0.06em]">
             {codes.map((code, i) => (
               <span key={code}>
-                <i className="mr-2.5 inline-block w-[18px] text-sm text-zinc-600 not-italic">{i + 1}</i>
+                <i className="mr-2.5 inline-block w-[18px] text-sm text-faint not-italic">{i + 1}</i>
                 {code}
               </span>
             ))}

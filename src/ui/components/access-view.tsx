@@ -483,7 +483,7 @@ export function LetSomeoneIn(props: {
           <label htmlFor="token-name" className="text-sm text-muted-foreground">
             Name · who sends with it
           </label>
-          <input id="token-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. boxes" className="h-[34px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none" />
+          <input id="token-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. boxes" className="h-[34px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40" />
           {secret ? (
             <div className="flex flex-col gap-1.5">
               <span className="text-sm text-muted-foreground">Shown once · copy it now and send with Authorization: Bearer</span>

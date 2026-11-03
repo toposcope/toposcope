@@ -97,7 +97,7 @@ export function HeaderField({ onHunt, disabled }: { onHunt: (q: string | null) =
       </label>
       <div
         className={cn(
-          "flex h-8 w-[360px] items-center gap-2 rounded-lg border border-white/10 bg-surface-2 px-3",
+          "flex h-8 w-[360px] items-center gap-2 rounded-lg border border-white/10 bg-surface-2 px-3 focus-within:border-foreground/40",
           disabled && "opacity-50",
         )}
       >

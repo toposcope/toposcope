@@ -81,7 +81,7 @@ type Props = {
 
 /** 26g: one row per monitor: state, what it is and its condition, what it checks, its strip, last check, now (#263). */
 const wrow = "grid grid-cols-[14px_minmax(0,1.6fr)_150px_minmax(160px,1fr)_84px_96px] items-center gap-4 border-b border-white/[0.06] px-4 py-2.5";
-const dotTone: Record<WatchDot, string> = { open: "text-danger-fg", ok: "text-ok-fg", warn: "text-warn-fg", paused: "text-zinc-500" };
+const dotTone: Record<WatchDot, string> = { open: "text-danger-fg", ok: "text-ok-fg", warn: "text-warn-fg", paused: "text-faint" };
 
 /** 33g: the service a monitor is about and the host it checks, under its name (#335). */
 export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | "host"> & { made_by?: MonitorView["made_by"] } }) {
@@ -854,7 +854,7 @@ export function SourceDetail({
         {spans.length === 0 ? <span className="text-muted-foreground">None open or resolved in this window.</span> : null}
         {spans.map((st) => (
           <span key={st.id} className="flex gap-2">
-            <span className={st.resolved_at === null ? "text-danger-fg" : "text-zinc-500"}>●</span>
+            <span className={st.resolved_at === null ? "text-danger-fg" : "text-faint"}>●</span>
             <span className="font-mono text-muted-foreground">{clockAt(st.opened_at, nowMs)}</span>
             <span className="min-w-0 truncate text-zinc-300">
               {st.resolved_at === null
@@ -1187,7 +1187,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               {today.slice(0, 6).map((t) => (
                 <div key={`${t.monitor}-${t.at}`} className="flex gap-3 text-sm text-muted-foreground">
                   <span className="font-mono">{clockAt(t.at, nowMs)}</span>
-                  <span className={t.open ? "text-danger-fg" : "text-zinc-500"}>●</span>
+                  <span className={t.open ? "text-danger-fg" : "text-faint"}>●</span>
                   <span className="min-w-0 flex-1 truncate text-zinc-300">
                     {t.monitor} · {t.open ? "still open" : `resolved ${t.resolvedAt ? clockAt(t.resolvedAt, nowMs) : ""}`}
                   </span>

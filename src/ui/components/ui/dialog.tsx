@@ -133,7 +133,7 @@ function DialogControl({
   return (
     <div
       className={cn(
-        "flex h-8 items-center gap-2 rounded-md border border-input px-[9px]",
+        "flex h-8 items-center gap-2 rounded-md border border-input px-[9px] focus-within:border-foreground/40",
         className,
       )}
       {...props}

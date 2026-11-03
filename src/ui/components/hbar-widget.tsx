@@ -142,7 +142,7 @@ function Donut({
             <>
               <span className="size-2.5 shrink-0 rounded-sm" style={{ background: slices[i]?.color }} />
               <span className="min-w-0 flex-1 truncate text-left font-mono text-xs text-muted-foreground">{bar.key}</span>
-              <span className="shrink-0 font-mono text-xs text-muted-foreground/80 tabular-nums">{formatSharePct(bar.n, total)}</span>
+              <span className="shrink-0 font-mono text-xs text-faint tabular-nums">{formatSharePct(bar.n, total)}</span>
               <span className="min-w-11 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
                 {floors[i] ? "≥" : ""}
                 {formatSeriesTotal(bar.n)}
@@ -372,7 +372,7 @@ export function HbarWidget({
                   {formatSeriesTotal(bar.n)}
                 </span>
                 {pct ? (
-                  <span className="w-[34px] shrink-0 text-right font-mono text-2xs text-muted-foreground/55 tabular-nums">
+                  <span className="w-[34px] shrink-0 text-right font-mono text-2xs text-faint tabular-nums">
                     {formatSharePct(bar.n, shareTotal)}
                   </span>
                 ) : null}

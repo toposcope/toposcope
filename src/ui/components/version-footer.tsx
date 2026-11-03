@@ -229,7 +229,7 @@ function UpgradeBox({
             Try again
           </button>
           <span className="flex-1" />
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-faint">
             whole log: <code className="font-mono">upgrade/last.log</code> in the app volume
           </span>
         </div>
@@ -282,7 +282,7 @@ function UpgradingPanel({ reply, now }: { reply: VersionReply; now: number }) {
           Toposcope stops while this runs. This page reconnects when it is back.
         </p>
       </div>
-      {reply.checked_at ? <div className="text-xs text-zinc-500">Checked {agoLabel(reply.checked_at, now)}</div> : null}
+      {reply.checked_at ? <div className="text-xs text-faint">Checked {agoLabel(reply.checked_at, now)}</div> : null}
     </div>
   );
 }
@@ -330,7 +330,7 @@ function WhatsNewList({ reply }: { reply: VersionReply }) {
         <div key={r.version} className="flex flex-col gap-1.5 border-t border-white/8 py-1.5">
           <div className="flex items-baseline gap-2.5 text-sm">
             <span className="font-mono text-foreground">{r.version}</span>
-            <span className="shrink-0 font-mono text-xs text-muted-foreground/70">{dayLabel(r.published_at)}</span>
+            <span className="shrink-0 font-mono text-xs text-faint">{dayLabel(r.published_at)}</span>
             <span className="min-w-0 flex-1 truncate text-zinc-300">{open[r.version] ? "" : firstLine(r.notes)}</span>
             <button
               type="button"
@@ -519,7 +519,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
         reply={reply}
         onUpgrade={onUpgrade}
       />
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 text-xs text-faint">
         <span className="min-w-0 flex-1">
           {checking
             ? "Checking GitHub for releases…"

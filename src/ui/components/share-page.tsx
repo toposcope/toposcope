@@ -106,7 +106,7 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
         <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onBack}>
           Access
         </button>
-        <span className="text-zinc-600">›</span>
+        <span className="text-faint">›</span>
         <span className="font-medium text-foreground">{share.name}</span>
         <span className="ml-1.5 text-sm text-muted-foreground">
           <span className="text-teal-400">↑</span> share · {panels.length} panel{panels.length === 1 ? "" : "s"} · expires in {days} d

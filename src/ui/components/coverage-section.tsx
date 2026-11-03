@@ -389,7 +389,7 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
                 setFind("");
               }
             }}
-            className="h-[30px] w-[210px] rounded-md border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus:border-white/25"
+            className="h-[30px] w-[210px] rounded-md border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40"
           />
           {finding ? (
             <button type="button" className="h-[30px] rounded-md border border-white/15 px-2.5 text-sm hover:bg-white/[0.04]" onClick={() => setFind("")}>
