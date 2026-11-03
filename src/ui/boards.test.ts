@@ -20,12 +20,13 @@ function stat(partial: Partial<WidgetDef> = {}): WidgetDef {
 }
 
 describe("parseBoard (#410)", () => {
-  test("reads inputs and panels, drops junk, caps inputs at 4 and panels at 6", () => {
-    const panels = Array.from({ length: 8 }, (_, i) => ({ name: `p${i}`, q: `service:s${i}`, view: "events" }));
+  test("reads inputs and panels, drops junk, caps inputs at 4 and panels at 26", () => {
+    const panels = Array.from({ length: 30 }, (_, i) => ({ name: `p${i}`, q: `service:s${i}`, view: "events" }));
     const board = parseBoard({ keys: ["level", "service", "host", "status", "path"], panels: [...panels, { view: "nope" }] })!;
     expect(board.keys).toEqual(["level", "service", "host", "status"]);
     expect(board.panels).toHaveLength(BOARD_PANEL_MAX);
-    expect(board.panels.map((p) => p.id)).toEqual(["u", "v", "w", "x", "y", "z"]);
+    expect(board.panels.map((p) => p.id).join("")).toBe("uvwxyzabcdefghijklmnopqrst");
+    expect(BOARD_PANEL_MAX).toBe(26);
     expect(BOARD_MAX).toBe(4);
   });
 
@@ -83,7 +84,7 @@ describe("inputs", () => {
 describe("panels", () => {
   const empty: BoardSlots = { keys: [], panels: [] };
 
-  test("Add to board places a copy in the first free cell, up to six", () => {
+  test("Add to board places a copy in the first free cell, up to 26", () => {
     let board: BoardSlots | null = empty;
     board = addBoardPanel(board, { name: "", q: "service:b", view: "histogram", widget: defaultTimeseries({ agg: "avg:special" }) })!;
     board = addBoardPanel(board, { name: "", q: "service:a", view: "stat", widget: stat() })!;
@@ -92,10 +93,11 @@ describe("panels", () => {
       ["v", 0, 4],
     ]);
     expect(board.panels[0]!.name).toBe("avg(special)");
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 24; i++) {
       board = addBoardPanel(board!, { name: "x", q: "", view: "events", widget: defaultTimeseries() });
     }
-    expect(board!.panels).toHaveLength(6);
+    expect(board!.panels).toHaveLength(26);
+    expect(new Set(board!.panels.map((p) => p.id)).size).toBe(26);
     expect(addBoardPanel(board!, { name: "x", q: "", view: "events", widget: defaultTimeseries() })).toBeNull();
   });
 

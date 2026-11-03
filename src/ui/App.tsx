@@ -121,6 +121,7 @@ import { compareFoldWindows, type CompareFoldSnap } from "./compare-fold";
 import { fillHistogram, rangeDurationMs } from "./fill-histogram";
 import {
   addBoardPanel,
+  BOARD_PANEL_MAX,
   bindForBoard,
   duplicateBoardPanel,
   panelQuery,
@@ -3582,7 +3583,7 @@ export function App() {
     }
     const next = addBoardPanel(item.board, draft);
     if (!next) {
-      toast.error("A board holds six panels");
+      toast.error(`A board holds ${BOARD_PANEL_MAX} panels`);
       return;
     }
     if (await saveBoard(item, { board: next })) {
