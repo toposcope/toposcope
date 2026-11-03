@@ -125,7 +125,7 @@ export function SpanFlamegraph({
       {empty || failed ? (
         <>
           {empty ? (
-            <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-muted-foreground/80">
+            <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-faint">
               looked up by span_id · {emptyClock || "—"} UTC
             </div>
           ) : null}
@@ -162,7 +162,7 @@ export function SpanFlamegraph({
       ) : (
         <>
           <div
-            className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-muted-foreground/80"
+            className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-faint"
             title={
               multi
                 ? `${result?.total_profiles} profiles overlap this span. We render the most recent one and do not merge samples.`

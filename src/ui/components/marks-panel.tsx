@@ -190,7 +190,7 @@ export function MarksPanel(props: {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="what you did, in one line"
-            className="h-8 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none"
+            className="h-8 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40"
           />
           <Button type="submit" variant="outline" disabled={!note.trim()}>
             ○ Add

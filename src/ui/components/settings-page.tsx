@@ -122,7 +122,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
   const row = "flex items-center gap-3 text-sm";
   const k = "w-[110px] shrink-0 text-muted-foreground";
   const fk = "w-[140px] shrink-0 text-muted-foreground";
-  const input = "h-8 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none";
+  const input = "h-8 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40";
   const session = props.instance?.session;
 
   return (

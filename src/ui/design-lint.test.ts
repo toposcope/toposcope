@@ -22,6 +22,10 @@ const designRules: Record<string, { use: string; count: (src: string) => number 
   },
   "rounded-[Npx]": { use: "rounded-sm|md|lg|xl|full", count: (s) => matches(s, /(?<![\w-])rounded(?:-[a-z]{1,2})?-\[\d+(?:\.\d+)?px\]/g) },
   "<button with h-[…]": { use: "<Button size>", count: (s) => (s.match(/<button\b[^>]*?className=(?:"[^"]*|\{[^}]*)\bh-\[/g) ?? []).length },
+  "outline-none with no focus": {
+    use: "a focus-visible ring, a field border at fg 40% or a row fill (docs/ui/README.md)",
+    count: (s) => (s.match(/["`][^"`\n]*(?<![\w:-])outline-none[^"`\n]*["`]/g) ?? []).filter((c) => !/focus(?:-visible|-within)?:|data-\[highlighted\]/.test(c)).length,
+  },
 };
 
 function matches(src: string, re: RegExp): number {

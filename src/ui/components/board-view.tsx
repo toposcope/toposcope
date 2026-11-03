@@ -473,7 +473,7 @@ function NameField({ value, onDone }: { value: string; onDone: (name: string | n
           finish(false);
         }
       }}
-      className="h-[26px] min-w-0 flex-1 rounded-md border border-plate/60 bg-background px-2 text-base font-semibold outline-none"
+      className="h-[26px] min-w-0 flex-1 rounded-md border border-plate/60 bg-background px-2 text-base font-semibold outline-none focus-visible:border-foreground/40"
     />
   );
 }
@@ -664,7 +664,7 @@ function BoardNote({
                 finish(false);
               }
             }}
-            className="min-h-0 flex-1 resize-none rounded-md border border-plate/60 bg-background px-2 py-1 text-sm leading-[1.5] outline-none"
+            className="min-h-0 flex-1 resize-none rounded-md border border-plate/60 bg-background px-2 py-1 text-sm leading-[1.5] outline-none focus-visible:border-foreground/40"
           />
         ) : text ? (
           <NoteText text={text} />

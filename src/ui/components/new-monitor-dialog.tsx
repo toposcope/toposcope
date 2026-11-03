@@ -47,7 +47,7 @@ function SourceCard({
       onClick={onClick}
       disabled={disabled}
       title={disabled ? "Save a search first" : undefined}
-      className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-white/12 bg-surface-2 p-3.5 text-left outline-none hover:border-white/40 focus-visible:border-plate disabled:opacity-50 disabled:hover:border-white/12"
+      className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-white/12 bg-surface-2 p-3.5 text-left outline-none hover:border-white/40 focus-visible:border-foreground/40 disabled:opacity-50 disabled:hover:border-white/12"
     >
       <span className="flex items-center gap-2.5">
         <span className="flex size-[26px] items-center justify-center rounded-md bg-control text-foreground">

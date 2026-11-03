@@ -65,7 +65,7 @@ export function FacetGroup({
           {field}
         </h2>
         {selLabel ? (
-          <span className="shrink-0 text-2xs font-normal tracking-normal text-muted-foreground/80 normal-case">
+          <span className="shrink-0 text-2xs font-normal tracking-normal text-faint normal-case">
             {selLabel}
           </span>
         ) : null}
@@ -175,7 +175,7 @@ export function FacetGroup({
                 {selected.length >= 1 ? (
                   <button
                     type="button"
-                    className={`h-5 shrink-0 rounded-sm border border-white/12 px-[5px] text-2xs text-muted-foreground/75 hover:border-ring hover:text-foreground ${
+                    className={`h-5 shrink-0 rounded-sm border border-white/12 px-[5px] text-2xs text-faint hover:border-ring hover:text-foreground ${
                       onlyInert ? "invisible pointer-events-none" : ""
                     }`}
                     title={`Show only ${field}:${item.v}`}

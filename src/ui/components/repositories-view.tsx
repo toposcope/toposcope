@@ -128,7 +128,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
       <div className="mx-auto w-full max-w-[980px]">
         <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-sm">
-          <button type="button" className="text-[#8a8a93] hover:text-foreground" onClick={props.onSettings}>
+          <button type="button" className="text-faint hover:text-foreground" onClick={props.onSettings}>
             Settings
           </button>
           <span className="text-[#3f3f46]">›</span>
@@ -261,7 +261,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
 
 function MenuItem(props: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
   return (
-    <button type="button" role="menuitem" disabled={props.disabled} onClick={props.onClick} className="w-full rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50">
+    <button type="button" role="menuitem" disabled={props.disabled} onClick={props.onClick} className="w-full rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-control focus-visible:outline-none disabled:opacity-50">
       {props.children}
     </button>
   );
@@ -295,7 +295,7 @@ function useGithubRepos(on: boolean, q: string): { repos: GithubRepo[]; matching
 
 const sectionHead = "px-2 pt-2 pb-0.5 text-2xs tracking-[0.04em] text-muted-foreground uppercase";
 const repoItem =
-  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50";
+  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-control focus-visible:outline-none disabled:opacity-50";
 
 /**
  * 41b / 41c / 42e: the repositories used here, each with its services; with GitHub connected, a
@@ -340,7 +340,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://git.example.com/owner/name"
-          className="h-[30px] w-full min-w-0 rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none focus:border-plate"
+          className="h-[30px] w-full min-w-0 rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none focus-visible:border-foreground/40"
         />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="min-w-0 truncate">
@@ -371,7 +371,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Find a repository"
-            className="h-7 w-full min-w-0 rounded-md border border-white/10 bg-surface-1 px-2 font-mono text-sm outline-none focus:border-plate"
+            className="h-7 w-full min-w-0 rounded-md border border-white/10 bg-surface-1 px-2 font-mono text-sm outline-none focus-visible:border-foreground/40"
           />
         </div>
       ) : null}
@@ -437,7 +437,7 @@ function FolderForm(props: { service: string; repo: Repo & { path: string | null
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="services/pay"
-        className="h-[30px] w-full min-w-0 rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none focus:border-plate"
+        className="h-[30px] w-full min-w-0 rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none focus-visible:border-foreground/40"
       />
       <p className="m-0 text-sm leading-normal text-muted-foreground">
         {folder === null ? (

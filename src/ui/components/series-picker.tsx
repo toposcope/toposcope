@@ -28,7 +28,7 @@ const FOCUS = "oklch(0.552 0.016 285.938)";
 
 /** A toolbar control: 26px, the select box it replaces. */
 const triggerBox =
-  "inline-flex h-[26px] min-w-0 items-center gap-1.5 rounded-md border bg-overlay text-xs whitespace-nowrap text-foreground outline-none";
+  "inline-flex h-[26px] min-w-0 items-center gap-1.5 rounded-md border bg-overlay text-xs whitespace-nowrap text-foreground outline-none focus-visible:border-foreground/40";
 
 /** Dots become places a long name may wrap; it is never ellipsised in the list. */
 const wrapAtDots = (text: string) => text.replaceAll(".", ".​");
@@ -178,7 +178,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
             title={title}
             aria-label="Series"
             onPointerDown={(e) => e.stopPropagation()}
-            className="inline-flex min-w-0 max-w-full flex-1 items-center truncate border-none px-px font-mono text-xs leading-[1.55] outline-none"
+            className="inline-flex min-w-0 max-w-full flex-1 items-center truncate border-none px-px font-mono text-xs leading-[1.55] outline-none focus-visible:ring-1 focus-visible:ring-ring"
             style={{
               color: "oklch(0.985 0 0)",
               borderBottom: `1px dashed ${open ? "oklch(0.985 0 0)" : "oklch(1 0 0 / 34%)"}`,
@@ -254,7 +254,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
             placeholder="Find a field or metric"
             aria-label="Find a field or metric"
             spellCheck={false}
-            className="min-w-0 flex-1 bg-transparent font-mono text-sm text-foreground outline-none placeholder:font-sans placeholder:text-muted-foreground/65"
+            className="min-w-0 flex-1 bg-transparent font-mono text-sm text-foreground outline-none placeholder:font-sans placeholder:text-faint"
           />
           <kbd className="shrink-0 rounded-sm border border-white/[0.15] px-1 font-mono text-2xs text-muted-foreground">
             esc
@@ -279,7 +279,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
                   )}
                 >
                   <span>{section.head}</span>
-                  <span className="ml-auto font-mono text-2xs tracking-normal text-muted-foreground/80 normal-case">
+                  <span className="ml-auto font-mono text-2xs tracking-normal text-faint normal-case">
                     {section.meta}
                   </span>
                 </div>
@@ -371,7 +371,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
           <kbd className="ml-1.5 rounded-sm border border-white/[0.15] px-1 font-mono text-2xs">↵</kbd>
           <span>pick</span>
           <span className="flex-1" />
-          <span className="font-mono text-2xs text-muted-foreground/80">
+          <span className="font-mono text-2xs text-faint">
             {typed.length > 0 && list.matches > 0 ? `${list.matches} match` : ""}
           </span>
         </div>

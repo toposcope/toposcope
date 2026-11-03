@@ -25,7 +25,7 @@ type Props = {
 };
 
 const fieldClass =
-  "h-[28px] rounded-md border border-white/14 bg-ground px-2 text-sm outline-none placeholder:text-muted-foreground/60 focus:border-plate/55";
+  "h-[28px] rounded-md border border-white/14 bg-ground px-2 text-sm outline-none placeholder:text-faint focus-visible:border-foreground/40";
 
 /** A line's name as it is typed: the panel keeps it trimmed, the field keeps what was typed. */
 function NameField({
@@ -251,7 +251,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                     className="w-[400px] bg-overlay p-2"
                     onPointerDown={(e) => e.stopPropagation()}
                   >
-                    <label className="flex h-[30px] items-center gap-1.5 rounded-md border border-white/14 bg-ground px-2">
+                    <label className="flex h-[30px] items-center gap-1.5 rounded-md border border-white/14 bg-ground px-2 focus-within:border-foreground/40">
                       <Search className="size-3 text-muted-foreground" aria-hidden="true" />
                       <input
                         type="text"
@@ -313,7 +313,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                         </button>
                       ))}
                       {choices.other.length > 0 ? (
-                        <div className="px-1.5 pt-2 pb-0.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
+                        <div className="px-1.5 pt-2 pb-0.5 text-xs font-semibold tracking-[0.04em] text-faint uppercase">
                           Other units
                         </div>
                       ) : null}
@@ -344,7 +344,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                   <span className="w-[120px] shrink-0 truncate font-mono text-sm text-muted-foreground" title={value}>
                     {widget.metricSplit}:{value}
                   </span>
-                  <span className="text-xs text-muted-foreground/70">shows as</span>
+                  <span className="text-xs text-faint">shows as</span>
                   <NameField
                     label={`Name for ${value}`}
                     value={names[value] ?? ""}

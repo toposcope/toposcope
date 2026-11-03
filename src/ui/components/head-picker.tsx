@@ -51,7 +51,7 @@ export function HeadPicker({
             title={`${label} — ${title}`}
             onPointerDown={(e) => e.stopPropagation()}
             className={cn(
-              "inline-flex max-w-full items-center border-none px-px font-mono text-xs leading-[1.55] outline-none",
+              "inline-flex max-w-full items-center border-none px-px font-mono text-xs leading-[1.55] outline-none focus-visible:ring-1 focus-visible:ring-ring",
               fn
                 ? "shrink-0 whitespace-nowrap"
                 : "min-w-0 flex-1 truncate",
@@ -117,7 +117,7 @@ export function HeadPicker({
                 </span>
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 {item.used ? (
-                  <span className="shrink-0 text-2xs tracking-[0.03em] text-muted-foreground/75">
+                  <span className="shrink-0 text-2xs tracking-[0.03em] text-faint">
                     on canvas
                   </span>
                 ) : null}

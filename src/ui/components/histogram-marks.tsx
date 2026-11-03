@@ -729,7 +729,7 @@ export function HistogramMarkLane({
                           </button>
                         ))}
                       </div>
-                      <div className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground/80">
+                      <div className="border-t px-2.5 py-1.5 text-2xs text-faint">
                         A row inspects its mark · hide mutes it for this hunt only.
                       </div>
                     </div>
@@ -784,7 +784,7 @@ export function HistogramMarkLane({
                     : undefined
                 }
               />
-              <p className="mt-1.5 text-2xs leading-snug text-muted-foreground/80">
+              <p className="mt-1.5 text-2xs leading-snug text-faint">
                 Hiding is per-hunt visibility. The store is not edited from this panel.
               </p>
             </div>
@@ -797,7 +797,7 @@ export function HistogramMarkLane({
             className="absolute top-1/2 left-0.5 z-[6] flex h-[18px] -translate-y-1/2 items-center gap-1 rounded-sm border border-dashed border-white/25 bg-card px-1.5 font-mono text-2xs text-muted-foreground"
             onClick={() => peek(leftPeek)}
           >
-            <span className="text-muted-foreground/70">◂</span>
+            <span className="text-faint">◂</span>
             <MarkGlyph kind={leftPeek.kind} size={10} />
             {leftCrowd ? null : (
               <span>
@@ -820,7 +820,7 @@ export function HistogramMarkLane({
               </span>
             )}
             <MarkGlyph kind={rightPeek.kind} size={10} />
-            <span className="text-muted-foreground/70">▸</span>
+            <span className="text-faint">▸</span>
           </button>
         ) : null}
       </div>
@@ -859,7 +859,7 @@ export function railLabelFits(label: string, frac: number, others: number[], lan
 function InspectRow({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex gap-2">
-      <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
+      <span className="w-[52px] shrink-0 font-mono text-2xs text-faint">
         {k}
       </span>
       <span className="font-mono text-xs text-foreground/88 whitespace-nowrap">
@@ -969,7 +969,7 @@ export function HistogramMarksChip({
             <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Marks
             </span>
-            <span className="ml-auto font-mono text-2xs text-muted-foreground/70">
+            <span className="ml-auto font-mono text-2xs text-faint">
               this hunt
             </span>
           </div>
@@ -1027,7 +1027,7 @@ export function HistogramMarksChip({
               ))}
             </>
           ) : null}
-          <p className="mt-1 border-t px-1.5 py-1.5 text-2xs leading-snug text-muted-foreground/80">
+          <p className="mt-1 border-t px-1.5 py-1.5 text-2xs leading-snug text-faint">
             Kind toggles and per-mark mutes are visibility for this hunt. They do not
             delete the mark.
           </p>
