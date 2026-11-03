@@ -191,11 +191,9 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
   }
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const wide = step === "done" ? "max-w-[900px]" : "max-w-[640px]";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={wide}>
+      <DialogContent size="md">
         {step === "scope" ? (
           <>
             <DialogHeader>

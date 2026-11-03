@@ -215,7 +215,7 @@ export function MintDialog({
 
   return (
     <Dialog open={kind !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent className="max-w-[560px]">
+      <DialogContent size="md" >
         <DialogHeader>
           <DialogTitle>{offer ? "Offer rows from here" : "Invite a source here"}</DialogTitle>
           <DialogDescription>
@@ -496,7 +496,7 @@ export function PasteDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? undefined : onClose())}>
-      <DialogContent className="max-w-[520px]">
+      <DialogContent size="md" >
         <DialogHeader>
           <DialogTitle>Paste a link key</DialogTitle>
           <DialogDescription>

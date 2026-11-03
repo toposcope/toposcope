@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Armed } from "@/components/ui/armed";
 
 /** `GET /api/me` (#305). */
 export type Me = {
@@ -185,24 +186,22 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
                     </span>
                   </span>
                   <span className="font-mono text-sm text-zinc-300">until {dayAt(b.expires_at)}</span>
-                  {armed === b.id ? (
-                    <button type="button" className="text-right text-sm text-plate underline" onClick={() => void forget(b.id)}>
-                      sure? forget
-                    </button>
-                  ) : (
-                    <button type="button" className="text-right text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(b.id)}>
-                      forget
-                    </button>
-                  )}
+                  <Armed armed={armed === b.id} onArm={() => setArmed(b.id)} onDisarm={() => setArmed(null)} onConfirm={() => void forget(b.id)} label="forget" confirm="sure? forget" className="text-right" />
                 </div>
               ))}
             </div>
           )}
           <div className="flex flex-wrap items-center gap-3.5">
             {browsers.length > 1 ? (
-              <Button type="button" variant="outline" onClick={() => (armed === "all" ? void forget(null) : setArmed("all"))}>
-                {armed === "all" ? `Sure? forget all ${browsers.length}` : `Forget all ${browsers.length}`}
-              </Button>
+              <Armed
+                form="button"
+                armed={armed === "all"}
+                onArm={() => setArmed("all")}
+                onDisarm={() => setArmed(null)}
+                onConfirm={() => void forget(null)}
+                label={`Forget all ${browsers.length}`}
+                confirm={`Sure? forget all ${browsers.length}`}
+              />
             ) : null}
             <span className="text-sm text-muted-foreground">Resetting two-step or changing your password forgets them all.</span>
             <Button type="button" className="ml-auto" onClick={() => setBrowsers(null)}>

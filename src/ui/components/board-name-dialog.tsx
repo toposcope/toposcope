@@ -70,11 +70,10 @@ export function BoardNameDialog({
             </DialogControl>
           </DialogField>
           <DialogFooter>
+            <DialogClose type="button">Cancel</DialogClose>
             <Button size="lg" type="submit" disabled={saving || !name.trim()}>
               {action}
             </Button>
-            <span className="flex-1" />
-            <DialogClose type="button">Cancel</DialogClose>
           </DialogFooter>
         </form>
       </DialogContent>

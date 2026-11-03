@@ -33,18 +33,27 @@ function DialogOverlay({
   );
 }
 
+/** Sheet 45: three widths. sm 440 (save, board name) · md 640 (links, shares) · lg 1080 (monitors). */
+const dialogWidth = {
+  sm: "max-w-[min(440px,calc(100vw-32px))]",
+  md: "max-w-[min(640px,calc(100vw-32px))]",
+  lg: "max-w-[min(1080px,calc(100vw-32px))]",
+} as const;
+
 function DialogContent({
   className,
   children,
+  size = "sm",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { size?: keyof typeof dialogWidth }) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[440px] grid-cols-[minmax(0,1fr)] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-lg border border-white/12 bg-card p-[18px] shadow-[0_20px_50px_oklch(0_0_0_/_55%)]",
+          "fixed top-1/2 left-1/2 z-50 grid w-full grid-cols-[minmax(0,1fr)] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-xl border border-white/12 bg-overlay p-[18px] shadow-[0_20px_50px_oklch(0_0_0_/_55%)]",
+          dialogWidth[size],
           className,
         )}
         {...props}
@@ -85,9 +94,10 @@ function DialogDescription({
   );
 }
 
+/** One footer (sheet 45): right-aligned, Cancel then the one primary; a destructive primary is danger. */
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div className={cn("mt-4 flex items-center gap-2", className)} {...props} />
+    <div className={cn("mt-4 flex items-center justify-end gap-2", className)} {...props} />
   );
 }
 
@@ -98,7 +108,7 @@ function DialogClose({
   return (
     <DialogPrimitive.Close
       className={cn(
-        "h-8 rounded-md px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground",
+        "h-7.5 rounded-md px-3 text-sm text-muted-foreground hover:bg-control hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         className,
       )}
       {...props}

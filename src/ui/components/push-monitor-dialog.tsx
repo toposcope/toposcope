@@ -301,7 +301,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(1140px,calc(100vw-32px))] overflow-y-auto p-0">
+      <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto p-0">
         <form onSubmit={(e) => void onSubmit(e)}>
           <div className="flex items-center gap-3 border-b px-[18px] py-3.5">
             <DialogTitle className="flex min-w-0 items-baseline gap-2">

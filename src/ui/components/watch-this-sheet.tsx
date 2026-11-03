@@ -7,6 +7,7 @@ import type { MonitorPreview, PreviewWindow } from "../../alerts/preview";
 import { seriesLabel } from "../../query/agg";
 import type { OpensWhen } from "../../shared/monitor";
 import { callHost } from "../watch";
+import { Sheet } from "@/components/ui/sheet";
 
 /**
  * Watch this (#264, frame 26h): a sheet over the rows that makes a saved-search monitor from the
@@ -128,16 +129,6 @@ export function WatchThisSheet(props: {
     };
   }, [props.q, props.agg, n, nOk, opensWhen, win, measure]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        props.onCancel();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [props]);
-
   const peak = useMemo(() => Math.max(nOk ? n * 1.25 : 1, ...(preview?.series.map((p) => p.v) ?? [1])), [preview, n, nOk]);
   const canSave = nOk && shownName.trim().length > 0 && ticked.length > 0 && serviceOk(service) && !busy;
   const toggle = (t: string) => setTicked((list) => (list.includes(t) ? list.filter((x) => x !== t) : [...list, t].slice(0, 5)));
@@ -184,7 +175,7 @@ export function WatchThisSheet(props: {
 
   const lineY = 120 - Math.min(120, Math.round(((nOk ? n : 0) / peak) * 120));
   return (
-    <section aria-label="Watch this" className="absolute inset-x-0 bottom-0 z-30 grid h-[470px] grid-cols-[minmax(0,1fr)_420px] gap-7 border-t border-zinc-700 bg-surface-2 px-7 py-[22px] shadow-[0_-24px_60px_rgba(0,0,0,.6)]">
+    <Sheet side="bottom" label="Watch this" onClose={props.onCancel} className="grid h-[470px] grid-cols-[minmax(0,1fr)_420px] gap-7 px-7 py-[22px]">
       <form
         className="flex min-w-0 flex-col gap-[18px]"
         onSubmit={(e) => {
@@ -349,7 +340,7 @@ export function WatchThisSheet(props: {
           </span>
         ) : null}
       </aside>
-    </section>
+    </Sheet>
   );
 }
 

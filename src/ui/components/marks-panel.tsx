@@ -9,6 +9,7 @@ import { hhmmUtc, markGlyph } from "../home-since";
 import { attrLine, inWindow, markFrom, panelRows, utcDayStart } from "../marks-panel";
 import { commitUrl, compareUrl } from "../../shared/code-links";
 import { deployName, shortSha, useCode } from "../code-links";
+import { detailPanel } from "@/components/ui/side-panel";
 
 /**
  * The marks panel (#262, frame 26f): every mark of the day from the rail's `marks · N` chip, in
@@ -88,7 +89,7 @@ export function MarksPanel(props: {
 
   const rows = marks ? panelRows(marks, props.offKinds) : [];
   return (
-    <aside aria-label="Marks" className="my-2 mr-3 ml-1 flex w-[560px] max-w-[40%] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-2">
+    <aside aria-label="Marks" className={cn("flex flex-col", detailPanel)}>
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/[0.06] px-4 py-3">
         <span className="text-base font-medium">Marks · {daysBack === 0 ? "today" : `${daysBack + 1} days`}</span>
         <span className="font-mono text-xs text-muted-foreground">

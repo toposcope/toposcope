@@ -26,6 +26,8 @@ import {
   remindLabel,
   sourceOf,
 } from "@/watch";
+import { railPanel } from "@/components/ui/side-panel";
+import { cn } from "@/lib/utils";
 
 const btn2 = "flex h-7 items-center rounded-md border px-3 text-sm hover:bg-accent";
 
@@ -185,7 +187,7 @@ export function MonitorRail({
   const quiet = readsQuiet(monitor);
   const cantTell = cantTellNow(monitor, nowMs);
   return (
-    <aside className="flex w-[330px] max-w-[34%] shrink-0 flex-col gap-3 overflow-y-auto border-l bg-surface-1 p-3">
+    <aside className={cn("flex flex-col gap-3 overflow-y-auto border-l bg-surface-1 p-3", railPanel)}>
       <div className="flex items-center gap-2">
         <span className="min-w-0 truncate text-sm font-semibold">{monitor.name}</span>
         <span className="inline-flex h-[18px] items-center rounded-md border border-white/[0.18] px-1.5 text-2xs text-muted-foreground">

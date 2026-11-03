@@ -15,6 +15,7 @@ import {
   spanOffsetLabel,
   type SpanField,
 } from "../span-fields";
+import { railPanel } from "@/components/ui/side-panel";
 
 /** Resource rows shown before "Show N more". */
 const resourceShown = 8;
@@ -170,7 +171,8 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
     <aside
       data-screen-label="Span detail"
       className={cn(
-        "@container flex w-[376px] max-w-[34%] shrink-0 flex-col border-l bg-surface-1",
+        "@container flex flex-col border-l bg-surface-1",
+        railPanel,
         className,
       )}
     >

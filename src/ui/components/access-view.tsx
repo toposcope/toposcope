@@ -11,6 +11,7 @@ import { MintDialog, PasteDialog } from "./link-dialogs";
 import { AgentsGroup, InviteSheet, MakeTokenSheet, PeopleCards, PeopleGroup, PersonTokenRows, ServiceAccountsGroup, type PeopleBody, type Role } from "./people-groups";
 import { AgentMade, AgentStep, type MadeAgent } from "./agent-step";
 import { Empty } from "@/components/ui/states";
+import { Armed } from "@/components/ui/armed";
 
 /**
  * Access (#265, frames 26i and 26j; the one door since 29a, #295): every way in or out of this
@@ -214,15 +215,7 @@ export function AccessView(props: {
               open
             </button>
           ) : r.revoke ? (
-            armed === `${r.kind}-${r.id}` ? (
-              <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void revoke(r)}>
-                sure? revoke
-              </button>
-            ) : (
-              <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(`${r.kind}-${r.id}`)}>
-                revoke
-              </button>
-            )
+            <Armed armed={armed === `${r.kind}-${r.id}`} onArm={() => setArmed(`${r.kind}-${r.id}`)} onDisarm={() => setArmed(null)} onConfirm={() => void revoke(r)} label="revoke" confirm="sure? revoke" />
           ) : (
             <span className="text-xs text-muted-foreground" title="Set in .env; change it there and restart">
               .env

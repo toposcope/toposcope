@@ -11,6 +11,7 @@ import type { MonitorView, SavedSearch } from "../types";
 import { AgentBadge, OpenAgent } from "./agent-badge";
 import { EvidenceGaps, useCoverage } from "./coverage-section";
 import { Empty } from "@/components/ui/states";
+import { railPanel } from "@/components/ui/side-panel";
 
 export type HomeWindow = { from: string; to: string };
 
@@ -352,7 +353,7 @@ export function HomeView(props: Props) {
           </div>
         </main>
 
-        <aside className="hidden min-h-0 w-[300px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-white/[0.06] px-6 pt-5 pb-6 lg:flex">
+        <aside className={cn("hidden min-h-0 flex-col gap-3 overflow-y-auto border-l border-white/[0.06] px-6 pt-5 pb-6 lg:flex", railPanel)}>
           <span className="text-base font-medium">Saved hunts · {hunts.length}</span>
           {column.fold ? (
             <>

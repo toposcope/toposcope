@@ -12,6 +12,7 @@ import {
   layoutFlame,
   packageColor,
 } from "../flame";
+import { railPanel } from "@/components/ui/side-panel";
 
 type Props = {
   service: string;
@@ -295,7 +296,7 @@ export function SpanFlamegraph({
     {rail ? (
       <aside
         aria-label="Profile"
-        className="@container flex w-[300px] max-w-[30%] shrink-0 flex-col border-l bg-surface-1"
+        className={cn("@container flex flex-col border-l bg-surface-1", railPanel)}
       >
         <div className="mx-3 mt-3 mb-1.5 text-2xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
           Where it entered
