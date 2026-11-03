@@ -105,9 +105,9 @@ export function MonitorPlaceFields({ kind, service, onService, host, onHost, see
   if (layout === "row") {
     return (
       <>
-        <span className="flex items-center gap-2 text-[12px]">
+        <span className="flex items-center gap-2 text-sm">
           <label htmlFor={serviceId} className="w-14 shrink-0 text-muted-foreground">
-            service<span aria-hidden className="text-[#e7e1d3]"> *</span>
+            service<span aria-hidden className="text-plate"> *</span>
           </label>
           <input
             id={serviceId}
@@ -118,11 +118,11 @@ export function MonitorPlaceFields({ kind, service, onService, host, onHost, see
             spellCheck={false}
             autoComplete="off"
             onChange={(e) => onService(e.target.value)}
-            className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-[12px] outline-none placeholder:text-muted-foreground")}
+            className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground")}
           />
           {list}
         </span>
-        <span className="flex items-center gap-2 text-[12px]">
+        <span className="flex items-center gap-2 text-sm">
           <label htmlFor={hostId} className="w-14 shrink-0 text-muted-foreground">
             host
           </label>
@@ -134,10 +134,10 @@ export function MonitorPlaceFields({ kind, service, onService, host, onHost, see
             spellCheck={false}
             autoComplete="off"
             onChange={(e) => onHost(e.target.value)}
-            className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-[12px] outline-none placeholder:text-muted-foreground")}
+            className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground")}
           />
         </span>
-        <span id={`${hostId}-help`} className="pl-16 text-[11px] text-muted-foreground">
+        <span id={`${hostId}-help`} className="pl-16 text-xs text-muted-foreground">
           what is checked · {hostHelp[kind]}
         </span>
       </>
@@ -159,7 +159,7 @@ export function MonitorPlaceFields({ kind, service, onService, host, onHost, see
           className={cn(monitorBox, "bg-transparent font-mono outline-none placeholder:text-muted-foreground")}
         />
         {list}
-        <span className="text-[11.5px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {seen.length > 0 ? "Pick one seen here, or type one." : "Type the service it is about."}
         </span>
       </MonitorField>
@@ -173,7 +173,7 @@ export function MonitorPlaceFields({ kind, service, onService, host, onHost, see
           onChange={(e) => onHost(e.target.value)}
           className={cn(monitorBox, "bg-transparent font-mono outline-none placeholder:text-muted-foreground")}
         />
-        <span className="text-[11.5px] text-muted-foreground">{hostHelp[kind]}</span>
+        <span className="text-xs text-muted-foreground">{hostHelp[kind]}</span>
       </MonitorField>
     </>
   );

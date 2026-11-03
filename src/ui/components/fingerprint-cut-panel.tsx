@@ -146,10 +146,10 @@ export function FingerprintCutPanel({
   const emptyAll = error ?? result?.empty ?? "";
 
   return (
-    <aside className="flex h-full w-full min-w-0 flex-col border-l bg-[#0f0f11]">
+    <aside className="flex h-full w-full min-w-0 flex-col border-l bg-surface-1">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2.5">
         <MarkGlyph kind={mark.kind} size={12} />
-        <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
           {result?.title ?? formatChangeMarkLabel(mark)}
         </span>
         <Button size="icon"
@@ -165,24 +165,24 @@ export function FingerprintCutPanel({
         <div className="flex flex-col gap-0.5 border-b px-2.5 py-2">
           {lines.map((row) => (
             <div key={row.k} className="flex gap-2">
-              <span className="w-[52px] shrink-0 font-mono text-[10.5px] text-muted-foreground/75">
+              <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
                 {row.k}
               </span>
-              <span className="font-mono text-[11px] text-foreground/88 whitespace-nowrap">
+              <span className="font-mono text-xs text-foreground/88 whitespace-nowrap">
                 {row.v}
               </span>
             </div>
           ))}
           {inside.length > 0 ? (
             <div className="flex gap-2">
-              <span className="w-[52px] shrink-0 font-mono text-[10.5px] text-muted-foreground/75">
+              <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
                 inside
               </span>
               <span className="flex min-w-0 flex-col gap-0.5">
                 {inside.map((m) => (
                   <span
                     key={m.id}
-                    className="flex items-center gap-1.5 font-mono text-[11px] text-foreground/88 whitespace-nowrap"
+                    className="flex items-center gap-1.5 font-mono text-xs text-foreground/88 whitespace-nowrap"
                   >
                     <MarkGlyph kind={m.kind} size={10} />
                     <span className="min-w-0 truncate">
@@ -191,7 +191,7 @@ export function FingerprintCutPanel({
                   </span>
                 ))}
                 {insideMore > 0 ? (
-                  <span className="font-mono text-[10.5px] text-muted-foreground">
+                  <span className="font-mono text-2xs text-muted-foreground">
                     +{insideMore} more
                   </span>
                 ) : null}
@@ -201,10 +201,10 @@ export function FingerprintCutPanel({
           {notes.map((note) => (
             <div
               key={note}
-              className="mt-0.5 flex gap-1.5 text-[10.5px] leading-snug"
+              className="mt-0.5 flex gap-1.5 text-2xs leading-snug"
             >
-              <span className="shrink-0 text-amber-400">▲</span>
-              <span className="text-pretty text-amber-200/90">{note}</span>
+              <span className="shrink-0 text-warn-fg">▲</span>
+              <span className="text-pretty text-warn-fg/90">{note}</span>
             </div>
           ))}
         </div>
@@ -220,13 +220,13 @@ export function FingerprintCutPanel({
           />
         ))}
         {emptyAll ? (
-          <div className="px-3 py-3.5 text-[12px] leading-relaxed text-pretty text-muted-foreground">
+          <div className="px-3 py-3.5 text-sm leading-relaxed text-pretty text-muted-foreground">
             {emptyAll}
           </div>
         ) : null}
       </div>
       <div className="shrink-0 border-t bg-card/45 px-2.5 py-2">
-        <p className="text-[10.5px] leading-snug text-pretty text-muted-foreground/80">
+        <p className="text-2xs leading-snug text-pretty text-muted-foreground/80">
           {result?.held ? heldFoot : foot}
         </p>
       </div>
@@ -253,19 +253,19 @@ function CutSet({
       <div className="flex items-baseline gap-1.5 px-2.5 pt-2.5 pb-1">
         <span
           className={cn(
-            "text-[11px] font-semibold tracking-wide uppercase",
+            "text-xs font-semibold tracking-wide uppercase",
             set.waiting && "text-muted-foreground",
           )}
         >
           {set.name}
         </span>
         {set.waiting ? null : (
-          <span className="font-mono text-[10.5px] text-muted-foreground">
+          <span className="font-mono text-2xs text-muted-foreground">
             {set.count}
             {set.cantTell ? ` · ${set.cantTell} can't tell` : ""}
           </span>
         )}
-        <span className="ml-auto min-w-0 truncate text-[10px] text-muted-foreground/65">
+        <span className="ml-auto min-w-0 truncate text-2xs text-muted-foreground/65">
           {set.def}
         </span>
       </div>
@@ -283,12 +283,12 @@ function CutSet({
         />
       ))}
       {set.rows.length === 0 && !set.waiting ? (
-        <div className="px-2.5 pt-0.5 pb-2 text-[11px] text-muted-foreground/60">
+        <div className="px-2.5 pt-0.5 pb-2 text-xs text-muted-foreground/60">
           none
         </div>
       ) : null}
       {set.more > 0 ? (
-        <div className="px-2.5 pt-1.5 pb-2 font-mono text-[10.5px] text-muted-foreground">
+        <div className="px-2.5 pt-1.5 pb-2 font-mono text-2xs text-muted-foreground">
           +{set.more} more — capped at 10 a set; narrow the hunt to reach them
         </div>
       ) : null}
@@ -307,8 +307,8 @@ function CutWaiting({
   const span = need === "1h" ? "hour" : need;
   const pct = Math.max(0, Math.min(100, (waiting.haveMs / Math.max(1, waiting.needMs)) * 100));
   return (
-    <div className="mx-2.5 mt-0.5 mb-2 flex flex-col gap-1.5 rounded-[6.4px] border border-dashed border-white/[0.18] px-2.5 py-2">
-      <div className="text-[11.5px] text-foreground/90">
+    <div className="mx-2.5 mt-0.5 mb-2 flex flex-col gap-1.5 rounded-lg border border-dashed border-white/[0.18] px-2.5 py-2">
+      <div className="text-xs text-foreground/90">
         Not called yet: <span className="font-mono">{have} of {need}</span> after the cut.
       </div>
       <div
@@ -322,7 +322,7 @@ function CutWaiting({
         <div className="h-full bg-plate" style={{ width: `${pct}%` }} />
       </div>
       {waiting.haveMs >= fingerprintCutShortMs ? (
-        <div className="text-[10.5px] leading-snug text-pretty text-muted-foreground">
+        <div className="text-2xs leading-snug text-pretty text-muted-foreground">
           An error quiet for {cutWaitingWords(waiting.haveMs)} has not stopped. Stopped is called when the after side has the {span} the before side has.
         </div>
       ) : null}
@@ -358,16 +358,16 @@ function CutRow({
     >
       <div className="flex items-center gap-1.5">
         {row.level === "fatal" ? (
-          <span className="shrink-0 rounded-[2.4px] bg-destructive/45 px-1 text-[9.5px] leading-[15px] uppercase text-red-300">
+          <span className="shrink-0 rounded-sm bg-destructive/45 px-1 text-2xs leading-[15px] uppercase text-danger-fg">
             fatal
           </span>
         ) : null}
-        <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-foreground/90">
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/90">
           {row.message}
         </span>
         <span
           title={countTitle}
-          className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums"
+          className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums"
         >
           {row.unknownBefore ? "?" : <CountText n={row.before} floor={row.floorBefore ?? false} />}
           {" → "}
@@ -378,7 +378,7 @@ function CutRow({
         <button
           type="button"
           title="Copy e1 token"
-          className="-ml-1.5 flex h-[18px] shrink-0 items-center gap-1 rounded-[3.4px] px-1.5 font-mono text-[10.5px] text-amber-200/85 hover:bg-accent hover:text-amber-200"
+          className="-ml-1.5 flex h-[18px] shrink-0 items-center gap-1 rounded-sm px-1.5 font-mono text-2xs text-warn-fg/85 hover:bg-accent hover:text-warn-fg"
           onClick={() => {
             void navigator.clipboard.writeText(token).then(() => {
               setCopied(true);
@@ -387,18 +387,18 @@ function CutRow({
           }}
         >
           {token}
-          {copied ? <span className="text-green-400">✓</span> : null}
+          {copied ? <span className="text-ok-fg">✓</span> : null}
         </button>
-        <span className="font-mono text-[10.5px] text-muted-foreground">
+        <span className="font-mono text-2xs text-muted-foreground">
           {row.service}
         </span>
         {row.extra ? (
-          <span className="font-mono text-[10.5px] text-muted-foreground/70">
+          <span className="font-mono text-2xs text-muted-foreground/70">
             {row.extra}
           </span>
         ) : null}
         {row.follows ? (
-          <span className="font-mono text-[10.5px] text-plate">
+          <span className="font-mono text-2xs text-plate">
             {row.follows}
           </span>
         ) : null}
@@ -411,9 +411,9 @@ function CutRow({
               : "Write e1:<hex> into the bar — the same token an operator could type"
           }
           className={cn(
-            "flex h-5 shrink-0 items-center rounded-[3.4px] border px-[7px] text-[10.5px]",
+            "flex h-5 shrink-0 items-center rounded-sm border px-[7px] text-2xs",
             filtered
-              ? "border-amber-400/55 bg-amber-400/12 text-amber-400"
+              ? "border-warn/55 bg-warn/12 text-warn-fg"
               : "border-white/15 text-foreground",
           )}
           onClick={() => onFilter(row.hex)}
@@ -422,9 +422,9 @@ function CutRow({
         </button>
       </div>
       {row.held ? (
-        <div className="flex gap-1.5 text-[10.5px] leading-snug">
-          <span className="shrink-0 text-amber-400">▲</span>
-          <span className="text-pretty text-amber-200/90">{row.held}</span>
+        <div className="flex gap-1.5 text-2xs leading-snug">
+          <span className="shrink-0 text-warn-fg">▲</span>
+          <span className="text-pretty text-warn-fg/90">{row.held}</span>
         </div>
       ) : null}
     </div>
@@ -441,12 +441,12 @@ function CutRevisions({ revisions }: { revisions: NonNullable<FingerprintCutResu
   const side = (keys: string[]) => (keys.length > 0 ? keys.join(" and ") : "none");
   return (
     <div className="m-2.5 rounded-md border border-white/12 px-3 py-2.5" style={{ backgroundImage: REVISIONS_HATCH }}>
-      <div className="text-[12.5px] font-semibold">Not cut — two sets of fingerprint rules in this window</div>
-      <p className="mt-1 text-[11.5px] leading-snug text-pretty text-muted-foreground">
+      <div className="text-sm font-semibold">Not cut — two sets of fingerprint rules in this window</div>
+      <p className="mt-1 text-xs leading-snug text-pretty text-muted-foreground">
         One error has an id under each set of rules, so any line could look stopped under one and first seen under
         the other. Nothing is filed.
       </p>
-      <div className="mt-2 flex flex-col gap-0.5 font-mono text-[11px]">
+      <div className="mt-2 flex flex-col gap-0.5 font-mono text-xs">
         <span>
           <span className="text-muted-foreground">before </span>
           {side(revisions.before)}
@@ -456,7 +456,7 @@ function CutRevisions({ revisions }: { revisions: NonNullable<FingerprintCutResu
           {side(revisions.after)}
         </span>
       </div>
-      <p className="mt-2 text-[11.5px] leading-snug text-pretty text-muted-foreground">
+      <p className="mt-2 text-xs leading-snug text-pretty text-muted-foreground">
         Each id still finds its rows in the bar. A cut whose sides were both made by one set of rules compares again.
       </p>
     </div>

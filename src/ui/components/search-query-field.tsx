@@ -292,7 +292,7 @@ export function SearchQueryField({
       className={cn(
         "relative flex h-7.5 min-w-[200px] flex-1 items-center gap-1.5 rounded-md border bg-transparent py-0 pr-1.5 pl-2.5",
         qErr
-          ? "border-red-500"
+          ? "border-danger"
           : focus
             ? "border-ring ring-1 ring-ring/35"
             : "border-input",
@@ -302,7 +302,7 @@ export function SearchQueryField({
       <Search className="size-3.5 shrink-0 text-muted-foreground" />
       <div className="relative min-w-0 flex-1 self-stretch overflow-hidden">
         <div
-          className="pointer-events-none absolute inset-0 flex items-center font-mono text-[13px] whitespace-pre"
+          className="pointer-events-none absolute inset-0 flex items-center font-mono text-sm whitespace-pre"
           style={{ transform: `translateX(${-scroll}px)` }}
         >
           {tokens.map((token, i) => (
@@ -321,7 +321,7 @@ export function SearchQueryField({
           ))}
         </div>
         {value ? null : (
-          <span className="pointer-events-none absolute inset-0 flex items-center font-mono text-[13px] text-muted-foreground/65">
+          <span className="pointer-events-none absolute inset-0 flex items-center font-mono text-sm text-muted-foreground/65">
             level:error OR level:fatal status:5*
           </span>
         )}
@@ -333,7 +333,7 @@ export function SearchQueryField({
           autoComplete="off"
           aria-label="Search query"
           readOnly={locked}
-          className="absolute inset-0 m-0 h-full w-full border-none bg-transparent p-0 font-mono text-[13px] text-transparent caret-foreground outline-none"
+          className="absolute inset-0 m-0 h-full w-full border-none bg-transparent p-0 font-mono text-sm text-transparent caret-foreground outline-none"
           onChange={(e) => {
             onChange(e.target.value);
             setCaret(e.target.selectionStart ?? e.target.value.length);
@@ -356,7 +356,7 @@ export function SearchQueryField({
         />
       </div>
       {value || focus || locked ? null : (
-        <kbd className="shrink-0 rounded border px-1 font-mono text-[10px] text-muted-foreground">
+        <kbd className="shrink-0 rounded-md border px-1 font-mono text-2xs text-muted-foreground">
           /
         </kbd>
       )}
@@ -386,14 +386,14 @@ export function SearchQueryField({
           style={{ left: menuLeft, width: menuKind === "history" ? 420 : 296 }}
         >
           <div className="flex items-center justify-between gap-2 border-b px-2.5 py-1.5">
-            <span className="text-[11px] font-semibold tracking-[0.04em] text-muted-foreground uppercase">
+            <span className="text-xs font-semibold tracking-[0.04em] text-muted-foreground uppercase">
               {menuKind === "value"
                 ? `${menuField} — values in window`
                 : menuKind === "history"
                   ? "recent queries"
                   : "fields"}
             </span>
-            <span className="font-mono text-[10.5px] text-muted-foreground/70">
+            <span className="font-mono text-2xs text-muted-foreground/70">
               {menuKind === "value"
                 ? coreValue
                   ? "facets"
@@ -408,7 +408,7 @@ export function SearchQueryField({
               <div
                 key={`${row.label}:${i}`}
                 className={cn(
-                  "flex h-[26px] cursor-pointer items-center gap-2 rounded-sm px-1.5 font-mono text-[12.5px]",
+                  "flex h-[26px] cursor-pointer items-center gap-2 rounded-sm px-1.5 font-mono text-sm",
                   i === menuSel ? "bg-accent" : "",
                 )}
                 onMouseDown={(e) => {
@@ -422,12 +422,12 @@ export function SearchQueryField({
               </div>
             ))}
             {cand.length > MAX_ROWS ? (
-              <span className="flex h-6 items-center px-1.5 text-[11.5px] text-muted-foreground/70">
+              <span className="flex h-6 items-center px-1.5 text-xs text-muted-foreground/70">
                 +{cand.length - MAX_ROWS} more — keep typing to filter
               </span>
             ) : null}
           </div>
-          <div className="flex items-center gap-2.5 border-t px-2.5 py-1 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-2.5 border-t px-2.5 py-1 text-xs text-muted-foreground">
             <span>
               <span className="font-mono text-foreground">Tab</span> insert
             </span>

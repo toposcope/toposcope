@@ -54,13 +54,13 @@ export function HeldHatch({
           >
             {narrow ? (
               <span
-                className="absolute top-0.5 right-1 truncate font-mono text-[10.5px] text-muted-foreground"
+                className="absolute top-0.5 right-1 truncate font-mono text-2xs text-muted-foreground"
                 style={{ maxWidth: `max(calc(100% - 0.5rem), ${NARROW_CHARS + 1}ch)` }}
               >
                 {narrowLabel(span)}
               </span>
             ) : (
-              <span className="absolute top-0.5 left-1.5 font-mono text-[10.5px] whitespace-nowrap text-muted-foreground">
+              <span className="absolute top-0.5 left-1.5 font-mono text-2xs whitespace-nowrap text-muted-foreground">
                 {span.label}
               </span>
             )}

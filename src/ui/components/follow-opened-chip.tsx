@@ -25,7 +25,7 @@ export function FollowOpenedChip({
           moved
             ? "border-dashed border-white/25 text-muted-foreground"
             : shortfall
-              ? "border-amber-400/60 text-amber-300"
+              ? "border-warn/60 text-warn-fg"
               : "border-white/25 text-foreground/90",
         )}
       >
@@ -34,7 +34,7 @@ export function FollowOpenedChip({
       {moved ? (
         <button
           type="button"
-          className="inline-flex h-6 items-center rounded-md bg-white/10 px-2 text-[12px] text-foreground hover:bg-white/15"
+          className="inline-flex h-6 items-center rounded-md bg-white/10 px-2 text-sm text-foreground hover:bg-white/15"
           onClick={onReset}
         >
           Reset

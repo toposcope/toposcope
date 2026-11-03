@@ -176,8 +176,8 @@ export function AccessView(props: {
     const carries = r.kind === "link" || r.kind === "invite" ? kinds.get(r.id) : undefined;
     const g = accessGlyph(r);
     return (
-      <div key={`${r.kind}-${r.id}`} className={cn(col, "border-t border-white/[0.06] px-4 py-2.5 text-[12.5px]")}>
-        <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-[6px] border border-white/10 px-2 text-[11.5px] whitespace-nowrap text-zinc-300">
+      <div key={`${r.kind}-${r.id}`} className={cn(col, "border-t border-white/[0.06] px-4 py-2.5 text-sm")}>
+        <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-md border border-white/10 px-2 text-xs whitespace-nowrap text-zinc-300">
           <span style={{ color: g.color }}>{g.glyph}</span>
           {r.verb}
         </span>
@@ -187,43 +187,43 @@ export function AccessView(props: {
           </span>
           {carries ? <KindChips q={carries.q} kinds={carries.kinds} /> : null}
         </span>
-        <span className="truncate font-mono text-[12px] text-muted-foreground">{r.scope}</span>
-        <span className={cn("text-[12px] text-muted-foreground", exp.soon && "text-red-300")}>
+        <span className="truncate font-mono text-sm text-muted-foreground">{r.scope}</span>
+        <span className={cn("text-sm text-muted-foreground", exp.soon && "text-danger-fg")}>
           {exp.text}
           {exp.soon ? " · renew" : ""}
         </span>
-        <span className="truncate font-mono text-[12px] text-muted-foreground">
+        <span className="truncate font-mono text-sm text-muted-foreground">
           {r.last_used_at ? clockAt(r.last_used_at, nowMs) : "never"}
           {r.today.used > 0 ? ` · ${r.today.used.toLocaleString("en-US")}` : ""}
         </span>
-        <span className="font-mono text-[12px]">
+        <span className="font-mono text-sm">
           {r.today.refused > 0 ? (
-            <button type="button" className="text-red-300 hover:underline" onClick={() => props.onOpenHunt(`service:toposcope access:${r.name} status:refused`)}>
+            <button type="button" className="text-danger-fg hover:underline" onClick={() => props.onOpenHunt(`service:toposcope access:${r.name} status:refused`)}>
               {r.today.refused} refused
             </button>
           ) : r.today.used > 0 ? (
-            <span className="text-emerald-300">ok</span>
+            <span className="text-ok-fg">ok</span>
           ) : (
             <span className="text-muted-foreground">quiet</span>
           )}
         </span>
         <span className="text-right">
           {r.open ? (
-            <button type="button" className="text-[12px] text-zinc-300 hover:text-foreground" onClick={() => (r.kind === "link" ? props.onOpenLink(r.id) : props.onOpenShare(r.name))}>
+            <button type="button" className="text-sm text-zinc-300 hover:text-foreground" onClick={() => (r.kind === "link" ? props.onOpenLink(r.id) : props.onOpenShare(r.name))}>
               open
             </button>
           ) : r.revoke ? (
             armed === `${r.kind}-${r.id}` ? (
-              <button type="button" className="text-[12px] text-red-300 hover:underline" onClick={() => void revoke(r)}>
+              <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void revoke(r)}>
                 sure? revoke
               </button>
             ) : (
-              <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(`${r.kind}-${r.id}`)}>
+              <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(`${r.kind}-${r.id}`)}>
                 revoke
               </button>
             )
           ) : (
-            <span className="text-[11.5px] text-muted-foreground" title="Set in .env; change it there and restart">
+            <span className="text-xs text-muted-foreground" title="Set in .env; change it there and restart">
               .env
             </span>
           )}
@@ -236,18 +236,18 @@ export function AccessView(props: {
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3.5">
-          <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Access</h1>
-          <span className="text-[12px] text-muted-foreground">
+          <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Access</h1>
+          <span className="text-sm text-muted-foreground">
             Everything that sends logs here, copies rows between instances, or shows charts elsewhere · {rows.length} live
-            {refusedToday > 0 ? <span className="text-red-300"> · {refusedToday} refused today</span> : null}
+            {refusedToday > 0 ? <span className="text-danger-fg"> · {refusedToday} refused today</span> : null}
           </span>
-          <span className="inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]">
+          <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]">
             {(["all", "people", "tokens", "links", "shares"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
                 aria-pressed={props.filter === f}
-                className={cn("h-[26px] rounded-[5px] px-2.5 text-[12px]", props.filter === f ? "bg-[#27272a] text-foreground" : "text-muted-foreground hover:text-foreground")}
+                className={cn("h-[26px] rounded-md px-2.5 text-sm", props.filter === f ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground")}
                 onClick={() => props.onFilter(f)}
               >
                 {f === "all" ? "All" : f === "people" ? "People" : f === "tokens" ? "Tokens" : f === "links" ? "Links" : "Shares"} · {counts[f]}
@@ -277,7 +277,7 @@ export function AccessView(props: {
           <ServiceAccountsGroup accounts={people.service_accounts} nowMs={nowMs} isOwner={isOwner} onChanged={() => void loadPeople()} />
         ) : null}
 
-        {data && rows.length === 0 ? <p className="text-[12.5px] text-muted-foreground">Nothing here yet. Let someone in makes the first.</p> : null}
+        {data && rows.length === 0 ? <p className="text-sm text-muted-foreground">Nothing here yet. Let someone in makes the first.</p> : null}
         {accessGroups
           .filter((g) => props.filter === "all" || props.filter === g.filter)
           .map((g) => {
@@ -286,19 +286,19 @@ export function AccessView(props: {
               return null;
             }
             return (
-              <section key={g.filter} aria-label={g.title} className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+              <section key={g.filter} aria-label={g.title} className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
                 <div className="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
-                  <h2 className="m-0 text-[13.5px] font-medium">{g.title}</h2>
-                  <span className="text-[12px] text-muted-foreground">{g.words}</span>
+                  <h2 className="m-0 text-base font-medium">{g.title}</h2>
+                  <span className="text-sm text-muted-foreground">{g.words}</span>
                   <div className="flex-1" />
                   {g.filter === "links" && isOwner ? <LinkKeyButtons onMake={() => setDoor("link")} onPaste={() => setPaste(true)} /> : null}
                   {g.filter === "tokens" && props.me ? (
-                    <Button type="button" variant="outline" className="text-[12px]" onClick={() => setMaking(true)}>
+                    <Button type="button" variant="outline" className="text-sm" onClick={() => setMaking(true)}>
                       Make a token
                     </Button>
                   ) : null}
                 </div>
-                {groupRows.length === 0 && !(g.filter === "tokens" && personTokens > 0) ? <p className="px-4 py-2.5 text-[12.5px] text-muted-foreground">None yet.</p> : null}
+                {groupRows.length === 0 && !(g.filter === "tokens" && personTokens > 0) ? <p className="px-4 py-2.5 text-sm text-muted-foreground">None yet.</p> : null}
                 {groupRows.map((r) => row(r))}
                 {g.filter === "tokens" && people ? (
                   <PersonTokenRows body={people} nowMs={nowMs} meId={props.me?.id ?? null} isOwner={isOwner} onChanged={() => void loadPeople()} />
@@ -308,13 +308,13 @@ export function AccessView(props: {
           })}
 
         {data && props.filter !== "people" && props.filter !== "tokens" ? (
-          <section aria-label="What leaves this instance" className="flex flex-col gap-1 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3">
-            <span className="text-[13px] font-medium">What leaves this instance</span>
-            <span className="text-[12px] leading-[1.5] text-muted-foreground">{whatLeaves(links, rows)}</span>
+          <section aria-label="What leaves this instance" className="flex flex-col gap-1 rounded-xl border border-white/10 bg-surface-2 px-4 py-3">
+            <span className="text-sm font-medium">What leaves this instance</span>
+            <span className="text-sm leading-[1.5] text-muted-foreground">{whatLeaves(links, rows)}</span>
           </section>
         ) : null}
 
-        <div className="flex flex-wrap items-center gap-4 text-[12px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           <span className="min-w-0 flex-1 truncate">
             <span className="text-zinc-300">Refused today · {data?.refusals.length ?? 0}</span>
             {(data?.refusals ?? []).slice(0, 3).map((f) => (
@@ -324,7 +324,7 @@ export function AccessView(props: {
               </span>
             ))}
           </span>
-          <button type="button" className="truncate font-mono text-[12px] text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt("service:toposcope status:refused")}>
+          <button type="button" className="truncate font-mono text-sm text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt("service:toposcope status:refused")}>
             service:toposcope status:refused →
           </button>
         </div>
@@ -370,10 +370,10 @@ export function AccessView(props: {
 export function LinkKeyButtons(props: { onMake: () => void; onPaste: () => void }) {
   return (
     <>
-      <Button type="button" variant="outline" className="text-[12px]" onClick={props.onMake}>
+      <Button type="button" variant="outline" className="text-sm" onClick={props.onMake}>
         Make a link key
       </Button>
-      <Button type="button" variant="outline" className="text-[12px]" onClick={props.onPaste}>
+      <Button type="button" variant="outline" className="text-sm" onClick={props.onPaste}>
         Paste a link key
       </Button>
     </>
@@ -424,14 +424,14 @@ export function LetSomeoneIn(props: {
     <button
       type="button"
       aria-pressed={kind === id}
-      className={cn("flex flex-col gap-1.5 rounded-[10px] border px-3.5 py-3 text-left", kind === id ? "border-plate bg-[#1a1a1e]" : "border-white/10 bg-[#0d0d0f] hover:border-zinc-500")}
+      className={cn("flex flex-col gap-1.5 rounded-xl border px-3.5 py-3 text-left", kind === id ? "border-plate bg-overlay" : "border-white/10 bg-surface-1 hover:border-zinc-500")}
       onClick={() => (id === "share" ? props.onShare() : setKind(id))}
     >
-      <span className="inline-flex items-center gap-2 text-[13.5px] font-medium">
+      <span className="inline-flex items-center gap-2 text-base font-medium">
         <span style={{ color }}>{glyph}</span>
         {title}
       </span>
-      <span className="text-[12px] leading-[1.5] text-muted-foreground">{sentence}</span>
+      <span className="text-sm leading-[1.5] text-muted-foreground">{sentence}</span>
     </button>
   );
 
@@ -439,7 +439,7 @@ export function LetSomeoneIn(props: {
     return (
       <>
         <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" />
-        <section aria-label="Agent made" className="fixed top-[70px] left-1/2 z-40 flex w-[900px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-[18px] rounded-[12px] border border-zinc-700 bg-[#121214] px-[26px] py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
+        <section aria-label="Agent made" className="fixed top-[70px] left-1/2 z-40 flex w-[900px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-[18px] rounded-xl border border-zinc-700 bg-surface-2 px-[26px] py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
           <AgentMade made={made} me={props.me ?? null} origin={window.location.origin} onDone={props.onClose} />
         </section>
       </>
@@ -449,10 +449,10 @@ export function LetSomeoneIn(props: {
   return (
     <>
     <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" onClick={props.onClose} />
-    <section aria-label="Let someone in" className="fixed top-[62px] left-1/2 z-40 flex max-h-[calc(100vh-80px)] w-[960px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 overflow-auto rounded-[12px] border border-zinc-700 bg-[#121214] px-[26px] py-[22px] shadow-[0_30px_80px_rgba(0,0,0,.7)]">
+    <section aria-label="Let someone in" className="fixed top-[62px] left-1/2 z-40 flex max-h-[calc(100vh-80px)] w-[960px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 overflow-auto rounded-xl border border-zinc-700 bg-surface-2 px-[26px] py-[22px] shadow-[0_30px_80px_rgba(0,0,0,.7)]">
       <div className="flex items-baseline gap-3">
-        <h2 className="m-0 text-[17px] font-semibold">Let someone in</h2>
-        <span className="text-[12px] text-muted-foreground">A token, an agent, a link or a share. Each says what it lets through before you make it.</span>
+        <h2 className="m-0 text-lg font-semibold">Let someone in</h2>
+        <span className="text-sm text-muted-foreground">A token, an agent, a link or a share. Each says what it lets through before you make it.</span>
         <div className="flex-1" />
         <Button type="button" variant="ghost" onClick={props.onClose}>
           Close
@@ -480,15 +480,15 @@ export function LetSomeoneIn(props: {
             void makeToken();
           }}
         >
-          <label htmlFor="token-name" className="text-[12px] text-muted-foreground">
+          <label htmlFor="token-name" className="text-sm text-muted-foreground">
             Name · who sends with it
           </label>
-          <input id="token-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. boxes" className="h-[34px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[13px] outline-none" />
+          <input id="token-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. boxes" className="h-[34px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none" />
           {secret ? (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[12px] text-muted-foreground">Shown once · copy it now and send with Authorization: Bearer</span>
+              <span className="text-sm text-muted-foreground">Shown once · copy it now and send with Authorization: Bearer</span>
               <div className="flex items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded-[7px] border border-dashed border-zinc-600 px-2.5 py-2 font-mono text-[12.5px]">{secret}</code>
+                <code className="min-w-0 flex-1 truncate rounded-lg border border-dashed border-zinc-600 px-2.5 py-2 font-mono text-sm">{secret}</code>
                 <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(secret)}>
                   Copy
                 </Button>
@@ -499,14 +499,14 @@ export function LetSomeoneIn(props: {
               <Button type="submit" disabled={!name.trim()}>
                 Make the token
               </Button>
-              <span className="text-[12px] text-muted-foreground">It appears in Access under Tokens.</span>
+              <span className="text-sm text-muted-foreground">It appears in Access under Tokens.</span>
             </div>
           )}
         </form>
       ) : kind === "link" ? (
         <div className="flex flex-col gap-3">
-          <span className="text-[12px] text-muted-foreground">Which way</span>
-          <div className="flex flex-wrap gap-4 text-[13px]">
+          <span className="text-sm text-muted-foreground">Which way</span>
+          <div className="flex flex-wrap gap-4 text-sm">
             <label className="inline-flex items-center gap-2">
               <input type="radio" checked={way === "offer"} onChange={() => setWay("offer")} />
               They copy from us · rows leave here
@@ -520,7 +520,7 @@ export function LetSomeoneIn(props: {
             <Button type="button" onClick={() => props.onLink(way)}>
               Choose the scope and make the key
             </Button>
-            <span className="text-[12px] text-muted-foreground">The key is shown once; it appears under Links as key not used yet until the other side pastes it at Access › Paste a link key.</span>
+            <span className="text-sm text-muted-foreground">The key is shown once; it appears under Links as key not used yet until the other side pastes it at Access › Paste a link key.</span>
           </div>
         </div>
       ) : null}

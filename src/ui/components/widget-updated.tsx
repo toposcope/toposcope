@@ -12,7 +12,7 @@ export function WidgetUpdated({ fetchedAt, now }: Props) {
   }
   return (
     <span
-      className="px-1 font-mono text-[11px] text-muted-foreground"
+      className="px-1 font-mono text-xs text-muted-foreground"
       title={`Last updated ${label} ago`}
     >
       {label}

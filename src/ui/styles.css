@@ -206,7 +206,7 @@
     font-family: inherit;
   }
   kbd {
-    @apply rounded-[2.4px] border border-input px-1 font-mono text-[10px] text-muted-foreground;
+    @apply rounded-sm border border-input px-1 font-mono text-2xs text-muted-foreground;
   }
   ::selection {
     background: var(--secondary);

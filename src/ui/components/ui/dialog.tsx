@@ -67,7 +67,7 @@ function DialogTitle({
 }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn("text-[15px] font-semibold tracking-[-0.01em]", className)}
+      className={cn("text-base font-semibold tracking-[-0.01em]", className)}
       {...props}
     />
   );
@@ -79,7 +79,7 @@ function DialogDescription({
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
-      className={cn("text-[13px] leading-[1.5] text-muted-foreground", className)}
+      className={cn("text-sm leading-[1.5] text-muted-foreground", className)}
       {...props}
     />
   );
@@ -98,7 +98,7 @@ function DialogClose({
   return (
     <DialogPrimitive.Close
       className={cn(
-        "h-8 rounded-[4.4px] px-3 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground",
+        "h-8 rounded-md px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground",
         className,
       )}
       {...props}
@@ -117,10 +117,10 @@ function DialogField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[13px] font-medium text-foreground">{label}</label>
+      <label className="text-sm font-medium text-foreground">{label}</label>
       {children}
       {help ? (
-        <span className="text-[11px] text-muted-foreground">{help}</span>
+        <span className="text-xs text-muted-foreground">{help}</span>
       ) : null}
     </div>
   );
@@ -133,7 +133,7 @@ function DialogControl({
   return (
     <div
       className={cn(
-        "flex h-8 items-center gap-2 rounded-[4.4px] border border-input px-[9px]",
+        "flex h-8 items-center gap-2 rounded-md border border-input px-[9px]",
         className,
       )}
       {...props}

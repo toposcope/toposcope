@@ -81,7 +81,7 @@ type Props = {
 
 /** 26g: one row per monitor: state, what it is and its condition, what it checks, its strip, last check, now (#263). */
 const wrow = "grid grid-cols-[14px_minmax(0,1.6fr)_150px_minmax(160px,1fr)_84px_96px] items-center gap-4 border-b border-white/[0.06] px-4 py-2.5";
-const dotTone: Record<WatchDot, string> = { open: "text-red-300", ok: "text-emerald-300", warn: "text-amber-300", paused: "text-zinc-500" };
+const dotTone: Record<WatchDot, string> = { open: "text-danger-fg", ok: "text-ok-fg", warn: "text-warn-fg", paused: "text-zinc-500" };
 
 /** 33g: the service a monitor is about and the host it checks, under its name (#335). */
 export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | "host"> & { made_by?: MonitorView["made_by"] } }) {
@@ -112,7 +112,7 @@ function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; 
   const dot = watchDot(monitor);
   return (
     <>
-      <span className={cn("text-[12px]", dotTone[dot])} aria-label={dot}>
+      <span className={cn("text-sm", dotTone[dot])} aria-label={dot}>
         ●
       </span>
       <button
@@ -121,13 +121,13 @@ function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; 
         title={`Open ${monitor.name} as a hunt · opens a new tab`}
         onClick={() => onOpen(monitor, monitor.open ?? undefined)}
       >
-        <span className={cn("max-w-full truncate text-[13px] font-medium hover:underline", dot === "paused" && "text-muted-foreground")}>{monitor.name}</span>
+        <span className={cn("max-w-full truncate text-sm font-medium hover:underline", dot === "paused" && "text-muted-foreground")}>{monitor.name}</span>
         <PlaceTags monitor={monitor} />
-        <span className="max-w-full truncate text-[12px] text-muted-foreground">
+        <span className="max-w-full truncate text-sm text-muted-foreground">
           {watchStateLine(monitor, stretches, nowMs)} · <span className="font-mono">{openCardLine(monitor, nowMs)}</span>
         </span>
       </button>
-      <span className="truncate text-[12px] text-muted-foreground">
+      <span className="truncate text-sm text-muted-foreground">
         {laneKind(monitor)}
         {monitor.made_by && !monitor.made_by.agent ? <span title={`made by ${monitor.made_by.name}`}> · {monitor.made_by.name}</span> : null}
       </span>
@@ -152,8 +152,8 @@ function Seg({
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        "inline-flex h-6 items-center gap-[5px] rounded-[5px] px-[9px] text-[12px]",
-        on ? "bg-[#27272a] text-foreground" : "text-muted-foreground hover:text-foreground",
+        "inline-flex h-6 items-center gap-[5px] rounded-md px-[9px] text-sm",
+        on ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
       {children}
@@ -165,14 +165,14 @@ export function Badge({ tone, children }: { tone: LaneReadout["tone"]; children:
   return (
     <span
       className={cn(
-        "inline-flex h-[18px] items-center rounded-[4px] px-1.5 text-[10.5px] whitespace-nowrap",
+        "inline-flex h-[18px] items-center rounded-md px-1.5 text-2xs whitespace-nowrap",
         tone === "red"
-          ? "bg-red-500/[0.16] text-red-300"
+          ? "bg-danger/[0.16] text-danger-fg"
           : tone === "amber"
-            ? "bg-amber-400/[0.14] text-amber-300"
+            ? "bg-warn/[0.14] text-warn-fg"
             : tone === "out"
               ? "border border-white/[0.18] text-muted-foreground"
-              : "bg-[#27272a] text-zinc-300",
+              : "bg-control text-zinc-300",
       )}
     >
       {children}
@@ -197,8 +197,8 @@ function Grid({ ticks }: { ticks: Array<{ left: number }> }) {
 /** A run's tick (18c), HTTP(S), TCP or certificate: an ok is a faint hairline, a warn or a fail taller and in colour. */
 const runTone: Record<"ok" | "warn" | "fail", string> = {
   ok: "top-[5px] bottom-[5px] bg-[rgba(231,225,211,.7)]",
-  warn: "top-[3px] bottom-[3px] bg-amber-400",
-  fail: "top-[3px] bottom-[3px] bg-red-500/60",
+  warn: "top-[3px] bottom-[3px] bg-warn",
+  fail: "top-[3px] bottom-[3px] bg-danger/60",
 };
 
 function Lane({
@@ -236,7 +236,7 @@ function Lane({
     <div className={wrow} data-monitor={monitor.id}>
       <RowHead monitor={monitor} stretches={stretches} nowMs={nowMs} onOpen={onOpen} />
       <span
-        className="relative h-[18px] overflow-hidden rounded-[3px] bg-[#0f0f11]"
+        className="relative h-[18px] overflow-hidden rounded-sm bg-surface-1"
         style={
           runs?.dense && results.length > 0
             ? { backgroundImage: "repeating-linear-gradient(to right,rgba(231,225,211,.35) 0 1px,transparent 1px 3px)" }
@@ -248,7 +248,7 @@ function Lane({
           <span
             key={t.id}
             title={`${clockAt(t.result.at, nowMs)} ${t.result.result} · ${t.result.message}`}
-            className={cn("absolute", runTone[t.tone], t.width > 0 ? "rounded-[1px]" : "")}
+            className={cn("absolute", runTone[t.tone], t.width > 0 ? "rounded-sm" : "")}
             style={{
               left: `${(t.left * 100).toFixed(3)}%`,
               width: t.width > 0 ? `max(2px, ${(t.width * 100).toFixed(3)}%)` : "2px",
@@ -268,7 +268,7 @@ function Lane({
               onClick={() => onOpen(monitor, span.stretch)}
               className={cn(
                 "absolute top-[3px] bottom-[3px]",
-                span.open ? "bg-red-500" : "rounded-[2px] bg-red-500/45",
+                span.open ? "bg-danger" : "rounded-sm bg-danger/45",
               )}
               style={{ left: `${(span.left * 100).toFixed(3)}%`, width: `${(span.width * 100).toFixed(3)}%` }}
             />
@@ -282,9 +282,9 @@ function Lane({
           />
         ))}
       </span>
-      <span className="font-mono text-[12px] text-muted-foreground">{checked ? clockAt(checked, nowMs) : "—"}</span>
+      <span className="font-mono text-sm text-muted-foreground">{checked ? clockAt(checked, nowMs) : "—"}</span>
       <span
-        className={cn("truncate text-right font-mono text-[12px]", readout.tone === "red" ? "text-red-300" : readout.tone === "amber" ? "text-amber-300" : "text-muted-foreground")}
+        className={cn("truncate text-right font-mono text-sm", readout.tone === "red" ? "text-danger-fg" : readout.tone === "amber" ? "text-warn-fg" : "text-muted-foreground")}
         title={readout.title ?? readout.badge}
       >
         {readout.text || readout.badge}
@@ -297,14 +297,14 @@ const pct = (n: number) => `${(n * 100).toFixed(3)}%`;
 
 const tickTone: Record<PushResultRow["result"], string> = {
   ok: "bg-plate",
-  warn: "bg-amber-400",
-  fail: "bg-red-500",
+  warn: "bg-warn",
+  fail: "bg-danger",
 };
 
 const bandTone: Record<"late" | "open" | "resolved" | "running", string> = {
-  late: "bg-amber-400/70",
-  open: "bg-red-500",
-  resolved: "bg-red-500/35",
+  late: "bg-warn/70",
+  open: "bg-danger",
+  resolved: "bg-danger/35",
   running: "border border-plate",
 };
 
@@ -332,16 +332,16 @@ function ResultCard({
       role="dialog"
       aria-label={`${monitor.name} result ${card.at}`}
       data-result-card
-      className="absolute top-full z-20 mt-1 flex w-[300px] flex-col gap-1.5 rounded-[6.4px] border bg-[#1f1f23] px-3 py-2.5 shadow-[0_8px_24px_rgba(0,0,0,.5)]"
+      className="absolute top-full z-20 mt-1 flex w-[300px] flex-col gap-1.5 rounded-lg border bg-overlay px-3 py-2.5 shadow-[0_8px_24px_rgba(0,0,0,.5)]"
       style={place}
     >
       <span className="flex items-center gap-2">
         <Badge tone={card.tone}>{card.badge}</Badge>
-        <span className="font-mono text-[12px]">{card.at}</span>
+        <span className="font-mono text-sm">{card.at}</span>
       </span>
-      {card.ran ? <span className="font-mono text-[11px] text-muted-foreground">{card.ran}</span> : null}
+      {card.ran ? <span className="font-mono text-xs text-muted-foreground">{card.ran}</span> : null}
       {card.message ? (
-        <code className="max-h-[120px] overflow-hidden rounded-[4px] bg-[#0f0f11] px-2 py-1.5 font-mono text-[11px] whitespace-pre-wrap text-zinc-200 [overflow-wrap:anywhere]">
+        <code className="max-h-[120px] overflow-hidden rounded-md bg-surface-1 px-2 py-1.5 font-mono text-xs whitespace-pre-wrap text-zinc-200 [overflow-wrap:anywhere]">
           {card.message}
         </code>
       ) : null}
@@ -349,12 +349,12 @@ function ResultCard({
         <Button size="sm"
           type="button"
           variant="outline"
-          className="px-2 text-[11px] whitespace-nowrap"
+          className="px-2 text-xs whitespace-nowrap"
           onClick={() => onOpen(monitor, card.stretch ?? { opened_at: result.at, resolved_at: result.at })}
         >
           Open in Search
         </Button>
-        {card.opened ? <span className="text-[11px] text-muted-foreground">{card.opened}</span> : null}
+        {card.opened ? <span className="text-xs text-muted-foreground">{card.opened}</span> : null}
       </span>
     </div>
   );
@@ -436,18 +436,18 @@ function PushLane({
           title={`Open ${monitor.name} in Search · opens a new tab`}
           onClick={() => onOpen(monitor)}
         >
-          <span className={cn("max-w-full truncate text-[12px] hover:underline", paused && "text-muted-foreground")}>
+          <span className={cn("max-w-full truncate text-sm hover:underline", paused && "text-muted-foreground")}>
             {monitor.name}
           </span>
           <PlaceTags monitor={monitor} />
-          <span className="max-w-full truncate font-mono text-[11px] text-muted-foreground">{laneKind(monitor)}</span>
+          <span className="max-w-full truncate font-mono text-xs text-muted-foreground">{laneKind(monitor)}</span>
         </button>
       ) : (
         <RowHead monitor={monitor} stretches={stretches} nowMs={nowMs} onOpen={onOpen} />
       )}
       <span className="relative">
         <span
-          className={cn("relative block cursor-pointer overflow-hidden rounded-[3px] bg-[#0f0f11]", tall ? "h-[30px]" : "h-[18px]")}
+          className={cn("relative block cursor-pointer overflow-hidden rounded-sm bg-surface-1", tall ? "h-[30px]" : "h-[18px]")}
           style={
             paused
               ? { backgroundImage: "repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 4px,transparent 4px 8px)" }
@@ -467,7 +467,7 @@ function PushLane({
             <span
               key={t.id}
               aria-hidden
-              className={cn("absolute min-w-[2px] rounded-[1px]", inset, tickTone[t.tone], t.id === card && "outline outline-1 outline-white")}
+              className={cn("absolute min-w-[2px] rounded-sm", inset, tickTone[t.tone], t.id === card && "outline outline-1 outline-white")}
               style={{ left: pct(t.left), width: t.width > 0 ? pct(t.width) : "2px" }}
             />
           ))}
@@ -490,16 +490,16 @@ function PushLane({
         <span className="flex min-w-0 flex-col items-start gap-0.5">
           <Badge tone={readout.tone}>{readout.badge}</Badge>
           {readout.next ? (
-            <span className="truncate font-mono text-[10.5px] text-muted-foreground">{readout.next}</span>
+            <span className="truncate font-mono text-2xs text-muted-foreground">{readout.next}</span>
           ) : null}
         </span>
       ) : (
         <>
-          <span className="font-mono text-[12px] text-muted-foreground">
+          <span className="font-mono text-sm text-muted-foreground">
             {lastCheckAt(monitor, results) ? clockAt(lastCheckAt(monitor, results)!, nowMs) : "—"}
           </span>
           <span
-            className={cn("truncate text-right font-mono text-[12px]", readout.tone === "red" ? "text-red-300" : readout.tone === "amber" ? "text-amber-300" : "text-muted-foreground")}
+            className={cn("truncate text-right font-mono text-sm", readout.tone === "red" ? "text-danger-fg" : readout.tone === "amber" ? "text-warn-fg" : "text-muted-foreground")}
             title={readout.badge}
           >
             {value || readout.badge}
@@ -559,7 +559,7 @@ export function MarksLane({
             </span>
             {g.label ? (
               <span
-                className="absolute top-0.5 truncate font-mono text-[10.5px] whitespace-nowrap text-muted-foreground"
+                className="absolute top-0.5 truncate font-mono text-2xs whitespace-nowrap text-muted-foreground"
                 style={{
                   ...(g.label.end
                     ? { right: `calc(${pct(1 - g.at)} + 10px)` }
@@ -579,7 +579,7 @@ export function MarksLane({
             aria-label={`${g.members.length} marks, ${markSpanLabel(g.fromMs, g.toMs, nowMs)}`}
             aria-expanded={open === g.key}
             className={cn(
-              "absolute top-1/2 z-[3] flex h-[18px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-sm border border-white/18 bg-accent/70 px-1 whitespace-nowrap text-[11px] text-foreground/80",
+              "absolute top-1/2 z-[3] flex h-[18px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-sm border border-white/18 bg-accent/70 px-1 whitespace-nowrap text-xs text-foreground/80",
               hot === g.key ? "border-white/30 bg-accent text-foreground" : "",
               open === g.key ? "shadow-[0_0_0_1px_color-mix(in_oklab,var(--ring)_50%,transparent)]" : "",
             )}
@@ -592,7 +592,7 @@ export function MarksLane({
           >
             {g.kinds.length > 1 ? (
               <>
-                <span className="font-mono text-[10.5px]">{g.members.length}</span>
+                <span className="font-mono text-2xs">{g.members.length}</span>
                 {g.kinds.map((kind) => (
                   <span key={kind} className="size-[5px] rounded-full" style={{ background: markKindColor(kind) }} />
                 ))}
@@ -600,7 +600,7 @@ export function MarksLane({
             ) : (
               <>
                 <Glyph />
-                <span className="font-mono text-[10.5px]">{g.members.length}</span>
+                <span className="font-mono text-2xs">{g.members.length}</span>
               </>
             )}
           </button>
@@ -615,7 +615,7 @@ export function MarksLane({
             style={popAnchor(peek.at)}
           >
             <Glyph />
-            <span className="font-mono text-[10.5px] text-foreground/90">{markHover(peek.members[0]!, nowMs)}</span>
+            <span className="font-mono text-2xs text-foreground/90">{markHover(peek.members[0]!, nowMs)}</span>
           </span>
         ) : (
           <MarkPeek group={peek} nowMs={nowMs} />
@@ -630,9 +630,9 @@ export function MarksLane({
           className="absolute top-[24px] z-30 w-[266px] rounded-md border bg-popover shadow-lg"
           style={popAnchor(list.at)}
         >
-          <div className="flex items-center gap-2 border-b px-2.5 py-1.5 text-[12px] font-semibold">
+          <div className="flex items-center gap-2 border-b px-2.5 py-1.5 text-sm font-semibold">
             {list.members.length} marks
-            <span className="font-mono text-[10.5px] font-normal text-muted-foreground">
+            <span className="font-mono text-2xs font-normal text-muted-foreground">
               {markSpanLabel(list.fromMs, list.toMs, nowMs)}
             </span>
             <button
@@ -648,15 +648,15 @@ export function MarksLane({
             {list.members.map((m) => (
               <div key={m.id} className="flex h-6 shrink-0 items-center gap-1.5 rounded-sm px-1.5">
                 <Glyph />
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/85">{watchMarkText(m)}</span>
-                <span className="font-mono text-[10.5px] text-muted-foreground">{markRowTime(Date.parse(m.ts), nowMs)}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/85">{watchMarkText(m)}</span>
+                <span className="font-mono text-2xs text-muted-foreground">{markRowTime(Date.parse(m.ts), nowMs)}</span>
               </div>
             ))}
           </div>
           {onOpenMarks ? (
             <button
               type="button"
-              className="flex w-full flex-col items-start gap-0.5 border-t px-2.5 py-1.5 text-left text-[10.5px] text-muted-foreground hover:bg-accent/50"
+              className="flex w-full flex-col items-start gap-0.5 border-t px-2.5 py-1.5 text-left text-2xs text-muted-foreground hover:bg-accent/50"
               onClick={() => onOpenMarks(list.fromMs, list.toMs)}
             >
               <span className="text-foreground/85">Open {markSpanLabel(list.fromMs, list.toMs, nowMs)} in Search ↗</span>
@@ -678,14 +678,14 @@ function MarkPeek({ group, nowMs }: { group: WatchMarkGroup; nowMs: number }) {
       className="absolute top-[24px] z-20 flex w-max max-w-[260px] flex-col gap-1 rounded-md border bg-popover px-2.5 py-1.5 shadow-lg"
       style={popAnchor(group.at)}
     >
-      <span className="font-mono text-[11px] whitespace-nowrap">{peek.head}</span>
+      <span className="font-mono text-xs whitespace-nowrap">{peek.head}</span>
       {peek.names.map((name, i) => (
         <span key={`${i}-${name}`} className="flex min-w-0 items-center gap-1.5">
           <Glyph />
-          <span className="truncate font-mono text-[10.5px] text-foreground/85">{name}</span>
+          <span className="truncate font-mono text-2xs text-foreground/85">{name}</span>
         </span>
       ))}
-      <span className="text-[10.5px] whitespace-nowrap text-muted-foreground">{peek.more}</span>
+      <span className="text-2xs whitespace-nowrap text-muted-foreground">{peek.more}</span>
     </span>
   );
 }
@@ -727,8 +727,8 @@ function SourceLane({
   const spans = stretchSpans(stretches.map(sourceStretch), fromMs, toMs, nowMs);
   return (
     <>
-      <div className={cn(wrow, row.dot === "open" && "bg-red-500/[0.04]")} data-monitor={monitor.id} data-source={source}>
-        <span className={cn("text-[12px]", dotTone[row.dot])} aria-label={standing.short ? "short" : row.dot}>
+      <div className={cn(wrow, row.dot === "open" && "bg-danger/[0.04]")} data-monitor={monitor.id} data-source={source}>
+        <span className={cn("text-sm", dotTone[row.dot])} aria-label={standing.short ? "short" : row.dot}>
           ●
         </span>
         <button
@@ -738,13 +738,13 @@ function SourceLane({
           aria-expanded={open}
           onClick={onToggle}
         >
-          <span className="max-w-full truncate text-[13px] font-medium hover:underline">{monitor.name}</span>
+          <span className="max-w-full truncate text-sm font-medium hover:underline">{monitor.name}</span>
           <PlaceTags monitor={monitor} />
-          <span className="max-w-full truncate text-[12px] text-muted-foreground">{row.line}</span>
+          <span className="max-w-full truncate text-sm text-muted-foreground">{row.line}</span>
         </button>
-        <span className="truncate text-[12px] text-muted-foreground">{sourceKindWords(monitor)}</span>
+        <span className="truncate text-sm text-muted-foreground">{sourceKindWords(monitor)}</span>
         <span
-          className="relative h-[18px] overflow-hidden rounded-[3px] bg-[#0f0f11]"
+          className="relative h-[18px] overflow-hidden rounded-sm bg-surface-1"
           style={
             runs?.dense && results.length > 0
               ? { backgroundImage: "repeating-linear-gradient(to right,rgba(231,225,211,.35) 0 1px,transparent 1px 3px)" }
@@ -756,7 +756,7 @@ function SourceLane({
             <span
               key={t.id}
               title={`${clockAt(t.result.at, nowMs)} ${t.result.result} · ${t.result.message}`}
-              className={cn("absolute", runTone[t.tone], t.width > 0 ? "rounded-[1px]" : "")}
+              className={cn("absolute", runTone[t.tone], t.width > 0 ? "rounded-sm" : "")}
               style={{ left: pct(t.left), width: t.width > 0 ? `max(2px, ${pct(t.width)})` : "2px" }}
             />
           ))}
@@ -764,7 +764,7 @@ function SourceLane({
             <span
               key={t.id}
               title={`${clockAt(t.result.at, nowMs)} ${t.result.result} · ${t.result.message}`}
-              className={cn("absolute top-1 bottom-1 min-w-[2px] rounded-[1px]", tickTone[t.tone])}
+              className={cn("absolute top-1 bottom-1 min-w-[2px] rounded-sm", tickTone[t.tone])}
               style={{ left: pct(t.left), width: t.width > 0 ? pct(t.width) : "2px" }}
             />
           ))}
@@ -774,7 +774,7 @@ function SourceLane({
               title={`open at ${source} ${clockAt(span.stretch.opened_at, nowMs)} → ${
                 span.open ? "now" : clockAt(span.stretch.resolved_at ?? nowMs, nowMs)
               } · ${formatOpenFor((span.stretch.resolved_at ?? nowMs) - span.stretch.opened_at)}`}
-              className={cn("absolute top-[3px] bottom-[3px]", span.open ? "bg-red-500" : "rounded-[2px] bg-red-500/45")}
+              className={cn("absolute top-[3px] bottom-[3px]", span.open ? "bg-danger" : "rounded-sm bg-danger/45")}
               style={{ left: pct(span.left), width: pct(span.width) }}
             />
           ))}
@@ -788,11 +788,11 @@ function SourceLane({
             />
           ))}
         </span>
-        <span className="font-mono text-[12px] text-muted-foreground">{row.lastCheck !== null ? clockAt(row.lastCheck, nowMs) : "—"}</span>
+        <span className="font-mono text-sm text-muted-foreground">{row.lastCheck !== null ? clockAt(row.lastCheck, nowMs) : "—"}</span>
         <span
           className={cn(
-            "truncate text-right font-mono text-[12px]",
-            row.now.tone === "red" ? "text-red-300" : row.now.tone === "amber" ? "text-amber-300" : "text-muted-foreground",
+            "truncate text-right font-mono text-sm",
+            row.now.tone === "red" ? "text-danger-fg" : row.now.tone === "amber" ? "text-warn-fg" : "text-muted-foreground",
           )}
         >
           {row.now.text}
@@ -824,10 +824,10 @@ export function SourceDetail({
       role="region"
       aria-label={`${monitor.name}, read-only`}
       data-source-detail={monitor.id}
-      className="grid grid-cols-1 gap-4 border-b border-white/[0.06] bg-[#111114] px-4 py-3 text-[12px] lg:grid-cols-3"
+      className="grid grid-cols-1 gap-4 border-b border-white/[0.06] bg-surface-1 px-4 py-3 text-sm lg:grid-cols-3"
     >
       <div className="flex flex-col gap-1">
-        <span className="flex items-center gap-2 text-[12.5px] font-medium">
+        <span className="flex items-center gap-2 text-sm font-medium">
           Definition <Badge tone="out">read-only</Badge>
         </span>
         {sourceDefinition(monitor, source).map((d) => (
@@ -839,22 +839,22 @@ export function SourceDetail({
         <span className="mt-1 text-muted-foreground">Judged and called at {source}; nothing is judged or called again here. Change it there.</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-[12.5px] font-medium">Results here</span>
+        <span className="text-sm font-medium">Results here</span>
         {recent.length === 0 ? <span className="text-muted-foreground">None in this window.</span> : null}
         {recent.map((r) => (
           <span key={r.id} className="flex gap-2">
             <span className="font-mono text-muted-foreground">{clockAt(r.at, nowMs)}</span>
-            <span className={r.result === "fail" ? "text-red-300" : r.result === "warn" ? "text-amber-300" : "text-zinc-300"}>{r.result}</span>
+            <span className={r.result === "fail" ? "text-danger-fg" : r.result === "warn" ? "text-warn-fg" : "text-zinc-300"}>{r.result}</span>
             <span className="min-w-0 truncate text-muted-foreground">{r.message}</span>
           </span>
         ))}
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-[12.5px] font-medium">Stretches</span>
+        <span className="text-sm font-medium">Stretches</span>
         {spans.length === 0 ? <span className="text-muted-foreground">None open or resolved in this window.</span> : null}
         {spans.map((st) => (
           <span key={st.id} className="flex gap-2">
-            <span className={st.resolved_at === null ? "text-red-300" : "text-zinc-500"}>●</span>
+            <span className={st.resolved_at === null ? "text-danger-fg" : "text-zinc-500"}>●</span>
             <span className="font-mono text-muted-foreground">{clockAt(st.opened_at, nowMs)}</span>
             <span className="min-w-0 truncate text-zinc-300">
               {st.resolved_at === null
@@ -961,8 +961,8 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
     <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
       <div className="flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Watch</h1>
-          <span className="text-[12px] text-muted-foreground">
+          <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Watch</h1>
+          <span className="text-sm text-muted-foreground">
             {watchSummary(monitors.length, sources)}
             {byAgents ? (
               <>
@@ -970,10 +970,10 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 <span className="font-mono text-[#c4b5fd]">{byAgents.by}</span>
               </>
             ) : null}
-            {open.length + awayOpen > 0 ? <span className="text-red-300"> · {open.length + awayOpen} open</span> : null}
+            {open.length + awayOpen > 0 ? <span className="text-danger-fg"> · {open.length + awayOpen} open</span> : null}
             {deliveryRows.length > 0 ? ` · webhooks to ${deliveryRows.map((d) => d.host).join(" and ")}` : ""}
           </span>
-          <span className="inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]">
+          <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]">
             {filters.map((f) => (
               <Seg key={f.id} on={filter === f.id} onClick={() => onFilter(f.id)}>
                 {f.label} <span className="font-mono text-muted-foreground">{f.n}</span>
@@ -981,7 +981,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             ))}
           </span>
           {places.length > 0 ? (
-            <span className="inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]" aria-label="Where">
+            <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]" aria-label="Where">
               {places.map((p) => (
                 <Seg key={p.id} on={place === p.id} onClick={() => setPlace(p.id)}>
                   {p.label} <span className="font-mono text-muted-foreground">{p.n}</span>
@@ -990,12 +990,12 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             </span>
           ) : null}
           {tall ? (
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               Each tick is a result. A bar is a run, from its /start to its end. The dashed line is when the next one
               is due.
             </span>
           ) : null}
-          <span className="ml-auto inline-flex rounded-[7px] border border-white/10 bg-[#18181b] p-[2px]">
+          <span className="ml-auto inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]">
             {watchRanges.map((id) => (
               <Seg key={id} on={range === id} onClick={() => onRange(id)}>
                 {id}
@@ -1007,12 +1007,12 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               New monitor
             </Button>
           ) : (
-            <span className="text-[12px] text-muted-foreground">read-only for you · ask an Operator to change a monitor</span>
+            <span className="text-sm text-muted-foreground">read-only for you · ask an Operator to change a monitor</span>
           )}
         </div>
 
         {monitors.length === 0 && away.length === 0 ? (
-          <div className="rounded-[6.4px] border bg-card px-3 py-8 text-center">
+          <div className="rounded-lg border bg-card px-3 py-8 text-center">
             <p className="text-sm">{data ? "No monitors yet." : "Loading monitors…"}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {canCreate
@@ -1026,11 +1026,11 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             ) : null}
           </div>
         ) : !placeShows(place, null) ? null : (
-          <div className={cn("relative rounded-[6.4px] border bg-card", sources.length > 0 ? "pb-1" : "py-1")}>
+          <div className={cn("relative rounded-lg border bg-card", sources.length > 0 ? "pb-1" : "py-1")}>
             {sources.length > 0 ? (
               <GroupHead>
-                <h2 className="m-0 text-[13.5px] font-medium">Here</h2>
-                <span className="text-[12px] text-muted-foreground">
+                <h2 className="m-0 text-base font-medium">Here</h2>
+                <span className="text-sm text-muted-foreground">
                   {monitors.length > 0 ? "judged and called from this instance" : "no monitors on this instance yet"}
                 </span>
               </GroupHead>
@@ -1042,17 +1042,17 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 {ticks.map((t) => (
                   <span
                     key={t.left}
-                    className="absolute top-0 -translate-x-1/2 font-mono text-[10.5px] text-muted-foreground"
+                    className="absolute top-0 -translate-x-1/2 font-mono text-2xs text-muted-foreground"
                     style={{ left: `${(t.left * 100).toFixed(3)}%` }}
                   >
                     {t.label}
                   </span>
                 ))}
               </span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">{nowLabel(nowMs, range)}</span>
+              <span className="font-mono text-2xs text-muted-foreground">{nowLabel(nowMs, range)}</span>
             </div>
             ) : (
-              <div className={cn(wrow, "py-2 text-[11px] tracking-[0.04em] text-muted-foreground uppercase")}>
+              <div className={cn(wrow, "py-2 text-xs tracking-[0.04em] text-muted-foreground uppercase")}>
                 <span />
                 <span>Monitor</span>
                 <span>Checks</span>
@@ -1096,8 +1096,8 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             <div className={wrow}>
               <span />
               <span className="flex flex-col">
-                <span className="text-[13px]">marks</span>
-                <span className="text-[12px] text-muted-foreground">deploys and flags on the same clock</span>
+                <span className="text-sm">marks</span>
+                <span className="text-sm text-muted-foreground">deploys and flags on the same clock</span>
               </span>
               <span />
               <MarksLane
@@ -1110,7 +1110,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 onOpenMarks={onOpenMarks}
               />
               <span />
-              <span className="text-right font-mono text-[12px] text-muted-foreground">
+              <span className="text-right font-mono text-sm text-muted-foreground">
                 {onClock.count} mark{onClock.count === 1 ? "" : "s"}
               </span>
             </div>
@@ -1125,20 +1125,20 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             const rows = g.monitors.filter((m) => filter === "all" || sourceOf(m) === filter);
             const openFirst = [...rows.filter((m) => m.state === "open"), ...rows.filter((m) => m.state !== "open")];
             return (
-              <section key={g.source} className="rounded-[6.4px] border bg-card pb-1" data-source-group={g.source}>
+              <section key={g.source} className="rounded-lg border bg-card pb-1" data-source-group={g.source}>
                 <GroupHead>
-                  <h2 className="m-0 flex items-center gap-2 text-[13.5px] font-medium">
+                  <h2 className="m-0 flex items-center gap-2 text-base font-medium">
                     <Badge tone="sec">
                       <span className="font-mono">{g.source}</span>
                     </Badge>
                     from {g.source}
                   </h2>
                   <Badge tone="out">read-only</Badge>
-                  <span className={cn("text-[12px]", standing.short ? "text-amber-300" : "text-muted-foreground")}>{standing.line}</span>
+                  <span className={cn("text-sm", standing.short ? "text-warn-fg" : "text-muted-foreground")}>{standing.line}</span>
                   {onOpenLink && linked?.has(g.source) ? (
                     <button
                       type="button"
-                      className="ml-auto text-[12px] text-muted-foreground hover:text-foreground"
+                      className="ml-auto text-sm text-muted-foreground hover:text-foreground"
                       onClick={() => onOpenLink(g.source)}
                     >
                       the link →
@@ -1146,7 +1146,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                   ) : null}
                 </GroupHead>
                 {openFirst.length === 0 ? (
-                  <div className="px-4 py-3 text-[12px] text-muted-foreground">
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
                     {g.monitors.length === 0 ? `No monitors came from ${g.source}.` : "None of this kind."}
                   </div>
                 ) : null}
@@ -1173,7 +1173,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             );
           })}
         {sources.length > 0 && place !== "here" ? (
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             A source's monitor opens read-only: its definition, results and stretches as its source holds them. Nothing is
             judged or called again here, and there is no Edit.
           </span>
@@ -1181,13 +1181,13 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
 
         {monitors.length > 0 && !tall && placeShows(place, null) ? (
           <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-            <section className="flex flex-col gap-2 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5">
-              <span className="text-[13.5px] font-medium">What opened today</span>
-              {today.length === 0 ? <span className="text-[12px] text-muted-foreground">Nothing opened since midnight UTC.</span> : null}
+            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
+              <span className="text-base font-medium">What opened today</span>
+              {today.length === 0 ? <span className="text-sm text-muted-foreground">Nothing opened since midnight UTC.</span> : null}
               {today.slice(0, 6).map((t) => (
-                <div key={`${t.monitor}-${t.at}`} className="flex gap-3 text-[12px] text-muted-foreground">
+                <div key={`${t.monitor}-${t.at}`} className="flex gap-3 text-sm text-muted-foreground">
                   <span className="font-mono">{clockAt(t.at, nowMs)}</span>
-                  <span className={t.open ? "text-red-300" : "text-zinc-500"}>●</span>
+                  <span className={t.open ? "text-danger-fg" : "text-zinc-500"}>●</span>
                   <span className="min-w-0 flex-1 truncate text-zinc-300">
                     {t.monitor} · {t.open ? "still open" : `resolved ${t.resolvedAt ? clockAt(t.resolvedAt, nowMs) : ""}`}
                   </span>
@@ -1195,21 +1195,21 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 </div>
               ))}
             </section>
-            <section className="flex flex-col gap-2 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5">
-              <span className="text-[13.5px] font-medium">Delivery</span>
+            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
+              <span className="text-base font-medium">Delivery</span>
               {deliveryRows.length === 0 ? (
-                <span className="text-[12px] text-muted-foreground">No webhook yet: a monitor calls the default webhook in Settings, or its own.</span>
+                <span className="text-sm text-muted-foreground">No webhook yet: a monitor calls the default webhook in Settings, or its own.</span>
               ) : null}
               {deliveryRows.map((d) => (
-                <div key={d.host} className="flex gap-3 text-[12px] text-muted-foreground">
+                <div key={d.host} className="flex gap-3 text-sm text-muted-foreground">
                   <span className="min-w-0 flex-1 truncate text-zinc-300">
                     {d.host} · {d.monitors} monitor{d.monitors === 1 ? "" : "s"}
                   </span>
-                  <span className={d.ok === false ? "text-red-300" : d.ok ? "text-emerald-300" : ""}>{d.ok === false ? "failed" : d.ok ? "ok" : "not called yet"}</span>
+                  <span className={d.ok === false ? "text-danger-fg" : d.ok ? "text-ok-fg" : ""}>{d.ok === false ? "failed" : d.ok ? "ok" : "not called yet"}</span>
                   <span className="font-mono">{d.lastAt ? `last ${clockAt(d.lastAt, nowMs)}` : ""}</span>
                 </div>
               ))}
-              <span className="text-[12px] text-muted-foreground">A monitor reminds while open and says when it resolves.</span>
+              <span className="text-sm text-muted-foreground">A monitor reminds while open and says when it resolves.</span>
             </section>
           </div>
         ) : null}

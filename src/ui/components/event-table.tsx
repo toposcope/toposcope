@@ -118,9 +118,9 @@ function PickRows({
             onToggle(item.k);
           }}
         >
-          <span className="w-[9px] shrink-0 text-[10px] leading-none">{item.on ? "✓" : ""}</span>
-          <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{item.k}</span>
-          <span className="shrink-0 font-mono text-[10px] whitespace-nowrap text-muted-foreground">
+          <span className="w-[9px] shrink-0 text-2xs leading-none">{item.on ? "✓" : ""}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-sm">{item.k}</span>
+          <span className="shrink-0 font-mono text-2xs whitespace-nowrap text-muted-foreground">
             {item.meta}
           </span>
         </DropdownMenuItem>
@@ -149,7 +149,7 @@ function Header({
   const count = `${promoted.length}/${maxPromotedCols}`;
   return (
     <div
-      className={`${gridClass} h-[26px] w-full min-w-0 shrink-0 items-center rounded-t-lg border border-b-0 bg-card px-2 text-[11px] font-medium tracking-[0.04em] text-muted-foreground uppercase`}
+      className={`${gridClass} h-[26px] w-full min-w-0 shrink-0 items-center rounded-t-lg border border-b-0 bg-card px-2 text-xs font-medium tracking-[0.04em] text-muted-foreground uppercase`}
       style={style}
     >
       <span className="truncate">Time</span>
@@ -168,7 +168,7 @@ function Header({
               type="button"
               title={`Remove ${key}`}
               aria-label={`Remove ${key}`}
-              className="flex size-[13px] shrink-0 items-center justify-center rounded-[2.4px] text-[12px] leading-none text-muted-foreground/55 hover:bg-white/12 hover:text-foreground"
+              className="flex size-[13px] shrink-0 items-center justify-center rounded-sm text-sm leading-none text-muted-foreground/55 hover:bg-white/12 hover:text-foreground"
               onClick={() => onColsChange(promoted.filter((item) => item !== key))}
             >
               ×
@@ -190,7 +190,7 @@ function Header({
                       ? `Add a field column — ${promoted.length} of ${maxPromotedCols}`
                       : "Show an attribute beside Message"
                 }
-                className={`ml-auto flex size-[18px] shrink-0 items-center justify-center rounded-[2.4px] text-[14px] leading-none ${
+                className={`ml-auto flex size-[18px] shrink-0 items-center justify-center rounded-sm text-base leading-none ${
                   atCap
                     ? "text-muted-foreground/55"
                     : "text-muted-foreground hover:bg-white/10 hover:text-foreground"
@@ -205,16 +205,16 @@ function Header({
               className="w-[242px] max-h-[min(324px,calc(100vh-180px))] overflow-y-auto p-1"
             >
               <div className="mb-1 flex items-center justify-between gap-2.5 border-b border-white/[0.08] px-2 py-1.5 normal-case tracking-normal">
-                <span className="text-[11px] font-normal text-muted-foreground">Show in table</span>
+                <span className="text-xs font-normal text-muted-foreground">Show in table</span>
                 <span
-                  className={`font-mono text-[10.5px] ${atCap ? "text-amber-400" : "text-muted-foreground"}`}
+                  className={`font-mono text-2xs ${atCap ? "text-warn-fg" : "text-muted-foreground"}`}
                 >
                   {count}
                 </span>
               </div>
               {suggested.length > 0 ? (
                 <>
-                  <div className="px-[7px] pt-[5px] pb-[3px] text-[10px] font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
+                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
                     Suggested
                   </div>
                   <PickRows items={suggested} onToggle={(key) => onColsChange(togglePromotedCol(promoted, key))} />
@@ -222,18 +222,18 @@ function Header({
               ) : null}
               {other.length > 0 ? (
                 <>
-                  <div className="px-[7px] pt-[5px] pb-[3px] text-[10px] font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
+                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
                     Other keys on this page
                   </div>
                   <PickRows items={other} onToggle={(key) => onColsChange(togglePromotedCol(promoted, key))} />
                 </>
               ) : null}
               {suggested.length === 0 && other.length === 0 ? (
-                <p className="px-2 py-2 text-[11.5px] leading-snug font-normal normal-case tracking-normal text-muted-foreground">
+                <p className="px-2 py-2 text-xs leading-snug font-normal normal-case tracking-normal text-muted-foreground">
                   No keys seen on this page yet
                 </p>
               ) : null}
-              <p className="mt-1 border-t border-white/[0.08] px-2 pt-1.5 pb-1 text-[10.5px] leading-normal font-normal normal-case tracking-normal text-muted-foreground">
+              <p className="mt-1 border-t border-white/[0.08] px-2 pt-1.5 pb-1 text-2xs leading-normal font-normal normal-case tracking-normal text-muted-foreground">
                 Keys seen in the loaded events on this page. Columns belong to this tab — Follow and
                 Duplicate keep them, Save stores them.
               </p>
@@ -269,7 +269,7 @@ function Footer({
   return (
     <div className="flex h-8 shrink-0 items-center gap-2 rounded-b-lg border border-t-0 bg-card px-2">
       {loaded > 0 ? (
-        <span className="shrink-0 font-mono text-[11px] whitespace-nowrap text-muted-foreground">
+        <span className="shrink-0 font-mono text-xs whitespace-nowrap text-muted-foreground">
           {partial ? (
             <>
               <CountText n={loaded} /> of <CountText n={total} floor={floor} /> events
@@ -305,10 +305,10 @@ function Footer({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" side="top" className="min-w-[196px] p-1">
           <div className="mb-1 border-b border-white/[0.08] px-2 py-1.5">
-            <div className="truncate text-[11px] leading-snug">
+            <div className="truncate text-xs leading-snug">
               {exportScope(q, range)}
             </div>
-            <div className="font-mono text-[10.5px] leading-normal text-muted-foreground">
+            <div className="font-mono text-2xs leading-normal text-muted-foreground">
               <CountText n={total} floor={floor} /> matching · <CountText n={loaded} /> loaded
             </div>
           </div>
@@ -324,7 +324,7 @@ function Footer({
               onSelect={() => downloadExport(events, format)}
             >
               {label}
-              <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
+              <span className="ml-auto font-mono text-2xs text-muted-foreground">
                 .{format === "ndjson" ? "ndjson" : format}
               </span>
             </DropdownMenuItem>
@@ -541,10 +541,10 @@ export function EventTable({
       return (
         <div
           key={row.key}
-          className="flex h-[26px] min-w-0 items-center gap-1.5 border-b border-white/[0.06] px-3 font-mono text-[11.5px] text-foreground/85"
+          className="flex h-[26px] min-w-0 items-center gap-1.5 border-b border-white/[0.06] px-3 font-mono text-xs text-foreground/85"
           style={{ backgroundImage: HELD_HATCH }}
         >
-          <span className="shrink-0 text-[10px] text-amber-400">▲</span>
+          <span className="shrink-0 text-2xs text-warn-fg">▲</span>
           <span className="min-w-0 truncate">{row.text}</span>
         </div>
       );
@@ -553,11 +553,11 @@ export function EventTable({
       return (
         <div
           key={row.key}
-          className="flex h-[26px] min-w-0 items-center gap-2 border-b border-white/[0.06] bg-red-500/[0.08] px-3 text-[11.5px]"
+          className="flex h-[26px] min-w-0 items-center gap-2 border-b border-white/[0.06] bg-danger/[0.08] px-3 text-xs"
         >
-          <span className="size-2 shrink-0 rounded-[2px] bg-red-500" />
+          <span className="size-2 shrink-0 rounded-sm bg-danger" />
           <span className="shrink-0 font-mono">{new Date(row.at).toISOString().slice(11, 19)}</span>
-          <span className="shrink-0 text-red-300">{row.name} opened</span>
+          <span className="shrink-0 text-danger-fg">{row.name} opened</span>
           <span className="min-w-0 truncate text-muted-foreground">· {row.detail}</span>
         </div>
       );
@@ -733,7 +733,7 @@ export function EventTable({
         ref={selected ? selectedRef : undefined}
         type="button"
         tabIndex={selected ? 0 : -1}
-        className={`relative ${gridClass} h-[26px] w-full items-center border-b border-white/[0.06] px-2 text-left font-mono text-[12px] ${
+        className={`relative ${gridClass} h-[26px] w-full items-center border-b border-white/[0.06] px-2 text-left font-mono text-sm ${
           selected ? "bg-accent" : "hover:bg-accent/50"
         }`}
         style={{
@@ -780,7 +780,7 @@ export function EventTable({
           );
         })}
         <span
-          className={`truncate ${isLoud(event.level) ? "text-red-300" : ""}`}
+          className={`truncate ${isLoud(event.level) ? "text-danger-fg" : ""}`}
         >
           {event.message}
         </span>

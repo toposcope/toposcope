@@ -45,7 +45,7 @@ export function HeaderTabs({
   const label = (tab: (typeof headerTabs)[number]) => (
     <span className="inline-flex items-center gap-1.5">
       {tab.label}
-      {tab.view === "watch" && watchOpen ? <span className="size-1.5 rounded-full bg-red-500" aria-label="open" /> : null}
+      {tab.view === "watch" && watchOpen ? <span className="size-1.5 rounded-full bg-danger" aria-label="open" /> : null}
     </span>
   );
   return (
@@ -97,7 +97,7 @@ export function HeaderField({ onHunt, disabled }: { onHunt: (q: string | null) =
       </label>
       <div
         className={cn(
-          "flex h-8 w-[360px] items-center gap-2 rounded-[6.4px] border border-white/10 bg-[#141416] px-3",
+          "flex h-8 w-[360px] items-center gap-2 rounded-lg border border-white/10 bg-surface-2 px-3",
           disabled && "opacity-50",
         )}
       >
@@ -111,9 +111,9 @@ export function HeaderField({ onHunt, disabled }: { onHunt: (q: string | null) =
           disabled={disabled}
           placeholder={disabled ? "nothing to search yet" : "key:value … opens a hunt"}
           onChange={(e) => setValue(e.target.value)}
-          className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
         />
-        <kbd className="rounded border border-white/10 px-[5px] font-mono text-[10.5px] text-muted-foreground">/</kbd>
+        <kbd className="rounded-md border border-white/10 px-[5px] font-mono text-2xs text-muted-foreground">/</kbd>
       </div>
     </form>
   );

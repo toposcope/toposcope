@@ -184,7 +184,7 @@ export function WatchThisSheet(props: {
 
   const lineY = 120 - Math.min(120, Math.round(((nOk ? n : 0) / peak) * 120));
   return (
-    <section aria-label="Watch this" className="absolute inset-x-0 bottom-0 z-30 grid h-[470px] grid-cols-[minmax(0,1fr)_420px] gap-7 border-t border-zinc-700 bg-[#121214] px-7 py-[22px] shadow-[0_-24px_60px_rgba(0,0,0,.6)]">
+    <section aria-label="Watch this" className="absolute inset-x-0 bottom-0 z-30 grid h-[470px] grid-cols-[minmax(0,1fr)_420px] gap-7 border-t border-zinc-700 bg-surface-2 px-7 py-[22px] shadow-[0_-24px_60px_rgba(0,0,0,.6)]">
       <form
         className="flex min-w-0 flex-col gap-[18px]"
         onSubmit={(e) => {
@@ -193,21 +193,21 @@ export function WatchThisSheet(props: {
         }}
       >
         <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="m-0 text-[17px] font-semibold">Watch this hunt</h2>
-          <span className="text-[12.5px] text-muted-foreground">Toposcope checks it every minute and opens a monitor while the condition holds.</span>
+          <h2 className="m-0 text-lg font-semibold">Watch this hunt</h2>
+          <span className="text-sm text-muted-foreground">Toposcope checks it every minute and opens a monitor while the condition holds.</span>
         </div>
         <div className="flex flex-wrap gap-3">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="watch-name" className="text-[12px] text-muted-foreground">
+            <label htmlFor="watch-name" className="text-sm text-muted-foreground">
               Name
             </label>
-            <input id="watch-name" value={shownName} onChange={(e) => setName(e.target.value)} className="h-[34px] w-[420px] max-w-full rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[13px] outline-none" />
+            <input id="watch-name" value={shownName} onChange={(e) => setName(e.target.value)} className="h-[34px] w-[420px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="watch-service" className="text-[12px] text-muted-foreground">
+            <label htmlFor="watch-service" className="text-sm text-muted-foreground">
               Service *
             </label>
-            <input id="watch-service" aria-required list="watch-services" value={service} placeholder={seenServices[0] ?? "api"} spellCheck={false} autoComplete="off" onChange={(e) => setService(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[13px] outline-none placeholder:text-muted-foreground" />
+            <input id="watch-service" aria-required list="watch-services" value={service} placeholder={seenServices[0] ?? "api"} spellCheck={false} autoComplete="off" onChange={(e) => setService(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none placeholder:text-muted-foreground" />
             <datalist id="watch-services">
               {seenServices.map((v) => (
                 <option key={v} value={v} />
@@ -215,33 +215,33 @@ export function WatchThisSheet(props: {
             </datalist>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="watch-host" className="text-[12px] text-muted-foreground">
+            <label htmlFor="watch-host" className="text-sm text-muted-foreground">
               Host · optional
             </label>
-            <input id="watch-host" value={host} placeholder="optional" spellCheck={false} autoComplete="off" onChange={(e) => setHost(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[13px] outline-none placeholder:text-muted-foreground" />
+            <input id="watch-host" value={host} placeholder="optional" spellCheck={false} autoComplete="off" onChange={(e) => setHost(e.target.value)} className="h-[34px] w-[160px] max-w-full rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none placeholder:text-muted-foreground" />
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-[12px] text-muted-foreground">Opens when</span>
-          <div className="flex flex-wrap items-center gap-2 text-[13px]">
-            <span className="rounded-[7px] border border-white/10 px-2.5 py-1.5">{series}</span>
+          <span className="text-sm text-muted-foreground">Opens when</span>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded-lg border border-white/10 px-2.5 py-1.5">{series}</span>
             <span>{props.agg ? "is" : "are"}</span>
-            <select aria-label="At least or fewer than" value={opensWhen} onChange={(e) => setOpensWhen(e.target.value as OpensWhen)} className="h-[32px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2 text-[13px]">
+            <select aria-label="At least or fewer than" value={opensWhen} onChange={(e) => setOpensWhen(e.target.value as OpensWhen)} className="h-[32px] rounded-lg border border-white/10 bg-surface-1 px-2 text-sm">
               <option value="at_least">at least</option>
               <option value="fewer_than">fewer than</option>
             </select>
-            <input aria-label="Amount" value={threshold} onChange={(e) => setThreshold(e.target.value)} className="h-[32px] w-[80px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2 text-right font-mono text-[13px] outline-none" />
+            <input aria-label="Amount" value={threshold} onChange={(e) => setThreshold(e.target.value)} className="h-[32px] w-[80px] rounded-lg border border-white/10 bg-surface-1 px-2 text-right font-mono text-sm outline-none" />
             {props.agg ? null : (
-              <select aria-label="Rows or a share of all rows" value={measure} onChange={(e) => setMeasure(e.target.value as "series" | "share")} className="h-[32px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2 text-[13px]">
+              <select aria-label="Rows or a share of all rows" value={measure} onChange={(e) => setMeasure(e.target.value as "series" | "share")} className="h-[32px] rounded-lg border border-white/10 bg-surface-1 px-2 text-sm">
                 <option value="series">rows</option>
                 <option value="share">% of all rows</option>
               </select>
             )}
             <span>in the last</span>
             {props.savedRange && !fixed ? (
-              <span className="rounded-[7px] border border-white/10 px-2.5 py-1.5 font-mono">{props.savedRange}</span>
+              <span className="rounded-lg border border-white/10 px-2.5 py-1.5 font-mono">{props.savedRange}</span>
             ) : (
-              <select aria-label="Window" value={win} disabled={Boolean(fixed)} onChange={(e) => setWin(e.target.value as PreviewWindow)} className="h-[32px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2 text-[13px] disabled:opacity-70">
+              <select aria-label="Window" value={win} disabled={Boolean(fixed)} onChange={(e) => setWin(e.target.value as PreviewWindow)} className="h-[32px] rounded-lg border border-white/10 bg-surface-1 px-2 text-sm disabled:opacity-70">
                 {windows.map((w) => (
                   <option key={w} value={w}>
                     {w}
@@ -250,13 +250,13 @@ export function WatchThisSheet(props: {
               </select>
             )}
           </div>
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             {props.savedName ? "The saved hunt's own window is the monitor's." : "Saving keeps this hunt as a saved hunt with that window."} Fewer than is for silence; a share of all rows holds however busy the instance is.
           </span>
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-[12px] text-muted-foreground">Sends to</span>
-          <div className="flex flex-wrap items-center gap-x-[18px] gap-y-2 text-[13px]">
+          <span className="text-sm text-muted-foreground">Sends to</span>
+          <div className="flex flex-wrap items-center gap-x-[18px] gap-y-2 text-sm">
             {fallback ? (
               <label className="inline-flex items-center gap-2">
                 <input type="checkbox" checked={ticked.includes("default")} onChange={() => toggle("default")} />
@@ -281,14 +281,14 @@ export function WatchThisSheet(props: {
                   }
                 }}
                 placeholder="https://…"
-                className="h-[30px] w-[220px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12px] outline-none"
+                className="h-[30px] w-[220px] rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none"
               />
-              <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={addTarget}>
+              <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={addTarget}>
                 + webhook
               </button>
             </span>
           </div>
-          <span className="text-[12px] text-muted-foreground">Reminds every window while open · says when it resolves.</span>
+          <span className="text-sm text-muted-foreground">Reminds every window while open · says when it resolves.</span>
         </div>
         <div className="mt-auto flex items-center gap-2.5">
           <span title={serviceOk(service) ? undefined : serviceMissing}>
@@ -302,13 +302,13 @@ export function WatchThisSheet(props: {
           <Button type="button" variant="ghost" className="text-muted-foreground" onClick={props.onCancel}>
             Cancel
           </Button>
-          {serviceOk(service) ? null : <span className="text-[12px] text-muted-foreground">{serviceMissing}</span>}
+          {serviceOk(service) ? null : <span className="text-sm text-muted-foreground">{serviceMissing}</span>}
         </div>
       </form>
-      <aside className="flex flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#0d0d0f] p-4">
+      <aside className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-1 p-4">
         <div className="flex items-baseline justify-between">
-          <span className="text-[13px] font-medium">Would have opened · last 24 h</span>
-          <span className="font-mono text-[12px] text-muted-foreground">
+          <span className="text-sm font-medium">Would have opened · last 24 h</span>
+          <span className="font-mono text-sm text-muted-foreground">
             {preview ? (preview.refused ? "cannot tell" : `${preview.opens.length} time${preview.opens.length === 1 ? "" : "s"} · ${Math.round(preview.open_ms / 60_000)} min open`) : "…"}
           </span>
         </div>
@@ -325,26 +325,26 @@ export function WatchThisSheet(props: {
           {nOk ? (
             <>
               <div className="absolute inset-x-0 border-t border-dashed border-plate" style={{ top: lineY }} />
-              <span className="absolute right-0 bg-[#0d0d0f] px-1 font-mono text-[10.5px] text-plate" style={{ top: Math.max(0, lineY - 14) }}>
+              <span className="absolute right-0 bg-surface-1 px-1 font-mono text-2xs text-plate" style={{ top: Math.max(0, lineY - 14) }}>
                 {n}
               </span>
             </>
           ) : null}
         </div>
-        <div className="flex justify-between font-mono text-[10.5px] text-muted-foreground">
+        <div className="flex justify-between font-mono text-2xs text-muted-foreground">
           <span>24 h ago</span>
           <span>now</span>
         </div>
-        <div className="mt-1 flex flex-col gap-1 text-[12px] text-muted-foreground">
+        <div className="mt-1 flex flex-col gap-1 text-sm text-muted-foreground">
           {preview?.refused ? <span>{preview.refused}</span> : null}
           {(preview?.opens ?? []).slice(-3).reverse().map((o) => (
             <span key={o.from}>
-              <span className={o.to ? "text-zinc-500" : "text-red-300"}>●</span> {o.from.slice(11, 16)} → {o.to ? o.to.slice(11, 16) : "now"}
+              <span className={o.to ? "text-zinc-500" : "text-danger-fg"}>●</span> {o.from.slice(11, 16)} → {o.to ? o.to.slice(11, 16) : "now"}
             </span>
           ))}
         </div>
         {preview?.next ? (
-          <span className="mt-auto text-[12px] text-muted-foreground">
+          <span className="mt-auto text-sm text-muted-foreground">
             {opensWhen === "fewer_than" ? "Lower" : "Raise"} the threshold to {preview.next.threshold} and it would have opened {preview.next.opens === 0 ? "never" : preview.next.opens === 1 ? "once" : `${preview.next.opens} times`}.
           </span>
         ) : null}

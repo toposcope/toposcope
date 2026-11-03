@@ -24,7 +24,7 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-2.5 py-1 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "flex h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-2.5 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
         className,
       )}
       {...props}
@@ -48,7 +48,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "relative z-50 max-h-96 min-w-32 overflow-hidden rounded-lg border border-white/12 bg-[#18181b] text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
+          "relative z-50 max-h-96 min-w-32 overflow-hidden rounded-lg border border-white/12 bg-overlay text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -79,7 +79,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex h-[26px] w-full cursor-pointer select-none items-center rounded-[3.4px] py-0 pl-7 pr-2 text-[12.5px] outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex h-[26px] w-full cursor-pointer select-none items-center rounded-sm py-0 pl-7 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}

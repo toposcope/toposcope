@@ -56,14 +56,14 @@ function ShareRow({ onShare, close }: { onShare: () => void; close: () => void }
   return (
     <button
       type="button"
-      className="flex min-h-10 w-full flex-col items-start justify-center gap-0.5 rounded-[3.4px] bg-plate/[0.08] px-2 py-1 text-left text-[12.5px] hover:bg-plate/15"
+      className="flex min-h-10 w-full flex-col items-start justify-center gap-0.5 rounded-sm bg-plate/[0.08] px-2 py-1 text-left text-sm hover:bg-plate/15"
       onClick={() => {
         close();
         onShare();
       }}
     >
       <span className="font-semibold">Share…</span>
-      <span className="text-[11px] text-muted-foreground">show it on another site</span>
+      <span className="text-xs text-muted-foreground">show it on another site</span>
     </button>
   );
 }
@@ -71,13 +71,13 @@ function ShareRow({ onShare, close }: { onShare: () => void; close: () => void }
 const dupCap = "Six panels is the cap — remove one to duplicate";
 
 export const extraSelectClass =
-  "h-[26px] min-w-0 rounded-md border border-input bg-[#18181b] px-[5px] text-[11.5px] text-foreground";
+  "h-[26px] min-w-0 rounded-md border border-input bg-overlay px-[5px] text-xs text-foreground";
 
 const iconBtn =
   "flex size-[22px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
 
 const overflowRow =
-  "flex h-[26px] w-full items-center gap-2.5 rounded-[3.4px] px-2 text-left text-[12.5px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+  "flex h-[26px] w-full items-center gap-2.5 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
 
 function OverflowMenus({
   atCap,
@@ -144,7 +144,7 @@ function OverflowMenus({
             keepFocus.current = false;
           }
         }}
-        className={cn("bg-[#18181b] p-1", (onShare && page === "more") || page === "board" ? "w-[210px]" : "w-[168px]")}
+        className={cn("bg-overlay p-1", (onShare && page === "more") || page === "board" ? "w-[210px]" : "w-[168px]")}
         onPointerDown={(e) => e.stopPropagation()}
       >
         {page === "more" ? (
@@ -180,7 +180,7 @@ function OverflowMenus({
               }}
             >
               <span className="flex-1">Duplicate</span>
-              <span className="font-mono text-[10px] text-muted-foreground">
+              <span className="font-mono text-2xs text-muted-foreground">
                 {atCap ? "at cap" : "⧉"}
               </span>
             </button>
@@ -191,7 +191,7 @@ function OverflowMenus({
               onClick={() => setPage("copy")}
             >
               <span className="flex-1">Copy…</span>
-              <span className="font-mono text-[10px] text-muted-foreground">
+              <span className="font-mono text-2xs text-muted-foreground">
                 csv json svg png
               </span>
             </button>
@@ -202,7 +202,7 @@ function OverflowMenus({
               onClick={() => setPage("export")}
             >
               <span className="flex-1">Export…</span>
-              <span className="font-mono text-[10px] text-muted-foreground">
+              <span className="font-mono text-2xs text-muted-foreground">
                 file
               </span>
             </button>
@@ -211,7 +211,7 @@ function OverflowMenus({
                 <div className="my-1 h-px bg-white/[0.08]" />
                 <button type="button" className={overflowRow} onClick={() => setPage("board")}>
                   <span className="flex-1">Add to board</span>
-                  <span className="text-[10px] text-muted-foreground" aria-hidden>
+                  <span className="text-2xs text-muted-foreground" aria-hidden>
                     ▸
                   </span>
                 </button>
@@ -236,7 +236,7 @@ function OverflowMenus({
               }}
             >
               <span className="flex-1">{format.toUpperCase()}</span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">
+              <span className="font-mono text-2xs text-muted-foreground">
                 .{format}
               </span>
             </button>
@@ -305,7 +305,7 @@ export function ExtraPanel({
     >
       <div
         className={cn(
-          "flex min-h-[30px] shrink-0 touch-none items-center gap-2 overflow-hidden rounded-t-[5.4px] border-b border-white/[0.08] pr-1 pl-3",
+          "flex min-h-[30px] shrink-0 touch-none items-center gap-2 overflow-hidden rounded-t-md border-b border-white/[0.08] pr-1 pl-3",
           armed ? "bg-destructive/14" : "bg-background/45",
           moving ? "cursor-grabbing" : "cursor-grab",
           lockChrome && "pointer-events-none opacity-50",
@@ -316,14 +316,14 @@ export function ExtraPanel({
         {armed ? (
           <>
             {widget.w > 2 ? (
-              <span className="min-w-0 truncate text-[11.5px] text-red-300">
+              <span className="min-w-0 truncate text-xs text-danger-fg">
                 Remove?
               </span>
             ) : null}
             <span className="min-w-0 flex-1" />
             <button
               type="button"
-              className="h-[22px] min-w-0 truncate rounded-md border border-destructive/55 bg-destructive/16 px-[9px] text-[11.5px] text-red-300 hover:bg-destructive/26"
+              className="h-[22px] min-w-0 truncate rounded-md border border-destructive/55 bg-destructive/16 px-[9px] text-xs text-danger-fg hover:bg-destructive/26"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={onRemove}
             >
@@ -331,7 +331,7 @@ export function ExtraPanel({
             </button>
             <button
               type="button"
-              className="h-[22px] min-w-0 truncate rounded-md border border-input px-2 text-[11.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="h-[22px] min-w-0 truncate rounded-md border border-input px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
               title="Keep this panel"
               aria-label="Keep this panel"
               onPointerDown={(e) => e.stopPropagation()}
@@ -344,7 +344,7 @@ export function ExtraPanel({
           <>
             <div className="flex min-w-0 shrink items-center overflow-hidden">
               {identity ?? (
-                <span className="min-w-0 truncate font-mono text-[11.5px]">
+                <span className="min-w-0 truncate font-mono text-xs">
                   {widgetTitle(widget)}
                 </span>
               )}
@@ -370,7 +370,7 @@ export function ExtraPanel({
                   type="button"
                   className={cn(
                     iconBtn,
-                    "text-[11px]",
+                    "text-xs",
                     pct ? "bg-accent text-foreground" : "",
                   )}
                   title={pct ? "Hide shares" : "Show shares"}
@@ -417,7 +417,7 @@ export function ExtraPanel({
               )}
               <button
                 type="button"
-                className="size-[22px] rounded-md text-[14px] leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="size-[22px] rounded-md text-base leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
                 title="Remove panel"
                 aria-label="Remove widget"
                 onPointerDown={(e) => e.stopPropagation()}

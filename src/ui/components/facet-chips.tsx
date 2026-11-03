@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { CountText } from "@/components/count-text";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { FacetField, FacetValue, Facets } from "@/types";
 import { maxAttrFacets } from "../../shared/attrs";
-import { levelHex } from "../histogram-series";
+import { levelHex } from "@/level";
 import type { LogLevel } from "../types";
 
 /**
@@ -69,34 +70,31 @@ export function FacetChips(props: Props) {
           const on = selected.some((v) => v.toLowerCase() === item.v.toLowerCase());
           const border = field === "level" ? levelHex[item.v as LogLevel] : undefined;
           return (
-            <button
+            <Chip
               key={item.v}
-              type="button"
+              size="md"
               aria-pressed={on}
               data-facet-value=""
               title={`${field}:${item.v}`}
-              className={cn(
-                "inline-flex h-[26px] max-w-[260px] items-center gap-1.5 whitespace-nowrap rounded-[6.4px] border bg-[#141416] px-[9px] text-[12px] text-zinc-300 hover:text-foreground",
-                on ? "border-zinc-400 text-foreground" : "border-white/10",
-              )}
+              className="max-w-[260px] font-normal text-zinc-300"
               style={border && !on ? { borderColor: `${border}99` } : border ? { borderColor: border } : undefined}
               onClick={() => props.onToggle(field, item.v)}
             >
               <span className="truncate font-mono">{field === "e1" ? `e1:${item.v}` : field === "toposcope" ? `from ${item.v}` : item.v}</span>
-              <b className="font-mono text-[11.5px] font-medium text-muted-foreground">
+              <b className="font-mono text-xs font-medium text-muted-foreground">
                 <CountText n={item.n} floor={props.floorFor?.(field, item.v) ?? false} />
               </b>
-            </button>
+            </Chip>
           );
         })}
         {rest > 0 ? (
-          <button type="button" className="h-[26px] rounded-[6.4px] border border-white/10 px-[9px] text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setMore((p) => ({ ...p, [field]: true }))}>
+          <Chip size="md" className="bg-transparent" onClick={() => setMore((p) => ({ ...p, [field]: true }))}>
             + {rest} {field === "e1" ? "e1" : field}
-          </button>
+          </Chip>
         ) : more[field] && values.length > cap ? (
-          <button type="button" className="h-[26px] rounded-[6.4px] px-[6px] text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setMore((p) => ({ ...p, [field]: false }))}>
+          <Chip size="md" className="border-transparent bg-transparent px-1.5" onClick={() => setMore((p) => ({ ...p, [field]: false }))}>
             fewer
-          </button>
+          </Chip>
         ) : null}
         {remove ? (
           <button type="button" className="flex size-5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground" title={`Remove ${field} facet`} onClick={remove}>
@@ -123,7 +121,7 @@ export function FacetChips(props: Props) {
           {g}
         </span>
       ))}
-      {props.loading && groups.length === 0 ? <span className="h-[26px] w-24 animate-pulse rounded-[6.4px] bg-muted" /> : null}
+      {props.loading && groups.length === 0 ? <span className="h-[26px] w-24 animate-pulse rounded-lg bg-muted" /> : null}
       <DropdownMenu
         onOpenChange={(open) => {
           if (open) {
@@ -132,14 +130,14 @@ export function FacetChips(props: Props) {
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" className="border border-dashed border-white/15 px-[9px] text-[12px] text-muted-foreground" disabled={props.attrPins.length >= maxAttrFacets}>
+          <Button type="button" variant="ghost" className="border border-dashed border-white/15 px-[9px] text-sm text-muted-foreground" disabled={props.attrPins.length >= maxAttrFacets}>
             <Plus className="size-3" />
             facet
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
           <div className="p-1">
-            <Input className="h-7 font-mono text-[11px]" placeholder="filter keys…" value={keyFilter} onChange={(e) => setKeyFilter(e.target.value)} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} />
+            <Input className="h-7 font-mono text-xs" placeholder="filter keys…" value={keyFilter} onChange={(e) => setKeyFilter(e.target.value)} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} />
           </div>
           {props.attrKeysLoading && addable.length === 0 ? (
             <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading keys…</p>
@@ -147,9 +145,9 @@ export function FacetChips(props: Props) {
             <p className="px-2 py-1.5 text-xs text-muted-foreground">No attr keys in this window.</p>
           ) : (
             addable.slice(0, 40).map((item) => (
-              <DropdownMenuItem key={item.k} className="font-mono text-[12px]" onSelect={() => props.onAddAttrFacet(item.k)}>
+              <DropdownMenuItem key={item.k} className="font-mono text-sm" onSelect={() => props.onAddAttrFacet(item.k)}>
                 <span className="min-w-0 flex-1 truncate">{item.k}</span>
-                <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                <span className="font-mono text-xs text-muted-foreground tabular-nums">
                   <CountText n={item.n} />
                 </span>
               </DropdownMenuItem>

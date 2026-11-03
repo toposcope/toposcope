@@ -143,7 +143,7 @@ export function EventDetail({
   return (
     <aside
       className={cn(
-        "my-2 mr-3 ml-1 flex w-[560px] max-w-[40%] shrink-0 flex-col overflow-hidden rounded-[10px] border border-white/10 bg-[#121214]",
+        "my-2 mr-3 ml-1 flex w-[560px] max-w-[40%] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-2",
         className,
       )}
     >
@@ -158,25 +158,25 @@ export function EventDetail({
           onClick={crumb.onBack}
         >
           {crumb.forward ? null : (
-            <span className="text-[12px] text-[oklch(0.906_0.014_84)]">‹</span>
+            <span className="text-sm text-[oklch(0.906_0.014_84)]">‹</span>
           )}
           {crumb.kind ? <MarkGlyph kind={crumb.kind} size={10} /> : null}
           <span
             className={cn(
-              "min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground",
+              "min-w-0 flex-1 truncate text-2xs text-muted-foreground",
               crumb.forward && "text-right",
             )}
           >
             {crumb.label}
           </span>
           {crumb.forward ? (
-            <span className="text-[12px] text-[oklch(0.906_0.014_84)]">›</span>
+            <span className="text-sm text-[oklch(0.906_0.014_84)]">›</span>
           ) : null}
         </button>
       ) : null}
       <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-4">
         <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
-        <span className="truncate font-mono text-[12.5px] text-foreground" title={event.ts}>
+        <span className="truncate font-mono text-sm text-foreground" title={event.ts}>
           {formatEventClock(event.ts, {
             format,
             fromMs,
@@ -184,7 +184,7 @@ export function EventDetail({
             precision: "ms",
           })}
         </span>
-        <span className="truncate font-mono text-[12px] text-muted-foreground">
+        <span className="truncate font-mono text-sm text-muted-foreground">
           {[event.service, event.host].filter(Boolean).join(" · ")}
         </span>
         <div className="ml-auto flex items-center gap-1">
@@ -195,7 +195,7 @@ export function EventDetail({
           )}
         </div>
       </div>
-      <div className="shrink-0 border-b border-white/[0.06] px-4 py-3 font-mono text-[13px] leading-[1.5] break-words text-foreground">
+      <div className="shrink-0 border-b border-white/[0.06] px-4 py-3 font-mono text-sm leading-[1.5] break-words text-foreground">
         {event.message}
       </div>
       {fp ? (
@@ -207,7 +207,7 @@ export function EventDetail({
           onFingerprints={onFingerprints}
         />
       ) : null}
-      <div className="flex shrink-0 gap-4 px-4 pt-2.5 text-[12.5px]" role="tablist">
+      <div className="flex shrink-0 gap-4 px-4 pt-2.5 text-sm" role="tablist">
         {(["fields", "json", ...(stack ? (["stack"] as const) : [])] as const).map((t) => (
           <button
             key={t}
@@ -238,7 +238,7 @@ export function EventDetail({
                 key={field.k}
                 className="group grid min-h-7 grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-[5px] last:border-0"
               >
-                <dt className="truncate font-mono text-[11px] leading-4 text-muted-foreground">
+                <dt className="truncate font-mono text-xs leading-4 text-muted-foreground">
                   {field.k}
                 </dt>
                 <dd className="font-mono text-xs break-words">{field.v}</dd>
@@ -248,7 +248,7 @@ export function EventDetail({
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="h-[22px] rounded-[4px] px-1.5 text-[11.5px] text-plate hover:bg-accent"
+                          className="h-[22px] rounded-md px-1.5 text-xs text-plate hover:bg-accent"
                           title={`Graph ${field.k}:${field.v}`}
                           aria-label={`Graph ${field.k}`}
                         >
@@ -285,7 +285,7 @@ export function EventDetail({
                   {notFilterable.has(field.k) ? null : (
                     <button
                       type="button"
-                      className="h-[22px] rounded-[4px] px-1.5 text-[11.5px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 disabled:opacity-40"
+                      className="h-[22px] rounded-md px-1.5 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100 disabled:opacity-40"
                       title={
                         filterDisabled
                           ? filterTitle
@@ -307,7 +307,7 @@ export function EventDetail({
         <Button
           type="button"
           variant="outline"
-          className="px-2.5 text-[12.5px]"
+          className="px-2.5 text-sm"
           title={aroundTitle ?? "The rows around this one, on the same service and host"}
           disabled={aroundDisabled}
           onClick={() => onAround(event)}
@@ -318,7 +318,7 @@ export function EventDetail({
           <Button
             type="button"
             variant="outline"
-            className="px-2.5 text-[12.5px]"
+            className="px-2.5 text-sm"
             title={`Where time went in this request — joined on ${traceRef.key}:${traceRef.value}`}
             onClick={() => onTrace(event)}
           >
@@ -329,7 +329,7 @@ export function EventDetail({
           <Button
             type="button"
             variant="outline"
-            className="px-2.5 text-[12.5px]"
+            className="px-2.5 text-sm"
             disabled={followDisabled && !existingFollow?.(followKey.k, followKey.v)}
             title={followDisabled ? followCapTitle : `Follow ${formatFieldToken(followKey.k, followKey.v)} — every service, first to last seen within a day`}
             onClick={() => void onFollow(followKey.k, followKey.v, event.ts)}
@@ -340,7 +340,7 @@ export function EventDetail({
         <Button
           type="button"
           variant="ghost"
-          className="px-2.5 text-[12.5px] text-muted-foreground"
+          className="px-2.5 text-sm text-muted-foreground"
           onClick={() => {
             void navigator.clipboard.writeText(json);
             toast.success("JSON copied");
@@ -383,7 +383,7 @@ function FollowFieldButton({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="h-[22px] rounded-[4px] px-1.5 text-[11.5px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+          className="h-[22px] rounded-md px-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
           title={
             disabled
               ? disabledTitle
@@ -395,20 +395,20 @@ function FollowFieldButton({
           follow
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[240px] bg-[#18181b] p-2">
+      <PopoverContent align="end" className="w-[240px] bg-overlay p-2">
         <div className="px-1.5 pb-1.5">
-          <div className="text-[12.5px] font-medium">Follow this value</div>
-          <div className="mt-0.5 font-mono text-[12px] break-all">{token}</div>
-          <div className="mt-1 text-[11.5px] text-muted-foreground">
+          <div className="text-sm font-medium">Follow this value</div>
+          <div className="mt-0.5 font-mono text-sm break-all">{token}</div>
+          <div className="mt-1 text-xs text-muted-foreground">
             First to last seen, within a day of this event · every service
           </div>
-          <div className="mt-1 text-[11.5px] text-muted-foreground">
+          <div className="mt-1 text-xs text-muted-foreground">
             Opens a new tab · this one stays as it is.
           </div>
         </div>
         <Button
           type="button"
-          className="w-full text-[12.5px]"
+          className="w-full text-sm"
           disabled={disabled || finding}
           title={disabled ? disabledTitle : undefined}
           onClick={() => void follow()}
@@ -474,7 +474,7 @@ export function markBeforeFirstSeen(firstTs: string | null, marks: ChangeMark[])
 function FingerprintLine({ hex, fromMessage, seen, marks, onFingerprints }: { hex: string; fromMessage: boolean; seen: Seen; marks: ChangeMark[]; onFingerprints?: (mark: ChangeMark) => void }) {
   if (fromMessage) {
     return (
-      <div className="flex shrink-0 items-start gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-[12.5px]">
+      <div className="flex shrink-0 items-start gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-sm">
         <span className="max-w-[88px] shrink-0 font-mono break-all text-plate" title={`e1:${hex}`}>
           e1:{shortId(hex)}
         </span>
@@ -488,7 +488,7 @@ function FingerprintLine({ hex, fromMessage, seen, marks, onFingerprints }: { he
   const after = markBeforeFirstSeen(seen?.first_ts ?? null, marks);
   const first = seen?.first_ts ? new Date(seen.first_ts).toISOString().slice(11, 16) : null;
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-[12.5px]">
+    <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-sm">
       <span className="font-mono text-plate">e1:{hex}</span>
       <span className="min-w-0 flex-1 text-muted-foreground">
         {seen === null
@@ -530,9 +530,9 @@ function StackView({ stack, event }: { stack: string; event: LogEvent }) {
   const sha = code?.mark?.sha ?? null;
   return (
     <div className="m-3 overflow-hidden rounded-lg border bg-background/60">
-      <div className="flex flex-wrap items-baseline gap-x-1.5 border-b border-white/[0.06] px-2.5 py-2 text-[12px] text-muted-foreground">
+      <div className="flex flex-wrap items-baseline gap-x-1.5 border-b border-white/[0.06] px-2.5 py-2 text-sm text-muted-foreground">
         <span>code at</span>
-        <a href={sha ? commitUrl(repo, sha) : treeUrl(repo, null)} target="_blank" rel="noreferrer noopener" className="font-mono text-[11.5px] text-zinc-200 hover:text-foreground">
+        <a href={sha ? commitUrl(repo, sha) : treeUrl(repo, null)} target="_blank" rel="noreferrer noopener" className="font-mono text-xs text-zinc-200 hover:text-foreground">
           {repo.name} @ {sha ? shortSha(sha) : "default branch"} ↗
         </a>
         <span>

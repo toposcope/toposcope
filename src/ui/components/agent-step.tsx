@@ -11,7 +11,7 @@ import { agentMay, agentNameProblem, agentNever, agentRoleCards, mcpSetup, setup
 /** `kept`: the agent existed already, in this role, and this is another token for it. */
 export type MadeAgent = { name: string; role: AgentRole; token: string; kept?: boolean };
 
-const lab = "text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase";
+const lab = "text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase";
 
 /** 34a: the form under the four cards. */
 export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgent) => void }) {
@@ -50,8 +50,8 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
         <label htmlFor="agent-name" className={lab}>
           Name · shown on everything it saves
         </label>
-        <input id="agent-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus className="h-[34px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[13px] outline-none" />
-        <span className={cn("text-[12px]", problem && name.trim() ? "text-red-300" : "text-muted-foreground")}>
+        <input id="agent-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus className="h-[34px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none" />
+        <span className={cn("text-sm", problem && name.trim() ? "text-danger-fg" : "text-muted-foreground")}>
           {problem && name.trim() ? (
             problem
           ) : (
@@ -67,30 +67,30 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
         {agentRoleCards.map((card) => (
           <label
             key={card.role}
-            className={cn("grid cursor-pointer grid-cols-[18px_1fr] items-start gap-x-2.5 gap-y-1 rounded-[8px] border bg-[#0d0d0f] px-3.5 py-3", role === card.role ? "border-plate bg-[#1a1a1e]" : "border-white/10 hover:border-zinc-500")}
+            className={cn("grid cursor-pointer grid-cols-[18px_1fr] items-start gap-x-2.5 gap-y-1 rounded-lg border bg-surface-1 px-3.5 py-3", role === card.role ? "border-plate bg-overlay" : "border-white/10 hover:border-zinc-500")}
           >
             <input type="radio" name="agent-role" checked={role === card.role} onChange={() => setRole(card.role)} className="mt-0.5 size-[15px] accent-[#e7e1d3]" />
-            <span className="text-[13px] font-medium text-foreground">{card.name}</span>
-            <span className="col-start-2 text-[11.5px] leading-[1.45] text-muted-foreground">{card.words}</span>
+            <span className="text-sm font-medium text-foreground">{card.name}</span>
+            <span className="col-start-2 text-xs leading-[1.45] text-muted-foreground">{card.words}</span>
           </label>
         ))}
       </fieldset>
 
-      <div className="grid grid-cols-1 gap-4 rounded-[10px] border border-white/10 bg-[#0d0d0f] px-4 py-3.5 md:grid-cols-2">
-        <div className="flex flex-col gap-1.5 text-[12.5px] text-zinc-300">
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-white/10 bg-surface-1 px-4 py-3.5 md:grid-cols-2">
+        <div className="flex flex-col gap-1.5 text-sm text-zinc-300">
           <span className={cn(lab, "mb-0.5")}>{role === "operator" ? "An Operator agent may" : "A Viewer agent may"}</span>
           {agentMay[role].map((line) => (
             <span key={line} className="flex items-baseline gap-2">
-              <span className="font-mono text-[12px] text-emerald-300">✓</span>
+              <span className="font-mono text-sm text-ok-fg">✓</span>
               {line}
             </span>
           ))}
         </div>
-        <div className="flex flex-col gap-1.5 text-[12.5px] text-zinc-300">
+        <div className="flex flex-col gap-1.5 text-sm text-zinc-300">
           <span className={cn(lab, "mb-0.5")}>and never</span>
           {agentNever[role].map((line) => (
             <span key={line} className="flex items-baseline gap-2">
-              <span className="font-mono text-[12px] text-muted-foreground">—</span>
+              <span className="font-mono text-sm text-muted-foreground">—</span>
               {line}
             </span>
           ))}
@@ -105,7 +105,7 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
           Cancel
         </Button>
         <div className="flex-1" />
-        <span className="text-[12px] text-muted-foreground">Its token is shown once, with the setup for Claude Code and any MCP client.</span>
+        <span className="text-sm text-muted-foreground">Its token is shown once, with the setup for Claude Code and any MCP client.</span>
       </div>
     </form>
   );
@@ -126,10 +126,10 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
   return (
     <>
       <div className="flex items-baseline gap-3">
-        <h2 className="m-0 text-[17px] font-semibold">
+        <h2 className="m-0 text-lg font-semibold">
           <span className="font-mono font-medium">{props.made.name}</span> is ready
         </h2>
-        <span className="text-[12px] text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {operator ? "Operator" : "Viewer"}
           {props.me ? ` · made by ${props.me} just now` : " · made just now"}
         </span>
@@ -139,56 +139,56 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
         </Button>
       </div>
 
-      <div className="flex items-center gap-3 rounded-[10px] border border-[#7c5f1a] bg-[#17130b] px-3.5 py-3">
+      <div className="flex items-center gap-3 rounded-xl border border-[#7c5f1a] bg-[#17130b] px-3.5 py-3">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="shrink-0">
           <path d="M12 4 L21 19 H3 Z" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinejoin="round" />
           <path d="M12 10 V14" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
-        <span className="text-[13px] text-amber-200">Its token is in the setup below, and this is the only time it is shown. Copy it now, or close and make another.</span>
+        <span className="text-sm text-warn-fg">Its token is in the setup below, and this is the only time it is shown. Copy it now, or close and make another.</span>
       </div>
       {props.made.kept ? (
-        <p className="m-0 text-[12.5px] text-zinc-300">
+        <p className="m-0 text-sm text-zinc-300">
           <span className="font-mono">{props.made.name}</span> already existed; this is a new token, and its earlier tokens still work (revoke them in its row).
         </p>
       ) : null}
 
       <div className="flex items-center gap-3">
         <span className={lab}>Connect it</span>
-        <span className="inline-flex overflow-hidden rounded-[7px] border border-white/10">
+        <span className="inline-flex overflow-hidden rounded-lg border border-white/10">
           {tabs.map((t) => (
-            <button key={t.id} type="button" aria-pressed={tab === t.id} className={cn("px-3 py-[7px] text-[12.5px]", tab === t.id ? "bg-[#27272a] text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab(t.id)}>
+            <button key={t.id} type="button" aria-pressed={tab === t.id} className={cn("px-3 py-[7px] text-sm", tab === t.id ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab(t.id)}>
               {t.label}
             </button>
           ))}
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-[10px] border border-white/10 bg-[#09090b]">
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-ground">
         <div className="flex items-center gap-2 border-b border-white/[0.06] py-1.5 pr-2 pl-3.5">
-          <span className="min-w-0 truncate text-[12px] text-muted-foreground">{setupWhere[tab]}</span>
+          <span className="min-w-0 truncate text-sm text-muted-foreground">{setupWhere[tab]}</span>
           <div className="flex-1" />
           <Button
             type="button"
             variant="outline"
-            className="px-2.5 text-[12px]"
+            className="px-2.5 text-sm"
             onClick={() => void navigator.clipboard.writeText(mcpSetup(tab, input)).then(() => toast.success("Copied"))}
           >
             Copy
           </Button>
         </div>
-        <pre className="m-0 px-4 py-3.5 font-mono text-[12.5px] leading-[1.7] break-all whitespace-pre-wrap text-zinc-300">{mcpSetup(tab, input, true)}</pre>
+        <pre className="m-0 px-4 py-3.5 font-mono text-sm leading-[1.7] break-all whitespace-pre-wrap text-zinc-300">{mcpSetup(tab, input, true)}</pre>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-2">
           <span className={lab}>Then ask it</span>
-          <div className="rounded-[12px] bg-plate px-3.5 py-3 text-[13.5px] leading-[1.45] text-[#0d0d0f]">
+          <div className="rounded-xl bg-plate px-3.5 py-3 text-base leading-[1.45] text-[#0d0d0f]">
             {operator ? "Set up monitors and Home panels for this app's service." : "What changed in this app's errors since the last deploy?"}
           </div>
         </div>
         <div className="flex flex-col gap-2">
           <span className={lab}>What it will do</span>
-          <span className="text-[13px] leading-[1.55] text-zinc-300">
+          <span className="text-sm leading-[1.55] text-zinc-300">
             {operator
               ? "Propose monitors and panels, preview each over the last 7 days, and save only what you say yes to, under its own name."
               : "Search, trace and compare around marks, and save hunts of its own. It changes nothing anyone else sees."}
@@ -201,7 +201,7 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
           Done
         </Button>
         <div className="flex-1" />
-        <span className="text-[12px] text-muted-foreground">Revoke it any time from its row in Access.</span>
+        <span className="text-sm text-muted-foreground">Revoke it any time from its row in Access.</span>
       </div>
     </>
   );

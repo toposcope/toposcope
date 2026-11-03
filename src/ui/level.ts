@@ -9,21 +9,42 @@ export function levelVariant(
   return level;
 }
 
+/**
+ * The level colours (sheet 45): `--level-*` in styles.css for classes, and these hexes where a
+ * colour is drawn rather than classed (canvas, SVG export, inline borders). Keep the two in step.
+ */
+export const levelHex: Record<LogLevel, string> = {
+  debug: "#52525b",
+  info: "#0ea5e9",
+  warn: "#f59e0b",
+  error: "#ef4444",
+  fatal: "#fca5a5",
+};
+
 /** Bar and rail fill per level. */
 export const levelFill: Record<LogLevel, string> = {
-  debug: "bg-zinc-600",
-  info: "bg-sky-500",
-  warn: "bg-amber-500",
-  error: "bg-red-500",
-  fatal: "bg-red-300",
+  debug: "bg-level-debug",
+  info: "bg-level-info",
+  warn: "bg-level-warn",
+  error: "bg-level-error",
+  fatal: "bg-level-fatal",
 };
 
 export const levelRail: Record<LogLevel, string> = {
   debug: "bg-transparent",
   info: "bg-transparent",
-  warn: "bg-amber-500/70",
-  error: "bg-red-500/80",
-  fatal: "bg-red-300",
+  warn: "bg-level-warn/70",
+  error: "bg-level-error/80",
+  fatal: "bg-level-fatal",
+};
+
+/** A level written as text; debug's grey is a fill, so its text is muted. */
+export const levelText: Record<LogLevel, string> = {
+  debug: "text-muted-foreground",
+  info: "text-info-fg",
+  warn: "text-warn-fg",
+  error: "text-danger-fg",
+  fatal: "text-danger-fg",
 };
 
 export function isLoud(level: LogLevel): boolean {

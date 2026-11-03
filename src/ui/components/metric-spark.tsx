@@ -307,9 +307,9 @@ function LineSpark({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 pb-1.5">
-      <span className={`pl-12 font-mono text-[10.5px] ${quiet ? "text-amber-400" : "text-muted-foreground"}`}>{tag}</span>
+      <span className={`pl-12 font-mono text-2xs ${quiet ? "text-warn-fg" : "text-muted-foreground"}`}>{tag}</span>
       <div className="relative mt-1 flex min-h-0 flex-1">
-        <div className="flex w-12 shrink-0 flex-col justify-between pr-1.5 text-right font-mono text-[10px] leading-none whitespace-nowrap text-muted-foreground">
+        <div className="flex w-12 shrink-0 flex-col justify-between pr-1.5 text-right font-mono text-2xs leading-none whitespace-nowrap text-muted-foreground">
           {axes && !quiet ? (
             // Each unit's peak in the colour of its line: two scales, said where the one would be.
             <span className="flex flex-col gap-1" aria-label={`scales: ${axes.map((a) => withUnit(formatAggStat(a.peak), a.unit)).join(", ")}`}>
@@ -331,7 +331,7 @@ function LineSpark({
           onPointerLeave={() => setHoverT(null)}
         >
           {quiet ? (
-            <span className="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-[11.5px] leading-snug text-pretty text-amber-400">
+            <span className="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-xs leading-snug text-pretty text-warn-fg">
               No points for {name} in this window{window ? ` (last ${window})` : ""}. The line is missing, not zero.
             </span>
           ) : (
@@ -364,7 +364,7 @@ function LineSpark({
               style={{ left: `${mark.at}%`, background: markKindColor(mark.kind) }}
             >
               <span
-                className={`absolute top-0 flex items-center gap-1 font-mono text-[10px] whitespace-nowrap ${mark.at > 70 ? "right-1.5" : "left-1.5"}`}
+                className={`absolute top-0 flex items-center gap-1 font-mono text-2xs whitespace-nowrap ${mark.at > 70 ? "right-1.5" : "left-1.5"}`}
                 style={{ color: markKindColor(mark.kind) }}
               >
                 <MarkGlyph kind={mark.kind} size={9} />
@@ -376,7 +376,7 @@ function LineSpark({
             ? lines.map((l, i) => (
                 <span
                   key={l.key}
-                  className="absolute left-full ml-1.5 w-[88px] truncate font-mono text-[10.5px]"
+                  className="absolute left-full ml-1.5 w-[88px] truncate font-mono text-2xs"
                   style={{ top: `${labelYs[i] ?? 0}px`, color: l.color }}
                 >
                   {l.key} {formatAggStat(lastValue(l.vals))}
@@ -398,7 +398,7 @@ function LineSpark({
               })}
               <div
                 role="status"
-                className="pointer-events-none absolute top-[6%] z-10 flex flex-col gap-0.5 rounded-[6.4px] border border-[var(--plot-axis)] bg-[var(--plot-pop)] px-2 py-1.5 font-mono text-[11px] leading-[17px] whitespace-nowrap shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
+                className="pointer-events-none absolute top-[6%] z-10 flex flex-col gap-0.5 rounded-lg border border-[var(--plot-axis)] bg-[var(--plot-pop)] px-2 py-1.5 font-mono text-xs leading-[17px] whitespace-nowrap shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
                 style={
                   x(hoverIdx) > 55
                     ? { right: `calc(${100 - x(hoverIdx)}% + 14px)` }
@@ -426,24 +426,24 @@ function LineSpark({
                     {withUnit(formatAggStat(single?.vals[hoverIdx] ?? null), unit)}
                   </span>
                 )}
-                {live ? <span className="font-sans text-[10.5px] text-muted-foreground">held on this bar while the plot moves</span> : null}
+                {live ? <span className="font-sans text-2xs text-muted-foreground">held on this bar while the plot moves</span> : null}
               </div>
             </>
           ) : null}
         </div>
       </div>
       {legend && namedLines ? (
-        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 pl-12 text-[11.5px]">
+        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 pl-12 text-xs">
           {lines.map((l) => (
             <span key={l.key} className="flex min-w-0 items-center gap-1.5">
               <span className="h-0 w-3 shrink-0 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />
               <span className="min-w-0 truncate">{l.key}</span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">{withUnit(formatAggStat(lastValue(l.vals)), l.unit ?? unit)}</span>
+              <span className="font-mono text-2xs text-muted-foreground">{withUnit(formatAggStat(lastValue(l.vals)), l.unit ?? unit)}</span>
             </span>
           ))}
         </div>
       ) : legend ? (
-        <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-0.5 pl-12 font-mono text-[10.5px]">
+        <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-0.5 pl-12 font-mono text-2xs">
           {lines.map((l) => (
             <span key={l.key} className="flex min-w-0 items-center gap-1.5">
               <span className="h-0 w-3 shrink-0 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />
@@ -483,7 +483,7 @@ export function MetricSplitPicker({
       live = false;
     };
   }, [open, metric, catalog]);
-  const row = "flex h-[30px] w-full items-center gap-2 rounded-[4px] px-2 text-left text-[12.5px] hover:bg-accent";
+  const row = "flex h-[30px] w-full items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-accent";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -491,26 +491,26 @@ export function MetricSplitPicker({
           type="button"
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex h-[26px] shrink-0 items-center gap-1 rounded-md border border-input bg-[#18181b] px-2 font-mono text-[11.5px]"
+          className="flex h-[26px] shrink-0 items-center gap-1 rounded-md border border-input bg-overlay px-2 font-mono text-xs"
         >
           {value ?? "None"}
           <ChevronDown className="size-3 text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[300px] bg-[#18181b] p-1" role="listbox" aria-label="Split by">
-        <div className="flex justify-between px-2 pt-1.5 pb-1 text-[10.5px] tracking-[0.06em] text-muted-foreground">
+      <PopoverContent align="start" className="w-[300px] bg-overlay p-1" role="listbox" aria-label="Split by">
+        <div className="flex justify-between px-2 pt-1.5 pb-1 text-2xs tracking-[0.06em] text-muted-foreground">
           <span>SPLIT BY</span>
           <span className="tracking-normal">labels in this window{catalog.window ? ` · ${catalog.window}` : ""}</span>
         </div>
         <button type="button" role="option" aria-selected={value === null} className={row} onClick={() => { onChange(null); setOpen(false); }}>
           <span className="w-3 text-muted-foreground">{value === null ? "✓" : ""}</span>
           <span className="flex-1">None</span>
-          <span className="text-[11.5px] text-muted-foreground">one line</span>
+          <span className="text-xs text-muted-foreground">one line</span>
         </button>
         {keys === null ? (
-          <div className="px-2 py-1.5 text-[11.5px] text-muted-foreground">Reading labels…</div>
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">Reading labels…</div>
         ) : keys.length === 0 ? (
-          <div className="px-2 py-1.5 text-[11.5px] text-muted-foreground">This metric has no labels in this window.</div>
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">This metric has no labels in this window.</div>
         ) : (
           keys.map((k) => (
             <button
@@ -526,7 +526,7 @@ export function MetricSplitPicker({
             >
               <span className="w-3 text-muted-foreground">{value === k.key ? "✓" : ""}</span>
               <span className="flex-1 font-mono">{k.key}</span>
-              <span className="text-[11.5px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {k.values} value{k.values === 1 ? "" : "s"}
                 {k.values > 8 ? " · 8 and other" : ""}
               </span>
@@ -559,7 +559,7 @@ export function MetricChartPicker({
     ["stacked", "Stacked"],
   ] as const;
   return (
-    <div role="group" aria-label="Chart" className="flex shrink-0 overflow-hidden rounded-[4.4px] border border-input" onPointerDown={(e) => e.stopPropagation()}>
+    <div role="group" aria-label="Chart" className="flex shrink-0 overflow-hidden rounded-md border border-input" onPointerDown={(e) => e.stopPropagation()}>
       {options.map(([id, label], i) => {
         const off = id === "stacked" && stackable !== true;
         return (
@@ -569,7 +569,7 @@ export function MetricChartPicker({
             aria-pressed={value === id}
             disabled={off}
             title={off ? stackable : undefined}
-            className={`h-[22px] px-2 text-[11.5px] ${i > 0 ? "border-l border-input" : ""} ${
+            className={`h-[22px] px-2 text-xs ${i > 0 ? "border-l border-input" : ""} ${
               value === id ? "bg-plate/15 text-foreground" : "text-muted-foreground hover:text-foreground"
             } disabled:cursor-not-allowed disabled:text-muted-foreground/40 disabled:hover:text-muted-foreground/40`}
             onClick={() => onChange(id)}
@@ -644,21 +644,21 @@ function HeatSpark({ result, readingWord }: { result: SearchAggResult; readingWo
   return (
     <div className="flex min-h-0 flex-1 flex-col px-3 pt-2 pb-1.5">
       <div className="flex items-center gap-3 pl-12">
-        <span className="font-mono text-[10.5px] text-muted-foreground">{readingWord} · histogram · log shade</span>
-        <label className="flex items-center gap-1 text-[10.5px] text-muted-foreground">
+        <span className="font-mono text-2xs text-muted-foreground">{readingWord} · histogram · log shade</span>
+        <label className="flex items-center gap-1 text-2xs text-muted-foreground">
           <input type="checkbox" checked={p99On} onChange={(e) => setP99On(e.target.checked)} className="accent-[var(--color-plate)]" />
           p99 over it
         </label>
       </div>
       <div className="relative mt-1 flex min-h-0 flex-1">
-        <div className="flex w-12 shrink-0 flex-col justify-between pr-1.5 text-right font-mono text-[10px] leading-none whitespace-nowrap text-muted-foreground">
+        <div className="flex w-12 shrink-0 flex-col justify-between pr-1.5 text-right font-mono text-2xs leading-none whitespace-nowrap text-muted-foreground">
           <span>{finiteLe.length ? `>${boundWord(finiteLe[finiteLe.length - 1]!, unit)}` : ""}</span>
           <span>{finiteLe.length > 2 ? boundWord(finiteLe[Math.floor(finiteLe.length / 2)]!, unit) : ""}</span>
           <span>{finiteLe.length ? boundWord(finiteLe[0]!, unit) : ""}</span>
         </div>
         <div className="relative min-w-0 flex-1" onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
           {cols === 0 ? (
-            <span className="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-[11.5px] text-amber-400">No buckets in this window.</span>
+            <span className="absolute inset-x-2 top-1/2 -translate-y-1/2 text-center text-xs text-warn-fg">No buckets in this window.</span>
           ) : (
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 block h-full w-full" aria-hidden>
               {heat.cells.map((c, i) =>
@@ -684,7 +684,7 @@ function HeatSpark({ result, readingWord }: { result: SearchAggResult; readingWo
           {cell && hover ? (
             <div
               role="status"
-              className="pointer-events-none absolute top-[6%] z-10 flex flex-col gap-0.5 rounded-[6.4px] border border-[var(--plot-axis)] bg-[var(--plot-pop)] px-2 py-1.5 font-mono text-[11px] leading-[17px] whitespace-nowrap shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
+              className="pointer-events-none absolute top-[6%] z-10 flex flex-col gap-0.5 rounded-lg border border-[var(--plot-axis)] bg-[var(--plot-pop)] px-2 py-1.5 font-mono text-xs leading-[17px] whitespace-nowrap shadow-[0_6px_18px_rgba(0,0,0,0.5)]"
               style={hover.i / cols > 0.55 ? { right: `calc(${100 - (hover.i / cols) * 100}% + 14px)` } : { left: `calc(${((hover.i + 1) / cols) * 100}% + 14px)` }}
             >
               <span className="text-muted-foreground">

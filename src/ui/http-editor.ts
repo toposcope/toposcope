@@ -133,7 +133,7 @@ export function setTimeLimit(text: string, ms: number, kind: CheckKind = "http")
   return replaceAt(text, at.index, writeLine({ text: `time < ${limit}ms`, level: at.level }));
 }
 
-/** A limit to offer for a run of `total` ms: half again, rounded up to 50ms. */
+/** A limit to offer for a run of `total` ms: half again, rounded-md up to 50ms. */
 export function offeredTimeLimit(total: number): number {
   return Math.max(50, Math.ceil((total * 1.5) / 50) * 50);
 }

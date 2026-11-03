@@ -14,7 +14,7 @@ export function MonitorField({
 }) {
   return (
     <div className={cn("grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3", className)}>
-      <label htmlFor={htmlFor} className="pt-1.5 text-[12px] text-muted-foreground">
+      <label htmlFor={htmlFor} className="pt-1.5 text-sm text-muted-foreground">
         {label}
       </label>
       <div className="flex min-w-0 flex-col gap-1.5">{children}</div>
@@ -38,7 +38,7 @@ export function MonitorSwitch<T extends string>({
     <span
       role="radiogroup"
       aria-label={label}
-      className="inline-flex w-max shrink-0 rounded-[7px] border border-white/10 bg-[#0f0f11] p-[2px]"
+      className="inline-flex w-max shrink-0 rounded-lg border border-white/10 bg-surface-1 p-[2px]"
     >
       {options.map(([id, text]) => (
         <button
@@ -48,8 +48,8 @@ export function MonitorSwitch<T extends string>({
           aria-checked={value === id}
           onClick={() => onChange(id)}
           className={cn(
-            "h-[26px] rounded-[5px] px-2.5 text-[12px]",
-            value === id ? "bg-[#27272a] text-foreground" : "text-muted-foreground hover:text-foreground",
+            "h-[26px] rounded-md px-2.5 text-sm",
+            value === id ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {text}
@@ -61,4 +61,4 @@ export function MonitorSwitch<T extends string>({
 
 /** 18j's box: a 30px field with a hairline border. */
 export const monitorBox =
-  "flex min-h-[30px] items-center gap-2 rounded-[6px] border border-white/15 px-2.5 py-[5px] text-[13px]";
+  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm";

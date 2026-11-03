@@ -539,7 +539,7 @@ export function WidgetCanvas({
                 madeTitle={madeTitleOf(widget)}
                 onTitle={(next) => onWidgets(patchWidget(widgets, widget.id, { title: next }))}
               />
-              {unit ? <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{unit}</span> : null}
+              {unit ? <span className="shrink-0 font-mono text-xs text-muted-foreground">{unit}</span> : null}
             </span>
           );
         }
@@ -550,8 +550,8 @@ export function WidgetCanvas({
               className="flex min-w-0 items-baseline gap-2 py-[3px]"
               title={[widget.metric, ...(widget.lines ?? []).map((line) => line.metric)].join("\n")}
             >
-              <span className="min-w-0 truncate text-[13px] font-semibold">{widget.title}</span>
-              {unit ? <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{unit}</span> : null}
+              <span className="min-w-0 truncate text-sm font-semibold">{widget.title}</span>
+              {unit ? <span className="shrink-0 font-mono text-xs text-muted-foreground">{unit}</span> : null}
             </span>
           );
         }
@@ -559,7 +559,7 @@ export function WidgetCanvas({
         // one metric apart, are never cut (13c, 13d). The whole of both is one hover on the title.
         // #164: the name is cut to the room the panel gives it, and never reads as another metric.
         return (
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-[3px] font-mono text-[11.5px]">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-[3px] font-mono text-xs">
             <FitName
               lead={`${metricReading(view.kind, step, true, view.reading)} · `}
               name={view.name}
@@ -572,16 +572,16 @@ export function WidgetCanvas({
                 .filter(Boolean)
                 .join("\n")}
             />
-            {unit ? <span className="shrink-0 text-[11px] text-muted-foreground">{unit}</span> : null}
+            {unit ? <span className="shrink-0 text-xs text-muted-foreground">{unit}</span> : null}
             {widget.metricSplit ? (
-              <span className="inline-flex h-5 shrink-0 items-center rounded-[4px] border border-white/12 px-1.5 text-[10.5px] text-muted-foreground">
+              <span className="inline-flex h-5 shrink-0 items-center rounded-md border border-white/12 px-1.5 text-2xs text-muted-foreground">
                 split {widget.metricSplit}
               </span>
             ) : null}
             {labels.map(([k, v]) => (
               <span
                 key={k}
-                className="inline-flex h-5 shrink-0 items-center gap-1 rounded-[4px] border border-violet-400/50 pl-1.5 text-[10.5px] text-violet-300"
+                className="inline-flex h-5 shrink-0 items-center gap-1 rounded-md border border-violet-400/50 pl-1.5 text-2xs text-violet-300"
               >
                 {k}:{v}
                 <button
@@ -624,7 +624,7 @@ export function WidgetCanvas({
             <Button
               type="button"
               variant="outline"
-              className="gap-1.5 px-2.5 text-[11.5px]"
+              className="gap-1.5 px-2.5 text-xs"
               disabled={atCap}
               title={atCap ? capTitle : `Add a panel · ${widgets.length} of ${maxWidgets} used`}
             >
@@ -642,11 +642,11 @@ export function WidgetCanvas({
             ).map(([kind, label, hint]) => (
               <DropdownMenuItem
                 key={kind}
-                className="h-7 gap-2.5 text-[12.5px]"
+                className="h-7 gap-2.5 text-sm"
                 onSelect={() => onAdd(kind)}
               >
                 <span className="flex-1">{label}</span>
-                <span className="font-mono text-[10.5px] text-muted-foreground">{hint}</span>
+                <span className="font-mono text-2xs text-muted-foreground">{hint}</span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -655,7 +655,7 @@ export function WidgetCanvas({
         <Button
           type="button"
           variant="outline"
-          className="border-plate/50 bg-plate/10 px-2.5 text-[11.5px]"
+          className="border-plate/50 bg-plate/10 px-2.5 text-xs"
           onClick={() => setSharing(widgets.filter((w) => w.kind !== "timeseries" || w.metric || w.id !== "a").map((w) => w.id))}
         >
           Share panels…
@@ -664,7 +664,7 @@ export function WidgetCanvas({
           <button
             type="button"
             className={cn(
-              "h-[22px] rounded-sm px-2 text-[11.5px]",
+              "h-[22px] rounded-sm px-2 text-xs",
               logs ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
             aria-pressed={logs}
@@ -676,7 +676,7 @@ export function WidgetCanvas({
           <button
             type="button"
             className={cn(
-              "h-[22px] rounded-sm px-2 text-[11.5px]",
+              "h-[22px] rounded-sm px-2 text-xs",
               !logs ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
             aria-pressed={!logs}
@@ -689,8 +689,8 @@ export function WidgetCanvas({
         {extras ? (
           <span
             className={cn(
-              "min-w-0 truncate font-mono text-[11px]",
-              atCap ? "text-amber-400" : "text-muted-foreground",
+              "min-w-0 truncate font-mono text-xs",
+              atCap ? "text-warn-fg" : "text-muted-foreground",
             )}
           >
             {widgets.length}/{maxWidgets} panels
@@ -768,7 +768,7 @@ export function WidgetCanvas({
                         <div className="flex min-w-0 items-center gap-2 px-3 pt-2">
                           <PanelTitleField widget={widget} madeTitle={madeTitleOf(widget)} onTitle={(title) => patch({ title })} />
                           {data.agg?.unit ? (
-                            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{printUnit(data.agg.unit)}</span>
+                            <span className="shrink-0 font-mono text-xs text-muted-foreground">{printUnit(data.agg.unit)}</span>
                           ) : null}
                         </div>
                         <PanelNoteField widget={widget} onNote={(next) => patch({ note: next })} />

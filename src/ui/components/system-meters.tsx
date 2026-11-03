@@ -44,8 +44,8 @@ function Chip({
       <TooltipTrigger asChild>
         <span
           className={cn(
-            "inline-flex items-center gap-1 whitespace-nowrap font-mono text-[11px] tabular-nums",
-            hot ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground",
+            "inline-flex items-center gap-1 whitespace-nowrap font-mono text-xs tabular-nums",
+            hot ? "text-warn dark:text-warn" : "text-muted-foreground",
           )}
           aria-label={aria}
         >
@@ -63,9 +63,9 @@ function Chip({
       <TooltipContent
         side="top"
         align="end"
-        className="bg-popover text-popover-foreground border px-2 py-1.5 font-mono text-[11px] tabular-nums"
+        className="bg-popover text-popover-foreground border px-2 py-1.5 font-mono text-xs tabular-nums"
       >
-        <p className="font-sans text-[11px] text-muted-foreground">{label}</p>
+        <p className="font-sans text-xs text-muted-foreground">{label}</p>
         {stats === null ? (
           <p>Unavailable</p>
         ) : (

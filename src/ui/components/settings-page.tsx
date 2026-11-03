@@ -118,24 +118,24 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
     setVersion((await res.json()) as VersionBody);
   }
 
-  const card = "flex flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5";
-  const row = "flex items-center gap-3 text-[12.5px]";
+  const card = "flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5";
+  const row = "flex items-center gap-3 text-sm";
   const k = "w-[110px] shrink-0 text-muted-foreground";
   const fk = "w-[140px] shrink-0 text-muted-foreground";
-  const input = "h-8 min-w-0 flex-1 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none";
+  const input = "h-8 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none";
   const session = props.instance?.session;
 
   return (
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
       <div className="flex flex-col gap-3.5">
         <div className="flex flex-wrap items-baseline gap-3.5">
-          <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Settings</h1>
-          <span className="text-[12px] text-muted-foreground">The instance itself, and what its log keys are for. Who may read or write is under Access; what to watch is under Watch.</span>
-          {props.readOnly ? <span className="text-[12px] text-amber-300">Only an Owner changes retention, delivery, the release or the name{props.owners?.length ? `: ${props.owners.join(", ")}` : ""}.</span> : null}
+          <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Settings</h1>
+          <span className="text-sm text-muted-foreground">The instance itself, and what its log keys are for. Who may read or write is under Access; what to watch is under Watch.</span>
+          {props.readOnly ? <span className="text-sm text-warn-fg">Only an Owner changes retention, delivery, the release or the name{props.owners?.length ? `: ${props.owners.join(", ")}` : ""}.</span> : null}
         </div>
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2 xl:grid-cols-3">
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">This instance</h2>
+            <h2 className="m-0 text-base font-medium">This instance</h2>
             <div className={row}>
               <label htmlFor="instance-name" className={k}>
                 Name
@@ -165,7 +165,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
           </section>
           <fieldset disabled={props.readOnly} className="contents">
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Retention</h2>
+            <h2 className="m-0 text-base font-medium">Retention</h2>
             <div className={row}>
               <label htmlFor="ret-logs" className={k}>
                 Logs
@@ -188,14 +188,14 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               <span className={k}>Marks</span>
               <span className="text-muted-foreground">kept for ever · newest 10 000 listed in a window</span>
             </div>
-            <span className="text-[12px] text-muted-foreground">Shortening applies at the next sweep. Nothing comes back.</span>
+            <span className="text-sm text-muted-foreground">Shortening applies at the next sweep. Nothing comes back.</span>
             <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Retention")}>
               Save retention
             </Button>
           </section>
           </fieldset>
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Time</h2>
+            <h2 className="m-0 text-base font-medium">Time</h2>
             <div className={row}>
               <span className={k}>Clock</span>
               <span className="text-muted-foreground">UTC · every window, mark and row</span>
@@ -218,18 +218,18 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
                 <option value="raw">Raw · {formatFieldCount(1240, "raw")}</option>
               </select>
             </div>
-            <span className="text-[12px] text-muted-foreground">Timestamps and counts are kept in this browser.</span>
+            <span className="text-sm text-muted-foreground">Timestamps and counts are kept in this browser.</span>
           </section>
           <fieldset disabled={props.readOnly} className="contents">
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Delivery</h2>
+            <h2 className="m-0 text-base font-medium">Delivery</h2>
             <div className={row}>
               <label htmlFor="default-webhook" className={k}>
                 Default webhook
               </label>
               <input id="default-webhook" value={webhook} onChange={(e) => setWebhook(e.target.value)} placeholder="https://ntfy.sh/…" className={`${input} font-mono`} />
             </div>
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               {body?.default_webhook_url ? `Monitors without their own URL call ${callHost(body.default_webhook_url)}.` : "Monitors without their own URL call nothing until this is set."} Each monitor's last call is on Watch.
             </span>
             <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Default webhook")}>
@@ -239,7 +239,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
           </fieldset>
           <fieldset disabled={props.readOnly} className="contents">
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Release</h2>
+            <h2 className="m-0 text-base font-medium">Release</h2>
             <div className={row}>
               <span className={k}>Running</span>
               <span className="font-mono">{version?.running ?? "—"}</span>
@@ -262,13 +262,13 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
                 ) : null}
               </span>
             </div>
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               Upgrade from the box: <span className="font-mono text-zinc-300">./upgrade.sh{version && version.latest !== version.running ? ` ${version.latest}` : ""}</span>. A backup runs first unless you skip it.
             </span>
           </section>
           </fieldset>
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Storage</h2>
+            <h2 className="m-0 text-base font-medium">Storage</h2>
             <div className={row}>
               <span className={k}>ClickHouse</span>
               <span className="font-mono">
@@ -294,7 +294,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               <span className="truncate font-mono text-muted-foreground">{endpoint}</span>
               <button
                 type="button"
-                className="text-[12px] text-zinc-300 hover:text-foreground"
+                className="text-sm text-zinc-300 hover:text-foreground"
                 onClick={() => void navigator.clipboard.writeText(endpoint).then(() => toast.success("Endpoint copied"))}
               >
                 copy
@@ -303,8 +303,8 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
           </section>
           {props.readOnly ? null : (
           <section className={card}>
-              <h2 className="m-0 text-[13.5px] font-medium">Sign-in and roles</h2>
-              <span className="text-[12px] leading-[1.5] text-muted-foreground">
+              <h2 className="m-0 text-base font-medium">Sign-in and roles</h2>
+              <span className="text-sm leading-[1.5] text-muted-foreground">
                 Who signs in and how: one provider (Google, Entra, Okta, Keycloak, Authentik), passwords with two-step, and what an Owner, an Operator and a Viewer may do.
               </span>
               <div>
@@ -315,12 +315,12 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             </section>
           )}
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Fields</h2>
+            <h2 className="m-0 text-base font-medium">Fields</h2>
             <div className={row}>
               <span className={fk}>Keys seen</span>
               <span className="font-mono">{fields ? fields.keys : "—"}</span>
               {fields ? (
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   in the last 24 h · {fields.core} core, {fields.attrs} from attrs
                 </span>
               ) : null}
@@ -335,17 +335,17 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               <span className={fk}>New, no role chosen</span>
               <span className="font-mono">{fields ? fields.unchosen.length : "—"}</span>
               {fields && fields.unchosen.length > 0 ? (
-                <span className="text-[12px] text-muted-foreground">{namesLine(fields.unchosen)} · summarised as chart until chosen</span>
+                <span className="text-sm text-muted-foreground">{namesLine(fields.unchosen)} · summarised as chart until chosen</span>
               ) : null}
             </div>
             <div className={row}>
               <span className={fk}>Metric links</span>
               <span className="font-mono">{fields ? fields.links.length : "—"}</span>
               {fields && fields.links.length > 0 ? (
-                <span className="text-[12px] text-muted-foreground">{namesLine(fields.links)} · Compare and shares read them as one</span>
+                <span className="text-sm text-muted-foreground">{namesLine(fields.links)} · Compare and shares read them as one</span>
               ) : null}
             </div>
-            <span className="text-[12px] text-muted-foreground">A role applies to new rows only.</span>
+            <span className="text-sm text-muted-foreground">A role applies to new rows only.</span>
             <div>
               <Button type="button" variant="outline" onClick={props.onOpenFields}>
                 Open fields →
@@ -353,8 +353,8 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             </div>
           </section>
           <section className={card}>
-            <h2 className="m-0 text-[13.5px] font-medium">Repositories</h2>
-            <span className="text-[12px] leading-[1.5] text-muted-foreground">
+            <h2 className="m-0 text-base font-medium">Repositories</h2>
+            <span className="text-sm leading-[1.5] text-muted-foreground">
               Where each service's code lives, so a deploy's sha and a stack frame open it on GitHub, GitLab, Gitea / Forgejo or Bitbucket. Links only: nothing is fetched, no token is kept.
             </span>
             <div>
