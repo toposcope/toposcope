@@ -134,9 +134,9 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
         </Button>
         <Armed armed={armed === "revoke"} onArm={() => setArmed("revoke")} onDisarm={() => setArmed(null)} onConfirm={() => void revoke()} label="Revoke" confirm="Sure? Revoke" form="button" className="text-danger-fg" />
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 px-6 pt-4 pb-6 lg:grid-cols-[minmax(0,1fr)_440px]">
-        <div className="flex min-h-0 flex-col gap-3.5">
-          <section className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 px-6 pt-4 pb-6 lg:grid-cols-[minmax(0,1fr)_440px]">
+        <div className="flex min-h-0 flex-col gap-3">
+          <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-sm text-muted-foreground">Panels · designed here, named for the page</span>
               <span className="text-sm text-muted-foreground">a page names one; edit here and every page follows</span>
@@ -155,7 +155,7 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
               </div>
             ))}
           </section>
-          <section className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
+          <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-muted-foreground">The fence · {panels.length ? "derived from the panels" : "as written"}</span>
               <label className="inline-flex items-center gap-2 text-sm">
@@ -176,7 +176,7 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
             </span>
           </section>
         </div>
-        <div className="flex min-h-0 flex-col gap-3.5">
+        <div className="flex min-h-0 flex-col gap-3">
           {ticketCall ? (
             <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
               <span className="text-sm text-muted-foreground">The host's backend asks for a ticket per page load</span>

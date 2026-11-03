@@ -86,9 +86,9 @@ export function AbsoluteRangeCalendar({
   return (
     <div
       ref={panelRef}
-      className="mt-px flex flex-col gap-[7px] rounded-lg border border-white/12 bg-background/70 p-2"
+      className="mt-px flex flex-col gap-1.5 rounded-lg border border-white/12 bg-background/70 p-2"
     >
-      <div className="flex flex-col gap-[7px]">
+      <div className="flex flex-col gap-1.5">
         {(
           [
             ["from", "From", fromMs],
@@ -234,7 +234,7 @@ export function AbsoluteRangeCalendar({
             <button
               type="button"
               title="Back to the calendar"
-              className="flex h-[22px] shrink-0 items-center gap-[5px] rounded-full border border-white/12 px-2 font-mono text-2xs whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex h-[22px] shrink-0 items-center gap-1 rounded-full border border-white/12 px-2 font-mono text-2xs whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={() => {
                 setPhase("date");
                 setHoverDay(null);
@@ -247,7 +247,7 @@ export function AbsoluteRangeCalendar({
               {pick === "to" ? "End" : "Start"} time · UTC
             </span>
           </div>
-          <div className="flex items-end gap-[5px]">
+          <div className="flex items-end gap-1">
             {(
               [
                 ["h", 24, curH],
@@ -257,7 +257,7 @@ export function AbsoluteRangeCalendar({
             ).map(([part, n, cur]) => (
               <div
                 key={part}
-                className="flex h-[132px] min-w-0 flex-1 flex-col gap-[3px]"
+                className="flex h-[132px] min-w-0 flex-1 flex-col gap-0.5"
               >
                 <span className="block text-center font-mono text-2xs tracking-[0.06em] text-faint">
                   {part === "h" ? "HH" : part === "m" ? "mm" : "ss"}
@@ -277,7 +277,7 @@ export function AbsoluteRangeCalendar({
                 />
               </div>
             ))}
-            <div className="flex min-w-0 shrink-0 basis-[52px] flex-col gap-[3px]">
+            <div className="flex min-w-0 shrink-0 basis-[52px] flex-col gap-0.5">
               <span className="block text-center font-mono text-2xs tracking-[0.06em] text-faint">
                 .mmm
               </span>
@@ -288,7 +288,7 @@ export function AbsoluteRangeCalendar({
                 inputMode="numeric"
                 aria-label="Milliseconds"
                 className={cn(
-                  "h-[22px] w-full min-w-0 rounded-sm border bg-background px-[5px] text-center font-mono text-xs outline-none focus-visible:border-foreground/40",
+                  "h-[22px] w-full min-w-0 rounded-sm border bg-background px-1 text-center font-mono text-xs outline-none focus-visible:border-foreground/40",
                   msOk ? "border-white/15" : "border-destructive/65",
                 )}
                 onChange={(event) => {

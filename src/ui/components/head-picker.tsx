@@ -85,7 +85,7 @@ export function HeadPicker({
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div
-            className="mb-0.5 border-b border-white/[0.08] px-[7px] pt-1 pb-[5px] text-2xs tracking-[0.1em] uppercase"
+            className="mb-0.5 border-b border-white/[0.08] px-1.5 pt-1 pb-1 text-2xs tracking-[0.1em] uppercase"
             style={{ color: fn ? FN : "oklch(0.705 0.015 286.067)" }}
           >
             {fn ? "Function" : "Value"}
@@ -97,7 +97,7 @@ export function HeadPicker({
                 key={item.value}
                 type="button"
                 className={cn(
-                  "flex h-[25px] w-full items-center gap-[7px] rounded-sm px-[7px] text-left font-mono text-xs",
+                  "flex h-[25px] w-full items-center gap-1.5 rounded-sm px-1.5 text-left font-mono text-xs",
                   on ? "bg-accent" : "bg-transparent hover:bg-accent",
                   item.used && "text-muted-foreground",
                 )}

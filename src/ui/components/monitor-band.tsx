@@ -122,7 +122,7 @@ const StretchCard = forwardRef<
         </button>
       </span>
       <span className="font-mono text-xs text-muted-foreground">{openedLine(monitor, stretch, nowMs)}</span>
-      <span className="flex flex-col gap-[3px] rounded-md bg-surface-1 p-2 text-sm">
+      <span className="flex flex-col gap-0.5 rounded-md bg-surface-1 p-2 text-sm">
         {lastLine !== null ? (
           <span className="font-mono">
             <span className="text-muted-foreground">last line</span> {secondsAt(lastLine, nowMs)}
@@ -140,7 +140,7 @@ const StretchCard = forwardRef<
         ) : null}
       </span>
       {stretch.calls.length > 0 || next !== null ? (
-        <span className="flex flex-col gap-[3px] text-sm">
+        <span className="flex flex-col gap-0.5 text-sm">
           {stretch.calls.map((call) => (
             <span key={call.id} className={cn("font-mono", !call.ok && call.status !== "silenced" && "text-danger-fg")}>
               {callLine(call, host, nowMs)}

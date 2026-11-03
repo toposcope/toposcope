@@ -133,7 +133,7 @@ export function PanelTitleField({
       className={cn(
         panelFieldClass,
         "min-w-0 font-semibold",
-        compact ? "my-[2px] h-[24px] flex-1 text-sm" : "h-[30px] w-full text-base",
+        compact ? "my-0.5 h-[24px] flex-1 text-sm" : "h-[30px] w-full text-base",
       )}
     />
   );

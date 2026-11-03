@@ -156,7 +156,7 @@ export function EventDetail({
             crumb.title ??
             "Back to the cut, exactly as left — nothing recomputes"
           }
-          className="flex w-full shrink-0 items-center gap-1.5 border-b bg-[oklch(0.141_0.005_285.823/60%)] px-2.5 py-[5px] text-left hover:bg-[oklch(0.274_0.006_286.033/60%)]"
+          className="flex w-full shrink-0 items-center gap-1.5 border-b bg-[oklch(0.141_0.005_285.823/60%)] px-2.5 py-1 text-left hover:bg-[oklch(0.274_0.006_286.033/60%)]"
           onClick={crumb.onBack}
         >
           {crumb.forward ? null : (
@@ -176,7 +176,7 @@ export function EventDetail({
           ) : null}
         </button>
       ) : null}
-      <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-4">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/[0.06] px-4">
         <Badge variant={levelVariant(event.level)}>{event.level}</Badge>
         <span className="truncate font-mono text-sm text-foreground" title={event.ts}>
           {formatEventClock(event.ts, {
@@ -238,13 +238,13 @@ export function EventDetail({
               // the value's first line; a one-line row is laid out as before.
               <div
                 key={field.k}
-                className="group grid min-h-7 grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-[5px] last:border-0"
+                className="group grid min-h-7 grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-1 last:border-0"
               >
                 <dt className="truncate font-mono text-xs leading-4 text-muted-foreground">
                   {field.k}
                 </dt>
                 <dd className="font-mono text-xs break-words">{field.v}</dd>
-                <div className="-my-[3px] flex items-center justify-end gap-0.5">
+                <div className="-my-0.5 flex items-center justify-end gap-0.5">
                   {links[field.k] && onGraph ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -476,7 +476,7 @@ export function markBeforeFirstSeen(firstTs: string | null, marks: ChangeMark[])
 function FingerprintLine({ hex, fromMessage, seen, marks, onFingerprints }: { hex: string; fromMessage: boolean; seen: Seen; marks: ChangeMark[]; onFingerprints?: (mark: ChangeMark) => void }) {
   if (fromMessage) {
     return (
-      <div className="flex shrink-0 items-start gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-sm">
+      <div className="flex shrink-0 items-start gap-2 border-b border-white/[0.06] px-4 py-2.5 text-sm">
         <span className="max-w-[88px] shrink-0 font-mono break-all text-plate" title={`e1:${hex}`}>
           e1:{shortId(hex)}
         </span>
@@ -490,7 +490,7 @@ function FingerprintLine({ hex, fromMessage, seen, marks, onFingerprints }: { he
   const after = markBeforeFirstSeen(seen?.first_ts ?? null, marks);
   const first = seen?.first_ts ? new Date(seen.first_ts).toISOString().slice(11, 16) : null;
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-white/[0.06] px-4 py-2.5 text-sm">
+    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/[0.06] px-4 py-2.5 text-sm">
       <span className="font-mono text-plate">e1:{hex}</span>
       <span className="min-w-0 flex-1 text-muted-foreground">
         {seen === null

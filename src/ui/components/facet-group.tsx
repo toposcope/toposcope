@@ -74,7 +74,7 @@ export function FacetGroup({
         {selected.length > 0 ? (
           <button
             type="button"
-            className="h-[18px] shrink-0 rounded-sm px-[5px] text-2xs text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="h-[18px] shrink-0 rounded-sm px-1 text-2xs text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Clear this facet"
             onClick={() => onClear(field)}
           >
@@ -176,7 +176,7 @@ export function FacetGroup({
                 {selected.length >= 1 ? (
                   <button
                     type="button"
-                    className={`h-5 shrink-0 rounded-sm border border-white/12 px-[5px] text-2xs text-faint hover:border-ring hover:text-foreground ${
+                    className={`h-5 shrink-0 rounded-sm border border-white/12 px-1 text-2xs text-faint hover:border-ring hover:text-foreground ${
                       onlyInert ? "invisible pointer-events-none" : ""
                     }`}
                     title={`Show only ${field}:${item.v}`}

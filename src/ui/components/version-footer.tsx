@@ -70,7 +70,7 @@ function Paragraphs({ notes, className }: { notes: string; className?: string })
 
 function Header({ title, link, sub }: { title: string; link: ReactNode; sub?: string }) {
   return (
-    <div className="flex flex-col gap-[3px]">
+    <div className="flex flex-col gap-0.5">
       <div className="flex items-baseline gap-2">
         <span className="text-base font-semibold">{title}</span>
         <span className="flex-1" />
@@ -96,7 +96,7 @@ function CopyCommand({ command }: { command: string }) {
       </code>
       <button
         type="button"
-        className="inline-flex h-[26px] shrink-0 items-center gap-[5px] rounded-md border border-white/16 bg-overlay px-[9px] text-sm text-foreground hover:bg-accent"
+        className="inline-flex h-[26px] shrink-0 items-center gap-1 rounded-md border border-white/16 bg-overlay px-2 text-sm text-foreground hover:bg-accent"
         onClick={() => {
           // A browser that refuses the clipboard, or has none over plain http, gets the command selected instead (19f).
           const select = () => {
@@ -218,7 +218,7 @@ function UpgradeBox({
   if (upgradeView(reply, Date.now()) === "failed" && status) {
     return (
       <div className="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/[0.06] px-3 py-2.5">
-        <div className="flex items-center gap-[7px] text-sm text-danger-fg">
+        <div className="flex items-center gap-1.5 text-sm text-danger-fg">
           <CircleAlert className="size-3.5 text-danger-fg" aria-hidden="true" />
           Upgrade to {status.to} failed · back on {reply.running}
         </div>
@@ -266,14 +266,14 @@ function UpgradingPanel({ reply, now }: { reply: VersionReply; now: number }) {
   const log = u.status?.state === "running" ? u.log : [];
   const line = log.at(-1) ?? "Asked; waiting for the host to start it…";
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2">
       <Header
         title={`Upgrading to ${to}`}
         link={<External href={release?.url ?? releasesPageUrl}>Release on GitHub</External>}
         sub={started ? `started ${clockLabel(started)} · ${tookLabel(started, now)}` : undefined}
       />
       <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-surface-1 px-3 py-2.5">
-        <div className="flex items-center gap-[7px] text-sm text-zinc-300">
+        <div className="flex items-center gap-1.5 text-sm text-zinc-300">
           <LoaderCircle className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
           <span className="min-w-0 truncate">{line}</span>
         </div>
@@ -294,8 +294,8 @@ function BeforeBox({ reply }: { reply: VersionReply }) {
   const own = items.filter((i) => i.text !== null);
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-[5px] rounded-lg border border-warn/45 bg-warn/[0.07] px-3 py-2.5">
-        <div className="flex items-center gap-[7px] text-sm font-semibold text-warn-fg">
+      <div className="flex flex-col gap-1 rounded-lg border border-warn/45 bg-warn/[0.07] px-3 py-2.5">
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-warn-fg">
           <span className="size-1.5 rounded-full bg-warn" aria-hidden="true" />
           Before you upgrade
           {several && own.length === 1 ? <span className="font-mono font-normal">· {own[0]!.version}</span> : null}
@@ -328,7 +328,7 @@ function WhatsNewList({ reply }: { reply: VersionReply }) {
       <div className="pb-1 text-2xs font-semibold tracking-[0.05em] text-muted-foreground uppercase">What&apos;s new</div>
       {reply.releases.map((r) => (
         <div key={r.version} className="flex flex-col gap-1.5 border-t border-white/8 py-1.5">
-          <div className="flex items-baseline gap-2.5 text-sm">
+          <div className="flex items-baseline gap-2 text-sm">
             <span className="font-mono text-foreground">{r.version}</span>
             <span className="shrink-0 font-mono text-xs text-faint">{dayLabel(r.published_at)}</span>
             <span className="min-w-0 flex-1 truncate text-zinc-300">{open[r.version] ? "" : firstLine(r.notes)}</span>
@@ -356,7 +356,7 @@ function CheckNow({ checking, onCheck }: { checking: boolean; onCheck?: () => vo
       type="button"
       disabled={checking}
       onClick={onCheck}
-      className="inline-flex h-[22px] shrink-0 items-center gap-[5px] rounded-md border border-white/16 px-2 text-xs text-foreground hover:bg-accent disabled:opacity-45 disabled:hover:bg-transparent"
+      className="inline-flex h-[22px] shrink-0 items-center gap-1 rounded-md border border-white/16 px-2 text-xs text-foreground hover:bg-accent disabled:opacity-45 disabled:hover:bg-transparent"
     >
       <RotateCw className="size-3" aria-hidden="true" />
       Check now
@@ -367,7 +367,7 @@ function CheckNow({ checking, onCheck }: { checking: boolean; onCheck?: () => vo
 /** Up to date, checking, or not checked yet, with Check now (22a, 22b); also under an upgrade's done (22i). */
 function StatusLine({ reply, now, checking, onCheck }: { reply: VersionReply; now: number; checking: boolean; onCheck?: () => void }) {
   return (
-    <div className="flex items-center gap-[7px] text-sm text-zinc-300">
+    <div className="flex items-center gap-1.5 text-sm text-zinc-300">
       {checking ? (
         <>
           <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -403,7 +403,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
   const tagUrl = `${releasesPageUrl}/tag/v${running}`;
   if (reply.check === "off") {
     return (
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2">
         <Header title={`Toposcope ${running}`} link={<External href={releasesPageUrl}>Releases on GitHub</External>} />
         <p className="m-0 text-sm text-zinc-300">
           The release check is off (<code className="font-mono text-xs">TOPOSCOPE_UPDATE_CHECK=off</code>)
@@ -438,7 +438,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
   if (!latest || reply.latest === running) {
     if (failed) {
       return (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <Header title={`Toposcope ${running}`} link={<External href={releasesPageUrl}>Releases on GitHub</External>} />
           {failed}
           <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
@@ -452,9 +452,9 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
     if (done) {
       const backup = backupLabel(done.backup);
       return (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <Header title={`Toposcope ${running}`} link={<External href={tagUrl}>Release notes</External>} />
-          <div className="flex items-center gap-[7px] text-sm text-zinc-300">
+          <div className="flex items-center gap-1.5 text-sm text-zinc-300">
             <Check className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span>
               Upgraded from {done.from ?? "the last version"} · took {tookLabel(done.started_at, done.finished_at)}
@@ -476,7 +476,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
       );
     }
     return (
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2">
         <Header title={`Toposcope ${running}`} link={<External href={tagUrl}>Release notes</External>} />
         <StatusLine reply={reply} now={now} checking={checking} onCheck={onCheck} />
         <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
@@ -620,7 +620,7 @@ export function VersionFooter() {
             aria-label={chip.label}
             title={chip.newer ? `${chip.newer} is out${chip.readFirst ? " · read before upgrading" : ""}` : undefined}
             className={cn(
-              "-mr-1.5 inline-flex shrink-0 items-center gap-[5px] rounded-md px-1.5 py-0.5 font-mono text-xs whitespace-nowrap hover:bg-accent",
+              "-mr-1.5 inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-xs whitespace-nowrap hover:bg-accent",
               chip.newer ? "text-zinc-300" : "text-muted-foreground",
               open && "bg-accent text-foreground",
             )}
@@ -640,7 +640,7 @@ export function VersionFooter() {
           side="top"
           align="end"
           sideOffset={6}
-          className="max-h-[calc(100vh-80px)] w-[min(460px,calc(100vw-16px))] overflow-y-auto rounded-lg border-white/14 bg-overlay p-[14px] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
+          className="max-h-[calc(100vh-80px)] w-[min(460px,calc(100vw-16px))] overflow-y-auto rounded-lg border-white/14 bg-overlay p-3 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
         >
           <ReleasePanel
             reply={reply}

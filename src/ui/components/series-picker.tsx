@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -196,8 +197,8 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
             onPointerDown={(e) => e.stopPropagation()}
             className={cn(
               triggerBox,
-              variant === "footer" ? "flex-1 pr-[7px] pl-[7px]" : "max-w-[18rem] shrink pr-[7px]",
-              variant === "toolbar" && (named ? "pl-1" : "pl-[7px]"),
+              variant === "footer" ? "flex-1 pr-1.5 pl-1.5" : "max-w-[18rem] shrink pr-1.5",
+              variant === "toolbar" && (named ? "pl-1" : "pl-1.5"),
             )}
             style={{
               borderColor: open ? FOCUS : "oklch(1 0 0 / 15%)",
@@ -206,7 +207,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
           >
             {named && variant === "toolbar" ? (
               <span
-                className="h-[18px] shrink-0 rounded-sm bg-white/[0.08] px-[5px] text-2xs leading-[18px]"
+                className="h-[18px] shrink-0 rounded-sm bg-white/[0.08] px-1 text-2xs leading-[18px]"
                 style={{ color: DIM }}
               >
                 {kindWord}
@@ -229,20 +230,8 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
         className="flex max-h-(--radix-popover-content-available-height) w-[336px] flex-col rounded-lg border-white/[0.12] bg-overlay p-1 text-left text-sm shadow-[0_12px_28px_oklch(0_0_0/55%)]"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <div className="-mx-1 -mt-1 flex h-[30px] shrink-0 items-center gap-[7px] border-b border-white/[0.08] px-[9px]">
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke={DIM}
-            strokeWidth="2"
-            className="shrink-0"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" />
-          </svg>
+        <div className="-mx-1 -mt-1 flex h-[30px] shrink-0 items-center gap-1.5 border-b border-white/[0.08] px-2">
+          <Search className="size-3 shrink-0" style={{ color: DIM }} aria-hidden />
           <input
             autoFocus
             value={filter}
@@ -274,8 +263,8 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
               {section.head ? (
                 <div
                   className={cn(
-                    "flex shrink-0 items-baseline gap-1.5 px-[7px] pb-1 text-2xs tracking-[0.1em] text-muted-foreground uppercase",
-                    si === 0 ? "pt-[7px]" : "mt-[3px] border-t border-white/[0.08] pt-2",
+                    "flex shrink-0 items-baseline gap-1.5 px-1.5 pb-1 text-2xs tracking-[0.1em] text-muted-foreground uppercase",
+                    si === 0 ? "pt-1.5" : "mt-0.5 border-t border-white/[0.08] pt-2",
                   )}
                 >
                   <span>{section.head}</span>
@@ -300,7 +289,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
                       type="button"
                       data-row={index}
                       className={cn(
-                        "flex min-h-[25px] w-full items-start gap-[7px] rounded-sm px-[7px] py-[5px] text-left leading-[15px]",
+                        "flex min-h-[25px] w-full items-start gap-1.5 rounded-sm px-1.5 py-1 text-left leading-[15px]",
                         index === cursor || (cursor < 0 && item.on && typed.length === 0)
                           ? "bg-accent"
                           : "bg-transparent hover:bg-accent",
@@ -342,19 +331,19 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
             </div>
           ))}
           {list.more ? (
-            <div className="mt-0.5 shrink-0 border-t border-dashed border-white/10 px-[7px] pt-[7px] pb-[5px] text-xs leading-[1.45] text-pretty text-muted-foreground">
+            <div className="mt-0.5 shrink-0 border-t border-dashed border-white/10 px-1.5 pt-1.5 pb-1 text-xs leading-[1.45] text-pretty text-muted-foreground">
               {list.more}
             </div>
           ) : null}
           {list.emptyTitle ? (
-            <div className="px-[9px] py-3 text-xs leading-normal text-pretty text-muted-foreground">
+            <div className="px-2 py-3 text-xs leading-normal text-pretty text-muted-foreground">
               <div className="mb-1 text-foreground">{list.emptyTitle}</div>
               {list.emptyBody}
             </div>
           ) : null}
           {catalog.live ? (
-            <div className="mt-[3px] flex shrink-0 gap-[7px] border-t border-white/[0.08] px-[7px] pt-[7px] pb-[5px] text-xs leading-[1.45] text-foreground/80">
-              <span className="mt-[5px] size-1.5 shrink-0 rounded-full bg-[#4ade80]" />
+            <div className="mt-0.5 flex shrink-0 gap-1.5 border-t border-white/[0.08] px-1.5 pt-1.5 pb-1 text-xs leading-[1.45] text-foreground/80">
+              <span className="mt-1 size-1.5 shrink-0 rounded-full bg-[#4ade80]" />
               <span className="text-pretty">
                 Live — held while open.
                 {gained > 0
@@ -365,7 +354,7 @@ export function SeriesPicker({ variant, card, pick, agg, view, onSeries }: Props
           ) : null}
         </div>
 
-        <div className="-mx-1 mt-[3px] -mb-1 flex shrink-0 items-center gap-[5px] border-t border-white/[0.08] px-[9px] py-1.5 text-2xs text-muted-foreground">
+        <div className="-mx-1 mt-0.5 -mb-1 flex shrink-0 items-center gap-1 border-t border-white/[0.08] px-2 py-1.5 text-2xs text-muted-foreground">
           <kbd className="rounded-sm border border-white/[0.15] px-1 font-mono text-2xs">↑↓</kbd>
           <span>move</span>
           <kbd className="ml-1.5 rounded-sm border border-white/[0.15] px-1 font-mono text-2xs">↵</kbd>
@@ -413,7 +402,7 @@ export function SeriesReading({ variant, pick, view, step, onAgg, onReading }: R
             type="button"
             aria-label={histogram ? "Histogram reading" : "Series reducer"}
             onPointerDown={(e) => e.stopPropagation()}
-            className={cn(triggerBox, "shrink-0 px-[7px] font-mono")}
+            className={cn(triggerBox, "shrink-0 px-1.5 font-mono")}
             style={{
               borderColor: open ? FOCUS : "oklch(1 0 0 / 15%)",
               boxShadow: open ? "0 0 0 1px oklch(0.552 0.016 285.938 / 35%)" : undefined,
@@ -432,7 +421,7 @@ export function SeriesReading({ variant, pick, view, step, onAgg, onReading }: R
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div
-            className="mb-0.5 border-b border-white/[0.08] px-[7px] pt-1 pb-[5px] text-2xs tracking-[0.1em] uppercase"
+            className="mb-0.5 border-b border-white/[0.08] px-1.5 pt-1 pb-1 text-2xs tracking-[0.1em] uppercase"
             style={{ color: FN }}
           >
             {histogram ? "Reading · histogram" : "Function"}
@@ -442,7 +431,7 @@ export function SeriesReading({ variant, pick, view, step, onAgg, onReading }: R
               key={row.value}
               type="button"
               className={cn(
-                "flex h-[25px] w-full items-center gap-[7px] rounded-sm px-[7px] text-left font-mono text-xs",
+                "flex h-[25px] w-full items-center gap-1.5 rounded-sm px-1.5 text-left font-mono text-xs",
                 row.value === current ? "bg-accent" : "bg-transparent hover:bg-accent",
               )}
               onClick={() => {
@@ -470,7 +459,7 @@ export function SeriesReading({ variant, pick, view, step, onAgg, onReading }: R
             </button>
           ))}
           {histogram ? (
-            <div className="-mx-1 mt-1 -mb-1 border-t border-white/[0.08] px-[9px] py-1.5 text-2xs text-muted-foreground">
+            <div className="-mx-1 mt-1 -mb-1 border-t border-white/[0.08] px-2 py-1.5 text-2xs text-muted-foreground">
               Per bar. One reading is drawn at a time.
             </div>
           ) : null}

@@ -205,7 +205,7 @@ function Header({
               side="top"
               className="w-[242px] max-h-[min(324px,calc(100vh-180px))] overflow-y-auto p-1"
             >
-              <div className="mb-1 flex items-center justify-between gap-2.5 border-b border-white/[0.08] px-2 py-1.5 normal-case tracking-normal">
+              <div className="mb-1 flex items-center justify-between gap-2 border-b border-white/[0.08] px-2 py-1.5 normal-case tracking-normal">
                 <span className="text-xs font-normal text-muted-foreground">Show in table</span>
                 <span
                   className={`font-mono text-2xs ${atCap ? "text-warn-fg" : "text-muted-foreground"}`}
@@ -215,7 +215,7 @@ function Header({
               </div>
               {suggested.length > 0 ? (
                 <>
-                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-faint uppercase">
+                  <div className="px-1.5 pt-1 pb-0.5 text-2xs font-semibold tracking-[0.04em] text-faint uppercase">
                     Suggested
                   </div>
                   <PickRows items={suggested} onToggle={(key) => onColsChange(togglePromotedCol(promoted, key))} />
@@ -223,7 +223,7 @@ function Header({
               ) : null}
               {other.length > 0 ? (
                 <>
-                  <div className="px-[7px] pt-[5px] pb-[3px] text-2xs font-semibold tracking-[0.04em] text-faint uppercase">
+                  <div className="px-1.5 pt-1 pb-0.5 text-2xs font-semibold tracking-[0.04em] text-faint uppercase">
                     Other keys on this page
                   </div>
                   <PickRows items={other} onToggle={(key) => onColsChange(togglePromotedCol(promoted, key))} />

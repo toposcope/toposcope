@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
-import { House } from "lucide-react";
+import { Copy, House, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { stepIndex } from "@/keyboard";
 import type { Workspace, WorkspaceKind } from "../workspaces";
@@ -20,7 +20,7 @@ function FollowGlyph() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
     >
       <path d="M3 12h5" />
@@ -37,7 +37,7 @@ function AroundGlyph() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
     >
       <path d="M4 8h5" />
@@ -56,7 +56,7 @@ function BoardGlyph() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.9"
+      strokeWidth="2"
       strokeLinecap="round"
     >
       <path d="M4 7h9" />
@@ -191,7 +191,7 @@ export function WorkspaceStrip({
           {tabs.length}
         </span>
       ) : null}
-      <div className="mb-[3px] ml-1.5 flex shrink-0 items-center gap-0.5">
+      <div className="mb-0.5 ml-1.5 flex shrink-0 items-center gap-0.5">
         <button
           type="button"
           title="Duplicate this tab as it stands now — query, window, columns, bindings and panels, without the open trace or profile tabs"
@@ -199,10 +199,7 @@ export function WorkspaceStrip({
           className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           onClick={onDuplicate}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-            <rect x="9" y="9" width="12" height="12" rx="2" />
-            <path d="M5 15V5a2 2 0 0 1 2-2h8" />
-          </svg>
+          <Copy className="size-3.5" aria-hidden />
         </button>
         <button
           type="button"
@@ -211,10 +208,7 @@ export function WorkspaceStrip({
           className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           onClick={onNew}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
+          <Plus className="size-3.5" aria-hidden />
         </button>
       </div>
     </div>

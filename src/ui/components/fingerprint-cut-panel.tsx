@@ -158,7 +158,7 @@ export function FingerprintCutPanel({
           title="End Fingerprints — the rail returns to event detail"
           onClick={onClose}
         >
-          <X className="size-[13px]" />
+          <X className="size-3.5" />
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -411,7 +411,7 @@ function CutRow({
               : "Write e1:<hex> into the bar — the same token an operator could type"
           }
           className={cn(
-            "flex h-5 shrink-0 items-center rounded-sm border px-[7px] text-2xs",
+            "flex h-5 shrink-0 items-center rounded-sm border px-1.5 text-2xs",
             filtered
               ? "border-warn/55 bg-warn/12 text-warn-fg"
               : "border-white/15 text-foreground",

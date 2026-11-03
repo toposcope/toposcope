@@ -8,6 +8,7 @@ import type { GithubRepo, GithubState } from "../github";
 import type { KnownRepo, ServiceRow } from "../repositories";
 import { knownFromWords, knownRepos, servicesWords } from "../repositories";
 import { Empty } from "@/components/ui/states";
+import { pageWidth } from "@/components/ui/page";
 
 /**
  * Settings › Repositories (#393, frame 37i; #413, frames 41a–41e): where each service's code
@@ -126,8 +127,8 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
   const cols = props.canWrite ? 5 : 4;
 
   return (
-    <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
-      <div className="mx-auto w-full max-w-[980px]">
+    <main className="min-h-0 flex-1 overflow-auto px-6 pt-6 pb-6">
+      <div className={pageWidth}>
         <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-sm">
           <button type="button" className="text-faint hover:text-foreground" onClick={props.onSettings}>
             Settings
@@ -137,7 +138,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
             Repositories
           </span>
         </nav>
-        <div className="mb-3.5 flex flex-wrap items-baseline gap-3.5">
+        <div className="mb-3.5 flex flex-wrap items-baseline gap-3">
           <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Repositories</h1>
           <p className="m-0 text-sm text-muted-foreground">Where each service's code lives, so a sha and a stack frame open it.</p>
         </div>
@@ -147,7 +148,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
         ) : (
           <div className="overflow-x-auto rounded-xl border border-white/10 bg-surface-2">
             {props.canWrite && picked.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] bg-overlay px-4 py-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] bg-overlay px-4 py-2 text-sm">
                 <span>{picked.length} selected</span>
                 <Popover open={open?.service === ""} onOpenChange={(o) => setOpen(o ? { service: "", mode: "pick" } : null)}>
                   <PopoverTrigger asChild>
@@ -260,7 +261,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
 
 function MenuItem(props: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
   return (
-    <button type="button" role="menuitem" disabled={props.disabled} onClick={props.onClick} className="w-full rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-control focus-visible:outline-none disabled:opacity-50">
+    <button type="button" role="menuitem" disabled={props.disabled} onClick={props.onClick} className="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/[0.08] focus-visible:bg-control focus-visible:outline-none disabled:opacity-50">
       {props.children}
     </button>
   );
@@ -294,7 +295,7 @@ function useGithubRepos(on: boolean, q: string): { repos: GithubRepo[]; matching
 
 const sectionHead = "px-2 pt-2 pb-0.5 text-2xs tracking-[0.04em] text-muted-foreground uppercase";
 const repoItem =
-  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-control focus-visible:outline-none disabled:opacity-50";
+  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/[0.08] focus-visible:bg-control focus-visible:outline-none disabled:opacity-50";
 
 /**
  * 41b / 41c / 42e: the repositories used here, each with its services; with GitHub connected, a
@@ -394,7 +395,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
                 </span>
               </button>
             ))}
-            {found && onGithub.length === 0 ? <div className="px-2 py-[7px] text-sm text-muted-foreground">{q.trim() ? `No repository matches ${q.trim()}` : "Every one is used here"}</div> : null}
+            {found && onGithub.length === 0 ? <div className="px-2 py-1.5 text-sm text-muted-foreground">{q.trim() ? `No repository matches ${q.trim()}` : "Every one is used here"}</div> : null}
           </div>
         </>
       ) : null}
@@ -402,7 +403,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
       <div className="flex items-center justify-between gap-2">
         <MenuItem onClick={() => setPaste(true)}>Paste a URL…</MenuItem>
         {ghOn && props.github ? (
-          <a href={props.github.install_url} target="_blank" rel="noreferrer noopener" className="shrink-0 px-2 py-[7px] text-xs whitespace-nowrap text-muted-foreground hover:text-foreground">
+          <a href={props.github.install_url} target="_blank" rel="noreferrer noopener" className="shrink-0 px-2 py-1.5 text-xs whitespace-nowrap text-muted-foreground hover:text-foreground">
             Not listed? Choose repositories ↗
           </a>
         ) : null}

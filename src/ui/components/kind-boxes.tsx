@@ -50,7 +50,7 @@ export function KindBoxes({
           <label
             key={l.kind}
             className={cn(
-              "grid grid-cols-[18px_minmax(0,1fr)] items-start gap-x-2.5 gap-y-1 rounded-lg border border-white/10 px-3 py-2.5",
+              "grid grid-cols-[18px_minmax(0,1fr)] items-start gap-x-2 gap-y-1 rounded-lg border border-white/10 px-3 py-2.5",
               off ? "border-dashed bg-surface-1" : "bg-surface-1",
             )}
           >

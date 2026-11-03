@@ -215,7 +215,7 @@ export function ContextView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-[49px] shrink-0 items-center gap-2.5 border-b px-3">
+      <div className="flex h-[49px] shrink-0 items-center gap-2 border-b px-3">
         {markFocus ? (
           <>
             <MarkGlyph kind={mark.kind} size={12} />
@@ -261,7 +261,7 @@ export function ContextView({
       <div className="shrink-0 border-b px-3 py-2 text-xs text-muted-foreground/90">
         {markFocus ? markFocusNote(q, n) : frozenQueryNote(mode, q)}
       </div>
-      <div className="flex h-10 shrink-0 items-center gap-2.5 border-b bg-background/45 px-3">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b bg-background/45 px-3">
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {tape.from}
         </span>
@@ -419,7 +419,7 @@ function ContextRow({
   const hit =
     !current && mode === "all" && q.trim() !== "" && eventMatchesQuery(event, q);
   const className = cn(
-    "relative grid h-[26px] w-full items-center gap-2.5 border-b border-white/[0.06] px-2.5 pr-2.5 pl-3 text-left font-mono text-xs last:border-0",
+    "relative grid h-[26px] w-full items-center gap-2 border-b border-white/[0.06] px-2.5 pr-2.5 pl-3 text-left font-mono text-xs last:border-0",
     current
       ? "bg-accent"
       : selected

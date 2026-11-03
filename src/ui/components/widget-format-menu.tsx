@@ -61,7 +61,7 @@ export function WidgetFormatMenu({
           <button
             key={format}
             type="button"
-            className="flex h-[26px] w-full items-center gap-2.5 rounded-sm px-[7px] text-left text-sm hover:bg-accent"
+            className="flex h-[26px] w-full items-center gap-2 rounded-sm px-1.5 text-left text-sm hover:bg-accent"
             onClick={() => {
               setOpen(false);
               onPick(format);

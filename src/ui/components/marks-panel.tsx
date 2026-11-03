@@ -141,7 +141,7 @@ export function MarksPanel(props: {
                 <span className="font-mono text-xs text-muted-foreground">{from}</span>
               </button>
               {on ? (
-                <div className="flex flex-col gap-2.5 pb-3 pl-[70px]">
+                <div className="flex flex-col gap-2 pb-3 pl-[70px]">
                   {attrLine(m) ? <span className="font-mono text-xs text-muted-foreground">{attrLine(m)}</span> : null}
                   {m.kind === "deploy" ? <CodeRow markId={m.id} /> : null}
                   <div className="flex flex-wrap gap-2">

@@ -233,7 +233,7 @@ function FingerprintsGlyph() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
     >
       <path d="M12 3v18" strokeDasharray="2.5 2.5" />
@@ -254,7 +254,7 @@ function CompareGlyph() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
     >
       <path d="M12 3v18" strokeDasharray="2.5 2.5" />
@@ -599,7 +599,7 @@ export function HistogramMarkLane({
                 key={key}
                 type="button"
                 className={cn(
-                  "absolute top-1/2 z-[3] flex h-[24px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-lg border border-white/12 bg-surface-2 whitespace-nowrap px-[9px] text-sm text-zinc-300",
+                  "absolute top-1/2 z-[3] flex h-[24px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-lg border border-white/12 bg-surface-2 whitespace-nowrap px-2 text-sm text-zinc-300",
                   hovered || selected ? "border-white/25 text-foreground" : "",
                   overlay.compareMarkId != null && cluster.members.some((m) => m.id === overlay.compareMarkId)
                     ? "border-plate bg-overlay text-foreground"
@@ -942,7 +942,7 @@ export function HistogramMarksChip({
           viewBox="0 0 12 12"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.3"
+          strokeWidth="2"
           aria-hidden
         >
           <path d="M2.5 2.2 H8 L10.3 4.6 L8 7 H2.5 Z" />

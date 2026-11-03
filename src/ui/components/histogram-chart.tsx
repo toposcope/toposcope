@@ -1,3 +1,4 @@
+import { ChartArea, ChartColumn, ChartColumnStacked, ChartLine } from "lucide-react";
 import { HeldHatch } from "@/components/held-hatch";
 import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -1231,7 +1232,7 @@ export function HistogramChart({
         <button
           type="button"
           className={cn(
-            "h-[26px] shrink-0 rounded-md border border-input px-[9px] text-sm",
+            "h-[26px] shrink-0 rounded-md border border-input px-2 text-sm",
             logScale
               ? "border-ring bg-accent text-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -1355,7 +1356,7 @@ export function HistogramChart({
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
           className={cn(
-            "flex shrink-0 flex-col justify-between py-[3px] text-right font-mono text-2xs text-faint",
+            "flex shrink-0 flex-col justify-between py-0.5 text-right font-mono text-2xs text-faint",
             axisUnit ? "w-12 whitespace-nowrap" : "w-8",
           )}
           style={{
@@ -1868,14 +1869,14 @@ export function HistogramChart({
       {/* Split lines named at their ends need no legend; past three they get one (13g). */}
       {splitDrawn && (endLabels || !splitOn) ? null : (
       <div
-        className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2.5 border-t border-white/[0.08] pr-2.5 pb-1.5 pt-1.5"
+        className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2 border-t border-white/[0.08] pr-2.5 pb-1.5 pt-1.5"
         style={{ paddingLeft: plotLeft }}
       >
         {showVolume
           ? keys.map((key, i) => (
               <span
                 key={key}
-                className="flex items-center gap-[5px] text-xs text-muted-foreground"
+                className="flex items-center gap-1 text-xs text-muted-foreground"
               >
                 <span
                   className="size-[7px] rounded-sm"
@@ -1898,7 +1899,7 @@ export function HistogramChart({
                 onFocus={() => setLegendLine(line.key)}
                 onBlur={() => setLegendLine(null)}
                 className={cn(
-                  "relative flex items-center gap-[5px] rounded-md px-1 text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  "relative flex items-center gap-1 rounded-md px-1 text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   lineInfo ? "text-sm" : "font-mono text-xs",
                   legendLine === line.key && lineInfo?.[line.key] && "bg-accent text-foreground",
                 )}
@@ -1933,7 +1934,7 @@ export function HistogramChart({
               </span>
             ))
           : overlayOn ? (
-          <span className="flex items-center gap-[5px] text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <span
               className="size-[7px] rounded-sm"
               style={{ background: AGG_COLOR }}
@@ -1954,41 +1955,13 @@ export function HistogramChart({
 function ChartGlyph({ kind }: { kind: HistogramChartKind }) {
   switch (kind) {
     case "stacked":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-          <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-          <path d="M8 17v-3" />
-          <path d="M8 14v-3" />
-          <path d="M14 17v-4" />
-          <path d="M14 13v-4" />
-          <path d="M20 17v-2" />
-          <path d="M20 15v-3" />
-        </svg>
-      );
+      return <ChartColumnStacked className="size-3.5" aria-hidden />;
     case "grouped":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-          <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-          <path d="M8 17V9" />
-          <path d="M12 17v-5" />
-          <path d="M16 17v-9" />
-          <path d="M20 17v-4" />
-        </svg>
-      );
+      return <ChartColumn className="size-3.5" aria-hidden />;
     case "line":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-          <path d="m7 15 3-4 3 2 4-6" />
-        </svg>
-      );
+      return <ChartLine className="size-3.5" aria-hidden />;
     case "area":
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-          <path d="m7 16 4-6 3 3 5-7v10H7z" fill="currentColor" fillOpacity="0.35" />
-        </svg>
-      );
+      return <ChartArea className="size-3.5" aria-hidden />;
     default: {
       const _exhaustive: never = kind;
       return _exhaustive;

@@ -377,7 +377,7 @@ export function SearchQueryField({
             onClear();
           }}
         >
-          <X className="size-2.5" strokeWidth={3} />
+          <X className="size-3" strokeWidth={3} />
         </button>
       ) : null}
       {menuOpen ? (
@@ -427,7 +427,7 @@ export function SearchQueryField({
               </span>
             ) : null}
           </div>
-          <div className="flex items-center gap-2.5 border-t px-2.5 py-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 border-t px-2.5 py-1 text-xs text-muted-foreground">
             <span>
               <span className="font-mono text-foreground">Tab</span> insert
             </span>

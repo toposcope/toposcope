@@ -316,8 +316,8 @@ export function AlertRuleDialog({
       {/* A monitor dialog is lg (sheet 45), whatever its body. */}
       <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto p-0">
         {/* 18j: New monitor / its source; 18t: its source / its name. */}
-        <div className="flex items-center gap-2 border-b px-[18px] py-3.5">
-          <DialogTitle className="flex min-w-0 items-baseline gap-2.5">
+        <div className="flex items-center gap-2 border-b px-4 py-3.5">
+          <DialogTitle className="flex min-w-0 items-baseline gap-2">
             <span className="shrink-0 text-sm font-normal text-muted-foreground">
               {editing ? (fingerprints ? "New fingerprints" : "Saved search") : "New monitor"}
             </span>
@@ -334,7 +334,7 @@ export function AlertRuleDialog({
           </button>
         </div>
         <form className="flex flex-col" onSubmit={(e) => void submit(e)}>
-          <div className="flex flex-col gap-3.5 px-[18px] py-4">
+          <div className="flex flex-col gap-3 px-4 py-4">
             <DialogDescription className={fingerprints ? "text-sm" : "sr-only"}>
               {fingerprints ? (
                 <>
@@ -416,7 +416,7 @@ export function AlertRuleDialog({
               </MonitorField>
             ) : null}
             <MonitorField label={fingerprints ? "Fire when" : "Opens when"} htmlFor="alert-threshold">
-              <span className="flex flex-wrap items-center gap-2.5">
+              <span className="flex flex-wrap items-center gap-2">
                 {fingerprints ? (
                   <span className="text-sm text-muted-foreground">at least</span>
                 ) : (
@@ -559,7 +559,7 @@ export function AlertRuleDialog({
             ) : null}
           </div>
           {/* 18j: the test call on the left, Cancel and Create on the right. */}
-          <div className="flex items-start gap-2 border-t px-[18px] py-3">
+          <div className="flex items-start gap-2 border-t px-4 py-3">
             <span className="min-w-0 flex-1">
               {testHere ? (
                 <TestCall

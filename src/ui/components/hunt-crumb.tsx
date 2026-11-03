@@ -46,7 +46,7 @@ export function HuntCrumb(props: {
         </span>
       ) : null}
       {props.mark ? (
-        <span className="ml-1.5 inline-flex h-6 items-center gap-1.5 rounded-lg border border-plate bg-surface-2 pr-1 pl-[9px] text-sm whitespace-nowrap">
+        <span className="ml-1.5 inline-flex h-6 items-center gap-1.5 rounded-lg border border-plate bg-surface-2 pr-1 pl-2 text-sm whitespace-nowrap">
           <span style={{ color: markGlyph[props.mark.kind].color }}>{markGlyph[props.mark.kind].glyph}</span>
           <span className="max-w-[280px] truncate">since {props.mark.title}</span>
           <b className="font-mono text-xs font-medium text-muted-foreground">{hhmmUtc(props.mark.ts)}</b>

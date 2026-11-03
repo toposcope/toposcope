@@ -31,9 +31,9 @@ type Props = {
 };
 
 /** Names take at most 40%, so a narrow waterfall beside the rail keeps its bars readable. */
-const grid = "grid grid-cols-[minmax(0,min(340px,40%))_66px_minmax(0,1fr)] gap-2.5";
+const grid = "grid grid-cols-[minmax(0,min(340px,40%))_66px_minmax(0,1fr)] gap-2";
 /** On a linked instance, a column for the instance each span entered at (#330, 33d). */
-const gridEntered = "grid grid-cols-[minmax(0,min(320px,36%))_66px_76px_minmax(0,1fr)] gap-2.5";
+const gridEntered = "grid grid-cols-[minmax(0,min(320px,36%))_66px_76px_minmax(0,1fr)] gap-2";
 
 /** An instance's name as a small mono chip, as Search's source chips read. */
 export function SourceChip({ name }: { name: string }) {
@@ -172,7 +172,7 @@ export function TraceWaterfall({
       data-screen-label="Trace waterfall"
       className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-3"
     >
-      <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-lg border border-b-0 border-white/10 bg-card px-2.5">
+      <div className="flex h-[38px] shrink-0 items-center gap-2 rounded-t-lg border border-b-0 border-white/10 bg-card px-2.5">
         <span className="truncate text-sm font-medium">{rootLabel}</span>
         {totalLabel ? (
           <span className="font-mono text-xs whitespace-nowrap">{totalLabel}</span>
@@ -196,7 +196,7 @@ export function TraceWaterfall({
       {where.line ? (
         <div
           role="status"
-          className="flex items-center gap-2.5 border border-b-0 border-warn/40 bg-warn/[0.07] px-2.5 py-1.5 text-xs leading-snug text-warn-fg"
+          className="flex items-center gap-2 border border-b-0 border-warn/40 bg-warn/[0.07] px-2.5 py-1.5 text-xs leading-snug text-warn-fg"
         >
           <span className="size-1.5 shrink-0 rounded-full bg-warn" />
           <span className="min-w-0 flex-1 text-pretty">

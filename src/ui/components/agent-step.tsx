@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
 
   return (
     <form
-      className="flex flex-col gap-3.5"
+      className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         if (!problem) {
@@ -62,12 +63,12 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
         </span>
       </div>
 
-      <fieldset className="m-0 grid grid-cols-1 gap-2.5 border-0 p-0 md:grid-cols-2">
+      <fieldset className="m-0 grid grid-cols-1 gap-2 border-0 p-0 md:grid-cols-2">
         <legend className={cn(lab, "pb-1.5")}>Role</legend>
         {agentRoleCards.map((card) => (
           <label
             key={card.role}
-            className={cn("grid cursor-pointer grid-cols-[18px_1fr] items-start gap-x-2.5 gap-y-1 rounded-lg border bg-surface-1 px-3.5 py-3", role === card.role ? "border-plate bg-overlay" : "border-white/10 hover:border-zinc-500")}
+            className={cn("grid cursor-pointer grid-cols-[18px_1fr] items-start gap-x-2 gap-y-1 rounded-lg border bg-surface-1 px-3.5 py-3", role === card.role ? "border-plate bg-overlay" : "border-white/10 hover:border-zinc-500")}
           >
             <input type="radio" name="agent-role" checked={role === card.role} onChange={() => setRole(card.role)} className="mt-0.5 size-[15px] accent-[#e7e1d3]" />
             <span className="text-sm font-medium text-foreground">{card.name}</span>
@@ -97,7 +98,7 @@ export function AgentStep(props: { onCancel: () => void; onMade: (made: MadeAgen
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={busy || problem !== null}>
           Make the agent
         </Button>
@@ -139,11 +140,8 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
         </Button>
       </div>
 
-      <div className="flex items-center gap-3 rounded-xl border border-[#7c5f1a] bg-[#17130b] px-3.5 py-3">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="shrink-0">
-          <path d="M12 4 L21 19 H3 Z" fill="none" stroke="#fbbf24" strokeWidth="1.8" strokeLinejoin="round" />
-          <path d="M12 10 V14" stroke="#fbbf24" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
+      <div className="flex items-center gap-3 rounded-xl border border-warn/40 bg-warn-soft px-3.5 py-3">
+        <TriangleAlert className="size-4 shrink-0 text-warn-fg" aria-hidden />
         <span className="text-sm text-warn-fg">Its token is in the setup below, and this is the only time it is shown. Copy it now, or close and make another.</span>
       </div>
       {props.made.kept ? (
@@ -156,7 +154,7 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
         <span className={lab}>Connect it</span>
         <span className="inline-flex overflow-hidden rounded-lg border border-white/10">
           {tabs.map((t) => (
-            <button key={t.id} type="button" aria-pressed={tab === t.id} className={cn("px-3 py-[7px] text-sm", tab === t.id ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab(t.id)}>
+            <button key={t.id} type="button" aria-pressed={tab === t.id} className={cn("px-3 py-1.5 text-sm", tab === t.id ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab(t.id)}>
               {t.label}
             </button>
           ))}
@@ -196,7 +194,7 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <Button type="button" onClick={props.onDone}>
           Done
         </Button>

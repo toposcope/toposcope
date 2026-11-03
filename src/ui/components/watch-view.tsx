@@ -153,7 +153,7 @@ function Seg({
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        "inline-flex h-6 items-center gap-[5px] rounded-md px-[9px] text-sm",
+        "inline-flex h-6 items-center gap-1 rounded-md px-2 text-sm",
         on ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground",
       )}
     >
@@ -872,7 +872,7 @@ export function SourceDetail({
 
 /** 33g: a group's head: Here, or a source by name, read-only, with where it stands and its link. */
 function GroupHead({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap items-baseline gap-2.5 border-b border-white/[0.06] px-4 py-2.5">{children}</div>;
+  return <div className="flex flex-wrap items-baseline gap-2 border-b border-white/[0.06] px-4 py-2.5">{children}</div>;
 }
 
 /** Frame 18c: Watch, every monitor on one clock, open ones first. */
@@ -960,7 +960,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
   return (
     <OpenAgent.Provider value={onOpenAgent}>
     <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Watch</h1>
           <span className="text-sm text-muted-foreground">
@@ -974,7 +974,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             {open.length + awayOpen > 0 ? <span className="text-danger-fg"> · {open.length + awayOpen} open</span> : null}
             {deliveryRows.length > 0 ? ` · webhooks to ${deliveryRows.map((d) => d.host).join(" and ")}` : ""}
           </span>
-          <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]">
+          <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-0.5">
             {filters.map((f) => (
               <Seg key={f.id} on={filter === f.id} onClick={() => onFilter(f.id)}>
                 {f.label} <span className="font-mono text-muted-foreground">{f.n}</span>
@@ -982,7 +982,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             ))}
           </span>
           {places.length > 0 ? (
-            <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]" aria-label="Where">
+            <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-0.5" aria-label="Where">
               {places.map((p) => (
                 <Seg key={p.id} on={place === p.id} onClick={() => setPlace(p.id)}>
                   {p.label} <span className="font-mono text-muted-foreground">{p.n}</span>
@@ -996,7 +996,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               is due.
             </span>
           ) : null}
-          <span className="ml-auto inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]">
+          <span className="ml-auto inline-flex rounded-lg border border-white/10 bg-overlay p-0.5">
             {watchRanges.map((id) => (
               <Seg key={id} on={range === id} onClick={() => onRange(id)}>
                 {id}
@@ -1039,7 +1039,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
               </GroupHead>
             ) : null}
             {tall ? (
-            <div className={cn(prow, "border-b-0 py-[3px]")}>
+            <div className={cn(prow, "border-b-0 py-0.5")}>
               <span />
               <span className="relative h-3.5">
                 {ticks.map((t) => (
@@ -1183,7 +1183,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
         ) : null}
 
         {monitors.length > 0 && !tall && placeShows(place, null) ? (
-          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5">
               <span className="text-base font-medium">What opened today</span>
               {today.length === 0 ? <span className="text-sm text-muted-foreground">Nothing opened since midnight UTC.</span> : null}

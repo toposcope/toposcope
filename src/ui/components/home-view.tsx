@@ -12,6 +12,7 @@ import { AgentBadge, OpenAgent } from "./agent-badge";
 import { EvidenceGaps, useCoverage } from "./coverage-section";
 import { Empty } from "@/components/ui/states";
 import { railPanel } from "@/components/ui/side-panel";
+import { pageReading } from "@/components/ui/page";
 
 export type HomeWindow = { from: string; to: string };
 
@@ -195,7 +196,7 @@ export function HomeView(props: Props) {
     <button
       key={s.id}
       type="button"
-      className={cn("flex justify-between rounded-md px-2.5 py-[7px] text-left hover:bg-white/[0.04]", s.id === selectedId && "bg-white/[0.06]")}
+      className={cn("flex justify-between rounded-md px-2.5 py-1.5 text-left hover:bg-white/[0.04]", s.id === selectedId && "bg-white/[0.06]")}
       onClick={() => props.onOpenSaved(s, window, selectedId)}
     >
       <span className="flex min-w-0 items-center gap-1.5">
@@ -228,15 +229,15 @@ export function HomeView(props: Props) {
             onClick={() => choose(m.id)}
           />
         ))}
-        {more > 0 ? <span className="inline-flex h-[30px] items-center rounded-lg border border-white/10 px-[11px] text-sm text-muted-foreground">{more} more today</span> : null}
+        {more > 0 ? <span className="inline-flex h-[30px] items-center rounded-lg border border-white/10 px-3 text-sm text-muted-foreground">{more} more today</span> : null}
         <div className="flex-1" />
         {since.kind === "mark" ? (
-          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-[11px] text-sm text-muted-foreground hover:text-foreground" onClick={() => choose("hour")}>
+          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-3 text-sm text-muted-foreground hover:text-foreground" onClick={() => choose("hour")}>
             last hour instead
           </button>
         ) : null}
         {props.readOnly ? null : note === null ? (
-          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-[11px] text-sm text-muted-foreground hover:text-foreground" onClick={() => setNote("")}>
+          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-3 text-sm text-muted-foreground hover:text-foreground" onClick={() => setNote("")}>
             + note
           </button>
         ) : (
@@ -269,7 +270,7 @@ export function HomeView(props: Props) {
 
       <div className="flex min-h-0 flex-1">
         <main className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pt-5 pb-6">
-          <div className="flex flex-wrap items-baseline gap-3.5">
+          <div className="flex flex-wrap items-baseline gap-3">
             <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">
               {since.kind === "mark" ? (
                 <>
@@ -290,7 +291,7 @@ export function HomeView(props: Props) {
           {data.cards.length === 0 ? (
             <Empty title="Save a hunt and it is a card here, with its before → after around the mark." />
           ) : (
-            <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {data.cards.map((card) => {
                 const item = props.saved.find((s) => s.id === card.saved_id);
                 return (
@@ -304,8 +305,8 @@ export function HomeView(props: Props) {
 
           {props.onOpenFields ? <EvidenceGaps coverage={coverage} selectedMarkId={selectedId} onOpenFields={props.onOpenFields} /> : null}
 
-          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-            <section className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
               <div className="flex justify-between">
                 <span className="text-base font-medium">New fingerprints{fp ? ` · ${fp.first_seen.length}${fp.more ? "+" : ""}` : " · none"}</span>
                 {fp && fp.first_seen.length > 0 ? (
@@ -329,7 +330,7 @@ export function HomeView(props: Props) {
                 </p>
               )}
             </section>
-            <section className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4">
+            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
               <div className="flex justify-between">
                 <span className="text-base font-medium">Monitors · {openCount > 0 ? `${openCount} open` : monitors.length ? "all ok" : "none"}</span>
                 <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={props.onOpenWatch}>
@@ -367,7 +368,7 @@ export function HomeView(props: Props) {
                   <button
                     type="button"
                     aria-expanded={quietOpen}
-                    className="flex justify-between rounded-md px-2.5 py-[7px] text-left hover:bg-white/[0.04]"
+                    className="flex justify-between rounded-md px-2.5 py-1.5 text-left hover:bg-white/[0.04]"
                     onClick={() => toggleQuiet(!quietOpen)}
                   >
                     <span className="flex min-w-0 items-center gap-1.5">
@@ -405,7 +406,7 @@ export function HomeView(props: Props) {
                     <button
                       key={s.id}
                       type="button"
-                      className="flex justify-between rounded-md px-2.5 py-[7px] text-left hover:bg-white/[0.04]"
+                      className="flex justify-between rounded-md px-2.5 py-1.5 text-left hover:bg-white/[0.04]"
                       onClick={() => (s.board ? props.onOpenBoard(s) : props.onOpenSaved(s, window, selectedId))}
                     >
                       <span className="truncate">{s.name}</span>
@@ -427,7 +428,7 @@ function MarkChip({ on, glyph, color, label, time, onClick }: { on: boolean; gly
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex h-[30px] max-w-[320px] items-center gap-[7px] whitespace-nowrap rounded-lg border border-white/10 bg-surface-2 px-[11px] text-sm text-zinc-300",
+        "inline-flex h-[30px] max-w-[320px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-white/10 bg-surface-2 px-3 text-sm text-zinc-300",
         on && "border-plate bg-overlay text-foreground",
       )}
     >
@@ -455,7 +456,7 @@ function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; 
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[150px] flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4 text-left hover:border-zinc-500"
+      className="flex min-h-[150px] flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4 text-left hover:border-zinc-500"
     >
       <div className="flex items-baseline justify-between">
         <span className="text-base font-medium">{card.name}</span>
@@ -508,7 +509,7 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
   const send = `curl -X POST ${origin}/api/ingest \\\n  -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" \\\n  -d '{"service":"smoke","level":"info","message":"hello from the shell"}'`;
   const mark = `curl -X POST ${origin}/v1/marks -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" \\\n  -d '{"kind":"deploy","label":"deployed: api v1.0","attrs":{"version":"v1.0"}}'`;
   const step = (i: number, title: string, body: React.ReactNode) => (
-    <div className={cn("grid grid-cols-[44px_1fr] gap-x-[18px] rounded-xl border border-white/10 bg-surface-2 px-6 py-[22px]", done[i] && "border-white/[0.06] text-muted-foreground", i > 0 && !done[i - 1] && "opacity-60")}>
+    <div className={cn("grid grid-cols-[44px_1fr] gap-x-4 rounded-xl border border-white/10 bg-surface-2 px-6 py-6", done[i] && "border-white/[0.06] text-muted-foreground", i > 0 && !done[i - 1] && "opacity-60")}>
       <div className={cn("flex size-[30px] items-center justify-center rounded-full border border-zinc-600 text-sm", done[i] ? "border-transparent bg-overlay text-ok-fg" : !done[i] && (i === 0 || done[i - 1]) ? "border-plate text-plate" : "")}>
         {done[i] ? "✓" : i + 1}
       </div>
@@ -519,7 +520,7 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
     </div>
   );
   return (
-    <main className="mx-auto flex w-full max-w-[820px] flex-col gap-3.5 px-4 pt-10">
+    <main className={cn("flex flex-col gap-3 px-4 pt-10", pageReading)}>
       <h1 className="m-0 mb-1 text-xl font-semibold tracking-[-0.01em]">This instance has no logs yet</h1>
       <p className="m-0 mb-3.5 text-base leading-[1.5] text-muted-foreground">Three steps. Each one becomes a card on this page as it is done, so the home never changes shape under you.</p>
       {step(
@@ -541,7 +542,7 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
         <>
           <div className="text-sm text-muted-foreground">An app with an OpenTelemetry exporter sends straight in. Or paste one line to see a first event arrive.</div>
           <pre className="mt-3 mb-0 overflow-hidden whitespace-pre-wrap rounded-lg border border-white/10 bg-surface-1 px-3.5 py-3 font-mono text-sm leading-[1.6] text-zinc-300">{send}</pre>
-          <div className="mt-3 flex items-center gap-2.5">
+          <div className="mt-3 flex items-center gap-2">
             <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(send)}>
               Copy
             </Button>

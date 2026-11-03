@@ -197,7 +197,7 @@ export function StatWidget({
               ) : null}
             </div>
             <div
-              className={`mt-[3px] truncate text-2xs ${
+              className={`mt-0.5 truncate text-2xs ${
                 aggResult?.source === "refused" || quiet || heldNote || metricNote ? "text-warn-fg" : "text-muted-foreground"
               }`}
               title={unitsNote ?? undefined}

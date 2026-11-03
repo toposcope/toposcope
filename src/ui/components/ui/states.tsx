@@ -152,7 +152,7 @@ export function Skeleton(
   }
   if (props.kind === "bars") {
     return (
-      <div aria-hidden className={cn("flex min-h-0 flex-1 items-end gap-[3px]", pulse, props.className)}>
+      <div aria-hidden className={cn("flex min-h-0 flex-1 items-end gap-0.5", pulse, props.className)}>
         {Array.from({ length: 48 }, (_, i) => (
           <span key={i} className="flex-1 rounded-t-sm bg-white/[0.07]" style={{ height: `${28 + ((i * 37) % 52)}%` }} />
         ))}
@@ -215,7 +215,7 @@ export function LiveAge({
       <TooltipTrigger asChild>
         <span
           className={cn(
-            "group inline-flex h-5.5 shrink-0 items-center gap-[5px] font-mono text-xs tabular-nums",
+            "group inline-flex h-5.5 shrink-0 items-center gap-1 font-mono text-xs tabular-nums",
             late ? "text-plate" : "text-muted-foreground hover:text-foreground",
             className,
           )}
@@ -226,7 +226,7 @@ export function LiveAge({
           <span className="decoration-dotted underline-offset-[3px] group-hover:underline">{label}</span>
         </span>
       </TooltipTrigger>
-      <TooltipContent side="bottom" align="start" className="border bg-popover px-[9px] py-1.5 text-sm text-popover-foreground">
+      <TooltipContent side="bottom" align="start" className="border bg-popover px-2 py-1.5 text-sm text-popover-foreground">
         {text}
       </TooltipContent>
     </Tooltip>

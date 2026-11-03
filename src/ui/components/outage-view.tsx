@@ -166,7 +166,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
         />
       </div>
 
-      <div className="flex max-w-[660px] flex-col items-center gap-2.5 text-center">
+      <div className="flex max-w-[660px] flex-col items-center gap-2 text-center">
         <h1 className="m-0 text-display font-semibold tracking-[-0.01em]">
           {ch
             ? "ClickHouse isn’t answering the app"
@@ -183,7 +183,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
         </p>
       </div>
 
-      <div className="flex items-center gap-[22px] rounded-xl border bg-card/60 px-[22px] py-[18px]">
+      <div className="flex items-center gap-6 rounded-xl border bg-card/60 px-6 py-4">
         <div className="relative size-14">
           <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden>
             <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="3" />
@@ -205,7 +205,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
             {left}s
           </span>
         </div>
-        <div className="flex min-w-[300px] flex-col gap-[5px]">
+        <div className="flex min-w-[300px] flex-col gap-1">
           <span className="text-sm">
             {left > 0 ? `${ch ? "Checking again" : "Retrying"} in ${left} s` : "Checking…"}{" "}
             <span className="text-muted-foreground">· attempt {state.attempt}</span>

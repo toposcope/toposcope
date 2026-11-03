@@ -14,7 +14,7 @@
     "[#hex] colour": 4
   },
   "src/ui/components/agent-step.tsx": {
-    "[#hex] colour": 4,
+    "[#hex] colour": 2,
     "raw palette class": 7
   },
   "src/ui/components/alert-body-field.tsx": {
@@ -27,10 +27,12 @@
     "outline-none with no focus": 1
   },
   "src/ui/components/board-view.tsx": {
-    "<button with h-[…]": 1
+    "<button with h-[…]": 1,
+    "spacing-[Npx]": 1
   },
   "src/ui/components/check-editor-parts.tsx": {
     "[#hex] colour": 2,
+    "spacing-[Npx]": 1,
     "outline-none with no focus": 2
   },
   "src/ui/components/compare-fold.tsx": {
@@ -84,6 +86,7 @@
   },
   "src/ui/components/http-monitor-dialog.tsx": {
     "[#hex] colour": 2,
+    "spacing-[Npx]": 1,
     "outline-none with no focus": 2
   },
   "src/ui/components/instance-menu.tsx": {
@@ -100,14 +103,16 @@
     "raw palette class": 8
   },
   "src/ui/components/marks-panel.tsx": {
-    "raw palette class": 4
+    "raw palette class": 4,
+    "spacing-[Npx]": 1
   },
   "src/ui/components/me-menu.tsx": {
     "[#hex] colour": 1,
     "raw palette class": 3
   },
   "src/ui/components/metric-spark.tsx": {
-    "<button with h-[…]": 2
+    "<button with h-[…]": 2,
+    "spacing-[Npx]": 1
   },
   "src/ui/components/monitor-band.tsx": {
     "raw palette class": 1

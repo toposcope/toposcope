@@ -178,12 +178,12 @@ function GapPopover({ s, k, actions, trigger, className }: { s: CoverageService;
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[400px] border-white/10 bg-overlay p-4 font-sans">
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <span className="text-sm">{gapTitle(s, k)}</span>
           <span className="text-sm leading-[1.5] text-zinc-400">
             Accept it when {s.service} is not meant to send it. Home and the counts stop naming it; this cell keeps its number, marked accepted.
           </span>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {actions.canAccept ? (
               <button
                 type="button"
@@ -282,7 +282,7 @@ const foldLine = "flex w-full items-baseline gap-1.5 border-b border-white/[0.05
 
 function ServiceRow({ s, actions }: { s: CoverageService; actions: GapActions }) {
   return (
-    <div className={`${coverageGrid} border-b border-white/[0.05] px-4 py-[9px] font-mono text-sm`}>
+    <div className={`${coverageGrid} border-b border-white/[0.05] px-4 py-2 font-mono text-sm`}>
       <span className="truncate">{s.service}</span>
       <span className="text-muted-foreground">{formatCompactCount(s.rows)}</span>
       <Cell s={s} k="version" actions={actions} />
@@ -505,11 +505,11 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
                 const b = sideB(m);
                 return (
                   <div key={`${m.kind}:${a.name}:${b.name}`} className={`${namesGrid} items-baseline border-b border-white/[0.05] px-4 py-2.5 text-sm`}>
-                    <span className="flex min-w-0 flex-col gap-[3px]">
+                    <span className="flex min-w-0 flex-col gap-0.5">
                       <span className="truncate font-mono">{a.name}</span>
                       <span className="text-xs text-muted-foreground">{a.on}</span>
                     </span>
-                    <span className="flex min-w-0 flex-col gap-[3px]">
+                    <span className="flex min-w-0 flex-col gap-0.5">
                       <span className="truncate font-mono">{b.name}</span>
                       <span className="text-xs text-muted-foreground">{b.on}</span>
                     </span>
@@ -586,11 +586,11 @@ function AcceptedList({ accepted, actions }: { accepted: AcceptedGap[]; actions:
             <span className="font-mono">
               {a.service} · {keyLabel[a.key]}
             </span>
-            <span className="flex flex-col gap-[3px]">
+            <span className="flex flex-col gap-0.5">
               <span title={a.by_role ? `${a.by_role[0]!.toUpperCase()}${a.by_role.slice(1)}` : undefined}>{a.by ?? "—"}</span>
               <span className="text-xs text-muted-foreground">{acceptedWhen(a.at)}</span>
             </span>
-            <span className="flex flex-col gap-[3px]">
+            <span className="flex flex-col gap-0.5">
               <span>{acceptedThen(a)}</span>
               <span className={cn("text-xs", back ? "text-foreground" : "text-muted-foreground")}>
                 {a.now === null ? "not measured now" : a.key === "marks" ? "none now" : (
@@ -660,7 +660,7 @@ export function EvidenceGaps({
         </button>
       </div>
       {shown.map((g) => (
-        <div key={g.service} className="grid grid-cols-[120px_minmax(0,1fr)_170px] items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-sm">
+        <div key={g.service} className="grid grid-cols-[120px_minmax(0,1fr)_170px] items-baseline gap-3 border-t border-white/[0.05] px-4 py-2 text-sm">
           <span className="truncate font-mono">{g.service}</span>
           <span className="text-zinc-300">{g.what}</span>
           {g.href ? (
@@ -675,7 +675,7 @@ export function EvidenceGaps({
         </div>
       ))}
       {more > 0 ? (
-        <div className="flex items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-sm">
+        <div className="flex items-baseline gap-3 border-t border-white/[0.05] px-4 py-2 text-sm">
           <span className="text-muted-foreground">
             and {more} more {more === 1 ? "service" : "services"} with gaps, the largest first
           </span>

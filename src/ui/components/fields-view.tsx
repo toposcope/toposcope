@@ -133,7 +133,7 @@ export function FieldsView({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
+    <div className="min-h-0 flex-1 overflow-auto px-6 pt-6 pb-6">
       <div className="w-full">
         <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-sm">
           <button type="button" className="text-faint hover:text-foreground" onClick={onSettings}>
@@ -145,7 +145,7 @@ export function FieldsView({
           </span>
         </nav>
         <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-3">
-          <div className="flex flex-wrap items-baseline gap-3.5">
+          <div className="flex flex-wrap items-baseline gap-3">
             <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Fields</h1>
             <p className="m-0 text-sm text-muted-foreground">
               What each log key is for, and how much of each service carries the keys an investigation reads.
@@ -161,7 +161,7 @@ export function FieldsView({
         ) : (
           <>
             <CoverageSection coverage={coverage} focusNames={focusNames} canAccept={canAccept} />
-            <div className="mb-2 flex items-center gap-2.5">
+            <div className="mb-2 flex items-center gap-2">
               {wave ? (
                 <Busy label={fieldsWaveLabel(wave)} elapsedMs={elapsedMs} slow={slow} hint={fieldsSlowAdvice(rangeLabel, keys.length)} onStop={onStop} />
               ) : (
@@ -262,7 +262,7 @@ export function FieldsView({
                 ))
               )}
             </div>
-            <div className="mt-3.5 grid grid-cols-1 gap-3.5 md:grid-cols-3">
+            <div className="mt-3.5 grid grid-cols-1 gap-3 md:grid-cols-3">
               {roleCards.map((c) => (
                 <section key={c.role} className="flex flex-col gap-1.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3">
                   <span className="text-sm font-medium">{c.role}</span>

@@ -300,7 +300,7 @@ export function HbarWidget({
     const clickable = Boolean(onCommand) && field !== null && hbarRowIsValue(bar.key);
     const token = field ? formatFieldToken(field, bar.key) : bar.key;
     const rowClass = cn(
-      "flex w-full items-center gap-2 rounded-sm px-1 py-[3px] text-left",
+      "flex w-full items-center gap-2 rounded-sm px-1 py-0.5 text-left",
       clickable ? "cursor-pointer hover:bg-[var(--plot-hover)]" : "cursor-default",
     );
     if (!clickable || !field) {
@@ -321,7 +321,7 @@ export function HbarWidget({
           <PopoverClose asChild>
             <button
               type="button"
-              className="flex h-[26px] w-full items-center rounded-sm px-[7px] text-left text-sm hover:bg-accent"
+              className="flex h-[26px] w-full items-center rounded-sm px-1.5 text-left text-sm hover:bg-accent"
               onClick={() => onCommand?.("filter", field, bar.key)}
             >
               Filter <span className="ml-1 font-mono text-foreground">{token}</span>
@@ -330,7 +330,7 @@ export function HbarWidget({
           <PopoverClose asChild>
             <button
               type="button"
-              className="flex h-[26px] w-full items-center rounded-sm px-[7px] text-left text-sm hover:bg-accent"
+              className="flex h-[26px] w-full items-center rounded-sm px-1.5 text-left text-sm hover:bg-accent"
               onClick={() => onCommand?.("exclude", field, bar.key)}
             >
               Exclude <span className="ml-1 font-mono text-foreground">-{token}</span>

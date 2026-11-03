@@ -12,11 +12,11 @@ import type { RemindId } from "../../shared/monitor";
  * and calls rows under it.
  */
 
-export const box = "box-border flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm focus-within:border-foreground/40";
+export const box = "box-border flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-1 text-sm focus-within:border-foreground/40";
 export const btn2 = "h-[30px] rounded-md border border-white/15 bg-transparent px-3 text-sm text-foreground hover:bg-accent disabled:opacity-50";
 export const btn = "h-[30px] rounded-md bg-[#e4e4e7] px-3.5 text-sm font-medium text-primary-foreground hover:bg-white disabled:opacity-50";
 const add =
-  "inline-flex h-5 shrink-0 items-center gap-1 rounded-md border border-dashed border-[rgba(231,225,211,.6)] bg-transparent px-[7px] text-xs whitespace-nowrap text-plate hover:bg-[rgba(231,225,211,.08)]";
+  "inline-flex h-5 shrink-0 items-center gap-1 rounded-md border border-dashed border-[rgba(231,225,211,.6)] bg-transparent px-1.5 text-xs whitespace-nowrap text-plate hover:bg-[rgba(231,225,211,.08)]";
 const remindIds = ["off", "1h", "4h", "24h"] as const;
 const failAfterIds = [1, 2, 3, 5] as const;
 
@@ -121,7 +121,7 @@ export function ConditionsPanel({
             key={`${row.index}-${row.raw}`}
             data-line={row.index}
             className={cn(
-              "grid grid-cols-[minmax(0,1fr)_auto_22px] items-center gap-2 rounded-md border bg-surface-1 px-2.5 py-[7px] text-sm",
+              "grid grid-cols-[minmax(0,1fr)_auto_22px] items-center gap-2 rounded-md border bg-surface-1 px-2.5 py-1.5 text-sm",
               row.error ? "border-danger/50" : "border-white/[0.08]",
             )}
           >

@@ -89,7 +89,7 @@ export function SpanFlamegraph({
       data-screen-label="Span flamegraph"
       className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-3"
     >
-      <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-lg border border-b-0 border-white/10 bg-card px-2.5">
+      <div className="flex h-[38px] shrink-0 items-center gap-2 rounded-t-lg border border-b-0 border-white/10 bg-card px-2.5">
         <span className="truncate text-sm font-medium">
           {service} · {name}
         </span>
@@ -126,7 +126,7 @@ export function SpanFlamegraph({
       {empty || failed ? (
         <>
           {empty ? (
-            <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-faint">
+            <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-1 text-xs text-faint">
               looked up by span_id · {emptyClock || "—"} UTC
             </div>
           ) : null}
@@ -163,7 +163,7 @@ export function SpanFlamegraph({
       ) : (
         <>
           <div
-            className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-faint"
+            className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-1 text-xs text-faint"
             title={
               multi
                 ? `${result?.total_profiles} profiles overlap this span. We render the most recent one and do not merge samples.`
@@ -269,7 +269,7 @@ export function SpanFlamegraph({
             </div>
           ) : null}
           {pin ? (
-            <div className="flex shrink-0 items-center gap-3.5 rounded-b-lg border border-t-0 border-white/10 bg-background/55 px-2.5 py-2">
+            <div className="flex shrink-0 items-center gap-3 rounded-b-lg border border-t-0 border-white/10 bg-background/55 px-2.5 py-2">
               <div className="min-w-0 shrink">
                 <div className="truncate font-mono text-xs">{pin.name}</div>
                 <div className="mt-0.5 font-mono text-xs text-muted-foreground">
@@ -308,7 +308,7 @@ export function SpanFlamegraph({
           ].map(([k, v, note]) => (
             <div
               key={k}
-              className="grid min-h-7 grid-cols-[84px_minmax(0,1fr)] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-[5px] last:border-0"
+              className="grid min-h-7 grid-cols-[84px_minmax(0,1fr)] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-1 last:border-0"
             >
               <dt className="truncate font-mono text-xs leading-4 text-muted-foreground">{k}</dt>
               <dd className="font-mono text-xs break-words">

@@ -52,7 +52,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full grid-cols-[minmax(0,1fr)] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-xl border border-white/12 bg-overlay p-[18px] shadow-[0_20px_50px_oklch(0_0_0_/_55%)]",
+          "fixed top-1/2 left-1/2 z-50 grid w-full grid-cols-[minmax(0,1fr)] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-xl border border-white/12 bg-overlay p-4 shadow-[0_20px_50px_oklch(0_0_0_/_55%)]",
           dialogWidth[size],
           className,
         )}
@@ -143,7 +143,7 @@ function DialogControl({
   return (
     <div
       className={cn(
-        "flex h-8 items-center gap-2 rounded-md border border-input px-[9px] focus-within:border-foreground/40",
+        "flex h-8 items-center gap-2 rounded-md border border-input px-2 focus-within:border-foreground/40",
         className,
       )}
       {...props}

@@ -14,7 +14,7 @@ export function WidgetExportMenu({ disabled, onExport }: Props) {
       title="Export this panel"
       ariaLabel="Export this panel"
       onPick={onExport}
-      trigger={<Download className="size-[13px]" />}
+      trigger={<Download className="size-3.5" />}
     />
   );
 }

@@ -10,7 +10,7 @@ export function FollowIcon({ size = 13 }: Props) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.9"
+      strokeWidth="2"
       strokeLinecap="round"
       aria-hidden
     >

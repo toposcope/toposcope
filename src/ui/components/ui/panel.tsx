@@ -1,3 +1,4 @@
+import { Ellipsis } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -68,11 +69,7 @@ export const panelMenuRow =
 
 export function PanelDots() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <circle cx="5" cy="12" r="1.6" />
-      <circle cx="12" cy="12" r="1.6" />
-      <circle cx="19" cy="12" r="1.6" />
-    </svg>
+    <Ellipsis className="size-3" aria-hidden />
   );
 }
 
