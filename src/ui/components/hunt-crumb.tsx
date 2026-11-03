@@ -1,11 +1,7 @@
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { SplitButton } from "@/components/ui/split-button";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
 import { hhmmUtc, markGlyph } from "../home-since";
@@ -67,24 +63,13 @@ export function HuntCrumb(props: {
       ) : null}
       <div className="flex-1" />
       <span className="font-mono text-[11.5px] text-muted-foreground">{state}</span>
-      <div className={cn("flex", props.saveDisabled && !props.board && "pointer-events-none opacity-45")}>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="rounded-r-none border-r-0"
-          disabled={props.saveDisabled && !props.board}
-          onClick={props.onSave}
-        >
-          Save
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" className="h-8 w-7 rounded-l-none px-0 text-muted-foreground" aria-label="More saving">
-              <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+      <SplitButton
+        className={cn(props.saveDisabled && !props.board && "pointer-events-none opacity-45")}
+        disabled={props.saveDisabled && !props.board}
+        onClick={props.onSave}
+        menuLabel="More saving"
+        menu={
+          <>
             <DropdownMenuItem disabled={props.saveDisabled} onSelect={props.onSaveAs}>
               Save as…
             </DropdownMenuItem>
@@ -97,15 +82,17 @@ export function HuntCrumb(props: {
                 </DropdownMenuItem>
               </>
             ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          </>
+        }
+      >
+        Save
+      </SplitButton>
       {props.onWatch ? (
-        <Button type="button" size="sm" variant="outline" disabled={props.board} onClick={props.onWatch}>
+        <Button type="button" variant="outline" disabled={props.board} onClick={props.onWatch}>
           Watch this
         </Button>
       ) : null}
-      <Button type="button" size="sm" variant="outline" onClick={props.onShare}>
+      <Button type="button" variant="outline" onClick={props.onShare}>
         Share
       </Button>
     </div>
@@ -143,10 +130,10 @@ export function EditPanelCrumb(props: {
       <span className="max-w-[320px] truncate text-muted-foreground">{props.panelName}</span>
       <div className="flex-1" />
       <span className="text-[12.5px] text-muted-foreground">Board inputs are off while you edit.</span>
-      <Button type="button" size="sm" variant="outline" onClick={props.onCancel}>
+      <Button type="button" variant="outline" onClick={props.onCancel}>
         Cancel
       </Button>
-      <Button type="button" size="sm" disabled={props.updateDisabled} onClick={props.onUpdate}>
+      <Button type="button" disabled={props.updateDisabled} onClick={props.onUpdate}>
         Update panel
       </Button>
     </div>

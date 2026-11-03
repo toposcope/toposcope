@@ -143,10 +143,9 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
           <Button
             ref={ref}
             type="button"
-            size="sm"
             variant="outline"
             disabled={disabled}
-            className="h-8 gap-1.5 px-2.5 font-normal data-[state=open]:border-ring data-[state=open]:bg-secondary"
+            className="gap-1.5 px-2.5 font-normal data-[state=open]:border-ring data-[state=open]:bg-secondary"
           >
             <Clock className="size-[13px]" />
             <span className="font-mono text-xs">
@@ -326,8 +325,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
           <div className="mt-2.5 flex items-center gap-1.5">
             <Button
               type="button"
-              size="sm"
-              className="h-7 px-2.5"
+              className="px-2.5"
               disabled={!apply}
               onClick={applyDraft}
             >

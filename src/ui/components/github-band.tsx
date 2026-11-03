@@ -92,11 +92,11 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
         <span className="flex-1" />
         {props.canConnect && !confirm ? (
           g.state === "off" || g.state === "ended" ? (
-            <Button type="button" size="sm" disabled={busy} onClick={() => void call("POST", "/api/github/connect")}>
+            <Button type="button" disabled={busy} onClick={() => void call("POST", "/api/github/connect")}>
               {g.state === "ended" ? "Connect again" : "Connect GitHub"}
             </Button>
           ) : g.state === "connecting" ? (
-            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void call("DELETE", "/api/github/connect")}>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => void call("DELETE", "/api/github/connect")}>
               Cancel
             </Button>
           ) : (
@@ -104,7 +104,7 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
               <a href={g.install_url} target="_blank" rel="noreferrer noopener" className={external}>
                 {noRepos ? "Install on an account ↗" : "Choose repositories ↗"}
               </a>
-              <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setConfirm(true)}>
+              <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirm(true)}>
                 Disconnect
               </Button>
             </>
@@ -125,7 +125,6 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
           </div>
           <Button
             type="button"
-            size="sm"
             variant="outline"
             onClick={() => {
               void navigator.clipboard?.writeText(g.code!.user_code).then(() => toast.success("Code copied"));
@@ -143,10 +142,10 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
         <div className="flex flex-wrap items-center gap-2.5 rounded-[6.4px] border border-[#e7e1d3]/35 bg-[#0d0d0f] px-3.5 py-2.5">
           <span>Disconnect GitHub? Repositories set here stay; Set stops listing GitHub's.</span>
           <span className="flex-1" />
-          <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setConfirm(false)}>
+          <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => setConfirm(false)}>
             Cancel
           </Button>
-          <Button type="button" size="sm" disabled={busy} onClick={() => void call("DELETE", "/api/github")}>
+          <Button type="button" disabled={busy} onClick={() => void call("DELETE", "/api/github")}>
             Disconnect
           </Button>
         </div>

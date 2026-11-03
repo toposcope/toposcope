@@ -330,10 +330,10 @@ export function TestCall({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2.5">
-        <Button
+        <Button size="lg"
           type="button"
           variant="outline"
-          className="h-[30px] shrink-0"
+          className="shrink-0"
           disabled={busy || disabled || !draft}
           onClick={() => void send()}
         >

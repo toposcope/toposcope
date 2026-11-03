@@ -71,7 +71,7 @@ export function OutageBand({ state }: { state: OutageState }) {
       <span className="text-muted-foreground">
         {left > 0 ? `retrying in ${left} s` : "retrying…"} · showing the last paint
       </span>
-      <Button type="button" size="sm" variant="outline" className="ml-auto h-6 px-2 text-xs" onClick={retryNow}>
+      <Button size="sm" type="button" variant="outline" className="ml-auto px-2 text-xs" onClick={retryNow}>
         Retry now
       </Button>
     </div>
@@ -220,7 +220,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
             down since {utcClock(state.since)} UTC · {outageSpan(now - state.since)}
           </span>
         </div>
-        <Button type="button" className="h-8 bg-plate font-medium text-[#18181b] hover:bg-plate/90" onClick={retryNow}>
+        <Button type="button" className="bg-plate font-medium text-[#18181b] hover:bg-plate/90" onClick={retryNow}>
           Retry now
         </Button>
       </div>

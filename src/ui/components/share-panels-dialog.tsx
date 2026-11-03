@@ -325,9 +325,9 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
               <button type="button" className="h-8 rounded-[4.4px] border border-input px-3 text-[13px] hover:bg-accent" onClick={() => onOpenChange(false)}>
                 Cancel
               </button>
-              <Button
+              <Button size="lg"
                 type="button"
-                className="h-8 bg-plate text-[#18181b] hover:bg-plate/90"
+                className="bg-plate text-[#18181b] hover:bg-plate/90"
                 disabled={reads.length === 0}
                 onClick={() => {
                   if (into) {
@@ -372,7 +372,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
               <button type="button" className="h-8 rounded-[4.4px] border border-input px-3 text-[13px] hover:bg-accent" onClick={() => setStep("scope")}>
                 Back
               </button>
-              <Button type="button" className="h-8 bg-plate text-[#18181b] hover:bg-plate/90" disabled={!name.trim()} onClick={() => void createNew()}>
+              <Button size="lg" type="button" className="bg-plate text-[#18181b] hover:bg-plate/90" disabled={!name.trim()} onClick={() => void createNew()}>
                 Create and get the code
               </Button>
             </DialogFooter>

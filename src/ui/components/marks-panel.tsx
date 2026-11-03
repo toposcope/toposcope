@@ -110,7 +110,7 @@ export function MarksPanel(props: {
             </button>
           );
         })}
-        <Button type="button" size="icon" variant="ghost" aria-label="Close the marks panel" title="Close · Esc" onClick={props.onClose}>
+        <Button size="icon" type="button" variant="ghost" aria-label="Close the marks panel" title="Close · Esc" onClick={props.onClose}>
           <X />
         </Button>
       </div>
@@ -144,16 +144,16 @@ export function MarksPanel(props: {
                   {attrLine(m) ? <span className="font-mono text-[11.5px] text-muted-foreground">{attrLine(m)}</span> : null}
                   {m.kind === "deploy" ? <CodeRow markId={m.id} /> : null}
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" size="sm" onClick={() => props.onCompare(m)}>
+                    <Button type="button" onClick={() => props.onCompare(m)}>
                       Compare around it
                     </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => props.onFingerprints(m)}>
+                    <Button type="button" variant="outline" onClick={() => props.onFingerprints(m)}>
                       Fingerprints since it
                     </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => props.onFocusLogs(m)}>
+                    <Button type="button" variant="outline" onClick={() => props.onFocusLogs(m)}>
                       Focus in logs
                     </Button>
-                    <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => props.onHide(m)}>
+                    <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => props.onHide(m)}>
                       Hide for this hunt
                     </Button>
                   </div>
@@ -192,7 +192,7 @@ export function MarksPanel(props: {
             placeholder="what you did, in one line"
             className="h-8 min-w-0 flex-1 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none"
           />
-          <Button type="submit" size="sm" variant="outline" disabled={!note.trim()}>
+          <Button type="submit" variant="outline" disabled={!note.trim()}>
             ○ Add
           </Button>
         </div>

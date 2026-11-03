@@ -256,11 +256,11 @@ export function AccessView(props: {
           </span>
           <div className="flex-1" />
           {isOwner && props.filter === "people" ? (
-            <Button type="button" size="sm" onClick={() => setInviting(true)}>
+            <Button type="button" onClick={() => setInviting(true)}>
               Invite someone
             </Button>
           ) : isOwner ? (
-            <Button type="button" size="sm" onClick={() => setDoor("any")}>
+            <Button type="button" onClick={() => setDoor("any")}>
               Let someone in
             </Button>
           ) : null}
@@ -293,7 +293,7 @@ export function AccessView(props: {
                   <div className="flex-1" />
                   {g.filter === "links" && isOwner ? <LinkKeyButtons onMake={() => setDoor("link")} onPaste={() => setPaste(true)} /> : null}
                   {g.filter === "tokens" && props.me ? (
-                    <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={() => setMaking(true)}>
+                    <Button type="button" variant="outline" className="text-[12px]" onClick={() => setMaking(true)}>
                       Make a token
                     </Button>
                   ) : null}
@@ -370,10 +370,10 @@ export function AccessView(props: {
 export function LinkKeyButtons(props: { onMake: () => void; onPaste: () => void }) {
   return (
     <>
-      <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={props.onMake}>
+      <Button type="button" variant="outline" className="text-[12px]" onClick={props.onMake}>
         Make a link key
       </Button>
-      <Button type="button" size="sm" variant="outline" className="h-[26px] text-[12px]" onClick={props.onPaste}>
+      <Button type="button" variant="outline" className="text-[12px]" onClick={props.onPaste}>
         Paste a link key
       </Button>
     </>
@@ -454,7 +454,7 @@ export function LetSomeoneIn(props: {
         <h2 className="m-0 text-[17px] font-semibold">Let someone in</h2>
         <span className="text-[12px] text-muted-foreground">A token, an agent, a link or a share. Each says what it lets through before you make it.</span>
         <div className="flex-1" />
-        <Button type="button" size="sm" variant="ghost" onClick={props.onClose}>
+        <Button type="button" variant="ghost" onClick={props.onClose}>
           Close
         </Button>
       </div>
@@ -489,7 +489,7 @@ export function LetSomeoneIn(props: {
               <span className="text-[12px] text-muted-foreground">Shown once · copy it now and send with Authorization: Bearer</span>
               <div className="flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-[7px] border border-dashed border-zinc-600 px-2.5 py-2 font-mono text-[12.5px]">{secret}</code>
-                <Button type="button" size="sm" variant="outline" onClick={() => void navigator.clipboard.writeText(secret)}>
+                <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(secret)}>
                   Copy
                 </Button>
               </div>

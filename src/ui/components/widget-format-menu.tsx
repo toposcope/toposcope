@@ -33,11 +33,10 @@ export function WidgetFormatMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
+        <Button size="icon-sm"
           type="button"
           variant="ghost"
-          size="icon"
-          className="size-[22px] text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground"
           disabled={disabled}
           title={title}
           aria-label={ariaLabel}

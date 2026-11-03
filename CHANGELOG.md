@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+The design system's tokens and control sizes (sheet 45, #437). `styles.css` gains seven type steps (`text-2xs` 10.5 · `xs` 11.5 · `sm` 12.5 · `base` 14 · `lg` 17 · `xl` 22 · `display` 34, with no paired line-height), five surfaces (`ground`, `surface-1`, `surface-2`, `overlay`, `control`), one set of level colours, the states `danger`, `warn`, `ok` and `info` with `-fg` and `-soft`, `faint` text, `rounded-xl` and three motion durations that reduced motion sets to 0; each has a light value for embeds. Buttons come in four heights, `xs` 18 · `sm` 22 · `md` 26 · `lg` 30, with `icon` 26 and `icon-sm` 22: the default is 26px, down from 32, and no button sets its own height. Inputs and chips take the same sizes, and the query bar is 30px. Save ▾ on a hunt and a board is one split button, the chevron as tall as Save. The few classes already named `text-xs`, `text-sm` and `text-lg` take the new steps.
+
 ## 0.14.2
 
 A board can have section headings and note panels (sheet 44). **Add section** puts a full-width heading at the bottom; the panels under it, down to the next heading, are its section: drag the heading and they move with it, fold it and they are put away (the panels below move up), unfold it and they come back where they were. Rename and Remove heading are on its ⋯ menu; removing a heading keeps its panels. **Add note** puts a note panel at the bottom: a name and up to 1,000 characters of plain text, with web links live, for who to page or a runbook. Headings and notes read no rows, so they have no query or window, and they count toward the board's 26 panels. In the board's JSON they are `view: "section"` (with `folded`) and `view: "note"` (with `text`).

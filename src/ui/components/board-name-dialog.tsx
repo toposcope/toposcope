@@ -70,7 +70,7 @@ export function BoardNameDialog({
             </DialogControl>
           </DialogField>
           <DialogFooter>
-            <Button type="submit" disabled={saving || !name.trim()} className="h-8">
+            <Button size="lg" type="submit" disabled={saving || !name.trim()}>
               {action}
             </Button>
             <span className="flex-1" />

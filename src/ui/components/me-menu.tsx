@@ -200,12 +200,12 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           )}
           <div className="flex flex-wrap items-center gap-3.5">
             {browsers.length > 1 ? (
-              <Button type="button" variant="outline" size="sm" onClick={() => (armed === "all" ? void forget(null) : setArmed("all"))}>
+              <Button type="button" variant="outline" onClick={() => (armed === "all" ? void forget(null) : setArmed("all"))}>
                 {armed === "all" ? `Sure? forget all ${browsers.length}` : `Forget all ${browsers.length}`}
               </Button>
             ) : null}
             <span className="text-[12px] text-muted-foreground">Resetting two-step or changing your password forgets them all.</span>
-            <Button type="button" size="sm" className="ml-auto" onClick={() => setBrowsers(null)}>
+            <Button type="button" className="ml-auto" onClick={() => setBrowsers(null)}>
               Done
             </Button>
           </div>

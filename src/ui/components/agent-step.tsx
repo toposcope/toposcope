@@ -134,7 +134,7 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
           {props.me ? ` · made by ${props.me} just now` : " · made just now"}
         </span>
         <div className="flex-1" />
-        <Button type="button" size="sm" variant="ghost" onClick={props.onDone}>
+        <Button type="button" variant="ghost" onClick={props.onDone}>
           Close
         </Button>
       </div>
@@ -169,9 +169,8 @@ export function AgentMade(props: { made: MadeAgent; me: string | null; origin: s
           <div className="flex-1" />
           <Button
             type="button"
-            size="sm"
             variant="outline"
-            className="h-7 px-2.5 text-[12px]"
+            className="px-2.5 text-[12px]"
             onClick={() => void navigator.clipboard.writeText(mcpSetup(tab, input)).then(() => toast.success("Copied"))}
           >
             Copy

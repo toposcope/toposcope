@@ -201,9 +201,9 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
             <DialogField label="Secret · keep it on your backend">
               <DialogControl className="border-plate/50 pr-1">
                 <code className="min-w-0 flex-1 truncate font-mono text-[13px]">{made.secret}</code>
-                <Button
+                <Button size="sm"
                   type="button"
-                  className="h-6 px-2.5 text-[12px]"
+                  className="px-2.5 text-[12px]"
                   onClick={() => void navigator.clipboard.writeText(made.secret).then(() => toast.success("Secret copied"))}
                 >
                   Copy
@@ -291,7 +291,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
               <button type="button" className="h-8 rounded-[4.4px] border border-input px-3 text-[13px] hover:bg-accent" onClick={() => setMode("list")}>
                 Cancel
               </button>
-              <Button type="submit" className="h-8 bg-plate text-[#18181b] hover:bg-plate/90" disabled={!draft.name.trim()}>
+              <Button size="lg" type="submit" className="bg-plate text-[#18181b] hover:bg-plate/90" disabled={!draft.name.trim()}>
                 {mode === "new" ? "Create share" : "Save"}
               </Button>
             </DialogFooter>
@@ -399,9 +399,9 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
           })}
         </div>
         <DialogFooter className="justify-end">
-          <Button
+          <Button size="lg"
             type="button"
-            className="h-8 bg-plate text-[#18181b] hover:bg-plate/90"
+            className="bg-plate text-[#18181b] hover:bg-plate/90"
             onClick={() => {
               setEditing(null);
               setDraft(blankDraft());
