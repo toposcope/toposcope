@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HbarWidget } from "@/components/hbar-widget";
@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 import { copyWidgetSeries, downloadWidgetSeries, hbarExport, histogramExport, statExport, widgetExportFormats } from "@/export-series";
 import { downloadExport, exportEvents } from "@/export-events";
 import { parseRangeMs } from "../../query/relative";
-import { widgetGridCols, widgetGapPx, widgetRowPx, hbarRows } from "../../shared/widgets";
+import { widgetGridCols, widgetGapPx, widgetRowPx, hbarRows, maxWidgetH, widgetMinSize, type WidgetDef } from "../../shared/widgets";
+import { gravity, gridEdges } from "../../shared/grid-gravity";
+import { GridHandles, GridSizeChip, useGridGestures, useGridSlide } from "../grid-gestures";
 import {
   BOARD_MAX,
   BOARD_PANEL_MAX,
@@ -134,7 +136,30 @@ export function BoardView(props: Props) {
     };
   }, [live, keys]);
 
-  const rows = Math.max(1, ...board.panels.map((panel) => panel.widget.y + panel.widget.h));
+  // Sheet 44, E: panels float up so no hole is left; drag a head to move, an edge to resize.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const settled = gravity(
+    board.panels.map((panel) => ({ id: panel.id, kind: panel.widget.kind, x: panel.widget.x, y: panel.widget.y, w: panel.widget.w, h: panel.widget.h })),
+  );
+  const grid = useGridGestures({
+    gridRef,
+    cells: settled,
+    rowPx: widgetRowPx,
+    gapPx: widgetGapPx,
+    limits: { min: (cell: { kind: WidgetDef["kind"] }) => widgetMinSize(cell), maxH: maxWidgetH },
+    onCommit: (next) =>
+      props.onBoard({
+        ...board,
+        panels: board.panels.map((panel) => {
+          const cell = next.find((c) => c.id === panel.id);
+          return cell ? { ...panel, widget: { ...panel.widget, x: cell.x, y: cell.y, w: cell.w, h: cell.h } } : panel;
+        }),
+      }),
+    disabled: props.readOnly,
+  });
+  const cellOf = new Map(grid.cells.map((cell) => [cell.id, cell]));
+  useGridSlide(gridRef, grid.cells.map((c) => `${c.id}:${c.x},${c.y},${c.w},${c.h}`).join(" "), grid.moving);
+  const rows = Math.max(1, ...grid.cells.map((cell) => cell.y + cell.h)) + (grid.dragging ? 2 : 0);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <BoardInputsRow
@@ -150,20 +175,37 @@ export function BoardView(props: Props) {
           <div className="flex h-40 items-center justify-center text-[13px] text-muted-foreground">No panels</div>
         ) : (
           <div
-            className="grid"
+            ref={gridRef}
+            className="relative grid"
             style={{
               gridTemplateColumns: `repeat(${widgetGridCols}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${rows}, ${widgetRowPx}px)`,
               gap: `${widgetGapPx}px`,
             }}
           >
-            {plan.map((item) => (
+            {grid.ghost ? (
+              <div
+                className="z-0 rounded-lg border border-dashed border-ring bg-ring/10"
+                style={{ gridColumn: `${grid.ghost.x + 1} / span ${grid.ghost.w}`, gridRow: `${grid.ghost.y + 1} / span ${grid.ghost.h}` }}
+              />
+            ) : null}
+            {plan.map((item) => {
+              const moving = grid.moving === item.panel.id;
+              const sizing = grid.sizing === item.panel.id;
+              // A moved panel stays drawn at its old cell, lifted under the pointer; the dashed cell is where it lands.
+              const at = (moving ? grid.movingFrom : cellOf.get(item.panel.id)) ?? item.panel.widget;
+              return (
               <div
                 key={item.panel.id}
-                className="min-h-0 min-w-0"
+                data-grid-cell={item.panel.id}
+                className="group/cell relative min-h-0 min-w-0"
                 style={{
-                  gridColumn: `${item.panel.widget.x + 1} / span ${item.panel.widget.w}`,
-                  gridRow: `${item.panel.widget.y + 1} / span ${item.panel.widget.h}`,
+                  gridColumn: `${at.x + 1} / span ${at.w}`,
+                  gridRow: `${at.y + 1} / span ${at.h}`,
+                  zIndex: moving || sizing ? 30 : 1,
+                  transform: moving && grid.lift ? `translate(${Math.round(grid.lift.dx)}px, ${Math.round(grid.lift.dy)}px)` : undefined,
+                  pointerEvents: moving ? "none" : undefined,
+                  opacity: moving ? 0.96 : undefined,
                 }}
               >
                 <BoardPanelCard
@@ -187,9 +229,20 @@ export function BoardView(props: Props) {
                   }
                   onDuplicate={() => props.onDuplicate(item.panel)}
                   onRemove={() => props.onRemove(item.panel)}
+                  onMovePointerDown={props.readOnly ? undefined : (e) => grid.beginMove(e, item.panel.id)}
+                  lifted={moving}
                 />
+                {props.readOnly || (grid.dragging && !sizing) ? null : (
+                  <GridHandles
+                    edges={gridEdges(false)}
+                    active={sizing ? grid.sizingEdge : null}
+                    onPointerDown={(e, edge) => grid.beginResize(e, item.panel.id, edge)}
+                  />
+                )}
+                {sizing ? <GridSizeChip w={at.w} h={at.h} /> : null}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -384,6 +437,9 @@ type CardProps = {
   onFixed: (fixed: string | null) => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  /** Starts a move from the panel's head (sheet 44, E); absent where the board is read-only. */
+  onMovePointerDown?: (e: PointerEvent) => void;
+  lifted?: boolean;
 };
 
 function msUnit(agg: string | null): string | null {
@@ -409,7 +465,12 @@ function BoardPanelCard(props: CardProps) {
   const [armed, setArmed] = useState(false);
   const head = panelHead(panel, data, props.live);
   return (
-    <div className="group/panel flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-card">
+    <div
+      className={cn(
+        "group/panel flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card",
+        props.lifted ? "border-plate/55 shadow-[0_14px_36px_rgb(0_0_0/0.55)]" : "border-white/10",
+      )}
+    >
       {armed ? (
         // Remove confirms in the panel's head, as a hunt panel's does.
         <div className="flex shrink-0 items-center gap-2 bg-destructive/14 py-2 pr-2 pl-3">
@@ -434,7 +495,10 @@ function BoardPanelCard(props: CardProps) {
           </button>
         </div>
       ) : (
-      <div className="flex shrink-0 items-center gap-2 pt-2.5 pr-2 pl-3">
+      <div
+        className={cn("flex shrink-0 touch-none items-center gap-2 pt-2.5 pr-2 pl-3", props.onMovePointerDown && "cursor-grab active:cursor-grabbing")}
+        onPointerDown={props.onMovePointerDown}
+      >
         <span className="min-w-0 shrink truncate text-[13.5px] font-semibold">{panel.name}</span>
         <span className="min-w-0 shrink truncate font-mono text-[11.5px] text-muted-foreground">
           {panelWhat(panel.view, widget)}
