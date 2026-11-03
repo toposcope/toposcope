@@ -4204,7 +4204,6 @@ export function App() {
                 />
                 <Button
                   type="button"
-                  size="sm"
                   variant={live ? "secondary" : "outline"}
                   aria-pressed={live}
                   onClick={() => onLiveChange(!live)}
@@ -4265,7 +4264,6 @@ export function App() {
             <>
               <Button
                 type="button"
-                size="sm"
                 variant={accessLit(view) ? "secondary" : "ghost"}
                 aria-current={accessLit(view) ? "page" : undefined}
                 onClick={() => setView("access")}
@@ -4274,7 +4272,6 @@ export function App() {
               </Button>
               <Button
                 type="button"
-                size="sm"
                 variant={settingsLit(view) ? "secondary" : "ghost"}
                 aria-current={settingsLit(view) ? "page" : undefined}
                 onClick={() => setView("settings")}
@@ -4722,11 +4719,10 @@ export function App() {
                       narrow the window or add a service: filter
                     </span>
                   ) : null}
-                  <Button
+                  <Button size="sm"
                     type="button"
-                    size="sm"
                     variant="ghost"
-                    className="h-6 shrink-0 rounded-sm px-2.5 text-[11.5px]"
+                    className="shrink-0 rounded-sm px-2.5 text-[11.5px]"
                     onClick={cancelSearch}
                   >
                     Stop
@@ -4986,7 +4982,6 @@ export function App() {
                       {!emptyIngest && q.trim() !== "" ? (
                         <Button
                           type="button"
-                          size="sm"
                           variant="outline"
                           className="mt-0.5"
                           onClick={() => applyQuery("")}

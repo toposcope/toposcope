@@ -185,11 +185,10 @@ export function FieldsView({
                       {fieldsSlowAdvice(rangeLabel, keys.length)}
                     </span>
                   ) : null}
-                  <Button
+                  <Button size="xs"
                     type="button"
-                    size="sm"
                     variant="ghost"
-                    className="h-5 shrink-0 rounded-sm px-2 text-[11.5px]"
+                    className="shrink-0 rounded-sm px-2 text-[11.5px]"
                     onClick={onStop}
                   >
                     Stop
@@ -494,9 +493,8 @@ function FieldRow({
             ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
+                <Button size="sm"
                   type="button"
-                  size="sm"
                   variant="ghost"
                   disabled={!canAddLink || metricLabels.length === 0}
                   title={
@@ -504,7 +502,7 @@ function FieldRow({
                       ? `${LINK_CAP} links is the cap — unlink one to add another`
                       : "Link this field to a metric label"
                   }
-                  className="h-[22px] px-1.5 text-[11.5px] text-muted-foreground"
+                  className="px-1.5 text-[11.5px] text-muted-foreground"
                 >
                   link…
                 </Button>

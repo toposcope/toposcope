@@ -578,10 +578,10 @@ export function AlertRuleDialog({
               <span className="self-center text-[12px] text-muted-foreground">{serviceMissing}</span>
             )}
             {editing ? (
-              <Button
+              <Button size="lg"
                 type="button"
                 variant="ghost"
-                className="h-[30px] text-destructive"
+                className="text-destructive"
                 disabled={busy}
                 onClick={() => void remove()}
               >
@@ -592,7 +592,7 @@ export function AlertRuleDialog({
               Cancel
             </DialogClose>
             <span title={serviceOk(service) ? undefined : serviceMissing}>
-              <Button type="submit" className="h-[30px]" disabled={busy || saved.length === 0 || blocked}>
+              <Button size="lg" type="submit" disabled={busy || saved.length === 0 || blocked}>
                 {editing ? "Save" : "Create"}
               </Button>
             </span>

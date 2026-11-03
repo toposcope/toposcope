@@ -132,7 +132,7 @@ export function FacetChips(props: Props) {
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button type="button" size="sm" variant="ghost" className="h-[26px] border border-dashed border-white/15 px-[9px] text-[12px] text-muted-foreground" disabled={props.attrPins.length >= maxAttrFacets}>
+          <Button type="button" variant="ghost" className="border border-dashed border-white/15 px-[9px] text-[12px] text-muted-foreground" disabled={props.attrPins.length >= maxAttrFacets}>
             <Plus className="size-3" />
             facet
           </Button>

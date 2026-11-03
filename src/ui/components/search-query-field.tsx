@@ -290,7 +290,7 @@ export function SearchQueryField({
     <div
       ref={wrapRef}
       className={cn(
-        "relative flex h-8 min-w-[200px] flex-1 items-center gap-1.5 rounded-md border bg-transparent py-0 pr-1.5 pl-2.5",
+        "relative flex h-7.5 min-w-[200px] flex-1 items-center gap-1.5 rounded-md border bg-transparent py-0 pr-1.5 pl-2.5",
         qErr
           ? "border-red-500"
           : focus

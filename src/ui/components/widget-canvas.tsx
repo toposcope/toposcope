@@ -623,9 +623,8 @@ export function WidgetCanvas({
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              size="sm"
               variant="outline"
-              className="h-[26px] gap-1.5 px-2.5 text-[11.5px]"
+              className="gap-1.5 px-2.5 text-[11.5px]"
               disabled={atCap}
               title={atCap ? capTitle : `Add a panel · ${widgets.length} of ${maxWidgets} used`}
             >
@@ -655,9 +654,8 @@ export function WidgetCanvas({
         {/* 24g: share any of these panels at once. */}
         <Button
           type="button"
-          size="sm"
           variant="outline"
-          className="h-[26px] border-plate/50 bg-plate/10 px-2.5 text-[11.5px]"
+          className="border-plate/50 bg-plate/10 px-2.5 text-[11.5px]"
           onClick={() => setSharing(widgets.filter((w) => w.kind !== "timeseries" || w.metric || w.id !== "a").map((w) => w.id))}
         >
           Share panels…

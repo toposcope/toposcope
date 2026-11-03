@@ -284,9 +284,8 @@ function Footer({
       {showLoadMore && onLoadMore ? (
         <Button
           type="button"
-          size="sm"
           variant="outline"
-          className="h-[26px] px-2.5 text-xs"
+          className="px-2.5 text-xs"
           onClick={onLoadMore}
         >
           Load more
@@ -297,9 +296,8 @@ function Footer({
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            size="sm"
             variant="outline"
-            className="h-[26px] px-2.5 text-xs"
+            className="px-2.5 text-xs"
             disabled={events.length === 0}
           >
             Export

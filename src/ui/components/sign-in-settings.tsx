@@ -191,7 +191,6 @@ export function SignInSettings(props: { onSettings: () => void }) {
             <div className="flex gap-2">
               <Button
                 type="button"
-                size="sm"
                 disabled={busy || !issuer.trim() || !clientId.trim() || (!secret.trim() && !body?.oidc?.secret_set_at)}
                 onClick={() =>
                   void put(
@@ -203,7 +202,7 @@ export function SignInSettings(props: { onSettings: () => void }) {
                 {body?.oidc ? "Save the provider" : "Turn on sign-in with a provider"}
               </Button>
               {body?.oidc ? (
-                <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" disabled={busy} onClick={() => void put({ oidc: null }, "Provider removed")}>
+                <Button type="button" variant="ghost" className="text-muted-foreground" disabled={busy} onClick={() => void put({ oidc: null }, "Provider removed")}>
                   Remove
                 </Button>
               ) : null}

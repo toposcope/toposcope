@@ -128,15 +128,15 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
             </option>
           ))}
         </select>
-        <Button type="button" size="sm" variant="outline" onClick={() => setTicketCall((v) => !v)}>
+        <Button type="button" variant="outline" onClick={() => setTicketCall((v) => !v)}>
           New ticket call
         </Button>
         {armed === "revoke" ? (
-          <Button type="button" size="sm" variant="outline" className="text-red-300" onClick={() => void revoke()}>
+          <Button type="button" variant="outline" className="text-red-300" onClick={() => void revoke()}>
             Sure? Revoke
           </Button>
         ) : (
-          <Button type="button" size="sm" variant="outline" className="text-red-300" onClick={() => setArmed("revoke")}>
+          <Button type="button" variant="outline" className="text-red-300" onClick={() => setArmed("revoke")}>
             Revoke
           </Button>
         )}

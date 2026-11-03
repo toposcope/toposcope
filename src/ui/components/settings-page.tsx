@@ -159,7 +159,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
                 </button>
               </span>
             </div>
-            <Button type="button" size="sm" variant="outline" className="self-start" disabled={busy || props.readOnly} onClick={() => void save("Name")}>
+            <Button type="button" variant="outline" className="self-start" disabled={busy || props.readOnly} onClick={() => void save("Name")}>
               Save the name
             </Button>
           </section>
@@ -189,7 +189,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               <span className="text-muted-foreground">kept for ever · newest 10 000 listed in a window</span>
             </div>
             <span className="text-[12px] text-muted-foreground">Shortening applies at the next sweep. Nothing comes back.</span>
-            <Button type="button" size="sm" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Retention")}>
+            <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Retention")}>
               Save retention
             </Button>
           </section>
@@ -232,7 +232,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             <span className="text-[12px] text-muted-foreground">
               {body?.default_webhook_url ? `Monitors without their own URL call ${callHost(body.default_webhook_url)}.` : "Monitors without their own URL call nothing until this is set."} Each monitor's last call is on Watch.
             </span>
-            <Button type="button" size="sm" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Default webhook")}>
+            <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Default webhook")}>
               Save the webhook
             </Button>
           </section>
@@ -308,7 +308,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
                 Who signs in and how: one provider (Google, Entra, Okta, Keycloak, Authentik), passwords with two-step, and what an Owner, an Operator and a Viewer may do.
               </span>
               <div>
-                <Button type="button" size="sm" variant="outline" onClick={props.onOpenSignIn}>
+                <Button type="button" variant="outline" onClick={props.onOpenSignIn}>
                   Open sign-in →
                 </Button>
               </div>
@@ -347,7 +347,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
             </div>
             <span className="text-[12px] text-muted-foreground">A role applies to new rows only.</span>
             <div>
-              <Button type="button" size="sm" variant="outline" onClick={props.onOpenFields}>
+              <Button type="button" variant="outline" onClick={props.onOpenFields}>
                 Open fields →
               </Button>
             </div>
@@ -358,7 +358,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               Where each service's code lives, so a deploy's sha and a stack frame open it on GitHub, GitLab, Gitea / Forgejo or Bitbucket. Links only: nothing is fetched, no token is kept.
             </span>
             <div>
-              <Button type="button" size="sm" variant="outline" onClick={props.onOpenRepositories}>
+              <Button type="button" variant="outline" onClick={props.onOpenRepositories}>
                 Open repositories →
               </Button>
             </div>

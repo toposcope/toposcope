@@ -152,9 +152,8 @@ export function FingerprintCutPanel({
         <span className="min-w-0 flex-1 truncate text-[12.5px] font-semibold">
           {result?.title ?? formatChangeMarkLabel(mark)}
         </span>
-        <Button
+        <Button size="icon"
           type="button"
-          size="icon"
           variant="ghost"
           title="End Fingerprints — the rail returns to event detail"
           onClick={onClose}
