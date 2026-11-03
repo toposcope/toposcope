@@ -116,6 +116,8 @@ import { deriveLiveSeries, extraQueryLiveFetch, extraQueryNeedsSearch, mergeIncr
 import { Busy, BusyBar, busyDim, Empty, LiveAge, Refused } from "@/components/ui/states";
 import { railPanel } from "@/components/ui/side-panel";
 import { formatDuration } from "../shared/duration";
+import { CommandPalette, type PaletteItem } from "@/components/command-palette";
+import { boardPaletteDetail } from "@/command-palette";
 
 const emptyFacets: Facets = { level: [], service: [], host: [] };
 
@@ -469,6 +471,7 @@ export function App() {
   const metricWindowRef = useRef("");
   const pickedMetricsRef = useRef<string[]>([]);
   const [saved, setSaved] = useState<SavedSearch[]>([]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [detailOpen, setDetailOpen] = useState(false);
   // The marks panel (#262) takes the event panel's slot: one at a time.
@@ -4017,6 +4020,57 @@ export function App() {
     }
   };
 
+  // ⌘K / Ctrl K opens the command palette from any page; again closes it (sheet 45).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const onHunt = view === "search" && !isSurr;
+  const paletteItems: PaletteItem[] = [
+    ...saved
+      .filter((item) => !item.board)
+      .map((item): PaletteItem => ({ group: "Saved hunts", label: item.name, detail: item.query || "all logs", run: () => openSavedTab(item) })),
+    ...saved
+      .filter((item) => item.board)
+      .map((item): PaletteItem => ({ group: "Boards", label: item.name, detail: boardPaletteDetail(item.board!), run: () => openSavedTab(item) })),
+    ...(
+      [
+        ["Home", "home"],
+        ["Hunt", "search"],
+        ["Watch", "watch"],
+        ["Access", "access"],
+        ["Settings", "settings"],
+        ["Fields", "fields"],
+      ] as const
+    ).map(([label, to]): PaletteItem => ({ group: "Go to", label, run: () => setView(to) })),
+    {
+      group: "Actions",
+      label: "New hunt tab",
+      run: () => {
+        setView("search");
+        onNewWorkspace();
+      },
+    },
+    ...(onHunt
+      ? ([
+          { group: "Actions", label: live ? "Turn Live off" : "Turn Live on", run: () => onLiveChange(!live) },
+          { group: "Actions", label: "Copy link to this hunt", run: () => void copyLink() },
+          // The same control as the pinned plot's Add to board: its list of boards opens.
+          ...(typeof document !== "undefined" && document.querySelector("[data-add-to-board]")
+            ? [{ group: "Actions", label: "Add to board…", run: () => window.setTimeout(() => document.querySelector<HTMLButtonElement>("[data-add-to-board]")?.click(), 0) } as PaletteItem]
+            : []),
+          ...(boardOn ? [] : [{ group: "Actions", label: "Save hunt", run: onSaveClick } as PaletteItem]),
+        ] as PaletteItem[])
+      : []),
+  ];
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
@@ -5052,6 +5106,15 @@ export function App() {
           setSharesOpen(false);
           setView("search");
           addWorkspace({ ...blankSearchSnap(), kind: "search", q: useQ, range: "24h", live: false }, true);
+        }}
+      />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        items={paletteItems}
+        onHunt={(q) => {
+          setView("search");
+          addWorkspace({ ...blankSearchSnap(), q }, true);
         }}
       />
       <SaveSearchDialog

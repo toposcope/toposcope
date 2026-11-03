@@ -72,6 +72,7 @@ export function AddToBoardButton({
       <PopoverTrigger asChild>
         <button
           type="button"
+          data-add-to-board=""
           className={cn(
             "h-[26px] shrink-0 rounded-md border border-input px-2 text-sm whitespace-nowrap hover:bg-accent",
             className,
