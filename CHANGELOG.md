@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.14.1
 
 A board panel of a metric split by a label draws its lines (#429). A hunt panel such as `host_cpu_seconds_total` split by `host`, added to a board, painted an empty plot and read `— last` in its head: the board drew only the metric's one line, which a split leaves empty. It now draws one line per value as the hunt does, in the same colours and order, named at their ends up to three and in a legend past that; its head no longer names one last value.
 
