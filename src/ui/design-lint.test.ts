@@ -26,6 +26,11 @@ const designRules: Record<string, { use: string; count: (src: string) => number 
     use: "the gap ladder 0.5 1 1.5 2 3 4 6",
     count: (s) => matches(s, /(?<![\w[-])-?(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)-\[[\d.]+px\]/g),
   },
+  "text at a foreground alpha": {
+    use: "text-foreground, text-muted-foreground or text-faint",
+    count: (s) => matches(s, /(?<![\w-])text-(?:foreground|muted-foreground)\/\d+(?![\w-])/g),
+  },
+  "style hex colour": { use: "a token, or levelHex / chart-palette.ts for SVG", count: (s) => matches(s, /style=\{\{[^}]*#[0-9a-fA-F]{3,8}\b/g) },
   "outline-none with no focus": {
     use: "a focus-visible ring, a field border at fg 40% or a row fill (docs/ui/README.md)",
     count: (s) => (s.match(/["`][^"`\n]*(?<![\w:-])outline-none[^"`\n]*["`]/g) ?? []).filter((c) => !/focus(?:-visible|-within)?:|data-\[highlighted\]/.test(c)).length,

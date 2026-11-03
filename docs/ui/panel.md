@@ -11,6 +11,7 @@ One shell for hunt panels and board panels.
 ## Use
 
 - Head `lg` 30 on `surface-2`: title `sm` semibold sans, what it reads `xs` mono muted, value `xs` mono. Body on `surface-1`, 12px padding; a stat is `display` 34.
+- On a board, the panel's coloured query row stays under the head, where it was; the head's `PanelQuery` slot names what the panel reads (`by service`, `count`). The sheet draws the coloured query inside the head.
 - Icon buttons `icon-sm` 22; ⋯ rows `md` 26. Each place keeps its own ⋯ items.
 - Counts print through `CountText` / `formatCompactCount` (`4.25K`).
 
