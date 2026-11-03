@@ -84,7 +84,7 @@ bun run load:100m
 
 **Enhancements** start with an agreed GitHub issue so scope and acceptance criteria are locked before coding (new chrome also needs a maintainer-approved public mock). Then branch from `main`, open a draft PR early, and implement a thin slice that moves ingest, query, UI, and tests together. Do not open a red-only PR before that issue exists. Typos, security fixes, docs, tests, and packaging can skip the issue when the change is obvious.
 
-Add a [CHANGELOG.md](CHANGELOG.md) line under Unreleased (or the version in `package.json`). `bun test` and `bun run typecheck` must pass **at merge**. CI runs `bun run e2e` on every pull request against a fresh ClickHouse and SQLite; run it locally too when the change touches ingest or search. A draft bug PR is allowed to be red until the fix is on the branch.
+Add a [CHANGELOG.md](CHANGELOG.md) line under Unreleased (or the version in `package.json`). `bun test` and `bun run typecheck` must pass **at merge**. CI runs `bun run e2e`, and `e2e:links` / `e2e:tiers` on two and three linked instances, on every pull request against a fresh ClickHouse and SQLite; run it locally too when the change touches ingest or search. A draft bug PR is allowed to be red until the fix is on the branch.
 
 Maintainers squash-merge when CI is green. **Ship** is a `vX.Y.Z` tag: it must match `package.json` and the Compose image pin. That tag builds GHCR and attaches `compose.yml`, `env.example`, `vector.yaml`, and `LICENSE`. Pin the full version in Compose, not `:latest`.
 
