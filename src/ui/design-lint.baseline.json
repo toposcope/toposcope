@@ -35,6 +35,9 @@
     "spacing-[Npx]": 1,
     "outline-none with no focus": 2
   },
+  "src/ui/components/command-palette.tsx": {
+    "outline-none with no focus": 1
+  },
   "src/ui/components/compare-fold.tsx": {
     "raw palette class": 2
   },
