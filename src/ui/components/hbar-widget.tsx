@@ -128,10 +128,10 @@ function Donut({
           </g>
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-mono text-[18px] font-semibold tabular-nums">
+          <span className="font-mono text-lg font-semibold tabular-nums">
             {hovered ? formatSharePct(hovered.n, total) : formatSeriesTotal(total)}
           </span>
-          <span className="max-w-[70%] truncate text-[10.5px] text-muted-foreground">{hovered ? hovered.key : "in the window"}</span>
+          <span className="max-w-[70%] truncate text-2xs text-muted-foreground">{hovered ? hovered.key : "in the window"}</span>
         </div>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-auto">
@@ -140,10 +140,10 @@ function Donut({
             bar,
             i,
             <>
-              <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: slices[i]?.color }} />
-              <span className="min-w-0 flex-1 truncate text-left font-mono text-[11.5px] text-muted-foreground">{bar.key}</span>
-              <span className="shrink-0 font-mono text-[11px] text-muted-foreground/80 tabular-nums">{formatSharePct(bar.n, total)}</span>
-              <span className="min-w-11 shrink-0 text-right font-mono text-[11px] text-muted-foreground tabular-nums">
+              <span className="size-2.5 shrink-0 rounded-sm" style={{ background: slices[i]?.color }} />
+              <span className="min-w-0 flex-1 truncate text-left font-mono text-xs text-muted-foreground">{bar.key}</span>
+              <span className="shrink-0 font-mono text-xs text-muted-foreground/80 tabular-nums">{formatSharePct(bar.n, total)}</span>
+              <span className="min-w-11 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
                 {floors[i] ? "≥" : ""}
                 {formatSeriesTotal(bar.n)}
               </span>
@@ -235,7 +235,7 @@ export function HbarHead({
           }}
         />
       )}
-      <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
+      <span className="shrink-0 font-mono text-xs text-muted-foreground">
         ·
       </span>
       <HeadPicker
@@ -299,7 +299,7 @@ export function HbarWidget({
     const clickable = Boolean(onCommand) && field !== null && hbarRowIsValue(bar.key);
     const token = field ? formatFieldToken(field, bar.key) : bar.key;
     const rowClass = cn(
-      "flex w-full items-center gap-2 rounded-[3.4px] px-1 py-[3px] text-left",
+      "flex w-full items-center gap-2 rounded-sm px-1 py-[3px] text-left",
       clickable ? "cursor-pointer hover:bg-[var(--plot-hover)]" : "cursor-default",
     );
     if (!clickable || !field) {
@@ -320,7 +320,7 @@ export function HbarWidget({
           <PopoverClose asChild>
             <button
               type="button"
-              className="flex h-[26px] w-full items-center rounded-[3.4px] px-[7px] text-left text-[12.5px] hover:bg-accent"
+              className="flex h-[26px] w-full items-center rounded-sm px-[7px] text-left text-sm hover:bg-accent"
               onClick={() => onCommand?.("filter", field, bar.key)}
             >
               Filter <span className="ml-1 font-mono text-foreground">{token}</span>
@@ -329,7 +329,7 @@ export function HbarWidget({
           <PopoverClose asChild>
             <button
               type="button"
-              className="flex h-[26px] w-full items-center rounded-[3.4px] px-[7px] text-left text-[12.5px] hover:bg-accent"
+              className="flex h-[26px] w-full items-center rounded-sm px-[7px] text-left text-sm hover:bg-accent"
               onClick={() => onCommand?.("exclude", field, bar.key)}
             >
               Exclude <span className="ml-1 font-mono text-foreground">-{token}</span>
@@ -347,7 +347,7 @@ export function HbarWidget({
       ) : (
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto px-3 py-2">
         {loading && bars.length === 0 ? (
-          <div className="h-full animate-pulse rounded bg-muted/40" />
+          <div className="h-full animate-pulse rounded-md bg-muted/40" />
         ) : (
           bars.map((bar, i) => {
             const width = Math.max(2, (bar.n / peak) * 100);
@@ -355,7 +355,7 @@ export function HbarWidget({
               bar,
               i,
               <>
-                <span className="max-w-[40%] min-w-14 shrink-0 truncate text-left text-[11.5px] text-muted-foreground">
+                <span className="max-w-[40%] min-w-14 shrink-0 truncate text-left text-xs text-muted-foreground">
                   {bar.key}
                 </span>
                 <div className="h-2 min-w-6 flex-1 rounded-sm bg-[var(--plot-track)]">
@@ -367,12 +367,12 @@ export function HbarWidget({
                     }}
                   />
                 </div>
-                <span className="min-w-11 shrink-0 text-right font-mono text-[11.5px] text-muted-foreground tabular-nums">
+                <span className="min-w-11 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
                   {floors[i] ? "≥" : ""}
                   {formatSeriesTotal(bar.n)}
                 </span>
                 {pct ? (
-                  <span className="w-[34px] shrink-0 text-right font-mono text-[10.5px] text-muted-foreground/55 tabular-nums">
+                  <span className="w-[34px] shrink-0 text-right font-mono text-2xs text-muted-foreground/55 tabular-nums">
                     {formatSharePct(bar.n, shareTotal)}
                   </span>
                 ) : null}
@@ -383,7 +383,7 @@ export function HbarWidget({
       </div>
       )}
       {heldNote ? (
-        <div className="truncate px-3 pb-1 text-[10.5px] text-amber-400">▲ {heldNote}</div>
+        <div className="truncate px-3 pb-1 text-2xs text-warn-fg">▲ {heldNote}</div>
       ) : null}
       {updated ? <div className="px-3 pb-2">{updated}</div> : null}
     </>
@@ -412,13 +412,13 @@ export function hbarPaintedRows(
 /** Bars · Donut in a Top-N panel's head (#239, 25h). */
 export function TopViewPicker({ value, onChange }: { value: "bars" | "donut"; onChange: (next: "bars" | "donut") => void }) {
   return (
-    <div role="group" aria-label="View" className="flex shrink-0 overflow-hidden rounded-[4.4px] border border-input" onPointerDown={(e) => e.stopPropagation()}>
+    <div role="group" aria-label="View" className="flex shrink-0 overflow-hidden rounded-md border border-input" onPointerDown={(e) => e.stopPropagation()}>
       {(["bars", "donut"] as const).map((id, i) => (
         <button
           key={id}
           type="button"
           aria-pressed={value === id}
-          className={`h-[22px] px-2 text-[11.5px] ${i > 0 ? "border-l border-input" : ""} ${
+          className={`h-[22px] px-2 text-xs ${i > 0 ? "border-l border-input" : ""} ${
             value === id ? "bg-plate/15 text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
           onClick={() => onChange(id)}

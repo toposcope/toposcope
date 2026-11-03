@@ -47,16 +47,16 @@ function SourceCard({
       onClick={onClick}
       disabled={disabled}
       title={disabled ? "Save a search first" : undefined}
-      className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-white/12 bg-[#141417] p-3.5 text-left outline-none hover:border-white/40 focus-visible:border-plate disabled:opacity-50 disabled:hover:border-white/12"
+      className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-white/12 bg-surface-2 p-3.5 text-left outline-none hover:border-white/40 focus-visible:border-plate disabled:opacity-50 disabled:hover:border-white/12"
     >
       <span className="flex items-center gap-2.5">
-        <span className="flex size-[26px] items-center justify-center rounded-[6px] bg-[#27272a] text-foreground">
+        <span className="flex size-[26px] items-center justify-center rounded-md bg-control text-foreground">
           {icon}
         </span>
-        <span className="text-[14px] font-medium">{title}</span>
+        <span className="text-base font-medium">{title}</span>
       </span>
-      <span className="text-[13px] leading-[1.45] text-muted-foreground">{about}</span>
-      <span className="mt-auto truncate rounded-[6px] border border-white/10 bg-[#0f0f11] px-2.5 py-1.5 font-mono text-[12px]">
+      <span className="text-sm leading-[1.45] text-muted-foreground">{about}</span>
+      <span className="mt-auto truncate rounded-md border border-white/10 bg-surface-1 px-2.5 py-1.5 font-mono text-sm">
         {example}
       </span>
     </button>
@@ -120,11 +120,11 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
             onClick={() => onPick("tcp")}
           />
           <div className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-dashed border-white/20 p-3.5">
-            <span className="text-[14px] font-medium">From a script or an agent</span>
-            <span className="text-[13px] leading-[1.45] text-muted-foreground">
+            <span className="text-base font-medium">From a script or an agent</span>
+            <span className="text-sm leading-[1.45] text-muted-foreground">
               Declare any of these without this dialog. The same name replaces it.
             </span>
-            <span className="mt-auto flex min-w-0 flex-col rounded-[6px] border border-white/10 bg-[#0f0f11] px-2.5 py-1.5 font-mono text-[12px] leading-[18px]">
+            <span className="mt-auto flex min-w-0 flex-col rounded-md border border-white/10 bg-surface-1 px-2.5 py-1.5 font-mono text-sm leading-[18px]">
               {[
                 "PUT /api/monitors/api-health",
                 `{ "source": "http", "every": "30s",`,
@@ -140,7 +140,7 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
           </div>
         </div>
         <div className="flex items-center gap-3 border-t px-[18px] py-3">
-          <span className="text-[13px] text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             Every result becomes a log row: <span className="font-mono text-foreground">monitor:&lt;name&gt;</span> in
             Search.
           </span>

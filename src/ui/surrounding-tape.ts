@@ -1,4 +1,4 @@
-import { levelHex } from "./histogram-series";
+import { levelHex } from "./level";
 import type { LogEvent } from "./types";
 
 export type TapeTick = {

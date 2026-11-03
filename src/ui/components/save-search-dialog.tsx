@@ -91,20 +91,20 @@ export function SaveSearchDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Checkout 5xx"
                 autoFocus
-                className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </DialogControl>
           </DialogField>
           <DialogField label="Query">
             <DialogControl>
-              <span className="min-w-0 flex-1 truncate font-mono text-[13px]">
+              <span className="min-w-0 flex-1 truncate font-mono text-sm">
                 {query || "all logs"}
               </span>
             </DialogControl>
           </DialogField>
           <DialogField label="Range" help="Live keeps the window ending now.">
             <DialogControl>
-              <span className="min-w-0 flex-1 truncate font-mono text-[13px]">
+              <span className="min-w-0 flex-1 truncate font-mono text-sm">
                 {rangeLabel}
               </span>
             </DialogControl>

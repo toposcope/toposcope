@@ -30,7 +30,7 @@ export function FacetAge({ fetchedAt, paused }: Props) {
       <TooltipTrigger asChild>
         <span
           className={cn(
-            "group inline-flex h-[26px] items-center gap-[5px] font-mono text-[11px] tabular-nums",
+            "group inline-flex h-[26px] items-center gap-[5px] font-mono text-xs tabular-nums",
             view.overdue ? "text-plate" : "text-muted-foreground hover:text-foreground",
           )}
           aria-label={view.tip}
@@ -40,7 +40,7 @@ export function FacetAge({ fetchedAt, paused }: Props) {
           <span className="decoration-dotted underline-offset-[3px] group-hover:underline">{view.label}</span>
         </span>
       </TooltipTrigger>
-      <TooltipContent side="bottom" align="start" className="border bg-popover px-[9px] py-1.5 text-[12px] text-popover-foreground">
+      <TooltipContent side="bottom" align="start" className="border bg-popover px-[9px] py-1.5 text-sm text-popover-foreground">
         {view.tip}
       </TooltipContent>
     </Tooltip>

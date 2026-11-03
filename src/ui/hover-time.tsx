@@ -103,7 +103,7 @@ export function TimeLayer({
           <span className="absolute top-0 left-0">
             <MarkGlyph kind={mark.kind} size={11} />
           </span>
-          <span className="pointer-events-none absolute top-0 left-[14px] z-10 hidden rounded-[3px] border border-white/14 bg-popover px-1.5 font-mono text-[10.5px] leading-[18px] whitespace-nowrap group-hover/mark:block">
+          <span className="pointer-events-none absolute top-0 left-[14px] z-10 hidden rounded-sm border border-white/14 bg-popover px-1.5 font-mono text-2xs leading-[18px] whitespace-nowrap group-hover/mark:block">
             {hoverClock(Date.parse(mark.ts), span)} · {mark.kind} · {mark.title}
           </span>
         </div>
@@ -112,7 +112,7 @@ export function TimeLayer({
         <>
           <span className="pointer-events-none absolute top-0 bottom-0 z-[6] w-px bg-foreground/50" style={{ left: at(hover.ts) }} />
           <span
-            className="pointer-events-none absolute top-0 z-[6] ml-1 rounded-[3px] border border-white/14 bg-popover px-1 font-mono text-[10.5px] leading-[16px] tabular-nums"
+            className="pointer-events-none absolute top-0 z-[6] ml-1 rounded-sm border border-white/14 bg-popover px-1 font-mono text-2xs leading-[16px] tabular-nums"
             style={{ left: at(hover.ts) }}
           >
             {hoverClock(hover.ts, span)}

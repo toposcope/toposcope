@@ -32,7 +32,7 @@ export function HuntCrumb(props: {
 }) {
   const state = props.name ? (props.dirty ? "saved · edited" : "saved") : "not saved";
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2.5 text-[13px]">
+    <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2.5 text-sm">
       <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onHome}>
         Home
       </button>
@@ -41,15 +41,15 @@ export function HuntCrumb(props: {
       </span>
       <span className="max-w-[420px] truncate font-medium text-foreground">{props.name ?? "hunt"}</span>
       {props.badge ? (
-        <span className="rounded-[4px] border border-white/15 px-1.5 font-mono text-[11.5px] leading-[19px] text-muted-foreground">
+        <span className="rounded-md border border-white/15 px-1.5 font-mono text-xs leading-[19px] text-muted-foreground">
           {props.badge}
         </span>
       ) : null}
       {props.mark ? (
-        <span className="ml-1.5 inline-flex h-6 items-center gap-1.5 rounded-[6.4px] border border-plate bg-[#141416] pr-1 pl-[9px] text-[12px] whitespace-nowrap">
+        <span className="ml-1.5 inline-flex h-6 items-center gap-1.5 rounded-lg border border-plate bg-surface-2 pr-1 pl-[9px] text-sm whitespace-nowrap">
           <span style={{ color: markGlyph[props.mark.kind].color }}>{markGlyph[props.mark.kind].glyph}</span>
           <span className="max-w-[280px] truncate">since {props.mark.title}</span>
-          <b className="font-mono text-[11.5px] font-medium text-muted-foreground">{hhmmUtc(props.mark.ts)}</b>
+          <b className="font-mono text-xs font-medium text-muted-foreground">{hhmmUtc(props.mark.ts)}</b>
           <button
             type="button"
             className="flex size-[18px] items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
@@ -62,7 +62,7 @@ export function HuntCrumb(props: {
         </span>
       ) : null}
       <div className="flex-1" />
-      <span className="font-mono text-[11.5px] text-muted-foreground">{state}</span>
+      <span className="font-mono text-xs text-muted-foreground">{state}</span>
       <SplitButton
         className={cn(props.saveDisabled && !props.board && "pointer-events-none opacity-45")}
         disabled={props.saveDisabled && !props.board}
@@ -77,7 +77,7 @@ export function HuntCrumb(props: {
             {props.onDelete ? (
               <>
                 <div className="-mx-1 my-1 h-px bg-border" role="separator" />
-                <DropdownMenuItem className="text-red-300" onSelect={props.onDelete}>
+                <DropdownMenuItem className="text-danger-fg" onSelect={props.onDelete}>
                   {props.board ? "Delete this board" : "Delete this saved hunt"}
                 </DropdownMenuItem>
               </>
@@ -113,7 +113,7 @@ export function EditPanelCrumb(props: {
   onUpdate: () => void;
 }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2.5 text-[13px]">
+    <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2.5 text-sm">
       <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onHome}>
         Home
       </button>
@@ -129,7 +129,7 @@ export function EditPanelCrumb(props: {
       <span className="font-medium text-foreground">Edit panel</span>
       <span className="max-w-[320px] truncate text-muted-foreground">{props.panelName}</span>
       <div className="flex-1" />
-      <span className="text-[12.5px] text-muted-foreground">Board inputs are off while you edit.</span>
+      <span className="text-sm text-muted-foreground">Board inputs are off while you edit.</span>
       <Button type="button" variant="outline" onClick={props.onCancel}>
         Cancel
       </Button>

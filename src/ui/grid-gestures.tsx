@@ -265,7 +265,7 @@ export function GridHandles({
             onPointerDown={(e) => onPointerDown(e, edge)}
           >
             {edge === "se" ? (
-              <span className="absolute inset-[2px] rounded-[2px] border-[1.5px] border-plate/80 bg-card" />
+              <span className="absolute inset-[2px] rounded-sm border-[1.5px] border-plate/80 bg-card" />
             ) : edge === "e" || edge === "w" ? (
               <span className={cn(bar, "inset-y-0.5 left-1 w-1")} />
             ) : (
@@ -281,7 +281,7 @@ export function GridHandles({
 /** `8 × 6` beside a panel while it is being resized (44g). */
 export function GridSizeChip({ w, h }: { w: number; h: number }) {
   return (
-    <span className="pointer-events-none absolute right-2 bottom-2 z-30 rounded-[4px] border border-white/14 bg-popover px-1.5 font-mono text-[11px] leading-[20px] tabular-nums">
+    <span className="pointer-events-none absolute right-2 bottom-2 z-30 rounded-md border border-white/14 bg-popover px-1.5 font-mono text-xs leading-[20px] tabular-nums">
       {w} × {h}
     </span>
   );

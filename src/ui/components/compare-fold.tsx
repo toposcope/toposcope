@@ -466,7 +466,7 @@ export function CompareFold({
       data-compare-fold=""
       title={title}
       className={cn(
-        "mt-1.5 mr-2.5 min-w-0 shrink-0 overflow-hidden rounded-[4.4px] border bg-[#0f0f11]",
+        "mt-1.5 mr-2.5 min-w-0 shrink-0 overflow-hidden rounded-md border bg-surface-1",
         showStack ? "flex flex-col" : "flex h-[30px] items-center gap-[7px] pr-1 pl-2.5",
       )}
       style={{ borderColor: "oklch(0.906 0.014 84 / 28%)", marginLeft: plotLeft }}
@@ -475,34 +475,34 @@ export function CompareFold({
         <>
           <div className="flex h-[30px] min-w-0 items-center gap-[7px] pr-1 pl-2.5">
             <MarkGlyph kind={mark.kind} size={11} />
-            <span className="min-w-[56px] truncate text-[12px] font-semibold whitespace-nowrap">
+            <span className="min-w-[56px] truncate text-sm font-semibold whitespace-nowrap">
               vs {formatChangeMarkLabel(mark)}
             </span>
-            <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
+            <span className="font-mono text-xs text-muted-foreground/45">·</span>
             <span
-              className="min-w-[34px] truncate font-mono text-[10.5px] whitespace-nowrap"
+              className="min-w-[34px] truncate font-mono text-2xs whitespace-nowrap"
               style={{ color: series.overlay ? "#a78bfa" : "oklch(0.985 0 0 / 85%)" }}
             >
               {series.text}
             </span>
-            <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
-            <span className="text-[10.5px] text-muted-foreground whitespace-nowrap">
+            <span className="font-mono text-xs text-muted-foreground/45">·</span>
+            <span className="text-2xs text-muted-foreground whitespace-nowrap">
               split
             </span>
-            <span className="font-mono text-[11.5px] whitespace-nowrap tabular-nums">
+            <span className="font-mono text-xs whitespace-nowrap tabular-nums">
               {split}
             </span>
             {note ? (
               <>
-                <span className="shrink-0 text-[10.5px] text-amber-400">▲</span>
-                <span className="min-w-0 truncate text-[10.5px] whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
+                <span className="shrink-0 text-2xs text-warn-fg">▲</span>
+                <span className="min-w-0 truncate text-2xs whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
                   {note}
                 </span>
               </>
             ) : null}
             <span className="min-w-2 flex-1" />
             {sidesTxt ? (
-              <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+              <span className="min-w-0 truncate font-mono text-2xs text-muted-foreground whitespace-nowrap">
                 {sidesTxt}
               </span>
             ) : null}
@@ -526,38 +526,38 @@ export function CompareFold({
       ) : (
         <>
           <MarkGlyph kind={mark.kind} size={11} />
-          <span className="min-w-[56px] truncate text-[12px] font-semibold whitespace-nowrap">
+          <span className="min-w-[56px] truncate text-sm font-semibold whitespace-nowrap">
             vs {formatChangeMarkLabel(mark)}
           </span>
-          <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
+          <span className="font-mono text-xs text-muted-foreground/45">·</span>
           <span
-            className="min-w-[34px] truncate font-mono text-[10.5px] whitespace-nowrap"
+            className="min-w-[34px] truncate font-mono text-2xs whitespace-nowrap"
             style={{ color: series.overlay ? "#a78bfa" : "oklch(0.985 0 0 / 85%)" }}
           >
             {series.text}
           </span>
-          <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
-          <span className="text-[10.5px] text-muted-foreground whitespace-nowrap">
+          <span className="font-mono text-xs text-muted-foreground/45">·</span>
+          <span className="text-2xs text-muted-foreground whitespace-nowrap">
             before
           </span>
-          <span className="font-mono text-[11.5px] whitespace-nowrap tabular-nums">
+          <span className="font-mono text-xs whitespace-nowrap tabular-nums">
             {beforeTxt}
           </span>
-          <span className="text-[10.5px] text-muted-foreground whitespace-nowrap">
+          <span className="text-2xs text-muted-foreground whitespace-nowrap">
             →
           </span>
-          <span className="text-[10.5px] text-muted-foreground whitespace-nowrap">
+          <span className="text-2xs text-muted-foreground whitespace-nowrap">
             {windows.banded ? "during" : "after"}
           </span>
-          <span className="font-mono text-[11.5px] whitespace-nowrap tabular-nums">
+          <span className="font-mono text-xs whitespace-nowrap tabular-nums">
             {afterTxt}
           </span>
           {showDelta && delta != null ? (
             <>
-              <span className="font-mono text-[11px] text-muted-foreground/45">
+              <span className="font-mono text-xs text-muted-foreground/45">
                 ·
               </span>
-              <span className="font-mono text-[11.5px] whitespace-nowrap tabular-nums">
+              <span className="font-mono text-xs whitespace-nowrap tabular-nums">
                 {formatAbs(kind, delta, formatCount)}
               </span>
             </>
@@ -567,15 +567,15 @@ export function CompareFold({
           ) : null}
           {note ? (
             <>
-              <span className="shrink-0 text-[10.5px] text-amber-400">▲</span>
-              <span className="min-w-0 truncate text-[10.5px] whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
+              <span className="shrink-0 text-2xs text-warn-fg">▲</span>
+              <span className="min-w-0 truncate text-2xs whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
                 {note}
               </span>
             </>
           ) : null}
           <span className="min-w-2 flex-1" />
           {sidesTxt ? (
-            <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground whitespace-nowrap">
+            <span className="min-w-0 truncate font-mono text-2xs text-muted-foreground whitespace-nowrap">
               {sidesTxt}
             </span>
           ) : null}
@@ -595,7 +595,7 @@ export function CompareFold({
 function MixedReleases({ m, onNames, plotLeft }: { m: Extract<CoverageMismatch, { kind: "version" }>; onNames?: () => void; plotLeft: number }) {
   return (
     <div
-      className="mt-1.5 mr-2.5 flex min-w-0 shrink-0 items-baseline gap-3 rounded-[4.4px] border border-white/10 bg-[#0f0f11] px-2.5 py-1.5 text-[12px]"
+      className="mt-1.5 mr-2.5 flex min-w-0 shrink-0 items-baseline gap-3 rounded-md border border-white/10 bg-surface-1 px-2.5 py-1.5 text-sm"
       style={{ marginLeft: plotLeft }}
     >
       <span className="min-w-0 flex-1 leading-[1.45] text-zinc-300">
@@ -617,7 +617,7 @@ function DismissFold({ onClose }: { onClose: () => void }) {
       type="button"
       title="Dismiss compare — the mark stays selected; the cut, if open, stays"
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-[4.4px] text-muted-foreground",
+        "flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground",
         "hover:bg-accent hover:text-foreground",
       )}
       onClick={onClose}
@@ -630,7 +630,7 @@ function DismissFold({ onClose }: { onClose: () => void }) {
 function PercentChip({ value }: { value: string }) {
   return (
     <span
-      className="inline-flex h-[18px] shrink-0 items-center rounded-[3.4px] border px-1.5 font-mono text-[11px] whitespace-nowrap"
+      className="inline-flex h-[18px] shrink-0 items-center rounded-sm border px-1.5 font-mono text-xs whitespace-nowrap"
       style={{
         borderColor: "oklch(0.906 0.014 84 / 35%)",
         color: "oklch(0.906 0.014 84)",
@@ -681,30 +681,30 @@ function StackRow({
   return (
     <div className="flex h-[30px] min-w-0 items-center gap-[7px] border-t border-white/[0.07] px-2.5">
       <span
-        className="size-2 shrink-0 rounded-[2px]"
+        className="size-2 shrink-0 rounded-sm"
         style={{ background: color }}
       />
-      <span className="w-[112px] shrink-0 truncate font-mono text-[11.5px] whitespace-nowrap">
+      <span className="w-[112px] shrink-0 truncate font-mono text-xs whitespace-nowrap">
         {rowKey}
       </span>
-      <span className="w-[52px] shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap tabular-nums">
+      <span className="w-[52px] shrink-0 text-right font-mono text-xs whitespace-nowrap tabular-nums">
         {loaded ? `${held?.before ? "≥" : ""}${formatSide(kind, before, formatCount)}` : "—"}
       </span>
-      <span className="text-[10.5px] text-muted-foreground whitespace-nowrap">
+      <span className="text-2xs text-muted-foreground whitespace-nowrap">
         →
       </span>
-      <span className="w-[52px] shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap tabular-nums">
+      <span className="w-[52px] shrink-0 text-right font-mono text-xs whitespace-nowrap tabular-nums">
         {loaded ? `${held?.after ? "≥" : ""}${formatSide(kind, after, formatCount)}` : "—"}
       </span>
-      <span className="font-mono text-[11px] text-muted-foreground/45">·</span>
-      <span className="w-[58px] shrink-0 text-right font-mono text-[11.5px] whitespace-nowrap tabular-nums">
+      <span className="font-mono text-xs text-muted-foreground/45">·</span>
+      <span className="w-[58px] shrink-0 text-right font-mono text-xs whitespace-nowrap tabular-nums">
         {showDelta && delta != null ? formatAbs(kind, delta, formatCount) : "—"}
       </span>
       {pct != null ? (
         <PercentChip value={formatCompareFoldPercent(pct, "stack")} />
       ) : (
         <span
-          className="inline-flex h-[18px] min-w-[56px] shrink-0 items-center justify-center rounded-[3.4px] border px-1.5 font-mono text-[11px] whitespace-nowrap text-muted-foreground"
+          className="inline-flex h-[18px] min-w-[56px] shrink-0 items-center justify-center rounded-sm border px-1.5 font-mono text-xs whitespace-nowrap text-muted-foreground"
           style={{ borderColor: "transparent" }}
         >
           —
@@ -712,8 +712,8 @@ function StackRow({
       )}
       {rowNote ? (
         <>
-          <span className="shrink-0 text-[10.5px] text-amber-400">▲</span>
-          <span className="min-w-0 truncate text-[10.5px] whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
+          <span className="shrink-0 text-2xs text-warn-fg">▲</span>
+          <span className="min-w-0 truncate text-2xs whitespace-nowrap text-[oklch(0.906_0.014_84_/_90%)]">
             {rowNote}
           </span>
         </>

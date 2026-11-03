@@ -60,18 +60,18 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
   }
 
   if (missing) {
-    return <main className="p-6 text-[13px] text-muted-foreground">This link is gone. <button type="button" className="text-zinc-300" onClick={props.onBack}>Back to Access</button></main>;
+    return <main className="p-6 text-sm text-muted-foreground">This link is gone. <button type="button" className="text-zinc-300" onClick={props.onBack}>Back to Access</button></main>;
   }
   if (!link) {
-    return <main className="p-6 text-[13px] text-muted-foreground">Loading the link…</main>;
+    return <main className="p-6 text-sm text-muted-foreground">Loading the link…</main>;
   }
   const behind = behindWords(link);
   const lag = behindLagWords(link);
   const further = link.further ?? [];
   const bars = quarterBars(link.pulled, link.holes, nowMs);
   const peak = Math.max(1, ...bars.map((b) => b.n));
-  const card = "flex flex-col gap-2 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5";
-  const kv = "grid grid-cols-[96px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[12.5px]";
+  const card = "flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5";
+  const kv = "grid grid-cols-[96px_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm";
   const lines = link.kinds ?? [];
   const { carries, unticked } = kindsCarried(lines);
   // Where rows leave here, Change scope also unticks kinds (#329); a kind is never added back.
@@ -95,17 +95,17 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-auto">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 px-6 pt-3 text-[13px]">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-6 pt-3 text-sm">
         <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onBack}>
           Access
         </button>
         <span className="text-zinc-600">›</span>
         <span className="font-medium text-foreground">{linkTitle(link)}</span>
-        <span className="ml-1 inline-flex h-[22px] items-center gap-1.5 rounded-[6px] border border-white/10 px-2 text-[11.5px] whitespace-nowrap text-zinc-300">
+        <span className="ml-1 inline-flex h-[22px] items-center gap-1.5 rounded-md border border-white/10 px-2 text-xs whitespace-nowrap text-zinc-300">
           <span className="text-plate">{linkKind(link).glyph}</span>
           {linkKind(link).words}
         </span>
-        <span className="ml-1.5 text-[12px] text-muted-foreground">
+        <span className="ml-1.5 text-sm text-muted-foreground">
           {link.role === "pull" ? `this instance pulls ${link.peer}'s rows` : `${link.peer} pulls our rows`} · since {new Date(link.created_at).toISOString().slice(0, 10)}
         </span>
         <div className="flex-1" />
@@ -118,11 +118,11 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
           </Button>
         ) : null}
         {armed ? (
-          <Button type="button" variant="outline" className="text-red-300" onClick={() => void revoke()}>
+          <Button type="button" variant="outline" className="text-danger-fg" onClick={() => void revoke()}>
             Sure? Revoke
           </Button>
         ) : (
-          <Button type="button" variant="outline" className="text-red-300" onClick={() => setArmed(true)}>
+          <Button type="button" variant="outline" className="text-danger-fg" onClick={() => setArmed(true)}>
             Revoke
           </Button>
         )}
@@ -130,7 +130,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 px-6 pt-4 pb-6 lg:grid-cols-[420px_minmax(0,1fr)]">
         <div className="flex flex-col gap-3.5">
           <section className={card}>
-            <span className="text-[12px] text-muted-foreground">Which way, and what</span>
+            <span className="text-sm text-muted-foreground">Which way, and what</span>
             <div className={kv}>
               <span className="text-muted-foreground">from</span>
               <span className="truncate font-mono">{link.role === "pull" ? `${link.peer} · ${link.peer_url}` : "here"}</span>
@@ -147,7 +147,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
                 >
                   <div className="flex gap-1.5">
                     {link.scope_here ? (
-                      <input aria-label="Scope" value={editing} onChange={(e) => setEditing(e.target.value)} className="h-7 min-w-0 flex-1 rounded-[6px] border border-white/10 bg-[#0d0d0f] px-2 font-mono text-[12px] outline-none" />
+                      <input aria-label="Scope" value={editing} onChange={(e) => setEditing(e.target.value)} className="h-7 min-w-0 flex-1 rounded-md border border-white/10 bg-surface-1 px-2 font-mono text-sm outline-none" />
                     ) : (
                       <span className="min-w-0 flex-1 truncate font-mono">{link.q || "every row"}</span>
                     )}
@@ -158,7 +158,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
                   {kindsHere ? (
                     <>
                       <KindBoxes q={link.scope_here ? editing : link.q} ticked={editKinds} onChange={setEditKinds} legend="What leaves" allowed={carries} />
-                      <span className="text-[11.5px] text-muted-foreground">Unticking keeps the link and its place. A kind is never added to a key already used: to send one too, make a new key.</span>
+                      <span className="text-xs text-muted-foreground">Unticking keeps the link and its place. A kind is never added to a key already used: to send one too, make a new key.</span>
                     </>
                   ) : null}
                 </form>
@@ -184,12 +184,12 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
               <span className="text-muted-foreground">key</span>
               <span className="text-muted-foreground">never shown again · revoke to end it</span>
             </div>
-            {!link.scope_here ? <span className="text-[12px] text-muted-foreground">The other instance holds this link's scope: change it there.</span> : null}
+            {!link.scope_here ? <span className="text-sm text-muted-foreground">The other instance holds this link's scope: change it there.</span> : null}
           </section>
           {link.role === "pull" ? (
             <section className={card}>
-              <span className="text-[12px] text-muted-foreground">Where its rows show</span>
-              <span className="text-[12px] leading-[1.5] text-muted-foreground">
+              <span className="text-sm text-muted-foreground">Where its rows show</span>
+              <span className="text-sm leading-[1.5] text-muted-foreground">
                 On every hunt that matches them, and as a <span className="font-mono text-zinc-300">from {link.peer}</span> chip in the slice. A gap in pulling is drawn as a floor under the bars, so a quiet hour is never mistaken for a lost one.
               </span>
               <Button type="button" variant="outline" className="self-start" onClick={() => props.onOpenHunt(`toposcope:${link.peer}`)}>
@@ -198,69 +198,69 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
             </section>
           ) : null}
           <section className={card}>
-            <span className="text-[12px] text-muted-foreground">Where it stands</span>
-            {link.last_error ? <span className="text-[12px] text-amber-300">last call failed: {link.last_error}</span> : null}
+            <span className="text-sm text-muted-foreground">Where it stands</span>
+            {link.last_error ? <span className="text-sm text-warn-fg">last call failed: {link.last_error}</span> : null}
             {link.holes.map((h) => (
-              <span key={h.from} className="text-[12px] text-amber-300">
+              <span key={h.from} className="text-sm text-warn-fg">
                 a gap from {h.from.slice(0, 16).replace("T", " ")} to {h.to.slice(0, 16).replace("T", " ")} · drawn as a floor
               </span>
             ))}
             {further.length > 0 ? (
               <div aria-label="Further away" className="flex flex-col gap-1 border-t border-white/[0.06] pt-2">
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   {link.role === "pull" ? `Further away, through ${link.peer}` : `Further away, told to ${link.peer}`}
                 </span>
                 {further.map((f) => {
                   const w = furtherWords(f, nowMs);
                   return (
-                    <span key={f.name} className="flex items-baseline gap-2 text-[12px]">
-                      <span className={cn("inline-block size-[7px] shrink-0 rounded-full", w.ok ? "bg-emerald-300" : "bg-amber-400")} aria-hidden="true" />
+                    <span key={f.name} className="flex items-baseline gap-2 text-sm">
+                      <span className={cn("inline-block size-[7px] shrink-0 rounded-full", w.ok ? "bg-ok" : "bg-warn")} aria-hidden="true" />
                       <span className="font-mono text-zinc-300">{f.name}</span>
-                      <span className={w.ok ? "text-muted-foreground" : "text-amber-300"}>{w.text}</span>
+                      <span className={w.ok ? "text-muted-foreground" : "text-warn-fg"}>{w.text}</span>
                     </span>
                   );
                 })}
               </div>
             ) : null}
-            <span className="text-[12px] text-muted-foreground">Made {new Date(link.created_at).toISOString().slice(0, 16).replace("T", " ")} · key pasted then</span>
+            <span className="text-sm text-muted-foreground">Made {new Date(link.created_at).toISOString().slice(0, 16).replace("T", " ")} · key pasted then</span>
           </section>
         </div>
         <div className="flex min-h-0 flex-col gap-3.5">
           <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
             <section className={card}>
-              <span className="text-[12px] text-muted-foreground">Position</span>
-              <span className="font-mono text-[20px] font-semibold">{link.position.toLocaleString("en-US")}</span>
-              <span className="text-[12px] text-muted-foreground">sequence {link.role === "pull" ? "pulled" : "they read to"}</span>
+              <span className="text-sm text-muted-foreground">Position</span>
+              <span className="font-mono text-xl font-semibold">{link.position.toLocaleString("en-US")}</span>
+              <span className="text-sm text-muted-foreground">sequence {link.role === "pull" ? "pulled" : "they read to"}</span>
             </section>
             <section className={card}>
-              <span className="text-[12px] text-muted-foreground">Behind</span>
-              <span className={cn("font-mono text-[20px] font-semibold", !behind.ok && "text-amber-300")}>{behind.text}</span>
-              <span className={cn("text-[12px]", lag ? "text-amber-300" : "text-muted-foreground")}>
+              <span className="text-sm text-muted-foreground">Behind</span>
+              <span className={cn("font-mono text-xl font-semibold", !behind.ok && "text-warn-fg")}>{behind.text}</span>
+              <span className={cn("text-sm", lag ? "text-warn-fg" : "text-muted-foreground")}>
                 {link.arrived_at ? `read to ${link.arrived_at.slice(11, 19)}` : "—"}
                 {lag ? ` · ${lag}` : ""}
               </span>
             </section>
             <section className={card}>
-              <span className="text-[12px] text-muted-foreground">Last {link.role === "pull" ? "pull" : "read"}</span>
-              <span className="font-mono text-[20px] font-semibold">{link.last_contact_at ? new Date(link.last_contact_at).toISOString().slice(11, 19) : "never"}</span>
-              <span className="text-[12px] text-muted-foreground">{link.last_contact_at ? clockAt(link.last_contact_at, nowMs) : ""}</span>
+              <span className="text-sm text-muted-foreground">Last {link.role === "pull" ? "pull" : "read"}</span>
+              <span className="font-mono text-xl font-semibold">{link.last_contact_at ? new Date(link.last_contact_at).toISOString().slice(11, 19) : "never"}</span>
+              <span className="text-sm text-muted-foreground">{link.last_contact_at ? clockAt(link.last_contact_at, nowMs) : ""}</span>
             </section>
             <section className={card}>
-              <span className="text-[12px] text-muted-foreground">Rate</span>
-              <span className="font-mono text-[20px] font-semibold">{link.role === "pull" ? ratePerHour(link.pulled_24h) : "—"}</span>
-              <span className="text-[12px] text-muted-foreground">{link.role === "pull" ? `last 24 h · ${link.pulled_24h.toLocaleString("en-US")} rows` : "counted at the puller"}</span>
+              <span className="text-sm text-muted-foreground">Rate</span>
+              <span className="font-mono text-xl font-semibold">{link.role === "pull" ? ratePerHour(link.pulled_24h) : "—"}</span>
+              <span className="text-sm text-muted-foreground">{link.role === "pull" ? `last 24 h · ${link.pulled_24h.toLocaleString("en-US")} rows` : "counted at the puller"}</span>
             </section>
           </div>
           {lines.length > 0 ? (
-            <section aria-label="By kind" className="shrink-0 overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+            <section aria-label="By kind" className="shrink-0 overflow-hidden rounded-xl border border-white/10 bg-surface-2">
               <div className="flex items-baseline gap-2.5 border-b border-white/[0.06] px-4 py-3">
-                <span className="text-[13.5px] font-medium text-foreground">By kind</span>
-                <span className="text-[12px] text-muted-foreground">what this link carries, each on the one position above</span>
+                <span className="text-base font-medium text-foreground">By kind</span>
+                <span className="text-sm text-muted-foreground">what this link carries, each on the one position above</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] border-collapse text-[12.5px]">
+                <table className="w-full min-w-[620px] border-collapse text-sm">
                   <thead>
-                    <tr className="text-left text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
+                    <tr className="text-left text-xs tracking-[0.04em] text-muted-foreground uppercase">
                       <th className="px-4 py-2 font-normal">Kind</th>
                       <th className="px-2 py-2 font-normal">State</th>
                       <th className="px-2 py-2 font-normal">Note</th>
@@ -278,11 +278,11 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
                           <td className={cn("px-2 py-2.5 whitespace-nowrap", off && "text-muted-foreground")}>
                             <span
                               aria-hidden="true"
-                              className={cn("mr-2 inline-block size-[7px] rounded-full align-[1px]", w.tone === "ok" ? "bg-emerald-300" : w.tone === "warn" ? "bg-amber-400" : "bg-zinc-700")}
+                              className={cn("mr-2 inline-block size-[7px] rounded-full align-[1px]", w.tone === "ok" ? "bg-ok" : w.tone === "warn" ? "bg-warn" : "bg-zinc-700")}
                             />
                             {w.state}
                           </td>
-                          <td className={cn("px-2 py-2.5 text-[12px]", k.state === "a hole" ? "text-amber-400" : "text-muted-foreground")}>{w.note}</td>
+                          <td className={cn("px-2 py-2.5 text-sm", k.state === "a hole" ? "text-warn-fg" : "text-muted-foreground")}>{w.note}</td>
                           <td className={cn("px-2 py-2.5 text-right font-mono", off && "text-muted-foreground")}>{k.ticked ? formatCompactCount(k.rows_day) : "—"}</td>
                           <td className={cn("px-4 py-2.5 text-right font-mono", off && "text-muted-foreground")}>{k.ticked ? bytesDay(k.bytes_day) : "—"}</td>
                         </tr>
@@ -294,15 +294,15 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
             </section>
           ) : null}
           {lines.length > 0 ? (
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               Rows and bytes per day show on both sides, so the side rows leave from ({source}) can untick a kind that costs too much. Unticking keeps the link and its place. A kind is never added to a key already used.
             </span>
           ) : null}
           {link.role === "pull" ? (
             <section className={cn(card, "min-h-[260px] flex-1")}>
               <div className="flex items-baseline justify-between">
-                <span className="text-[12px] text-muted-foreground">Rows pulled · last 24 h · gaps as floors</span>
-                <span className="text-[12px] text-muted-foreground">{link.holes.length ? `${link.holes.length} gap` : "no gap"}</span>
+                <span className="text-sm text-muted-foreground">Rows pulled · last 24 h · gaps as floors</span>
+                <span className="text-sm text-muted-foreground">{link.holes.length ? `${link.holes.length} gap` : "no gap"}</span>
               </div>
               <div className="relative flex min-h-[200px] flex-1 items-end gap-0.5 border-b border-white/10">
                 {bars.map((b) => (
@@ -317,7 +317,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
                   />
                 ))}
               </div>
-              <div className="flex justify-between font-mono text-[10.5px] text-muted-foreground">
+              <div className="flex justify-between font-mono text-2xs text-muted-foreground">
                 <span>24 h ago</span>
                 <span>now</span>
               </div>

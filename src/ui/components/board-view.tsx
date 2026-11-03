@@ -34,7 +34,8 @@ import {
 } from "../board-panel-data";
 import { abbrevCount, formatAggStat, histogramAxisLabels } from "../fill-histogram";
 import { seriesColor, seriesKeys, seriesValue } from "../histogram-series";
-import type { FacetValue } from "../types";
+import type { FacetValue, LogLevel } from "../types";
+import { levelText } from "../level";
 import { usePlotTheme } from "../plot-theme";
 import { endLabelMax, lastValue, sparkLines, sparkTimes, spreadLabels } from "./metric-spark";
 
@@ -255,7 +256,7 @@ export function BoardView(props: Props) {
               type="button"
               disabled={board.panels.length >= BOARD_PANEL_MAX}
               title={board.panels.length >= BOARD_PANEL_MAX ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
-              className="h-[26px] rounded-md border border-input px-2 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-45"
+              className="h-[26px] rounded-md border border-input px-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-45"
               onClick={() => {
                 const next = addTextPanel(board, view);
                 if (next) {
@@ -274,7 +275,7 @@ export function BoardView(props: Props) {
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-3 pt-1 pb-3">
         {board.panels.length === 0 ? (
-          <div className="flex h-40 items-center justify-center text-[13px] text-muted-foreground">No panels</div>
+          <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">No panels</div>
         ) : (
           <div
             ref={gridRef}
@@ -401,7 +402,7 @@ function headingOf(panels: BoardPanel[], id: string): string | null {
 }
 
 const textMenuRow =
-  "flex h-[30px] w-full items-center gap-2 rounded-[3.4px] px-2 text-left text-[13px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+  "flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
 
 /** ⋯ on a heading or a note (sheet 44). */
 function TextPanelMenu({ label, items }: { label: string; items: Array<{ text: string; run: () => void; danger?: boolean; disabled?: boolean }> }) {
@@ -421,13 +422,13 @@ function TextPanelMenu({ label, items }: { label: string; items: Array<{ text: s
           </svg>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[180px] bg-[#18181b] p-1" onCloseAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent align="end" className="w-[180px] bg-overlay p-1" onCloseAutoFocus={(e) => e.preventDefault()}>
         {items.map((item) => (
           <button
             key={item.text}
             type="button"
             disabled={item.disabled}
-            className={cn(textMenuRow, item.danger && "text-red-300")}
+            className={cn(textMenuRow, item.danger && "text-danger-fg")}
             onClick={() => {
               setOpen(false);
               item.run();
@@ -472,7 +473,7 @@ function NameField({ value, onDone }: { value: string; onDone: (name: string | n
           finish(false);
         }
       }}
-      className="h-[26px] min-w-0 flex-1 rounded-md border border-plate/60 bg-background px-2 text-[13.5px] font-semibold outline-none"
+      className="h-[26px] min-w-0 flex-1 rounded-md border border-plate/60 bg-background px-2 text-base font-semibold outline-none"
     />
   );
 }
@@ -532,9 +533,9 @@ function BoardSection({
           }}
         />
       ) : (
-        <span className="min-w-0 truncate text-[14.5px] font-semibold">{panel.name}</span>
+        <span className="min-w-0 truncate text-base font-semibold">{panel.name}</span>
       )}
-      <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
+      <span className="shrink-0 font-mono text-xs text-muted-foreground">
         {count} {count === 1 ? "panel" : "panels"}
         {panel.folded ? " folded" : ""}
       </span>
@@ -556,7 +557,7 @@ function BoardSection({
 function NoteText({ text }: { text: string }) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
   return (
-    <p className="m-0 text-[13px] leading-[1.5] whitespace-pre-wrap">
+    <p className="m-0 text-sm leading-[1.5] whitespace-pre-wrap">
       {parts.map((part, i) =>
         /^https?:\/\//.test(part) ? (
           <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-plate underline underline-offset-2" onPointerDown={(e) => e.stopPropagation()}>
@@ -627,7 +628,7 @@ function BoardNote({
             }}
           />
         ) : (
-          <span className="min-w-0 truncate text-[13.5px] font-semibold">{panel.name}</span>
+          <span className="min-w-0 truncate text-base font-semibold">{panel.name}</span>
         )}
         <span className="min-w-1 flex-1" />
         {readOnly ? null : (
@@ -663,12 +664,12 @@ function BoardNote({
                 finish(false);
               }
             }}
-            className="min-h-0 flex-1 resize-none rounded-md border border-plate/60 bg-background px-2 py-1 text-[13px] leading-[1.5] outline-none"
+            className="min-h-0 flex-1 resize-none rounded-md border border-plate/60 bg-background px-2 py-1 text-sm leading-[1.5] outline-none"
           />
         ) : text ? (
           <NoteText text={text} />
         ) : (
-          <span className="text-[12.5px] text-muted-foreground">Empty note</span>
+          <span className="text-sm text-muted-foreground">Empty note</span>
         )}
       </div>
     </div>
@@ -708,7 +709,7 @@ function BoardInputsRow({
   const offered = ["service", "host", "level", ...(fieldKeys ?? [])].filter((key, i, all) => !keys.includes(key) && all.indexOf(key) === i);
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2">
-      <span className="mr-1 text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase">Inputs</span>
+      <span className="mr-1 text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase">Inputs</span>
       {keys.map((key) => (
         <InputChip
           key={key}
@@ -728,20 +729,20 @@ function BoardInputsRow({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="h-8 rounded-md border border-dashed border-white/20 px-2.5 text-[12.5px] text-muted-foreground hover:border-ring hover:text-foreground"
+              className="h-8 rounded-md border border-dashed border-white/20 px-2.5 text-sm text-muted-foreground hover:border-ring hover:text-foreground"
             >
               + input
             </button>
           </PopoverTrigger>
-          <PopoverContent className="max-h-72 w-56 overflow-auto bg-[#18181b] p-1">
+          <PopoverContent className="max-h-72 w-56 overflow-auto bg-overlay p-1">
             {offered.length === 0 ? (
-              <div className="px-2 py-1.5 text-[12px] text-muted-foreground">No fields</div>
+              <div className="px-2 py-1.5 text-sm text-muted-foreground">No fields</div>
             ) : (
               offered.map((key) => (
                 <button
                   key={key}
                   type="button"
-                  className="flex h-[26px] w-full items-center rounded-[3.4px] px-2 text-left font-mono text-[12px] hover:bg-accent"
+                  className="flex h-[26px] w-full items-center rounded-sm px-2 text-left font-mono text-sm hover:bg-accent"
                   onClick={() => {
                     setAdding(false);
                     onKeys([...keys, key]);
@@ -754,7 +755,7 @@ function BoardInputsRow({
           </PopoverContent>
         </Popover>
       )}
-      <span className="text-[12.5px] text-muted-foreground">Added to every panel&apos;s query.</span>
+      <span className="text-sm text-muted-foreground">Added to every panel&apos;s query.</span>
     </div>
   );
 }
@@ -787,25 +788,25 @@ function InputChip({
     return () => ac.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, field, JSON.stringify(win)]);
-  const row = "flex h-[26px] w-full items-center gap-2 rounded-[3.4px] px-2 text-left text-[12.5px] hover:bg-accent";
+  const row = "flex h-[26px] w-full items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-accent";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
           className={cn(
-            "flex h-8 items-center gap-1.5 rounded-md border px-2.5 font-mono text-[12.5px] hover:bg-accent",
+            "flex h-8 items-center gap-1.5 rounded-md border px-2.5 font-mono text-sm hover:bg-accent",
             value ? "border-white/45" : "border-input",
           )}
         >
           <span className="text-muted-foreground">{field}</span>
           <span className={value ? "text-foreground" : "text-muted-foreground"}>{value ?? "any"}</span>
-          <span className="text-[9px] text-muted-foreground" aria-hidden>
+          <span className="text-2xs text-muted-foreground" aria-hidden>
             ▾
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="max-h-80 w-56 overflow-auto bg-[#18181b] p-1">
+      <PopoverContent className="max-h-80 w-56 overflow-auto bg-overlay p-1">
         <button type="button" className={row} onClick={() => { setOpen(false); onPick(null); }}>
           <span className={cn("flex-1 font-mono", value ? "text-muted-foreground" : "text-foreground")}>any</span>
         </button>
@@ -820,12 +821,12 @@ function InputChip({
             }}
           >
             <span className="min-w-0 flex-1 truncate font-mono">{item.v}</span>
-            <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">
+            <span className="shrink-0 font-mono text-2xs text-muted-foreground">
               <CountText n={item.n} />
             </span>
           </button>
         ))}
-        {values === null ? <div className="mx-2 my-1.5 h-3 w-24 animate-pulse rounded bg-muted" /> : null}
+        {values === null ? <div className="mx-2 my-1.5 h-3 w-24 animate-pulse rounded-md bg-muted" /> : null}
         {readOnly ? null : (
           <>
             <div className="my-1 h-px bg-white/[0.08]" />
@@ -907,11 +908,11 @@ function BoardPanelCard(props: CardProps) {
       {armed ? (
         // Remove confirms in the panel's head, as a hunt panel's does.
         <div className="flex shrink-0 items-center gap-2 bg-destructive/14 py-2 pr-2 pl-3">
-          <span className="min-w-0 truncate text-[12.5px] text-red-300">Remove {panel.name}?</span>
+          <span className="min-w-0 truncate text-sm text-danger-fg">Remove {panel.name}?</span>
           <span className="min-w-1 flex-1" />
           <button
             type="button"
-            className="h-[26px] rounded-md border border-destructive/55 bg-destructive/16 px-[9px] text-[12px] text-red-300 hover:bg-destructive/26"
+            className="h-[26px] rounded-md border border-destructive/55 bg-destructive/16 px-[9px] text-sm text-danger-fg hover:bg-destructive/26"
             onClick={() => {
               setArmed(false);
               props.onRemove();
@@ -921,7 +922,7 @@ function BoardPanelCard(props: CardProps) {
           </button>
           <button
             type="button"
-            className="h-[26px] rounded-md border border-input px-2 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="h-[26px] rounded-md border border-input px-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
             onClick={() => setArmed(false)}
           >
             Cancel
@@ -932,25 +933,25 @@ function BoardPanelCard(props: CardProps) {
         className={cn("flex shrink-0 touch-none items-center gap-2 pt-2.5 pr-2 pl-3", props.onMovePointerDown && "cursor-grab active:cursor-grabbing")}
         onPointerDown={props.onMovePointerDown}
       >
-        <span className="min-w-0 shrink truncate text-[13.5px] font-semibold">{panel.name}</span>
-        <span className="min-w-0 shrink truncate font-mono text-[11.5px] text-muted-foreground">
+        <span className="min-w-0 shrink truncate text-base font-semibold">{panel.name}</span>
+        <span className="min-w-0 shrink truncate font-mono text-xs text-muted-foreground">
           {panelWhat(panel.view, widget)}
         </span>
         {panel.fixed ? (
-          <span className="shrink-0 rounded-[4px] border border-white/40 px-1.5 font-mono text-[11px] leading-[17px]">
+          <span className="shrink-0 rounded-md border border-white/40 px-1.5 font-mono text-xs leading-[17px]">
             {panel.fixed} · fixed
           </span>
         ) : null}
         <span className="min-w-1 flex-1" />
         {head ? (
-          <span className="shrink-0 font-mono text-[12px] whitespace-nowrap text-muted-foreground">
+          <span className="shrink-0 font-mono text-sm whitespace-nowrap text-muted-foreground">
             <b className="font-medium text-foreground">{head.n ?? <CountText n={total} />}</b> {head.label}
           </span>
         ) : null}
         <PanelMenu {...props} onRemove={() => setArmed(true)} />
       </div>
       )}
-      <div className="flex shrink-0 items-center gap-3 truncate px-3 pt-1 text-[12.5px]">
+      <div className="flex shrink-0 items-center gap-3 truncate px-3 pt-1 text-sm">
         {panel.q ? <QueryText q={panel.q} /> : <span className="font-mono text-muted-foreground">all logs</span>}
         {props.inputs ? <span className="font-mono">{props.inputs}</span> : null}
       </div>
@@ -977,13 +978,13 @@ function BoardPanelCard(props: CardProps) {
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col">
         {data?.error ? (
-          <div className="flex flex-1 items-center justify-center px-4 text-center text-[12.5px] text-amber-400">{data.error}</div>
+          <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-warn-fg">{data.error}</div>
         ) : data?.refused && total === 0 ? (
-          <div className="flex flex-1 items-center justify-center px-4 text-center text-[12.5px] text-amber-400">{data.refused}</div>
+          <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-warn-fg">{data.refused}</div>
         ) : empty ? (
           <EmptyTell panel={panel} setKeys={props.setKeys} win={props.win} />
         ) : loading && !data ? (
-          <div className="m-3 flex-1 animate-pulse rounded bg-muted/40" />
+          <div className="m-3 flex-1 animate-pulse rounded-md bg-muted/40" />
         ) : data ? (
           <PanelBody panel={panel} data={data} win={props.win} live={props.live} marks={props.marks} />
         ) : null}
@@ -1028,7 +1029,7 @@ function PanelMenu(props: CardProps) {
   const keepFocus = useRef(false);
   const [page, setPage] = useState<"more" | "fixed" | "copy" | "export">("more");
   const row =
-    "flex h-[30px] w-full items-center gap-2 rounded-[3.4px] px-2 text-left text-[13px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+    "flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
   const sep = <div className="my-1 h-px bg-white/[0.08]" />;
   function close() {
     setOpen(false);
@@ -1078,7 +1079,7 @@ function PanelMenu(props: CardProps) {
             e.preventDefault();
             keepFocus.current = false;
           }
-        }} className={cn("bg-[#18181b] p-1", page === "fixed" ? "w-[300px]" : "w-[196px]")}>
+        }} className={cn("bg-overlay p-1", page === "fixed" ? "w-[300px]" : "w-[196px]")}>
         {page === "more" ? (
           <>
             <button type="button" className={row} onClick={() => { close(); props.onOpenHunt(); }}>
@@ -1112,7 +1113,7 @@ function PanelMenu(props: CardProps) {
             {props.readOnly ? null : (
               <>
                 {sep}
-                <button type="button" className={cn(row, "text-red-300")} onClick={() => { close(); props.onRemove(); }}>
+                <button type="button" className={cn(row, "text-danger-fg")} onClick={() => { close(); props.onRemove(); }}>
                   Remove
                 </button>
               </>
@@ -1147,7 +1148,7 @@ function PanelMenu(props: CardProps) {
               }}
             >
               <span className="flex-1">{format.toUpperCase()}</span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">.{format}</span>
+              <span className="font-mono text-2xs text-muted-foreground">.{format}</span>
             </button>
           ))
         ) : (
@@ -1171,7 +1172,7 @@ function PanelMenu(props: CardProps) {
               }}
             >
               <span className="flex-1">{format.toUpperCase()}</span>
-              <span className="font-mono text-[10.5px] text-muted-foreground">.{format}</span>
+              <span className="font-mono text-2xs text-muted-foreground">.{format}</span>
             </button>
           ))
         )}
@@ -1205,16 +1206,16 @@ function FixedWindowMenu({
     <div className="flex flex-col gap-0.5 p-0.5">
       <button
         type="button"
-        className={cn("flex h-9 items-center gap-2.5 rounded-md px-2 text-left text-[13px] hover:bg-accent", !on && "bg-accent/60")}
+        className={cn("flex h-9 items-center gap-2.5 rounded-md px-2 text-left text-sm hover:bg-accent", !on && "bg-accent/60")}
         onClick={() => onFixed(null)}
       >
         {radio(!on)}
         <span className="flex-1">Follow the board</span>
-        <span className="font-mono text-[11.5px] text-muted-foreground">{boardWinLabel}</span>
+        <span className="font-mono text-xs text-muted-foreground">{boardWinLabel}</span>
       </button>
       <button
         type="button"
-        className={cn("flex h-9 items-center gap-2.5 rounded-md px-2 text-left text-[13px] hover:bg-accent", on && "bg-accent/60")}
+        className={cn("flex h-9 items-center gap-2.5 rounded-md px-2 text-left text-sm hover:bg-accent", on && "bg-accent/60")}
         onClick={() => setOn(true)}
       >
         {radio(on)}
@@ -1227,7 +1228,7 @@ function FixedWindowMenu({
               key={range}
               type="button"
               className={cn(
-                "h-7 rounded-md border px-2.5 font-mono text-[12px] hover:bg-accent",
+                "h-7 rounded-md border px-2.5 font-mono text-sm hover:bg-accent",
                 fixed === range ? "border-foreground" : "border-input",
               )}
               onClick={() => onFixed(range)}
@@ -1275,18 +1276,18 @@ function EmptyTell({
   const heading = `No rows with ${setKeys.map(([key, value]) => `${key}:${value}`).join(" ")}`;
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-4 text-center">
-      <span className="text-[13.5px]">{heading}</span>
+      <span className="text-base">{heading}</span>
       {tell ? (
         tell.values.length === 0 ? (
-          <span className="text-[12.5px] text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             {panel.q || "These rows"} {panel.q ? "has" : "have"} no {tell.key} field in {windowWords(win)}.
           </span>
         ) : (
           <>
-            <span className="text-[12.5px] text-muted-foreground">{tell.key} on these rows:</span>
+            <span className="text-sm text-muted-foreground">{tell.key} on these rows:</span>
             <div className="flex flex-wrap justify-center gap-1.5">
               {tell.values.map((item) => (
-                <span key={item.v} className="rounded-md border border-input px-2 py-0.5 font-mono text-[12px]">
+                <span key={item.v} className="rounded-md border border-input px-2 py-0.5 font-mono text-sm">
                   {item.v} <span className="text-muted-foreground">{abbrevCount(item.n)}</span>
                 </span>
               ))}
@@ -1297,14 +1298,6 @@ function EmptyTell({
     </div>
   );
 }
-
-const levelText: Record<string, string> = {
-  debug: "text-zinc-400",
-  info: "text-sky-400",
-  warn: "text-amber-400",
-  error: "text-red-400",
-  fatal: "text-red-300",
-};
 
 function PanelBody({
   panel,
@@ -1329,10 +1322,10 @@ function PanelBody({
       return (
         <div className="flex flex-1 flex-col justify-center px-3 pb-3">
           <div className="flex items-baseline gap-1.5">
-            <span className="font-mono text-[40px] leading-none font-medium tracking-[-0.025em] tabular-nums">{value}</span>
-            {unit ? <span className="font-mono text-[16px] text-muted-foreground">{unit}</span> : null}
+            <span className="font-mono text-display leading-none font-medium tracking-[-0.025em] tabular-nums">{value}</span>
+            {unit ? <span className="font-mono text-lg text-muted-foreground">{unit}</span> : null}
           </div>
-          <span className={cn("mt-2 font-mono text-[12px]", refused ? "text-amber-400" : "text-muted-foreground")}>
+          <span className={cn("mt-2 font-mono text-sm", refused ? "text-warn-fg" : "text-muted-foreground")}>
             {refused ? data.agg?.reason : isCount ? `in ${windowWords(win).replace("the ", "")}` : <><CountText n={data.total} /> rows</>}
           </span>
         </div>
@@ -1354,9 +1347,9 @@ function PanelBody({
     case "events":
       return (
         <div className="min-h-0 flex-1 overflow-auto px-3 pt-2">
-          <table className="w-full table-fixed font-mono text-[12.5px]">
+          <table className="w-full table-fixed font-mono text-sm">
             <thead>
-              <tr className="text-left text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
+              <tr className="text-left text-xs tracking-[0.06em] text-muted-foreground uppercase">
                 <th className="w-[150px] pb-1.5 font-normal">Time</th>
                 <th className="w-[90px] pb-1.5 font-normal">Level</th>
                 <th className="w-[140px] pb-1.5 font-normal">Service</th>
@@ -1367,7 +1360,7 @@ function PanelBody({
               {(data.events ?? []).map((event) => (
                 <tr key={`${event.ts}:${event.message}`} className="border-t border-white/[0.07]">
                   <td className="py-1 whitespace-nowrap">{event.ts.slice(11, 23)}</td>
-                  <td className={cn("py-1", levelText[event.level])}>{event.level}</td>
+                  <td className={cn("py-1", levelText[event.level as LogLevel])}>{event.level}</td>
                   <td className="truncate py-1">{event.service}</td>
                   <td className="truncate py-1">{event.message}</td>
                 </tr>
@@ -1420,7 +1413,7 @@ export function PanelPlot({
   const labels = histogramAxisLabels(fromMs, spanMs, live, Date.now(), ticks);
   const numeric = Boolean(widget.agg || widget.metric);
   const axis = (
-    <div className="flex shrink-0 justify-between pt-1.5 font-mono text-[11px] text-muted-foreground">
+    <div className="flex shrink-0 justify-between pt-1.5 font-mono text-xs text-muted-foreground">
       {labels.map((label, i) => (
         <span key={`${label}:${i}`}>{label}</span>
       ))}
@@ -1428,7 +1421,7 @@ export function PanelPlot({
   );
   if (numeric) {
     if (data.agg?.source === "refused") {
-      return <div className="flex flex-1 items-center justify-center px-4 text-[12.5px] text-amber-400">{data.agg.reason}</div>;
+      return <div className="flex flex-1 items-center justify-center px-4 text-sm text-warn-fg">{data.agg.reason}</div>;
     }
     if (data.agg?.splits) {
       return frame("flex min-h-0 flex-1 flex-col", <SplitPlot data={data} axis={axis} />);
@@ -1554,7 +1547,7 @@ function SplitPlot({ data, axis }: { data: PanelData; axis: ReactNode }) {
           ? lines.map((l, i) => (
               <span
                 key={l.key}
-                className="absolute left-full ml-1.5 w-[88px] truncate font-mono text-[10.5px]"
+                className="absolute left-full ml-1.5 w-[88px] truncate font-mono text-2xs"
                 style={{ top: `${labelYs[i] ?? 0}px`, color: l.color }}
               >
                 {l.key} {formatAggStat(lastValue(l.vals))}
@@ -1564,7 +1557,7 @@ function SplitPlot({ data, axis }: { data: PanelData; axis: ReactNode }) {
       </div>
       {axis}
       {named ? null : (
-        <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-0.5 font-mono text-[10.5px]">
+        <div className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-0.5 font-mono text-2xs">
           {lines.map((l) => (
             <span key={l.key} className="flex min-w-0 items-center gap-1.5">
               <span className="h-0 w-3 shrink-0 border-t-2" style={{ borderColor: l.color, borderStyle: l.dashed ? "dashed" : "solid" }} />

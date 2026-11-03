@@ -123,12 +123,12 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
   }
 
   return (
-    <section aria-label="People" className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+    <section aria-label="People" className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
       <div className="flex flex-wrap items-baseline gap-2.5 px-4 py-2.5">
-        <h2 className="m-0 text-[13.5px] font-medium">People</h2>
-        <span className="text-[12px] text-muted-foreground">sign in to this instance and see what their role lets them</span>
+        <h2 className="m-0 text-base font-medium">People</h2>
+        <span className="text-sm text-muted-foreground">sign in to this instance and see what their role lets them</span>
       </div>
-      <div className={cn(peopleCol, "border-t border-white/[0.06] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase")}>
+      <div className={cn(peopleCol, "border-t border-white/[0.06] px-4 py-1.5 text-xs tracking-[0.04em] text-muted-foreground uppercase")}>
         <span />
         <span>Name</span>
         <span>Role</span>
@@ -139,8 +139,8 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
         <span />
       </div>
       {props.body.people.map((p) => (
-        <div key={p.id} className={cn(peopleCol, "border-t border-white/[0.06] px-4 py-2 text-[12.5px]")}>
-          <span className="inline-flex size-[30px] items-center justify-center rounded-full text-[11px] font-semibold text-[#0d0d0f]" style={{ background: tone(p.id) }}>
+        <div key={p.id} className={cn(peopleCol, "border-t border-white/[0.06] px-4 py-2 text-sm")}>
+          <span className="inline-flex size-[30px] items-center justify-center rounded-full text-xs font-semibold text-[#0d0d0f]" style={{ background: tone(p.id) }}>
             {p.initials}
           </span>
           <span className="min-w-0 truncate">
@@ -154,7 +154,7 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
             <select
               aria-label={`Role of ${p.name}`}
               value={p.role}
-              className={cn("h-6 w-fit rounded-[6px] border bg-transparent px-1.5 text-[11.5px]", p.role === "owner" ? "border-plate text-foreground" : "border-white/10 text-zinc-300")}
+              className={cn("h-6 w-fit rounded-md border bg-transparent px-1.5 text-xs", p.role === "owner" ? "border-plate text-foreground" : "border-white/10 text-zinc-300")}
               onChange={(e) => void call(`/api/people/${encodeURIComponent(p.id)}`, { method: "PUT", body: JSON.stringify({ role: e.target.value }) }, `${p.name} is now ${roleName[e.target.value as Role]}`)}
             >
               {(["viewer", "operator", "owner"] as const).map((r) => (
@@ -164,36 +164,36 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
               ))}
             </select>
           ) : (
-            <span className={cn("inline-flex h-6 w-fit items-center rounded-[6px] border px-2 text-[11.5px]", p.role === "owner" ? "border-plate text-foreground" : "border-white/10 text-zinc-300")}>
+            <span className={cn("inline-flex h-6 w-fit items-center rounded-md border px-2 text-xs", p.role === "owner" ? "border-plate text-foreground" : "border-white/10 text-zinc-300")}>
               {roleName[p.role]}
             </span>
           )}
-          <span className="truncate text-[12px] text-muted-foreground">{p.signs_in_with}</span>
+          <span className="truncate text-sm text-muted-foreground">{p.signs_in_with}</span>
           {(() => {
             const w = twoStepWords(p, props.nowMs);
             const r = rememberedWords(p);
             return (
               <span className="flex min-w-0 flex-col gap-px">
-                <span className={cn("truncate text-[12px]", w.tone === "ok" ? "text-emerald-300" : w.tone === "warn" ? "text-amber-300" : "text-muted-foreground")}>{w.text}</span>
-                {r ? <span className={cn("truncate text-[11.5px]", armed === `rb:${p.id}` ? "text-plate" : "text-muted-foreground")}>{r}</span> : null}
+                <span className={cn("truncate text-sm", w.tone === "ok" ? "text-ok-fg" : w.tone === "warn" ? "text-warn-fg" : "text-muted-foreground")}>{w.text}</span>
+                {r ? <span className={cn("truncate text-xs", armed === `rb:${p.id}` ? "text-plate" : "text-muted-foreground")}>{r}</span> : null}
               </span>
             );
           })()}
-          <span className="truncate font-mono text-[12px] text-muted-foreground">{p.you ? "now" : p.last_seen_at ? clockAt(p.last_seen_at, props.nowMs) : "never"}</span>
-          <span className="truncate text-[12px] text-muted-foreground">{p.first_owner ? "first Owner, from the setup link" : p.invited_by ? `${p.invited_by} · ${clockAt(p.created_at, props.nowMs)}` : "—"}</span>
+          <span className="truncate font-mono text-sm text-muted-foreground">{p.you ? "now" : p.last_seen_at ? clockAt(p.last_seen_at, props.nowMs) : "never"}</span>
+          <span className="truncate text-sm text-muted-foreground">{p.first_owner ? "first Owner, from the setup link" : p.invited_by ? `${p.invited_by} · ${clockAt(p.created_at, props.nowMs)}` : "—"}</span>
           <span className="flex flex-col items-end gap-0.5 text-right">
             {props.isOwner && !p.you && p.two_step?.state === "on" ? (
               armed === `2s:${p.id}` ? (
                 <button
                   type="button"
-                  className="text-[12px] text-plate hover:underline"
+                  className="text-sm text-plate hover:underline"
                   title="Their sessions end now, their backup codes stop working, their remembered browsers are forgotten, and they set up two-step again the next time they sign in."
                   onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}/two-step`, { method: "DELETE" }, `${p.name}'s two-step is reset`)}
                 >
                   sure? reset two-step
                 </button>
               ) : (
-                <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(`2s:${p.id}`)}>
+                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(`2s:${p.id}`)}>
                   reset two-step
                 </button>
               )
@@ -202,25 +202,25 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
               armed === `rb:${p.id}` ? (
                 <button
                   type="button"
-                  className="text-[12px] text-plate underline"
+                  className="text-sm text-plate underline"
                   title="Each of their remembered browsers asks for the code at its next sign-in. Nobody is signed out."
                   onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}/remembered-browsers`, { method: "DELETE" }, `${p.name}'s browsers are forgotten`)}
                 >
                   sure? forget {p.two_step!.remembered!.count}
                 </button>
               ) : (
-                <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(`rb:${p.id}`)}>
+                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(`rb:${p.id}`)}>
                   forget browsers
                 </button>
               )
             ) : null}
             {props.isOwner && !p.you ? (
               armed === p.id ? (
-                <button type="button" className="text-[12px] text-red-300 hover:underline" onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}`, { method: "DELETE" }, `${p.name} revoked`)}>
+                <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}`, { method: "DELETE" }, `${p.name} revoked`)}>
                   sure? revoke
                 </button>
               ) : (
-                <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(p.id)}>
+                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(p.id)}>
                   revoke
                 </button>
               )
@@ -229,20 +229,20 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
         </div>
       ))}
       {props.body.invites.map((i) => (
-        <div key={i.id} className={cn(peopleCol, "border-t border-white/[0.06] px-4 py-2 text-[12.5px] opacity-75")}>
-          <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#3f3f46] text-[11px] font-semibold text-zinc-300">?</span>
+        <div key={i.id} className={cn(peopleCol, "border-t border-white/[0.06] px-4 py-2 text-sm opacity-75")}>
+          <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#3f3f46] text-xs font-semibold text-zinc-300">?</span>
           <span className="min-w-0 truncate">
             <span className="font-medium text-foreground">{i.who}</span>
             <span className="text-muted-foreground"> · invite not used yet · expires {expiresIn(i.expires_at, props.nowMs)}</span>
           </span>
-          <span className="inline-flex h-6 w-fit items-center rounded-[6px] border border-white/10 px-2 text-[11.5px] text-zinc-300">{roleName[i.role]}</span>
-          <span className="text-[12px] text-muted-foreground">—</span>
-          <span className="text-[12px] text-muted-foreground">—</span>
-          <span className="font-mono text-[12px] text-muted-foreground">never</span>
-          <span className="truncate text-[12px] text-muted-foreground">{i.invited_by ? `${i.invited_by} · ${clockAt(i.created_at, props.nowMs)}` : "—"}</span>
+          <span className="inline-flex h-6 w-fit items-center rounded-md border border-white/10 px-2 text-xs text-zinc-300">{roleName[i.role]}</span>
+          <span className="text-sm text-muted-foreground">—</span>
+          <span className="text-sm text-muted-foreground">—</span>
+          <span className="font-mono text-sm text-muted-foreground">never</span>
+          <span className="truncate text-sm text-muted-foreground">{i.invited_by ? `${i.invited_by} · ${clockAt(i.created_at, props.nowMs)}` : "—"}</span>
           <span className="text-right">
             {props.isOwner ? (
-              <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => void call(`/api/people/invites/${encodeURIComponent(i.id)}`, { method: "DELETE" }, "Invite cancelled")}>
+              <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => void call(`/api/people/invites/${encodeURIComponent(i.id)}`, { method: "DELETE" }, "Invite cancelled")}>
                 cancel
               </button>
             ) : null}
@@ -255,22 +255,22 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
 
 /** 30a's three cards under People, with 32g's middle card. */
 export function PeopleCards() {
-  const card = "flex flex-col gap-1.5 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3.5";
+  const card = "flex flex-col gap-1.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5";
   return (
     <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
       <section className={card}>
-        <span className="text-[13.5px] font-medium">Who did what</span>
-        <span className="text-[12px] leading-[1.5] text-muted-foreground">Notes, monitors, retention and every Access change carry the name of the person who made them. Machines keep their token's name.</span>
+        <span className="text-base font-medium">Who did what</span>
+        <span className="text-sm leading-[1.5] text-muted-foreground">Notes, monitors, retention and every Access change carry the name of the person who made them. Machines keep their token's name.</span>
       </section>
       <section className={card}>
-        <span className="text-[13.5px] font-medium">The first Owner</span>
-        <span className="text-[12px] leading-[1.5] text-muted-foreground">
+        <span className="text-base font-medium">The first Owner</span>
+        <span className="text-sm leading-[1.5] text-muted-foreground">
           There is no shared password. The first Owner was made from a one-time link printed on the host. If every Owner is locked out, <span className="font-mono text-zinc-300">toposcope.sh owner-link &lt;email&gt;</span> on the host makes a new one.
         </span>
       </section>
       <section className={card}>
-        <span className="text-[13.5px] font-medium">Revoke is immediate</span>
-        <span className="text-[12px] leading-[1.5] text-muted-foreground">Their sessions end on the next request. What they made stays, still under their name.</span>
+        <span className="text-base font-medium">Revoke is immediate</span>
+        <span className="text-sm leading-[1.5] text-muted-foreground">Their sessions end on the next request. What they made stays, still under their name.</span>
       </section>
     </div>
   );
@@ -294,31 +294,31 @@ export function ServiceAccountsGroup(props: { accounts: PersonRow[]; nowMs: numb
   }
   const col = "grid grid-cols-[minmax(0,1fr)_150px_160px_72px] items-center gap-3";
   return (
-    <section aria-label="Service accounts" className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+    <section aria-label="Service accounts" className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
       <div className="flex flex-wrap items-baseline gap-2.5 px-4 py-2.5">
-        <h2 className="m-0 text-[13.5px] font-medium">Service accounts</h2>
-        <span className="text-[12px] text-muted-foreground">People rows that cannot sign in; they only hold tokens. For scripts that are not a person.</span>
+        <h2 className="m-0 text-base font-medium">Service accounts</h2>
+        <span className="text-sm text-muted-foreground">People rows that cannot sign in; they only hold tokens. For scripts that are not a person.</span>
       </div>
       {props.accounts.map((p) => {
         const used = p.tokens.reduce<number | null>((m, t) => (t.last_used_at && (!m || t.last_used_at > m) ? t.last_used_at : m), null);
         return (
-          <div key={p.id} className={cn(col, "border-t border-white/[0.06] px-4 py-2 text-[12.5px]")}>
+          <div key={p.id} className={cn(col, "border-t border-white/[0.06] px-4 py-2 text-sm")}>
             <span className="min-w-0 truncate">
               <span className="font-medium text-foreground">{p.name}</span>
               <span className="text-muted-foreground">
                 {p.invited_by ? ` · made by ${p.invited_by}` : ""} · {p.tokens.length} token{p.tokens.length === 1 ? "" : "s"}
               </span>
             </span>
-            <span className="inline-flex h-[22px] w-fit items-center rounded-[5px] border border-white/10 px-2 text-[11px] text-zinc-300">{roleName[p.role]}</span>
-            <span className="truncate font-mono text-[12px] text-muted-foreground">{used ? clockAt(used, props.nowMs) : "never"}</span>
+            <span className="inline-flex h-[22px] w-fit items-center rounded-md border border-white/10 px-2 text-xs text-zinc-300">{roleName[p.role]}</span>
+            <span className="truncate font-mono text-sm text-muted-foreground">{used ? clockAt(used, props.nowMs) : "never"}</span>
             <span className="text-right">
               {props.isOwner ? (
                 armed === p.id ? (
-                  <button type="button" className="text-[12px] text-red-300 hover:underline" onClick={() => void revoke(p)}>
+                  <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void revoke(p)}>
                     sure? revoke
                   </button>
                 ) : (
-                  <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(p.id)}>
+                  <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(p.id)}>
                     revoke
                   </button>
                 )
@@ -356,33 +356,33 @@ export function AgentsGroup(props: { agents: PersonRow[]; nowMs: number; isOwner
   }
   const col = "grid grid-cols-[110px_minmax(0,1fr)_140px_160px_minmax(0,260px)_90px] items-center gap-3.5";
   return (
-    <section aria-label="Agents" className="overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+    <section aria-label="Agents" className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
       <div className="flex flex-wrap items-baseline gap-2.5 border-b border-white/[0.06] px-4 py-2.5">
-        <h2 className="m-0 text-[13.5px] font-medium">Agents</h2>
-        <span className="text-[12px] text-muted-foreground">service accounts made for a coding agent</span>
+        <h2 className="m-0 text-base font-medium">Agents</h2>
+        <span className="text-sm text-muted-foreground">service accounts made for a coding agent</span>
       </div>
       {props.agents.map((p, i) => {
         const used = p.tokens.reduce<number | null>((m, t) => (t.last_used_at && (!m || t.last_used_at > m) ? t.last_used_at : m), null);
         return (
-          <div key={p.id} id={`agent-${p.id}`} className={cn(col, i > 0 && "border-t border-white/[0.06]", "px-4 py-[11px] text-[13px]")}>
-            <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-[6px] border border-white/10 px-2 text-[11.5px] whitespace-nowrap text-zinc-300">✦ agent</span>
+          <div key={p.id} id={`agent-${p.id}`} className={cn(col, i > 0 && "border-t border-white/[0.06]", "px-4 py-[11px] text-sm")}>
+            <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-md border border-white/10 px-2 text-xs whitespace-nowrap text-zinc-300">✦ agent</span>
             <span className="flex min-w-0 flex-col">
               <span className="truncate font-mono text-foreground">{p.name}</span>
-              <span className="truncate text-[12px] text-muted-foreground">{agentMadeWords(p, props.nowMs)}</span>
+              <span className="truncate text-sm text-muted-foreground">{agentMadeWords(p, props.nowMs)}</span>
             </span>
-            <span className="text-[12px] text-muted-foreground">{roleName[p.role]}</span>
-            <span className="truncate text-[12px] text-muted-foreground">
+            <span className="text-sm text-muted-foreground">{roleName[p.role]}</span>
+            <span className="truncate text-sm text-muted-foreground">
               {p.tokens.length} token{p.tokens.length === 1 ? "" : "s"} · {used ? `last call ${clockAt(used, props.nowMs)}` : "no call yet"}
             </span>
-            <span className="truncate text-[12px] text-muted-foreground">{agentSavedWords(p.saved)}</span>
+            <span className="truncate text-sm text-muted-foreground">{agentSavedWords(p.saved)}</span>
             <span className="justify-self-end">
               {props.isOwner ? (
                 armed === p.id ? (
-                  <Button type="button" variant="outline" className="text-[12.5px] text-red-300" onClick={() => void revoke(p)}>
+                  <Button type="button" variant="outline" className="text-sm text-danger-fg" onClick={() => void revoke(p)}>
                     sure? revoke
                   </Button>
                 ) : (
-                  <Button type="button" variant="outline" className="text-[12.5px]" onClick={() => setArmed(p.id)}>
+                  <Button type="button" variant="outline" className="text-sm" onClick={() => setArmed(p.id)}>
                     Revoke
                   </Button>
                 )
@@ -413,23 +413,23 @@ export function PersonTokenRows(props: { body: PeopleBody; nowMs: number; meId: 
   return (
     <>
       {rows.map(({ owner, token }) => (
-        <div key={token.id} className={cn(col, "border-t border-white/[0.06] px-4 py-2.5 text-[12.5px]")}>
-          <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-[6px] border border-white/10 px-2 text-[11.5px] whitespace-nowrap text-zinc-300">{tokenKind(owner, token)}</span>
+        <div key={token.id} className={cn(col, "border-t border-white/[0.06] px-4 py-2.5 text-sm")}>
+          <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-md border border-white/10 px-2 text-xs whitespace-nowrap text-zinc-300">{tokenKind(owner, token)}</span>
           <span className="min-w-0 truncate">
             <span className="font-medium text-foreground">{token.name}</span> <span className="text-muted-foreground">· {owner.name}</span>
           </span>
-          <span className="truncate font-mono text-[12px] text-muted-foreground">{token.read_only ? "reads" : `as ${roleName[owner.role]}`}</span>
-          <span className="text-[12px] text-muted-foreground">{expiresIn(token.expires_at, props.nowMs)}</span>
-          <span className="truncate font-mono text-[12px] text-muted-foreground">{token.last_used_at ? clockAt(token.last_used_at, props.nowMs) : "never"}</span>
+          <span className="truncate font-mono text-sm text-muted-foreground">{token.read_only ? "reads" : `as ${roleName[owner.role]}`}</span>
+          <span className="text-sm text-muted-foreground">{expiresIn(token.expires_at, props.nowMs)}</span>
+          <span className="truncate font-mono text-sm text-muted-foreground">{token.last_used_at ? clockAt(token.last_used_at, props.nowMs) : "never"}</span>
           <span />
           <span className="text-right">
             {props.isOwner || owner.id === props.meId ? (
               armed === token.id ? (
-                <button type="button" className="text-[12px] text-red-300 hover:underline" onClick={() => void revoke(token.id, token.name)}>
+                <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void revoke(token.id, token.name)}>
                   sure? revoke
                 </button>
               ) : (
-                <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(token.id)}>
+                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(token.id)}>
                   revoke
                 </button>
               )
@@ -456,7 +456,7 @@ function Sheet(props: { label: string; width: number; onClose: () => void; child
       <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" onClick={props.onClose} />
       <section
         aria-label={props.label}
-        className="fixed top-[64px] left-1/2 z-40 flex max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-5 rounded-[12px] border border-zinc-700 bg-[#121214] px-7 py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]"
+        className="fixed top-[64px] left-1/2 z-40 flex max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-5 rounded-xl border border-zinc-700 bg-surface-2 px-7 py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]"
         style={{ width: props.width }}
       >
         {props.children}
@@ -465,20 +465,20 @@ function Sheet(props: { label: string; width: number; onClose: () => void; child
   );
 }
 
-const lab = "text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase";
-const input = "h-9 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-3 text-[13.5px] outline-none";
+const lab = "text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase";
+const input = "h-9 rounded-lg border border-white/10 bg-surface-1 px-3 text-base outline-none";
 
 function ShownOnce(props: { label: string; value: string; note: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[10px] border border-dashed border-plate px-4 py-3.5">
+    <div className="flex flex-col gap-2 rounded-xl border border-dashed border-plate px-4 py-3.5">
       <span className={cn(lab, "text-plate")}>{props.label}</span>
       <div className="flex items-center gap-2.5">
-        <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-foreground">{props.value}</code>
+        <code className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">{props.value}</code>
         <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(props.value).then(() => toast.success("Copied"))}>
           Copy
         </Button>
       </div>
-      <span className="text-[12px] text-muted-foreground">{props.note}</span>
+      <span className="text-sm text-muted-foreground">{props.note}</span>
     </div>
   );
 }
@@ -510,8 +510,8 @@ export function InviteSheet(props: { onClose: () => void; onInvited: () => void 
   return (
     <Sheet label="Invite someone" width={900} onClose={props.onClose}>
       <div className="flex items-baseline gap-3">
-        <h2 className="m-0 text-[17px] font-semibold">Invite someone</h2>
-        <span className="text-[12.5px] text-muted-foreground">They get a link that works once. No mail server needed: send it however you like.</span>
+        <h2 className="m-0 text-lg font-semibold">Invite someone</h2>
+        <span className="text-sm text-muted-foreground">They get a link that works once. No mail server needed: send it however you like.</span>
         <div className="flex-1" />
         <Button type="button" variant="ghost" onClick={props.onClose} aria-label="Close">
           ×
@@ -523,7 +523,7 @@ export function InviteSheet(props: { onClose: () => void; onInvited: () => void 
             Email or a name
           </label>
           <input id="invite-who" className={input} value={who} onChange={(e) => setWho(e.target.value)} placeholder="sam@contractor.dev" disabled={link !== null} />
-          <span className="text-[12px] text-muted-foreground">With an email, they sign in as that address.</span>
+          <span className="text-sm text-muted-foreground">With an email, they sign in as that address.</span>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className={lab} htmlFor="invite-days">
@@ -545,12 +545,12 @@ export function InviteSheet(props: { onClose: () => void; onInvited: () => void 
               type="button"
               aria-pressed={role === card.role}
               disabled={link !== null}
-              className={cn("flex flex-col gap-2 rounded-[10px] border bg-[#0d0d0f] px-4 py-3.5 text-left", role === card.role ? "border-plate bg-[#1a1a1e]" : "border-white/10 hover:border-zinc-500")}
+              className={cn("flex flex-col gap-2 rounded-xl border bg-surface-1 px-4 py-3.5 text-left", role === card.role ? "border-plate bg-overlay" : "border-white/10 hover:border-zinc-500")}
               onClick={() => setRole(card.role)}
             >
-              <span className="text-[14px] font-semibold">{roleName[card.role]}</span>
-              <span className="text-[12.5px] leading-[1.5] text-zinc-400">{card.can}</span>
-              <span className="text-[12px] text-zinc-300">{card.cannot}</span>
+              <span className="text-base font-semibold">{roleName[card.role]}</span>
+              <span className="text-sm leading-[1.5] text-zinc-400">{card.can}</span>
+              <span className="text-sm text-zinc-300">{card.cannot}</span>
             </button>
           ))}
         </div>
@@ -572,7 +572,7 @@ export function InviteSheet(props: { onClose: () => void; onInvited: () => void 
           Cancel
         </Button>
         <div className="flex-1" />
-        <span className="text-[12px] text-muted-foreground">Only an Owner sees this button.</span>
+        <span className="text-sm text-muted-foreground">Only an Owner sees this button.</span>
       </div>
     </Sheet>
   );
@@ -632,7 +632,7 @@ export function MakeTokenSheet(props: { me: { id: string; name: string; role: Ro
 
   return (
     <Sheet label="Make a token" width={520} onClose={props.onClose}>
-      <h2 className="m-0 text-[16px] font-semibold">Make a token</h2>
+      <h2 className="m-0 text-lg font-semibold">Make a token</h2>
       <div className="flex flex-col gap-2">
         <span className={lab}>For</span>
         {options
@@ -643,10 +643,10 @@ export function MakeTokenSheet(props: { me: { id: string; name: string; role: Ro
               type="button"
               aria-pressed={forWhom === o.id}
               disabled={token !== null}
-              className={cn("flex flex-col gap-1 rounded-[8px] border px-3 py-2.5 text-left text-[12.5px] text-zinc-400", forWhom === o.id ? "border-plate bg-[#1a1a1e]" : "border-white/10")}
+              className={cn("flex flex-col gap-1 rounded-lg border px-3 py-2.5 text-left text-sm text-zinc-400", forWhom === o.id ? "border-plate bg-overlay" : "border-white/10")}
               onClick={() => setFor(o.id)}
             >
-              <span className="text-[13px] font-medium text-foreground">{o.title}</span>
+              <span className="text-sm font-medium text-foreground">{o.title}</span>
               {o.words}
             </button>
           ))}

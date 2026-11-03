@@ -22,12 +22,12 @@ export function PanelTitle({ widget, unit }: { widget: WidgetDef; unit: string }
   }
   return (
     <div className="flex min-w-0 items-baseline gap-2 px-3 pt-2">
-      <span className="min-w-0 truncate text-[14px] font-semibold" title={widget.title}>
+      <span className="min-w-0 truncate text-base font-semibold" title={widget.title}>
         {widget.title}
       </span>
-      {unit ? <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{unit}</span> : null}
+      {unit ? <span className="shrink-0 font-mono text-xs text-muted-foreground">{unit}</span> : null}
       <span className="min-w-0 flex-1" />
-      <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground/70">{panelKindTag(widget)}</span>
+      <span className="shrink-0 font-mono text-2xs text-muted-foreground/70">{panelKindTag(widget)}</span>
     </div>
   );
 }
@@ -50,10 +50,10 @@ export function PanelNote({
   return (
     <div className="flex min-w-0 flex-col gap-0.5 px-3 pt-1">
       {note ? (
-        <p className="line-clamp-2 max-w-[88ch] text-[12px] leading-snug text-muted-foreground" title={note.text}>
+        <p className="line-clamp-2 max-w-[88ch] text-sm leading-snug text-muted-foreground" title={note.text}>
           {note.sender ? (
             <span
-              className="mr-1.5 inline-flex rounded-[4px] border border-white/16 px-1 align-[1px] font-mono text-[10px] text-muted-foreground"
+              className="mr-1.5 inline-flex rounded-md border border-white/16 px-1 align-[1px] font-mono text-2xs text-muted-foreground"
               title="Written where the metric is made, not here"
             >
               sender
@@ -63,7 +63,7 @@ export function PanelNote({
         </p>
       ) : null}
       {leftOff.map((line) => (
-        <p key={`${line.metric}|${line.name}`} className="text-[12px] leading-snug text-amber-200">
+        <p key={`${line.metric}|${line.name}`} className="text-sm leading-snug text-warn-fg">
           {line.name} ({line.metric}) is now sent in {line.unit}, so it is left off. It draws again when it is in the
           panel&apos;s unit, or once it is removed.
         </p>
@@ -93,7 +93,7 @@ export function PanelTells({ held, units }: { held: string | null; units: string
 export function UnitsSay({ text }: { text: string }) {
   return (
     <span
-      className="inline-flex items-center rounded-[4px] border border-white/12 px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground"
+      className="inline-flex items-center rounded-md border border-white/12 px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground"
       title="One name, sent with more than one unit or kind: split and said, never summed or converted."
     >
       {text}
@@ -102,7 +102,7 @@ export function UnitsSay({ text }: { text: string }) {
 }
 
 const panelFieldClass =
-  "rounded-md border border-white/14 bg-[#0a0a0c] px-2 outline-none placeholder:text-muted-foreground/60 focus:border-plate/55";
+  "rounded-md border border-white/14 bg-ground px-2 outline-none placeholder:text-muted-foreground/60 focus:border-plate/55";
 
 /**
  * The title while the panel is edited, where it shows (17d): its placeholder is
@@ -133,7 +133,7 @@ export function PanelTitleField({
       className={cn(
         panelFieldClass,
         "min-w-0 font-semibold",
-        compact ? "my-[2px] h-[24px] flex-1 text-[12.5px]" : "h-[30px] w-full text-[14px]",
+        compact ? "my-[2px] h-[24px] flex-1 text-sm" : "h-[30px] w-full text-base",
       )}
     />
   );
@@ -154,9 +154,9 @@ export function PanelNoteField({ widget, onNote }: { widget: WidgetDef; onNote: 
         placeholder="Note: what the panel is for, and what normal looks like. Plain text; two lines show."
         onChange={(e) => setNote(e.target.value)}
         onPointerDown={(e) => e.stopPropagation()}
-        className={cn(panelFieldClass, "min-w-0 flex-1 resize-none py-1 text-[12px] leading-snug", full && "border-amber-400/80")}
+        className={cn(panelFieldClass, "min-w-0 flex-1 resize-none py-1 text-sm leading-snug", full && "border-warn/80")}
       />
-      <span className={cn("shrink-0 pt-1 font-mono text-[11px] text-muted-foreground", full && "text-amber-400")}>
+      <span className={cn("shrink-0 pt-1 font-mono text-xs text-muted-foreground", full && "text-warn-fg")}>
         {length} / {maxPanelNote}
         {full ? <span className="block">the note is full</span> : null}
       </span>

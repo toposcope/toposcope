@@ -40,7 +40,7 @@ export function InstanceMenu({
   const label = info.name ?? info.address;
   return (
     <>
-      <span aria-hidden="true" className="text-[14px] text-zinc-600">
+      <span aria-hidden="true" className="text-base text-zinc-600">
         /
       </span>
       <DropdownMenu>
@@ -48,29 +48,29 @@ export function InstanceMenu({
           <button
             type="button"
             title={info.name ? `${info.name} · ${info.address}` : info.address}
-            className="inline-flex h-7 max-w-[240px] items-center gap-1.5 rounded-[6.4px] border border-white/10 px-2 text-[13px] text-zinc-200 hover:bg-accent data-[state=open]:border-white/15 data-[state=open]:bg-accent"
+            className="inline-flex h-7 max-w-[240px] items-center gap-1.5 rounded-lg border border-white/10 px-2 text-sm text-zinc-200 hover:bg-accent data-[state=open]:border-white/15 data-[state=open]:bg-accent"
           >
-            <span className={`truncate ${info.name ? "" : "font-mono text-[12.5px]"}`}>{label}</span>
+            <span className={`truncate ${info.name ? "" : "font-mono text-sm"}`}>{label}</span>
             <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[248px] p-1">
           <div className="flex flex-col gap-[3px] border-b border-white/[0.08] px-2 pt-2 pb-2.5">
-            <span className={`truncate text-[13px] font-semibold ${info.name ? "" : "font-mono"}`}>{label}</span>
+            <span className={`truncate text-sm font-semibold ${info.name ? "" : "font-mono"}`}>{label}</span>
             {info.name ? (
-              <span className="truncate font-mono text-[11.5px] text-muted-foreground">{info.address}</span>
+              <span className="truncate font-mono text-xs text-muted-foreground">{info.address}</span>
             ) : null}
             {info.session.kind === "cookie" ? (
-              <span className="text-[11.5px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 Signed in on this browser until {signedInUntil(info.session.expires_at)}
               </span>
             ) : null}
           </div>
-          <DropdownMenuItem className="mt-1 h-8 text-[13px]" onSelect={onRename}>
+          <DropdownMenuItem className="mt-1 h-8 text-sm" onSelect={onRename}>
             {info.name ? "Rename in Settings…" : "Name it in Settings…"}
           </DropdownMenuItem>
           {info.session.kind === "cookie" ? (
-            <DropdownMenuItem className="h-8 text-[13px]" onSelect={onSignOut}>
+            <DropdownMenuItem className="h-8 text-sm" onSelect={onSignOut}>
               Sign out
             </DropdownMenuItem>
           ) : null}

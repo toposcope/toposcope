@@ -322,7 +322,7 @@ export function AlertRuleDialog({
         {/* 18j: New monitor / its source; 18t: its source / its name. */}
         <div className="flex items-center gap-2 border-b px-[18px] py-3.5">
           <DialogTitle className="flex min-w-0 items-baseline gap-2.5">
-            <span className="shrink-0 text-[13px] font-normal text-muted-foreground">
+            <span className="shrink-0 text-sm font-normal text-muted-foreground">
               {editing ? (fingerprints ? "New fingerprints" : "Saved search") : "New monitor"}
             </span>
             <span className="font-normal text-muted-foreground">/</span>
@@ -339,7 +339,7 @@ export function AlertRuleDialog({
         </div>
         <form className="flex flex-col" onSubmit={(e) => void submit(e)}>
           <div className="flex flex-col gap-3.5 px-[18px] py-4">
-            <DialogDescription className={fingerprints ? "text-[12.5px]" : "sr-only"}>
+            <DialogDescription className={fingerprints ? "text-sm" : "sr-only"}>
               {fingerprints ? (
                 <>
                   Pages when an error fingerprint in{" "}
@@ -378,7 +378,7 @@ export function AlertRuleDialog({
                 <span className={`${monitorBox} relative pr-7`}>
                   <select
                     id="alert-search"
-                    className="min-w-0 flex-1 appearance-none bg-transparent text-[13px] outline-none"
+                    className="min-w-0 flex-1 appearance-none bg-transparent text-sm outline-none"
                     value={savedSearchId}
                     onChange={(e) => onPickSearch(e.target.value)}
                     disabled={saved.length === 0}
@@ -394,26 +394,26 @@ export function AlertRuleDialog({
               )}
               {selected ? (
                 <span
-                  className="truncate font-mono text-[12px] text-muted-foreground"
+                  className="truncate font-mono text-sm text-muted-foreground"
                   title={queryPreview(selected.query)}
                 >
                   {queryPreview(selected.query)}
                   {fingerprints ? "" : ` · ${savedWindowLabel(selected).toLowerCase()} · ${seriesName}`}
                 </span>
               ) : (
-                <span className="text-[12px] text-muted-foreground">Save a search first.</span>
+                <span className="text-sm text-muted-foreground">Save a search first.</span>
               )}
             </MonitorField>
             {fingerprints ? (
               <MonitorField label="Marks">
-                <span className="flex flex-wrap items-center gap-2 text-[12px]">
+                <span className="flex flex-wrap items-center gap-2 text-sm">
                   {(["deploy", "flag"] as const).map((k) => (
-                    <span key={k} className="inline-flex h-6 items-center gap-1.5 rounded-[4px] bg-accent px-2">
+                    <span key={k} className="inline-flex h-6 items-center gap-1.5 rounded-md bg-accent px-2">
                       <MarkGlyph kind={k} size={10} />
                       {k}
                     </span>
                   ))}
-                  <span className="text-[11.5px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {firstSeenMarksScope(selected?.query ?? "")} · watched for 24h each
                   </span>
                 </span>
@@ -422,10 +422,10 @@ export function AlertRuleDialog({
             <MonitorField label={fingerprints ? "Fire when" : "Opens when"} htmlFor="alert-threshold">
               <span className="flex flex-wrap items-center gap-2.5">
                 {fingerprints ? (
-                  <span className="text-[13px] text-muted-foreground">at least</span>
+                  <span className="text-sm text-muted-foreground">at least</span>
                 ) : (
                   <>
-                    <span className="font-mono text-[13px]">{seriesName === "Count" ? "count" : seriesName}</span>
+                    <span className="font-mono text-sm">{seriesName === "Count" ? "count" : seriesName}</span>
                     <MonitorSwitch
                       label="Opens when"
                       value={opensWhen}
@@ -447,20 +447,20 @@ export function AlertRuleDialog({
                   onChange={(e) => setThreshold(e.target.value)}
                   className={`${monitorBox} w-[70px] bg-transparent font-mono outline-none`}
                 />
-                <span className="text-[13px] text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   {fingerprints ? "events of a new fingerprint after the mark" : `in ${windowWords(selected)}`}
                 </span>
               </span>
               {fingerprints || !selected ? null : (
-                <span className="flex flex-col gap-1 rounded-[6px] border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2">
+                <span className="flex flex-col gap-1 rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2">
                   {fewerProblem ? (
-                    <span className="text-[12.5px] text-destructive">{fewerProblem[0]!.toUpperCase() + fewerProblem.slice(1)}.</span>
+                    <span className="text-sm text-destructive">{fewerProblem[0]!.toUpperCase() + fewerProblem.slice(1)}.</span>
                   ) : probeLoading && !probe ? (
-                    <span className="text-[12.5px] text-muted-foreground">Checking…</span>
+                    <span className="text-sm text-muted-foreground">Checking…</span>
                   ) : probe?.refused ? (
-                    <span className="text-[12.5px] text-destructive">{probe.reason ?? "This series cannot be evaluated."}</span>
+                    <span className="text-sm text-destructive">{probe.reason ?? "This series cannot be evaluated."}</span>
                   ) : probe ? (
-                    <span className="flex min-w-0 items-center gap-2 text-[12.5px]">
+                    <span className="flex min-w-0 items-center gap-2 text-sm">
                       <span className="shrink-0 font-mono">now {formatAggStat(probe.value)}</span>
                       {fewer ? (
                         <>
@@ -472,11 +472,11 @@ export function AlertRuleDialog({
                       ) : null}
                       <span className="ml-auto shrink-0">
                         {cantTell ? (
-                          <span className="text-[12px] text-muted-foreground">can't tell: {cantTell}</span>
+                          <span className="text-sm text-muted-foreground">can't tell: {cantTell}</span>
                         ) : wouldOpen ? (
                           <Badge variant="error">would open</Badge>
                         ) : (
-                          <span className="text-[12px] text-muted-foreground">
+                          <span className="text-sm text-muted-foreground">
                             {fewer ? "at or above threshold" : "below threshold"}
                           </span>
                         )}
@@ -484,7 +484,7 @@ export function AlertRuleDialog({
                     </span>
                   ) : null}
                   {fewer && !fewerProblem ? (
-                    <span className="text-[12.5px] leading-[1.45] text-muted-foreground">
+                    <span className="text-sm leading-[1.45] text-muted-foreground">
                       Stays shut while it can't tell: the first {windowWords(selected)} after Toposcope starts, a
                       refused reading, or a linked source that is behind.
                     </span>
@@ -553,7 +553,7 @@ export function AlertRuleDialog({
             (editing.consecutive_failures > 0 ||
               editing.last_status === "refused" ||
               editing.last_status === "error") ? (
-              <p className="text-[12px] text-destructive" title={editing.last_error ?? undefined}>
+              <p className="text-sm text-destructive" title={editing.last_error ?? undefined}>
                 Last attempt {editing.last_status ?? "error"}
                 {editing.consecutive_failures > 1 ? ` ×${editing.consecutive_failures}` : ""}
                 {editing.last_attempt_at
@@ -575,7 +575,7 @@ export function AlertRuleDialog({
               ) : null}
             </span>
             {serviceOk(service) ? null : (
-              <span className="self-center text-[12px] text-muted-foreground">{serviceMissing}</span>
+              <span className="self-center text-sm text-muted-foreground">{serviceMissing}</span>
             )}
             {editing ? (
               <Button size="lg"

@@ -27,7 +27,7 @@ import {
   sourceOf,
 } from "@/watch";
 
-const btn2 = "flex h-7 items-center rounded-md border px-3 text-[13px] hover:bg-accent";
+const btn2 = "flex h-7 items-center rounded-md border px-3 text-sm hover:bg-accent";
 
 function Row({ k, children }: { k: string; children: React.ReactNode }) {
   return (
@@ -127,7 +127,7 @@ function PushRows({ monitor, nowMs }: { monitor: MonitorView; nowMs: number }) {
           {` · ${remindLabel(monitor)}`}
         </span>
         {failure ? (
-          <span className="block font-mono text-red-300" title={monitor.last_error ?? undefined}>
+          <span className="block font-mono text-danger-fg" title={monitor.last_error ?? undefined}>
             {failure}
           </span>
         ) : null}
@@ -185,10 +185,10 @@ export function MonitorRail({
   const quiet = readsQuiet(monitor);
   const cantTell = cantTellNow(monitor, nowMs);
   return (
-    <aside className="flex w-[330px] max-w-[34%] shrink-0 flex-col gap-3 overflow-y-auto border-l bg-[#0c0c0e] p-3">
+    <aside className="flex w-[330px] max-w-[34%] shrink-0 flex-col gap-3 overflow-y-auto border-l bg-surface-1 p-3">
       <div className="flex items-center gap-2">
-        <span className="min-w-0 truncate text-[13px] font-semibold">{monitor.name}</span>
-        <span className="inline-flex h-[18px] items-center rounded-[4px] border border-white/[0.18] px-1.5 text-[10.5px] text-muted-foreground">
+        <span className="min-w-0 truncate text-sm font-semibold">{monitor.name}</span>
+        <span className="inline-flex h-[18px] items-center rounded-md border border-white/[0.18] px-1.5 text-2xs text-muted-foreground">
           {sourceOf(monitor)}
         </span>
         <button
@@ -205,13 +205,13 @@ export function MonitorRail({
           {open ? `open ${formatOpenFor(nowMs - open.opened_at)}` : readout.badge}
         </Badge>
         {open ? (
-          <span className="font-mono text-[11.5px] text-muted-foreground">
+          <span className="font-mono text-xs text-muted-foreground">
             since {clockAt(open.opened_at, nowMs)}
             {reminded ? ` · reminded ${clockAt(reminded.at, nowMs)}` : ""}
           </span>
         ) : null}
       </div>
-      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 text-[12px]">
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 text-sm">
         {push ? <PushRows monitor={monitor} nowMs={nowMs} /> : null}
         {http ? (
           <>
@@ -299,7 +299,7 @@ export function MonitorRail({
             {fingerprints ? "" : ` · ${remindLabel(monitor)}`}
           </span>
           {failure ? (
-            <span className="block font-mono text-red-300" title={monitor.last_error ?? undefined}>
+            <span className="block font-mono text-danger-fg" title={monitor.last_error ?? undefined}>
               {failure}
             </span>
           ) : null}

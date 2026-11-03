@@ -88,10 +88,10 @@ export function MarksPanel(props: {
 
   const rows = marks ? panelRows(marks, props.offKinds) : [];
   return (
-    <aside aria-label="Marks" className="my-2 mr-3 ml-1 flex w-[560px] max-w-[40%] shrink-0 flex-col overflow-hidden rounded-[10px] border border-white/10 bg-[#121214]">
+    <aside aria-label="Marks" className="my-2 mr-3 ml-1 flex w-[560px] max-w-[40%] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-2">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/[0.06] px-4 py-3">
-        <span className="text-[13.5px] font-medium">Marks · {daysBack === 0 ? "today" : `${daysBack + 1} days`}</span>
-        <span className="font-mono text-[11.5px] text-muted-foreground">
+        <span className="text-base font-medium">Marks · {daysBack === 0 ? "today" : `${daysBack + 1} days`}</span>
+        <span className="font-mono text-xs text-muted-foreground">
           {marks ? `${marks.length} · ${inWindow(marks, props.fromMs, props.toMs)} in the window` : "…"}
         </span>
         <div className="flex-1" />
@@ -102,7 +102,7 @@ export function MarksPanel(props: {
               key={kind}
               type="button"
               aria-pressed={on}
-              className={cn("inline-flex h-6 items-center gap-1 rounded-[6.4px] border px-2 text-[11.5px]", on ? "border-white/15 text-zinc-200" : "border-white/[0.06] text-muted-foreground line-through")}
+              className={cn("inline-flex h-6 items-center gap-1 rounded-lg border px-2 text-xs", on ? "border-white/15 text-zinc-200" : "border-white/[0.06] text-muted-foreground line-through")}
               onClick={() => props.onToggleKind(kind)}
             >
               <span style={{ color: markGlyph[kind].color }}>{markGlyph[kind].glyph}</span>
@@ -115,7 +115,7 @@ export function MarksPanel(props: {
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        {marks && rows.length === 0 ? <p className="px-4 py-3 text-[12.5px] text-muted-foreground">No marks today{props.offKinds.length ? " of the kinds shown" : ""}.</p> : null}
+        {marks && rows.length === 0 ? <p className="px-4 py-3 text-sm text-muted-foreground">No marks today{props.offKinds.length ? " of the kinds shown" : ""}.</p> : null}
         {rows.map((m) => {
           const on = m.id === picked;
           const from = markFrom(m);
@@ -123,7 +123,7 @@ export function MarksPanel(props: {
             <div key={m.id} className={cn("border-b border-white/[0.06] px-4", on && "bg-white/[0.03]")}>
               <button
                 type="button"
-                className="grid w-full grid-cols-[44px_18px_minmax(0,1fr)_auto] items-center gap-2 py-2.5 text-left text-[12.5px]"
+                className="grid w-full grid-cols-[44px_18px_minmax(0,1fr)_auto] items-center gap-2 py-2.5 text-left text-sm"
                 onClick={() => {
                   setPicked(on ? null : m.id);
                   if (!on) {
@@ -131,17 +131,17 @@ export function MarksPanel(props: {
                   }
                 }}
               >
-                <span className="font-mono text-[11.5px] text-muted-foreground">{hhmmUtc(m.ts)}</span>
+                <span className="font-mono text-xs text-muted-foreground">{hhmmUtc(m.ts)}</span>
                 <span style={{ color: markGlyph[m.kind].color }}>{markGlyph[m.kind].glyph}</span>
                 <span className={cn("truncate", on && "text-foreground")}>
                   {formatChangeMarkLabel(m)}
                   {m.end_ts ? <span className="text-muted-foreground"> · {Math.round((Date.parse(m.end_ts) - Date.parse(m.ts)) / 60_000)} min</span> : null}
                 </span>
-                <span className="font-mono text-[11px] text-muted-foreground">{from}</span>
+                <span className="font-mono text-xs text-muted-foreground">{from}</span>
               </button>
               {on ? (
                 <div className="flex flex-col gap-2.5 pb-3 pl-[70px]">
-                  {attrLine(m) ? <span className="font-mono text-[11.5px] text-muted-foreground">{attrLine(m)}</span> : null}
+                  {attrLine(m) ? <span className="font-mono text-xs text-muted-foreground">{attrLine(m)}</span> : null}
                   {m.kind === "deploy" ? <CodeRow markId={m.id} /> : null}
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" onClick={() => props.onCompare(m)}>
@@ -163,7 +163,7 @@ export function MarksPanel(props: {
           );
         })}
         {older !== null && older > 0 ? (
-          <div className="px-4 py-2.5 text-[12px] text-muted-foreground">
+          <div className="px-4 py-2.5 text-sm text-muted-foreground">
             {daysBack === 0 ? "Yesterday" : "The day before"} · {older} mark{older === 1 ? "" : "s"} ·{" "}
             <button type="button" className="text-zinc-300 hover:text-foreground" onClick={() => setDaysBack((d) => d + 1)}>
               show
@@ -172,7 +172,7 @@ export function MarksPanel(props: {
         ) : null}
       </div>
       {props.canWrite === false ? (
-        <p className="m-0 shrink-0 border-t border-white/[0.06] px-4 py-3 text-[12px] text-muted-foreground">A Viewer reads every mark and who made it, but writes no note.</p>
+        <p className="m-0 shrink-0 border-t border-white/[0.06] px-4 py-3 text-sm text-muted-foreground">A Viewer reads every mark and who made it, but writes no note.</p>
       ) : (
       <form
         className="flex shrink-0 flex-col gap-2 border-t border-white/[0.06] px-4 py-3"
@@ -181,7 +181,7 @@ export function MarksPanel(props: {
           void addNote();
         }}
       >
-        <label htmlFor="marks-note" className="text-[12px] text-muted-foreground">
+        <label htmlFor="marks-note" className="text-sm text-muted-foreground">
           Write a note mark at now
         </label>
         <div className="flex gap-2">
@@ -190,7 +190,7 @@ export function MarksPanel(props: {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="what you did, in one line"
-            className="h-8 min-w-0 flex-1 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none"
+            className="h-8 min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none"
           />
           <Button type="submit" variant="outline" disabled={!note.trim()}>
             ○ Add
@@ -215,9 +215,9 @@ function CodeRow({ markId }: { markId: string }) {
   }
   const prev = code.previous?.sha ? code.previous : null;
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[12px]">
-      <span className="w-[40px] shrink-0 font-mono text-[11.5px] text-muted-foreground">code</span>
-      <a href={commitUrl(repo, sha)} target="_blank" rel="noreferrer noopener" className="font-mono text-[11.5px] text-zinc-200 hover:text-foreground">
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+      <span className="w-[40px] shrink-0 font-mono text-xs text-muted-foreground">code</span>
+      <a href={commitUrl(repo, sha)} target="_blank" rel="noreferrer noopener" className="font-mono text-xs text-zinc-200 hover:text-foreground">
         {repo.name} @ {shortSha(sha)} ↗
       </a>
       {prev ? (

@@ -102,7 +102,7 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="ml-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-[#27272a] text-[11px] font-semibold text-foreground hover:bg-[#3f3f46]"
+          className="ml-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-control text-xs font-semibold text-foreground hover:bg-[#3f3f46]"
           aria-label={`${me.name} · ${roleWords[me.role]}`}
           title={`${me.name} · ${roleWords[me.role]}`}
         >
@@ -111,28 +111,28 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[248px] p-1">
         <div className="flex flex-col gap-[3px] border-b border-white/[0.08] px-2 pt-2 pb-2.5">
-          <span className="truncate text-[13px] font-semibold">{me.name}</span>
-          {me.email ? <span className="truncate font-mono text-[11.5px] text-muted-foreground">{me.email}</span> : null}
-          <span className="text-[11.5px] text-muted-foreground">{roleWords[me.role]}</span>
+          <span className="truncate text-sm font-semibold">{me.name}</span>
+          {me.email ? <span className="truncate font-mono text-xs text-muted-foreground">{me.email}</span> : null}
+          <span className="text-xs text-muted-foreground">{roleWords[me.role]}</span>
           {me.role !== "owner" && me.owners?.length ? (
-            <span className="text-[11.5px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {me.role === "viewer" ? "Need to change a monitor?" : "Need someone let in?"} Owners: {me.owners.join(", ")}
             </span>
           ) : null}
         </div>
         {me.via === "session" && me.kind === "person" ? (
-          <DropdownMenuItem className="mt-1 h-8 text-[13px]" onSelect={() => void newCodes()}>
+          <DropdownMenuItem className="mt-1 h-8 text-sm" onSelect={() => void newCodes()}>
             New backup codes…
           </DropdownMenuItem>
         ) : null}
         {twoStepMenu && count > 0 ? (
-          <DropdownMenuItem className="h-8 justify-between text-[13px]" onSelect={() => void loadBrowsers(true)}>
+          <DropdownMenuItem className="h-8 justify-between text-sm" onSelect={() => void loadBrowsers(true)}>
             Remembered browsers…
-            <span className="font-mono text-[11.5px] text-muted-foreground">{count}</span>
+            <span className="font-mono text-xs text-muted-foreground">{count}</span>
           </DropdownMenuItem>
         ) : null}
         {me.via === "session" ? (
-          <DropdownMenuItem className="h-8 text-[13px]" onSelect={onSignOut}>
+          <DropdownMenuItem className="h-8 text-sm" onSelect={onSignOut}>
             Sign out
           </DropdownMenuItem>
         ) : null}
@@ -141,13 +141,13 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
     {codes ? (
       <>
         <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" onClick={() => setCodes(null)} />
-        <section aria-label="New backup codes" className="fixed top-[80px] left-1/2 z-40 flex w-[560px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 rounded-[12px] border border-zinc-700 bg-[#121214] px-7 py-6">
-          <h2 className="m-0 text-[17px] font-semibold">Ten new backup codes</h2>
-          <span className="text-[12.5px] text-muted-foreground">Each works once, in place of the six digits. Shown now and never again; the earlier ten no longer work.</span>
-          <div className="grid grid-cols-2 gap-x-7 gap-y-2.5 rounded-[10px] border border-dashed border-plate bg-[#0a0a0c] px-6 py-5 font-mono text-[16px] tracking-[0.06em]">
+        <section aria-label="New backup codes" className="fixed top-[80px] left-1/2 z-40 flex w-[560px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 rounded-xl border border-zinc-700 bg-surface-2 px-7 py-6">
+          <h2 className="m-0 text-lg font-semibold">Ten new backup codes</h2>
+          <span className="text-sm text-muted-foreground">Each works once, in place of the six digits. Shown now and never again; the earlier ten no longer work.</span>
+          <div className="grid grid-cols-2 gap-x-7 gap-y-2.5 rounded-xl border border-dashed border-plate bg-ground px-6 py-5 font-mono text-lg tracking-[0.06em]">
             {codes.map((code, i) => (
               <span key={code}>
-                <i className="mr-2.5 inline-block w-[18px] text-[12px] text-zinc-600 not-italic">{i + 1}</i>
+                <i className="mr-2.5 inline-block w-[18px] text-sm text-zinc-600 not-italic">{i + 1}</i>
                 {code}
               </span>
             ))}
@@ -166,31 +166,31 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
     {browsers ? (
       <>
         <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" onClick={() => setBrowsers(null)} />
-        <section aria-label="Remembered browsers" className="fixed top-[80px] left-1/2 z-40 flex w-[600px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 rounded-[12px] border border-zinc-700 bg-[#121214] px-7 py-6">
-          <h2 className="m-0 text-[17px] font-semibold">Remembered browsers</h2>
-          <span className="text-[12.5px] leading-[1.55] text-muted-foreground">After your password, these skip the six digits until the day shown. Forgetting one asks for a code there at its next sign-in; it stays signed in until then.</span>
+        <section aria-label="Remembered browsers" className="fixed top-[80px] left-1/2 z-40 flex w-[600px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 rounded-xl border border-zinc-700 bg-surface-2 px-7 py-6">
+          <h2 className="m-0 text-lg font-semibold">Remembered browsers</h2>
+          <span className="text-sm leading-[1.55] text-muted-foreground">After your password, these skip the six digits until the day shown. Forgetting one asks for a code there at its next sign-in; it stays signed in until then.</span>
           {browsers.length === 0 ? (
-            <span className="text-[12.5px] text-muted-foreground">No browser is remembered. Tick Remember this browser after the six digits to add one.</span>
+            <span className="text-sm text-muted-foreground">No browser is remembered. Tick Remember this browser after the six digits to add one.</span>
           ) : (
-            <div className="overflow-hidden rounded-[10px] border border-white/10">
+            <div className="overflow-hidden rounded-xl border border-white/10">
               {browsers.map((b, i) => (
-                <div key={b.id} className={`grid grid-cols-[minmax(0,1fr)_140px_auto] items-center gap-3 px-3.5 py-2.5 text-[12.5px] ${i ? "border-t border-white/[0.06]" : ""}`}>
+                <div key={b.id} className={`grid grid-cols-[minmax(0,1fr)_140px_auto] items-center gap-3 px-3.5 py-2.5 text-sm ${i ? "border-t border-white/[0.06]" : ""}`}>
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate font-medium">
                       {b.label}
                       {b.this_browser ? <span className="font-normal text-muted-foreground"> · this browser</span> : null}
                     </span>
-                    <span className="truncate font-mono text-[11.5px] text-muted-foreground">
+                    <span className="truncate font-mono text-xs text-muted-foreground">
                       remembered {stampAt(b.created_at)} · {b.last_used_at ? `last used ${stampAt(b.last_used_at)}` : `${b.days} ${b.days === 1 ? "day" : "days"}`}
                     </span>
                   </span>
-                  <span className="font-mono text-[12px] text-zinc-300">until {dayAt(b.expires_at)}</span>
+                  <span className="font-mono text-sm text-zinc-300">until {dayAt(b.expires_at)}</span>
                   {armed === b.id ? (
-                    <button type="button" className="text-right text-[12px] text-plate underline" onClick={() => void forget(b.id)}>
+                    <button type="button" className="text-right text-sm text-plate underline" onClick={() => void forget(b.id)}>
                       sure? forget
                     </button>
                   ) : (
-                    <button type="button" className="text-right text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setArmed(b.id)}>
+                    <button type="button" className="text-right text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(b.id)}>
                       forget
                     </button>
                   )}
@@ -204,7 +204,7 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
                 {armed === "all" ? `Sure? forget all ${browsers.length}` : `Forget all ${browsers.length}`}
               </Button>
             ) : null}
-            <span className="text-[12px] text-muted-foreground">Resetting two-step or changing your password forgets them all.</span>
+            <span className="text-sm text-muted-foreground">Resetting two-step or changing your password forgets them all.</span>
             <Button type="button" className="ml-auto" onClick={() => setBrowsers(null)}>
               Done
             </Button>

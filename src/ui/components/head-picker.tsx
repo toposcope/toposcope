@@ -40,7 +40,7 @@ export function HeadPicker({
   return (
     <>
       {pre ? (
-        <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {pre}
         </span>
       ) : null}
@@ -51,7 +51,7 @@ export function HeadPicker({
             title={`${label} — ${title}`}
             onPointerDown={(e) => e.stopPropagation()}
             className={cn(
-              "inline-flex max-w-full items-center border-none px-px font-mono text-[11.5px] leading-[1.55] outline-none",
+              "inline-flex max-w-full items-center border-none px-px font-mono text-xs leading-[1.55] outline-none",
               fn
                 ? "shrink-0 whitespace-nowrap"
                 : "min-w-0 flex-1 truncate",
@@ -81,11 +81,11 @@ export function HeadPicker({
         <PopoverContent
           align="start"
           side="bottom"
-          className="w-[182px] bg-[#18181b] p-1"
+          className="w-[182px] bg-overlay p-1"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div
-            className="mb-0.5 border-b border-white/[0.08] px-[7px] pt-1 pb-[5px] text-[9.5px] tracking-[0.1em] uppercase"
+            className="mb-0.5 border-b border-white/[0.08] px-[7px] pt-1 pb-[5px] text-2xs tracking-[0.1em] uppercase"
             style={{ color: fn ? FN : "oklch(0.705 0.015 286.067)" }}
           >
             {fn ? "Function" : "Value"}
@@ -97,7 +97,7 @@ export function HeadPicker({
                 key={item.value}
                 type="button"
                 className={cn(
-                  "flex h-[25px] w-full items-center gap-[7px] rounded-[3.4px] px-[7px] text-left font-mono text-[11.5px]",
+                  "flex h-[25px] w-full items-center gap-[7px] rounded-sm px-[7px] text-left font-mono text-xs",
                   on ? "bg-accent" : "bg-transparent hover:bg-accent",
                   item.used && "text-muted-foreground",
                 )}
@@ -107,7 +107,7 @@ export function HeadPicker({
                 }}
               >
                 <span
-                  className="w-[9px] shrink-0 text-[10px]"
+                  className="w-[9px] shrink-0 text-2xs"
                   style={{
                     color: on ? (fn ? FN : "oklch(0.985 0 0)") : undefined,
                     opacity: on ? 1 : 0,
@@ -117,7 +117,7 @@ export function HeadPicker({
                 </span>
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 {item.used ? (
-                  <span className="shrink-0 text-[9.5px] tracking-[0.03em] text-muted-foreground/75">
+                  <span className="shrink-0 text-2xs tracking-[0.03em] text-muted-foreground/75">
                     on canvas
                   </span>
                 ) : null}
@@ -127,7 +127,7 @@ export function HeadPicker({
         </PopoverContent>
       </Popover>
       {post ? (
-        <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {post}
         </span>
       ) : null}

@@ -120,14 +120,14 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
       }
       return next;
     });
-  const th = "px-4 py-2.5 text-left whitespace-nowrap text-[11px] font-medium tracking-[0.06em] text-muted-foreground uppercase";
+  const th = "px-4 py-2.5 text-left whitespace-nowrap text-xs font-medium tracking-[0.06em] text-muted-foreground uppercase";
   const td = "px-4 py-3 align-middle";
   const cols = props.canWrite ? 5 : 4;
 
   return (
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
       <div className="mx-auto w-full max-w-[980px]">
-        <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-[13px]">
+        <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-sm">
           <button type="button" className="text-[#8a8a93] hover:text-foreground" onClick={props.onSettings}>
             Settings
           </button>
@@ -137,8 +137,8 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
           </span>
         </nav>
         <div className="mb-3.5 flex flex-wrap items-baseline gap-3.5">
-          <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Repositories</h1>
-          <p className="m-0 text-[12px] text-muted-foreground">Where each service's code lives, so a sha and a stack frame open it.</p>
+          <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Repositories</h1>
+          <p className="m-0 text-sm text-muted-foreground">Where each service's code lives, so a sha and a stack frame open it.</p>
         </div>
         {gh.github?.configured ? <GithubBand github={gh.github} canConnect={props.canConnect} onChange={gh.set} /> : null}
         {failed && !rows ? (
@@ -146,9 +146,9 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
             <p className="text-sm">Could not read the repositories.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-[10px] border border-white/10 bg-[#131316]">
+          <div className="overflow-x-auto rounded-xl border border-white/10 bg-surface-2">
             {props.canWrite && picked.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] bg-[#18181b] px-4 py-2 text-[12.5px]">
+              <div className="flex flex-wrap items-center gap-2.5 border-b border-white/[0.08] bg-overlay px-4 py-2 text-sm">
                 <span>{picked.length} selected</span>
                 <Popover open={open?.service === ""} onOpenChange={(o) => setOpen(o ? { service: "", mode: "pick" } : null)}>
                   <PopoverTrigger asChild>
@@ -169,7 +169,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                 </Button>
               </div>
             ) : null}
-            <table className="w-full border-collapse text-[12.5px]">
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06]">
                   {props.canWrite ? (
@@ -201,7 +201,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                     const repo = r.repository;
                     const rowOpen = open?.service === r.service ? open : null;
                     return (
-                      <tr key={r.service} className={`border-b border-white/[0.06] ${selected.has(r.service) ? "bg-[#e7e1d3]/[0.05]" : rowOpen ? "bg-white/[0.03]" : ""}`}>
+                      <tr key={r.service} className={`border-b border-white/[0.06] ${selected.has(r.service) ? "bg-plate/[0.05]" : rowOpen ? "bg-white/[0.03]" : ""}`}>
                         <Popover open={rowOpen !== null} onOpenChange={(o) => setOpen(o ? { service: r.service, mode: repo?.from === "set" ? "change" : "pick" } : null)}>
                           {props.canWrite ? (
                             <td className="w-4 py-3 pr-0 pl-4 align-middle">
@@ -212,7 +212,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                           <td className={`${td} font-mono ${repo ? "" : "text-muted-foreground"}`}>
                             {repo ? repoDisplay(repo) : "none"}
                             {repo?.path ? <span className="text-muted-foreground"> · {repo.path}</span> : null}
-                            {repo && repoHostGuessed(repo) ? <span className="font-sans text-[12px] text-muted-foreground"> · links as {repoHostWords[repo.host]}</span> : null}
+                            {repo && repoHostGuessed(repo) ? <span className="font-sans text-sm text-muted-foreground"> · links as {repoHostWords[repo.host]}</span> : null}
                           </td>
                           <td className={`${td} whitespace-nowrap text-muted-foreground`} title={r.set_at ? new Date(r.set_at).toISOString().replace("T", " ").slice(0, 16) + " UTC" : undefined}>
                             {knownFromWords(r)}
@@ -250,7 +250,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
             </table>
           </div>
         )}
-        <p className="mt-3 mb-0 text-[12px] leading-[1.6] text-muted-foreground">
+        <p className="mt-3 mb-0 text-sm leading-[1.6] text-muted-foreground">
           A service's repository comes from <span className="font-mono text-zinc-200">{repoResourceKey}</span> on its resource, else <span className="font-mono text-zinc-200">repo</span> on its newest deploy mark, else this page. One set here wins over both. The link shape follows the host: GitHub, GitLab, Gitea / Forgejo, Bitbucket.
           {props.canWrite ? "" : " Only an Operator sets or clears one."}
         </p>
@@ -261,7 +261,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
 
 function MenuItem(props: { onClick: () => void; disabled?: boolean; children: ReactNode }) {
   return (
-    <button type="button" role="menuitem" disabled={props.disabled} onClick={props.onClick} className="w-full rounded-[4.4px] px-2 py-[7px] text-left text-[12.5px] hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50">
+    <button type="button" role="menuitem" disabled={props.disabled} onClick={props.onClick} className="w-full rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50">
       {props.children}
     </button>
   );
@@ -293,9 +293,9 @@ function useGithubRepos(on: boolean, q: string): { repos: GithubRepo[]; matching
   return on ? found : null;
 }
 
-const sectionHead = "px-2 pt-2 pb-0.5 text-[10.5px] tracking-[0.04em] text-muted-foreground uppercase";
+const sectionHead = "px-2 pt-2 pb-0.5 text-2xs tracking-[0.04em] text-muted-foreground uppercase";
 const repoItem =
-  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-[4.4px] px-2 py-[7px] text-left text-[12.5px] hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50";
+  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2.5 rounded-md px-2 py-[7px] text-left text-sm hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none disabled:opacity-50";
 
 /**
  * 41b / 41c / 42e: the repositories used here, each with its services; with GitHub connected, a
@@ -327,11 +327,11 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
         }}
       >
         {props.known.length > 0 || ghOn ? (
-          <button type="button" className="self-start text-[11.5px] text-muted-foreground hover:text-foreground" onClick={() => setPaste(false)}>
+          <button type="button" className="self-start text-xs text-muted-foreground hover:text-foreground" onClick={() => setPaste(false)}>
             ‹ {ghOn ? "Repositories" : "Known repositories"}
           </button>
         ) : null}
-        <label htmlFor="repo-url" className="text-[12px] text-muted-foreground">
+        <label htmlFor="repo-url" className="text-sm text-muted-foreground">
           Repository URL for {forWords}
         </label>
         <input
@@ -340,9 +340,9 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://git.example.com/owner/name"
-          className="h-[30px] w-full min-w-0 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12px] outline-none focus:border-[#e7e1d3]"
+          className="h-[30px] w-full min-w-0 rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none focus:border-plate"
         />
-        <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="min-w-0 truncate">
             {typed ? (
               <>
@@ -362,7 +362,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
   }
   return (
     <div role="menu" aria-label={`Set a repository for ${servicesWords(props.services)}`} className="flex flex-col">
-      <div className="px-2 pt-1.5 pb-1 text-[11px] text-muted-foreground">For {forWords}</div>
+      <div className="px-2 pt-1.5 pb-1 text-xs text-muted-foreground">For {forWords}</div>
       {ghOn ? (
         <div className="p-1">
           <input
@@ -371,7 +371,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Find a repository"
-            className="h-7 w-full min-w-0 rounded-[6px] border border-white/10 bg-[#0d0d0f] px-2 font-mono text-[12px] outline-none focus:border-[#e7e1d3]"
+            className="h-7 w-full min-w-0 rounded-md border border-white/10 bg-surface-1 px-2 font-mono text-sm outline-none focus:border-plate"
           />
         </div>
       ) : null}
@@ -379,7 +379,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
       {usedHere.map((k) => (
         <button key={k.repo.url} type="button" role="menuitem" disabled={props.busy} onClick={() => props.onPick(k.repo.url)} className={repoItem}>
           <span className="truncate font-mono">{repoDisplay(k.repo)}</span>
-          <span className="text-[11.5px] text-muted-foreground">{servicesWords(k.services)}</span>
+          <span className="text-xs text-muted-foreground">{servicesWords(k.services)}</span>
         </button>
       ))}
       {ghOn ? (
@@ -389,13 +389,13 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
             {onGithub.map((repo) => (
               <button key={repo.url} type="button" role="menuitem" disabled={props.busy} onClick={() => props.onPick(repo.url)} className={repoItem}>
                 <span className="truncate font-mono">{repoDisplay({ url: repo.url, host: "github", name: repo.name })}</span>
-                <span className="text-[11.5px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {repo.owner}
                   {repo.private ? " · private" : ""}
                 </span>
               </button>
             ))}
-            {found && onGithub.length === 0 ? <div className="px-2 py-[7px] text-[12px] text-muted-foreground">{q.trim() ? `No repository matches ${q.trim()}` : "Every one is used here"}</div> : null}
+            {found && onGithub.length === 0 ? <div className="px-2 py-[7px] text-sm text-muted-foreground">{q.trim() ? `No repository matches ${q.trim()}` : "Every one is used here"}</div> : null}
           </div>
         </>
       ) : null}
@@ -403,7 +403,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
       <div className="flex items-center justify-between gap-2">
         <MenuItem onClick={() => setPaste(true)}>Paste a URL…</MenuItem>
         {ghOn && props.github ? (
-          <a href={props.github.install_url} target="_blank" rel="noreferrer noopener" className="shrink-0 px-2 py-[7px] text-[11.5px] whitespace-nowrap text-muted-foreground hover:text-foreground">
+          <a href={props.github.install_url} target="_blank" rel="noreferrer noopener" className="shrink-0 px-2 py-[7px] text-xs whitespace-nowrap text-muted-foreground hover:text-foreground">
             Not listed? Choose repositories ↗
           </a>
         ) : null}
@@ -428,7 +428,7 @@ function FolderForm(props: { service: string; repo: Repo & { path: string | null
         }
       }}
     >
-      <label htmlFor="repo-folder" className="text-[12px] text-muted-foreground">
+      <label htmlFor="repo-folder" className="text-sm text-muted-foreground">
         Folder for <span className="font-mono text-foreground">{props.service}</span> in <span className="font-mono text-foreground">{props.repo.name}</span>
       </label>
       <input
@@ -437,9 +437,9 @@ function FolderForm(props: { service: string; repo: Repo & { path: string | null
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="services/pay"
-        className="h-[30px] w-full min-w-0 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 font-mono text-[12px] outline-none focus:border-[#e7e1d3]"
+        className="h-[30px] w-full min-w-0 rounded-lg border border-white/10 bg-surface-1 px-2.5 font-mono text-sm outline-none focus:border-plate"
       />
-      <p className="m-0 text-[12px] leading-normal text-muted-foreground">
+      <p className="m-0 text-sm leading-normal text-muted-foreground">
         {folder === null ? (
           "Not a folder in the repository."
         ) : folder ? (

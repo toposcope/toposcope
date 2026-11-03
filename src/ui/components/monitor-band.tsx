@@ -41,7 +41,7 @@ export function monitorBandH(band: MonitorBand | null | undefined): number {
   return band && band.items.length > 0 ? MONITOR_BAND_H : 0;
 }
 
-const btn2 = "flex h-[26px] items-center rounded-md border px-2.5 text-[12px] hover:bg-accent";
+const btn2 = "flex h-[26px] items-center rounded-md border px-2.5 text-sm hover:bg-accent";
 
 /** "opened 10:41 · at least 50 lines in 15m", "opened 10:41 · fewer than 1 line in 15m", "opened 10:41 · connect ECONNREFUSED". */
 function openedLine(monitor: MonitorView, stretch: MonitorStretch, nowMs: number): string {
@@ -99,15 +99,15 @@ const StretchCard = forwardRef<
       ref={ref}
       role="dialog"
       aria-label={`${monitor.name} · stretch`}
-      className="fixed z-40 flex flex-col gap-2 rounded-[6.4px] border bg-[#1f1f23] p-3 shadow-[0_10px_30px_rgba(0,0,0,.55)]"
+      className="fixed z-40 flex flex-col gap-2 rounded-lg border bg-overlay p-3 shadow-[0_10px_30px_rgba(0,0,0,.55)]"
       style={{ top: place.top, left: place.left, width: CARD_W }}
     >
       <span className="flex items-center gap-2">
-        <span className="min-w-0 truncate text-[13px] font-semibold">{monitor.name}</span>
+        <span className="min-w-0 truncate text-sm font-semibold">{monitor.name}</span>
         <span
           className={cn(
-            "inline-flex h-[18px] shrink-0 items-center rounded-[4px] px-1.5 text-[10.5px] whitespace-nowrap",
-            open ? "bg-red-500/[0.16] text-red-300" : "bg-[#27272a] text-zinc-300",
+            "inline-flex h-[18px] shrink-0 items-center rounded-md px-1.5 text-2xs whitespace-nowrap",
+            open ? "bg-danger/[0.16] text-danger-fg" : "bg-control text-zinc-300",
           )}
         >
           open {formatOpenFor((stretch.resolved_at ?? nowMs) - stretch.opened_at)}
@@ -121,8 +121,8 @@ const StretchCard = forwardRef<
           <X className="size-3.5" />
         </button>
       </span>
-      <span className="font-mono text-[11.5px] text-muted-foreground">{openedLine(monitor, stretch, nowMs)}</span>
-      <span className="flex flex-col gap-[3px] rounded-[6px] bg-[#0f0f11] p-2 text-[12px]">
+      <span className="font-mono text-xs text-muted-foreground">{openedLine(monitor, stretch, nowMs)}</span>
+      <span className="flex flex-col gap-[3px] rounded-md bg-surface-1 p-2 text-sm">
         {lastLine !== null ? (
           <span className="font-mono">
             <span className="text-muted-foreground">last line</span> {secondsAt(lastLine, nowMs)}
@@ -140,9 +140,9 @@ const StretchCard = forwardRef<
         ) : null}
       </span>
       {stretch.calls.length > 0 || next !== null ? (
-        <span className="flex flex-col gap-[3px] text-[12px]">
+        <span className="flex flex-col gap-[3px] text-sm">
           {stretch.calls.map((call) => (
-            <span key={call.id} className={cn("font-mono", !call.ok && call.status !== "silenced" && "text-red-300")}>
+            <span key={call.id} className={cn("font-mono", !call.ok && call.status !== "silenced" && "text-danger-fg")}>
               {callLine(call, host, nowMs)}
             </span>
           ))}
@@ -280,8 +280,8 @@ export function MonitorBandRow({
                 className={cn(
                   "absolute top-0 h-2",
                   span.open
-                    ? "rounded-l-[2px] bg-red-500 outline-2 outline-offset-1 outline-plate"
-                    : "rounded-[2px] bg-red-500/35",
+                    ? "rounded-l-sm bg-danger outline-2 outline-offset-1 outline-plate"
+                    : "rounded-sm bg-danger/35",
                 )}
                 style={{ left: `${(span.left * 100).toFixed(3)}%`, width: `${(span.width * 100).toFixed(3)}%` }}
                 onClick={(e) => {
@@ -291,7 +291,7 @@ export function MonitorBandRow({
               />
               {span.width > 0.08 && !span.open ? (
                 <span
-                  className="pointer-events-none absolute -top-[2px] font-mono text-[10.5px] leading-3 text-red-300"
+                  className="pointer-events-none absolute -top-[2px] font-mono text-2xs leading-3 text-danger-fg"
                   style={{ left: `calc(${(span.left * 100).toFixed(3)}% + 6px)` }}
                 >
                   {label}

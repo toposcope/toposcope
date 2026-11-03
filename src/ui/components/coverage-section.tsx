@@ -84,7 +84,7 @@ const HOME_GAP_LINES = 3;
 
 const coverageGrid = "grid grid-cols-[160px_100px_repeat(4,minmax(0,1fr))_150px] items-center";
 const namesGrid = "grid grid-cols-[230px_230px_minmax(0,1fr)_140px] gap-3";
-const link = "text-[12px] text-zinc-300 no-underline hover:text-foreground";
+const link = "text-sm text-zinc-300 no-underline hover:text-foreground";
 
 const keyLabel: Record<GapKey, string> = { version: "version", host: "host", trace_id: "trace_id", stack: "stack on errors", marks: "deploy marks" };
 const howToSend: Record<GapKey, string> = {
@@ -144,7 +144,7 @@ function Cell({ s, k, actions }: { s: CoverageService; k: CoverageKey; actions: 
     return (
       <span className="flex items-center gap-2">
         {body}
-        <span className="font-sans text-[11.5px] leading-tight text-muted-foreground">
+        <span className="font-sans text-xs leading-tight text-muted-foreground">
           accepted
           {actions.canAccept ? (
             <>
@@ -172,15 +172,15 @@ function GapPopover({ s, k, actions, trigger, className }: { s: CoverageService;
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn("-mx-1.5 flex w-fit items-center gap-2 rounded-[4.4px] px-1.5 py-0.5 text-left hover:bg-white/[0.06]", open && "bg-white/[0.08]", className)}
+          className={cn("-mx-1.5 flex w-fit items-center gap-2 rounded-md px-1.5 py-0.5 text-left hover:bg-white/[0.06]", open && "bg-white/[0.08]", className)}
         >
           {trigger}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[400px] border-white/10 bg-[#18181b] p-4 font-sans">
+      <PopoverContent align="start" className="w-[400px] border-white/10 bg-overlay p-4 font-sans">
         <div className="flex flex-col gap-2.5">
-          <span className="text-[13px]">{gapTitle(s, k)}</span>
-          <span className="text-[12.5px] leading-[1.5] text-zinc-400">
+          <span className="text-sm">{gapTitle(s, k)}</span>
+          <span className="text-sm leading-[1.5] text-zinc-400">
             Accept it when {s.service} is not meant to send it. Home and the counts stop naming it; this cell keeps its number, marked accepted.
           </span>
           <div className="flex items-center gap-2.5">
@@ -188,7 +188,7 @@ function GapPopover({ s, k, actions, trigger, className }: { s: CoverageService;
               <button
                 type="button"
                 disabled={busy}
-                className="h-8 rounded-md bg-plate px-3 text-[12.5px] font-medium text-[#09090b] disabled:opacity-60"
+                className="h-8 rounded-md bg-plate px-3 text-sm font-medium text-[#09090b] disabled:opacity-60"
                 onClick={async () => {
                   setBusy(true);
                   try {
@@ -202,7 +202,7 @@ function GapPopover({ s, k, actions, trigger, className }: { s: CoverageService;
                 Accept this gap
               </button>
             ) : null}
-            <a href={howToSend[k]} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-md border border-white/15 px-3 text-[12.5px] text-foreground no-underline hover:bg-white/[0.04]">
+            <a href={howToSend[k]} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-md border border-white/15 px-3 text-sm text-foreground no-underline hover:bg-white/[0.04]">
               How to send it ↗
             </a>
           </div>
@@ -227,7 +227,7 @@ function MarksCell({ s, actions }: { s: CoverageService; actions: GapActions }) 
     return (
       <span className="flex items-center gap-2 text-muted-foreground">
         {marksText(s)}
-        <span className="font-sans text-[11.5px] leading-tight">
+        <span className="font-sans text-xs leading-tight">
           accepted
           {actions.canAccept ? (
             <>
@@ -277,12 +277,12 @@ function writeOpen(next: OpenGroups): void {
   }
 }
 
-const headRow = `${coverageGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`;
-const foldLine = "flex w-full items-baseline gap-1.5 border-b border-white/[0.05] px-4 py-2.5 text-left text-[12.5px] hover:bg-white/[0.02]";
+const headRow = `${coverageGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-xs tracking-[0.04em] text-muted-foreground uppercase`;
+const foldLine = "flex w-full items-baseline gap-1.5 border-b border-white/[0.05] px-4 py-2.5 text-left text-sm hover:bg-white/[0.02]";
 
 function ServiceRow({ s, actions }: { s: CoverageService; actions: GapActions }) {
   return (
-    <div className={`${coverageGrid} border-b border-white/[0.05] px-4 py-[9px] font-mono text-[12.5px]`}>
+    <div className={`${coverageGrid} border-b border-white/[0.05] px-4 py-[9px] font-mono text-sm`}>
       <span className="truncate">{s.service}</span>
       <span className="text-muted-foreground">{formatCompactCount(s.rows)}</span>
       <Cell s={s} k="version" actions={actions} />
@@ -347,10 +347,10 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
     </div>
   );
   return (
-    <section aria-label="Coverage" className="mb-3.5 overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+    <section aria-label="Coverage" className="mb-3.5 overflow-hidden rounded-xl border border-white/10 bg-surface-2">
       <div className="flex flex-wrap items-center gap-3 px-4 pt-2.5 pb-2">
-        <h2 className="m-0 text-[13.5px] font-medium">Coverage</h2>
-        <span className="text-[12px] text-muted-foreground">
+        <h2 className="m-0 text-base font-medium">Coverage</h2>
+        <span className="text-sm text-muted-foreground">
           {finding ? (
             <>
               {gaps.length + done.length} of {coverage.services.length} services match <span className="text-foreground">{find.trim()}</span>
@@ -373,7 +373,7 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
         </a>
         {/* The label, its field and Clear wrap as one, so a narrow head never parts them. */}
         <span className="flex items-center gap-3">
-          <label htmlFor="coverage-find" className="text-[12.5px] text-muted-foreground">
+          <label htmlFor="coverage-find" className="text-sm text-muted-foreground">
             Find a service
           </label>
           <input
@@ -389,10 +389,10 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
                 setFind("");
               }
             }}
-            className="h-[30px] w-[210px] rounded-md border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none focus:border-white/25"
+            className="h-[30px] w-[210px] rounded-md border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus:border-white/25"
           />
           {finding ? (
-            <button type="button" className="h-[30px] rounded-md border border-white/15 px-2.5 text-[12.5px] hover:bg-white/[0.04]" onClick={() => setFind("")}>
+            <button type="button" className="h-[30px] rounded-md border border-white/15 px-2.5 text-sm hover:bg-white/[0.04]" onClick={() => setFind("")}>
               Clear
             </button>
           ) : null}
@@ -454,7 +454,7 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
           <>
             <button type="button" aria-expanded className={cn(headRow, "w-full text-left")} onClick={() => setOpen({ done: false })}>
               <span className="col-span-6">Complete or accepted · {done.length}</span>
-              <span className="text-right normal-case tracking-normal text-[12px] text-zinc-300">Hide</span>
+              <span className="text-right normal-case tracking-normal text-sm text-zinc-300">Hide</span>
             </button>
             {done.map((s) => (
               <ServiceRow key={s.service} s={s} actions={actions} />
@@ -470,7 +470,7 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
         )
       ) : null}
       {!finding ? (
-        <p className="m-0 border-b border-white/[0.05] px-4 py-2.5 text-[11.5px] leading-[1.5] text-muted-foreground">
+        <p className="m-0 border-b border-white/[0.05] px-4 py-2.5 text-xs leading-[1.5] text-muted-foreground">
           A key is complete at {Math.round(COVERAGE_COMPLETE * 100)}% of the service's rows.
           {coverage.services.some((s) => s.trace_id === null) ? (
             <>
@@ -484,9 +484,9 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
       {!finding && hasNames ? (
         <div ref={namesRef} id="coverage-names" className="scroll-mt-4">
           <button type="button" aria-expanded={open.names} className={cn(foldLine, "items-baseline gap-3 border-b-0")} onClick={() => setOpen({ names: !open.names })}>
-            <span className="text-[13px] font-medium text-foreground">Names that do not match</span>
-            <span className="font-mono text-[12px] text-foreground">{coverage.mismatches.length}</span>
-            <span className="min-w-0 truncate text-[12px] text-muted-foreground">
+            <span className="text-sm font-medium text-foreground">Names that do not match</span>
+            <span className="font-mono text-sm text-foreground">{coverage.mismatches.length}</span>
+            <span className="min-w-0 truncate text-sm text-muted-foreground">
               {open.names ? "the same thing under two names, so the two sides never join" : namesSummary(coverage.mismatches)}
             </span>
             <span className="flex-1" />
@@ -494,7 +494,7 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
           </button>
           {open.names ? (
             <>
-              <div className={`${namesGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`}>
+              <div className={`${namesGrid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-xs tracking-[0.04em] text-muted-foreground uppercase`}>
                 <span>One side says</span>
                 <span>The other says</span>
                 <span>So</span>
@@ -504,14 +504,14 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
                 const a = sideA(m);
                 const b = sideB(m);
                 return (
-                  <div key={`${m.kind}:${a.name}:${b.name}`} className={`${namesGrid} items-baseline border-b border-white/[0.05] px-4 py-2.5 text-[12.5px]`}>
+                  <div key={`${m.kind}:${a.name}:${b.name}`} className={`${namesGrid} items-baseline border-b border-white/[0.05] px-4 py-2.5 text-sm`}>
                     <span className="flex min-w-0 flex-col gap-[3px]">
                       <span className="truncate font-mono">{a.name}</span>
-                      <span className="text-[11.5px] text-muted-foreground">{a.on}</span>
+                      <span className="text-xs text-muted-foreground">{a.on}</span>
                     </span>
                     <span className="flex min-w-0 flex-col gap-[3px]">
                       <span className="truncate font-mono">{b.name}</span>
-                      <span className="text-[11.5px] text-muted-foreground">{b.on}</span>
+                      <span className="text-xs text-muted-foreground">{b.on}</span>
                     </span>
                     <span className="leading-[1.45] text-zinc-300">{mismatchSo(m)}</span>
                     <a href={namesDocUrl} target="_blank" rel="noreferrer" className={cn(link, "text-right")}>
@@ -520,7 +520,7 @@ export function CoverageSection({ coverage, focusNames, canAccept = false }: { c
                   </div>
                 );
               })}
-              <p className="m-0 px-4 pt-2.5 pb-3 text-[11.5px] leading-[1.5] text-muted-foreground">
+              <p className="m-0 px-4 pt-2.5 pb-3 text-xs leading-[1.5] text-muted-foreground">
                 Listed when one name is the other with a <span className="font-mono">v</span>, a case, or an <span className="font-mono">-api</span> /{" "}
                 <span className="font-mono">-svc</span> suffix more or less. Stored rows keep their names; a fix applies from the next row on.
               </p>
@@ -568,11 +568,11 @@ function AcceptedList({ accepted, actions }: { accepted: AcceptedGap[]; actions:
   return (
     <div id="coverage-accepted" className="border-t border-white/[0.08]">
       <div className="flex items-baseline gap-3 px-4 pt-3 pb-2">
-        <h3 className="m-0 text-[13px] font-medium">Accepted gaps</h3>
-        <span className="font-mono text-[12px] text-foreground">{accepted.length}</span>
-        <span className="text-[12px] text-muted-foreground">not counted on Home or in the totals while they hold</span>
+        <h3 className="m-0 text-sm font-medium">Accepted gaps</h3>
+        <span className="font-mono text-sm text-foreground">{accepted.length}</span>
+        <span className="text-sm text-muted-foreground">not counted on Home or in the totals while they hold</span>
       </div>
-      <div className={`${grid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`}>
+      <div className={`${grid} border-y border-t-white/[0.05] border-b-white/[0.08] px-4 py-1.5 text-xs tracking-[0.04em] text-muted-foreground uppercase`}>
         <span>Gap</span>
         <span>Accepted</span>
         <span>When marked · now</span>
@@ -582,17 +582,17 @@ function AcceptedList({ accepted, actions }: { accepted: AcceptedGap[]; actions:
       {accepted.map((a) => {
         const back = a.state === "back";
         return (
-          <div key={`${a.service}:${a.key}`} className={`${grid} items-start border-b border-white/[0.05] px-4 py-2.5 text-[12.5px]`}>
+          <div key={`${a.service}:${a.key}`} className={`${grid} items-start border-b border-white/[0.05] px-4 py-2.5 text-sm`}>
             <span className="font-mono">
               {a.service} · {keyLabel[a.key]}
             </span>
             <span className="flex flex-col gap-[3px]">
               <span title={a.by_role ? `${a.by_role[0]!.toUpperCase()}${a.by_role.slice(1)}` : undefined}>{a.by ?? "—"}</span>
-              <span className="text-[11.5px] text-muted-foreground">{acceptedWhen(a.at)}</span>
+              <span className="text-xs text-muted-foreground">{acceptedWhen(a.at)}</span>
             </span>
             <span className="flex flex-col gap-[3px]">
               <span>{acceptedThen(a)}</span>
-              <span className={cn("text-[11.5px]", back ? "text-foreground" : "text-muted-foreground")}>
+              <span className={cn("text-xs", back ? "text-foreground" : "text-muted-foreground")}>
                 {a.now === null ? "not measured now" : a.key === "marks" ? "none now" : (
                   <>
                     <span className="font-mono">{coveragePercent(a.now)}</span> now
@@ -603,7 +603,7 @@ function AcceptedList({ accepted, actions }: { accepted: AcceptedGap[]; actions:
             <span className={back ? "text-foreground" : "text-muted-foreground"}>{back ? "Fell since it was accepted: counted as a gap again." : "Holds."}</span>
             {actions.canAccept ? (
               <span className="text-right">
-                <button type="button" className="h-7 rounded-md border border-white/15 px-2.5 text-[12px] hover:bg-white/[0.04]" onClick={() => void actions.onUndo(a.service, a.key)}>
+                <button type="button" className="h-7 rounded-md border border-white/15 px-2.5 text-sm hover:bg-white/[0.04]" onClick={() => void actions.onUndo(a.service, a.key)}>
                   Undo
                 </button>
               </span>
@@ -613,7 +613,7 @@ function AcceptedList({ accepted, actions }: { accepted: AcceptedGap[]; actions:
           </div>
         );
       })}
-      <p className="m-0 px-4 pt-2.5 pb-3 text-[11.5px] leading-[1.5] text-muted-foreground">
+      <p className="m-0 px-4 pt-2.5 pb-3 text-xs leading-[1.5] text-muted-foreground">
         An accepted gap comes back as a gap when its share falls below what it was when accepted, and is cleared when the key reaches 90%. Undo is an Operator's; every accept
         and undo records who and when.
       </p>
@@ -647,10 +647,10 @@ export function EvidenceGaps({
   const shown = gaps.slice(0, HOME_GAP_LINES);
   const more = withGaps - shown.filter((g) => !g.mark).length;
   return (
-    <section aria-label="What this answer stands on" className="shrink-0 overflow-hidden rounded-[10px] border border-white/10 bg-[#131316]">
+    <section aria-label="What this answer stands on" className="shrink-0 overflow-hidden rounded-xl border border-white/10 bg-surface-2">
       <div className="flex flex-wrap items-baseline gap-3 px-4 pt-3 pb-2">
-        <h2 className="m-0 text-[13.5px] font-medium">What this answer stands on</h2>
-        <span className="text-[12px] text-muted-foreground">
+        <h2 className="m-0 text-base font-medium">What this answer stands on</h2>
+        <span className="text-sm text-muted-foreground">
           {withGaps} of {coverage.services.length} services {withGaps === 1 ? "has" : "have"} gaps
           {names > 0 ? ` · ${names} ${names === 1 ? "name does" : "names do"} not match` : ""}
         </span>
@@ -660,22 +660,22 @@ export function EvidenceGaps({
         </button>
       </div>
       {shown.map((g) => (
-        <div key={g.service} className="grid grid-cols-[120px_minmax(0,1fr)_170px] items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-[12.5px]">
+        <div key={g.service} className="grid grid-cols-[120px_minmax(0,1fr)_170px] items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-sm">
           <span className="truncate font-mono">{g.service}</span>
           <span className="text-zinc-300">{g.what}</span>
           {g.href ? (
-            <a href={g.href} target="_blank" rel="noreferrer" className="text-right text-[12px] text-zinc-400 no-underline hover:text-foreground">
+            <a href={g.href} target="_blank" rel="noreferrer" className="text-right text-sm text-zinc-400 no-underline hover:text-foreground">
               {g.fix}
             </a>
           ) : (
-            <button type="button" className="text-right text-[12px] text-zinc-400 hover:text-foreground" onClick={() => onOpenFields(true)}>
+            <button type="button" className="text-right text-sm text-zinc-400 hover:text-foreground" onClick={() => onOpenFields(true)}>
               {g.fix}
             </button>
           )}
         </div>
       ))}
       {more > 0 ? (
-        <div className="flex items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-[12.5px]">
+        <div className="flex items-baseline gap-3 border-t border-white/[0.05] px-4 py-[9px] text-sm">
           <span className="text-muted-foreground">
             and {more} more {more === 1 ? "service" : "services"} with gaps, the largest first
           </span>

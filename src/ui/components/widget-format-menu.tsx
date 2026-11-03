@@ -48,7 +48,7 @@ export function WidgetFormatMenu({
       <PopoverContent
         align="end"
         collisionPadding={8}
-        className="min-w-[8rem] bg-[#18181b] p-1"
+        className="min-w-[8rem] bg-overlay p-1"
         onPointerDown={(e) => e.stopPropagation()}
       >
         {header ? (
@@ -61,14 +61,14 @@ export function WidgetFormatMenu({
           <button
             key={format}
             type="button"
-            className="flex h-[26px] w-full items-center gap-2.5 rounded-[3.4px] px-[7px] text-left text-[12.5px] hover:bg-accent"
+            className="flex h-[26px] w-full items-center gap-2.5 rounded-sm px-[7px] text-left text-sm hover:bg-accent"
             onClick={() => {
               setOpen(false);
               onPick(format);
             }}
           >
             <span className="flex-1">{format.toUpperCase()}</span>
-            <span className="font-mono text-[10.5px] text-muted-foreground">
+            <span className="font-mono text-2xs text-muted-foreground">
               .{format}
             </span>
           </button>

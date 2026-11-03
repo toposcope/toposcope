@@ -39,7 +39,7 @@ const gridEntered = "grid grid-cols-[minmax(0,min(320px,36%))_66px_76px_minmax(0
 export function SourceChip({ name }: { name: string }) {
   return (
     <span
-      className="inline-flex h-[18px] max-w-full items-center truncate rounded-[4px] bg-white/[0.07] px-1.5 font-mono text-[10.5px] text-foreground/85"
+      className="inline-flex h-[18px] max-w-full items-center truncate rounded-md bg-white/[0.07] px-1.5 font-mono text-2xs text-foreground/85"
       title={name}
     >
       {name}
@@ -53,12 +53,12 @@ function TraceSourceChipView({ chip }: { chip: TraceChip }) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-[5px] border bg-background/60 px-1.5 text-[11.5px] whitespace-nowrap",
-        short ? "border-amber-400/45" : "border-white/12 text-muted-foreground",
+        "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border bg-background/60 px-1.5 text-xs whitespace-nowrap",
+        short ? "border-warn/45" : "border-white/12 text-muted-foreground",
       )}
     >
       <SourceChip name={chip.name} />
-      <span className={short ? "text-amber-300" : undefined}>{chip.words}</span>
+      <span className={short ? "text-warn-fg" : undefined}>{chip.words}</span>
     </span>
   );
 }
@@ -172,12 +172,12 @@ export function TraceWaterfall({
       data-screen-label="Trace waterfall"
       className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-3"
     >
-      <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-[6.4px] border border-b-0 border-white/10 bg-card px-2.5">
-        <span className="truncate text-[13px] font-medium">{rootLabel}</span>
+      <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-lg border border-b-0 border-white/10 bg-card px-2.5">
+        <span className="truncate text-sm font-medium">{rootLabel}</span>
         {totalLabel ? (
           <span className="font-mono text-xs whitespace-nowrap">{totalLabel}</span>
         ) : null}
-        <span className="whitespace-nowrap text-[11.5px] text-muted-foreground">
+        <span className="whitespace-nowrap text-xs text-muted-foreground">
           {countLabel}
         </span>
         <div className="min-w-2 flex-1" />
@@ -188,7 +188,7 @@ export function TraceWaterfall({
             ))}
           </span>
         ) : null}
-        <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
+        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
           {joinKey}:{joinValue}
         </span>
       </div>
@@ -196,16 +196,16 @@ export function TraceWaterfall({
       {where.line ? (
         <div
           role="status"
-          className="flex items-center gap-2.5 border border-b-0 border-amber-400/40 bg-amber-400/[0.07] px-2.5 py-1.5 text-[11.5px] leading-snug text-amber-200"
+          className="flex items-center gap-2.5 border border-b-0 border-warn/40 bg-warn/[0.07] px-2.5 py-1.5 text-xs leading-snug text-warn-fg"
         >
-          <span className="size-1.5 shrink-0 rounded-full bg-amber-400" />
+          <span className="size-1.5 shrink-0 rounded-full bg-warn" />
           <span className="min-w-0 flex-1 text-pretty">
             <Parts parts={where.line} />
           </span>
           {where.lineSource && onOpenSourceLink ? (
             <button
               type="button"
-              className="shrink-0 whitespace-nowrap text-amber-300 hover:text-amber-200"
+              className="shrink-0 whitespace-nowrap text-warn-fg hover:text-warn-fg"
               onClick={() => onOpenSourceLink(where.lineSource!)}
             >
               {where.lineSource}&apos;s link →
@@ -215,7 +215,7 @@ export function TraceWaterfall({
       ) : null}
 
       {tree.missingParent || capped ? (
-        <div className="flex flex-col gap-0.5 border border-b-0 border-white/10 bg-amber-400/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+        <div className="flex flex-col gap-0.5 border border-b-0 border-white/10 bg-warn/10 px-2.5 py-1.5 text-xs text-warn-fg">
           {capped ? (
             <span>Over the 500-span cap — showing the slowest branches.</span>
           ) : null}
@@ -229,8 +229,8 @@ export function TraceWaterfall({
       ) : null}
 
       {empty || failed ? (
-        <div className="flex flex-col items-center gap-1 rounded-b-[6.4px] border border-white/10 bg-card px-5 py-14">
-          <span className="text-[13px]">
+        <div className="flex flex-col items-center gap-1 rounded-b-lg border border-white/10 bg-card px-5 py-14">
+          <span className="text-sm">
             {failed ? "Could not load this trace" : where.short ? "No spans here for this request yet" : "No spans for this request"}
           </span>
           <span className="max-w-[420px] text-center text-xs leading-relaxed text-pretty text-muted-foreground">
@@ -243,7 +243,7 @@ export function TraceWaterfall({
           {failed ? null : (
             <button
               type="button"
-              className="mt-2 h-7 rounded-[4.4px] border border-white/15 px-3 text-[12.5px] hover:bg-accent disabled:cursor-default disabled:opacity-35"
+              className="mt-2 h-7 rounded-md border border-white/15 px-3 text-sm hover:bg-accent disabled:cursor-default disabled:opacity-35"
               title={followTitle}
               disabled={followDisabled || finding}
               onClick={() => {
@@ -259,7 +259,7 @@ export function TraceWaterfall({
         </div>
       ) : (
         <>
-          <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-1.5 text-[11px] text-muted-foreground/80">
+          <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-1.5 text-xs text-muted-foreground/80">
             {loading ? "Loading spans…" : startLabel}
           </div>
           <div
@@ -271,14 +271,14 @@ export function TraceWaterfall({
             <span />
             <span />
             {entered ? (
-              <span className="text-[10px] tracking-[0.04em] text-muted-foreground uppercase">Entered at</span>
+              <span className="text-2xs tracking-[0.04em] text-muted-foreground uppercase">Entered at</span>
             ) : null}
             <span className="@container relative h-full">
               {ticks.map((tick) => (
                 <span
                   key={tick.frac}
                   className={cn(
-                    "absolute top-[7px] font-mono text-[10px] text-muted-foreground",
+                    "absolute top-[7px] font-mono text-2xs text-muted-foreground",
                     // Quarter ticks only where there is room for five labels.
                     (tick.frac === 0.25 || tick.frac === 0.75) && "@max-[280px]:hidden",
                   )}
@@ -297,7 +297,7 @@ export function TraceWaterfall({
               ))}
             </span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-b-[6.4px] border border-white/10 bg-card">
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-b-lg border border-white/10 bg-card">
             {tree.missingParent ? (
               <div
                 className={cn(
@@ -305,7 +305,7 @@ export function TraceWaterfall({
                   "h-[26px] items-center border-b border-dashed border-white/15 px-2.5",
                 )}
               >
-                <span className="font-mono text-[11px] text-amber-300">
+                <span className="font-mono text-xs text-warn-fg">
                   missing parent · {tree.orphanCount} spans start here
                 </span>
                 <span />
@@ -360,20 +360,20 @@ export function TraceWaterfall({
                     />
                     <span
                       className={cn(
-                        "min-w-0 truncate font-mono text-[11.5px]",
-                        err ? "text-red-400" : "text-foreground",
+                        "min-w-0 truncate font-mono text-xs",
+                        err ? "text-danger-fg" : "text-foreground",
                       )}
                     >
                       {row.span.name}
                     </span>
                     <span
-                      className="shrink-0 rounded-[2.4px] px-1.5 font-mono text-[10px]"
+                      className="shrink-0 rounded-sm px-1.5 font-mono text-2xs"
                       style={{ background: `${color}22`, color }}
                     >
                       {row.span.service}
                     </span>
                   </div>
-                  <span className="text-right font-mono text-[11.5px] text-muted-foreground tabular-nums">
+                  <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
                     {formatTraceMs(row.span.duration_ms)}
                   </span>
                   {entered ? (
@@ -389,7 +389,7 @@ export function TraceWaterfall({
                     }}
                   >
                     <div
-                      className="absolute top-[7px] h-[11px] rounded-[2.4px]"
+                      className="absolute top-[7px] h-[11px] rounded-sm"
                       style={{
                         left: `${left}%`,
                         width: `${width}%`,
@@ -409,7 +409,7 @@ export function TraceWaterfall({
                   background: "repeating-linear-gradient(135deg, rgba(251,191,36,0.10) 0 4px, transparent 4px 9px)",
                 }}
               >
-                <span className="min-w-0 truncate font-mono text-[11px] text-amber-300">{hatch.label}</span>
+                <span className="min-w-0 truncate font-mono text-xs text-warn-fg">{hatch.label}</span>
                 <span />
                 {entered ? (
                   <span className="min-w-0">
@@ -420,12 +420,12 @@ export function TraceWaterfall({
                   <div
                     className={cn(
                       "absolute inset-y-1",
-                      hatch.kind === "hole" ? "border-x border-amber-400/70" : "border-l border-dashed border-amber-400",
+                      hatch.kind === "hole" ? "border-x border-warn/70" : "border-l border-dashed border-warn",
                     )}
                     style={{ left: `${hatch.lo * 100}%`, width: `${Math.max(0, hatch.hi - hatch.lo) * 100}%` }}
                   />
                   <span
-                    className="absolute top-[9px] font-mono text-[10.5px] whitespace-nowrap text-amber-300"
+                    className="absolute top-[9px] font-mono text-2xs whitespace-nowrap text-warn-fg"
                     style={
                       hatch.lo > 0.7
                         ? { right: `${(1 - hatch.lo) * 100}%`, paddingRight: 6 }
@@ -440,11 +440,11 @@ export function TraceWaterfall({
           </div>
           {hover && hoverSpan && hoverRow ? (
             <div
-              className="pointer-events-none fixed z-50 w-[236px] rounded-[6.4px] border border-white/14 bg-[#18181b] px-2.5 py-2 shadow-[0_12px_28px_oklch(0_0_0_/_55%)]"
+              className="pointer-events-none fixed z-50 w-[236px] rounded-lg border border-white/14 bg-overlay px-2.5 py-2 shadow-[0_12px_28px_oklch(0_0_0_/_55%)]"
               style={{ top: hover.top, left: hover.left }}
             >
-              <div className="truncate font-mono text-[11.5px]">{hoverSpan.name}</div>
-              <div className="mt-0.5 mb-1.5 font-mono text-[10.5px] text-muted-foreground">
+              <div className="truncate font-mono text-xs">{hoverSpan.name}</div>
+              <div className="mt-0.5 mb-1.5 font-mono text-2xs text-muted-foreground">
                 {hoverSpan.service}
               </div>
               {[
@@ -455,14 +455,14 @@ export function TraceWaterfall({
               ].map(([k, v]) => (
                 <div
                   key={k}
-                  className="flex h-4 items-center justify-between gap-3 font-mono text-[11px]"
+                  className="flex h-4 items-center justify-between gap-3 font-mono text-xs"
                 >
                   <span className="text-muted-foreground">{k}</span>
                   <span className="tabular-nums">{v}</span>
                 </div>
               ))}
               {hoverSpan.attrs["status.message"] ? (
-                <div className="mt-1.5 border-t border-white/10 pt-1.5 text-[11px] text-red-400">
+                <div className="mt-1.5 border-t border-white/10 pt-1.5 text-xs text-danger-fg">
                   {hoverSpan.attrs["status.message"]}
                 </div>
               ) : null}

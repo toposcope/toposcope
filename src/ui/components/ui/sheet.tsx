@@ -23,7 +23,7 @@ function SheetContent({
       <DialogPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full w-72 min-w-0 flex-col overflow-y-auto border-r bg-[#0f0f11] p-3 shadow-lg",
+          "fixed inset-y-0 left-0 z-50 flex h-full w-72 min-w-0 flex-col overflow-y-auto border-r bg-surface-1 p-3 shadow-lg",
           className,
         )}
         {...props}

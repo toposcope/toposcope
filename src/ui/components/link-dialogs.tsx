@@ -50,30 +50,30 @@ function DirectionStrip({
     <div className="rounded-lg border border-white/10 bg-background/60 px-3 py-2.5">
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 flex-col items-start gap-1">
-          <span className="text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{sourceLabel}</span>
+          <span className="text-2xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">{sourceLabel}</span>
           <InstanceToken {...source} />
         </div>
-        <div className="flex flex-col items-center pb-0.5 text-[10.5px] text-muted-foreground">
+        <div className="flex flex-col items-center pb-0.5 text-2xs text-muted-foreground">
           rows
-          <span className="text-[15px] leading-none">⟶</span>
+          <span className="text-base leading-none">⟶</span>
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1">
-          <span className="text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">Pulled by</span>
+          <span className="text-2xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Pulled by</span>
           <InstanceToken {...puller} />
         </div>
       </div>
-      <p className="mt-2 text-[13px]">{sentence}</p>
+      <p className="mt-2 text-sm">{sentence}</p>
     </div>
   );
 }
 
 function CopyField({ text, children }: { text: string; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-[4.4px] border border-white/10 bg-background/40 px-2.5 py-1.5">
-      <span className="min-w-0 flex-1 truncate font-mono text-[12px]">{children}</span>
+    <div className="flex items-center gap-2 rounded-md border border-white/10 bg-background/40 px-2.5 py-1.5">
+      <span className="min-w-0 flex-1 truncate font-mono text-sm">{children}</span>
       <button
         type="button"
-        className="h-6 shrink-0 rounded-[2.4px] border border-input px-[9px] text-[11px] hover:bg-accent"
+        className="h-6 shrink-0 rounded-sm border border-input px-[9px] text-xs hover:bg-accent"
         onClick={() => {
           void navigator.clipboard.writeText(text);
           toast.success("Copied");
@@ -98,14 +98,14 @@ function FilterShown({ q }: { q: string }) {
 function NameField({ value, onChange, who }: { value: string; onChange: (v: string) => void; who: string }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[13px] font-medium">Name this instance</span>
+      <span className="text-sm font-medium">Name this instance</span>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="e.g. edge-fra"
-        className="h-9 rounded-[4.4px] border border-white/20 bg-transparent px-2.5 font-mono text-[13px] outline-none focus:border-ring"
+        className="h-9 rounded-md border border-white/20 bg-transparent px-2.5 font-mono text-sm outline-none focus:border-ring"
       />
-      <span className="text-[11.5px] text-muted-foreground">{who} sees this name. Asked once; after that it lives in Settings.</span>
+      <span className="text-xs text-muted-foreground">{who} sees this name. Asked once; after that it lives in Settings.</span>
     </label>
   );
 }
@@ -128,7 +128,7 @@ type Minted = { key: string; label: string; q: string; until: number | null; kin
 function KindsShown({ q, kinds, label }: { q: string; kinds: readonly LinkKind[]; label: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[13px] font-medium">{label}</span>
+      <span className="text-sm font-medium">{label}</span>
       <KindChips q={q} kinds={kinds} />
     </div>
   );
@@ -230,7 +230,7 @@ export function MintDialog({
           <div className="flex flex-col gap-3">
             {strip}
             <div className="flex flex-col gap-1">
-              <span className="text-[13px] font-medium">Filter · fixed for {offer || minted.until === null ? "this link" : "these links"}</span>
+              <span className="text-sm font-medium">Filter · fixed for {offer || minted.until === null ? "this link" : "these links"}</span>
               <CopyField text={minted.q}>
                 <FilterShown q={minted.q} />
               </CopyField>
@@ -238,16 +238,16 @@ export function MintDialog({
             <KindsShown q={minted.q} kinds={minted.kinds} label={offer ? "What leaves · fixed for this link" : "What comes here · fixed"} />
             {!offer ? (
               <div className="flex flex-col gap-1">
-                <span className="text-[13px] font-medium">The key works</span>
-                <span className="text-[12.5px] text-muted-foreground">
+                <span className="text-sm font-medium">The key works</span>
+                <span className="text-sm text-muted-foreground">
                   {minted.until === null ? "Once" : `For many, until ${dayTime(minted.until)}`}
                 </span>
               </div>
             ) : null}
             <div className="flex flex-col gap-1">
-              <span className="text-[13px] font-medium">Key</span>
+              <span className="text-sm font-medium">Key</span>
               <CopyField text={minted.key}>{minted.key}</CopyField>
-              <span className="text-[11.5px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {minted.until === null
                   ? `Single use. Listed as ${minted.label} under ${offer ? "Pulled from here" : "Pulling into here"} until someone pastes it.`
                   : `Reusable until ${day(minted.until)}. Listed as ${minted.label} with a count of instances that used it.`}
@@ -264,7 +264,7 @@ export function MintDialog({
             {here ? null : <NameField value={name} onChange={setName} who="The other side" />}
             {strip}
             <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium">Filter</span>
+              <span className="text-sm font-medium">Filter</span>
               {offer && saved.length > 0 ? (
                 <select
                   value={savedId}
@@ -273,7 +273,7 @@ export function MintDialog({
                     const item = saved.find((s) => s.id === e.target.value);
                     if (item) setQ(item.query);
                   }}
-                  className="h-9 rounded-[4.4px] border border-white/15 bg-transparent px-2 text-[13px]"
+                  className="h-9 rounded-md border border-white/15 bg-transparent px-2 text-sm"
                 >
                   <option value="">Type key:value, or pick a saved search</option>
                   {saved.map((s) => (
@@ -283,7 +283,7 @@ export function MintDialog({
                   ))}
                 </select>
               ) : null}
-              <label className="flex h-9 items-center gap-2 rounded-[4.4px] border border-white/15 px-2.5 focus-within:border-ring">
+              <label className="flex h-9 items-center gap-2 rounded-md border border-white/15 px-2.5 focus-within:border-ring">
                 <Search className="size-3.5 shrink-0 text-muted-foreground" />
                 <input
                   value={q}
@@ -292,13 +292,13 @@ export function MintDialog({
                     setSavedId("");
                   }}
                   placeholder={offer ? "level:error service:api" : "level:error OR level:fatal"}
-                  className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground/60"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground/60"
                 />
               </label>
               {faults.length > 0 ? (
-                <span className="text-[11.5px] text-destructive">{faults[0]?.msg}</span>
+                <span className="text-xs text-destructive">{faults[0]?.msg}</span>
               ) : (
-                <span className="text-[11.5px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {offer
                     ? "Pick a saved search or type key:value. Empty means every row. Fixed once minted."
                     : "Empty: every row the source has, message text included."}{" "}
@@ -309,13 +309,13 @@ export function MintDialog({
             <KindBoxes q={faults.length > 0 ? "" : q} ticked={kinds} onChange={setKinds} legend={offer ? "What leaves" : "What comes here"} />
             {!offer ? (
               <div className="flex flex-col gap-1.5">
-                <span className="text-[13px] font-medium">The key works</span>
-                <div className="grid grid-cols-2 rounded-[4.4px] border border-white/15 p-0.5">
+                <span className="text-sm font-medium">The key works</span>
+                <div className="grid grid-cols-2 rounded-md border border-white/15 p-0.5">
                   {[false, true].map((m) => (
                     <button
                       key={String(m)}
                       type="button"
-                      className={cn("h-8 rounded-[3px] text-[13px]", many === m ? "bg-white/10 text-foreground" : "text-muted-foreground")}
+                      className={cn("h-8 rounded-sm text-sm", many === m ? "bg-white/10 text-foreground" : "text-muted-foreground")}
                       onClick={() => setMany(m)}
                     >
                       {m ? "For many, until a date" : "Once"}
@@ -323,24 +323,24 @@ export function MintDialog({
                   ))}
                 </div>
                 {many ? (
-                  <label className="flex h-9 items-center gap-2 rounded-[4.4px] border border-white/15 px-2.5">
+                  <label className="flex h-9 items-center gap-2 rounded-md border border-white/15 px-2.5">
                     <input
                       type="datetime-local"
                       value={until}
                       onChange={(e) => setUntil(e.target.value)}
-                      className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
+                      className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none"
                     />
-                    <span className={cn("text-[11.5px]", untilOk ? "text-muted-foreground" : "text-destructive")}>
+                    <span className={cn("text-xs", untilOk ? "text-muted-foreground" : "text-destructive")}>
                       {Number.isFinite(days) ? `in ${days} days · max 30` : "max 30 days"}
                     </span>
                   </label>
                 ) : (
-                  <span className="text-[11.5px] text-muted-foreground">Once: spent by the first instance that pastes it.</span>
+                  <span className="text-xs text-muted-foreground">Once: spent by the first instance that pastes it.</span>
                 )}
               </div>
             ) : null}
             {offer ? (
-              <p className="rounded-[4.4px] bg-white/[0.04] px-3 py-2 text-[13px]">
+              <p className="rounded-md bg-white/[0.04] px-3 py-2 text-sm">
                 {q.trim() === "" ? (
                   <>Every row of {kindWords(kinds)} on {me}, message text included, will leave this instance for whoever pastes the key.</>
                 ) : (
@@ -358,7 +358,7 @@ export function MintDialog({
               >
                 Mint key
               </Button>
-              <span className="min-w-0 flex-1 px-3 text-[11.5px] text-muted-foreground">
+              <span className="min-w-0 flex-1 px-3 text-xs text-muted-foreground">
                 {kinds.length === 0 ? "Tick at least one kind." : "The other side sees these kinds when it pastes, and cannot widen them."}
               </span>
               <Button type="button" variant="ghost" onClick={onClose}>
@@ -513,17 +513,17 @@ export function PasteDialog({
             }}
             placeholder="tsl2_…"
             spellCheck={false}
-            className="h-9 rounded-[4.4px] border border-white/15 bg-transparent px-2.5 font-mono text-[12.5px] outline-none focus:border-ring"
+            className="h-9 rounded-md border border-white/15 bg-transparent px-2.5 font-mono text-sm outline-none focus:border-ring"
           />
           {notKey ? (
             <div className="rounded-lg border border-white/10 bg-background/60 px-3 py-2.5">
-              <p className="text-[13px] font-medium">Not a link key.</p>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">{notKey.replace(/^Not a link key\.\s*/, "")}</p>
+              <p className="text-sm font-medium">Not a link key.</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{notKey.replace(/^Not a link key\.\s*/, "")}</p>
             </div>
           ) : null}
           {p ? (
             <div className="flex flex-col gap-2.5 rounded-lg border border-white/10 bg-background/60 px-3 py-2.5">
-              <p className="text-[12.5px] text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 An <span className="text-foreground">{p.kind}</span> minted by <span className="font-mono text-foreground">{p.name}</span>
                 {facts.length ? ` · ${facts.join(" · ")}` : ""}
                 {p.lookup && state === "unused" ? ` — checked with ${p.name}` : ""}
@@ -538,20 +538,20 @@ export function PasteDialog({
                 }
               />
               <div className="flex flex-col gap-1">
-                <span className="text-[11.5px] text-muted-foreground">Filter, chosen by {p.name}</span>
+                <span className="text-xs text-muted-foreground">Filter, chosen by {p.name}</span>
                 <CopyField text={p.q}>
                   <FilterShown q={p.q} />
                 </CopyField>
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[11.5px] text-muted-foreground">Kinds, chosen by {p.name}</span>
+                <span className="text-xs text-muted-foreground">Kinds, chosen by {p.name}</span>
                 <KindChips q={p.q} kinds={kindsOf(p.kinds ?? null)} />
-                <span className="text-[11.5px] text-muted-foreground">These are the kinds this link carries; pasting cannot widen them.</span>
+                <span className="text-xs text-muted-foreground">These are the kinds this link carries; pasting cannot widen them.</span>
               </div>
               {offer ? (
-                <p className="text-[11.5px] text-muted-foreground">Pulled rows follow this instance’s retention, {retentionDays} days.</p>
+                <p className="text-xs text-muted-foreground">Pulled rows follow this instance’s retention, {retentionDays} days.</p>
               ) : (
-                <p className="rounded-[4.4px] bg-white/[0.04] px-3 py-2 text-[13px]">
+                <p className="rounded-md bg-white/[0.04] px-3 py-2 text-sm">
                   {p.q.trim() === "" ? (
                     <>Every row of {kindWords(kindsOf(p.kinds ?? null))} on {me}, message text included, will leave for {p.name}.</>
                   ) : (
@@ -562,17 +562,17 @@ export function PasteDialog({
                 </p>
               )}
               {checking && !p.lookup ? (
-                <p className="text-[12.5px] text-muted-foreground">Checking with {p.name} that the key is unused…</p>
+                <p className="text-sm text-muted-foreground">Checking with {p.name} that the key is unused…</p>
               ) : null}
               {p.lookup_failed ? (
-                <p className="flex items-center gap-2 text-[12.5px] text-amber-400">
+                <p className="flex items-center gap-2 text-sm text-warn-fg">
                   {p.name} did not answer. The key may still be good.
                   <button type="button" className="text-foreground underline" onClick={() => void check(key)}>
                     Try again
                   </button>
                 </p>
               ) : null}
-              {reason ? <p className="text-[12.5px] text-red-400">{reason}</p> : null}
+              {reason ? <p className="text-sm text-danger-fg">{reason}</p> : null}
             </div>
           ) : null}
           <div className="flex items-center justify-between">

@@ -136,7 +136,7 @@ export function FieldsView({
   return (
     <div className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
       <div className="w-full">
-        <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-[13px]">
+        <nav aria-label="Breadcrumb" className="-mt-2.5 mb-1.5 flex items-center gap-2 text-sm">
           <button type="button" className="text-[#8a8a93] hover:text-foreground" onClick={onSettings}>
             Settings
           </button>
@@ -147,12 +147,12 @@ export function FieldsView({
         </nav>
         <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-3">
           <div className="flex flex-wrap items-baseline gap-3.5">
-            <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">Fields</h1>
-            <p className="m-0 text-[12px] text-muted-foreground">
+            <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Fields</h1>
+            <p className="m-0 text-sm text-muted-foreground">
               What each log key is for, and how much of each service carries the keys an investigation reads.
             </p>
           </div>
-          <span className="font-mono text-[12px] text-muted-foreground">last 24 h · counts from the minute rollups</span>
+          <span className="font-mono text-sm text-muted-foreground">last 24 h · counts from the minute rollups</span>
         </div>
 
         {failed && !catalog ? (
@@ -172,39 +172,39 @@ export function FieldsView({
                   className={cn(
                     "flex h-[26px] min-w-0 items-center gap-2 rounded-md border py-0 pr-1 pl-2.5",
                     slow
-                      ? "border-amber-400/45 bg-amber-400/10"
+                      ? "border-warn/45 bg-warn/10"
                       : "border-input",
                   )}
                 >
                   <span className="size-[11px] shrink-0 animate-spin rounded-full border-[1.5px] border-white/25 border-t-foreground" />
-                  <span className="shrink-0 text-[11.5px] whitespace-nowrap">
+                  <span className="shrink-0 text-xs whitespace-nowrap">
                     {fieldsWaveLabel(wave)}…{elapsed}
                   </span>
                   {slow ? (
-                    <span className="min-w-0 truncate border-l border-white/12 pl-2 text-[11.5px] text-amber-400">
+                    <span className="min-w-0 truncate border-l border-white/12 pl-2 text-xs text-warn-fg">
                       {fieldsSlowAdvice(rangeLabel, keys.length)}
                     </span>
                   ) : null}
                   <Button size="xs"
                     type="button"
                     variant="ghost"
-                    className="shrink-0 rounded-sm px-2 text-[11.5px]"
+                    className="shrink-0 rounded-sm px-2 text-xs"
                     onClick={onStop}
                   >
                     Stop
                   </Button>
                 </div>
               ) : (
-                <span className="font-mono text-[11.5px] text-muted-foreground">
+                <span className="font-mono text-xs text-muted-foreground">
                   {keys.length} keys · {rangeLabel}
                 </span>
               )}
               <div className="min-w-0 flex-1" />
               <span
                 className={cn(
-                  "inline-flex h-[22px] items-center rounded-md border px-2 text-[11.5px] whitespace-nowrap",
+                  "inline-flex h-[22px] items-center rounded-md border px-2 text-xs whitespace-nowrap",
                   atCap
-                    ? "border-amber-400 text-amber-400"
+                    ? "border-warn text-warn-fg"
                     : "border-input text-muted-foreground",
                 )}
               >
@@ -214,13 +214,13 @@ export function FieldsView({
               </span>
             </div>
             {emptyKeys ? (
-              <p className="mb-2 text-[11.5px] text-muted-foreground">
+              <p className="mb-2 text-xs text-muted-foreground">
                 No attr keys in the last 24 h.
               </p>
             ) : null}
             <div
               className={cn(
-                "relative overflow-hidden rounded-[10px] border border-white/10 bg-[#131316] transition-opacity duration-100",
+                "relative overflow-hidden rounded-xl border border-white/10 bg-surface-2 transition-opacity duration-100",
                 warm && wave
                   ? "pointer-events-none opacity-45"
                   : "opacity-100",
@@ -232,7 +232,7 @@ export function FieldsView({
                 </div>
               ) : null}
               <div
-                className={`${grid} border-b px-4 py-2 text-[11px] tracking-[0.04em] text-muted-foreground uppercase`}
+                className={`${grid} border-b px-4 py-2 text-xs tracking-[0.04em] text-muted-foreground uppercase`}
               >
                 <span>Key</span>
                 <span>Events</span>
@@ -295,13 +295,13 @@ export function FieldsView({
             </div>
             <div className="mt-3.5 grid grid-cols-1 gap-3.5 md:grid-cols-3">
               {roleCards.map((c) => (
-                <section key={c.role} className="flex flex-col gap-1.5 rounded-[10px] border border-white/10 bg-[#131316] px-4 py-3">
-                  <span className="text-[13px] font-medium">{c.role}</span>
-                  <span className="text-[12px] leading-[1.5] text-muted-foreground">{c.words}</span>
+                <section key={c.role} className="flex flex-col gap-1.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3">
+                  <span className="text-sm font-medium">{c.role}</span>
+                  <span className="text-sm leading-[1.5] text-muted-foreground">{c.words}</span>
                 </section>
               ))}
             </div>
-            <p className="mt-3 text-[12px] text-muted-foreground">
+            <p className="mt-3 text-sm text-muted-foreground">
               Suggestions come from what the key looks like; Toposcope never writes a role on its own. A metric link makes{" "}
               <span className="font-mono">host</span> on a row and <span className="font-mono">host</span> on a metric one thing in Compare and in shares.
               Roles apply to new rows only; old summaries age out with retention.
@@ -319,12 +319,12 @@ function FieldSkeleton({ i }: { i: number }) {
       className={`${grid} h-[38px] animate-toposcope-shimmer border-b border-white/[0.07] px-3`}
     >
       <div
-        className="h-2 rounded-[2.4px] bg-white/10"
+        className="h-2 rounded-sm bg-white/10"
         style={{ width: `${34 + ((i * 37) % 44)}%` }}
       />
-      <div className="ml-auto h-2 w-[62%] rounded-[2.4px] bg-white/10" />
+      <div className="ml-auto h-2 w-[62%] rounded-sm bg-white/10" />
       <div
-        className="ml-auto h-2 rounded-[2.4px] bg-white/10"
+        className="ml-auto h-2 rounded-sm bg-white/10"
         style={{ width: `${40 + ((i * 23) % 38)}%` }}
       />
       <div className="h-[22px] w-full rounded-md bg-white/[0.07]" />
@@ -374,7 +374,7 @@ function FieldRow({
       : write === "writing"
         ? "animate-toposcope-shimmer bg-white/50"
         : pending
-          ? "bg-amber-400"
+          ? "bg-warn"
           : "bg-transparent";
   const railTitle =
     write === "writing"
@@ -397,12 +397,12 @@ function FieldRow({
           title={railTitle}
           className={cn("h-[15px] w-0.5 shrink-0 rounded-full", rail)}
         />
-        <span className="truncate font-mono text-[12.5px]">{row.key}</span>
+        <span className="truncate font-mono text-sm">{row.key}</span>
       </span>
-      <CountText n={row.events} className="font-mono text-[12.5px] tabular-nums" />
+      <CountText n={row.events} className="font-mono text-sm tabular-nums" />
       {valuesPending && row.kind !== "core" ? (
         <span
-          className="ml-auto block h-2 animate-toposcope-shimmer rounded-[2.4px] bg-white/10"
+          className="ml-auto block h-2 animate-toposcope-shimmer rounded-sm bg-white/10"
           style={{ width: `${34 + ((row.key.length * 13) % 46)}%` }}
         />
       ) : (
@@ -429,11 +429,11 @@ function FieldRow({
                       : fieldRoleHelp[item]
                   }
                   className={cn(
-                    "h-[22px] rounded-sm px-2 text-[11.5px]",
+                    "h-[22px] rounded-sm px-2 text-xs",
                     on
                       ? "bg-accent text-foreground"
                       : "text-muted-foreground hover:text-foreground",
-                    suggested && "text-amber-400",
+                    suggested && "text-warn-fg",
                   )}
                   onClick={() => onRole(item)}
                 >
@@ -444,7 +444,7 @@ function FieldRow({
           </div>
         ) : (
           <span
-            className="text-[11.5px] text-muted-foreground"
+            className="text-xs text-muted-foreground"
             title={none?.title}
           >
             {none?.label}
@@ -458,9 +458,9 @@ function FieldRow({
         )}
       >
         {!row.linkable ? (
-          <span className="text-[11.5px] text-muted-foreground">—</span>
+          <span className="text-xs text-muted-foreground">—</span>
         ) : link ? (
-          <span className="inline-flex h-[22px] max-w-full items-center gap-1.5 font-mono text-[12px] text-teal-400">
+          <span className="inline-flex h-[22px] max-w-full items-center gap-1.5 font-mono text-sm text-teal-400">
             <span className="truncate">{link}</span>
             <button
               type="button"
@@ -485,7 +485,7 @@ function FieldRow({
                       ? `The metric label ${suggestLink} has this name and shares a value in this window — click to link`
                       : `A log row's ${row.key} is the metric label ${suggestLink}, and they share a value in this window — click to link`
                 }
-                className="inline-flex h-[22px] items-center rounded-md border border-dashed border-amber-400/80 px-1.5 font-mono text-[11.5px] text-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-[22px] items-center rounded-md border border-dashed border-warn/80 px-1.5 font-mono text-xs text-warn-fg disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => onLink(suggestLink)}
               >
                 → {suggestLink}?
@@ -502,7 +502,7 @@ function FieldRow({
                       ? `${LINK_CAP} links is the cap — unlink one to add another`
                       : "Link this field to a metric label"
                   }
-                  className="px-1.5 text-[11.5px] text-muted-foreground"
+                  className="px-1.5 text-xs text-muted-foreground"
                 >
                   link…
                 </Button>
@@ -524,16 +524,16 @@ function FieldRow({
 
 function ValuesCell({ row }: { row: FieldCatalogRow }) {
   if (row.kind === "core" && row.values === null) {
-    return <span className="text-[12.5px] text-muted-foreground">—</span>;
+    return <span className="text-sm text-muted-foreground">—</span>;
   }
   if (row.values === "numeric") {
-    return <span className="text-[12.5px] text-muted-foreground">numeric</span>;
+    return <span className="text-sm text-muted-foreground">numeric</span>;
   }
   if (row.values === null) {
-    return <span className="text-[12.5px] text-muted-foreground">not charted</span>;
+    return <span className="text-sm text-muted-foreground">not charted</span>;
   }
   return (
-    <CountText n={row.values} className="font-mono text-[12.5px] tabular-nums" />
+    <CountText n={row.values} className="font-mono text-sm tabular-nums" />
   );
 }
 

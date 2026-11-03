@@ -281,7 +281,7 @@ export function MarkInspectActions({
     <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2">
       <button
         type="button"
-        className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+        className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs"
         onClick={onHide}
       >
         Hide for this hunt
@@ -290,7 +290,7 @@ export function MarkInspectActions({
         <button
           type="button"
           title="Which fingerprints are first seen, still here, or stopped on either side of this cut — same hunt; the before side is at least an hour"
-          className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+          className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs"
           onClick={onFingerprints}
         >
           <FingerprintsGlyph />
@@ -302,7 +302,7 @@ export function MarkInspectActions({
           type="button"
           title="This series in the window after this mark, vs the equal window before — same hunt, equal windows"
           className={cn(
-            "flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]",
+            "flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs",
             compareActive &&
               "border-[oklch(0.906_0.014_84_/_45%)] bg-[oklch(0.906_0.014_84_/_7%)]",
           )}
@@ -315,7 +315,7 @@ export function MarkInspectActions({
       {onFocusLogs ? (
         <button
           type="button"
-          className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-[11.5px]"
+          className="flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs"
           onClick={onFocusLogs}
         >
           Focus in logs
@@ -599,12 +599,12 @@ export function HistogramMarkLane({
                 key={key}
                 type="button"
                 className={cn(
-                  "absolute top-1/2 z-[3] flex h-[24px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-[6.4px] border border-white/12 bg-[#141416] whitespace-nowrap px-[9px] text-[12px] text-zinc-300",
+                  "absolute top-1/2 z-[3] flex h-[24px] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-lg border border-white/12 bg-surface-2 whitespace-nowrap px-[9px] text-sm text-zinc-300",
                   hovered || selected ? "border-white/25 text-foreground" : "",
                   overlay.compareMarkId != null && cluster.members.some((m) => m.id === overlay.compareMarkId)
-                    ? "border-plate bg-[#1f1f23] text-foreground"
+                    ? "border-plate bg-overlay text-foreground"
                     : "",
-                  head.kind === "incident" ? "border-red-900 text-red-300" : "",
+                  head.kind === "incident" ? "border-danger/40 text-danger-fg" : "",
                   rings.has(head.id)
                     ? "shadow-[0_0_0_1px_rgba(34,197,94,0.55)]"
                     : "",
@@ -633,11 +633,11 @@ export function HistogramMarkLane({
                   <>
                     <MarkGlyph kind={head.kind} />
                     {label ? <span className="max-w-[260px] truncate">{label}</span> : null}
-                    <b className="font-mono text-[11px] font-medium text-muted-foreground">{head.ts.slice(11, 16)}</b>
+                    <b className="font-mono text-xs font-medium text-muted-foreground">{head.ts.slice(11, 16)}</b>
                   </>
                 ) : mixed ? (
                   <>
-                    <span className="font-mono text-[10.5px]">
+                    <span className="font-mono text-2xs">
                       {cluster.members.length}
                     </span>
                     {kinds.map((kind) => (
@@ -651,7 +651,7 @@ export function HistogramMarkLane({
                 ) : (
                   <>
                     <MarkGlyph kind={head.kind} />
-                    <span className="font-mono text-[10.5px]">
+                    <span className="font-mono text-2xs">
                       {cluster.members.length}
                     </span>
                   </>
@@ -681,7 +681,7 @@ export function HistogramMarkLane({
                           frac > 0.6 ? "translateX(-100%)" : "translateX(8px)",
                       }}
                     >
-                      <div className="flex items-center gap-2 border-b px-2.5 py-1.5 text-[12px] font-semibold">
+                      <div className="flex items-center gap-2 border-b px-2.5 py-1.5 text-sm font-semibold">
                         {rows.length} marks
                         <button
                           type="button"
@@ -709,15 +709,15 @@ export function HistogramMarkLane({
                             }}
                           >
                             <MarkGlyph kind={row.kind} />
-                            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/85">
+                            <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/85">
                               {formatChangeMarkLabel(row)}
                             </span>
-                            <span className="font-mono text-[10.5px] text-muted-foreground">
+                            <span className="font-mono text-2xs text-muted-foreground">
                               {row.ts.slice(11, 19)}
                             </span>
                             {rowHover === row.id ? (
                               <span
-                                className="rounded-sm border px-1.5 py-px text-[10px]"
+                                className="rounded-sm border px-1.5 py-px text-2xs"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   overlay.onMute(row.id);
@@ -729,7 +729,7 @@ export function HistogramMarkLane({
                           </button>
                         ))}
                       </div>
-                      <div className="border-t px-2.5 py-1.5 text-[10.5px] text-muted-foreground/80">
+                      <div className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground/80">
                         A row inspects its mark · hide mutes it for this hunt only.
                       </div>
                     </div>
@@ -751,7 +751,7 @@ export function HistogramMarkLane({
             >
               <div className="flex items-center gap-1.5">
                 <MarkGlyph kind={inspectMark.kind} size={12} />
-                <span className="text-[12.5px] font-semibold whitespace-nowrap">
+                <span className="text-sm font-semibold whitespace-nowrap">
                   {formatChangeMarkLabel(inspectMark)}
                 </span>
               </div>
@@ -784,7 +784,7 @@ export function HistogramMarkLane({
                     : undefined
                 }
               />
-              <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
+              <p className="mt-1.5 text-2xs leading-snug text-muted-foreground/80">
                 Hiding is per-hunt visibility. The store is not edited from this panel.
               </p>
             </div>
@@ -794,7 +794,7 @@ export function HistogramMarkLane({
         {leftPeek ? (
           <button
             type="button"
-            className="absolute top-1/2 left-0.5 z-[6] flex h-[18px] -translate-y-1/2 items-center gap-1 rounded-sm border border-dashed border-white/25 bg-card px-1.5 font-mono text-[10.5px] text-muted-foreground"
+            className="absolute top-1/2 left-0.5 z-[6] flex h-[18px] -translate-y-1/2 items-center gap-1 rounded-sm border border-dashed border-white/25 bg-card px-1.5 font-mono text-2xs text-muted-foreground"
             onClick={() => peek(leftPeek)}
           >
             <span className="text-muted-foreground/70">◂</span>
@@ -810,7 +810,7 @@ export function HistogramMarkLane({
         {rightPeek ? (
           <button
             type="button"
-            className="absolute top-1/2 right-0.5 z-[6] flex h-[18px] -translate-y-1/2 items-center gap-1 rounded-sm border border-dashed border-white/25 bg-card px-1.5 font-mono text-[10.5px] text-muted-foreground"
+            className="absolute top-1/2 right-0.5 z-[6] flex h-[18px] -translate-y-1/2 items-center gap-1 rounded-sm border border-dashed border-white/25 bg-card px-1.5 font-mono text-2xs text-muted-foreground"
             onClick={() => peek(rightPeek)}
           >
             {rightCrowd ? null : (
@@ -859,10 +859,10 @@ export function railLabelFits(label: string, frac: number, others: number[], lan
 function InspectRow({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex gap-2">
-      <span className="w-[52px] shrink-0 font-mono text-[10.5px] text-muted-foreground/75">
+      <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
         {k}
       </span>
-      <span className="font-mono text-[11px] text-foreground/88 whitespace-nowrap">
+      <span className="font-mono text-xs text-foreground/88 whitespace-nowrap">
         {v}
       </span>
     </div>
@@ -930,9 +930,9 @@ export function HistogramMarksChip({
       <button
         type="button"
         className={cn(
-          "flex items-center gap-1 rounded-sm border px-1.5 font-mono text-[10.5px]",
+          "flex items-center gap-1 rounded-sm border px-1.5 font-mono text-2xs",
           placement === "bar" ? "h-[26px] px-2.5" : "h-5",
-          hidden ? "border-amber-400/40 text-amber-400" : "text-muted-foreground",
+          hidden ? "border-warn/40 text-warn-fg" : "text-muted-foreground",
         )}
         onClick={() => (overlay.onOpenPanel ? overlay.onOpenPanel() : setOpen((prev) => !prev))}
       >
@@ -953,7 +953,7 @@ export function HistogramMarksChip({
           <span>· monitors {overlay.monitors.items.length}</span>
         ) : null}
         {hidden ? (
-          <span className="size-[5px] rounded-full bg-amber-400" />
+          <span className="size-[5px] rounded-full bg-warn" />
         ) : null}
       </button>
       {open ? (
@@ -966,10 +966,10 @@ export function HistogramMarksChip({
           )}
         >
           <div className="flex items-center gap-2 px-1.5 py-1">
-            <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+            <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Marks
             </span>
-            <span className="ml-auto font-mono text-[10.5px] text-muted-foreground/70">
+            <span className="ml-auto font-mono text-2xs text-muted-foreground/70">
               this hunt
             </span>
           </div>
@@ -987,7 +987,7 @@ export function HistogramMarksChip({
               >
                 <span
                   className={cn(
-                    "flex size-[13px] items-center justify-center rounded-[3px] border text-[9px] leading-none",
+                    "flex size-[13px] items-center justify-center rounded-sm border text-2xs leading-none",
                     on
                       ? "border-foreground bg-foreground text-background"
                       : "border-white/30",
@@ -996,8 +996,8 @@ export function HistogramMarksChip({
                   {on ? "✓" : ""}
                 </span>
                 <MarkGlyph kind={kind} />
-                <span className="flex-1 text-left text-[12px]">{kind}</span>
-                <span className="font-mono text-[10.5px] text-muted-foreground">
+                <span className="flex-1 text-left text-sm">{kind}</span>
+                <span className="font-mono text-2xs text-muted-foreground">
                   {counts[kind]}
                 </span>
               </button>
@@ -1005,7 +1005,7 @@ export function HistogramMarksChip({
           })}
           {muted.length > 0 ? (
             <>
-              <div className="px-1.5 pt-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              <div className="px-1.5 pt-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Hidden
               </div>
               {muted.map((mark) => (
@@ -1013,7 +1013,7 @@ export function HistogramMarksChip({
                   key={mark.id}
                   className="flex items-center gap-1.5 rounded-sm px-1.5 py-1"
                 >
-                  <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-muted-foreground">
+                  <span className="min-w-0 flex-1 truncate font-mono text-2xs text-muted-foreground">
                     {formatChangeMarkLabel(mark)}
                   </span>
                   <button
@@ -1027,7 +1027,7 @@ export function HistogramMarksChip({
               ))}
             </>
           ) : null}
-          <p className="mt-1 border-t px-1.5 py-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
+          <p className="mt-1 border-t px-1.5 py-1.5 text-2xs leading-snug text-muted-foreground/80">
             Kind toggles and per-mark mutes are visibility for this hunt. They do not
             delete the mark.
           </p>

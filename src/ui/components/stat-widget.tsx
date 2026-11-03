@@ -108,7 +108,7 @@ export function StatHead({
       ) : view ? (
         // A gauge's and a counter's function is not a choice, so it is not dashed.
         <span
-          className="shrink-0 cursor-help px-px font-mono text-[11.5px] leading-[1.55] whitespace-nowrap"
+          className="shrink-0 cursor-help px-px font-mono text-xs leading-[1.55] whitespace-nowrap"
           style={{ color: FN }}
           title={
             view.kind === "counter"
@@ -119,7 +119,7 @@ export function StatHead({
           {view.kind === "counter" ? "sum" : "avg"}
         </span>
       ) : null}
-      {named ? <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">(</span> : null}
+      {named ? <span className="shrink-0 font-mono text-xs text-muted-foreground">(</span> : null}
       <SeriesPicker
         variant="head"
         card
@@ -128,7 +128,7 @@ export function StatHead({
         view={view}
         onSeries={onSeries}
       />
-      {named ? <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">)</span> : null}
+      {named ? <span className="shrink-0 font-mono text-xs text-muted-foreground">)</span> : null}
     </div>
   );
 }
@@ -179,23 +179,23 @@ export function StatWidget({
     <>
       <div className="flex min-h-0 flex-1 flex-col justify-center px-3 pb-3">
         {loading ? (
-          <div className="h-8 w-24 animate-pulse rounded bg-muted" />
+          <div className="h-8 w-24 animate-pulse rounded-md bg-muted" />
         ) : (
           <>
             <div className="flex items-baseline gap-1">
-              <span className="font-mono text-[34px] leading-none font-medium tracking-[-0.025em] tabular-nums">
+              <span className="font-mono text-display leading-none font-medium tracking-[-0.025em] tabular-nums">
                 {value}
               </span>
               {agg === "rate" ? (
-                <span className="font-mono text-[15px] text-muted-foreground">/s</span>
+                <span className="font-mono text-base text-muted-foreground">/s</span>
               ) : metric && !quiet && printUnit(shown.unit) ? (
                 // #104: the unit as the app sent it (13h); a histogram's count has none.
-                <span className="font-mono text-[15px] text-muted-foreground">{printUnit(shown.unit)}</span>
+                <span className="font-mono text-base text-muted-foreground">{printUnit(shown.unit)}</span>
               ) : null}
             </div>
             <div
-              className={`mt-[3px] truncate text-[10.5px] ${
-                aggResult?.source === "refused" || quiet || heldNote || metricNote ? "text-amber-400" : "text-muted-foreground"
+              className={`mt-[3px] truncate text-2xs ${
+                aggResult?.source === "refused" || quiet || heldNote || metricNote ? "text-warn-fg" : "text-muted-foreground"
               }`}
               title={unitsNote ?? undefined}
             >

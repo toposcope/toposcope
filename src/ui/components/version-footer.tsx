@@ -36,7 +36,7 @@ const upgradedKey = "toposcope.upgraded";
 
 function External({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-0.5 text-[11.5px] text-plate hover:text-foreground">
+    <a href={href} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-0.5 text-xs text-plate hover:text-foreground">
       {children}
       <ArrowUpRight className="size-3" aria-hidden="true" />
     </a>
@@ -48,10 +48,10 @@ function Paragraphs({ notes, className }: { notes: string; className?: string })
   return (
     <>
       {paragraphs.map((segments, i) => (
-        <p key={i} className={cn("m-0 text-[12.5px] leading-[1.5] text-zinc-300", className)}>
+        <p key={i} className={cn("m-0 text-sm leading-[1.5] text-zinc-300", className)}>
           {segments.map((s: Segment, j) =>
             s.kind === "code" ? (
-              <code key={j} className="font-mono text-[11.5px]">
+              <code key={j} className="font-mono text-xs">
                 {s.text}
               </code>
             ) : s.kind === "link" ? (
@@ -72,11 +72,11 @@ function Header({ title, link, sub }: { title: string; link: ReactNode; sub?: st
   return (
     <div className="flex flex-col gap-[3px]">
       <div className="flex items-baseline gap-2">
-        <span className="text-[14px] font-semibold">{title}</span>
+        <span className="text-base font-semibold">{title}</span>
         <span className="flex-1" />
         {link}
       </div>
-      {sub ? <span className="font-mono text-[11px] text-muted-foreground">{sub}</span> : null}
+      {sub ? <span className="font-mono text-xs text-muted-foreground">{sub}</span> : null}
     </div>
   );
 }
@@ -90,13 +90,13 @@ function CopyCommand({ command }: { command: string }) {
     return () => clearTimeout(t);
   }, [copied]);
   return (
-    <div className="flex items-center gap-2 rounded-[5px] border border-white/12 bg-[#0a0a0c] py-1 pr-1 pl-2.5">
-      <code ref={code} className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-foreground">
+    <div className="flex items-center gap-2 rounded-md border border-white/12 bg-ground py-1 pr-1 pl-2.5">
+      <code ref={code} className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
         {command}
       </code>
       <button
         type="button"
-        className="inline-flex h-[26px] shrink-0 items-center gap-[5px] rounded-[5px] border border-white/16 bg-[#18181b] px-[9px] text-[12px] text-foreground hover:bg-accent"
+        className="inline-flex h-[26px] shrink-0 items-center gap-[5px] rounded-md border border-white/16 bg-overlay px-[9px] text-sm text-foreground hover:bg-accent"
         onClick={() => {
           // A browser that refuses the clipboard, or has none over plain http, gets the command selected instead (19f).
           const select = () => {
@@ -120,12 +120,12 @@ function CopyCommand({ command }: { command: string }) {
 type OnUpgrade = (version: string) => Promise<string | null>;
 
 const primaryButton =
-  "inline-flex h-[30px] shrink-0 items-center rounded-[4.4px] bg-primary px-3.5 text-[12.5px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60";
+  "inline-flex h-[30px] shrink-0 items-center rounded-md bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60";
 
 function LogTail({ lines }: { lines: string[] }) {
   if (lines.length === 0) return null;
   return (
-    <div className="flex flex-col gap-0.5 overflow-hidden rounded-[5px] border border-white/8 bg-[#0a0a0c] px-2.5 py-2 font-mono text-[11px] text-muted-foreground">
+    <div className="flex flex-col gap-0.5 overflow-hidden rounded-md border border-white/8 bg-ground px-2.5 py-2 font-mono text-xs text-muted-foreground">
       {lines.map((line, i) => (
         <span key={i} className="truncate whitespace-pre">
           {line}
@@ -139,8 +139,8 @@ function LogTail({ lines }: { lines: string[] }) {
 function HostCommand({ version }: { version: string }) {
   return (
     <>
-      <p className="m-0 text-[12px] leading-[1.45] text-muted-foreground">
-        Run it on the host, in the directory that holds <code className="font-mono text-[11.5px]">compose.yml</code>.
+      <p className="m-0 text-sm leading-[1.45] text-muted-foreground">
+        Run it on the host, in the directory that holds <code className="font-mono text-xs">compose.yml</code>.
       </p>
       <CopyCommand command={upgradeCommand(version)} />
     </>
@@ -177,14 +177,14 @@ function UpgradeBox({
   };
   if (!reply.upgrader?.enabled || !onUpgrade) {
     return (
-      <div className="flex flex-col gap-2 rounded-[6.4px] border border-white/10 bg-[#0d0d10] px-3 py-2.5">
-        <div className="text-[12px] font-semibold">{title}</div>
+      <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-surface-1 px-3 py-2.5">
+        <div className="text-sm font-semibold">{title}</div>
         <HostCommand version={version} />
-        <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+        <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
           {backs} Ingest stops while it runs. Add <code className="font-mono">--no-backup</code> to skip it.
         </p>
         {reply.upgrader ? (
-          <p className="m-0 border-t border-white/8 pt-2 text-[11.5px] leading-[1.5] text-muted-foreground">
+          <p className="m-0 border-t border-white/8 pt-2 text-xs leading-[1.5] text-muted-foreground">
             To upgrade from here instead, run <code className="font-mono">./upgrade.sh enable-ui</code> once on the host (Linux with systemd).
           </p>
         ) : null}
@@ -193,9 +193,9 @@ function UpgradeBox({
   }
   if (confirming) {
     return (
-      <div className="flex flex-col gap-2 rounded-[6.4px] border border-amber-500/45 bg-amber-500/[0.07] px-3 py-2.5">
-        <div className="text-[12px] font-semibold">Upgrade to {version} now?</div>
-        <p className="m-0 text-[12px] leading-[1.45] text-zinc-300">
+      <div className="flex flex-col gap-2 rounded-lg border border-warn/45 bg-warn/[0.07] px-3 py-2.5">
+        <div className="text-sm font-semibold">Upgrade to {version} now?</div>
+        <p className="m-0 text-sm leading-[1.45] text-zinc-300">
           Toposcope backs up both stores{size ? ` (${size})` : ""}, stops, and starts {version}. Nothing is ingested meanwhile; collectors
           hold and resend.
         </p>
@@ -205,31 +205,31 @@ function UpgradeBox({
           </button>
           <button
             type="button"
-            className="h-[30px] rounded-[4.4px] px-2.5 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="h-[30px] rounded-md px-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
             onClick={() => setConfirming(false)}
           >
             Cancel
           </button>
         </div>
-        {error ? <p className="m-0 text-[11.5px] text-red-300">{error}</p> : null}
+        {error ? <p className="m-0 text-xs text-danger-fg">{error}</p> : null}
       </div>
     );
   }
   if (upgradeView(reply, Date.now()) === "failed" && status) {
     return (
-      <div className="flex flex-col gap-2 rounded-[6.4px] border border-red-400/40 bg-red-400/[0.06] px-3 py-2.5">
-        <div className="flex items-center gap-[7px] text-[12.5px] text-red-300">
-          <CircleAlert className="size-3.5 text-red-400" aria-hidden="true" />
+      <div className="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/[0.06] px-3 py-2.5">
+        <div className="flex items-center gap-[7px] text-sm text-danger-fg">
+          <CircleAlert className="size-3.5 text-danger-fg" aria-hidden="true" />
           Upgrade to {status.to} failed · back on {reply.running}
         </div>
-        {status.message ? <p className="m-0 text-[12px] leading-[1.45] text-zinc-300">{status.message}</p> : null}
+        {status.message ? <p className="m-0 text-sm leading-[1.45] text-zinc-300">{status.message}</p> : null}
         <LogTail lines={reply.upgrader?.log.slice(-4) ?? []} />
         <div className="flex items-center gap-2">
           <button type="button" className={primaryButton} onClick={() => setConfirming(true)}>
             Try again
           </button>
           <span className="flex-1" />
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-xs text-zinc-500">
             whole log: <code className="font-mono">upgrade/last.log</code> in the app volume
           </span>
         </div>
@@ -237,17 +237,17 @@ function UpgradeBox({
     );
   }
   return (
-    <div className="flex flex-col gap-2 rounded-[6.4px] border border-white/10 bg-[#0d0d10] px-3 py-2.5">
-      <div className="text-[12px] font-semibold">{title}</div>
+    <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-surface-1 px-3 py-2.5">
+      <div className="text-sm font-semibold">{title}</div>
       <div className="flex items-center gap-2">
         <button type="button" className={primaryButton} onClick={() => setConfirming(true)}>
           Upgrade to {version}
         </button>
       </div>
-      <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+      <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
         {backs} Ingest stops while it runs. The host runs it; this page reconnects after.
       </p>
-      <details className="text-[11.5px] text-muted-foreground">
+      <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer hover:text-foreground">Or on the host</summary>
         <div className="mt-2 flex flex-col gap-2">
           <HostCommand version={version} />
@@ -272,17 +272,17 @@ function UpgradingPanel({ reply, now }: { reply: VersionReply; now: number }) {
         link={<External href={release?.url ?? releasesPageUrl}>Release on GitHub</External>}
         sub={started ? `started ${clockLabel(started)} · ${tookLabel(started, now)}` : undefined}
       />
-      <div className="flex flex-col gap-2 rounded-[6.4px] border border-white/10 bg-[#0d0d10] px-3 py-2.5">
-        <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
+      <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-surface-1 px-3 py-2.5">
+        <div className="flex items-center gap-[7px] text-sm text-zinc-300">
           <LoaderCircle className="size-3.5 shrink-0 animate-spin text-muted-foreground" aria-hidden="true" />
           <span className="min-w-0 truncate">{line}</span>
         </div>
         <LogTail lines={log.slice(-5, -1)} />
-        <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+        <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
           Toposcope stops while this runs. This page reconnects when it is back.
         </p>
       </div>
-      {reply.checked_at ? <div className="text-[11px] text-zinc-500">Checked {agoLabel(reply.checked_at, now)}</div> : null}
+      {reply.checked_at ? <div className="text-xs text-zinc-500">Checked {agoLabel(reply.checked_at, now)}</div> : null}
     </div>
   );
 }
@@ -294,15 +294,15 @@ function BeforeBox({ reply }: { reply: VersionReply }) {
   const own = items.filter((i) => i.text !== null);
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-[5px] rounded-[6.4px] border border-amber-500/45 bg-amber-500/[0.07] px-3 py-2.5">
-        <div className="flex items-center gap-[7px] text-[12px] font-semibold text-amber-300">
-          <span className="size-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+      <div className="flex flex-col gap-[5px] rounded-lg border border-warn/45 bg-warn/[0.07] px-3 py-2.5">
+        <div className="flex items-center gap-[7px] text-sm font-semibold text-warn-fg">
+          <span className="size-1.5 rounded-full bg-warn" aria-hidden="true" />
           Before you upgrade
           {several && own.length === 1 ? <span className="font-mono font-normal">· {own[0]!.version}</span> : null}
         </div>
         {own.map((item) => (
           <div key={item.version} className="flex flex-col gap-0.5">
-            {several && own.length > 1 ? <span className="font-mono text-[11px] text-amber-200">{item.version}</span> : null}
+            {several && own.length > 1 ? <span className="font-mono text-xs text-warn-fg">{item.version}</span> : null}
             <Paragraphs notes={item.text!} className="text-zinc-100" />
           </div>
         ))}
@@ -310,7 +310,7 @@ function BeforeBox({ reply }: { reply: VersionReply }) {
       {items
         .filter((i) => i.guide)
         .map((item) => (
-          <div key={item.version} className="flex items-baseline gap-2 px-0.5 text-[12px] text-muted-foreground">
+          <div key={item.version} className="flex items-baseline gap-2 px-0.5 text-sm text-muted-foreground">
             <span className="font-mono text-foreground">{item.version}</span>
             <span>
               Upgrade notes for this release are in the <External href={operationsGuideUrl}>operations guide</External>
@@ -325,17 +325,17 @@ function WhatsNewList({ reply }: { reply: VersionReply }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   return (
     <div className="flex flex-col">
-      <div className="pb-1 text-[10.5px] font-semibold tracking-[0.05em] text-muted-foreground uppercase">What&apos;s new</div>
+      <div className="pb-1 text-2xs font-semibold tracking-[0.05em] text-muted-foreground uppercase">What&apos;s new</div>
       {reply.releases.map((r) => (
         <div key={r.version} className="flex flex-col gap-1.5 border-t border-white/8 py-1.5">
-          <div className="flex items-baseline gap-2.5 text-[12.5px]">
+          <div className="flex items-baseline gap-2.5 text-sm">
             <span className="font-mono text-foreground">{r.version}</span>
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground/70">{dayLabel(r.published_at)}</span>
+            <span className="shrink-0 font-mono text-xs text-muted-foreground/70">{dayLabel(r.published_at)}</span>
             <span className="min-w-0 flex-1 truncate text-zinc-300">{open[r.version] ? "" : firstLine(r.notes)}</span>
             <button
               type="button"
               aria-expanded={Boolean(open[r.version])}
-              className="shrink-0 text-[12px] text-foreground hover:text-plate"
+              className="shrink-0 text-sm text-foreground hover:text-plate"
               onClick={() => setOpen((o) => ({ ...o, [r.version]: !o[r.version] }))}
             >
               {open[r.version] ? "Show less" : "Show all"}
@@ -356,7 +356,7 @@ function CheckNow({ checking, onCheck }: { checking: boolean; onCheck?: () => vo
       type="button"
       disabled={checking}
       onClick={onCheck}
-      className="inline-flex h-[22px] shrink-0 items-center gap-[5px] rounded-[4.4px] border border-white/16 px-2 text-[11.5px] text-foreground hover:bg-accent disabled:opacity-45 disabled:hover:bg-transparent"
+      className="inline-flex h-[22px] shrink-0 items-center gap-[5px] rounded-md border border-white/16 px-2 text-xs text-foreground hover:bg-accent disabled:opacity-45 disabled:hover:bg-transparent"
     >
       <RotateCw className="size-3" aria-hidden="true" />
       Check now
@@ -367,7 +367,7 @@ function CheckNow({ checking, onCheck }: { checking: boolean; onCheck?: () => vo
 /** Up to date, checking, or not checked yet, with Check now (22a, 22b); also under an upgrade's done (22i). */
 function StatusLine({ reply, now, checking, onCheck }: { reply: VersionReply; now: number; checking: boolean; onCheck?: () => void }) {
   return (
-    <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
+    <div className="flex items-center gap-[7px] text-sm text-zinc-300">
       {checking ? (
         <>
           <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
@@ -405,10 +405,10 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
     return (
       <div className="flex flex-col gap-2.5">
         <Header title={`Toposcope ${running}`} link={<External href={releasesPageUrl}>Releases on GitHub</External>} />
-        <p className="m-0 text-[12.5px] text-zinc-300">
-          The release check is off (<code className="font-mono text-[11.5px]">TOPOSCOPE_UPDATE_CHECK=off</code>)
+        <p className="m-0 text-sm text-zinc-300">
+          The release check is off (<code className="font-mono text-xs">TOPOSCOPE_UPDATE_CHECK=off</code>)
         </p>
-        <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+        <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
           This instance does not know whether a newer release is out, and calls nobody to find out. Remove the line from{" "}
           <code className="font-mono">.env</code> and restart to turn it back on.
         </p>
@@ -423,7 +423,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
   const failed = reply.error ? (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
-        <p className="m-0 min-w-0 flex-1 text-[12.5px] text-zinc-300">
+        <p className="m-0 min-w-0 flex-1 text-sm text-zinc-300">
           {checking
             ? "Checking GitHub for releases…"
             : reply.checked_at
@@ -432,7 +432,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
         </p>
         {latest && reply.latest !== running ? null : <CheckNow checking={checking} onCheck={onCheck} />}
       </div>
-      <p className="m-0 font-mono text-[11px] text-muted-foreground">{reply.error}</p>
+      <p className="m-0 font-mono text-xs text-muted-foreground">{reply.error}</p>
     </div>
   ) : null;
   if (!latest || reply.latest === running) {
@@ -441,7 +441,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
         <div className="flex flex-col gap-2.5">
           <Header title={`Toposcope ${running}`} link={<External href={releasesPageUrl}>Releases on GitHub</External>} />
           {failed}
-          <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+          <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
             {reply.checked_at ? `The last answer, on ${dayLabel(reply.checked_at)}, knew of nothing newer. ` : ""}Toposcope tries again once a
             day. A box with no way out can stop trying with <code className="font-mono">TOPOSCOPE_UPDATE_CHECK=off</code>.
           </p>
@@ -454,20 +454,20 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
       return (
         <div className="flex flex-col gap-2.5">
           <Header title={`Toposcope ${running}`} link={<External href={tagUrl}>Release notes</External>} />
-          <div className="flex items-center gap-[7px] text-[12.5px] text-zinc-300">
+          <div className="flex items-center gap-[7px] text-sm text-zinc-300">
             <Check className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span>
               Upgraded from {done.from ?? "the last version"} · took {tookLabel(done.started_at, done.finished_at)}
               {backup ? (
                 <>
                   {" "}
-                  · backup in <code className="font-mono text-[11.5px]">{backup}</code>
+                  · backup in <code className="font-mono text-xs">{backup}</code>
                 </>
               ) : null}
             </span>
           </div>
           {backup ? (
-            <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+            <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
               Going back: <code className="font-mono">./upgrade.sh rollback --yes</code> on the host restores that backup.
             </p>
           ) : null}
@@ -479,7 +479,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
       <div className="flex flex-col gap-2.5">
         <Header title={`Toposcope ${running}`} link={<External href={tagUrl}>Release notes</External>} />
         <StatusLine reply={reply} now={now} checking={checking} onCheck={onCheck} />
-        <p className="m-0 text-[11.5px] leading-[1.5] text-muted-foreground">
+        <p className="m-0 text-xs leading-[1.5] text-muted-foreground">
           Toposcope asks GitHub once a day whether a newer release is out, and sends nothing about this instance.{" "}
           <code className="font-mono text-zinc-300">TOPOSCOPE_UPDATE_CHECK=off</code> in <code className="font-mono">.env</code> stops it.
         </p>
@@ -508,7 +508,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
         <WhatsNewList reply={reply} />
       ) : latest.notes ? (
         <div className="flex flex-col gap-1.5">
-          <div className="text-[10.5px] font-semibold tracking-[0.05em] text-muted-foreground uppercase">What&apos;s new in {latest.version}</div>
+          <div className="text-2xs font-semibold tracking-[0.05em] text-muted-foreground uppercase">What&apos;s new in {latest.version}</div>
           <Paragraphs notes={latest.notes} />
         </div>
       ) : null}
@@ -519,7 +519,7 @@ export function ReleasePanel({ reply, now, checking = false, onCheck, onUpgrade 
         reply={reply}
         onUpgrade={onUpgrade}
       />
-      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
         <span className="min-w-0 flex-1">
           {checking
             ? "Checking GitHub for releases…"
@@ -620,7 +620,7 @@ export function VersionFooter() {
             aria-label={chip.label}
             title={chip.newer ? `${chip.newer} is out${chip.readFirst ? " · read before upgrading" : ""}` : undefined}
             className={cn(
-              "-mr-1.5 inline-flex shrink-0 items-center gap-[5px] rounded px-1.5 py-0.5 font-mono text-[11px] whitespace-nowrap hover:bg-accent",
+              "-mr-1.5 inline-flex shrink-0 items-center gap-[5px] rounded-md px-1.5 py-0.5 font-mono text-xs whitespace-nowrap hover:bg-accent",
               chip.newer ? "text-zinc-300" : "text-muted-foreground",
               open && "bg-accent text-foreground",
             )}
@@ -632,7 +632,7 @@ export function VersionFooter() {
                 <span className="text-plate">{chip.newer}</span>
               </>
             ) : null}
-            {chip.readFirst ? <span className="size-[5px] rounded-full bg-amber-500" aria-hidden="true" /> : null}
+            {chip.readFirst ? <span className="size-[5px] rounded-full bg-warn" aria-hidden="true" /> : null}
             {upgrading ? <span>· upgrading</span> : null}
           </button>
         </PopoverTrigger>
@@ -640,7 +640,7 @@ export function VersionFooter() {
           side="top"
           align="end"
           sideOffset={6}
-          className="max-h-[calc(100vh-80px)] w-[min(460px,calc(100vw-16px))] overflow-y-auto rounded-[6.4px] border-white/14 bg-[#18181b] p-[14px] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
+          className="max-h-[calc(100vh-80px)] w-[min(460px,calc(100vw-16px))] overflow-y-auto rounded-lg border-white/14 bg-overlay p-[14px] shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
         >
           <ReleasePanel
             reply={reply}

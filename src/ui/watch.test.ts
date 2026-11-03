@@ -233,8 +233,8 @@ describe("Watch's lanes (#175, frame 18c)", () => {
     expect(text).toContain("What opened today 10:41 ● ci-box lines loud · still open sent ✓");
     expect(text).toContain("Delivery ntfy.sh · 3 monitors not called yet");
     // One open stretch, bright; one resolved, dim.
-    expect(html.match(/bottom-\[3px\] bg-red-500"/g)?.length).toBe(1);
-    expect(html.match(/bottom-\[3px\] rounded-\[2px\] bg-red-500\/45/g)?.length).toBe(1);
+    expect(html.match(/bottom-\[3px\] bg-danger"/g)?.length).toBe(1);
+    expect(html.match(/bottom-\[3px\] rounded-sm bg-danger\/45/g)?.length).toBe(1);
   });
 });
 

@@ -1,0 +1,178 @@
+{
+  "src/ui/components/absolute-range-calendar.tsx": {
+    "[#hex] colour": 1,
+    "<button with h-[…]": 5
+  },
+  "src/ui/components/access-view.tsx": {
+    "raw palette class": 7,
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/add-to-board.tsx": {
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/agent-badge.tsx": {
+    "[#hex] colour": 4
+  },
+  "src/ui/components/agent-step.tsx": {
+    "[#hex] colour": 4,
+    "raw palette class": 7
+  },
+  "src/ui/components/alert-body-field.tsx": {
+    "raw palette class": 1
+  },
+  "src/ui/components/board-view.tsx": {
+    "<button with h-[…]": 3
+  },
+  "src/ui/components/check-editor-parts.tsx": {
+    "[#hex] colour": 2
+  },
+  "src/ui/components/compare-fold.tsx": {
+    "raw palette class": 2
+  },
+  "src/ui/components/context-view.tsx": {
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/coverage-section.tsx": {
+    "[#hex] colour": 1,
+    "raw palette class": 12,
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/event-detail.tsx": {
+    "raw palette class": 5,
+    "<button with h-[…]": 3
+  },
+  "src/ui/components/event-table-marks.tsx": {
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/extra-panel.tsx": {
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/facet-chips.tsx": {
+    "raw palette class": 1
+  },
+  "src/ui/components/facet-group.tsx": {
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/fields-view.tsx": {
+    "[#hex] colour": 2,
+    "raw palette class": 1,
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/fingerprint-cut-panel.tsx": {
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/hbar-widget.tsx": {
+    "<button with h-[…]": 3
+  },
+  "src/ui/components/head-picker.tsx": {
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/histogram-chart.tsx": {
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/histogram-marks.tsx": {
+    "raw palette class": 1,
+    "<button with h-[…]": 4
+  },
+  "src/ui/components/home-view.tsx": {
+    "raw palette class": 9,
+    "<button with h-[…]": 4
+  },
+  "src/ui/components/http-monitor-dialog.tsx": {
+    "[#hex] colour": 2
+  },
+  "src/ui/components/hunt-crumb.tsx": {
+    "raw palette class": 3
+  },
+  "src/ui/components/instance-menu.tsx": {
+    "raw palette class": 2
+  },
+  "src/ui/components/kind-boxes.tsx": {
+    "[#hex] colour": 1,
+    "raw palette class": 2
+  },
+  "src/ui/components/link-page.tsx": {
+    "raw palette class": 9
+  },
+  "src/ui/components/marks-panel.tsx": {
+    "raw palette class": 4
+  },
+  "src/ui/components/me-menu.tsx": {
+    "[#hex] colour": 1,
+    "raw palette class": 4
+  },
+  "src/ui/components/metric-spark.tsx": {
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/monitor-band.tsx": {
+    "raw palette class": 1
+  },
+  "src/ui/components/new-monitor-dialog.tsx": {
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/outage-view.tsx": {
+    "[#hex] colour": 6
+  },
+  "src/ui/components/panel-editor.tsx": {
+    "raw palette class": 2,
+    "<button with h-[…]": 4
+  },
+  "src/ui/components/people-groups.tsx": {
+    "[#hex] colour": 2,
+    "raw palette class": 13
+  },
+  "src/ui/components/push-monitor-dialog.tsx": {
+    "raw palette class": 1
+  },
+  "src/ui/components/repositories-view.tsx": {
+    "[#hex] colour": 4,
+    "raw palette class": 6
+  },
+  "src/ui/components/series-picker.tsx": {
+    "[#hex] colour": 1,
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/settings-page.tsx": {
+    "raw palette class": 4
+  },
+  "src/ui/components/share-page.tsx": {
+    "raw palette class": 2
+  },
+  "src/ui/components/share-panels-dialog.tsx": {
+    "raw palette class": 2,
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/shares-dialog.tsx": {
+    "raw palette class": 5
+  },
+  "src/ui/components/sign-in-settings.tsx": {
+    "[#hex] colour": 2,
+    "raw palette class": 6
+  },
+  "src/ui/components/time-range-picker.tsx": {
+    "<button with h-[…]": 4
+  },
+  "src/ui/components/ui/chip.tsx": {
+    "raw palette class": 1
+  },
+  "src/ui/components/version-footer.tsx": {
+    "raw palette class": 15,
+    "<button with h-[…]": 3
+  },
+  "src/ui/components/watch-this-sheet.tsx": {
+    "[#hex] colour": 1,
+    "raw palette class": 3
+  },
+  "src/ui/components/watch-view.tsx": {
+    "[#hex] colour": 1,
+    "raw palette class": 9,
+    "<button with h-[…]": 1
+  },
+  "src/ui/components/widget-canvas.tsx": {
+    "raw palette class": 4,
+    "<button with h-[…]": 2
+  },
+  "src/ui/components/widget-format-menu.tsx": {
+    "<button with h-[…]": 1
+  }
+}
