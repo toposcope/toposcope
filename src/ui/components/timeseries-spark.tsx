@@ -5,21 +5,19 @@ import { seriesColor, seriesKeys, seriesValue } from "@/histogram-series";
 import { cn } from "@/lib/utils";
 import type { HistogramBucket, SearchAggResult } from "@/types";
 import { alignAggBuckets, finiteAggPeak } from "../../query/agg";
-import {
-  histogramSplits,
-  type HistogramSplit,
-} from "../../query/histogram";
+import { histogramSplits, type HistogramSplit } from "../../query/histogram";
 import { seriesPickFromWidget } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog } from "../series-catalog";
 import { formatMetricRef } from "../../shared/metric";
 import { metricReading, metricView } from "../series-list";
-import { formatSpanShort } from "../time-range";
+
 import { SeriesPicker, SeriesReading } from "./series-picker";
 import { MetricSpark, MetricSplitPicker, sparkTimes } from "./metric-spark";
 import type { MetricHeld } from "../held-view";
 import type { ChangeMark } from "../../shared/change-mark";
 import { bucketSpan, TimeLayer } from "../hover-time";
 import { Refused, Skeleton } from "@/components/ui/states";
+import { formatDuration } from "../../shared/duration";
 
 const LINE = "#a78bfa";
 
@@ -63,7 +61,7 @@ export function bucketStepLabel(buckets: readonly HistogramBucket[]): string {
     return "";
   }
   const step = Date.parse(buckets[1]!.t) - Date.parse(buckets[0]!.t);
-  return Number.isFinite(step) && step > 0 ? formatSpanShort(step) : "";
+  return Number.isFinite(step) && step > 0 ? formatDuration(step, "short") : "";
 }
 
 export function TimeseriesSpark({

@@ -1,4 +1,5 @@
 import { seriesLabel } from "../query/agg";
+import { formatDuration } from "./duration";
 
 /**
  * A monitor (#175): a name, a source, a state and the calls it sends. Shared by the server,
@@ -110,7 +111,7 @@ export function cantTellWords(
   }
   if (why.kind === "starting") {
     const up = Math.max(0, nowMs - (why.until - windowMs));
-    return `starting, up ${formatOpenFor(Math.min(up, windowMs))} of ${formatOpenFor(windowMs)}`;
+    return `starting, up ${formatDuration(Math.min(up, windowMs), "long")} of ${formatDuration(windowMs, "long")}`;
   }
   const shown = why.sources.slice(0, 2).map((s) => `${s.name} ${s.state === "hole" ? "has a hole" : s.state}`);
   const more = why.sources.length - shown.length;
@@ -168,22 +169,3 @@ export function opensWhenWords(opensWhen: OpensWhen, series: string | null, thre
   return `${series ? `${series} ` : ""}${opensWhen === "fewer_than" ? "fewer than" : "at least"} ${n}`;
 }
 
-/** "45s", "22m", "7h 59m", "24h 2m", "3d 4h": how long a stretch has been open, or lasted. */
-export function formatOpenFor(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  if (s < 60) {
-    return `${s}s`;
-  }
-  const m = Math.floor(s / 60);
-  if (m < 60) {
-    return `${m}m`;
-  }
-  const h = Math.floor(m / 60);
-  if (h < 48) {
-    const rest = m % 60;
-    return rest > 0 ? `${h}h ${rest}m` : `${h}h`;
-  }
-  const d = Math.floor(h / 24);
-  const rest = h % 24;
-  return rest > 0 ? `${d}d ${rest}h` : `${d}d`;
-}

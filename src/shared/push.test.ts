@@ -1,23 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  defaultGraceMs,
-  exitCodeOfStatus,
-  formatSpan,
-  isLate,
-  isPingKey,
-  levelOfStatus,
-  maskKey,
-  randomPingKey,
-  monitorQuery,
-  parseCheckStatus,
-  parseEvery,
-  parseGrace,
-  parsePushName,
-  pingStatusOfExitCode,
-  pushDueAt,
-  pushOpensAt,
-  type PushClock,
-} from "./push";
+import { defaultGraceMs, exitCodeOfStatus, isLate, isPingKey, levelOfStatus, maskKey, randomPingKey, monitorQuery, parseCheckStatus, parseEvery, parseGrace, parsePushName, pingStatusOfExitCode, pushDueAt, pushOpensAt, type PushClock } from "./push";
+import { formatDuration } from "./duration";
 
 const minute = 60_000;
 const hour = 60 * minute;
@@ -79,11 +62,11 @@ describe("every and grace", () => {
   });
 
   test("a span says its largest whole unit", () => {
-    expect(formatSpan(24 * hour)).toBe("1d");
-    expect(formatSpan(15 * minute)).toBe("15m");
-    expect(formatSpan(90 * minute)).toBe("90m");
-    expect(formatSpan(7 * 24 * hour)).toBe("7d");
-    expect(formatSpan(0)).toBe("0");
+    expect(formatDuration(24 * hour, "short", { whole: true })).toBe("1d");
+    expect(formatDuration(15 * minute, "short", { whole: true })).toBe("15m");
+    expect(formatDuration(90 * minute, "short", { whole: true })).toBe("90m");
+    expect(formatDuration(7 * 24 * hour, "short", { whole: true })).toBe("7d");
+    expect(formatDuration(0, "short", { whole: true })).toBe("0");
   });
 });
 

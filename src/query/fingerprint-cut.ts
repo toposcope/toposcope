@@ -2,48 +2,15 @@ import type { Context } from "hono";
 import { heldLinks } from "../links/upstream";
 import { feeders, heldSources, omitWhere, shortIn, sourceGaps, type HeldLink } from "../shared/held";
 import { heldClock, holeClock } from "../shared/held-words";
-import {
-  formatChangeMarkLabel,
-  type ChangeMark,
-} from "../shared/change-mark";
+import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
 import { fingerprintAttr, isFingerprintKey } from "../shared/fingerprint";
-import {
-  capFingerprintCutSet,
-  classifyFingerprintCut,
-  fingerprintCutFollows,
-  fingerprintCutInsideCap,
-  fingerprintCutInsideNotes,
-  fingerprintCutMinBeforeMs,
-  fingerprintCutNotes,
-  fingerprintCutScanCap,
-  fingerprintCutWindows,
-  formatFingerprintCutDuration,
-  judgeAcrossGap,
-  mergeFingerprintCutSides,
-  nearestInsideMarks,
-  type GapMarks,
-  type FingerprintCutInsideMark,
-  type FingerprintCutResult,
-  type FingerprintCutRow,
-  type FingerprintCutSet,
-  type FingerprintCutSideCount,
-  type FingerprintCutWindows,
-} from "../shared/fingerprint-cut";
-import {
-  emitQuerySql,
-  QueryCompileError,
-  requireCompiled,
-  type CompiledQuery,
-  type QueryNode,
-} from "./compile";
+import { capFingerprintCutSet, classifyFingerprintCut, fingerprintCutFollows, fingerprintCutInsideCap, fingerprintCutInsideNotes, fingerprintCutMinBeforeMs, fingerprintCutNotes, fingerprintCutScanCap, fingerprintCutWindows, judgeAcrossGap, mergeFingerprintCutSides, nearestInsideMarks, type GapMarks, type FingerprintCutInsideMark, type FingerprintCutResult, type FingerprintCutRow, type FingerprintCutSet, type FingerprintCutSideCount, type FingerprintCutWindows } from "../shared/fingerprint-cut";
+import { emitQuerySql, QueryCompileError, requireCompiled, type CompiledQuery, type QueryNode } from "./compile";
 import { changeMarksBetween, getChangeMarkById } from "./marks";
-import {
-  isNumericAggBudgetError,
-  logsScanBudgetRefuseReason,
-  numericScanSettings,
-} from "./agg";
+import { isNumericAggBudgetError, logsScanBudgetRefuseReason, numericScanSettings } from "./agg";
 import { clampSearchSpan, InvalidRangeError, resolveRange } from "./relative";
+import { formatDuration } from "../shared/duration";
 
 type WhereClause = { sql: string; params: Record<string, string> };
 
@@ -358,8 +325,8 @@ export function cutGapNotes(
       inBefore && inAfter
         ? "both sides miss its rows"
         : inBefore
-          ? `the before side misses ${formatFingerprintCutDuration(missed(w.beforeFrom, w.beforeTo))} of its ${formatFingerprintCutDuration(w.beforeMs)} from it`
-          : `the after side misses ${formatFingerprintCutDuration(missed(w.afterFrom, w.afterTo))} of its ${formatFingerprintCutDuration(w.sideMs)} from it`;
+          ? `the before side misses ${formatDuration(missed(w.beforeFrom, w.beforeTo), "long", { round: true, seconds: true, days: "exact" })} of its ${formatDuration(w.beforeMs, "long", { round: true, seconds: true, days: "exact" })} from it`
+          : `the after side misses ${formatDuration(missed(w.afterFrom, w.afterTo), "long", { round: true, seconds: true, days: "exact" })} of its ${formatDuration(w.sideMs, "long", { round: true, seconds: true, days: "exact" })} from it`;
     const not = inBefore && inAfter ? "stopped or first seen" : inBefore ? "first seen" : "stopped";
     return `${lead} — ${miss}. A line seen only from ${source.name} reads ?, not ${not}.`;
   });
@@ -591,7 +558,7 @@ export async function searchFingerprintCut(input: {
         "Counts only — sampling this slice exceeded the scan budget. Zoom in for row text.",
       );
     }
-    const beforeSpan = formatFingerprintCutDuration(w.beforeMs);
+    const beforeSpan = formatDuration(w.beforeMs, "long", { round: true, seconds: true, days: "exact" });
     return {
       title: formatChangeMarkLabel(input.mark),
       windows: windowPayload(w, inside),

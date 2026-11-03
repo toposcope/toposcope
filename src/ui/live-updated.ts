@@ -1,17 +1,6 @@
+import { formatDuration } from "../shared/duration";
 /** Hide while the 2s Live poll is still landing. */
 export const liveUpdatedMinAgeMs = 3000;
-
-export function formatLiveUpdatedAge(ageMs: number): string {
-  const sec = Math.max(1, Math.round(ageMs / 1000));
-  if (sec < 60) {
-    return `${sec}s`;
-  }
-  const min = Math.round(sec / 60);
-  if (min < 60) {
-    return `${min}m`;
-  }
-  return `${Math.round(min / 60)}h`;
-}
 
 /** Past one 30s pass plus slack, an age turns plate: a pass was missed (36g, sheet 45). */
 export const liveLateMs = 35_000;
@@ -34,7 +23,7 @@ export function liveAgeView(
   if (age < (opts.minAgeMs ?? liveUpdatedMinAgeMs)) {
     return null;
   }
-  return { label: formatLiveUpdatedAge(age), late: !opts.paused && age > liveLateMs };
+  return { label: formatDuration(age, "short", { least: "s" }), late: !opts.paused && age > liveLateMs };
 }
 
 /** The facet row's hover text (36c): its cadence, its age, and why the newest minute lags. */

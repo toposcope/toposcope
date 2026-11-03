@@ -5,19 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { MonitorPlaceFields, serviceMissing, serviceOk, useSeenServices } from "@/components/monitor-place-fields";
 import { cn } from "@/lib/utils";
-import {
-  formatSpan,
-  maskKey,
-  monitorQuery,
-  parseEvery,
-  parseGrace,
-  parsePushName,
-  randomPingKey,
-  viaLabel,
-} from "../../shared/push";
+import { maskKey, monitorQuery, parseEvery, parseGrace, parsePushName, randomPingKey, viaLabel } from "../../shared/push";
 import type { MonitorPage, MonitorView, PushResultRow } from "@/types";
 import { Badge } from "@/components/watch-view";
 import { pushValue } from "@/watch";
+import { formatDuration } from "../../shared/duration";
 
 export type PushDraft = { mode: "create" } | { mode: "edit"; rule: MonitorView };
 
@@ -163,8 +155,8 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
     setMinted(randomPingKey());
     if (draft.mode === "edit") {
       setName(draft.rule.name);
-      setEvery(draft.rule.every_ms ? formatSpan(draft.rule.every_ms) : "");
-      setGrace(draft.rule.grace_ms != null ? formatSpan(draft.rule.grace_ms) : "");
+      setEvery(draft.rule.every_ms ? formatDuration(draft.rule.every_ms, "short", { whole: true }) : "");
+      setGrace(draft.rule.grace_ms != null ? formatDuration(draft.rule.grace_ms, "short", { whole: true }) : "");
       setOwn(Boolean(draft.rule.webhook_url));
       setOwnUrl(draft.rule.webhook_url ?? "");
       setService(draft.rule.service ?? "");
@@ -219,10 +211,10 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
       return;
     }
     if (page.every_ms) {
-      setEvery((prev) => prev || formatSpan(page.every_ms!));
+      setEvery((prev) => prev || formatDuration(page.every_ms!, "short", { whole: true }));
     }
     if (page.grace_ms != null) {
-      setGrace((prev) => prev || formatSpan(page.grace_ms!));
+      setGrace((prev) => prev || formatDuration(page.grace_ms!, "short", { whole: true }));
     }
     // Once per monitor it finds, not on every read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -371,7 +363,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
                 <input
                   aria-label="then wait"
                   value={grace}
-                  placeholder={everyMs ? formatSpan(Math.min(everyMs, 60 * 60_000)) : "2m"}
+                  placeholder={everyMs ? formatDuration(Math.min(everyMs, 60 * 60_000), "short", { whole: true }) : "2m"}
                   onChange={(e) => setGrace(e.target.value)}
                   className={cn(box, "w-[72px] bg-transparent font-mono text-foreground", graceBad && "border-danger/60")}
                 />

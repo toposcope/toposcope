@@ -36,7 +36,7 @@ describe("a metric panel split by one label (#104)", () => {
     expect(back?.metricSplit).toBeNull();
   });
 
-  test("one line per value; `other` is dashed grey; the sixth colour is not grey", () => {
+  test("one line per value; `other` is dashed grey; the sixth is the same grey, solid (sheet 45)", () => {
     const result: SearchAggResult = {
       expr: "x", source: "metric", buckets: [], stat: null, split: "plan",
       splits: ["a", "b", "c", "d", "e", "f", "other"].map((key, i) => ({ key, buckets: [{ t: times[0]!, v: i }], stat: i })),
@@ -44,7 +44,8 @@ describe("a metric panel split by one label (#104)", () => {
     const lines = sparkLines(times, result);
     expect(lines.map((l) => l.key)).toEqual(["a", "b", "c", "d", "e", "f", "other"]);
     expect(lines.at(-1)).toMatchObject({ color: "#94a3b8", dashed: true });
-    expect(lines[5]!.color).not.toBe("#94a3b8");
+    expect(lines[5]).toMatchObject({ color: "#94a3b8" });
+    expect(lines[5]!.dashed).toBeFalsy();
   });
 
   test("end labels that would collide are pushed apart", () => {

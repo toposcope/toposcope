@@ -2,44 +2,12 @@ import type { Database } from "bun:sqlite";
 import type { AlertRule } from "../control/alerts";
 import type { SavedSearch } from "../control/saved-searches";
 import { parseRangeMs } from "../query/relative";
-import { type MonitorMeasure,
-  callRetryMs,
-  fewerThanProblem,
-  formatOpenFor,
-  remindEveryMs,
-  type CantTell,
-  type MonitorResult,
-  type OpensWhen,
-} from "../shared/monitor";
+import { type MonitorMeasure, callRetryMs, fewerThanProblem, remindEveryMs, type CantTell, type MonitorResult, type OpensWhen } from "../shared/monitor";
 import type { WebhookOutcome } from "./delivery";
-import {
-  beginStretch,
-  noteReading,
-  openStretch,
-  pendingResolved,
-  recordCall,
-  recordResult,
-  resolveStretch,
-  setCalledAt,
-  setCantTell,
-  setOpenCall,
-  setResolvedCall,
-  type CallWhat,
-  type MonitorStretch,
-  type Reading,
-} from "./monitor-store";
-import {
-  alertLink,
-  alertWebhookBody,
-  readingMessage,
-  renderResolved,
-  renderWebhook,
-  sendsResolved,
-  thresholdFillValues,
-  type CallState,
-  type WebhookPayload,
-} from "./payload";
+import { beginStretch, noteReading, openStretch, pendingResolved, recordCall, recordResult, resolveStretch, setCalledAt, setCantTell, setOpenCall, setResolvedCall, type CallWhat, type MonitorStretch, type Reading } from "./monitor-store";
+import { alertLink, alertWebhookBody, readingMessage, renderResolved, renderWebhook, sendsResolved, thresholdFillValues, type CallState, type WebhookPayload } from "./payload";
 import type { AlertSeries } from "./series";
+import { formatDuration } from "../shared/duration";
 
 /** A saved search with no relative range (a fixed from/to) is read every pass and reminds every 5m. */
 export const fallbackWindowMs = 5 * 60 * 1000;
@@ -346,7 +314,7 @@ function searchCallPayload(
     state,
     openedAt: iso(stretch.opened_at),
     resolvedAt: stretch.resolved_at !== null ? iso(stretch.resolved_at) : null,
-    duration: formatOpenFor(endMs - stretch.opened_at),
+    duration: formatDuration(endMs - stretch.opened_at, "long"),
   };
   const base = deps.publicUrl();
   const rangeMs = saved.range ? parseRangeMs(saved.range) : null;

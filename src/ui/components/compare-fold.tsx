@@ -5,24 +5,8 @@ import { X } from "lucide-react";
 import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
 import type { CoverageMismatch } from "../../shared/coverage";
 import { useCoverage } from "./coverage-section";
-import {
-  compareFoldKind,
-  compareFoldMinus,
-  compareFoldNote,
-  compareFoldPercent,
-  compareFoldRowKeys,
-  compareFoldSeriesText,
-  compareFoldSeriesTotal,
-  compareFoldShowDelta,
-  compareFoldSideFromCount,
-  compareFoldSideFromSearch,
-  compareFoldSidesText,
-  compareFoldTotals,
-  formatCompareFoldPercent,
-  type CompareFoldKind,
-  type CompareFoldSide,
-} from "../../shared/compare-fold";
-import { formatFingerprintCutDuration } from "../../shared/fingerprint-cut";
+import { compareFoldKind, compareFoldMinus, compareFoldNote, compareFoldPercent, compareFoldRowKeys, compareFoldSeriesText, compareFoldSeriesTotal, compareFoldShowDelta, compareFoldSideFromCount, compareFoldSideFromSearch, compareFoldSidesText, compareFoldTotals, formatCompareFoldPercent, type CompareFoldKind, type CompareFoldSide } from "../../shared/compare-fold";
+
 import { fingerprintAttr } from "../../shared/fingerprint-attr";
 import { formatAggStat } from "@/fill-histogram";
 import { formatFieldCount, useCountFormat } from "@/count-format";
@@ -34,6 +18,7 @@ import { seriesColor } from "../histogram-series";
 import type { SearchResult } from "../types";
 import type { HistogramSplit } from "../../query/histogram";
 import { MarkGlyph } from "./histogram-marks";
+import { formatDuration } from "../../shared/duration";
 
 export type CompareFoldProps = {
   mark: ChangeMark;
@@ -80,7 +65,6 @@ type Sides = {
   /** #142: the hunt is on a fingerprint id and its rows were made by more than one set of rules: no delta. */
   revisions?: string;
 };
-
 
 function hms(ms: number): string {
   return new Date(ms).toISOString().slice(11, 19);
@@ -436,7 +420,7 @@ export function CompareFold({
           kind,
           before,
           after,
-          formatDuration: formatFingerprintCutDuration,
+          formatDuration: (ms: number) => formatDuration(ms, "long", { round: true, seconds: true, days: "exact" }),
         })
       : loaded
         ? sides.refuse ||
@@ -446,7 +430,7 @@ export function CompareFold({
                 kind,
                 before,
                 after,
-                formatDuration: formatFingerprintCutDuration,
+                formatDuration: (ms: number) => formatDuration(ms, "long", { round: true, seconds: true, days: "exact" }),
               })
             : "")
         : "");
@@ -454,7 +438,7 @@ export function CompareFold({
     windows,
     frozen,
     frozenStamp: hms(windows.afterTo),
-    formatDuration: formatFingerprintCutDuration,
+    formatDuration: (ms: number) => formatDuration(ms, "long", { round: true, seconds: true, days: "exact" }),
   });
   const title = windows.dead
     ? "No after side in this window"
@@ -674,7 +658,7 @@ function StackRow({
         kind,
         before,
         after,
-        formatDuration: formatFingerprintCutDuration,
+        formatDuration: (ms: number) => formatDuration(ms, "long", { round: true, seconds: true, days: "exact" }),
         row: true,
       })
     : "";

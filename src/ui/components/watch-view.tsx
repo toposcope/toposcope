@@ -2,60 +2,15 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
-import { formatOpenFor } from "../../shared/monitor";
+
 import { markKindColor } from "./histogram-marks";
 import { AgentBadge, OpenAgent } from "./agent-badge";
 import { agentWatchWords } from "../agents";
 import type { HeldSource } from "../../shared/held";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsFromSource, MonitorsResponse, PushResultRow, SourceMonitor } from "@/types";
-import {
-  clockAt,
-  httpLane,
-  laneKind,
-  laneReadout,
-  markHover,
-  markPeek,
-  markRowTime,
-  markSpanLabel,
-  watchMarkText,
-  type WatchMarkGroup,
-  pushBands,
-  pushDueLine,
-  pushReadout,
-  pushTicks,
-  pushValue,
-  resultCard,
-  type LaneReadout,
-  nowLabel,
-  openCardLine,
-  openedToday,
-  deliveries,
-  lastCheckAt,
-  watchDot,
-  watchStateLine,
-  type WatchDot,
-  sentDots,
-  sortForWatch,
-  sourceOf,
-  stretchSpans,
-  watchFilters,
-  watchMarks,
-  watchRanges,
-  watchTicks,
-  type WatchFilter,
-  type WatchRange,
-  placeShows,
-  sourceDefinition,
-  sourceKindWords,
-  sourceRow,
-  sourceStanding,
-  sourceStretch,
-  watchPlaces,
-  watchSummary,
-  type SourceStanding,
-  type WatchPlace,
-} from "@/watch";
+import { clockAt, httpLane, laneKind, laneReadout, markHover, markPeek, markRowTime, markSpanLabel, watchMarkText, type WatchMarkGroup, pushBands, pushDueLine, pushReadout, pushTicks, pushValue, resultCard, type LaneReadout, nowLabel, openCardLine, openedToday, deliveries, lastCheckAt, watchDot, watchStateLine, type WatchDot, sentDots, sortForWatch, sourceOf, stretchSpans, watchFilters, watchMarks, watchRanges, watchTicks, type WatchFilter, type WatchRange, placeShows, sourceDefinition, sourceKindWords, sourceRow, sourceStanding, sourceStretch, watchPlaces, watchSummary, type SourceStanding, type WatchPlace } from "@/watch";
 import { Empty } from "@/components/ui/states";
+import { formatDuration } from "../../shared/duration";
 
 type Props = {
   data: MonitorsResponse | null;
@@ -265,7 +220,7 @@ function Lane({
               aria-label={`${monitor.name} open ${clockAt(span.stretch.opened_at, nowMs)}`}
               title={`${monitor.name} open ${clockAt(span.stretch.opened_at, nowMs)} → ${
                 span.open ? "now" : clockAt(end, nowMs)
-              } · ${formatOpenFor(end - span.stretch.opened_at)}${span.stretch.closed_by === "edit" ? " · closed by edit" : ""}`}
+              } · ${formatDuration(end - span.stretch.opened_at, "long")}${span.stretch.closed_by === "edit" ? " · closed by edit" : ""}`}
               onClick={() => onOpen(monitor, span.stretch)}
               className={cn(
                 "absolute top-[3px] bottom-[3px]",
@@ -774,7 +729,7 @@ function SourceLane({
               key={span.id}
               title={`open at ${source} ${clockAt(span.stretch.opened_at, nowMs)} → ${
                 span.open ? "now" : clockAt(span.stretch.resolved_at ?? nowMs, nowMs)
-              } · ${formatOpenFor((span.stretch.resolved_at ?? nowMs) - span.stretch.opened_at)}`}
+              } · ${formatDuration((span.stretch.resolved_at ?? nowMs) - span.stretch.opened_at, "long")}`}
               className={cn("absolute top-[3px] bottom-[3px]", span.open ? "bg-danger" : "rounded-sm bg-danger/45")}
               style={{ left: pct(span.left), width: pct(span.width) }}
             />
@@ -859,8 +814,8 @@ export function SourceDetail({
             <span className="font-mono text-muted-foreground">{clockAt(st.opened_at, nowMs)}</span>
             <span className="min-w-0 truncate text-zinc-300">
               {st.resolved_at === null
-                ? `open ${formatOpenFor(nowMs - st.opened_at)}`
-                : `resolved ${clockAt(st.resolved_at, nowMs)} · ${formatOpenFor(st.resolved_at - st.opened_at)}${st.closed_by === "edit" ? " · closed by edit" : ""}`}
+                ? `open ${formatDuration(nowMs - st.opened_at, "long")}`
+                : `resolved ${clockAt(st.resolved_at, nowMs)} · ${formatDuration(st.resolved_at - st.opened_at, "long")}${st.closed_by === "edit" ? " · closed by edit" : ""}`}
               {st.open_message ? ` · ${st.open_message}` : ""}
             </span>
           </span>

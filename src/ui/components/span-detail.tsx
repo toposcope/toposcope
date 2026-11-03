@@ -6,16 +6,10 @@ import { cn } from "@/lib/utils";
 import type { HeldSource } from "../../shared/held";
 import type { Span } from "../../shared/span";
 import { enteredRow, showsEntered } from "../trace-held";
-import { formatTraceMs } from "../waterfall";
-import {
-  foldStack,
-  resourcePreview,
-  spanFieldGroups,
-  spanJson,
-  spanOffsetLabel,
-  type SpanField,
-} from "../span-fields";
+
+import { foldStack, resourcePreview, spanFieldGroups, spanJson, spanOffsetLabel, type SpanField } from "../span-fields";
 import { railPanel } from "@/components/ui/side-panel";
+import { formatDuration } from "../../shared/duration";
 
 /** Resource rows shown before "Show N more". */
 const resourceShown = 8;
@@ -162,7 +156,7 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
   const [tab, setTab] = useState<"fields" | "json">("fields");
   const groups = spanFieldGroups(span);
   const json = spanJson(span);
-  const offset = spanOffsetLabel(startMs, formatTraceMs);
+  const offset = spanOffsetLabel(startMs, (ms) => formatDuration(ms, "precise", { unit: "ms" }));
   const sources = held?.sources ?? [];
   const entered = showsEntered(span, sources)
     ? enteredRow(span, sources, held?.now ?? Date.now(), held?.here ?? "")
@@ -197,7 +191,7 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
           {span.service} · {span.name}
         </span>
         <span className="shrink-0 font-mono text-xs whitespace-nowrap text-muted-foreground @max-[340px]:hidden">
-          {formatTraceMs(span.duration_ms)}
+          {formatDuration(span.duration_ms, "precise", { unit: "ms" })}
           {offset ? ` · ${offset}` : ""}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1">

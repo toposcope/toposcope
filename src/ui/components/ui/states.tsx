@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { liveAgeView, liveUpdatedMinAgeMs } from "../../live-updated";
-import { formatSearchElapsed, SEARCH_SLOW_AFTER_MS } from "../../time-range";
+import { SEARCH_SLOW_AFTER_MS } from "../../time-range";
+import { formatDuration } from "../../../shared/duration";
 
 /**
  * Sheet 45, Patterns → Data states: every panel, table and page shows its states the same way.
@@ -60,7 +61,7 @@ export function Busy({
     >
       <span className="size-[11px] shrink-0 animate-spin rounded-full border-[1.5px] border-white/25 border-t-foreground motion-reduce:animate-[spin_2.4s_linear_infinite]" aria-hidden />
       <span className="shrink-0 text-xs whitespace-nowrap">
-        {label}…{elapsedMs >= 100 ? ` ${formatSearchElapsed(elapsedMs)}` : ""}
+        {label}…{elapsedMs >= 100 ? ` ${formatDuration(elapsedMs, "precise")}` : ""}
       </span>
       {late && hint ? <span className="min-w-0 truncate border-l border-white/12 pl-2 text-xs text-warn-fg">{hint}</span> : null}
       <Button size="xs" type="button" variant="ghost" className="shrink-0 px-2 text-xs" onClick={onStop}>

@@ -3,8 +3,9 @@
  * through `POST /v1/checks` (token) or its keyed `/ping/<key>` URL (no token). Shared by ingest,
  * the monitor pass and Watch.
  */
-import { formatOpenFor } from "./monitor";
+
 import { parseRangeMs } from "../query/relative";
+import { formatDuration } from "./duration";
 
 /** A result: Nagios's ok, warning, critical and unknown. Unknown changes nothing. */
 export type CheckStatus = "ok" | "warn" | "fail" | "unknown";
@@ -91,25 +92,6 @@ export function parseGrace(raw: unknown): number | null {
 /** Without a grace of its own, a monitor waits one more `every` before it opens, at most an hour. */
 export function defaultGraceMs(everyMs: number): number {
   return Math.min(everyMs, hourMs);
-}
-
-/** `1d`, `7d`, `15m`, `90s`, `0`: a span in its largest whole unit, days at most (18f). */
-export function formatSpan(ms: number): string {
-  if (ms <= 0) {
-    return "0";
-  }
-  const units: Array<[string, number]> = [
-    ["d", dayMs],
-    ["h", hourMs],
-    ["m", minuteMs],
-    ["s", 1000],
-  ];
-  for (const [unit, size] of units) {
-    if (ms % size === 0) {
-      return `${ms / size}${unit}`;
-    }
-  }
-  return `${ms}ms`;
 }
 
 /**
@@ -201,7 +183,7 @@ export function isRunning(m: PushClock): boolean {
 /** "late 6m": how long past due. */
 export function lateFor(m: PushClock, nowMs: number): string {
   const due = pushDueAt(m);
-  return due === null ? "" : formatOpenFor(Math.max(0, nowMs - due));
+  return due === null ? "" : formatDuration(Math.max(0, nowMs - due), "long");
 }
 
 /** Where a push monitor's results come in, for its row and the first-result box. */

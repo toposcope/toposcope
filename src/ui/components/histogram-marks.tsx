@@ -1,25 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  changeMarkKinds,
-  formatChangeMarkLabel,
-  type ChangeMark,
-  type ChangeMarkKind,
-} from "../../shared/change-mark";
-import { formatSpanShort } from "../time-range";
+import { changeMarkKinds, formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../../shared/change-mark";
+
 import { cn } from "@/lib/utils";
 import { isTypingTarget } from "@/keyboard";
-import {
-  clusterChangeMarks,
-  clusterHasLaneLabel,
-  clusterKinds,
-  markFrac,
-  markSource,
-  newestFirst,
-  panWindowToMark,
-  peekCrowded,
-  visibleChangeMarks,
-} from "../change-marks";
+import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, markFrac, markSource, newestFirst, panWindowToMark, peekCrowded, visibleChangeMarks } from "../change-marks";
 import { MonitorBandRow, monitorBandH, type MonitorBand } from "./monitor-band";
+import { formatDuration } from "../../shared/duration";
 
 /** The named-marks rail above the plot (#260, frame 26d): named chips, not glyphs in a 22px lane. */
 export const MARK_LANE_H = 28;
@@ -331,7 +317,7 @@ function stamp(iso: string): string {
 
 function ago(iso: string, nowMs: number): string {
   const ms = Math.max(0, nowMs - Date.parse(iso));
-  return `${formatSpanShort(ms)} ago`;
+  return `${formatDuration(ms, "short")} ago`;
 }
 
 export function markKindColor(kind: ChangeMarkKind): string {
@@ -801,7 +787,7 @@ export function HistogramMarkLane({
             <MarkGlyph kind={leftPeek.kind} size={10} />
             {leftCrowd ? null : (
               <span>
-                {leftPeek.kind} · {formatSpanShort(fromMs - Date.parse(leftPeek.ts))}{" "}
+                {leftPeek.kind} · {formatDuration(fromMs - Date.parse(leftPeek.ts), "short")}{" "}
                 before
               </span>
             )}
@@ -815,7 +801,7 @@ export function HistogramMarkLane({
           >
             {rightCrowd ? null : (
               <span>
-                {rightPeek.kind} · {formatSpanShort(Date.parse(rightPeek.ts) - toMs)}{" "}
+                {rightPeek.kind} · {formatDuration(Date.parse(rightPeek.ts) - toMs, "short")}{" "}
                 after
               </span>
             )}

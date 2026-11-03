@@ -5,16 +5,9 @@ import { PanelTells } from "@/components/panel-words";
 import { StatWidget } from "@/components/stat-widget";
 import type { SearchAggResult } from "@/types";
 import { unitsDifferWords } from "../metric-unit";
-import {
-  embedAggResult,
-  embedMessage,
-  nextEmbedState,
-  pollMs,
-  type EmbedParams,
-  type EmbedState,
-  type SeriesBody,
-} from "../embed-view";
+import { embedAggResult, embedMessage, nextEmbedState, pollMs, type EmbedParams, type EmbedState, type SeriesBody } from "../embed-view";
 import { Refused } from "@/components/ui/states";
+import { formatDuration } from "../../shared/duration";
 
 function clock(ms: number): string {
   return new Date(ms).toISOString().slice(11, 16);
@@ -70,7 +63,7 @@ export function EmbedPanel({ params }: { params: EmbedParams }) {
     state.kind === "stale"
       ? `not answering${state.readAt ? ` · last read ${clock(state.readAt)}` : ""}`
       : body
-        ? [params.query.get("range") ?? "", body.step_ms ? formatStep(body.step_ms) : ""].filter(Boolean).join(" · ")
+        ? [params.query.get("range") ?? "", body.step_ms ? formatDuration(body.step_ms, "short", { whole: true }) : ""].filter(Boolean).join(" · ")
         : "";
 
   return (
@@ -92,10 +85,6 @@ export function EmbedPanel({ params }: { params: EmbedParams }) {
       ) : null}
     </div>
   );
-}
-
-function formatStep(ms: number): string {
-  return ms >= 86_400_000 ? `${ms / 86_400_000}d` : ms >= 3_600_000 ? `${ms / 3_600_000}h` : ms >= 60_000 ? `${ms / 60_000}m` : ms >= 1000 ? `${ms / 1000}s` : `${ms}ms`;
 }
 
 function Notice({ line, sub, mono = false }: { line: string; sub: string; mono?: boolean }) {
