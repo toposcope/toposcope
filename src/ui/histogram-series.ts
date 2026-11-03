@@ -1,17 +1,8 @@
 import type { HistogramSplit } from "../query/histogram";
-import { levelHex, levelOrder } from "./level";
+import { levelOrder } from "./level";
+import { chartColor, chartOtherDark, levelHex } from "./chart-palette";
 import type { HistogramBucket, LogLevel } from "./types";
 
-const palette = [
-  "#38bdf8",
-  "#a78bfa",
-  "#34d399",
-  "#fbbf24",
-  "#fb7185",
-  "#94a3b8",
-  "#c084fc",
-  "#2dd4bf",
-];
 
 function isLogLevel(value: string): value is LogLevel {
   return (levelOrder as string[]).includes(value);
@@ -79,10 +70,10 @@ export function seriesColor(
     return levelHex[key];
   }
   if (key === "events") {
-    return "#0ea5e9";
+    return levelHex.info;
   }
   if (key === "other" || key === "-") {
-    return "#94a3b8";
+    return chartOtherDark;
   }
-  return palette[index % palette.length] ?? "#94a3b8";
+  return chartColor(index);
 }

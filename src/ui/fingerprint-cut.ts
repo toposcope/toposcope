@@ -1,13 +1,8 @@
-import {
-  fingerprintCutMinBeforeMs,
-  fingerprintCutWindows,
-  formatFingerprintCutDuration,
-  type FingerprintCutResult,
-  type FingerprintCutWindows,
-} from "../shared/fingerprint-cut";
+import { fingerprintCutMinBeforeMs, fingerprintCutWindows, type FingerprintCutResult, type FingerprintCutWindows } from "../shared/fingerprint-cut";
 import type { ChangeMark } from "../shared/change-mark";
 import { formatEventClock } from "./event-time";
 import { isoFromLocal } from "./search-url";
+import { formatDuration } from "../shared/duration";
 
 export type FingerprintCutSnap = {
   mark: ChangeMark;
@@ -154,9 +149,9 @@ export function formatCutWindowLines(
       nowMs,
       precision: "s",
     });
-  const after = formatFingerprintCutDuration(windows.sideMs);
+  const after = formatDuration(windows.sideMs, "long", { round: true, seconds: true, days: "exact" });
   const before = windows.waiting
-    ? `${formatFingerprintCutDuration(windows.beforeMs)}, at least`
+    ? `${formatDuration(windows.beforeMs, "long", { round: true, seconds: true, days: "exact" })}, at least`
     : `equal ${after}`;
   const cutAt = formatEventClock(new Date(windows.afterFrom).toISOString(), {
     format: "full",
@@ -181,7 +176,7 @@ export function cutCountTitle(windows: FingerprintCutWindows): string {
   if (!windows.waiting) {
     return "events before → after, equal windows";
   }
-  return `events ${formatFingerprintCutDuration(windows.beforeMs)} before → ${formatFingerprintCutDuration(windows.sideMs)} after`;
+  return `events ${formatDuration(windows.beforeMs, "long", { round: true, seconds: true, days: "exact" })} before → ${formatDuration(windows.sideMs, "long", { round: true, seconds: true, days: "exact" })} after`;
 }
 
 /** "An error quiet for 18 minutes has not stopped." — the waiting Stopped in words. */

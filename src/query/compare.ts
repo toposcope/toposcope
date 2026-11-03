@@ -1,15 +1,7 @@
 import type { Context } from "hono";
 import type { ChangeMark } from "../shared/change-mark";
-import {
-  compareFoldKind,
-  compareFoldNote,
-  compareFoldPercent,
-  compareFoldShowDelta,
-  compareFoldSideFromSearch,
-  type CompareFoldKind,
-  type CompareFoldSide,
-} from "../shared/compare-fold";
-import { formatFingerprintCutDuration, fingerprintCutWindows } from "../shared/fingerprint-cut";
+import { compareFoldKind, compareFoldNote, compareFoldPercent, compareFoldShowDelta, compareFoldSideFromSearch, type CompareFoldKind, type CompareFoldSide } from "../shared/compare-fold";
+import { fingerprintCutWindows } from "../shared/fingerprint-cut";
 import { InvalidAggError } from "./agg";
 import { QueryCompileError } from "./compile";
 import { resolveHunt } from "./fingerprint-cut";
@@ -17,6 +9,7 @@ import { getChangeMarkById } from "./marks";
 import { InvalidMetricError } from "../shared/metric";
 import { InvalidRangeError } from "./relative";
 import { search } from "./index";
+import { formatDuration } from "../shared/duration";
 
 /**
  * Compare around a mark (#359), as Hunt's Compare fold reads it (ui/components/compare-fold.tsx):
@@ -100,7 +93,7 @@ export async function compareAroundMark(input: {
     dead: w.dead,
     delta: show ? (after.v ?? 0) - (before.v ?? 0) : null,
     percent: show && !before.empty ? compareFoldPercent(before.v ?? 0, after.v ?? 0) : null,
-    note: compareFoldNote({ windows: w, kind, before, after, formatDuration: formatFingerprintCutDuration }),
+    note: compareFoldNote({ windows: w, kind, before, after, formatDuration: (ms: number) => formatDuration(ms, "long", { round: true, seconds: true, days: "exact" }) }),
     ...(refused ? { refused } : {}),
   };
 }

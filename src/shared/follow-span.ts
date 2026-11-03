@@ -1,5 +1,5 @@
 import { FOLLOW_MS } from "./ids";
-import { formatFingerprintCutDuration } from "./fingerprint-cut";
+import { formatDuration } from "./duration";
 
 /** How far either side of the event Follow looks for the value's first and last row. */
 export const followReachMs = 24 * 3_600_000;
@@ -120,7 +120,7 @@ export function followChangedWords(opened: FollowOpened): string {
   if (opened.how !== "span") {
     return followOpenedWords(opened.how);
   }
-  return `${followChipWords(opened)} · ${formatFingerprintCutDuration(opened.toMs - opened.fromMs)}`;
+  return `${followChipWords(opened)} · ${formatDuration(opened.toMs - opened.fromMs, "long", { round: true, seconds: true, days: "exact" })}`;
 }
 
 export function followSpanSearchParams(q: string, atIso: string): URLSearchParams {

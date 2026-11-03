@@ -4,74 +4,33 @@ import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { bucketSpan, useHoverTime } from "../hover-time";
 import { printUnit, unitsDifferWords, withUnit } from "../metric-unit";
-import {
-  bucketIndexAt,
-  formatAggStat,
-  formatSeriesTotal,
-  histogramAxisLabels,
-  histogramAxisTick,
-  histogramWindowNeedsDate,
-  histogramYTicks,
-  resolveHistogramStepMs,
-  scaleCount,
-  stackedSegmentPlotFrac,
-} from "@/fill-histogram";
-import {
-  seriesColor,
-  seriesKeys,
-  seriesTotal,
-  seriesValue,
-} from "@/histogram-series";
+import { bucketIndexAt, formatAggStat, formatSeriesTotal, histogramAxisLabels, histogramAxisTick, histogramWindowNeedsDate, histogramYTicks, resolveHistogramStepMs, scaleCount, stackedSegmentPlotFrac } from "@/fill-histogram";
+import { seriesColor, seriesKeys, seriesTotal, seriesValue } from "@/histogram-series";
 import { cn } from "@/lib/utils";
 import { isTypingTarget } from "@/keyboard";
 import type { HistogramBucket, SearchAggResult } from "@/types";
 import { WidgetExportMenu } from "@/components/widget-export-menu";
-import {
-  downloadWidgetSeries,
-  histogramExport,
-} from "@/export-series";
+import { downloadWidgetSeries, histogramExport } from "@/export-series";
 import { alignAggBuckets, finiteAggPeak } from "../../query/agg";
-import {
-  histogramCharts,
-  histogramIntervalMsById,
-  histogramSplits,
-  type HistogramChartKind,
-  type HistogramIntervalId,
-  type HistogramSplit,
-} from "../../query/histogram";
+import { histogramCharts, histogramIntervalMsById, histogramSplits, type HistogramChartKind, type HistogramIntervalId, type HistogramSplit } from "../../query/histogram";
 import { seriesPickFromWidget } from "../agg-picker";
 import { pickedEntry, useSeriesCatalog } from "../series-catalog";
 import { formatMetricRef, metricExpr } from "../../shared/metric";
 import { metricReading, metricView, readingWords, type MetricView } from "../series-list";
 import { FitName } from "@/components/fit-name";
-import { formatSpanShort } from "../time-range";
+
 import { SeriesPicker, SeriesReading } from "./series-picker";
 import { markPlotSpanMs } from "../change-marks";
-import {
-  clickHistogramWindow,
-  displayedHistogramInterval,
-  dragHistogramWindow,
-  histogramHoverHint,
-  histogramRetentionMs,
-  panHistogramWindow,
-  snapHistogramSpanMs,
-  zoomHistogramAbout,
-} from "../histogram-zoom";
+import { clickHistogramWindow, displayedHistogramInterval, dragHistogramWindow, histogramHoverHint, histogramRetentionMs, panHistogramWindow, snapHistogramSpanMs, zoomHistogramAbout } from "../histogram-zoom";
 import { HistogramIntervalChips } from "./histogram-interval";
-import {
-  HistogramMarkLane,
-  HistogramMarkRules,
-  MARK_LANE_H,
-  markHoverLines,
-  MarkGlyph,
-  type MarksOverlay,
-} from "./histogram-marks";
+import { HistogramMarkLane, HistogramMarkRules, MARK_LANE_H, markHoverLines, MarkGlyph, type MarksOverlay } from "./histogram-marks";
 import { CompareFold, type CompareFoldHunt } from "./compare-fold";
 import { monitorBandH } from "./monitor-band";
 import { endLabelMax, lastValue, sparkLines, spreadLabels, unitAxes, type SparkLine } from "./metric-spark";
 import { UnitsSay } from "./panel-words";
 import { Refused, Skeleton } from "@/components/ui/states";
 import { formatCompactCount } from "@/count-format";
+import { formatDuration } from "../../shared/duration";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
@@ -563,7 +522,7 @@ export function HistogramChart({
     histogramIntervalMsById[displayedHistogramInterval(spanMs, interval, chart)],
   );
   /** The bar width as the plot labels it; a counter's reading carries it. */
-  const stepLabel = formatSpanShort(stepMs);
+  const stepLabel = formatDuration(stepMs, "short");
   const liveRef = useRef({ buckets, spanMs, stepMs, onWindow, retentionMs });
   liveRef.current = { buckets, spanMs, stepMs, onWindow, retentionMs };
   const hoverBucket = hover !== null ? buckets[hover] : undefined;
@@ -1158,9 +1117,9 @@ export function HistogramChart({
       : ((knobBin + 0.5) / binCount) * 100;
   const liveStrip = knobBin !== null || sliding;
   const headLabel = headDrag
-    ? formatSpanShort(sweepBins * stepMs)
+    ? formatDuration(sweepBins * stepMs, "short")
     : armed
-      ? formatSpanShort(drillMs)
+      ? formatDuration(drillMs, "short")
       : "";
   const gCursor = panning ? "pan" : shiftHeld ? "brush" : "grab";
   const headCursor = headDrag ? "drag" : "idle";
@@ -1168,17 +1127,17 @@ export function HistogramChart({
     shiftHeld,
     headArmed,
     canDrill,
-    drillLabel: formatSpanShort(drillMs),
+    drillLabel: formatDuration(drillMs, "short"),
   });
   const panChipText = previewWin
-    ? `${stamp(previewWin.fromMs)} → ${stamp(previewWin.toMs)} · ${formatSpanShort(spanMs)}`
+    ? `${stamp(previewWin.fromMs)} → ${stamp(previewWin.toMs)} · ${formatDuration(spanMs, "short")}`
     : "";
   const knobBucket = knobBin !== null ? buckets[knobBin] : undefined;
   const headTitle =
     knobBucket === undefined
       ? undefined
       : canDrill
-        ? `Click → ${formatSpanShort(drillMs)} around ${stamp(Date.parse(knobBucket.t))} · drag to sweep a span`
+        ? `Click → ${formatDuration(drillMs, "short")} around ${stamp(Date.parse(knobBucket.t))} · drag to sweep a span`
         : "Drag to sweep a span — this bar width is already the tightest window";
   const drillLeftPct =
     hover !== null && binCount > 0
@@ -1900,7 +1859,7 @@ export function HistogramChart({
                 onBlur={() => setLegendLine(null)}
                 className={cn(
                   "relative flex items-center gap-1 rounded-md px-1 text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                  lineInfo ? "text-sm" : "font-mono text-xs",
+                  lineInfo ? "text-xs" : "font-mono text-xs",
                   legendLine === line.key && lineInfo?.[line.key] && "bg-accent text-foreground",
                 )}
               >
@@ -1909,14 +1868,14 @@ export function HistogramChart({
                     role="tooltip"
                     className="pointer-events-none absolute bottom-full left-0 z-30 mb-1.5 flex w-[320px] flex-col gap-1.5 rounded-lg border border-white/14 bg-overlay px-3 py-2.5 font-sans shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
                   >
-                    <span className="text-sm font-semibold text-foreground">{line.key}</span>
+                    <span className="text-xs font-semibold text-foreground">{line.key}</span>
                     <span className="font-mono text-xs text-foreground/80">
                       {[metricReadingText, lineInfo[line.key]!.metric, lineInfo[line.key]!.labels, unitText]
                         .filter(Boolean)
                         .join(" · ")}
                     </span>
                     {lineInfo[line.key]!.description ? (
-                      <span className="flex items-baseline gap-1.5 text-sm leading-snug">
+                      <span className="flex items-baseline gap-1.5 text-xs leading-snug">
                         <span className="shrink-0 rounded-md border border-white/16 px-1 font-mono text-2xs">sender</span>
                         {lineInfo[line.key]!.description}
                       </span>

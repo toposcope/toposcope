@@ -2,7 +2,7 @@ import type { AlertRule } from "../control/alerts";
 import { parseConditions, type ConditionLine, type HttpResult, type Verdict } from "../shared/http-check";
 import type { LogEvent } from "../shared/log-event";
 import type { MetricPoint } from "../shared/metric";
-import { formatOpenFor } from "../shared/monitor";
+
 import { judgeNetRun, parseNetTarget, type NetSource, type Starttls } from "../shared/net-check";
 import { monitorQuery } from "../shared/push";
 import { monitorDurationMetric, settleNodeRun, type HttpMonitorDeps } from "./http-monitor";
@@ -11,6 +11,7 @@ import { noteNetRun, type NetSettings } from "./net-store";
 import type { CallDeps } from "./monitor";
 import type { CallWhat, MonitorStretch } from "./monitor-store";
 import { netCallBody, netFillValues, renderResolved, renderWebhook, type WebhookPayload } from "./payload";
+import { formatDuration } from "../shared/duration";
 
 export type NetCheck = {
   source: NetSource;
@@ -215,7 +216,7 @@ function netCallPayload(
       state: what,
       openedAt: iso(stretch.opened_at),
       resolvedAt: stretch.resolved_at !== null ? iso(stretch.resolved_at) : null,
-      duration: formatOpenFor(endMs - stretch.opened_at),
+      duration: formatDuration(endMs - stretch.opened_at, "long"),
     },
   };
   const defaultBody = netCallBody(input.url, facts);

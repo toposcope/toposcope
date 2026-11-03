@@ -5,26 +5,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
 import { fingerprintAttr } from "../../shared/fingerprint-attr";
-import {
-  fingerprintCutNotes,
-  fingerprintCutShortMs,
-  formatFingerprintCutDuration,
-  type FingerprintCutResult,
-  type FingerprintCutRow,
-  type FingerprintCutSet,
-  type FingerprintCutWindows,
-} from "../../shared/fingerprint-cut";
+import { fingerprintCutNotes, fingerprintCutShortMs, type FingerprintCutResult, type FingerprintCutRow, type FingerprintCutSet, type FingerprintCutWindows } from "../../shared/fingerprint-cut";
 import { formatEventClock } from "../event-time";
 import { isoFromLocal } from "../search-url";
 import { facetValues } from "../query-tokens";
-import {
-  cutCountTitle,
-  cutWaitingWords,
-  fingerprintCutFetchKey,
-  fingerprintCutViewWindows,
-  formatCutWindowLines,
-} from "../fingerprint-cut";
+import { cutCountTitle, cutWaitingWords, fingerprintCutFetchKey, fingerprintCutViewWindows, formatCutWindowLines } from "../fingerprint-cut";
 import { MarkGlyph } from "./histogram-marks";
+import { formatDuration } from "../../shared/duration";
 
 const foot =
   "A clock cut, not causation — first seen after is not caused by. The hunt is untouched: q and facets stay; only Filter writes the bar.";
@@ -302,8 +289,8 @@ function CutWaiting({
 }: {
   waiting: { haveMs: number; needMs: number };
 }) {
-  const have = formatFingerprintCutDuration(waiting.haveMs);
-  const need = formatFingerprintCutDuration(waiting.needMs);
+  const have = formatDuration(waiting.haveMs, "long", { round: true, seconds: true, days: "exact" });
+  const need = formatDuration(waiting.needMs, "long", { round: true, seconds: true, days: "exact" });
   const span = need === "1h" ? "hour" : need;
   const pct = Math.max(0, Math.min(100, (waiting.haveMs / Math.max(1, waiting.needMs)) * 100));
   return (

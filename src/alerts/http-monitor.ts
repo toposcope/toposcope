@@ -1,39 +1,17 @@
 import { recordPushResult } from "./monitor-results";
 import type { AlertRule } from "../control/alerts";
-import {
-  judgeRun,
-  parseConditions,
-  type ConditionLine,
-  type HttpMethod,
-  type HttpResult,
-  type Verdict,
-} from "../shared/http-check";
+import { judgeRun, parseConditions, type ConditionLine, type HttpMethod, type HttpResult, type Verdict } from "../shared/http-check";
 import type { LogEvent } from "../shared/log-event";
 import type { MetricPoint } from "../shared/metric";
-import { formatOpenFor } from "../shared/monitor";
+
 import { monitorQuery } from "../shared/push";
 import type { HttpSettings } from "./http-store";
 import { noteHttpRun } from "./http-store";
 import type { HttpExchange, HttpRequestInput } from "./http-request";
 import { nextMove, passCalls, type CallDeps } from "./monitor";
-import {
-  beginStretch,
-  noteReading,
-  openStretch,
-  recordResult,
-  resolveStretch,
-  type CallWhat,
-  type MonitorStretch,
-  type Reading,
-} from "./monitor-store";
-import {
-  httpCallBody,
-  httpFillValues,
-  renderResolved,
-  renderWebhook,
-  sendsResolved,
-  type WebhookPayload,
-} from "./payload";
+import { beginStretch, noteReading, openStretch, recordResult, resolveStretch, type CallWhat, type MonitorStretch, type Reading } from "./monitor-store";
+import { httpCallBody, httpFillValues, renderResolved, renderWebhook, sendsResolved, type WebhookPayload } from "./payload";
+import { formatDuration } from "../shared/duration";
 
 /** The metric each run's time is also kept as, labelled by its monitor. */
 export const monitorDurationMetric = "monitor_duration_ms";
@@ -309,7 +287,7 @@ function httpCallPayload(
       state: what,
       openedAt: iso(stretch.opened_at),
       resolvedAt: stretch.resolved_at !== null ? iso(stretch.resolved_at) : null,
-      duration: formatOpenFor(endMs - stretch.opened_at),
+      duration: formatDuration(endMs - stretch.opened_at, "long"),
     },
   };
   const defaultBody = httpCallBody(input.url, facts);

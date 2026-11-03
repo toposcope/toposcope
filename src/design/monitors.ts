@@ -13,9 +13,10 @@ import { readPushFields } from "../control/push-monitors";
 import { getSaved } from "../control/saved-searches";
 import { formatHttpEvery } from "../shared/http-check";
 import { isNetSource, type NetSource } from "../shared/net-check";
-import { formatSpan } from "../shared/push";
+
 import { noteUndo, notePreview, previewFirst, previewMs, type Target } from "./preview-gate";
 import { answerWith, readObject } from "./answer";
+import { formatDuration } from "../shared/duration";
 
 /** A draft's preview reads the last 7 days (#360); Watch this reads one. */
 export const draftPreviewDays = 7;
@@ -67,8 +68,8 @@ export function monitorBodyOf(rule: AlertRule): Record<string, unknown> {
   }
   body.webhook_url = rule.webhook_url || null;
   if (source === "push") {
-    body.every = rule.every_ms === null ? null : formatSpan(rule.every_ms);
-    body.grace = rule.grace_ms === null ? null : formatSpan(rule.grace_ms);
+    body.every = rule.every_ms === null ? null : formatDuration(rule.every_ms, "short", { whole: true });
+    body.grace = rule.grace_ms === null ? null : formatDuration(rule.grace_ms, "short", { whole: true });
     return body;
   }
   if (source === "http") {

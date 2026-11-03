@@ -1,47 +1,15 @@
-import {
-  parseRangeMs,
-  parseRangeParts,
-  partsFromMs,
-  type RangeUnit,
-} from "../query/relative";
-import {
-  absWindowOk,
-  clampAbsWindow,
-  utcDayStart,
-  type AbsField,
-} from "./absolute-range";
+import { parseRangeMs, parseRangeParts, partsFromMs, type RangeUnit } from "../query/relative";
+import { absWindowOk, clampAbsWindow, utcDayStart, type AbsField } from "./absolute-range";
 import { rangeDurationMs } from "./fill-histogram";
 import { toLocalInput, type RangeMode } from "./search-url";
+import { formatDuration } from "../shared/duration";
 
 export type { AbsField };
-
-const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
 
 export const SEARCH_SLOW_AFTER_MS = 5000;
 
 function pad(n: number, w = 2): string {
   return String(n).padStart(w, "0");
-}
-
-export function formatSpanShort(ms: number): string {
-  if (ms >= DAY_MS && ms % DAY_MS === 0) {
-    return `${ms / DAY_MS}d`;
-  }
-  if (ms >= HOUR_MS && ms % HOUR_MS === 0) {
-    return `${ms / HOUR_MS}h`;
-  }
-  if (ms >= HOUR_MS) {
-    return `${Math.round(ms / HOUR_MS)}h`;
-  }
-  if (ms >= MINUTE_MS) {
-    return `${Math.round(ms / MINUTE_MS)}m`;
-  }
-  if (ms >= 1000) {
-    return `${Math.round(ms / 1000)}s`;
-  }
-  return `${Math.max(1, Math.round(ms))}ms`;
 }
 
 export function formatCustomRangeLabel(
@@ -65,7 +33,7 @@ export function formatCustomRangeLabel(
     (needS ? `:${pad(d.getUTCSeconds())}` : "") +
     (needMs ? `.${pad(d.getUTCMilliseconds(), 3)}` : "");
   const sameDay = utcDayStart(fromMs) === utcDayStart(toMs);
-  return `${dpart(a)} ${tpart(a)} → ${sameDay ? "" : `${dpart(b)} `}${tpart(b)} · ${formatSpanShort(span)}`;
+  return `${dpart(a)} ${tpart(a)} → ${sameDay ? "" : `${dpart(b)} `}${tpart(b)} · ${formatDuration(span, "short")}`;
 }
 
 export function rangeTriggerLabel(
@@ -99,7 +67,7 @@ export function absApplyPreview(fromMs: number, toMs: number): string {
     utcDayStart(fromMs) === utcDayStart(toMs)
       ? absStampUtc(toMs).slice(11)
       : absStampUtc(toMs);
-  return `Applies ${absStampUtc(fromMs)} → ${toLabel} · ${formatSpanShort(toMs - fromMs)}`;
+  return `Applies ${absStampUtc(fromMs)} → ${toLabel} · ${formatDuration(toMs - fromMs, "short")}`;
 }
 
 /** Pin a From/To edit to a legal custom window (1ms…365d). */
@@ -133,10 +101,6 @@ export function draftPartsForRange(
   }
   const span = live ? liveWindowMs : rangeDurationMs(from, to);
   return partsFromMs(span);
-}
-
-export function formatSearchElapsed(ms: number): string {
-  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 export function scanningRangeLabel(range: RangeMode): string {

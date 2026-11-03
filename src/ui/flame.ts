@@ -1,27 +1,18 @@
-import { formatTraceMs } from "./waterfall";
+
 import type { ProfileStack } from "../shared/profile";
+import { chartColor, chartDark, chartOtherDark } from "./chart-palette";
+import { formatDuration } from "../shared/duration";
 
 const namedPkg: Record<string, string> = {
-  php: "#a78bfa",
-  wordpress: "#34d399",
-  mysql: "#fbbf24",
-  plugin: "#fb7185",
-  pcre: "#38bdf8",
-  phpmailer: "#2dd4bf",
-  net: "#c084fc",
-  app: "#94a3b8",
+  php: chartDark[1],
+  wordpress: chartDark[2],
+  mysql: chartDark[3],
+  plugin: chartDark[4],
+  pcre: chartDark[0],
+  phpmailer: chartDark[7],
+  net: chartDark[6],
+  app: chartOtherDark,
 };
-
-const palette = [
-  "#38bdf8",
-  "#a78bfa",
-  "#34d399",
-  "#fbbf24",
-  "#fb7185",
-  "#94a3b8",
-  "#c084fc",
-  "#2dd4bf",
-];
 
 export type FlameFrame = {
   name: string;
@@ -78,22 +69,22 @@ export function packageColor(pkg: string): string {
   for (let i = 0; i < pkg.length; i += 1) {
     hash = (hash * 31 + pkg.charCodeAt(i)) >>> 0;
   }
-  return palette[hash % palette.length] ?? "#94a3b8";
+  return chartColor(hash);
 }
 
 export function formatProfileValue(value: number, unit: string): string {
   const u = unit.toLowerCase();
   if (u === "nanoseconds" || u === "ns") {
-    return formatTraceMs(value / 1_000_000);
+    return formatDuration(value / 1_000_000, "precise", { unit: "ms" });
   }
   if (u === "microseconds" || u === "us" || u === "µs") {
-    return formatTraceMs(value / 1_000);
+    return formatDuration(value / 1_000, "precise", { unit: "ms" });
   }
   if (u === "milliseconds" || u === "ms") {
-    return formatTraceMs(value);
+    return formatDuration(value, "precise", { unit: "ms" });
   }
   if (u === "seconds" || u === "s") {
-    return formatTraceMs(value * 1_000);
+    return formatDuration(value * 1_000, "precise", { unit: "ms" });
   }
   const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
   if (Math.abs(rounded) >= 1_000_000) {

@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import {
-  formatChangeMarkLabel,
-  type ChangeMark,
-} from "../../shared/change-mark";
-import {
-  clusterKinds,
-  foldMarkLabel,
-  incidentEndLabel,
-  markSource,
-} from "../change-marks";
-import { formatSpanShort } from "../time-range";
+import { formatChangeMarkLabel, type ChangeMark } from "../../shared/change-mark";
+import { clusterKinds, foldMarkLabel, incidentEndLabel, markSource } from "../change-marks";
+
 import { isTypingTarget } from "@/keyboard";
 import { cn } from "@/lib/utils";
 import { MarkGlyph, MarkInspectActions, markKindColor } from "./histogram-marks";
+import { formatDuration } from "../../shared/duration";
 
 function stamp(iso: string): string {
   return iso.slice(0, 23).replace("T", " ");
@@ -20,7 +13,7 @@ function stamp(iso: string): string {
 
 function ago(iso: string, nowMs: number): string {
   const ms = Math.max(0, nowMs - Date.parse(iso));
-  return `${formatSpanShort(ms)} ago`;
+  return `${formatDuration(ms, "short")} ago`;
 }
 
 function InspectRow({ k, v }: { k: string; v: string }) {

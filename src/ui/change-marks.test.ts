@@ -1,21 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { ChangeMark } from "../shared/change-mark";
-import {
-  clusterChangeMarks,
-  clusterHasLaneLabel,
-  eventInIncidentWash,
-  eventTableMarkLayout,
-  foldMarkLabel,
-  formatMarkDuration,
-  incidentEndLabel,
-  markFrac,
-  markPlotSpanMs,
-  marksInBucket,
-  panWindowToMark,
-  peekCrowded,
-  visibleChangeMarks,
-} from "./change-marks";
+import { clusterChangeMarks, clusterHasLaneLabel, eventInIncidentWash, eventTableMarkLayout, foldMarkLabel, incidentEndLabel, markFrac, markPlotSpanMs, marksInBucket, panWindowToMark, peekCrowded, visibleChangeMarks } from "./change-marks";
 import { fillHistogram } from "./fill-histogram";
+import { formatDuration } from "../shared/duration";
 
 function mark(
   id: string,
@@ -154,11 +141,11 @@ describe("panWindowToMark", () => {
   });
 });
 
-describe("formatMarkDuration", () => {
+describe("formatDuration long, rounded: a mark", () => {
   test("keeps hours and leftover minutes for an incident span", () => {
-    expect(formatMarkDuration(62 * 60_000)).toBe("1h 2m");
-    expect(formatMarkDuration(60 * 60_000)).toBe("1h");
-    expect(formatMarkDuration(15 * 60_000)).toBe("15m");
+    expect(formatDuration(62 * 60_000, "long", { round: true })).toBe("1h 2m");
+    expect(formatDuration(60 * 60_000, "long", { round: true })).toBe("1h");
+    expect(formatDuration(15 * 60_000, "long", { round: true })).toBe("15m");
   });
 });
 

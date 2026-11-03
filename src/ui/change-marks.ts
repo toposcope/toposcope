@@ -1,8 +1,5 @@
-import {
-  formatChangeMarkLabel,
-  type ChangeMark,
-  type ChangeMarkKind,
-} from "../shared/change-mark";
+import { formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../shared/change-mark";
+import { formatDuration } from "../shared/duration";
 
 export const changeMarkClusterFrac = 0.016;
 export const changeMarkPeekCrowdFrac = 0.08;
@@ -151,34 +148,12 @@ export function markSource(mark: ChangeMark): string | null {
   return raw && raw.length > 0 ? raw : null;
 }
 
-const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-
-export function formatMarkDuration(ms: number): string {
-  const n = Math.max(0, Math.round(ms));
-  if (n < 1000) {
-    return `${Math.max(1, n)}ms`;
-  }
-  if (n < MINUTE_MS) {
-    return `${Math.round(n / 1000)}s`;
-  }
-  if (n < HOUR_MS) {
-    return `${Math.round(n / MINUTE_MS)}m`;
-  }
-  const hours = Math.floor(n / HOUR_MS);
-  const minutes = Math.round((n - hours * HOUR_MS) / MINUTE_MS);
-  if (minutes === 0) {
-    return `${hours}h`;
-  }
-  return `${hours}h ${minutes}m`;
-}
-
 export function incidentEndLabel(mark: ChangeMark): string {
   const end = mark.end_ts ? Date.parse(mark.end_ts) : NaN;
   const start = Date.parse(mark.ts);
   const span =
     Number.isFinite(end) && Number.isFinite(start) ? end - start : 0;
-  return `${mark.title} ends · ${formatMarkDuration(span)}`;
+  return `${mark.title} ends · ${formatDuration(span, "long", { round: true })}`;
 }
 
 export function foldMarkLabel(members: ChangeMark[]): string {

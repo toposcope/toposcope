@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { blankOnFailedRefresh, facetAgeTip, formatLiveUpdatedAge, liveAgeView, oldestFetchedAt } from "./live-updated";
+import { blankOnFailedRefresh, facetAgeTip, liveAgeView, oldestFetchedAt } from "./live-updated";
+import { formatDuration } from "../shared/duration";
 
-describe("formatLiveUpdatedAge", () => {
+describe("formatDuration short, from 1s: a Live age", () => {
   test("seconds, minutes, hours", () => {
-    expect(formatLiveUpdatedAge(3_000)).toBe("3s");
-    expect(formatLiveUpdatedAge(28_400)).toBe("28s");
-    expect(formatLiveUpdatedAge(90_000)).toBe("2m");
-    expect(formatLiveUpdatedAge(3_600_000)).toBe("1h");
+    expect(formatDuration(3_000, "short", { least: "s" })).toBe("3s");
+    expect(formatDuration(28_400, "short", { least: "s" })).toBe("28s");
+    expect(formatDuration(90_000, "short", { least: "s" })).toBe("2m");
+    expect(formatDuration(3_600_000, "short", { least: "s" })).toBe("1h");
   });
 });
 

@@ -19,14 +19,15 @@ import {
 
 const CORE = ["level", "service", "host"] as const;
 const MAX_ROWS = 10;
+/** The query colours are tokens (`--q-*` in styles.css, sheet 45). */
 export const TOKEN_COLOR: Record<HighlightToken["t"], string> = {
-  key: "oklch(0.705 0.015 286.067)",
-  val: "oklch(0.985 0 0)",
-  op: "#a78bfa",
-  str: "#34d399",
-  glob: "#fbbf24",
-  ws: "oklch(0.985 0 0)",
-  text: "oklch(0.985 0 0)",
+  key: "var(--q-key)",
+  val: "var(--q-val)",
+  op: "var(--q-op)",
+  str: "var(--q-str)",
+  glob: "var(--q-glob)",
+  ws: "var(--q-val)",
+  text: "var(--q-val)",
 };
 
 export type MenuSuggestion = {
@@ -311,7 +312,7 @@ export function SearchQueryField({
               style={{
                 color: TOKEN_COLOR[token.t],
                 textDecoration:
-                  qErr && faultAt.has(token.at) ? "underline wavy #ef4444" : undefined,
+                  qErr && faultAt.has(token.at) ? "underline wavy var(--danger)" : undefined,
                 textDecorationThickness: qErr && faultAt.has(token.at) ? 1 : undefined,
                 textUnderlineOffset: qErr && faultAt.has(token.at) ? 3 : undefined,
               }}

@@ -1,12 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Span } from "../shared/span";
-import {
-  ancestorIds,
-  flattenTrace,
-  formatTraceMs,
-  intervalUnionMs,
-  traceTabLabel,
-} from "./waterfall";
+import { ancestorIds, flattenTrace, intervalUnionMs, traceTabLabel } from "./waterfall";
+import { formatDuration } from "../shared/duration";
 
 function span(partial: Partial<Span> & Pick<Span, "span_id">): Span {
   return {
@@ -22,10 +17,10 @@ function span(partial: Partial<Span> & Pick<Span, "span_id">): Span {
   };
 }
 
-describe("formatTraceMs", () => {
+describe("formatDuration precise, in ms: a span", () => {
   test("tenths under 100ms", () => {
-    expect(formatTraceMs(32.4)).toBe("32.4ms");
-    expect(formatTraceMs(412)).toBe("412ms");
+    expect(formatDuration(32.4, "precise", { unit: "ms" })).toBe("32.4ms");
+    expect(formatDuration(412, "precise", { unit: "ms" })).toBe("412ms");
   });
 });
 

@@ -69,167 +69,40 @@ import { eventKey, indexOfEventKey } from "./event-key";
 import { isTypingTarget } from "./keyboard";
 import { isEmptyIngest, nextIngested } from "./empty-ingest";
 import { joinTraceRef } from "../shared/ids";
-import {
-  formatChangeMarkLabel,
-  type ChangeMark,
-  type ChangeMarkKind,
-} from "../shared/change-mark";
+import { formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../shared/change-mark";
 import type { FingerprintCutResult } from "../shared/fingerprint-cut";
 import type { ProfileResponse } from "../shared/profile";
 import type { Span, TraceResponse } from "../shared/span";
-import {
-  inspectTabKey,
-  upsertInspectTab,
-  type InspectTab,
-} from "./inspect-tabs";
-import {
-  blankSearchSnap,
-  closeWorkspace,
-  decideFocusMarkInLogs,
-  decideOpenSurroundings,
-  duplicateSnap,
-  followChildSnap,
-  insertWorkspace,
-  isReaderKind,
-  parkedCutLine,
-  selectionAfterReplace,
-  shouldRestorePaint,
-  shouldRestoreParkedCut,
-  snapPinnedEvent,
-  stampWorkspace,
-  surroundingsEventSnap,
-  surroundingsMarkSnap,
-  urlSearchSnap,
-  workspaceHuntKey,
-  workspaceLiveLabel,
-  ordinalLabels,
-  type HistogramExploreOrigin,
-  type Workspace,
-  type WorkspaceFollow,
-  type WorkspaceKind,
-  type PanelEdit,
-  type WorkspacePaint,
-  type WorkspaceSnap,
-} from "./workspaces";
-import {
-  cutCrumbLabel,
-  cutRailSurface,
-  fingerprintCutViewWindows,
-  type FingerprintCutSnap,
-} from "./fingerprint-cut";
+import { inspectTabKey, upsertInspectTab, type InspectTab } from "./inspect-tabs";
+import { blankSearchSnap, closeWorkspace, decideFocusMarkInLogs, decideOpenSurroundings, duplicateSnap, followChildSnap, insertWorkspace, isReaderKind, parkedCutLine, selectionAfterReplace, shouldRestorePaint, shouldRestoreParkedCut, snapPinnedEvent, stampWorkspace, surroundingsEventSnap, surroundingsMarkSnap, urlSearchSnap, workspaceHuntKey, workspaceLiveLabel, ordinalLabels, type HistogramExploreOrigin, type Workspace, type WorkspaceFollow, type WorkspaceKind, type PanelEdit, type WorkspacePaint, type WorkspaceSnap } from "./workspaces";
+import { cutCrumbLabel, cutRailSurface, fingerprintCutViewWindows, type FingerprintCutSnap } from "./fingerprint-cut";
 import { compareFoldWindows, type CompareFoldSnap } from "./compare-fold";
 import { fillHistogram, rangeDurationMs } from "./fill-histogram";
-import {
-  addBoardPanel,
-  BOARD_PANEL_MAX,
-  bindForBoard,
-  duplicateBoardPanel,
-  panelQuery,
-  panelViewOf,
-  removeBoardPanel,
-  type BoardPanel,
-  type BoardSlots,
-} from "./boards";
+import { addBoardPanel, BOARD_PANEL_MAX, bindForBoard, duplicateBoardPanel, panelQuery, panelViewOf, removeBoardPanel, type BoardPanel, type BoardSlots } from "./boards";
 import { compileQuery } from "../query/compile";
-import {
-  logsScanBudgetRefuseReason,
-  mergeAggBuckets,
-  mergeAggSplits,
-  parseSearchAgg,
-  refusedAgg,
-  rateFromHistogram,
-  windowSeconds,
-} from "../query/agg";
+import { logsScanBudgetRefuseReason, mergeAggBuckets, mergeAggSplits, parseSearchAgg, refusedAgg, rateFromHistogram, windowSeconds } from "../query/agg";
 import { formatCompactCount } from "@/count-format";
 import { QueryErrorChip } from "@/components/query-error-chip";
-import {
-  SearchQueryField,
-  type MenuSuggestion,
-} from "@/components/search-query-field";
+import { SearchQueryField, type MenuSuggestion } from "@/components/search-query-field";
 import { isAttrIdent, maxAttrFacets, parseAttrFacets, parsePromotedCols } from "../shared/attrs";
-import {
-  applySeriesSearchParams,
-  defaultLayout,
-  isDefaultLayout,
-  patchWidget,
-  primaryTimeseries,
-  seriesQueryKey,
-  widgetHbarFetch,
-  hbarFetchNeedsNetwork,
-  widgetSeriesQueries,
-  attrSeriesKey,
-  facetSeriesKey,
-  type HbarFetch,
-  type SeriesQuery,
-  type WidgetDef,
-} from "../shared/widgets";
-import {
-  applyFieldValues,
-  cheapSuggestKeys,
-  emptyFieldsCatalog,
-  graphMetricLabels,
-  isChartSummaryKey,
-  suggestRolesFromKeys,
-  type FieldRole,
-  type FieldsResponse,
-  type FieldsSuggestPayload,
-  type FieldsValuesPayload,
-  type FieldsWave,
-} from "../shared/fields";
+import { applySeriesSearchParams, defaultLayout, isDefaultLayout, patchWidget, primaryTimeseries, seriesQueryKey, widgetHbarFetch, hbarFetchNeedsNetwork, widgetSeriesQueries, attrSeriesKey, facetSeriesKey, type HbarFetch, type SeriesQuery, type WidgetDef } from "../shared/widgets";
+import { applyFieldValues, cheapSuggestKeys, emptyFieldsCatalog, graphMetricLabels, isChartSummaryKey, suggestRolesFromKeys, type FieldRole, type FieldsResponse, type FieldsSuggestPayload, type FieldsValuesPayload, type FieldsWave } from "../shared/fields";
 import { formatMetricLabels, parseMetricRef } from "../shared/metric";
-import {
-  histogramIntervalMs,
-  type HistogramChartKind,
-  type HistogramIntervalId,
-  type HistogramSplit,
-} from "../query/histogram";
-import {
-  clampHistogramWindow,
-  autoChipInterval,
-  displayedHistogramInterval,
-  histogramExploreResetLabel,
-  histogramChartNeedsRefetch,
-  resolveQueryHistogramStep,
-} from "./histogram-zoom";
+import { histogramIntervalMs, type HistogramChartKind, type HistogramIntervalId, type HistogramSplit } from "../query/histogram";
+import { clampHistogramWindow, autoChipInterval, displayedHistogramInterval, histogramExploreResetLabel, histogramChartNeedsRefetch, resolveQueryHistogramStep } from "./histogram-zoom";
 import { parseRangeMs, retentionRangeMs } from "../query/relative";
-import {
-  surroundingDefaultN,
-  surroundingMaxN,
-  surroundingStepN,
-} from "../query/surrounding";
+import { surroundingDefaultN, surroundingMaxN, surroundingStepN } from "../query/surrounding";
 import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, toggleFingerprintCutFilter } from "./query-tokens";
-import {
-  histogramTotal,
-  livePageSize,
-  mergeHistogramBuckets,
-  mergeLiveEvents,
-} from "./merge-live";
-import {
-  isoFromLocal,
-  parseSearchUrl,
-  serializeSearchUrl,
-  toLocalInput,
-  type OperatorView,
-  type RangeMode,
-} from "./search-url";
-import { formatSpanShort, SEARCH_SLOW_AFTER_MS, rangeTriggerLabel } from "./time-range";
+import { histogramTotal, livePageSize, mergeHistogramBuckets, mergeLiveEvents } from "./merge-live";
+import { isoFromLocal, parseSearchUrl, serializeSearchUrl, toLocalInput, type OperatorView, type RangeMode } from "./search-url";
+import { SEARCH_SLOW_AFTER_MS, rangeTriggerLabel } from "./time-range";
 import { SeriesCatalogContext, type SeriesCatalog } from "./series-catalog";
 import type { MetricEntry } from "./series-list";
-import {
-  bandWindowKey,
-  searchWindowMs,
-  windowHead,
-  type SearchWindow,
-} from "./window-identity";
+import { bandWindowKey, searchWindowMs, windowHead, type SearchWindow } from "./window-identity";
 import { flattenTrace } from "./waterfall";
 import { followOnOpened, followQuery } from "./follow";
 import { eventCursor } from "../shared/event-cursor";
-import {
-  followOpened,
-  followSpanSearchParams,
-  type FollowOpened,
-  type FollowSpan,
-} from "../shared/follow-span";
+import { followOpened, followSpanSearchParams, type FollowOpened, type FollowSpan } from "../shared/follow-span";
 import { FollowOpenedChip } from "@/components/follow-opened-chip";
 import { HeldContext } from "./held-context";
 import { heldView } from "./held-view";
@@ -239,15 +112,10 @@ import { backEvent, isNoAnswer, useOutage } from "./outage";
 import { LiveRefresh } from "./live-refresh";
 import { blankOnFailedRefresh, facetAgeTip, oldestFetchedAt } from "./live-updated";
 import { useHeld } from "./use-held";
-import {
-  deriveLiveSeries,
-  extraQueryLiveFetch,
-  extraQueryNeedsSearch,
-  mergeIncrementalExtraSeries,
-  skipKeysFromFieldRoles,
-} from "./live-widget-clock";
+import { deriveLiveSeries, extraQueryLiveFetch, extraQueryNeedsSearch, mergeIncrementalExtraSeries, skipKeysFromFieldRoles } from "./live-widget-clock";
 import { Busy, BusyBar, busyDim, Empty, LiveAge, Refused } from "@/components/ui/states";
 import { railPanel } from "@/components/ui/side-panel";
+import { formatDuration } from "../shared/duration";
 
 const emptyFacets: Facets = { level: [], service: [], host: [] };
 
@@ -631,7 +499,6 @@ export function App() {
   useEffect(() => {
     void loadHome().catch(() => undefined);
   }, [loadHome]);
-
 
   const loadInstance = useCallback(async () => {
     const res = await fetch("/api/instance");
@@ -2170,7 +2037,6 @@ export function App() {
     });
   }, [attrFacets, loadAttrFacets, windowParams, wsKind, liveRefresh]);
 
-
   useEffect(() => {
     const entries = Object.entries(attrPrefixes).filter(
       ([, prefix]) => prefix.trim().length > 0,
@@ -2428,7 +2294,6 @@ export function App() {
     }
     await loadSaved();
   }
-
 
   async function createAlert(input: MonitorInput | HttpMonitorInput | NetMonitorInput) {
     const res = await fetch("/api/alert-rules", {
@@ -3658,8 +3523,6 @@ export function App() {
     applyQuery(toggleFieldToken(q, field, value));
   }
 
-
-
   function onAddAttrFacet(key: string) {
     if (!isChartSummaryKey(key, fieldRoles)) {
       const role = fieldRoles[key];
@@ -4081,7 +3944,6 @@ export function App() {
           : null,
       };
 
-
   // 33d, 33m–33o: what matched and when sits in the pinned plot's own head, not a strip of its own.
   const huntHead = (
     <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 px-3 pt-2.5 pb-2">
@@ -4108,7 +3970,7 @@ export function App() {
       <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
         {explore ? (
           <span className={cn("text-xs", live ? "text-info-fg" : "text-warn-fg")}>
-            Custom · {formatSpanShort(spanMs)}
+            Custom · {formatDuration(spanMs, "short")}
           </span>
         ) : live ? (
           <span className="text-xs text-info-fg">Live</span>

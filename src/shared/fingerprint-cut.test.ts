@@ -1,17 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import {
-  capFingerprintCutSet,
-  classifyFingerprintCut,
-  fingerprintCutCap,
-  fingerprintCutFollows,
-  fingerprintCutInsideNotes,
-  fingerprintCutMinBeforeMs,
-  fingerprintCutNotes,
-  nearestInsideMarks,
-  fingerprintCutWindows,
-  formatFingerprintCutDuration,
-  mergeFingerprintCutSides,
-} from "./fingerprint-cut";
+import { capFingerprintCutSet, classifyFingerprintCut, fingerprintCutCap, fingerprintCutFollows, fingerprintCutInsideNotes, fingerprintCutMinBeforeMs, fingerprintCutNotes, nearestInsideMarks, fingerprintCutWindows, mergeFingerprintCutSides } from "./fingerprint-cut";
+import { formatDuration } from "./duration";
 
 const hour = 3_600_000;
 const openedAt = Date.parse("2026-08-14T15:00:00.000Z");
@@ -164,10 +153,10 @@ describe("fingerprintCutNotes", () => {
   });
 });
 
-describe("formatFingerprintCutDuration", () => {
+describe("formatDuration long, rounded, with seconds and whole days: a cut", () => {
   test("formats mixed hours and minutes", () => {
-    expect(formatFingerprintCutDuration(11 * hour + 20 * 60_000)).toBe("11h 20m");
-    expect(formatFingerprintCutDuration(89_000)).toBe("1m 29s");
+    expect(formatDuration(11 * hour + 20 * 60_000, "long", { round: true, seconds: true, days: "exact" })).toBe("11h 20m");
+    expect(formatDuration(89_000, "long", { round: true, seconds: true, days: "exact" })).toBe("1m 29s");
   });
 });
 

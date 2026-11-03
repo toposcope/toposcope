@@ -3,13 +3,8 @@ import { cn } from "@/lib/utils";
 import type { HeldSource } from "../../shared/held";
 import type { Span, TraceResponse } from "../../shared/span";
 import { enteredName, traceHeld, type HeldPart, type TraceChip } from "../trace-held";
-import {
-  ancestorIds,
-  flattenTrace,
-  formatTraceMs,
-  spanServiceColor,
-  TRACE_ERROR_HEX,
-} from "../waterfall";
+import { ancestorIds, flattenTrace, spanServiceColor, TRACE_ERROR_HEX } from "../waterfall";
+import { formatDuration } from "../../shared/duration";
 
 type Props = {
   joinKey: string;
@@ -147,7 +142,7 @@ export function TraceWaterfall({
       : root
         ? `${root.service} ${root.name}`
         : "Trace";
-    totalLabel = formatTraceMs(tree.totalMs);
+    totalLabel = formatDuration(tree.totalMs, "precise", { unit: "ms" });
     countLabel = capped
       ? `${spans.length} of ${total} spans`
       : entered
@@ -164,7 +159,7 @@ export function TraceWaterfall({
 
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((frac) => ({
     frac,
-    label: formatTraceMs(tree.totalMs * frac),
+    label: formatDuration(tree.totalMs * frac, "precise", { unit: "ms" }),
   }));
 
   return (
@@ -374,7 +369,7 @@ export function TraceWaterfall({
                     </span>
                   </div>
                   <span className="text-right font-mono text-xs text-muted-foreground tabular-nums">
-                    {formatTraceMs(row.span.duration_ms)}
+                    {formatDuration(row.span.duration_ms, "precise", { unit: "ms" })}
                   </span>
                   {entered ? (
                     <span className="min-w-0">
@@ -448,9 +443,9 @@ export function TraceWaterfall({
                 {hoverSpan.service}
               </div>
               {[
-                ["start", `+${formatTraceMs(hoverRow.startMs)}`],
-                ["duration", formatTraceMs(hoverSpan.duration_ms)],
-                ["self", formatTraceMs(hoverRow.selfMs)],
+                ["start", `+${formatDuration(hoverRow.startMs, "precise", { unit: "ms" })}`],
+                ["duration", formatDuration(hoverSpan.duration_ms, "precise", { unit: "ms" })],
+                ["self", formatDuration(hoverRow.selfMs, "precise", { unit: "ms" })],
                 ...(entered ? [["entered at", enteredName(hoverSpan, here)]] : []),
               ].map(([k, v]) => (
                 <div

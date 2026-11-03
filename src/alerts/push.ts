@@ -1,32 +1,12 @@
 import type { Database } from "bun:sqlite";
 import { getAlert, type AlertRule } from "../control/alerts";
-import { formatOpenFor } from "../shared/monitor";
-import {
-  pushDueAt,
-  pushOpensAt,
-  type CheckStatus,
-  type CheckVia,
-} from "../shared/push";
+
+import { pushDueAt, pushOpensAt, type CheckStatus, type CheckVia } from "../shared/push";
 import { fallbackWindowMs, nextMove, passCalls, type CallDeps } from "./monitor";
 import { recordPushResult } from "./monitor-results";
-import {
-  beginStretch,
-  noteReading,
-  openStretch,
-  recordResult,
-  resolveStretch,
-  type CallWhat,
-  type MonitorStretch,
-} from "./monitor-store";
-import {
-  alertLink,
-  pushFillValues,
-  pushWebhookBody,
-  renderResolved,
-  renderWebhook,
-  sendsResolved,
-  type WebhookPayload,
-} from "./payload";
+import { beginStretch, noteReading, openStretch, recordResult, resolveStretch, type CallWhat, type MonitorStretch } from "./monitor-store";
+import { alertLink, pushFillValues, pushWebhookBody, renderResolved, renderWebhook, sendsResolved, type WebhookPayload } from "./payload";
+import { formatDuration } from "../shared/duration";
 
 /** One pushed result (#177), from `POST /v1/checks`, a ping, or an attached probe. */
 export type PushResult = {
@@ -191,7 +171,7 @@ function pushCallPayload(
     state: what,
     openedAt: iso(stretch.opened_at),
     resolvedAt: stretch.resolved_at !== null ? iso(stretch.resolved_at) : null,
-    duration: formatOpenFor((stretch.resolved_at ?? now) - stretch.opened_at),
+    duration: formatDuration((stretch.resolved_at ?? now) - stretch.opened_at, "long"),
   };
   const link = pushLink(rule, stretch, now, deps.publicUrl());
   const value = what === "open" ? stretch.open_value : stretch.last_value;

@@ -2,13 +2,14 @@ import { seriesLabel } from "../query/agg";
 import { parseRangeMs } from "../query/relative";
 import { formatChangeMarkLabel, type ChangeMark } from "../shared/change-mark";
 import { formatCertShort, parseConditions } from "../shared/http-check";
-import { cantTellWords, formatOpenFor, laneColumns, opensWhenWords, type MonitorSource } from "../shared/monitor";
-import { formatSpan, isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../shared/push";
+import { cantTellWords, laneColumns, opensWhenWords, type MonitorSource } from "../shared/monitor";
+import { isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../shared/push";
 import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, newestFirst, type MarkCluster } from "./change-marks";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
 import { sourceGaps, type HeldSource } from "../shared/held";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsFromSource, PushResultRow, SourceMonitor, SourceStretch } from "./types";
+import { formatDuration } from "../shared/duration";
 
 /**
  * Watch (#175, frame 18c): every monitor a lane on one clock, open ones first. The clock is
@@ -102,7 +103,7 @@ export function lastLineWords(at: number | null | undefined, nowMs: number): str
   if (at === null) {
     return "none in a year";
   }
-  return `${secondsAt(at, nowMs)}, ${formatOpenFor(nowMs - at)} ago`;
+  return `${secondsAt(at, nowMs)}, ${formatDuration(nowMs - at, "long")} ago`;
 }
 
 /** "10:26:41", or "10-19 10:26:41" when it was not today. */
@@ -194,9 +195,9 @@ export function laneKind(m: MonitorView): string {
       return m.enabled === 0 ? "push · paused" : "push";
     }
     if (m.enabled === 0) {
-      return `push · ${formatSpan(every)} · paused`;
+      return `push · ${formatDuration(every, "short", { whole: true })} · paused`;
     }
-    return `push · ${formatSpan(every)} · grace ${formatSpan(m.grace_ms ?? Math.min(every, 60 * 60_000))}`;
+    return `push · ${formatDuration(every, "short", { whole: true })} · grace ${formatDuration(m.grace_ms ?? Math.min(every, 60 * 60_000), "short", { whole: true })}`;
   }
   return `search · ${opensWhen(m)} · ${m.saved?.range ?? "custom"}`;
 }
@@ -250,7 +251,7 @@ export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number)
   }
   const silenced = typeof m.silenced_until === "number" && m.silenced_until > nowMs ? "silenced" : "";
   if (m.state === "open" && m.open) {
-    return { badge: `open ${formatOpenFor(nowMs - m.open.opened_at)}`, tone: "red", text: silenced };
+    return { badge: `open ${formatDuration(nowMs - m.open.opened_at, "long")}`, tone: "red", text: silenced };
   }
   let reading = "";
   if (sourceOf(m) === "http") {
@@ -670,7 +671,7 @@ export function pushReadout(m: MonitorView, nowMs: number, open: MonitorStretch 
   const due = pushDueAt(clock);
   const stretch = open ?? m.open;
   if (m.state === "open" && stretch) {
-    const badge = `open ${formatOpenFor(nowMs - stretch.opened_at)}`;
+    const badge = `open ${formatDuration(nowMs - stretch.opened_at, "long")}`;
     if (stretch.due_at != null) {
       return { badge, tone: "red", text: "", next: `due ${clockAt(stretch.due_at, nowMs)} · missed`, value };
     }
@@ -678,11 +679,11 @@ export function pushReadout(m: MonitorView, nowMs: number, open: MonitorStretch 
   }
   if (isLate(clock, nowMs)) {
     const opens = pushOpensAt(clock)!;
-    return { badge: `late ${formatOpenFor(nowMs - due!)}`, tone: "amber", text: "", next: `down ${clockAt(opens, nowMs)}`, value };
+    return { badge: `late ${formatDuration(nowMs - due!, "long")}`, tone: "amber", text: "", next: `down ${clockAt(opens, nowMs)}`, value };
   }
   if (isRunning(clock)) {
     return {
-      badge: `running ${formatOpenFor(nowMs - clock.started_at!)}`,
+      badge: `running ${formatDuration(nowMs - clock.started_at!, "long")}`,
       tone: "sec",
       text: "",
       next: `started ${clockAt(clock.started_at!, nowMs)}`,
@@ -704,7 +705,7 @@ export function pushReadout(m: MonitorView, nowMs: number, open: MonitorStretch 
 export function pushCardLine(m: MonitorView, nowMs: number): string {
   const every = m.every_ms ?? null;
   const schedule =
-    every === null ? "by its results" : `every ${formatSpan(every)}, grace ${formatSpan(m.grace_ms ?? Math.min(every, 60 * 60_000))}`;
+    every === null ? "by its results" : `every ${formatDuration(every, "short", { whole: true })}, grace ${formatDuration(m.grace_ms ?? Math.min(every, 60 * 60_000), "short", { whole: true })}`;
   const last = m.last_result_at ? ` · last result ${clockAt(m.last_result_at, nowMs)} ${m.last_result ?? ""}`.trimEnd() : "";
   return `push · ${schedule}${last}`;
 }
@@ -795,19 +796,6 @@ export function pushDueLine(m: MonitorView, nowMs: number, fromMs: number, toMs:
   return at >= 0 && at <= 1 ? at : null;
 }
 
-/** "3m 12s", "45s", "1h 4m": how long a run took. */
-export function formatRun(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000));
-  if (s < 60) {
-    return `${s}s`;
-  }
-  if (s < 3600) {
-    const rest = s % 60;
-    return rest > 0 ? `${Math.floor(s / 60)}m ${rest}s` : `${Math.floor(s / 60)}m`;
-  }
-  return formatOpenFor(ms);
-}
-
 function hhmmss(ms: number): string {
   const d = new Date(ms);
   return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
@@ -823,7 +811,7 @@ export function resultCard(
   const tone = r.result === "fail" ? "red" : r.result === "warn" ? "amber" : "sec";
   const ran = [
     r.duration_ms ? `started ${hhmmss(r.at - r.duration_ms)}` : "",
-    r.duration_ms ? `ran ${formatRun(r.duration_ms)}` : "",
+    r.duration_ms ? `ran ${formatDuration(r.duration_ms, "long", { round: true, seconds: true })}` : "",
     r.host ? `from ${r.host}` : "",
   ]
     .filter(Boolean)
@@ -832,8 +820,8 @@ export function resultCard(
   const stretch = stretches.find((s) => Math.abs(s.opened_at - r.at) < 1000) ?? null;
   const opened = stretch
     ? stretch.resolved_at !== null
-      ? `opened · resolved ${clockAt(stretch.resolved_at, nowMs)} · ${formatOpenFor(stretch.resolved_at - stretch.opened_at)}`
-      : `opened · open ${formatOpenFor(nowMs - stretch.opened_at)}`
+      ? `opened · resolved ${clockAt(stretch.resolved_at, nowMs)} · ${formatDuration(stretch.resolved_at - stretch.opened_at, "long")}`
+      : `opened · open ${formatDuration(nowMs - stretch.opened_at, "long")}`
     : "";
   return { badge, tone, at: `${mmdd(r.at)} ${hhmmss(r.at)}`, ran, message: r.message, stretch, opened };
 }
@@ -871,11 +859,11 @@ export function watchStateLine(m: MonitorView, stretches: readonly MonitorStretc
     return "paused";
   }
   if (m.state === "open" && m.open) {
-    return `open since ${clockAt(m.open.opened_at, nowMs)} · ${formatOpenFor(nowMs - m.open.opened_at)}`;
+    return `open since ${clockAt(m.open.opened_at, nowMs)} · ${formatDuration(nowMs - m.open.opened_at, "long")}`;
   }
   const last = [...stretches].filter((s) => s.resolved_at != null).sort((a, b) => b.opened_at - a.opened_at)[0];
   if (last && last.resolved_at != null) {
-    return `ok · last open ${clockAt(last.opened_at, nowMs)} for ${formatOpenFor(last.resolved_at - last.opened_at)}`;
+    return `ok · last open ${clockAt(last.opened_at, nowMs)} for ${formatDuration(last.resolved_at - last.opened_at, "long")}`;
   }
   return "ok";
 }
@@ -1029,7 +1017,7 @@ export function sourceKindWords(m: SourceMonitor): string {
               ? "fingerprints"
               : "push";
   return typeof m.every_ms === "number" && m.every_ms > 0 && src !== "search" && src !== "fingerprints"
-    ? `${word} · every ${formatSpan(m.every_ms)}`
+    ? `${word} · every ${formatDuration(m.every_ms, "short", { whole: true })}`
     : word;
 }
 
@@ -1070,16 +1058,16 @@ export function sourceRow(
   if (open) {
     return {
       dot: "open",
-      line: `open at ${source} since ${clockAt(open.opened_at, nowMs)} · ${formatOpenFor(nowMs - open.opened_at)}`,
+      line: `open at ${source} since ${clockAt(open.opened_at, nowMs)} · ${formatDuration(nowMs - open.opened_at, "long")}`,
       lastCheck,
-      now: { text: sourceReading(m, last) || `open ${formatOpenFor(nowMs - open.opened_at)}`, tone: "red" },
+      now: { text: sourceReading(m, last) || `open ${formatDuration(nowMs - open.opened_at, "long")}`, tone: "red" },
       open,
     };
   }
   const resolved = [...stretches].filter((s) => s.resolved_at !== null).sort((a, b) => b.opened_at - a.opened_at)[0];
   const line =
     resolved && resolved.resolved_at !== null
-      ? `ok · last open ${clockAt(resolved.opened_at, nowMs)} for ${formatOpenFor(resolved.resolved_at - resolved.opened_at)}`
+      ? `ok · last open ${clockAt(resolved.opened_at, nowMs)} for ${formatDuration(resolved.resolved_at - resolved.opened_at, "long")}`
       : said === "warn" || said === "fail"
         ? `${said} at ${source}`
         : "ok";
@@ -1115,10 +1103,10 @@ export function sourceDefinition(m: SourceMonitor, source: string): Array<{ labe
     rows.push({ label: "Opens when", value: `${m.opens_when === "fewer_than" ? "fewer than" : "at least"} ${m.threshold}` });
   }
   if (typeof m.every_ms === "number" && m.every_ms > 0) {
-    rows.push({ label: "Every", value: formatSpan(m.every_ms) });
+    rows.push({ label: "Every", value: formatDuration(m.every_ms, "short", { whole: true }) });
   }
   if (typeof m.grace_ms === "number" && m.grace_ms > 0) {
-    rows.push({ label: "Grace", value: formatSpan(m.grace_ms) });
+    rows.push({ label: "Grace", value: formatDuration(m.grace_ms, "short", { whole: true }) });
   }
   rows.push({ label: "State there", value: m.enabled === 0 ? "paused" : (m.state ?? "ok") });
   return rows;

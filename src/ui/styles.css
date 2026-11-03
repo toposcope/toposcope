@@ -58,6 +58,15 @@
   --color-info-fg: var(--info-fg);
   --color-info-soft: var(--info-soft);
   --color-faint: var(--faint);
+  /* Chart series (chart-palette.ts holds the same hexes for canvas and SVG). */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -115,6 +124,20 @@
   --info-fg: #38bdf8;
   --info-soft: rgb(14 165 233 / 16%);
   --faint: #84848e;
+  --chart-1: #38bdf8;
+  --chart-2: #a78bfa;
+  --chart-3: #34d399;
+  --chart-4: #fbbf24;
+  --chart-5: #fb7185;
+  --chart-6: #94a3b8;
+  --chart-7: #c084fc;
+  --chart-8: #2dd4bf;
+  /* The query bar's colours (sheet 45): key, operator, quoted string, glob; a fault is a wavy danger line. */
+  --q-key: var(--muted-foreground);
+  --q-val: var(--foreground);
+  --q-op: var(--chart-2);
+  --q-str: var(--chart-3);
+  --q-glob: var(--warn-fg);
   --d1: 90ms;
   --d2: 150ms;
   --d3: 220ms;
@@ -162,6 +185,14 @@
   --info-fg: #0369a1;
   --info-soft: rgb(2 132 199 / 10%);
   --faint: #71717a;
+  --chart-1: #18181b;
+  --chart-2: #2563eb;
+  --chart-3: #d97706;
+  --chart-4: #7c3aed;
+  --chart-5: #059669;
+  --chart-6: #db2777;
+  --chart-7: #0891b2;
+  --chart-8: #65a30d;
   --plot-axis: rgb(0 0 0 / 12%);
   --plot-hair: rgb(0 0 0 / 30%);
   --plot-track: rgb(0 0 0 / 5%);

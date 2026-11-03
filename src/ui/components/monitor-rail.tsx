@@ -1,33 +1,17 @@
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { formatOpenFor } from "../../shared/monitor";
-import { formatSpan, maskKey } from "../../shared/push";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+import { maskKey } from "../../shared/push";
 import { formatCompactCount } from "@/count-format";
 import { formatAggStat } from "@/fill-histogram";
 import type { MonitorPage, MonitorView } from "@/types";
 import { Badge } from "@/components/watch-view";
-import {
-  callHost,
-  cantTellNow,
-  clockAt,
-  lastLineWords,
-  laneReadout,
-  netConditionsLabel,
-  netTargetLabel,
-  opensWhen,
-  readsQuiet,
-  remindLabel,
-  sourceOf,
-} from "@/watch";
+import { callHost, cantTellNow, clockAt, lastLineWords, laneReadout, netConditionsLabel, netTargetLabel, opensWhen, readsQuiet, remindLabel, sourceOf } from "@/watch";
 import { railPanel } from "@/components/ui/side-panel";
 import { cn } from "@/lib/utils";
+import { formatDuration } from "../../shared/duration";
 
 const btn2 = "flex h-7 items-center rounded-md border px-3 text-sm hover:bg-accent";
 
@@ -117,7 +101,7 @@ function PushRows({ monitor, nowMs }: { monitor: MonitorView; nowMs: number }) {
         <span className="font-mono">
           {every === null
             ? "by its results"
-            : `${formatSpan(every)}, grace ${formatSpan(monitor.grace_ms ?? Math.min(every, 60 * 60_000))}`}
+            : `${formatDuration(every, "short", { whole: true })}, grace ${formatDuration(monitor.grace_ms ?? Math.min(every, 60 * 60_000), "short", { whole: true })}`}
         </span>
       </Row>
       <Row k="last ok">
@@ -204,7 +188,7 @@ export function MonitorRail({
       </div>
       <div className="flex items-center gap-2">
         <Badge tone={open ? "red" : readout.tone}>
-          {open ? `open ${formatOpenFor(nowMs - open.opened_at)}` : readout.badge}
+          {open ? `open ${formatDuration(nowMs - open.opened_at, "long")}` : readout.badge}
         </Badge>
         {open ? (
           <span className="font-mono text-xs text-muted-foreground">

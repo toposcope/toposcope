@@ -2,16 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { MAX_RANGE_MS } from "../query/relative";
 import { applyAbsDay, clampAbsWindow, resolveRangeApply } from "./absolute-range";
 import { toLocalInput } from "./search-url";
-import {
-  absApplyPreview,
-  absStampUtc,
-  commitAbsLocal,
-  formatCustomRangeLabel,
-  formatSearchElapsed,
-  formatSpanShort,
-  rangeTriggerLabel,
-  scanningRangeLabel,
-} from "./time-range";
+import { absApplyPreview, absStampUtc, commitAbsLocal, formatCustomRangeLabel, rangeTriggerLabel, scanningRangeLabel } from "./time-range";
+import { formatDuration } from "../shared/duration";
 
 const NOW = Date.UTC(2026, 7, 14, 18, 0, 0, 0);
 
@@ -65,22 +57,22 @@ describe("formatCustomRangeLabel", () => {
   });
 });
 
-describe("formatSpanShort", () => {
+describe("formatDuration short: a window", () => {
   test("uses exact days and hours when they divide", () => {
-    expect(formatSpanShort(7 * 24 * 60 * 60 * 1000)).toBe("7d");
-    expect(formatSpanShort(90 * 60 * 1000)).toBe("2h");
-    expect(formatSpanShort(15 * 60 * 1000)).toBe("15m");
+    expect(formatDuration(7 * 24 * 60 * 60 * 1000, "short")).toBe("7d");
+    expect(formatDuration(90 * 60 * 1000, "short")).toBe("2h");
+    expect(formatDuration(15 * 60 * 1000, "short")).toBe("15m");
   });
 
   test("uses seconds and milliseconds under a minute", () => {
-    expect(formatSpanShort(12_000)).toBe("12s");
-    expect(formatSpanShort(12)).toBe("12ms");
+    expect(formatDuration(12_000, "short")).toBe("12s");
+    expect(formatDuration(12, "short")).toBe("12ms");
   });
 });
 
-describe("formatSearchElapsed", () => {
+describe("formatDuration precise: search elapsed", () => {
   test("one decimal second", () => {
-    expect(formatSearchElapsed(1400)).toBe("1.4s");
+    expect(formatDuration(1400, "precise")).toBe("1.4s");
   });
 });
 

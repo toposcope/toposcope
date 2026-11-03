@@ -1,29 +1,14 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { isTypingTarget } from "@/keyboard";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
-import { formatOpenFor } from "../../shared/monitor";
+
 import type { MonitorStretch, MonitorView } from "@/types";
-import {
-  callHost,
-  callLine,
-  clockAt,
-  markBefore,
-  nextReminder,
-  opensWhenLine,
-  readsQuiet,
-  secondsAt,
-  sourceOf,
-  stretchSpans,
-} from "@/watch";
+import { callHost, callLine, clockAt, markBefore, nextReminder, opensWhenLine, readsQuiet, secondsAt, sourceOf, stretchSpans } from "@/watch";
+import { formatDuration } from "../../shared/duration";
 
 /** The stretches of the monitors on this hunt's saved search (#175, frame 18o). */
 export type MonitorBand = {
@@ -110,7 +95,7 @@ const StretchCard = forwardRef<
             open ? "bg-danger/[0.16] text-danger-fg" : "bg-control text-zinc-300",
           )}
         >
-          open {formatOpenFor((stretch.resolved_at ?? nowMs) - stretch.opened_at)}
+          open {formatDuration((stretch.resolved_at ?? nowMs) - stretch.opened_at, "long")}
         </span>
         <button
           type="button"
@@ -271,7 +256,7 @@ export function MonitorBandRow({
         {spans.map((span) => {
           const item = byId.get(span.id)!;
           const end = span.stretch.resolved_at ?? band.nowMs;
-          const label = `open ${formatOpenFor(end - span.stretch.opened_at)}`;
+          const label = `open ${formatDuration(end - span.stretch.opened_at, "long")}`;
           return (
             <span key={span.id}>
               <button

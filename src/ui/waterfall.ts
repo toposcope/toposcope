@@ -1,17 +1,8 @@
 import type { Span } from "../shared/span";
+import { chartColor, chartError } from "./chart-palette";
 
-const palette = [
-  "#38bdf8",
-  "#a78bfa",
-  "#34d399",
-  "#fbbf24",
-  "#fb7185",
-  "#94a3b8",
-  "#c084fc",
-  "#2dd4bf",
-];
 
-export const TRACE_ERROR_HEX = "#ef4444";
+export const TRACE_ERROR_HEX = chartError;
 
 export type WaterfallRow = {
   span: Span;
@@ -19,11 +10,6 @@ export type WaterfallRow = {
   startMs: number;
   selfMs: number;
 };
-
-export function formatTraceMs(value: number): string {
-  const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
-  return `${rounded}ms`;
-}
 
 export function intervalUnionMs(
   intervals: Array<{ start: number; duration: number }>,
@@ -54,8 +40,7 @@ export function spanServiceColor(
   service: string,
   services: string[],
 ): string {
-  const index = services.indexOf(service);
-  return palette[(index < 0 ? 0 : index) % palette.length] ?? "#94a3b8";
+  return chartColor(services.indexOf(service));
 }
 
 export function flattenTrace(spans: Span[]): {

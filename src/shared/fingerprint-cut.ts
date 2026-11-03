@@ -1,5 +1,6 @@
 import type { HeldSource } from "./held";
 import type { ChangeMarkKind } from "./change-mark";
+import { formatDuration } from "./duration";
 
 /** Drawn rows per set — same grain as Top-N default. */
 export const fingerprintCutCap = 10;
@@ -214,8 +215,8 @@ export function fingerprintCutNotes(
     notes.push("The window ends before this mark — there is no after side to cut.");
     return notes;
   }
-  const after = formatFingerprintCutDuration(windows.sideMs);
-  const before = formatFingerprintCutDuration(windows.beforeMs);
+  const after = formatDuration(windows.sideMs, "long", { round: true, seconds: true, days: "exact" });
+  const before = formatDuration(windows.beforeMs, "long", { round: true, seconds: true, days: "exact" });
   const span = before === "1h" ? "hour" : before;
   if (windows.waiting && windows.sideMs < fingerprintCutShortMs) {
     notes.push(
@@ -240,7 +241,7 @@ export function fingerprintCutNotes(
   }
   if (input.live && !windows.banded && input.now - windows.afterTo > 1000) {
     notes.push(
-      `Fixed when opened — ${formatFingerprintCutDuration(input.now - windows.afterTo)} ago. Live moves the plot, not the cut; reopen to re-cut at now.`,
+      `Fixed when opened — ${formatDuration(input.now - windows.afterTo, "long", { round: true, seconds: true, days: "exact" })} ago. Live moves the plot, not the cut; reopen to re-cut at now.`,
     );
   }
   return notes;
@@ -327,33 +328,6 @@ export type FingerprintCutResult = {
    */
   revisions?: { before: string[]; after: string[] };
 };
-
-export function formatFingerprintCutDuration(ms: number): string {
-  const abs = Math.max(0, Math.round(ms));
-  if (abs >= 86_400_000 && abs % 86_400_000 === 0) {
-    return `${abs / 86_400_000}d`;
-  }
-  if (abs >= 3_600_000) {
-    const h = Math.floor(abs / 3_600_000);
-    const m = Math.round((abs % 3_600_000) / 60_000);
-    if (m === 0) {
-      return `${h}h`;
-    }
-    return m === 60 ? `${h + 1}h` : `${h}h ${m}m`;
-  }
-  if (abs >= 60_000) {
-    const m = Math.floor(abs / 60_000);
-    const s = Math.round((abs % 60_000) / 1000);
-    if (s === 0) {
-      return `${m}m`;
-    }
-    return `${m}m ${s}s`;
-  }
-  if (abs >= 1000) {
-    return `${Math.max(1, Math.round(abs / 1000))}s`;
-  }
-  return `${Math.max(1, abs)}ms`;
-}
 
 const countWords = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 
