@@ -8,6 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Panel, PanelArmed, PanelDots, PanelHead, PanelTitle, panelIconButton, panelMenuRow } from "@/components/ui/panel";
 import { cn } from "@/lib/utils";
 import {
   widgetExportFormats,
@@ -73,11 +74,9 @@ const dupCap = "Six panels is the cap — remove one to duplicate";
 export const extraSelectClass =
   "h-[26px] min-w-0 rounded-md border border-input bg-overlay px-[5px] text-xs text-foreground";
 
-const iconBtn =
-  "flex size-[22px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
+const iconBtn = panelIconButton;
 
-const overflowRow =
-  "flex h-[26px] w-full items-center gap-2.5 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+const overflowRow = cn(panelMenuRow, "gap-2.5");
 
 function OverflowMenus({
   atCap,
@@ -127,11 +126,7 @@ function OverflowMenus({
           aria-label="More panel actions"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <circle cx="5" cy="12" r="1.6" />
-            <circle cx="12" cy="12" r="1.6" />
-            <circle cx="19" cy="12" r="1.6" />
-          </svg>
+          <PanelDots />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -296,139 +291,82 @@ export function ExtraPanel({
   }, []);
 
   return (
-    <div
-      ref={rootRef}
-      className={cn(
-        "group/panel flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card transition-[box-shadow,border-color] duration-500",
-        moving || highlight ? "border-ring" : "border-white/10",
-      )}
-    >
-      <div
-        className={cn(
-          "flex min-h-[30px] shrink-0 touch-none items-center gap-2 overflow-hidden rounded-t-md border-b border-white/[0.08] pr-1 pl-3",
-          armed ? "bg-destructive/14" : "bg-background/45",
-          moving ? "cursor-grabbing" : "cursor-grab",
-          lockChrome && "pointer-events-none opacity-50",
-        )}
-        title="Drag to move · an edge to resize"
-        onPointerDown={onMovePointerDown}
-      >
-        {armed ? (
-          <>
-            {widget.w > 2 ? (
-              <span className="min-w-0 truncate text-xs text-danger-fg">
-                Remove?
-              </span>
+    <Panel ref={rootRef} highlight={moving || highlight}>
+      {armed ? (
+        <PanelArmed name={widgetTitle(widget)} narrow={widget.w <= 2} onRemove={onRemove} onCancel={onDisarm} />
+      ) : (
+        <PanelHead
+          className={cn(moving ? "cursor-grabbing" : "cursor-grab", lockChrome && "pointer-events-none opacity-50")}
+          title="Drag to move · an edge to resize"
+          onPointerDown={onMovePointerDown}
+        >
+          <div className="flex min-w-0 shrink items-center overflow-hidden">{identity ?? <PanelTitle>{widgetTitle(widget)}</PanelTitle>}</div>
+          <span className="min-w-0 flex-1" />
+          <div className="flex shrink-0 items-center gap-1">
+            {headControls}
+            {collapsed || addToBoard || onNote ? (
+              <OverflowMenus
+                noteLabel={widget.note ? "Edit note" : "Add note"}
+                onNoteEdit={onNote ? () => setNoting(true) : undefined}
+                atCap={atCap}
+                exportDisabled={exportDisabled}
+                onShare={onShare}
+                onDuplicate={onDuplicate}
+                onCopy={onCopy}
+                onExport={onExport}
+                addToBoard={addToBoard}
+              />
             ) : null}
-            <span className="min-w-0 flex-1" />
-            <button
-              type="button"
-              className="h-[22px] min-w-0 truncate rounded-md border border-destructive/55 bg-destructive/16 px-[9px] text-xs text-danger-fg hover:bg-destructive/26"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={onRemove}
-            >
-              Remove
-            </button>
-            <button
-              type="button"
-              className="h-[22px] min-w-0 truncate rounded-md border border-input px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="Keep this panel"
-              aria-label="Keep this panel"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={onDisarm}
-            >
-              {widget.w <= 2 ? "×" : "Cancel"}
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="flex min-w-0 shrink items-center overflow-hidden">
-              {identity ?? (
-                <span className="min-w-0 truncate font-mono text-xs">
-                  {widgetTitle(widget)}
-                </span>
-              )}
-            </div>
-            <span className="min-w-0 flex-1" />
-            <div className="flex shrink-0 items-center gap-1">
-              {headControls}
-              {collapsed || addToBoard || onNote ? (
-                <OverflowMenus
-                  noteLabel={widget.note ? "Edit note" : "Add note"}
-                  onNoteEdit={onNote ? () => setNoting(true) : undefined}
-                  atCap={atCap}
-                  exportDisabled={exportDisabled}
-                  onShare={onShare}
-                  onDuplicate={onDuplicate}
-                  onCopy={onCopy}
-                  onExport={onExport}
-                  addToBoard={addToBoard}
-                />
-              ) : null}
-              {showPct ? (
-                <button
-                  type="button"
-                  className={cn(
-                    iconBtn,
-                    "text-xs",
-                    pct ? "bg-accent text-foreground" : "",
-                  )}
-                  title={pct ? "Hide shares" : "Show shares"}
-                  aria-label={pct ? "Hide shares" : "Show shares"}
-                  aria-pressed={pct}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => onPct(!pct)}
-                >
-                  %
-                </button>
-              ) : null}
-              {collapsed ? null : (
-                <>
-                  <button
-                    type="button"
-                    className={iconBtn}
-                    disabled={atCap}
-                    title={atCap ? dupCap : "Duplicate this panel"}
-                    aria-label="Duplicate panel"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={onDuplicate}
-                  >
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinejoin="round"
-                      aria-hidden
-                    >
-                      <rect x="3" y="5" width="8" height="14" rx="1.6" />
-                      <rect x="13" y="5" width="8" height="14" rx="1.6" opacity="0.5" />
-                    </svg>
-                  </button>
-                  <WidgetCopyMenu
-                    disabled={exportDisabled}
-                    onCopy={onCopy}
-                    header={onShare ? (close) => <ShareRow onShare={onShare} close={close} /> : undefined}
-                  />
-                  <WidgetExportMenu disabled={exportDisabled} onExport={onExport} />
-                </>
-              )}
+            {showPct ? (
               <button
                 type="button"
-                className="size-[22px] rounded-md text-base leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
-                title="Remove panel"
-                aria-label="Remove widget"
+                className={cn(iconBtn, "text-xs", pct ? "bg-control text-foreground" : "")}
+                title={pct ? "Hide shares" : "Show shares"}
+                aria-label={pct ? "Hide shares" : "Show shares"}
+                aria-pressed={pct}
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={onArm}
+                onClick={() => onPct(!pct)}
               >
-                ×
+                %
               </button>
-            </div>
-          </>
-        )}
-      </div>
+            ) : null}
+            {collapsed ? null : (
+              <>
+                <button
+                  type="button"
+                  className={iconBtn}
+                  disabled={atCap}
+                  title={atCap ? dupCap : "Duplicate this panel"}
+                  aria-label="Duplicate panel"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={onDuplicate}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+                    <rect x="3" y="5" width="8" height="14" rx="1.6" />
+                    <rect x="13" y="5" width="8" height="14" rx="1.6" opacity="0.5" />
+                  </svg>
+                </button>
+                <WidgetCopyMenu
+                  disabled={exportDisabled}
+                  onCopy={onCopy}
+                  header={onShare ? (close) => <ShareRow onShare={onShare} close={close} /> : undefined}
+                />
+                <WidgetExportMenu disabled={exportDisabled} onExport={onExport} />
+              </>
+            )}
+            <button
+              type="button"
+              className={cn(iconBtn, "text-base leading-none")}
+              title="Remove panel"
+              aria-label="Remove widget"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onArm}
+            >
+              ×
+            </button>
+          </div>
+        </PanelHead>
+      )}
       {noting && onNote ? (
         <div
           ref={noteRef}
@@ -451,6 +389,6 @@ export function ExtraPanel({
         <PanelNote note={{ text: widget.note, sender: false }} leftOff={[]} />
       ) : null}
       {children}
-    </div>
+    </Panel>
   );
 }

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { bucketSpan, useHoverTime } from "../hover-time";
 import { printUnit, unitsDifferWords, withUnit } from "../metric-unit";
 import {
-  abbrevCount,
   bucketIndexAt,
   formatAggStat,
   formatSeriesTotal,
@@ -71,6 +70,7 @@ import { monitorBandH } from "./monitor-band";
 import { endLabelMax, lastValue, sparkLines, spreadLabels, unitAxes, type SparkLine } from "./metric-spark";
 import { UnitsSay } from "./panel-words";
 import { Refused, Skeleton } from "@/components/ui/states";
+import { formatCompactCount } from "@/count-format";
 
 const HOVER_GAP_PX = 12;
 const PLOT_H = 104;
@@ -305,7 +305,7 @@ export function HistogramHover({
       }}
     >
       <div className="border-b border-border/80 pb-1 font-mono text-2xs tabular-nums">
-        {rangeLabel} · {metricLines ? metricLines.reading : abbrevCount(bucket.n)}
+        {rangeLabel} · {metricLines ? metricLines.reading : formatCompactCount(bucket.n)}
       </div>
       {metricLines?.lines.map((row) => (
         <div
@@ -333,7 +333,7 @@ export function HistogramHover({
           />
           <span className="max-w-24 truncate">{row.key}</span>
           <span className="ml-auto font-mono tabular-nums text-foreground">
-            {abbrevCount(row.n)}
+            {formatCompactCount(row.n)}
           </span>
         </div>
       ))}
@@ -1086,7 +1086,7 @@ export function HistogramChart({
   const brushEnd = hi >= 0 ? buckets[hi] : undefined;
       const brushLabel =
     brush && lo !== hi && brushStart && brushEnd
-      ? `${stamp(Date.parse(brushStart.t))}–${stamp(bucketEndMs(brushEnd, stepMs))} · ${abbrevCount(
+      ? `${stamp(Date.parse(brushStart.t))}–${stamp(bucketEndMs(brushEnd, stepMs))} · ${formatCompactCount(
           buckets.slice(lo, hi + 1).reduce((sum, bucket) => sum + bucket.n, 0),
         )}`
       : "";
@@ -1379,7 +1379,7 @@ export function HistogramChart({
                 ? i === 0
                   ? withUnit(formatAggStat(tick), aggResult?.unit)
                   : formatAggStat(tick)
-                : abbrevCount(tick)}
+                : formatCompactCount(tick)}
             </span>
           ))}
         </div>

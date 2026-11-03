@@ -27,7 +27,7 @@
     "outline-none with no focus": 1
   },
   "src/ui/components/board-view.tsx": {
-    "<button with h-[…]": 3
+    "<button with h-[…]": 1
   },
   "src/ui/components/check-editor-parts.tsx": {
     "[#hex] colour": 2,
@@ -49,9 +49,6 @@
     "<button with h-[…]": 3
   },
   "src/ui/components/event-table-marks.tsx": {
-    "<button with h-[…]": 2
-  },
-  "src/ui/components/extra-panel.tsx": {
     "<button with h-[…]": 2
   },
   "src/ui/components/facet-chips.tsx": {
