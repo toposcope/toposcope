@@ -7,6 +7,7 @@ import type { ShareView } from "../share-cover";
 import { namedPanelTag, panelNameFor } from "../share-from-panel";
 import { addablePanels, fenceLines, panelWords, type NamedPanel } from "../share-page";
 import type { SavedSearch } from "../types";
+import { Armed } from "@/components/ui/armed";
 
 /**
  * A share's page (#266, frame 26k): its named panels, the fence derived from them, the switch for
@@ -131,15 +132,7 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
         <Button type="button" variant="outline" onClick={() => setTicketCall((v) => !v)}>
           New ticket call
         </Button>
-        {armed === "revoke" ? (
-          <Button type="button" variant="outline" className="text-danger-fg" onClick={() => void revoke()}>
-            Sure? Revoke
-          </Button>
-        ) : (
-          <Button type="button" variant="outline" className="text-danger-fg" onClick={() => setArmed("revoke")}>
-            Revoke
-          </Button>
-        )}
+        <Armed armed={armed === "revoke"} onArm={() => setArmed("revoke")} onDisarm={() => setArmed(null)} onConfirm={() => void revoke()} label="Revoke" confirm="Sure? Revoke" form="button" className="text-danger-fg" />
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 px-6 pt-4 pb-6 lg:grid-cols-[minmax(0,1fr)_440px]">
         <div className="flex min-h-0 flex-col gap-3.5">
@@ -158,15 +151,7 @@ export function SharePage(props: { name: string; onBack: () => void; onOpenHunt:
                   {panelWords(p)}
                   {p.from ? <span className="text-muted-foreground"> · from {p.from}</span> : null}
                 </span>
-                {armed === `rm:${p.name}` ? (
-                  <button type="button" className="text-sm text-danger-fg" onClick={() => void put({ panels: panels.filter((x) => x.name !== p.name), logs: share.scope.logs ?? undefined }, `${p.name} removed`)}>
-                    sure? remove
-                  </button>
-                ) : (
-                  <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(`rm:${p.name}`)}>
-                    remove
-                  </button>
-                )}
+                <Armed armed={armed === `rm:${p.name}`} onArm={() => setArmed(`rm:${p.name}`)} onDisarm={() => setArmed(null)} onConfirm={() => void put({ panels: panels.filter((x) => x.name !== p.name), logs: share.scope.logs ?? undefined }, `${p.name} removed`)} label="remove" confirm="sure? remove" />
               </div>
             ))}
           </section>

@@ -193,7 +193,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
   if (made) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[640px]">
+        <DialogContent size="md" >
           <DialogHeader>
             <DialogTitle>{made.name} created</DialogTitle>
             <DialogDescription>Copy the secret now. It is not shown again; a lost secret means a new share.</DialogDescription>
@@ -248,7 +248,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
     );
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[640px]">
+        <DialogContent size="md" >
           <DialogHeader>
             <DialogTitle>{mode === "new" ? "New share" : `Edit ${editing?.name}`}</DialogTitle>
             <DialogDescription>Everything read with this share is inside this scope. Series and counts only.</DialogDescription>
@@ -304,7 +304,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[640px]">
+      <DialogContent size="md" >
         <DialogHeader>
           <DialogTitle>Shares</DialogTitle>
           <DialogDescription>Another app reads numbers in one scope: series and counts, never events.</DialogDescription>

@@ -198,7 +198,7 @@ describe("cutCrumbLabel", () => {
 });
 
 describe("cut rail width", () => {
-  test("398px / 36% is on the hunt-row item — nested max-w-[36%] collapses the rail to deploy…", () => {
+  test("the rail width is on the hunt-row item — a nested max-w collapses the rail to deploy…", () => {
     const app = readFileSync("src/ui/App.tsx", "utf8");
     const panel = readFileSync(
       "src/ui/components/fingerprint-cut-panel.tsx",
@@ -208,9 +208,8 @@ describe("cut rail width", () => {
       app.indexOf("{cut && !isSurr && !boardOn"),
       app.indexOf("<FingerprintCutPanel"),
     );
-    expect(shell).toMatch(/w-\[398px\]/);
-    expect(shell).toMatch(/max-w-\[36%\]/);
-    expect(panel).not.toMatch(/max-w-\[36%\]/);
+    expect(shell).toMatch(/railPanel/);
+    expect(panel).not.toMatch(/max-w-\[3\d%\]|railPanel/);
   });
 });
 

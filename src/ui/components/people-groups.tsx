@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { clockAt } from "../watch";
 import { agentSavedWords } from "../agents";
 import { dayAt } from "./me-menu";
+import { Sheet } from "@/components/ui/sheet";
+import { Armed } from "@/components/ui/armed";
 
 /**
  * People in Access (#308): the People group (30a), Invite someone (30b), service accounts and
@@ -183,47 +185,13 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
           <span className="truncate text-sm text-muted-foreground">{p.first_owner ? "first Owner, from the setup link" : p.invited_by ? `${p.invited_by} · ${clockAt(p.created_at, props.nowMs)}` : "—"}</span>
           <span className="flex flex-col items-end gap-0.5 text-right">
             {props.isOwner && !p.you && p.two_step?.state === "on" ? (
-              armed === `2s:${p.id}` ? (
-                <button
-                  type="button"
-                  className="text-sm text-plate hover:underline"
-                  title="Their sessions end now, their backup codes stop working, their remembered browsers are forgotten, and they set up two-step again the next time they sign in."
-                  onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}/two-step`, { method: "DELETE" }, `${p.name}'s two-step is reset`)}
-                >
-                  sure? reset two-step
-                </button>
-              ) : (
-                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(`2s:${p.id}`)}>
-                  reset two-step
-                </button>
-              )
+              <Armed armed={armed === `2s:${p.id}`} onArm={() => setArmed(`2s:${p.id}`)} onDisarm={() => setArmed(null)} onConfirm={() => void call(`/api/people/${encodeURIComponent(p.id)}/two-step`, { method: "DELETE" }, `${p.name}'s two-step is reset`)} label="reset two-step" confirm="sure? reset two-step" title="Their sessions end now, their backup codes stop working, their remembered browsers are forgotten, and they set up two-step again the next time they sign in." />
             ) : null}
             {props.isOwner && !p.you && (p.two_step?.remembered?.count ?? 0) > 0 ? (
-              armed === `rb:${p.id}` ? (
-                <button
-                  type="button"
-                  className="text-sm text-plate underline"
-                  title="Each of their remembered browsers asks for the code at its next sign-in. Nobody is signed out."
-                  onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}/remembered-browsers`, { method: "DELETE" }, `${p.name}'s browsers are forgotten`)}
-                >
-                  sure? forget {p.two_step!.remembered!.count}
-                </button>
-              ) : (
-                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(`rb:${p.id}`)}>
-                  forget browsers
-                </button>
-              )
+              <Armed armed={armed === `rb:${p.id}`} onArm={() => setArmed(`rb:${p.id}`)} onDisarm={() => setArmed(null)} onConfirm={() => void call(`/api/people/${encodeURIComponent(p.id)}/remembered-browsers`, { method: "DELETE" }, `${p.name}'s browsers are forgotten`)} label="forget browsers" confirm={<>sure? forget {p.two_step!.remembered!.count}</>} title="Each of their remembered browsers asks for the code at its next sign-in. Nobody is signed out." />
             ) : null}
             {props.isOwner && !p.you ? (
-              armed === p.id ? (
-                <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void call(`/api/people/${encodeURIComponent(p.id)}`, { method: "DELETE" }, `${p.name} revoked`)}>
-                  sure? revoke
-                </button>
-              ) : (
-                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(p.id)}>
-                  revoke
-                </button>
-              )
+              <Armed armed={armed === p.id} onArm={() => setArmed(p.id)} onDisarm={() => setArmed(null)} onConfirm={() => void call(`/api/people/${encodeURIComponent(p.id)}`, { method: "DELETE" }, `${p.name} revoked`)} label="revoke" confirm="sure? revoke" />
             ) : null}
           </span>
         </div>
@@ -313,15 +281,7 @@ export function ServiceAccountsGroup(props: { accounts: PersonRow[]; nowMs: numb
             <span className="truncate font-mono text-sm text-muted-foreground">{used ? clockAt(used, props.nowMs) : "never"}</span>
             <span className="text-right">
               {props.isOwner ? (
-                armed === p.id ? (
-                  <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void revoke(p)}>
-                    sure? revoke
-                  </button>
-                ) : (
-                  <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(p.id)}>
-                    revoke
-                  </button>
-                )
+                <Armed armed={armed === p.id} onArm={() => setArmed(p.id)} onDisarm={() => setArmed(null)} onConfirm={() => void revoke(p)} label="revoke" confirm="sure? revoke" />
               ) : null}
             </span>
           </div>
@@ -377,15 +337,7 @@ export function AgentsGroup(props: { agents: PersonRow[]; nowMs: number; isOwner
             <span className="truncate text-sm text-muted-foreground">{agentSavedWords(p.saved)}</span>
             <span className="justify-self-end">
               {props.isOwner ? (
-                armed === p.id ? (
-                  <Button type="button" variant="outline" className="text-sm text-danger-fg" onClick={() => void revoke(p)}>
-                    sure? revoke
-                  </Button>
-                ) : (
-                  <Button type="button" variant="outline" className="text-sm" onClick={() => setArmed(p.id)}>
-                    Revoke
-                  </Button>
-                )
+                <Armed armed={armed === p.id} onArm={() => setArmed(p.id)} onDisarm={() => setArmed(null)} onConfirm={() => void revoke(p)} label="Revoke" confirm="sure? revoke" form="button" />
               ) : null}
             </span>
           </div>
@@ -424,43 +376,11 @@ export function PersonTokenRows(props: { body: PeopleBody; nowMs: number; meId: 
           <span />
           <span className="text-right">
             {props.isOwner || owner.id === props.meId ? (
-              armed === token.id ? (
-                <button type="button" className="text-sm text-danger-fg hover:underline" onClick={() => void revoke(token.id, token.name)}>
-                  sure? revoke
-                </button>
-              ) : (
-                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setArmed(token.id)}>
-                  revoke
-                </button>
-              )
+              <Armed armed={armed === token.id} onArm={() => setArmed(token.id)} onDisarm={() => setArmed(null)} onConfirm={() => void revoke(token.id, token.name)} label="revoke" confirm="sure? revoke" />
             ) : null}
           </span>
         </div>
       ))}
-    </>
-  );
-}
-
-function Sheet(props: { label: string; width: number; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        props.onClose();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [props]);
-  return (
-    <>
-      <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" onClick={props.onClose} />
-      <section
-        aria-label={props.label}
-        className="fixed top-[64px] left-1/2 z-40 flex max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-5 rounded-xl border border-zinc-700 bg-surface-2 px-7 py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]"
-        style={{ width: props.width }}
-      >
-        {props.children}
-      </section>
     </>
   );
 }
@@ -508,7 +428,7 @@ export function InviteSheet(props: { onClose: () => void; onInvited: () => void 
   }
 
   return (
-    <Sheet label="Invite someone" width={900} onClose={props.onClose}>
+    <Sheet side="top" label="Invite someone" width={900} onClose={props.onClose} className="gap-5 px-7 py-6">
       <div className="flex items-baseline gap-3">
         <h2 className="m-0 text-lg font-semibold">Invite someone</h2>
         <span className="text-sm text-muted-foreground">They get a link that works once. No mail server needed: send it however you like.</span>
@@ -631,7 +551,7 @@ export function MakeTokenSheet(props: { me: { id: string; name: string; role: Ro
   ];
 
   return (
-    <Sheet label="Make a token" width={520} onClose={props.onClose}>
+    <Sheet side="top" label="Make a token" width={520} onClose={props.onClose} className="gap-5 px-7 py-6">
       <h2 className="m-0 text-lg font-semibold">Make a token</h2>
       <div className="flex flex-col gap-2">
         <span className={lab}>For</span>

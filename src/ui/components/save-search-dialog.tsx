@@ -110,21 +110,15 @@ export function SaveSearchDialog({
             </DialogControl>
           </DialogField>
           <DialogFooter>
-            <Button size="lg" type="submit" disabled={saving || !canSubmit}>
-              {mode === "update" ? "Update" : "Save"}
-            </Button>
+            <DialogClose type="button">Cancel</DialogClose>
             {mode === "update" && onSaveAs ? (
-              <Button size="lg"
-                type="button"
-                variant="outline"
-                disabled={saving || !canSubmit}
-                onClick={() => void saveAs()}
-              >
+              <Button size="lg" type="button" variant="outline" disabled={saving || !canSubmit} onClick={() => void saveAs()}>
                 Save as…
               </Button>
             ) : null}
-            <span className="flex-1" />
-            <DialogClose type="button">Cancel</DialogClose>
+            <Button size="lg" type="submit" disabled={saving || !canSubmit}>
+              {mode === "update" ? "Update" : "Save"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -417,7 +417,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-32px)] max-w-[min(1080px,calc(100vw-32px))] overflow-y-auto rounded-xl border-white/12 bg-overlay p-0">
+      <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto rounded-xl border-white/12 bg-overlay p-0">
         <form className="flex min-w-0 flex-col" onSubmit={(e) => void submit(e)}>
           <div className="flex min-w-0 items-center gap-2.5 border-b border-white/[0.08] px-[18px] py-3">
             {editing ? (

@@ -7,6 +7,7 @@ import { bytesDay, kindTitle, type LinkKind } from "../link-kinds";
 import { formatCompactCount } from "../count-format";
 import { KindBoxes } from "./kind-boxes";
 import { clockAt } from "../watch";
+import { Armed } from "@/components/ui/armed";
 
 /**
  * A link's page (#267, frame 26m), from its Access row: which way rows move, the scope, where it
@@ -117,15 +118,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
             Change scope
           </Button>
         ) : null}
-        {armed ? (
-          <Button type="button" variant="outline" className="text-danger-fg" onClick={() => void revoke()}>
-            Sure? Revoke
-          </Button>
-        ) : (
-          <Button type="button" variant="outline" className="text-danger-fg" onClick={() => setArmed(true)}>
-            Revoke
-          </Button>
-        )}
+        <Armed armed={armed} onArm={() => setArmed(true)} onDisarm={() => setArmed(false)} onConfirm={() => void revoke()} label="Revoke" confirm="Sure? Revoke" form="button" className="text-danger-fg" />
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 px-6 pt-4 pb-6 lg:grid-cols-[420px_minmax(0,1fr)]">
         <div className="flex flex-col gap-3.5">

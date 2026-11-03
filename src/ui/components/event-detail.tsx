@@ -27,6 +27,7 @@ import { blobUrl, commitUrl, stackPieces, treeUrl } from "../../shared/code-link
 import { isFrameLine, rowVersion, shortSha, useCode } from "../code-links";
 import { stackAccepted, stackDocUrl } from "../../shared/coverage";
 import { useCoverage } from "./coverage-section";
+import { detailPanel } from "@/components/ui/side-panel";
 
 const notFilterable = new Set(["ts", "message"]);
 
@@ -143,7 +144,8 @@ export function EventDetail({
   return (
     <aside
       className={cn(
-        "my-2 mr-3 ml-1 flex w-[560px] max-w-[40%] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-surface-2",
+        "flex flex-col",
+        detailPanel,
         className,
       )}
     >

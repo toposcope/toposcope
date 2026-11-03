@@ -313,12 +313,8 @@ export function AlertRuleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* 18j draws a default body at about 630px; 18t widens it for a body of its own and its fill-ins. */}
-      <DialogContent
-        className={`max-h-[calc(100vh-32px)] overflow-y-auto p-0 ${
-          bodyKind === "default" ? "max-w-[min(640px,calc(100vw-32px))]" : "max-w-[min(860px,calc(100vw-32px))]"
-        }`}
-      >
+      {/* A monitor dialog is lg (sheet 45), whatever its body. */}
+      <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto p-0">
         {/* 18j: New monitor / its source; 18t: its source / its name. */}
         <div className="flex items-center gap-2 border-b px-[18px] py-3.5">
           <DialogTitle className="flex min-w-0 items-baseline gap-2.5">

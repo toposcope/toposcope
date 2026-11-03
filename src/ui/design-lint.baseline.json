@@ -131,7 +131,7 @@
   },
   "src/ui/components/people-groups.tsx": {
     "[#hex] colour": 2,
-    "raw palette class": 13
+    "raw palette class": 12
   },
   "src/ui/components/push-monitor-dialog.tsx": {
     "raw palette class": 1,
@@ -186,7 +186,7 @@
   },
   "src/ui/components/watch-this-sheet.tsx": {
     "[#hex] colour": 1,
-    "raw palette class": 2
+    "raw palette class": 1
   },
   "src/ui/components/watch-view.tsx": {
     "[#hex] colour": 1,

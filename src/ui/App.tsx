@@ -247,6 +247,7 @@ import {
   skipKeysFromFieldRoles,
 } from "./live-widget-clock";
 import { Busy, BusyBar, busyDim, Empty, LiveAge, Refused } from "@/components/ui/states";
+import { railPanel } from "@/components/ui/side-panel";
 
 const emptyFacets: Facets = { level: [], service: [], host: [] };
 
@@ -5006,7 +5007,7 @@ export function App() {
                 </div>
               )}
               {cut && !isSurr && !boardOn ? (
-                <div className="relative flex h-full w-[398px] max-w-[36%] min-h-0 shrink-0 flex-col">
+                <div className={cn("relative flex h-full min-h-0 flex-col", railPanel)}>
                   <div
                     className="flex min-h-0 min-w-0 flex-1 flex-col"
                     inert={railSurface === "detail" || spanOnRail}
