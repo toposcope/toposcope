@@ -13,6 +13,7 @@ import { gravity, gridEdges } from "../../shared/grid-gravity";
 import { GridHandles, GridSizeChip, useGridGestures, useGridSlide } from "../grid-gestures";
 import { PanelNote, PanelNoteField } from "@/components/panel-words";
 import { HoverTimeProvider, TimeLayer } from "../hover-time";
+import { addTextPanel, foldedPanelIds, isTextPanel, maxNoteText, maxPanelName } from "../../shared/boards";
 import type { ChangeMark } from "../../shared/change-mark";
 import {
   BOARD_MAX,
@@ -85,8 +86,11 @@ export function BoardView(props: Props) {
   useEffect(() => {
     const ac = new AbortController();
     const items = planRef.current;
-    setLoading(new Set(items.map((item) => item.panel.id)));
+    setLoading(new Set(items.filter((item) => !isTextPanel(item.panel.view)).map((item) => item.panel.id)));
     for (const item of items) {
+      if (isTextPanel(item.panel.view)) {
+        continue;
+      }
       void fetchPanel(item.panel, item.q, item.win, ac.signal)
         .then((next) => {
           if (!ac.signal.aborted) {
@@ -121,7 +125,7 @@ export function BoardView(props: Props) {
       }
       for (const item of planRef.current) {
         const prev = dataRef.current[item.panel.id];
-        if (!full && !panelMergeable(item.panel)) {
+        if (isTextPanel(item.panel.view) || (!full && !panelMergeable(item.panel))) {
           continue;
         }
         void fetchPanel(item.panel, item.q, item.win, ac.signal, full ? null : prev)
@@ -169,6 +173,7 @@ export function BoardView(props: Props) {
       .catch(() => undefined);
     return () => ac.abort();
   }, [marksSpan?.from, marksSpan?.to]);
+  const [editingNote, setEditingNote] = useState<string | null>(null);
   // A note is typed here and saved once, when its field closes.
   const [noting, setNoting] = useState<{ id: string; note: string } | null>(null);
   function closeNote() {
@@ -185,9 +190,29 @@ export function BoardView(props: Props) {
   }
   // Sheet 44, E: panels float up so no hole is left; drag a head to move, an edge to resize.
   const gridRef = useRef<HTMLDivElement>(null);
+  // A folded heading's panels are left out of the drawn layout (sheet 44); they keep their cells.
+  const folded = foldedPanelIds(board.panels);
   const settled = gravity(
-    board.panels.map((panel) => ({ id: panel.id, kind: panel.widget.kind, x: panel.widget.x, y: panel.widget.y, w: panel.widget.w, h: panel.widget.h })),
+    board.panels
+      .filter((panel) => !folded.has(panel.id))
+      .map((panel) => ({ id: panel.id, kind: panel.widget.kind, x: panel.widget.x, y: panel.widget.y, w: panel.widget.w, h: panel.widget.h })),
   );
+  const viewOf = new Map(board.panels.map((panel) => [panel.id, panel.view]));
+  /** A heading's panels, as drawn: from the row under it to the next heading. */
+  function headingGroup(id: string, cells: Array<{ id: string; y: number }>): string[] {
+    if (viewOf.get(id) !== "section") {
+      return [];
+    }
+    const me = cells.find((c) => c.id === id);
+    if (!me) {
+      return [];
+    }
+    const next = Math.min(Infinity, ...cells.filter((c) => viewOf.get(c.id) === "section" && c.y > me.y).map((c) => c.y));
+    return cells.filter((c) => viewOf.get(c.id) !== "section" && c.y > me.y && c.y < next).map((c) => c.id);
+  }
+  function patchPanel(id: string, patch: Partial<BoardPanel>) {
+    props.onBoard({ ...board, panels: board.panels.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
+  }
   const grid = useGridGestures({
     gridRef,
     cells: settled,
@@ -203,6 +228,7 @@ export function BoardView(props: Props) {
         }),
       }),
     disabled: props.readOnly,
+    groupOf: headingGroup,
   });
   const cellOf = new Map(grid.cells.map((cell) => [cell.id, cell]));
   useGridSlide(gridRef, grid.cells.map((c) => `${c.id}:${c.x},${c.y},${c.w},${c.h}`).join(" "), grid.moving);
@@ -210,6 +236,8 @@ export function BoardView(props: Props) {
   return (
     <HoverTimeProvider>
     <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 flex-wrap items-center">
+      <div className="min-w-0 flex-1">
       <BoardInputsRow
         keys={board.keys}
         bind={bind}
@@ -218,6 +246,32 @@ export function BoardView(props: Props) {
         onBind={props.onBind}
         onKeys={(next) => props.onBoard({ ...board, keys: next })}
       />
+      </div>
+      {props.readOnly ? null : (
+        <div className="flex shrink-0 items-center gap-1.5 px-3 py-2">
+          {(["section", "note"] as const).map((view) => (
+            <button
+              key={view}
+              type="button"
+              disabled={board.panels.length >= BOARD_PANEL_MAX}
+              title={board.panels.length >= BOARD_PANEL_MAX ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
+              className="h-[26px] rounded-md border border-input px-2 text-[12.5px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-45"
+              onClick={() => {
+                const next = addTextPanel(board, view);
+                if (next) {
+                  props.onBoard(next);
+                  if (view === "note") {
+                    setEditingNote(next.panels[next.panels.length - 1]!.id);
+                  }
+                }
+              }}
+            >
+              {view === "section" ? "Add section" : "Add note"}
+            </button>
+          ))}
+        </div>
+      )}
+      </div>
       <div className="min-h-0 flex-1 overflow-auto px-3 pt-1 pb-3">
         {board.panels.length === 0 ? (
           <div className="flex h-40 items-center justify-center text-[13px] text-muted-foreground">No panels</div>
@@ -237,7 +291,7 @@ export function BoardView(props: Props) {
                 style={{ gridColumn: `${grid.ghost.x + 1} / span ${grid.ghost.w}`, gridRow: `${grid.ghost.y + 1} / span ${grid.ghost.h}` }}
               />
             ) : null}
-            {plan.map((item) => {
+            {plan.filter((item) => !folded.has(item.panel.id)).map((item) => {
               const moving = grid.moving === item.panel.id;
               const sizing = grid.sizing === item.panel.id;
               // A moved panel stays drawn at its old cell, lifted under the pointer; the dashed cell is where it lands.
@@ -256,6 +310,32 @@ export function BoardView(props: Props) {
                   opacity: moving ? 0.96 : undefined,
                 }}
               >
+                {item.panel.view === "section" ? (
+                  <BoardSection
+                    panel={item.panel}
+                    count={item.panel.folded ? board.panels.filter((p) => folded.has(p.id) && headingOf(board.panels, p.id) === item.panel.id).length : headingGroup(item.panel.id, grid.cells).length}
+                    readOnly={props.readOnly}
+                    lifted={moving}
+                    onMovePointerDown={props.readOnly ? undefined : (e) => grid.beginMove(e, item.panel.id)}
+                    onFold={() => patchPanel(item.panel.id, { folded: !item.panel.folded || undefined })}
+                    onRename={(name) => patchPanel(item.panel.id, { name })}
+                    onRemove={() => props.onRemove(item.panel)}
+                  />
+                ) : item.panel.view === "note" ? (
+                  <BoardNote
+                    panel={item.panel}
+                    readOnly={props.readOnly}
+                    lifted={moving}
+                    atCap={board.panels.length >= BOARD_PANEL_MAX}
+                    editing={editingNote === item.panel.id}
+                    onEditing={(on) => setEditingNote(on ? item.panel.id : null)}
+                    onMovePointerDown={props.readOnly ? undefined : (e) => grid.beginMove(e, item.panel.id)}
+                    onText={(text) => patchPanel(item.panel.id, { text })}
+                    onRename={(name) => patchPanel(item.panel.id, { name })}
+                    onDuplicate={() => props.onDuplicate(item.panel)}
+                    onRemove={() => props.onRemove(item.panel)}
+                  />
+                ) : (
                 <BoardPanelCard
                   panel={item.panel}
                   inputs={inputTokens(board.keys, bind)}
@@ -285,7 +365,8 @@ export function BoardView(props: Props) {
                   onNote={(note) => setNoting({ id: item.panel.id, note })}
                   lifted={moving}
                 />
-                {props.readOnly || (grid.dragging && !sizing) ? null : (
+                )}
+                {props.readOnly || item.panel.view === "section" || (grid.dragging && !sizing) ? null : (
                   <GridHandles
                     edges={gridEdges(false)}
                     active={sizing ? grid.sizingEdge : null}
@@ -301,6 +382,296 @@ export function BoardView(props: Props) {
       </div>
     </div>
     </HoverTimeProvider>
+  );
+}
+
+/** The heading a panel sits under: the nearest heading above it. */
+function headingOf(panels: BoardPanel[], id: string): string | null {
+  const me = panels.find((p) => p.id === id);
+  if (!me) {
+    return null;
+  }
+  let best: BoardPanel | null = null;
+  for (const p of panels) {
+    if (p.view === "section" && p.widget.y < me.widget.y && (!best || p.widget.y > best.widget.y)) {
+      best = p;
+    }
+  }
+  return best?.id ?? null;
+}
+
+const textMenuRow =
+  "flex h-[30px] w-full items-center gap-2 rounded-[3.4px] px-2 text-left text-[13px] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+
+/** ⋯ on a heading or a note (sheet 44). */
+function TextPanelMenu({ label, items }: { label: string; items: Array<{ text: string; run: () => void; danger?: boolean; disabled?: boolean }> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex size-[26px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent"
+          aria-label={label}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <circle cx="5" cy="12" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="19" cy="12" r="1.6" />
+          </svg>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[180px] bg-[#18181b] p-1" onCloseAutoFocus={(e) => e.preventDefault()}>
+        {items.map((item) => (
+          <button
+            key={item.text}
+            type="button"
+            disabled={item.disabled}
+            className={cn(textMenuRow, item.danger && "text-red-300")}
+            onClick={() => {
+              setOpen(false);
+              item.run();
+            }}
+          >
+            {item.text}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** A name typed in place; Enter or leaving keeps it, Escape drops it. */
+function NameField({ value, onDone }: { value: string; onDone: (name: string | null) => void }) {
+  const [draft, setDraft] = useState(value);
+  const done = useRef(false);
+  const finish = (keep: boolean) => {
+    if (done.current) {
+      return;
+    }
+    done.current = true;
+    const name = draft.replace(/\s+/g, " ").trim().slice(0, maxPanelName);
+    onDone(keep && name ? name : null);
+  };
+  return (
+    <input
+      aria-label="Name"
+      value={draft}
+      maxLength={maxPanelName}
+      ref={(el) => el?.focus()}
+      onChange={(e) => setDraft(e.target.value)}
+      onPointerDown={(e) => e.stopPropagation()}
+      onBlur={() => finish(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish(true);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          finish(false);
+        }
+      }}
+      className="h-[26px] min-w-0 flex-1 rounded-md border border-plate/60 bg-background px-2 text-[13.5px] font-semibold outline-none"
+    />
+  );
+}
+
+/**
+ * A section heading (sheet 44): a full-width row over the panels under it, down to the next
+ * heading. Drag it and they move with it; fold it and they are put away.
+ */
+function BoardSection({
+  panel,
+  count,
+  readOnly,
+  lifted,
+  onMovePointerDown,
+  onFold,
+  onRename,
+  onRemove,
+}: {
+  panel: BoardPanel;
+  count: number;
+  readOnly: boolean;
+  lifted: boolean;
+  onMovePointerDown?: (e: PointerEvent) => void;
+  onFold: () => void;
+  onRename: (name: string) => void;
+  onRemove: () => void;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  return (
+    <div
+      className={cn(
+        "flex h-full touch-none items-center gap-1.5 border-b pr-1",
+        lifted ? "rounded-md border border-plate/55 bg-card shadow-[0_14px_36px_rgb(0_0_0/0.55)]" : "border-white/10",
+        onMovePointerDown && "cursor-grab active:cursor-grabbing",
+      )}
+      onPointerDown={onMovePointerDown}
+    >
+      <button
+        type="button"
+        aria-expanded={!panel.folded}
+        aria-label={`${panel.folded ? "Unfold" : "Fold"} ${panel.name}`}
+        className="flex size-[26px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        onClick={onFold}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d={panel.folded ? "M9 6l6 6-6 6" : "M6 9l6 6 6-6"} />
+        </svg>
+      </button>
+      {renaming ? (
+        <NameField
+          value={panel.name}
+          onDone={(name) => {
+            setRenaming(false);
+            if (name && name !== panel.name) {
+              onRename(name);
+            }
+          }}
+        />
+      ) : (
+        <span className="min-w-0 truncate text-[14.5px] font-semibold">{panel.name}</span>
+      )}
+      <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground">
+        {count} {count === 1 ? "panel" : "panels"}
+        {panel.folded ? " folded" : ""}
+      </span>
+      <span className="min-w-1 flex-1" />
+      {readOnly ? null : (
+        <TextPanelMenu
+          label="Section actions"
+          items={[
+            { text: "Rename", run: () => setRenaming(true) },
+            { text: "Remove heading", run: onRemove, danger: true },
+          ]}
+        />
+      )}
+    </div>
+  );
+}
+
+/** A note's text with its web links live; everything else is plain text. */
+function NoteText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <p className="m-0 text-[13px] leading-[1.5] whitespace-pre-wrap">
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-plate underline underline-offset-2" onPointerDown={(e) => e.stopPropagation()}>
+            {part}
+          </a>
+        ) : (
+          part
+        ),
+      )}
+    </p>
+  );
+}
+
+/** A note panel (sheet 44): a name and plain text, for a runbook link or who to page. */
+function BoardNote({
+  panel,
+  readOnly,
+  lifted,
+  atCap,
+  editing,
+  onEditing,
+  onMovePointerDown,
+  onText,
+  onRename,
+  onDuplicate,
+  onRemove,
+}: {
+  panel: BoardPanel;
+  readOnly: boolean;
+  lifted: boolean;
+  atCap: boolean;
+  editing: boolean;
+  onEditing: (on: boolean) => void;
+  onMovePointerDown?: (e: PointerEvent) => void;
+  onText: (text: string) => void;
+  onRename: (name: string) => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+}) {
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(panel.text ?? "");
+  const text = panel.text ?? "";
+  function finish(keep: boolean) {
+    onEditing(false);
+    if (keep && draft.trim() !== text) {
+      onText(draft.trim());
+    }
+  }
+  return (
+    <div
+      className={cn(
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card",
+        lifted ? "border-plate/55 shadow-[0_14px_36px_rgb(0_0_0/0.55)]" : "border-white/10",
+      )}
+    >
+      <div
+        className={cn("flex shrink-0 touch-none items-center gap-2 pt-2.5 pr-2 pl-3", onMovePointerDown && "cursor-grab active:cursor-grabbing")}
+        onPointerDown={onMovePointerDown}
+      >
+        {renaming ? (
+          <NameField
+            value={panel.name}
+            onDone={(name) => {
+              setRenaming(false);
+              if (name && name !== panel.name) {
+                onRename(name);
+              }
+            }}
+          />
+        ) : (
+          <span className="min-w-0 truncate text-[13.5px] font-semibold">{panel.name}</span>
+        )}
+        <span className="min-w-1 flex-1" />
+        {readOnly ? null : (
+          <TextPanelMenu
+            label="Note actions"
+            items={[
+              { text: "Edit text", run: () => { setDraft(text); onEditing(true); } },
+              { text: "Rename", run: () => setRenaming(true) },
+              { text: "Duplicate", run: onDuplicate, disabled: atCap },
+              { text: "Remove", run: onRemove, danger: true },
+            ]}
+          />
+        )}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto px-3 pt-1.5 pb-2.5">
+        {editing ? (
+          <textarea
+            aria-label="Note text"
+            value={draft}
+            maxLength={maxNoteText}
+            ref={(el) => el?.focus()}
+            placeholder="Who to page, a runbook link, what normal looks like. ⌘ Enter saves."
+            onChange={(e) => setDraft(e.target.value)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={() => finish(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                finish(true);
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                finish(false);
+              }
+            }}
+            className="min-h-0 flex-1 resize-none rounded-md border border-plate/60 bg-background px-2 py-1 text-[13px] leading-[1.5] outline-none"
+          />
+        ) : text ? (
+          <NoteText text={text} />
+        ) : (
+          <span className="text-[12.5px] text-muted-foreground">Empty note</span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1007,6 +1378,9 @@ function PanelBody({
       );
     case "histogram":
       return <PanelPlot panel={panel} data={data} live={live} marks={marks} timeId={panel.id} />;
+    case "section":
+    case "note":
+      return null;
     default: {
       const _exhaustive: never = panel.view;
       return _exhaustive;
