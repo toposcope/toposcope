@@ -16,8 +16,8 @@ import {
 
 /** Inputs on a board (#410): field keys ANDed onto every panel's query. */
 export const BOARD_MAX = 4;
-/** Panels on a board (#410). */
-export const BOARD_PANEL_MAX = 6;
+/** Panels on a board (#410): one letter each, so at most 26. */
+export const BOARD_PANEL_MAX = 26;
 export const maxPanelName = 80;
 
 /** What a board panel draws (#410): a hunt panel's view, or the hunt's event table. */
@@ -51,7 +51,8 @@ export type LegacyBoardSource = {
   agg?: string | null;
 };
 
-const panelIds = "uvwxyz";
+/** `u`–`z` first, as boards before 0.14.2 numbered them, then `a`–`t`. */
+const panelIds = "uvwxyzabcdefghijklmnopqrst";
 const eventsH = 5;
 
 export function parseBoard(raw: unknown, legacy?: LegacyBoardSource): BoardSlots | null {
