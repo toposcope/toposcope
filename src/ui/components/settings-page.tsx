@@ -118,7 +118,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
     setVersion((await res.json()) as VersionBody);
   }
 
-  const card = "flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5";
+  const card = "flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5";
   const row = "flex items-center gap-3 text-sm";
   const k = "w-[110px] shrink-0 text-muted-foreground";
   const fk = "w-[140px] shrink-0 text-muted-foreground";
@@ -126,14 +126,14 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
   const session = props.instance?.session;
 
   return (
-    <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
-      <div className="flex flex-col gap-3.5">
-        <div className="flex flex-wrap items-baseline gap-3.5">
+    <main className="min-h-0 flex-1 overflow-auto px-6 pt-6 pb-6">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline gap-3">
           <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Settings</h1>
           <span className="text-sm text-muted-foreground">The instance itself, and what its log keys are for. Who may read or write is under Access; what to watch is under Watch.</span>
           {props.readOnly ? <span className="text-sm text-warn-fg">Only an Owner changes retention, delivery, the release or the name{props.owners?.length ? `: ${props.owners.join(", ")}` : ""}.</span> : null}
         </div>
-        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
           <section className={card}>
             <h2 className="m-0 text-base font-medium">This instance</h2>
             <div className={row}>

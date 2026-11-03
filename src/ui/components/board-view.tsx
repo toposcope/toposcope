@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -515,9 +516,7 @@ function BoardSection({
         className="flex size-[26px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
         onClick={onFold}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d={panel.folded ? "M9 6l6 6-6 6" : "M6 9l6 6 6-6"} />
-        </svg>
+        {panel.folded ? <ChevronRight className="size-3.5" aria-hidden /> : <ChevronDown className="size-3.5" aria-hidden />}
       </button>
       {renaming ? (
         <NameField
@@ -1179,7 +1178,7 @@ function FixedWindowMenu({
     <div className="flex flex-col gap-0.5 p-0.5">
       <button
         type="button"
-        className={cn("flex h-9 items-center gap-2.5 rounded-md px-2 text-left text-sm hover:bg-accent", !on && "bg-accent/60")}
+        className={cn("flex h-9 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-accent", !on && "bg-accent/60")}
         onClick={() => onFixed(null)}
       >
         {radio(!on)}
@@ -1188,7 +1187,7 @@ function FixedWindowMenu({
       </button>
       <button
         type="button"
-        className={cn("flex h-9 items-center gap-2.5 rounded-md px-2 text-left text-sm hover:bg-accent", on && "bg-accent/60")}
+        className={cn("flex h-9 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-accent", on && "bg-accent/60")}
         onClick={() => setOn(true)}
       >
         {radio(on)}
@@ -1440,7 +1439,7 @@ export function PanelPlot({
   return frame(
     "flex min-h-0 flex-1 flex-col px-3 pt-3 pb-2.5",
     <>
-      <div className="flex min-h-0 flex-1 items-end gap-[3px]">
+      <div className="flex min-h-0 flex-1 items-end gap-0.5">
         {buckets.map((bucket) => (
           <div key={bucket.t} className="flex h-full min-w-0 flex-1 flex-col-reverse">
             {keys.map((key, si) => {

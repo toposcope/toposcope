@@ -17,7 +17,7 @@ export function AgentBadge(props: { name: string; onOpen?: () => void; className
       tabIndex={open ? 0 : undefined}
       title={open ? `${props.name} · open its row in Access` : `saved by ${props.name}`}
       className={cn(
-        "inline-flex h-[18px] max-w-[180px] shrink-0 items-center gap-[5px] rounded-md border border-[#4b4560] bg-[#17151f] px-[7px] font-mono text-2xs whitespace-nowrap text-[#c4b5fd]",
+        "inline-flex h-[18px] max-w-[180px] shrink-0 items-center gap-1 rounded-md border border-[#4b4560] bg-[#17151f] px-1.5 font-mono text-2xs whitespace-nowrap text-[#c4b5fd]",
         open && "cursor-pointer hover:border-[#6d62a0]",
         props.className,
       )}

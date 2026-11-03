@@ -38,7 +38,7 @@ export function MonitorSwitch<T extends string>({
     <span
       role="radiogroup"
       aria-label={label}
-      className="inline-flex w-max shrink-0 rounded-lg border border-white/10 bg-surface-1 p-[2px]"
+      className="inline-flex w-max shrink-0 rounded-lg border border-white/10 bg-surface-1 p-0.5"
     >
       {options.map(([id, text]) => (
         <button
@@ -61,4 +61,4 @@ export function MonitorSwitch<T extends string>({
 
 /** 18j's box: a 30px field with a hairline border. */
 export const monitorBox =
-  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm focus-within:border-foreground/40";
+  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-1 text-sm focus-within:border-foreground/40";

@@ -175,9 +175,9 @@ export function WatchThisSheet(props: {
 
   const lineY = 120 - Math.min(120, Math.round(((nOk ? n : 0) / peak) * 120));
   return (
-    <Sheet side="bottom" label="Watch this" onClose={props.onCancel} className="grid h-[470px] grid-cols-[minmax(0,1fr)_420px] gap-7 px-7 py-[22px]">
+    <Sheet side="bottom" label="Watch this" onClose={props.onCancel} className="grid h-[470px] grid-cols-[minmax(0,1fr)_420px] gap-7 px-7 py-6">
       <form
-        className="flex min-w-0 flex-col gap-[18px]"
+        className="flex min-w-0 flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           void save();
@@ -247,7 +247,7 @@ export function WatchThisSheet(props: {
         </div>
         <div className="flex flex-col gap-1.5">
           <span className="text-sm text-muted-foreground">Sends to</span>
-          <div className="flex flex-wrap items-center gap-x-[18px] gap-y-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             {fallback ? (
               <label className="inline-flex items-center gap-2">
                 <input type="checkbox" checked={ticked.includes("default")} onChange={() => toggle("default")} />
@@ -281,7 +281,7 @@ export function WatchThisSheet(props: {
           </div>
           <span className="text-sm text-muted-foreground">Reminds every window while open · says when it resolves.</span>
         </div>
-        <div className="mt-auto flex items-center gap-2.5">
+        <div className="mt-auto flex items-center gap-2">
           <span title={serviceOk(service) ? undefined : serviceMissing}>
             <Button type="submit" disabled={!canSave}>
               Save and watch
@@ -296,7 +296,7 @@ export function WatchThisSheet(props: {
           {serviceOk(service) ? null : <span className="text-sm text-muted-foreground">{serviceMissing}</span>}
         </div>
       </form>
-      <aside className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-1 p-4">
+      <aside className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-1 p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium">Would have opened · last 24 h</span>
           <span className="font-mono text-sm text-muted-foreground">

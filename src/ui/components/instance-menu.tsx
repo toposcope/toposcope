@@ -55,7 +55,7 @@ export function InstanceMenu({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[248px] p-1">
-          <div className="flex flex-col gap-[3px] border-b border-white/[0.08] px-2 pt-2 pb-2.5">
+          <div className="flex flex-col gap-0.5 border-b border-white/[0.08] px-2 pt-2 pb-2.5">
             <span className={`truncate text-sm font-semibold ${info.name ? "" : "font-mono"}`}>{label}</span>
             {info.name ? (
               <span className="truncate font-mono text-xs text-muted-foreground">{info.address}</span>

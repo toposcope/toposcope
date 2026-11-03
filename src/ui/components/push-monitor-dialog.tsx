@@ -46,7 +46,7 @@ type Props = {
 const fld = "grid grid-cols-[110px_minmax(0,1fr)] items-start gap-3";
 const lab = "pt-1.5 text-sm text-muted-foreground";
 const box =
-  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm outline-none focus-within:border-foreground/40";
+  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-1 text-sm outline-none focus-within:border-foreground/40";
 const code =
   "block overflow-hidden rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2 text-left font-mono text-xs leading-[1.55] whitespace-pre text-zinc-200 hover:border-white/25";
 
@@ -303,7 +303,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto p-0">
         <form onSubmit={(e) => void onSubmit(e)}>
-          <div className="flex items-center gap-3 border-b px-[18px] py-3.5">
+          <div className="flex items-center gap-3 border-b px-4 py-3.5">
             <DialogTitle className="flex min-w-0 items-baseline gap-2">
               <span className="shrink-0 font-normal text-muted-foreground">{editing ? "Push" : "New monitor"}</span>
               <span className="font-normal text-muted-foreground">/</span>
@@ -320,7 +320,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
             </button>
           </div>
 
-          <div className="flex flex-col gap-3.5 px-[18px] py-3.5">
+          <div className="flex flex-col gap-3 px-4 py-3.5">
             <div className={fld}>
               <label htmlFor="push-name" className={lab}>
                 Name
@@ -438,7 +438,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
             </div>
           </div>
 
-          <div className="flex items-center gap-2 border-t px-[18px] py-3">
+          <div className="flex items-center gap-2 border-t px-4 py-3">
             <span className="text-sm text-muted-foreground">A warn shows on Watch and calls nobody. A fail opens it.</span>
             <span className="flex-1" />
             {serviceOk(service) ? null : <span className="text-sm text-muted-foreground">{serviceMissing}</span>}

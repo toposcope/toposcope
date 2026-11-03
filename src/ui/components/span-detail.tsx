@@ -49,7 +49,7 @@ function Row({ field, wideKey = false }: { field: SpanField; wideKey?: boolean }
   return (
     <div
       className={cn(
-        "grid min-h-7 items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-[5px] last:border-0",
+        "grid min-h-7 items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-1 last:border-0",
         wideKey
           ? "grid-cols-[136px_minmax(0,1fr)] @max-[300px]:grid-cols-[100px_minmax(0,1fr)]"
           : "grid-cols-[104px_minmax(0,1fr)] @max-[300px]:grid-cols-[76px_minmax(0,1fr)]",
@@ -180,7 +180,7 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
         <button
           type="button"
           title={crumb.title}
-          className="flex w-full shrink-0 items-center gap-1.5 border-b bg-[oklch(0.141_0.005_285.823/60%)] px-2.5 py-[5px] text-left hover:bg-[oklch(0.274_0.006_286.033/60%)]"
+          className="flex w-full shrink-0 items-center gap-1.5 border-b bg-[oklch(0.141_0.005_285.823/60%)] px-2.5 py-1 text-left hover:bg-[oklch(0.274_0.006_286.033/60%)]"
           onClick={crumb.onBack}
         >
           <span className="text-sm text-[oklch(0.906_0.014_84)]">‹</span>
@@ -251,7 +251,7 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
               <>
                 <GroupHead>Where it entered</GroupHead>
                 <dl className="mx-3 overflow-hidden rounded-lg border">
-                  <div className="grid min-h-7 grid-cols-[104px_minmax(0,1fr)] items-start gap-2 px-2.5 pt-1.5 pb-[5px] @max-[300px]:grid-cols-[76px_minmax(0,1fr)]">
+                  <div className="grid min-h-7 grid-cols-[104px_minmax(0,1fr)] items-start gap-2 px-2.5 pt-1.5 pb-1 @max-[300px]:grid-cols-[76px_minmax(0,1fr)]">
                     <dt className="truncate font-mono text-xs leading-4 text-muted-foreground">toposcope</dt>
                     <dd className="font-mono text-xs break-words">
                       {entered.value}

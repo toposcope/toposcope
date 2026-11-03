@@ -73,7 +73,7 @@ function CopyField({ text, children }: { text: string; children: ReactNode }) {
       <span className="min-w-0 flex-1 truncate font-mono text-sm">{children}</span>
       <button
         type="button"
-        className="h-6 shrink-0 rounded-sm border border-input px-[9px] text-xs hover:bg-accent"
+        className="h-6 shrink-0 rounded-sm border border-input px-2 text-xs hover:bg-accent"
         onClick={() => {
           void navigator.clipboard.writeText(text);
           toast.success("Copied");
@@ -522,7 +522,7 @@ export function PasteDialog({
             </div>
           ) : null}
           {p ? (
-            <div className="flex flex-col gap-2.5 rounded-lg border border-white/10 bg-background/60 px-3 py-2.5">
+            <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-background/60 px-3 py-2.5">
               <p className="text-sm text-muted-foreground">
                 An <span className="text-foreground">{p.kind}</span> minted by <span className="font-mono text-foreground">{p.name}</span>
                 {facts.length ? ` · ${facts.join(" · ")}` : ""}

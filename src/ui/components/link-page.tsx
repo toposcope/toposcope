@@ -120,8 +120,8 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
         ) : null}
         <Armed armed={armed} onArm={() => setArmed(true)} onDisarm={() => setArmed(false)} onConfirm={() => void revoke()} label="Revoke" confirm="Sure? Revoke" form="button" className="text-danger-fg" />
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3.5 px-6 pt-4 pb-6 lg:grid-cols-[420px_minmax(0,1fr)]">
-        <div className="flex flex-col gap-3.5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 px-6 pt-4 pb-6 lg:grid-cols-[420px_minmax(0,1fr)]">
+        <div className="flex flex-col gap-3">
           <section className={card}>
             <span className="text-sm text-muted-foreground">Which way, and what</span>
             <div className={kv}>
@@ -218,8 +218,8 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
             <span className="text-sm text-muted-foreground">Made {new Date(link.created_at).toISOString().slice(0, 16).replace("T", " ")} · key pasted then</span>
           </section>
         </div>
-        <div className="flex min-h-0 flex-col gap-3.5">
-          <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
+        <div className="flex min-h-0 flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <section className={card}>
               <span className="text-sm text-muted-foreground">Position</span>
               <span className="font-mono text-xl font-semibold">{link.position.toLocaleString("en-US")}</span>
@@ -246,7 +246,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
           </div>
           {lines.length > 0 ? (
             <section aria-label="By kind" className="shrink-0 overflow-hidden rounded-xl border border-white/10 bg-surface-2">
-              <div className="flex items-baseline gap-2.5 border-b border-white/[0.06] px-4 py-3">
+              <div className="flex items-baseline gap-2 border-b border-white/[0.06] px-4 py-3">
                 <span className="text-base font-medium text-foreground">By kind</span>
                 <span className="text-sm text-muted-foreground">what this link carries, each on the one position above</span>
               </div>

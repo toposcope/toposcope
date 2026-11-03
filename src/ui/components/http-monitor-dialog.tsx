@@ -420,7 +420,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto rounded-xl border-white/12 bg-overlay p-0">
         <form className="flex min-w-0 flex-col" onSubmit={(e) => void submit(e)}>
-          <div className="flex min-w-0 items-center gap-2.5 border-b border-white/[0.08] px-[18px] py-3">
+          <div className="flex min-w-0 items-center gap-2 border-b border-white/[0.08] px-4 py-3">
             {editing ? (
               <span className="shrink-0 text-sm text-muted-foreground">HTTP(S)</span>
             ) : (
@@ -480,7 +480,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
 
           <div className="grid min-h-[520px] grid-cols-1 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-3 border-white/[0.08] px-4 py-3.5 md:border-r">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">Response</span>
                 <span className="font-mono text-xs text-muted-foreground">
                   from this node{result ? ` · ${clock(result.at)}` : ""}
@@ -495,7 +495,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
               ) : (
                 <>
                   {response ? (
-                    <div className="flex items-center gap-2.5 text-sm">
+                    <div className="flex items-center gap-2 text-sm">
                       <span className="font-mono text-sm">
                         {response.status} {response.status_text}
                       </span>
@@ -508,7 +508,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2.5 text-sm">
+                    <div className="flex items-center gap-2 text-sm">
                       <span className="font-mono text-sm text-danger-fg">No response</span>
                       <span className="font-mono text-danger-fg">{result.error}</span>
                     </div>
@@ -574,7 +574,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                   ) : null}
 
                   {result.cert ? (
-                    <div className="flex items-center gap-2.5 text-sm">
+                    <div className="flex items-center gap-2 text-sm">
                       <span className="text-muted-foreground">certificate</span>
                       <span className="min-w-0 truncate font-mono">
                         {result.cert.subject || new URL(result.url).hostname} · expires {mmdd(result.cert.valid_to)} ·{" "}
@@ -588,7 +588,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
 
                   {response && shownHeader ? (
                     <div className="flex flex-col gap-1 text-sm">
-                      <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2">
                         <span className="text-muted-foreground">headers</span>
                         <button
                           type="button"
@@ -743,7 +743,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
               )}
             </div>
 
-            <div className="flex min-w-0 flex-col gap-2.5 px-4 py-3.5">
+            <div className="flex min-w-0 flex-col gap-2 px-4 py-3.5">
               <ConditionsPanel kind="http" lines={lines} setLines={setLines} results={lineResult} none="any 2xx passes" />
 
               <RunCallsRows
@@ -815,7 +815,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                         placeholder="Authorization: Bearer …"
                         onChange={(e) => setReqHeaders(e.target.value)}
                         className={cn(
-                          "resize-y rounded-md border bg-transparent px-[9px] py-[7px] font-mono text-sm leading-[1.6] outline-none placeholder:text-faint focus-visible:border-foreground/40",
+                          "resize-y rounded-md border bg-transparent px-2 py-1.5 font-mono text-sm leading-[1.6] outline-none placeholder:text-faint focus-visible:border-foreground/40",
                           headersError ? "border-danger" : "border-white/15",
                         )}
                       />
@@ -836,7 +836,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
                           spellCheck={false}
                           rows={Math.max(1, reqBody.split("\n").length)}
                           onChange={(e) => setReqBody(e.target.value)}
-                          className="resize-y rounded-md border border-white/15 bg-transparent px-[9px] py-[7px] font-mono text-sm leading-[1.6] outline-none focus-visible:border-foreground/40"
+                          className="resize-y rounded-md border border-white/15 bg-transparent px-2 py-1.5 font-mono text-sm leading-[1.6] outline-none focus-visible:border-foreground/40"
                         />
                       </label>
                     ) : null}
@@ -846,7 +846,7 @@ export function HttpMonitorDialog({ open, onOpenChange, draft, onBack, onCreate,
             </div>
           </div>
 
-          <div className="flex items-center gap-2 border-t border-white/[0.08] px-[18px] py-3">
+          <div className="flex items-center gap-2 border-t border-white/[0.08] px-4 py-3">
             <span role="status" className={cn("min-w-0 text-sm", problem ? "text-danger-fg" : "text-muted-foreground")}>
               {problem ? (
                 problem

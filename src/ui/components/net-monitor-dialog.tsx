@@ -419,7 +419,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto rounded-xl border-white/12 bg-overlay p-0">
         <form className="flex min-w-0 flex-col" onSubmit={(e) => void submit(e)}>
-          <div className="flex min-w-0 items-center gap-2.5 border-b border-white/[0.08] px-[18px] py-3">
+          <div className="flex min-w-0 items-center gap-2 border-b border-white/[0.08] px-4 py-3">
             {editing ? (
               <span className="shrink-0 text-sm text-muted-foreground">TCP · certificate</span>
             ) : (
@@ -474,7 +474,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
 
           <div className="grid min-h-[420px] grid-cols-1 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-3 border-white/[0.08] px-4 py-3.5 md:border-r">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">Answer</span>
                 <span className="font-mono text-xs text-muted-foreground">
                   from this node{run ? ` · ${clock(run.at)}` : ""}
@@ -491,7 +491,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                 <>
                   {run.connected ? (
                     // 18x: "connected · TLS 1.3 via STARTTLS" on a certificate monitor, the address on a TCP one.
-                    <div className="flex items-center gap-2.5 text-sm">
+                    <div className="flex items-center gap-2 text-sm">
                       <span className="font-mono text-sm">connected</span>
                       <span className="font-mono text-muted-foreground">
                         {run.cert ? tlsWords(run.protocol, run.starttls) : run.address}
@@ -502,7 +502,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2.5 text-sm">
+                    <div className="flex items-center gap-2 text-sm">
                       <span className="font-mono text-sm text-danger-fg">No connection</span>
                       <span className="font-mono text-danger-fg">{run.error}</span>
                     </div>
@@ -569,7 +569,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                   {run.cert ? (
                     // 18x: when it expires, the name it is for, and who issued it.
                     <div className="flex flex-col gap-2 rounded-md border border-white/10 bg-surface-1 px-3 py-2.5 text-sm">
-                      <span className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex min-w-0 items-center gap-2">
                         <span className="w-[84px] shrink-0 text-muted-foreground">certificate</span>
                         <span className="min-w-0 truncate font-mono">
                           expires {mmdd(run.cert.valid_to)} · {certLeft !== null ? formatCertShort(certLeft) : "—"}
@@ -578,7 +578,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                           <AddChip line="cert > 14d" onAdd={addPicked} />
                         </span>
                       </span>
-                      <span className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex min-w-0 items-center gap-2">
                         <span className="w-[84px] shrink-0 text-muted-foreground">name</span>
                         <span className="min-w-0 truncate font-mono" title={run.cert.names.join(", ")}>
                           {run.cert.subject || run.cert.names[0] || "—"}
@@ -589,7 +589,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
                           </span>
                         ) : null}
                       </span>
-                      <span className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex min-w-0 items-center gap-2">
                         <span className="w-[84px] shrink-0 text-muted-foreground">issuer</span>
                         <span className="min-w-0 truncate font-mono text-muted-foreground">{run.cert.issuer || "—"}</span>
                       </span>
@@ -602,7 +602,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
               )}
             </div>
 
-            <div className="flex min-w-0 flex-col gap-2.5 px-4 py-3.5">
+            <div className="flex min-w-0 flex-col gap-2 px-4 py-3.5">
               <ConditionsPanel
                 kind={source}
                 lines={lines}
@@ -659,7 +659,7 @@ export function NetMonitorDialog({ open, onOpenChange, draft, onBack, onCreate, 
             </div>
           </div>
 
-          <div className="flex items-center gap-2 border-t border-white/[0.08] px-[18px] py-3">
+          <div className="flex items-center gap-2 border-t border-white/[0.08] px-4 py-3">
             <span role="status" className={cn("min-w-0 text-sm", problem ? "text-danger-fg" : "text-muted-foreground")}>
               {problem ? (
                 problem

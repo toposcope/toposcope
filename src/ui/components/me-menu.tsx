@@ -111,7 +111,7 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[248px] p-1">
-        <div className="flex flex-col gap-[3px] border-b border-white/[0.08] px-2 pt-2 pb-2.5">
+        <div className="flex flex-col gap-0.5 border-b border-white/[0.08] px-2 pt-2 pb-2.5">
           <span className="truncate text-sm font-semibold">{me.name}</span>
           {me.email ? <span className="truncate font-mono text-xs text-muted-foreground">{me.email}</span> : null}
           <span className="text-xs text-muted-foreground">{roleWords[me.role]}</span>
@@ -145,7 +145,7 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         <section aria-label="New backup codes" className="fixed top-[80px] left-1/2 z-40 flex w-[560px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 rounded-xl border border-zinc-700 bg-surface-2 px-7 py-6">
           <h2 className="m-0 text-lg font-semibold">Ten new backup codes</h2>
           <span className="text-sm text-muted-foreground">Each works once, in place of the six digits. Shown now and never again; the earlier ten no longer work.</span>
-          <div className="grid grid-cols-2 gap-x-7 gap-y-2.5 rounded-xl border border-dashed border-plate bg-ground px-6 py-5 font-mono text-lg tracking-[0.06em]">
+          <div className="grid grid-cols-2 gap-x-7 gap-y-2 rounded-xl border border-dashed border-plate bg-ground px-6 py-5 font-mono text-lg tracking-[0.06em]">
             {codes.map((code, i) => (
               <span key={code}>
                 <i className="mr-2.5 inline-block w-[18px] text-sm text-faint not-italic">{i + 1}</i>
@@ -153,7 +153,7 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
               </span>
             ))}
           </div>
-          <div className="flex gap-2.5">
+          <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(codes.join("\n")).then(() => toast.success("Copied"))}>
               Copy all
             </Button>
@@ -191,7 +191,7 @@ export function MeMenu({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
               ))}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-3.5">
+          <div className="flex flex-wrap items-center gap-3">
             {browsers.length > 1 ? (
               <Armed
                 form="button"

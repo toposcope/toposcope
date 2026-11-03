@@ -15,7 +15,7 @@ type Props = {
 
 function FingerprintsIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
       <path d="M12 3v18" strokeDasharray="2.5 2.5" />
       <path d="M4 8h4" />
       <path d="M4 16h4" />
@@ -49,7 +49,7 @@ function SourceCard({
       title={disabled ? "Save a search first" : undefined}
       className="flex min-h-[170px] min-w-0 flex-col gap-2 rounded-lg border border-white/12 bg-surface-2 p-3.5 text-left outline-none hover:border-white/40 focus-visible:border-foreground/40 disabled:opacity-50 disabled:hover:border-white/12"
     >
-      <span className="flex items-center gap-2.5">
+      <span className="flex items-center gap-2">
         <span className="flex size-[26px] items-center justify-center rounded-md bg-control text-foreground">
           {icon}
         </span>
@@ -69,7 +69,7 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="lg" className="max-h-[calc(100vh-32px)] overflow-y-auto p-0">
-        <div className="flex items-center gap-3 border-b px-[18px] py-3.5">
+        <div className="flex items-center gap-3 border-b px-4 py-3.5">
           <DialogTitle>New monitor</DialogTitle>
           <DialogDescription>Where do its results come from?</DialogDescription>
           <button
@@ -81,7 +81,7 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
             <X className="size-3.5" />
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-3 p-[18px] sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
           <SourceCard
             icon={<Search className="size-3.5" />}
             title="Saved search"
@@ -139,7 +139,7 @@ export function NewMonitorDialog({ open, onOpenChange, example, canSearch, onPic
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3 border-t px-[18px] py-3">
+        <div className="flex items-center gap-3 border-t px-4 py-3">
           <span className="text-sm text-muted-foreground">
             Every result becomes a log row: <span className="font-mono text-foreground">monitor:&lt;name&gt;</span> in
             Search.

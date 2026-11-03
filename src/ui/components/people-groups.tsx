@@ -126,7 +126,7 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
 
   return (
     <section aria-label="People" className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
-      <div className="flex flex-wrap items-baseline gap-2.5 px-4 py-2.5">
+      <div className="flex flex-wrap items-baseline gap-2 px-4 py-2.5">
         <h2 className="m-0 text-base font-medium">People</h2>
         <span className="text-sm text-muted-foreground">sign in to this instance and see what their role lets them</span>
       </div>
@@ -225,7 +225,7 @@ export function PeopleGroup(props: { body: PeopleBody; nowMs: number; isOwner: b
 export function PeopleCards() {
   const card = "flex flex-col gap-1.5 rounded-xl border border-white/10 bg-surface-2 px-4 py-3.5";
   return (
-    <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
       <section className={card}>
         <span className="text-base font-medium">Who did what</span>
         <span className="text-sm leading-[1.5] text-muted-foreground">Notes, monitors, retention and every Access change carry the name of the person who made them. Machines keep their token's name.</span>
@@ -263,7 +263,7 @@ export function ServiceAccountsGroup(props: { accounts: PersonRow[]; nowMs: numb
   const col = "grid grid-cols-[minmax(0,1fr)_150px_160px_72px] items-center gap-3";
   return (
     <section aria-label="Service accounts" className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
-      <div className="flex flex-wrap items-baseline gap-2.5 px-4 py-2.5">
+      <div className="flex flex-wrap items-baseline gap-2 px-4 py-2.5">
         <h2 className="m-0 text-base font-medium">Service accounts</h2>
         <span className="text-sm text-muted-foreground">People rows that cannot sign in; they only hold tokens. For scripts that are not a person.</span>
       </div>
@@ -314,17 +314,17 @@ export function AgentsGroup(props: { agents: PersonRow[]; nowMs: number; isOwner
     toast.success(`${p.name} revoked; what it saved stays`);
     props.onChanged();
   }
-  const col = "grid grid-cols-[110px_minmax(0,1fr)_140px_160px_minmax(0,260px)_90px] items-center gap-3.5";
+  const col = "grid grid-cols-[110px_minmax(0,1fr)_140px_160px_minmax(0,260px)_90px] items-center gap-3";
   return (
     <section aria-label="Agents" className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
-      <div className="flex flex-wrap items-baseline gap-2.5 border-b border-white/[0.06] px-4 py-2.5">
+      <div className="flex flex-wrap items-baseline gap-2 border-b border-white/[0.06] px-4 py-2.5">
         <h2 className="m-0 text-base font-medium">Agents</h2>
         <span className="text-sm text-muted-foreground">service accounts made for a coding agent</span>
       </div>
       {props.agents.map((p, i) => {
         const used = p.tokens.reduce<number | null>((m, t) => (t.last_used_at && (!m || t.last_used_at > m) ? t.last_used_at : m), null);
         return (
-          <div key={p.id} id={`agent-${p.id}`} className={cn(col, i > 0 && "border-t border-white/[0.06]", "px-4 py-[11px] text-sm")}>
+          <div key={p.id} id={`agent-${p.id}`} className={cn(col, i > 0 && "border-t border-white/[0.06]", "px-4 py-3 text-sm")}>
             <span className="inline-flex h-6 items-center gap-1.5 justify-self-start rounded-md border border-white/10 px-2 text-xs whitespace-nowrap text-zinc-300">✦ agent</span>
             <span className="flex min-w-0 flex-col">
               <span className="truncate font-mono text-foreground">{p.name}</span>
@@ -392,7 +392,7 @@ function ShownOnce(props: { label: string; value: string; note: React.ReactNode 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-dashed border-plate px-4 py-3.5">
       <span className={cn(lab, "text-plate")}>{props.label}</span>
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">{props.value}</code>
         <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(props.value).then(() => toast.success("Copied"))}>
           Copy
@@ -478,7 +478,7 @@ export function InviteSheet(props: { onClose: () => void; onInvited: () => void 
       {link ? (
         <ShownOnce label="Shown once" value={link} note={'Shows under People as "invite not used yet" until they sign in. Cancel it there.'} />
       ) : null}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         {link ? (
           <Button type="button" onClick={props.onClose}>
             Done

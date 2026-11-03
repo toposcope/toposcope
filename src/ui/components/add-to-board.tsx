@@ -7,7 +7,7 @@ import { BOARD_PANEL_MAX } from "../boards";
 export type BoardChoice = { id: string; name: string; count: number };
 
 const row =
-  "flex h-[26px] w-full items-center gap-2.5 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
+  "flex h-[26px] w-full items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45";
 
 /** The boards, with their panel counts, then New board… (39e). A full board takes no more. */
 export function AddToBoardList({
@@ -73,7 +73,7 @@ export function AddToBoardButton({
         <button
           type="button"
           className={cn(
-            "h-[26px] shrink-0 rounded-md border border-input px-[9px] text-sm whitespace-nowrap hover:bg-accent",
+            "h-[26px] shrink-0 rounded-md border border-input px-2 text-sm whitespace-nowrap hover:bg-accent",
             className,
           )}
         >

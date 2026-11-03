@@ -198,7 +198,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
             <DialogTitle>{made.name} created</DialogTitle>
             <DialogDescription>Copy the secret now. It is not shown again; a lost secret means a new share.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3">
             <DialogField label="Secret · keep it on your backend">
               <DialogControl className="border-plate/50 pr-1">
                 <code className="min-w-0 flex-1 truncate font-mono text-sm">{made.secret}</code>
@@ -253,7 +253,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
             <DialogTitle>{mode === "new" ? "New share" : `Edit ${editing?.name}`}</DialogTitle>
             <DialogDescription>Everything read with this share is inside this scope. Series and counts only.</DialogDescription>
           </DialogHeader>
-          <form className="flex flex-col gap-3.5" onSubmit={(e) => void onSave(e)}>
+          <form className="flex flex-col gap-3" onSubmit={(e) => void onSave(e)}>
             <DialogField label="Name">{field("name", { id: "share-name", placeholder: "agental-console", disabled: mode === "edit" })}</DialogField>
             <div className={sectionLabel}>Scope</div>
             <DialogField label="Metric names">
@@ -327,7 +327,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
             const soon = expiresSoon(share, now);
             if (arming === share.name) {
               return (
-                <div key={share.name} className="my-2 flex flex-col gap-2.5 rounded-lg border border-danger/45 bg-danger/[0.06] p-3">
+                <div key={share.name} className="my-2 flex flex-col gap-2 rounded-lg border border-danger/45 bg-danger/[0.06] p-3">
                   <div className="flex items-start gap-3">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <span className="text-sm font-semibold">{share.name}</span>

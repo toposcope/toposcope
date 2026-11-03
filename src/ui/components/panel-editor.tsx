@@ -164,7 +164,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
               <button
                 type="button"
                 aria-pressed={merging}
-                className={cn("px-2 py-[3px] whitespace-nowrap", merging ? "bg-accent text-foreground" : "text-muted-foreground")}
+                className={cn("px-2 py-0.5 whitespace-nowrap", merging ? "bg-accent text-foreground" : "text-muted-foreground")}
                 // Names given to a split's values mean nothing once it merges.
                 onClick={() => (widget.metricSplit ? onPatch({ metricSplit: null, names: {} }) : undefined)}
               >
@@ -175,7 +175,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                 aria-pressed={!merging}
                 disabled={merging}
                 title={merging ? "Pick a label to split by under the chart; a panel merges or splits, never both." : undefined}
-                className={cn("px-2 py-[3px] whitespace-nowrap disabled:opacity-50", !merging ? "bg-accent text-foreground" : "text-muted-foreground")}
+                className={cn("px-2 py-0.5 whitespace-nowrap disabled:opacity-50", !merging ? "bg-accent text-foreground" : "text-muted-foreground")}
               >
                 Split one by a label
               </button>

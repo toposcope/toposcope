@@ -467,13 +467,13 @@ export function CompareFold({
       title={title}
       className={cn(
         "mt-1.5 mr-2.5 min-w-0 shrink-0 overflow-hidden rounded-md border bg-surface-1",
-        showStack ? "flex flex-col" : "flex h-[30px] items-center gap-[7px] pr-1 pl-2.5",
+        showStack ? "flex flex-col" : "flex h-[30px] items-center gap-1.5 pr-1 pl-2.5",
       )}
       style={{ borderColor: "oklch(0.906 0.014 84 / 28%)", marginLeft: plotLeft }}
     >
       {showStack ? (
         <>
-          <div className="flex h-[30px] min-w-0 items-center gap-[7px] pr-1 pl-2.5">
+          <div className="flex h-[30px] min-w-0 items-center gap-1.5 pr-1 pl-2.5">
             <MarkGlyph kind={mark.kind} size={11} />
             <span className="min-w-[56px] truncate text-sm font-semibold whitespace-nowrap">
               vs {formatChangeMarkLabel(mark)}
@@ -679,7 +679,7 @@ function StackRow({
       })
     : "";
   return (
-    <div className="flex h-[30px] min-w-0 items-center gap-[7px] border-t border-white/[0.07] px-2.5">
+    <div className="flex h-[30px] min-w-0 items-center gap-1.5 border-t border-white/[0.07] px-2.5">
       <span
         className="size-2 shrink-0 rounded-sm"
         style={{ background: color }}

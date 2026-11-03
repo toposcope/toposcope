@@ -200,14 +200,14 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
               <DialogTitle>{panels.length > 1 && picked.length !== 1 ? "Share panels" : "Share this panel"}</DialogTitle>
               <DialogDescription>Another site will see these numbers, and nothing else: series and counts, never log lines.</DialogDescription>
             </DialogHeader>
-            <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-3">
               {panels.length > 1 && picked.length !== 1 ? (
                 <div className="flex flex-col rounded-lg border border-white/10">
                   {panels.map((p) => {
                     const r = readsBy.get(p.widget.id)!;
                     const off = !("reads" in r) && r.offers.length === 0;
                     return (
-                      <label key={p.widget.id} className={`flex items-center gap-2.5 border-b border-white/[0.08] px-3 py-2 text-sm last:border-b-0 ${off ? "text-faint" : ""}`}>
+                      <label key={p.widget.id} className={`flex items-center gap-2 border-b border-white/[0.08] px-3 py-2 text-sm last:border-b-0 ${off ? "text-faint" : ""}`}>
                         <input
                           type="checkbox"
                           disabled={off}
@@ -347,7 +347,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
               <DialogTitle>Share this panel</DialogTitle>
               <DialogDescription className="font-mono text-sm">{scopeWords(scope)}</DialogDescription>
             </DialogHeader>
-            <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-3">
               <div className={section}>A new share</div>
               <DialogField label="Name" help="Proposed from the service. It names the share in its use rows.">
                 <DialogControl>
@@ -390,7 +390,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
               </div>
             ) : null}
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
-              <div className="flex min-w-0 flex-col gap-3.5">
+              <div className="flex min-w-0 flex-col gap-3">
                 {done.secret ? (
                   <Step n="1" title="The secret, on your backend" onCopy={() => copy(`TOPOSCOPE_SHARE=${done.secret}`, "Secret")}>
                     <div className="truncate rounded-md border border-plate/50 px-2.5 py-1.5 font-mono text-sm">TOPOSCOPE_SHARE={done.secret}</div>

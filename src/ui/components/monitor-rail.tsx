@@ -213,7 +213,7 @@ export function MonitorRail({
           </span>
         ) : null}
       </div>
-      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-2.5 gap-y-1.5 text-sm">
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-2 gap-y-1.5 text-sm">
         {push ? <PushRows monitor={monitor} nowMs={nowMs} /> : null}
         {http ? (
           <>

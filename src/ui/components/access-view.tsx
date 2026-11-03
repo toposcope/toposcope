@@ -227,15 +227,15 @@ export function AccessView(props: {
   }
 
   return (
-    <main className="min-h-0 flex-1 overflow-auto px-6 pt-[22px] pb-6">
+    <main className="min-h-0 flex-1 overflow-auto px-6 pt-6 pb-6">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-3.5">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">Access</h1>
           <span className="text-sm text-muted-foreground">
             Everything that sends logs here, copies rows between instances, or shows charts elsewhere · {rows.length} live
             {refusedToday > 0 ? <span className="text-danger-fg"> · {refusedToday} refused today</span> : null}
           </span>
-          <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-[2px]">
+          <span className="inline-flex rounded-lg border border-white/10 bg-overlay p-0.5">
             {(["all", "people", "tokens", "links", "shares"] as const).map((f) => (
               <button
                 key={f}
@@ -281,7 +281,7 @@ export function AccessView(props: {
             }
             return (
               <section key={g.filter} aria-label={g.title} className="overflow-hidden rounded-xl border border-white/10 bg-surface-2">
-                <div className="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
                   <h2 className="m-0 text-base font-medium">{g.title}</h2>
                   <span className="text-sm text-muted-foreground">{g.words}</span>
                   <div className="flex-1" />
@@ -433,7 +433,7 @@ export function LetSomeoneIn(props: {
     return (
       <>
         <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" />
-        <section aria-label="Agent made" className="fixed top-[70px] left-1/2 z-40 flex w-[900px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-[18px] rounded-xl border border-zinc-700 bg-surface-2 px-[26px] py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
+        <section aria-label="Agent made" className="fixed top-[70px] left-1/2 z-40 flex w-[900px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 rounded-xl border border-zinc-700 bg-surface-2 px-6 py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
           <AgentMade made={made} me={props.me ?? null} origin={window.location.origin} onDone={props.onClose} />
         </section>
       </>
@@ -443,7 +443,7 @@ export function LetSomeoneIn(props: {
   return (
     <>
     <div className="fixed inset-0 z-30 bg-black/55" aria-hidden="true" onClick={props.onClose} />
-    <section aria-label="Let someone in" className="fixed top-[62px] left-1/2 z-40 flex max-h-[calc(100vh-80px)] w-[960px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 overflow-auto rounded-xl border border-zinc-700 bg-surface-2 px-[26px] py-[22px] shadow-[0_30px_80px_rgba(0,0,0,.7)]">
+    <section aria-label="Let someone in" className="fixed top-[62px] left-1/2 z-40 flex max-h-[calc(100vh-80px)] w-[960px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col gap-4 overflow-auto rounded-xl border border-zinc-700 bg-surface-2 px-6 py-6 shadow-[0_30px_80px_rgba(0,0,0,.7)]">
       <div className="flex items-baseline gap-3">
         <h2 className="m-0 text-lg font-semibold">Let someone in</h2>
         <span className="text-sm text-muted-foreground">A token, an agent, a link or a share. Each says what it lets through before you make it.</span>
@@ -452,7 +452,7 @@ export function LetSomeoneIn(props: {
           Close
         </Button>
       </div>
-      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         {card("token", "↓", "#60a5fa", "Token", "Sends logs, metrics, traces or marks here. Nothing reads out.")}
         {card("agent", "✦", "#e7e1d3", "Agent", "A coding agent that reads here and, as an Operator, makes monitors and panels.")}
         {card("link", "⇄", "#e7e1d3", "Link", "Copies what this instance holds to another Toposcope, or from it.")}
@@ -489,7 +489,7 @@ export function LetSomeoneIn(props: {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <Button type="submit" disabled={!name.trim()}>
                 Make the token
               </Button>
@@ -510,7 +510,7 @@ export function LetSomeoneIn(props: {
               We copy from them · rows come here
             </label>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <Button type="button" onClick={() => props.onLink(way)}>
               Choose the scope and make the key
             </Button>

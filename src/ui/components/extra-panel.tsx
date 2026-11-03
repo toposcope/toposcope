@@ -1,3 +1,4 @@
+import { Columns2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { PanelNote, PanelNoteField } from "@/components/panel-words";
 import { WidgetCopyMenu } from "@/components/widget-copy-menu";
@@ -72,11 +73,11 @@ function ShareRow({ onShare, close }: { onShare: () => void; close: () => void }
 const dupCap = "Six panels is the cap — remove one to duplicate";
 
 export const extraSelectClass =
-  "h-[26px] min-w-0 rounded-md border border-input bg-overlay px-[5px] text-xs text-foreground";
+  "h-[26px] min-w-0 rounded-md border border-input bg-overlay px-1 text-xs text-foreground";
 
 const iconBtn = panelIconButton;
 
-const overflowRow = cn(panelMenuRow, "gap-2.5");
+const overflowRow = cn(panelMenuRow, "gap-2");
 
 function OverflowMenus({
   atCap,
@@ -341,10 +342,7 @@ export function ExtraPanel({
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={onDuplicate}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
-                    <rect x="3" y="5" width="8" height="14" rx="1.6" />
-                    <rect x="13" y="5" width="8" height="14" rx="1.6" opacity="0.5" />
-                  </svg>
+                  <Columns2 className="size-3" aria-hidden />
                 </button>
                 <WidgetCopyMenu
                   disabled={exportDisabled}

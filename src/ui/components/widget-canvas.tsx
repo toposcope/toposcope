@@ -538,7 +538,7 @@ export function WidgetCanvas({
           // #169: the title it was given; what the lines are is one hover away, and in its legend.
           return (
             <span
-              className="flex min-w-0 items-baseline gap-2 py-[3px]"
+              className="flex min-w-0 items-baseline gap-2 py-0.5"
               title={[widget.metric, ...(widget.lines ?? []).map((line) => line.metric)].join("\n")}
             >
               <span className="min-w-0 truncate text-sm font-semibold">{widget.title}</span>
@@ -550,7 +550,7 @@ export function WidgetCanvas({
         // one metric apart, are never cut (13c, 13d). The whole of both is one hover on the title.
         // #164: the name is cut to the room the panel gives it, and never reads as another metric.
         return (
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-[3px] font-mono text-xs">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 py-0.5 font-mono text-xs">
             <FitName
               lead={`${metricReading(view.kind, step, true, view.reading)} · `}
               name={view.name}
@@ -633,7 +633,7 @@ export function WidgetCanvas({
             ).map(([kind, label, hint]) => (
               <DropdownMenuItem
                 key={kind}
-                className="h-7 gap-2.5 text-sm"
+                className="h-7 gap-2 text-sm"
                 onSelect={() => onAdd(kind)}
               >
                 <span className="flex-1">{label}</span>

@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -101,10 +101,7 @@ export function HeaderField({ onHunt, disabled }: { onHunt: (q: string | null) =
           disabled && "opacity-50",
         )}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="text-muted-foreground">
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
+        <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         <input
           id="header-q"
           value={value}
@@ -113,7 +110,7 @@ export function HeaderField({ onHunt, disabled }: { onHunt: (q: string | null) =
           onChange={(e) => setValue(e.target.value)}
           className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
         />
-        <kbd className="rounded-md border border-white/10 px-[5px] font-mono text-2xs text-muted-foreground">/</kbd>
+        <kbd className="rounded-md border border-white/10 px-1 font-mono text-2xs text-muted-foreground">/</kbd>
       </div>
     </form>
   );

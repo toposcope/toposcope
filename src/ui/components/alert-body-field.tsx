@@ -113,7 +113,7 @@ export function AlertBodyField({
   return (
     <>
       <MonitorField label="Body">
-        <span className="flex items-center gap-2.5">
+        <span className="flex items-center gap-2">
           <MonitorSwitch
             label="Body"
             value={bodyKind}
@@ -329,7 +329,7 @@ export function TestCall({
   const clock = (iso: string) => iso.slice(11, 19);
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <Button size="lg"
           type="button"
           variant="outline"

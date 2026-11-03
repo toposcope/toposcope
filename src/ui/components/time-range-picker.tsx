@@ -147,11 +147,11 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
             disabled={disabled}
             className="gap-1.5 px-2.5 font-normal data-[state=open]:border-ring data-[state=open]:bg-secondary"
           >
-            <Clock className="size-[13px]" />
+            <Clock className="size-3.5" />
             <span className="font-mono text-xs">
               {rangeTriggerLabel(range, from, to)}
             </span>
-            <ChevronDown className="size-2.5 text-muted-foreground" />
+            <ChevronDown className="size-3 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -160,7 +160,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
         >
           <div className="flex flex-col gap-1">
             <span className={sectionLabel}>Quick</span>
-            <div className="grid grid-cols-5 gap-[3px]">
+            <div className="grid grid-cols-5 gap-0.5">
               {rangePresets.map((preset) => {
                 const on = range === preset;
                 return (
@@ -266,14 +266,14 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
                       : "Pick the window on a calendar — one range, UTC, to the millisecond"
                   }
                   className={cn(
-                    "flex w-full items-center gap-[9px] rounded-md border px-2 py-1.5 text-left",
+                    "flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left",
                     absOpen
                       ? "border-ring bg-secondary"
                       : "border-input bg-transparent hover:border-ring",
                   )}
                   onClick={() => setAbsOpen((v) => !v)}
                 >
-                  <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     {(
                       [
                         ["From", absFromMs, ""],
@@ -282,7 +282,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
                     ).map(([label, val, affix]) => (
                       <span
                         key={label}
-                        className="flex min-w-0 items-center gap-[7px]"
+                        className="flex min-w-0 items-center gap-1.5"
                       >
                         <span className="w-7 shrink-0 text-xs text-muted-foreground">
                           {label}
@@ -303,7 +303,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
                       </span>
                     ))}
                   </span>
-                  <Calendar className="size-[13px] shrink-0 text-muted-foreground" />
+                  <Calendar className="size-3.5 shrink-0 text-muted-foreground" />
                 </button>
                 {absOpen ? (
                   <AbsoluteRangeCalendar
