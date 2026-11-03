@@ -638,7 +638,7 @@ Body:
 
 ### PUT /api/saved-searches/{id}/panels/{panel}
 
-Move, resize or change one panel; a field left out stays, and panels it lands on move down.
+Move, resize or change one panel; a field left out stays, panels it lands on move down, and every panel floats up so no hole is left.
 
 Role: **Viewer** · `panel_put`
 

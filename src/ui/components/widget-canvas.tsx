@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { ExtraPanel } from "@/components/extra-panel";
 import { AddToBoardButton, type BoardChoice } from "@/components/add-to-board";
@@ -46,6 +46,8 @@ import {
   type WidgetSeriesFile,
 } from "@/export-series";
 import { cn } from "@/lib/utils";
+import { GridHandles, GridSizeChip, useGridGestures, useGridSlide } from "../grid-gestures";
+import { gravity, gridEdges } from "../../shared/grid-gravity";
 import type { FacetValue, HistogramBucket, SearchAggResult } from "@/types";
 import type {
   HistogramChartKind,
@@ -56,25 +58,19 @@ import { histogramRetentionMs } from "../histogram-zoom";
 import {
   addHbar,
   addHistogram,
+  widgetMinSize,
   widgetTitle,
   addStat,
   attrSeriesKey,
+  clampWidget,
   duplicateWidget,
   facetSeriesKey,
   gridRows,
   isPinnedHistogram,
   maxWidgetH,
   maxWidgets,
-  minHbarH,
-  minStatH,
-  minStatW,
-  minTimeseriesH,
-  minTimeseriesW,
-  minWidgetW,
-  moveWidget,
   patchWidget,
   removeWidget,
-  resizeWidget,
   seriesQueryKey,
   widgetGapPx,
   widgetGridCols,
@@ -124,22 +120,6 @@ type Props = {
   addToBoard?: { boards: BoardChoice[]; onPick: (widget: WidgetDef, boardId: string | null) => void } | null;
 };
 
-type Drag = {
-  id: string;
-  mode: "move" | "resize";
-  pointerId: number;
-  sx: number;
-  sy: number;
-  ox: number;
-  oy: number;
-  x0: number;
-  y0: number;
-  w0: number;
-  h0: number;
-};
-
-type Cell = { x: number; y: number; w: number; h: number };
-
 const capTitle = "Six panels is the cap — remove one to add another";
 
 function lookupKey(widget: WidgetDef): string {
@@ -149,49 +129,6 @@ function lookupKey(widget: WidgetDef): string {
   return seriesQueryKey(widgetSeriesQuery(widget));
 }
 
-function minSize(widget: WidgetDef): { w: number; h: number } {
-  switch (widget.kind) {
-    case "stat":
-      return { w: minStatW, h: minStatH };
-    case "hbar":
-      return { w: minWidgetW, h: minHbarH };
-    case "timeseries":
-      return { w: minTimeseriesW, h: minTimeseriesH };
-    default: {
-      const _exhaustive: never = widget.kind;
-      return _exhaustive;
-    }
-  }
-}
-
-function ResizeHandle({
-  active,
-  label,
-  onPointerDown,
-}: {
-  active: boolean;
-  label: string;
-  onPointerDown: (e: PointerEvent) => void;
-}) {
-  return (
-    <button
-      type="button"
-      data-widget-handle="resize"
-      title={label}
-      aria-label={label}
-      className={cn(
-        "absolute right-[3px] bottom-[3px] z-10 flex size-[18px] cursor-se-resize items-center justify-center rounded p-0 text-muted-foreground/70",
-        active ? "bg-ring/45 text-foreground" : "bg-transparent",
-      )}
-      onPointerDown={onPointerDown}
-    >
-      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-        <path d="M11 4 4 11" />
-        <path d="M11 8.5 8.5 11" />
-      </svg>
-    </button>
-  );
-}
 
 export function WidgetCanvas({
   head,
@@ -224,23 +161,16 @@ export function WidgetCanvas({
 }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const widgetsRef = useRef(widgets);
-  const dragRef = useRef<Drag | null>(null);
-  const ghostRef = useRef<Cell | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [compareLines, setCompareLines] = useState(1);
   // Share… (#236): the panels ticked when the dialog opens; null while it is shut.
   const [sharing, setSharing] = useState<string[] | null>(null);
-  const [drag, setDrag] = useState<Drag | null>(null);
-  const [ghost, setGhost] = useState<Cell | null>(null);
-  const [lift, setLift] = useState<{ dx: number; dy: number } | null>(null);
   const [armed, setArmed] = useState<string | null>(null);
   /** The panel being edited (#169, 17c–17d): its title and note are fields, its lines open under it. */
   const [editingId, setEditingId] = useState<string | null>(null);
   const held = useHeldView();
   const [fresh, setFresh] = useState<string | null>(null);
   widgetsRef.current = widgets;
-  dragRef.current = drag;
-  ghostRef.current = ghost;
 
   useEffect(() => {
     if (!live) {
@@ -262,7 +192,7 @@ export function WidgetCanvas({
   }, [fresh]);
 
   useEffect(() => {
-    if (!armed && !drag) {
+    if (!armed) {
       return;
     }
     function onKey(e: KeyboardEvent) {
@@ -270,60 +200,45 @@ export function WidgetCanvas({
         return;
       }
       e.preventDefault();
-      if (dragRef.current) {
-        finishDrag(false);
-        return;
-      }
       setArmed(null);
     }
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [armed, drag]);
-
-  useEffect(() => {
-    if (!drag) {
-      return;
-    }
-    function onMove(e: globalThis.PointerEvent) {
-      onPointerMove(e);
-    }
-    function onUp() {
-      finishDrag(true);
-    }
-    window.addEventListener("pointermove", onMove, true);
-    window.addEventListener("pointerup", onUp, true);
-    window.addEventListener("pointercancel", onUp, true);
-    return () => {
-      window.removeEventListener("pointermove", onMove, true);
-      window.removeEventListener("pointerup", onUp, true);
-      window.removeEventListener("pointercancel", onUp, true);
-    };
-  }, [drag]);
+  }, [armed]);
 
   const atCap = widgets.length >= maxWidgets;
   const extras = widgets.length > 1;
-  const displayWidgets = widgets.map((widget) => {
-    if (drag?.id === widget.id && drag.mode === "resize" && ghost) {
-      return { ...widget, w: ghost.w, h: ghost.h };
-    }
-    return widget;
+  // Sheet 44, E: the pinned plot keeps its corner; every other panel floats up, so a saved hole closes.
+  const anchored = new Set(widgets.filter(isPinnedHistogram).map((w) => w.id));
+  const settled = gravity(widgets, widgets.filter(isPinnedHistogram), anchored);
+  const pinnedNow = settled.find(isPinnedHistogram);
+  const extraRows = compareFold && !locked ? compareFoldExtraRows(compareLines) : 0;
+  const grid = useGridGestures({
+    gridRef,
+    cells: settled,
+    rowPx: widgetRowPx,
+    gapPx: widgetGapPx,
+    limits: { min: widgetMinSize, maxH: maxWidgetH, anchored },
+    // Rows under the pinned plot sit lower by the Compare fold's rows.
+    layoutRow: (row) => (pinnedNow && row >= pinnedNow.y + pinnedNow.h + extraRows ? row - extraRows : row),
+    onCommit: (next) => {
+      setArmed(null);
+      onWidgets(next.map((w) => clampWidget(w)));
+    },
+    disabled: locked,
   });
+  const displayWidgets = grid.cells;
+  useGridSlide(gridRef, displayWidgets.map((w) => `${w.id}:${w.x},${w.y},${w.w},${w.h}`).join(" "), grid.moving);
   const pinnedWidget = displayWidgets.find(isPinnedHistogram);
   /** Every metric a title could be read as: the canvas's own and the window's busiest. */
   const canvasMetricNames = [
     ...new Set([...widgets.flatMap((widget) => (widget.metric ? [widget.metric] : [])), ...metricNames]),
   ];
-  const extraRows = compareFold && !locked ? compareFoldExtraRows(compareLines) : 0;
-  const rows = gridRows(displayWidgets) + extraRows;
+  const rows = gridRows(displayWidgets) + extraRows + (grid.dragging ? 2 : 0);
   function canvasY(y: number): number {
     return pinnedWidget && y >= pinnedWidget.y + pinnedWidget.h ? y + extraRows : y;
   }
-  const dashGhost =
-    drag && ghost
-      ? drag.mode === "resize"
-        ? { x: drag.x0, y: drag.y0, w: drag.w0, h: drag.h0 }
-        : ghost
-      : null;
+  const dashGhost = grid.ghost;
 
   /** Each named line's metric, labels and sender's words, for the legend's card (17f). */
   function legendInfo(lines: PanelLines | null): Record<string, { metric: string; labels: string; description: string | null }> | undefined {
@@ -443,123 +358,6 @@ export function WidgetCanvas({
       setArmed(null);
       reveal(added.id, added.y + added.h);
     }
-  }
-
-  function beginDrag(e: PointerEvent, widget: WidgetDef, mode: "move" | "resize") {
-    if (e.button !== 0) {
-      return;
-    }
-    if (mode === "move" && isPinnedHistogram(widget)) {
-      return;
-    }
-    if (mode === "move" && (e.target as HTMLElement).closest("button, select, input, a")) {
-      return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    const grid = gridRef.current;
-    if (!grid) {
-      return;
-    }
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {
-      // jsdom
-    }
-    const rect = grid.getBoundingClientRect();
-    const colW = rect.width / widgetGridCols;
-    const rowH = widgetRowPx + widgetGapPx;
-    const next: Drag = {
-      id: widget.id,
-      mode,
-      pointerId: e.pointerId,
-      sx: e.clientX,
-      sy: e.clientY,
-      ox: Math.floor((e.clientX - rect.left) / colW) - widget.x,
-      oy: Math.floor((e.clientY - rect.top) / rowH) - widget.y,
-      x0: widget.x,
-      y0: widget.y,
-      w0: widget.w,
-      h0: widget.h,
-    };
-    setArmed(null);
-    setDrag(next);
-    setGhost({ x: widget.x, y: widget.y, w: widget.w, h: widget.h });
-    setLift({ dx: 0, dy: 0 });
-  }
-
-  function onPointerMove(e: { clientX: number; clientY: number }) {
-    const current = dragRef.current;
-    const grid = gridRef.current;
-    if (!current || !grid) {
-      return;
-    }
-    const rect = grid.getBoundingClientRect();
-    const colW = rect.width / widgetGridCols;
-    const rowH = widgetRowPx + widgetGapPx;
-    if (current.mode === "move") {
-      const x = Math.max(
-        0,
-        Math.min(
-          widgetGridCols - current.w0,
-          Math.floor((e.clientX - rect.left) / colW) - current.ox,
-        ),
-      );
-      const y = Math.max(0, Math.floor((e.clientY - rect.top) / rowH) - current.oy);
-      setLift({ dx: e.clientX - current.sx, dy: e.clientY - current.sy });
-      const prev = ghostRef.current;
-      if (!prev || prev.x !== x || prev.y !== y) {
-        setGhost({ x, y, w: current.w0, h: current.h0 });
-      }
-      return;
-    }
-    const widget = widgetsRef.current.find((item) => item.id === current.id);
-    const min = widget ? minSize(widget) : { w: minTimeseriesW, h: minTimeseriesH };
-    const w = Math.max(
-      min.w,
-      Math.min(widgetGridCols - current.x0, current.w0 + Math.round((e.clientX - current.sx) / colW)),
-    );
-    const h = Math.max(
-      min.h,
-      Math.min(maxWidgetH, current.h0 + Math.round((e.clientY - current.sy) / rowH)),
-    );
-    const prev = ghostRef.current;
-    if (!prev || prev.w !== w || prev.h !== h) {
-      setGhost({ x: current.x0, y: current.y0, w, h });
-    }
-  }
-
-  function finishDrag(commit: boolean) {
-    const current = dragRef.current;
-    const g = ghostRef.current;
-    if (!current) {
-      return;
-    }
-    dragRef.current = null;
-    ghostRef.current = null;
-    const grid = gridRef.current;
-    if (grid) {
-      try {
-        grid.releasePointerCapture(current.pointerId);
-      } catch {
-        // already released
-      }
-    }
-    setDrag(null);
-    setGhost(null);
-    setLift(null);
-    if (!commit || !g) {
-      return;
-    }
-    if (g.x === current.x0 && g.y === current.y0 && g.w === current.w0 && g.h === current.h0) {
-      return;
-    }
-    const list = widgetsRef.current;
-    if (current.mode === "move") {
-      onWidgets(moveWidget(list, current.id, g.x, g.y));
-      return;
-    }
-    onWidgets(resizeWidget(list, current.id, g.w, g.h));
   }
 
   function extraBody(widget: WidgetDef, data: SeriesData, updated: ReactNode) {
@@ -909,19 +707,14 @@ export function WidgetCanvas({
           gridTemplateColumns: `repeat(${widgetGridCols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${rows}, ${widgetRowPx}px)`,
           gap: widgetGapPx,
-          touchAction: "none",
-          cursor: drag?.mode === "resize" ? "se-resize" : undefined,
         }}
-        onPointerMove={onPointerMove}
-        onPointerUp={() => finishDrag(true)}
-        onPointerCancel={() => finishDrag(true)}
       >
         {dashGhost ? (
           <div
             className="z-0 rounded-lg border border-dashed border-ring bg-ring/10"
             style={{
               gridColumn: `${dashGhost.x + 1} / span ${dashGhost.w}`,
-              gridRow: `${canvasY(dashGhost.y) + 1} / span ${dashGhost.h + (drag?.id === pinnedWidget?.id ? extraRows : 0)}`,
+              gridRow: `${canvasY(dashGhost.y) + 1} / span ${dashGhost.h}`,
             }}
           />
         ) : null}
@@ -931,9 +724,11 @@ export function WidgetCanvas({
             <WidgetUpdated fetchedAt={data.fetchedAt} now={now} />
           ) : null;
           const pinned = isPinnedHistogram(widget);
-          const dragging = drag?.id === widget.id;
-          const sizing = dragging && drag?.mode === "resize";
-          const moving = dragging && drag?.mode === "move";
+          const moving = grid.moving === widget.id;
+          const sizing = grid.sizing === widget.id;
+          const dragging = moving || sizing;
+          // A moved panel stays drawn at its old cell, lifted under the pointer; the dashed cell is where it lands.
+          const at = moving && grid.movingFrom ? grid.movingFrom : widget;
           const isFresh = fresh === widget.id;
           const hbarRowsPainted = widget.kind === "hbar"
             ? hbarPaintedRows(widget.split, widget.attr, data.values ?? [], data.total, widget.n)
@@ -942,18 +737,19 @@ export function WidgetCanvas({
             <div
               key={widget.id}
               data-panel={widget.id}
+              data-grid-cell={widget.id}
               className={cn(
-                "relative min-h-0 min-w-0",
+                "group/cell relative min-h-0 min-w-0",
                 "transition-[box-shadow] duration-500",
                 isFresh ? "rounded-lg shadow-[0_0_0_3px_oklch(0.552_0.016_285.938_/_30%)]" : "",
               )}
               style={{
                 zIndex: dragging ? 30 : pinned ? 2 : 1,
-                gridColumn: `${widget.x + 1} / span ${widget.w}`,
-                gridRow: `${canvasY(widget.y) + 1} / span ${widget.h + (pinned ? extraRows : 0)}`,
+                gridColumn: `${at.x + 1} / span ${at.w}`,
+                gridRow: `${canvasY(at.y) + 1} / span ${at.h + (pinned ? extraRows : 0)}`,
                 transform:
-                  moving && lift
-                    ? `translate(${Math.round(lift.dx)}px, ${Math.round(lift.dy)}px)`
+                  moving && grid.lift
+                    ? `translate(${Math.round(grid.lift.dx)}px, ${Math.round(grid.lift.dy)}px)`
                     : undefined,
                 pointerEvents: moving ? "none" : undefined,
                 opacity: moving ? 0.96 : undefined,
@@ -1136,7 +932,7 @@ export function WidgetCanvas({
                       format,
                     );
                   }}
-                  onMovePointerDown={(e) => beginDrag(e, widget, "move")}
+                  onMovePointerDown={(e) => grid.beginMove(e, widget.id)}
                   addToBoard={
                     addToBoard && !locked
                       ? { boards: addToBoard.boards, onPick: (boardId) => addToBoard.onPick(widget, boardId) }
@@ -1146,13 +942,14 @@ export function WidgetCanvas({
                   {extraBody(widget, data, updated)}
                 </ExtraPanel>
               )}
-              {locked ? null : (
-              <ResizeHandle
-                active={Boolean(sizing)}
-                label={pinned ? "Resize histogram" : "Resize widget"}
-                onPointerDown={(e) => beginDrag(e, widget, "resize")}
-              />
+              {locked || (grid.dragging && !sizing) ? null : (
+                <GridHandles
+                  edges={gridEdges(pinned)}
+                  active={sizing ? grid.sizingEdge : null}
+                  onPointerDown={(e, edge) => grid.beginResize(e, widget.id, edge)}
+                />
               )}
+              {sizing ? <GridSizeChip w={widget.w} h={widget.h} /> : null}
             </div>
           );
         })}

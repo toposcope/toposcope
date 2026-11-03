@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Panels move and resize the same way on hunts and boards (sheet 44, E · Gravity). Drag a panel's head and it lands in the columns you drop it on: the panels in its way go down while you drag, so what you see is what you get on drop, and every panel floats up so no hole is left. Every panel has a handle on each edge: the right and bottom edges grow it and push what is in the way; the left and top edges move the border with the panels touching that side, one growing as the other shrinks, or shrink the panel when nothing touches it. A panel can be 16 rows tall, up from 8. A board's panels move and resize the same way; before, they stayed where Add to board put them. A hunt or board saved with a gap in its layout opens with the gap closed, and is saved that way at the next change.
+
 A board holds 26 panels, up from six. Panel ids stay one letter, so boards already saved keep theirs and nothing is migrated; a new panel takes `u`–`z` first, then `a`–`t`. Each panel still reads its own window every 30s, and count and rate histograms and event tables every 2s in Live, so a long board costs a query per panel.
 
 ## 0.14.1

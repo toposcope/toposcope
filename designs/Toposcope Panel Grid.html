@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0}</style>
+<title>Panel Move Playground</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+</head>
+<body>
+<style>
+/* Layout: one working board, four tabs that swap the move/resize rules; Toposcope's own dark tokens */
+:root {
+  --bg: #fafafa; --card: #ffffff; --fg: #18181b; --muted: #52525b; --line: rgba(0,0,0,0.12);
+  --soft: rgba(0,0,0,0.04); --plate: #8a6d3b; --plate-soft: rgba(138,109,59,0.12); --bad: #b91c1c;
+  --bar1: #dc2626; --bar2: #71717a; --chip: #f4f4f5; --shadow: rgba(0,0,0,0.18);
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #09090b; --card: #18181b; --fg: #fafafa; --muted: #a1a1aa; --line: rgba(255,255,255,0.1);
+  --soft: rgba(255,255,255,0.03); --plate: #e7e1d3; --plate-soft: rgba(231,225,211,0.08); --bad: #f87171;
+  --bar1: #f87171; --bar2: #a1a1aa; --chip: #27272a; --shadow: rgba(0,0,0,0.55); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #09090b; --card: #18181b; --fg: #fafafa; --muted: #a1a1aa; --line: rgba(255,255,255,0.1);
+  --soft: rgba(255,255,255,0.03); --plate: #e7e1d3; --plate-soft: rgba(231,225,211,0.08); --bad: #f87171;
+  --bar1: #f87171; --bar2: #a1a1aa; --chip: #27272a; --shadow: rgba(0,0,0,0.55); color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 16px; }
+h1 { margin: 0; font-size: 18px; font-weight: 600; text-wrap: balance; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; }
+.tabs button { height: 30px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--chip); color: var(--fg); }
+.tabs button:focus-visible, .ghostbtn:focus-visible, .pm:focus-visible { outline: 2px solid var(--plate); outline-offset: 1px; }
+.ghostbtn { height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6.4px; background: transparent; color: var(--fg); font: inherit; font-size: 13px; cursor: pointer; }
+.spacer { flex: 1 1 0; }
+.rule { margin: 0; color: var(--muted); font-size: 13px; max-width: 80ch; }
+.rule b { color: var(--fg); font-weight: 500; }
+.scroller { overflow-x: auto; padding-bottom: 8px; }
+.board { position: relative; min-width: 720px; user-select: none; -webkit-user-select: none; }
+.col { position: absolute; top: 0; bottom: 0; background: var(--soft); border-radius: 2px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.board.dragging .col { opacity: 1; }
+.panel { position: absolute; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6.4px; background: var(--card); display: flex; flex-direction: column; overflow: visible; }
+.board.anim .panel:not(.active) { transition: left .16s ease, top .16s ease, width .16s ease, height .16s ease; }
+@media (prefers-reduced-motion: reduce) { .board.anim .panel:not(.active) { transition: none; } }
+.panel.lifted { z-index: 30; border-color: var(--plate); box-shadow: 0 14px 36px var(--shadow); opacity: 0.96; }
+.panel.sizing { z-index: 20; border-color: var(--plate); }
+.panel.target { box-shadow: 0 0 0 1px var(--plate); }
+.head { height: 30px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; border-bottom: 1px solid var(--line); cursor: grab; touch-action: none; }
+.panel.lifted .head { cursor: grabbing; }
+.name { font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.what { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 0; min-width: 0; }
+.pm { width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
+.body { flex: 1 1 0; min-height: 0; overflow: hidden; border-radius: 0 0 6px 6px; }
+.bars { height: 100%; box-sizing: border-box; display: flex; align-items: flex-end; gap: 2px; padding: 10px 10px 8px; }
+.bars i { flex: 1 1 0; min-width: 0; border-radius: 1px 1px 0 0; opacity: .75; }
+.stat { height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 0 12px; gap: 2px; }
+.stat b { font-family: var(--mono); font-size: 26px; font-weight: 500; }
+.stat span, .rows span { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.rows { display: flex; flex-direction: column; gap: 5px; padding: 10px 12px; }
+.rows div { display: flex; align-items: center; gap: 8px; height: 14px; }
+.rows span { width: 92px; flex-shrink: 0; color: var(--fg); white-space: nowrap; overflow: hidden; }
+.rows em { flex: 1 1 0; height: 8px; border-radius: 2px; background: var(--soft); display: block; position: relative; }
+.rows em::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p); background: var(--bar2); border-radius: 2px; }
+.ghost { position: absolute; box-sizing: border-box; border: 1px dashed var(--muted); background: var(--soft); border-radius: 6.4px; pointer-events: none; z-index: 5; }
+.ghost.bad { border-color: var(--bad); }
+.h { position: absolute; z-index: 25; touch-action: none; opacity: 0; transition: opacity .12s; }
+.panel:hover .h, .panel.sizing .h, .panel.sizing .h { opacity: 1; }
+.h.e, .h.w { width: 10px; height: 36px; top: calc(50% - 18px); cursor: ew-resize; }
+.h.n, .h.s { height: 10px; width: 36px; left: calc(50% - 18px); cursor: ns-resize; }
+.h.e { right: -5px; } .h.w { left: -5px; } .h.n { top: -5px; } .h.s { bottom: -5px; }
+.h.e::after, .h.w::after { content: ""; position: absolute; left: 3px; top: 2px; bottom: 2px; width: 4px; border-radius: 3px; background: var(--plate); }
+.h.n::after, .h.s::after { content: ""; position: absolute; top: 3px; left: 2px; right: 2px; height: 4px; border-radius: 3px; background: var(--plate); }
+.h.ne, .h.nw, .h.se, .h.sw { width: 14px; height: 14px; }
+.h.ne::after, .h.nw::after, .h.se::after, .h.sw::after { content: ""; position: absolute; inset: 3px; box-sizing: border-box; border-radius: 2px; background: var(--card); border: 1.5px solid var(--plate); }
+.h.nw { left: -7px; top: -7px; cursor: nwse-resize; } .h.se { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.h.ne { right: -7px; top: -7px; cursor: nesw-resize; } .h.sw { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.grip { position: absolute; right: 3px; bottom: 3px; width: 18px; height: 18px; z-index: 25; cursor: se-resize; color: var(--muted); display: flex; align-items: center; justify-content: center; touch-action: none; }
+.chip { position: absolute; z-index: 40; height: 22px; padding: 0 7px; display: flex; align-items: center; font-family: var(--mono); font-size: 11px; background: var(--chip); border: 1px solid var(--line); border-radius: 4px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.keys { color: var(--muted); font-size: 12px; }
+.panel.sec { background: transparent; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); }
+.head.sechead { height: 100%; border-bottom: 0; padding-left: 0; gap: 6px; }
+.sechead .name { font-size: 14px; font-weight: 600; }
+.chev { width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
+.chev:focus-visible { outline: 2px solid var(--plate); outline-offset: 1px; }
+.pnote { flex-shrink: 0; padding: 5px 10px 0; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.body { position: relative; }
+.notebody { height: 100%; box-sizing: border-box; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; overflow: auto; }
+.notebody p { margin: 0; white-space: pre-wrap; }
+.notebody a { color: var(--plate); font-size: 12.5px; }
+.xline { position: absolute; top: 6px; bottom: 8px; left: calc(10px + var(--t, 0) * (100% - 20px)); width: 1px; background: var(--fg); opacity: 0; pointer-events: none; z-index: 4; }
+.xtime { position: absolute; top: 4px; left: calc(14px + var(--t, 0) * (100% - 20px)); font-family: var(--mono); font-size: 10.5px; padding: 1px 5px; border-radius: 3px; background: var(--chip); border: 1px solid var(--line); opacity: 0; pointer-events: none; z-index: 4; font-variant-numeric: tabular-nums; }
+.board.xhair .xline { opacity: .5; }
+.board.xhair .xtime { opacity: 1; }
+.mark { position: absolute; top: 2px; bottom: 8px; width: 9px; margin-left: -4px; left: calc(10px + var(--m) * (100% - 20px)); z-index: 3; }
+.mark::before { content: ""; position: absolute; left: 1px; top: 0; width: 7px; height: 7px; background: var(--plate); transform: rotate(45deg); border-radius: 1px; }
+.mark::after { content: ""; position: absolute; left: 4px; top: 6px; bottom: 0; border-left: 1px dashed var(--plate); opacity: .75; }
+.mark span { display: none; position: absolute; left: 12px; top: 0; white-space: nowrap; font-family: var(--mono); font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--chip); border: 1px solid var(--line); z-index: 6; }
+.mark.flip span { left: auto; right: 12px; }
+.mark:hover span { display: block; }
+.menu { position: absolute; z-index: 60; min-width: 160px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 6.4px; box-shadow: 0 10px 28px var(--shadow); display: flex; flex-direction: column; }
+.menu button { height: 28px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--fg); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+.menu button:hover, .menu button:focus-visible { background: var(--chip); outline: none; }
+.menu button.danger { color: var(--bad); }
+.edit { font: inherit; font-size: 12.5px; color: var(--fg); background: var(--bg); border: 1px solid var(--plate); border-radius: 4px; padding: 2px 6px; min-width: 0; }
+textarea.edit { flex: 1 1 0; resize: none; font-size: 13px; line-height: 1.45; }
+.eonly[hidden] { display: none; }
+.keys kbd { font-family: var(--mono); font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <h1>Move and resize panels</h1>
+    <div class="spacer"></div>
+    <div class="tabs" role="tablist" aria-label="Rules">
+      <button type="button" role="tab" id="tab-today" data-mode="today">Today</button>
+      <button type="button" role="tab" id="tab-push" data-mode="push">A · Push</button>
+      <button type="button" role="tab" id="tab-swap" data-mode="swap">B · Swap</button>
+      <button type="button" role="tab" id="tab-order" data-mode="order">C · Order</button>
+      <button type="button" role="tab" id="tab-d" data-mode="d">D · Order + shared edges</button>
+      <button type="button" role="tab" id="tab-grav" data-mode="grav">E · Gravity</button>
+    </div>
+    <button type="button" class="ghostbtn eonly" id="addSection" hidden>Add section</button>
+    <button type="button" class="ghostbtn eonly" id="addNote" hidden>Add note</button>
+    <button type="button" class="ghostbtn" id="reset">Reset layout</button>
+  </div>
+  <p class="rule" id="rule"></p>
+  <div class="scroller"><div class="board anim" id="board"></div></div>
+  <p class="keys">Drag a panel's head to move it. Hover a panel for its resize handles. <kbd>Esc</kbd> cancels a drag. Each tab keeps its own layout. On E, hover a chart for the shared time line, hover a ◆ for its change, and use a panel's ⋯ for notes.</p>
+</div>
+
+<script>
+(() => {
+const GAP = 8, ROW = 56, COLS = 12;
+const DEFS = {
+  P1: { name: "Errors", what: "by level", kind: "hist", color: "var(--bar1)", seed: 3, minW: 4, minH: 3 },
+  P2: { name: "Checkout p99", what: "p99(duration_ms)", kind: "stat", minW: 2, minH: 2 },
+  P3: { name: "Status", what: "Top 5 · status", kind: "top", rows: [["200", 92], ["404", 31], ["500", 12], ["302", 8], ["401", 4]], minW: 3, minH: 2 },
+  P4: { name: "CPU by host", what: "host_cpu_seconds_total", kind: "hist", color: "var(--bar2)", seed: 7, minW: 4, minH: 3 },
+  P5: { name: "Paths", what: "Top 5 · path", kind: "top", rows: [["/api/checkout", 88], ["/api/cart", 54], ["/health", 40], ["/api/login", 22], ["/api/refund", 9]], minW: 3, minH: 2 }
+};
+const E_DEFS = () => ({
+  S1: { kind: "section", name: "Checkout", minW: 12, minH: 1 },
+  S2: { kind: "section", name: "Infra", minW: 12, minH: 1 },
+  N1: { kind: "note", name: "On call", what: "", text: "If p99 stays over 800 ms for 5 minutes, page #payments.", minW: 2, minH: 2 }
+});
+const E_NOTES = () => ({ P2: "SLO 800 ms", P3: "5xx above 2% pages on-call" });
+const GRAV_START = () => [
+  { id: "S1", x: 0, y: 0, w: 12, h: 1 }, { id: "P1", x: 0, y: 1, w: 8, h: 4 }, { id: "P2", x: 8, y: 1, w: 4, h: 2 }, { id: "N1", x: 8, y: 3, w: 4, h: 2 },
+  { id: "P3", x: 0, y: 5, w: 6, h: 3 }, { id: "P5", x: 6, y: 5, w: 6, h: 3 },
+  { id: "S2", x: 0, y: 8, w: 12, h: 1 }, { id: "P4", x: 0, y: 9, w: 12, h: 3 }
+];
+// Change marks, as a share of the window (Last 1h, 13:00 → 14:00).
+const MARKS = [{ m: 0.3, text: "◆ 13:18 · note · new-cart flag on" }, { m: 0.68, text: "◆ 13:41 · deploy · checkout v412" }];
+let NOTES = E_NOTES(), nextId = 1;
+const BASE_DEFS = Object.assign({}, DEFS);
+function resetE() { for (const k of Object.keys(DEFS)) if (!BASE_DEFS[k]) delete DEFS[k]; Object.assign(DEFS, E_DEFS()); NOTES = E_NOTES(); }
+resetE();
+const GRID_START = () => [
+  { id: "P1", x: 0, y: 0, w: 8, h: 4 }, { id: "P2", x: 8, y: 0, w: 4, h: 2 }, { id: "P3", x: 8, y: 2, w: 4, h: 2 },
+  { id: "P4", x: 0, y: 4, w: 6, h: 3 }, { id: "P5", x: 6, y: 4, w: 6, h: 3 }
+];
+const ORDER_START = () => [
+  { id: "P1", w: 8, h: 4 }, { id: "P2", w: 4, h: 2 }, { id: "P3", w: 4, h: 2 }, { id: "P4", w: 4, h: 3 }, { id: "P5", w: 4, h: 3 }
+];
+const RULES = {
+  today: "<b>Today.</b> The others stay put while you drag and jump when you drop. Resize from the bottom-right corner, up to 8 rows tall.",
+  push: "<b>A · Push.</b> The others make room while you drag, so what you see is what you get on drop. Resize from any edge or corner, up to 16 rows tall; the panels around it make room too.",
+  swap: "<b>B · Swap.</b> Drop on a panel to trade places; each takes the other's cell. Drop on empty space to move there. Nothing else ever moves. Resize stops at the neighbours.",
+  order: "<b>C · Order.</b> Panels fill rows left to right. Drag to reorder. The right edge sets width, the bottom edge sets height. Each panel keeps its own height and sits right under the panel above it.",
+  d: "<b>D · Order + shared edges.</b> C, plus left and top edges. The left edge moves the border with the panel before it: one gets wider as the other gets narrower. The top edge does the same with the panel above. A panel with nothing to its left or above has no handle there.",
+  grav: "<b>E · Gravity.</b> Drop a panel anywhere: it lands in the columns you drop it on, the others make room while you drag, and everything floats up so there are no holes. The left and top edges move the border with the panels touching them, or shrink the panel when nothing is there; the right and bottom edges push. A section heading carries the panels under it when you drag it, and folds them away. Charts share one hover line and show the window's change marks."
+};
+const HANDLES = { today: [], push: ["n", "s", "e", "w", "ne", "nw", "se", "sw"], swap: ["n", "s", "e", "w", "ne", "nw", "se", "sw"], order: ["e", "s", "se"], d: ["e", "s", "se", "w", "n"], grav: ["e", "s", "se", "w", "n"] };
+const MAXH = { today: 8, push: 16, swap: 16, order: 16, d: 16, grav: 16 };
+
+const board = document.getElementById("board");
+const ruleEl = document.getElementById("rule");
+let mode = "grav";
+try { const m = localStorage.getItem("pmp-mode"); if (m && RULES[m]) mode = m; } catch (e) {}
+const saved = { today: GRID_START(), push: GRID_START(), swap: GRID_START(), order: ORDER_START(), d: ORDER_START(), grav: GRAV_START() };
+const isOrder = () => mode === "order" || mode === "d";
+let drag = null;
+let els = {}, ghostEl = null, chipEl = null;
+
+const clone = (l) => l.map((p) => ({ ...p }));
+const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+const colW = () => (board.clientWidth - (COLS - 1) * GAP) / COLS;
+const rect = (c) => ({ left: c.x * (colW() + GAP), top: c.y * (ROW + GAP), width: c.w * colW() + (c.w - 1) * GAP, height: c.h * ROW + (c.h - 1) * GAP });
+const place = (el, c) => { const r = rect(c); el.style.left = r.left + "px"; el.style.top = r.top + "px"; el.style.width = r.width + "px"; el.style.height = r.height + "px"; };
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function settle(list, winId) {
+  const win = list.find((p) => p.id === winId);
+  const placed = [{ ...win }];
+  const rest = list.filter((p) => p.id !== winId).map((p) => ({ ...p })).sort((a, b) => a.y - b.y || a.x - b.x);
+  for (const p of rest) { while (placed.some((q) => overlap(p, q))) p.y++; placed.push(p); }
+  for (const p of placed.filter((q) => q.id !== winId).sort((a, b) => a.y - b.y || a.x - b.x)) {
+    while (p.y > 0) { p.y--; if (placed.some((q) => q !== p && overlap(p, q))) { p.y++; break; } }
+  }
+  return placed;
+}
+
+// Left to right in order; each panel keeps its own height and sits right under whatever is above it in its columns.
+function pack(order) {
+  const sky = new Array(COLS).fill(0), out = [];
+  let x = 0;
+  for (const item of order) {
+    if (x + item.w > COLS) x = 0;
+    const y = Math.max(...sky.slice(x, x + item.w));
+    out.push({ id: item.id, x, y, w: item.w, h: item.h });
+    for (let i = x; i < x + item.w; i++) sky[i] = y + item.h;
+    x += item.w;
+  }
+  return out;
+}
+
+function leftNb(start, id) {
+  const L = pack(start), i = start.findIndex((q) => q.id === id);
+  if (i <= 0) return null;
+  const a = L.find((c) => c.id === start[i - 1].id), b = L.find((c) => c.id === id);
+  return a.x + a.w === b.x ? a.id : null;
+}
+function topNbs(start, id) {
+  const L = pack(start), b = L.find((c) => c.id === id);
+  const cols = (c) => c.id !== id && c.x < b.x + b.w && b.x < c.x + c.w;
+  const touching = L.filter((c) => cols(c) && c.y + c.h === b.y).map((c) => c.id);
+  const lower = L.filter((c) => cols(c) && c.y + c.h < b.y).reduce((m, c) => Math.max(m, c.y + c.h), 0);
+  return { ids: touching, room: b.y - lower };
+}
+
+// E: the moved panels take their cells, overlapped panels go down, then everything floats up.
+function gravityMulti(list, fixed) {
+  const placed = fixed.map((c) => ({ ...c }));
+  const ids = new Set(fixed.map((c) => c.id));
+  for (const p of list.filter((q) => !ids.has(q.id)).map((q) => ({ ...q })).sort((a, b) => a.y - b.y || a.x - b.x)) {
+    while (placed.some((q) => overlap(p, q))) p.y++;
+    placed.push(p);
+  }
+  for (const p of placed.slice().sort((a, b) => a.y - b.y || a.x - b.x)) {
+    while (p.y > 0) { p.y--; if (placed.some((q) => q !== p && overlap(p, q))) { p.y++; break; } }
+  }
+  return placed;
+}
+function gravity(list, id, cell) { return gravityMulti(list, [{ ...cell, id }]); }
+const isSec = (id) => DEFS[id].kind === "section";
+function membersOf(id, L) {
+  const s = L.find((c) => c.id === id);
+  const next = Math.min(Infinity, ...L.filter((c) => isSec(c.id) && c.y > s.y).map((c) => c.y));
+  return L.filter((c) => !isSec(c.id) && c.y > s.y && c.y < next);
+}
+const vOverlap = (a, b) => a.y < b.y + b.h && b.y < a.y + a.h;
+const hOverlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w;
+const touchLeft = (L, me) => L.filter((q) => q.id !== me.id && !isSec(q.id) && q.x + q.w === me.x && vOverlap(q, me));
+const touchTop = (L, me) => L.filter((q) => q.id !== me.id && !isSec(q.id) && q.y + q.h === me.y && hOverlap(q, me));
+
+function cells() { return isOrder() ? pack(saved[mode]) : saved[mode]; }
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function bodyHtml(d) {
+  if (d.kind === "note") return '<div class="notebody"><p>' + esc(d.text) + '</p><a href="#" data-noop>Runbook ↗</a></div>';
+  if (d.kind === "hist") {
+    let s = mode === "grav"
+      ? MARKS.map((k) => '<div class="mark' + (k.m > 0.5 ? " flip" : "") + '" style="--m:' + k.m + '"><span>' + k.text.slice(2) + '</span></div>').join("") + '<div class="xline"></div><div class="xtime"></div>'
+      : "";
+    s += '<div class="bars">';
+    for (let i = 0; i < 28; i++) {
+      const h = Math.min(100, 18 + ((i * 37 + d.seed * 13 + (i % 5) * 11) % 64) + (d.seed === 3 && i > 18 && i < 22 ? 18 : 0));
+      s += '<i style="height:' + h + '%;background:' + d.color + '"></i>';
+    }
+    return s + "</div>";
+  }
+  if (d.kind === "stat") return '<div class="stat"><b>412 ms</b><span>last 1h</span></div>';
+  return '<div class="rows">' + d.rows.map((r) => '<div><span>' + r[0] + '</span><em style="--p:' + r[1] + '%"></em></div>').join("") + "</div>";
+}
+
+function build() {
+  board.innerHTML = "";
+  els = {};
+  for (let i = 0; i < COLS; i++) { const c = document.createElement("div"); c.className = "col"; c.dataset.i = i; board.appendChild(c); }
+  ghostEl = document.createElement("div"); ghostEl.className = "ghost"; ghostEl.hidden = true; board.appendChild(ghostEl);
+  chipEl = document.createElement("div"); chipEl.className = "chip"; chipEl.hidden = true; board.appendChild(chipEl);
+  const pm = '<button type="button" class="pm" aria-label="Panel menu"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>';
+  for (const id of cells().map((c) => c.id)) {
+    const d = DEFS[id];
+    const el = document.createElement("section");
+    el.setAttribute("aria-label", d.name);
+    if (d.kind === "section") {
+      const n = d.collapsed ? d.hidden.length : membersOf(id, saved.grav).length;
+      el.className = "panel sec";
+      el.innerHTML = '<div class="head sechead"><button type="button" class="chev" aria-expanded="' + !d.collapsed + '" aria-label="' + (d.collapsed ? "Expand" : "Collapse") + ' ' + esc(d.name) + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (d.collapsed ? "M9 6l6 6-6 6" : "M6 9l6 6 6-6") + '"/></svg></button><span class="name">' + esc(d.name) + '</span><span class="what">' + n + (n === 1 ? " panel" : " panels") + (d.collapsed ? " folded" : "") + '</span>' + pm + "</div>";
+      el.querySelector(".chev").addEventListener("click", () => toggleSection(id));
+    } else {
+      el.className = "panel";
+      const note = mode === "grav" && NOTES[id] ? '<div class="pnote">' + esc(NOTES[id]) + "</div>" : "";
+      el.innerHTML = '<div class="head"><span class="name">' + esc(d.name) + '</span><span class="what">' + esc(d.what || "") + "</span>" + pm + "</div>" + note + '<div class="body' + (d.kind === "hist" ? " tbody" : "") + '">' + bodyHtml(d) + "</div>";
+    }
+    el.querySelector(".head").addEventListener("pointerdown", (e) => startMove(e, id));
+    el.querySelector(".pm").addEventListener("click", (e) => openMenu(id, e.currentTarget));
+    el.querySelectorAll("[data-noop]").forEach((a) => a.addEventListener("click", (e) => e.preventDefault()));
+    for (const h of d.kind === "section" ? [] : HANDLES[mode]) {
+      const hEl = document.createElement("div"); hEl.className = "h " + h; hEl.setAttribute("aria-hidden", "true");
+      hEl.addEventListener("pointerdown", (e) => startResize(e, id, h)); el.appendChild(hEl);
+    }
+    if (mode === "today") {
+      const g = document.createElement("div"); g.className = "grip"; g.setAttribute("aria-hidden", "true");
+      g.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M9 3 3 9M9 6 6 9" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>';
+      g.addEventListener("pointerdown", (e) => startResize(e, id, "se")); el.appendChild(g);
+    }
+    board.appendChild(el); els[id] = el;
+  }
+  draw(cells());
+}
+
+function draw(layout, extraRows) {
+  const w = colW();
+  board.querySelectorAll(".col").forEach((c, i) => { c.style.left = i * (w + GAP) + "px"; c.style.width = w + "px"; });
+  for (const c of layout) { if (!drag || drag.id !== c.id || drag.kind !== "move") place(els[c.id], c); }
+  if (mode === "d" && !drag) {
+    for (const id of Object.keys(els)) {
+      els[id].querySelector(".h.w").hidden = !leftNb(saved.d, id);
+      els[id].querySelector(".h.n").hidden = topNbs(saved.d, id).ids.length === 0;
+    }
+  }
+  const rows = Math.max(8, ...layout.map((c) => c.y + c.h)) + (extraRows || 0);
+  board.style.height = rows * (ROW + GAP) - GAP + "px";
+}
+
+function point(e) { const r = board.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function cellAt(p) { return { cx: Math.floor(p.x / (colW() + GAP)), cy: Math.floor(p.y / (ROW + GAP)) }; }
+
+function begin(e, id, kind, extra) {
+  if (e.button !== 0) return false;
+  if (kind === "move" && e.target.closest("button, input, textarea, a")) return false;
+  closeMenu();
+  board.classList.remove("xhair");
+  e.preventDefault(); e.stopPropagation();
+  try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+  const start = isOrder() ? clone(saved[mode]) : clone(saved[mode]);
+  const startCells = isOrder() ? pack(start) : start;
+  const c = startCells.find((q) => q.id === id);
+  const p = point(e), r = rect(c);
+  drag = Object.assign({ id, kind, start, startCells, c0: { ...c }, sx: e.clientX, sy: e.clientY, ox: p.x - r.left, oy: p.y - r.top, preview: null, valid: true }, extra);
+  if (mode === "grav" && isSec(id)) drag.members = membersOf(id, start);
+  board.classList.add("dragging");
+  els[id].classList.add(kind === "move" ? "lifted" : "sizing", "active");
+  if (kind === "move") { ghostEl.hidden = false; ghostEl.classList.remove("bad"); place(ghostEl, c); }
+  else { chipEl.hidden = false; }
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onCancel);
+  return true;
+}
+function startMove(e, id) { begin(e, id, "move"); }
+function startResize(e, id, h) { begin(e, id, "resize", { h }); }
+
+function onMove(e) {
+  if (!drag) return;
+  if (drag.kind === "move") moveTo(e); else resizeTo(e);
+}
+
+function moveTo(e) {
+  const p = point(e);
+  const el = els[drag.id];
+  el.style.left = p.x - drag.ox + "px"; el.style.top = p.y - drag.oy + "px";
+  const c0 = drag.c0;
+  if (isOrder()) return orderMove(p);
+  const gx = clamp(Math.round((p.x - drag.ox) / (colW() + GAP)), 0, COLS - c0.w);
+  const gy = Math.max(0, Math.round((p.y - drag.oy) / (ROW + GAP)));
+  if (mode === "swap") return swapMove(p, gx, gy);
+  if (mode === "grav" && drag.members) {
+    const block = [{ ...c0, x: 0, y: gy }].concat(drag.members.map((m) => ({ ...m, y: gy + (m.y - c0.y) })));
+    drag.preview = gravityMulti(drag.start, block);
+    place(ghostEl, drag.preview.find((q) => q.id === drag.id));
+    draw(drag.preview, 2);
+    return;
+  }
+  if (mode === "grav") {
+    drag.preview = gravity(drag.start, drag.id, { ...c0, x: gx, y: gy });
+    place(ghostEl, drag.preview.find((q) => q.id === drag.id));
+    draw(drag.preview, 2);
+    return;
+  }
+  const cell = { ...c0, x: gx, y: gy };
+  place(ghostEl, cell);
+  const withMe = drag.start.map((q) => (q.id === drag.id ? cell : q));
+  if (mode === "push") { drag.preview = settle(withMe, drag.id); draw(drag.preview, 2); }
+  else { drag.preview = withMe; draw(drag.start.filter((q) => q.id !== drag.id).concat([cell]), 2); }
+}
+
+function swapMove(p, gx, gy) {
+  const { cx, cy } = cellAt(p);
+  const target = drag.start.find((q) => q.id !== drag.id && cx >= q.x && cx < q.x + q.w && cy >= q.y && cy < q.y + q.h);
+  Object.values(els).forEach((el) => el.classList.remove("target"));
+  if (target) {
+    els[target.id].classList.add("target");
+    const mine = { id: drag.id, x: target.x, y: target.y, w: target.w, h: target.h };
+    const theirs = { id: target.id, x: drag.c0.x, y: drag.c0.y, w: drag.c0.w, h: drag.c0.h };
+    drag.preview = drag.start.map((q) => (q.id === drag.id ? mine : q.id === target.id ? theirs : q));
+    drag.valid = true; ghostEl.classList.remove("bad"); place(ghostEl, mine);
+    draw(drag.preview, 2);
+    return;
+  }
+  const cell = { ...drag.c0, x: gx, y: gy };
+  const ok = !drag.start.some((q) => q.id !== drag.id && overlap(cell, q));
+  drag.valid = ok; ghostEl.classList.toggle("bad", !ok); place(ghostEl, cell);
+  drag.preview = drag.start.map((q) => (q.id === drag.id ? cell : q));
+  draw(drag.start, 2);
+}
+
+function orderMove(p) {
+  const cur = drag.preview || drag.start;
+  const laid = pack(cur);
+  const hit = laid.find((c) => { if (c.id === drag.id) return false; const r = rect(c); return p.x >= r.left && p.x < r.left + r.width && p.y >= r.top && p.y < r.top + r.height; });
+  let next = cur;
+  if (hit) {
+    const r = rect(hit);
+    const after = p.x > r.left + r.width / 2;
+    const without = cur.filter((q) => q.id !== drag.id);
+    let i = without.findIndex((q) => q.id === hit.id) + (after ? 1 : 0);
+    const me = cur.find((q) => q.id === drag.id);
+    next = without.slice(0, i).concat([me], without.slice(i));
+  } else {
+    const bottom = Math.max(...laid.map((c) => rect(c).top + rect(c).height));
+    if (p.y > bottom) { const me = cur.find((q) => q.id === drag.id); next = cur.filter((q) => q.id !== drag.id).concat([me]); }
+  }
+  drag.preview = next;
+  const nl = pack(next);
+  place(ghostEl, nl.find((c) => c.id === drag.id));
+  draw(nl, 2);
+}
+
+function resizeTo(e) {
+  const d = DEFS[drag.id], h = drag.h, c0 = drag.c0, maxH = MAXH[mode];
+  const dx = Math.round((e.clientX - drag.sx) / (colW() + GAP));
+  const dy = Math.round((e.clientY - drag.sy) / (ROW + GAP));
+  if (isOrder()) {
+    const items = clone(drag.start), me = items.find((q) => q.id === drag.id);
+    if (h.includes("e")) me.w = clamp(me.w + dx, d.minW, COLS);
+    if (h.includes("s")) me.h = clamp(me.h + dy, d.minH, maxH);
+    if (h === "w") {
+      const nb = leftNb(drag.start, drag.id);
+      if (nb) {
+        const q = items.find((it) => it.id === nb);
+        const k = clamp(-dx, -(me.w - d.minW), q.w - DEFS[nb].minW);
+        q.w -= k; me.w += k;
+      }
+    }
+    if (h === "n") {
+      const t = topNbs(drag.start, drag.id);
+      if (t.ids.length) {
+        const qs = t.ids.map((id) => items.find((it) => it.id === id));
+        const up = Math.min(t.room, maxH - me.h, ...qs.map((q) => q.h - DEFS[q.id].minH));
+        const down = Math.min(me.h - d.minH, ...qs.map((q) => maxH - q.h));
+        const k = clamp(-dy, -down, up);
+        qs.forEach((q) => { q.h -= k; }); me.h += k;
+      }
+    }
+    drag.preview = items;
+    const nl = pack(drag.preview);
+    const cell = nl.find((c) => c.id === drag.id);
+    place(els[drag.id], cell); showChip(cell); draw(nl, 2);
+    return;
+  }
+  const calc = (dx, dy) => {
+    let { x, y, w, h: hh } = c0;
+    if (h.includes("e")) w = clamp(c0.w + dx, d.minW, COLS - c0.x);
+    if (h.includes("w")) { x = clamp(c0.x + dx, 0, c0.x + c0.w - d.minW); w = c0.w + (c0.x - x); }
+    if (h.includes("s")) hh = clamp(c0.h + dy, d.minH, maxH);
+    if (h.includes("n")) { y = clamp(c0.y + dy, Math.max(0, c0.y + c0.h - maxH), c0.y + c0.h - d.minH); hh = c0.h + (c0.y - y); }
+    return { id: drag.id, x, y, w, h: hh };
+  };
+  if (mode === "grav") {
+    const cell = { ...c0 };
+    if (h.includes("e")) cell.w = clamp(c0.w + dx, d.minW, COLS - c0.x);
+    if (h.includes("s")) cell.h = clamp(c0.h + dy, d.minH, maxH);
+    const items = clone(drag.start);
+    if (h === "w") {
+      const nbs = touchLeft(drag.start, c0).map((q) => items.find((it) => it.id === q.id));
+      const k = nbs.length
+        ? clamp(-dx, -(c0.w - d.minW), Math.min(...nbs.map((q) => q.w - DEFS[q.id].minW)))
+        : clamp(-dx, -(c0.w - d.minW), c0.x);
+      nbs.forEach((q) => { q.w -= k; });
+      cell.x = c0.x - k; cell.w = c0.w + k;
+    }
+    if (h === "n") {
+      const nbs = touchTop(drag.start, c0).map((q) => items.find((it) => it.id === q.id));
+      if (nbs.length) {
+        const up = Math.min(maxH - c0.h, ...nbs.map((q) => q.h - DEFS[q.id].minH));
+        const down = Math.min(c0.h - d.minH, ...nbs.map((q) => maxH - q.h));
+        const k = clamp(-dy, -down, up);
+        nbs.forEach((q) => { q.h -= k; });
+        cell.y = c0.y - k; cell.h = c0.h + k;
+      } else {
+        // Nothing above: the top edge can only shrink the panel.
+        const k = clamp(-dy, -(c0.h - d.minH), 0);
+        cell.y = c0.y - k; cell.h = c0.h + k;
+      }
+    }
+    drag.preview = gravity(items, drag.id, cell);
+    const mine = drag.preview.find((q) => q.id === drag.id);
+    place(els[drag.id], mine); showChip(mine);
+    draw(drag.preview, 2);
+    return;
+  }
+  let cell = calc(dx, dy);
+  if (mode === "swap") {
+    const others = drag.start.filter((q) => q.id !== drag.id);
+    const free = (c) => !others.some((q) => overlap(c, q));
+    if (!free(cell)) {
+      let best = { ...c0 };
+      outer: for (let ky = Math.abs(dy); ky >= 0; ky--) {
+        for (let kx = Math.abs(dx); kx >= 0; kx--) {
+          const c = calc(Math.sign(dx) * kx, Math.sign(dy) * ky);
+          if (free(c)) { best = c; break outer; }
+        }
+      }
+      cell = best;
+    }
+  }
+  const withMe = drag.start.map((q) => (q.id === drag.id ? cell : q));
+  drag.preview = mode === "push" ? settle(withMe, drag.id) : withMe;
+  place(els[drag.id], cell); showChip(cell);
+  draw(drag.preview, 2);
+}
+
+function showChip(c) {
+  const r = rect(c);
+  chipEl.textContent = c.w + " × " + c.h;
+  chipEl.style.left = r.left + r.width - 64 + "px"; chipEl.style.top = r.top + r.height - 32 + "px";
+}
+
+function end(commit) {
+  if (!drag) return;
+  window.removeEventListener("pointermove", onMove);
+  window.removeEventListener("pointerup", onUp);
+  window.removeEventListener("pointercancel", onCancel);
+  const d = drag; drag = null;
+  board.classList.remove("dragging");
+  Object.values(els).forEach((el) => el.classList.remove("lifted", "sizing", "active", "target"));
+  ghostEl.hidden = true; chipEl.hidden = true;
+  if (commit && d.preview && d.valid) {
+    if (isOrder()) saved[mode] = d.preview;
+    else if (mode === "today") saved.today = settle(d.preview, d.id);
+    else saved[mode] = d.preview.map((q) => ({ ...q }));
+  }
+  if (mode === "grav" && commit) build(); else draw(cells());
+}
+function onUp() { end(true); }
+function onCancel() { end(false); }
+window.addEventListener("keydown", (e) => { if (e.key === "Escape" && drag) { e.preventDefault(); end(false); } });
+
+function setMode(m) {
+  if (drag) end(false);
+  mode = m;
+  try { localStorage.setItem("pmp-mode", m); } catch (e) {}
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === m)));
+  ruleEl.innerHTML = RULES[m];
+  document.querySelectorAll(".eonly").forEach((b) => { b.hidden = m !== "grav"; });
+  build();
+}
+
+// ---- E: sections
+function toggleSection(id) {
+  const d = DEFS[id], L = saved.grav, s = L.find((c) => c.id === id);
+  if (!d.collapsed) {
+    const mem = membersOf(id, L);
+    d.hidden = mem.map((m) => ({ ...m, ry: m.y - (s.y + 1) }));
+    const ids = new Set(mem.map((m) => m.id));
+    saved.grav = gravityMulti(L.filter((c) => !ids.has(c.id)), []);
+    d.collapsed = true;
+  } else {
+    const block = [{ ...s }].concat(d.hidden.map((m) => ({ id: m.id, x: m.x, y: s.y + 1 + m.ry, w: m.w, h: m.h })));
+    saved.grav = gravityMulti(L, block);
+    d.collapsed = false; d.hidden = null;
+  }
+  build();
+  els[id]?.querySelector(".chev")?.focus();
+}
+const bottom = () => Math.max(0, ...saved.grav.map((c) => c.y + c.h));
+document.getElementById("addSection").addEventListener("click", () => {
+  const id = "S" + 10 + nextId++;
+  DEFS[id] = { kind: "section", name: "New section", minW: 12, minH: 1 };
+  saved.grav.push({ id, x: 0, y: bottom(), w: 12, h: 1 });
+  build(); rename(id);
+});
+document.getElementById("addNote").addEventListener("click", () => {
+  const id = "N" + 10 + nextId++;
+  DEFS[id] = { kind: "note", name: "Note", what: "", text: "", minW: 2, minH: 2 };
+  saved.grav = gravity(saved.grav, id, { x: 0, y: bottom(), w: 4, h: 2 });
+  build(); editText(id);
+});
+
+// ---- E: panel menu and in-place edits
+let menuEl = null;
+function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
+document.addEventListener("pointerdown", (e) => { if (menuEl && !e.target.closest(".menu, .pm")) closeMenu(); });
+function openMenu(id, btn) {
+  if (menuEl) { const same = menuEl.dataset.id === id; closeMenu(); if (same) return; }
+  if (mode !== "grav") return;
+  const d = DEFS[id], items = [];
+  if (d.kind === "section") items.push(["Rename", () => rename(id)], ["Remove heading", () => removeItem(id), true]);
+  else if (d.kind === "note") items.push(["Edit text", () => editText(id)], ["Rename", () => rename(id)], ["Remove", () => removeItem(id), true]);
+  else {
+    items.push([NOTES[id] ? "Edit note" : "Add note", () => editNote(id)]);
+    if (NOTES[id]) items.push(["Remove note", () => { delete NOTES[id]; build(); }]);
+    items.push(["Remove", () => removeItem(id), true]);
+  }
+  menuEl = document.createElement("div"); menuEl.className = "menu"; menuEl.dataset.id = id; menuEl.setAttribute("role", "menu");
+  for (const [label, fn, danger] of items) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("role", "menuitem");
+    if (danger) b.className = "danger";
+    b.addEventListener("click", () => { closeMenu(); fn(); });
+    menuEl.appendChild(b);
+  }
+  const br = board.getBoundingClientRect(), r = btn.getBoundingClientRect();
+  menuEl.style.left = Math.max(0, r.right - br.left - 160) + "px"; menuEl.style.top = r.bottom - br.top + 4 + "px";
+  board.appendChild(menuEl);
+  menuEl.querySelector("button").focus();
+  menuEl.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); closeMenu(); btn.focus(); } });
+}
+function removeItem(id) {
+  const d = DEFS[id];
+  if (d.kind === "section" && d.collapsed) toggleSection(id);
+  saved.grav = gravityMulti(saved.grav.filter((c) => c.id !== id), []);
+  build();
+}
+function inlineInput(host, value, max, commit, multi) {
+  const inp = document.createElement(multi ? "textarea" : "input");
+  inp.className = "edit"; inp.value = value; inp.maxLength = max; inp.setAttribute("aria-label", multi ? "Note text" : "Name");
+  host.replaceWith(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = (ok) => { if (done) return; done = true; if (ok) commit(inp.value.trim()); build(); };
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); }
+    if (e.key === "Enter" && (!multi || e.metaKey || e.ctrlKey)) { e.preventDefault(); finish(true); }
+  });
+  inp.addEventListener("blur", () => finish(true));
+  return inp;
+}
+function rename(id) {
+  const span = els[id]?.querySelector(".name"); if (!span) return;
+  inlineInput(span, DEFS[id].name, 60, (v) => { if (v) DEFS[id].name = v; });
+}
+function editNote(id) {
+  const el = els[id]; if (!el) return;
+  let host = el.querySelector(".pnote");
+  if (!host) { host = document.createElement("div"); host.className = "pnote"; el.querySelector(".head").after(host); }
+  host.style.padding = "4px 8px 0";
+  const wrap = document.createElement("div"); wrap.className = "pnote"; wrap.style.display = "flex"; host.replaceWith(wrap);
+  const tmp = document.createElement("span"); wrap.appendChild(tmp);
+  const inp = inlineInput(tmp, NOTES[id] || "", 160, (v) => { if (v) NOTES[id] = v; else delete NOTES[id]; });
+  inp.style.flex = "1 1 0"; inp.placeholder = "A short note under the title";
+}
+function editText(id) {
+  const p = els[id]?.querySelector(".notebody p"); if (!p) return;
+  const inp = inlineInput(p, DEFS[id].text, 400, (v) => { DEFS[id].text = v || "Empty note."; }, true);
+  inp.placeholder = "Write a note. Cmd+Enter saves.";
+}
+
+// ---- E: one hover line across every chart
+board.addEventListener("pointermove", (e) => {
+  if (mode !== "grav" || drag) return;
+  const body = e.target.closest(".tbody");
+  if (!body) { board.classList.remove("xhair"); return; }
+  const r = body.getBoundingClientRect();
+  const t = clamp((e.clientX - r.left - 10) / (r.width - 20), 0, 1);
+  board.style.setProperty("--t", t);
+  const min = Math.round(t * 60), label = (min === 60 ? "14:00" : "13:" + String(min).padStart(2, "0"));
+  board.querySelectorAll(".xtime").forEach((x) => { x.textContent = label; });
+  board.classList.add("xhair");
+});
+board.addEventListener("pointerleave", () => board.classList.remove("xhair"));
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+document.getElementById("reset").addEventListener("click", () => {
+  closeMenu();
+  if (mode === "grav") { resetE(); saved.grav = GRAV_START(); }
+  else saved[mode] = isOrder() ? ORDER_START() : GRID_START();
+  build();
+});
+new ResizeObserver(() => { if (!drag) draw(cells()); }).observe(board);
+setMode(mode);
+})();
+</script>
+
+</body>
+</html>

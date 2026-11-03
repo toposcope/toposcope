@@ -11,6 +11,7 @@ import {
   type HistogramChartKind,
   type HistogramSplit,
 } from "../query/histogram";
+import { gravity, gravityMove } from "./grid-gravity";
 import { isAttrIdent, maxAttrFacets } from "./attrs";
 import {
   formatMetricLabels,
@@ -31,7 +32,7 @@ export const defaultWidgetH = 4;
 export const minTimeseriesH = 3;
 export const minStatH = 2;
 export const minHbarH = 2;
-export const maxWidgetH = 8;
+export const maxWidgetH = 16;
 export const minWidgetW = 3;
 export const minTimeseriesW = 4;
 export const minStatW = 1;
@@ -359,6 +360,18 @@ export function primaryTimeseries(widgets: WidgetDef[]): WidgetDef | null {
 
 function finiteInt(n: number, fallback: number): number {
   return Number.isFinite(n) ? Math.round(n) : fallback;
+}
+
+/** The smallest cell a panel of this kind draws in. */
+export function widgetMinSize(widget: { kind: WidgetDef["kind"] }): { w: number; h: number } {
+  switch (widget.kind) {
+    case "stat":
+      return { w: minStatW, h: minStatH };
+    case "hbar":
+      return { w: minWidgetW, h: minHbarH };
+    default:
+      return { w: minTimeseriesW, h: minTimeseriesH };
+  }
 }
 
 export function isPinnedHistogram(widget: WidgetDef): boolean {
@@ -711,6 +724,7 @@ export function patchWidget(
   );
 }
 
+/** Drop a panel at (x, y) (sheet 44, E): it keeps those columns, the panels in its way go down, everything floats up. */
 export function moveWidget(
   widgets: WidgetDef[],
   id: string,
@@ -721,17 +735,10 @@ export function moveWidget(
   if (!current || isPinnedHistogram(current)) {
     return widgets;
   }
-  const pinned = widgets.find((item) => isPinnedHistogram(item));
-  const moved = nudgeClear(
-    clampWidget({ ...current, x, y }),
-    pinned ? [pinned] : [],
-  );
-  return settleWidgets(
-    widgets.map((item) => (item.id === id ? moved : item)),
-    id,
-  );
+  return gravityMove(widgets, id, x, y, pinnedIds(widgets));
 }
 
+/** A panel at a new size keeps its corner; the panels in its way go down, everything floats up. */
 export function resizeWidget(
   widgets: WidgetDef[],
   id: string,
@@ -742,22 +749,18 @@ export function resizeWidget(
   if (!current) {
     return widgets;
   }
-  if (isPinnedHistogram(current)) {
-    const resized = clampWidget({ ...current, x: 0, y: 0, w, h });
-    return settleWidgets(
-      widgets.map((item) => (item.id === id ? resized : item)),
-      id,
-    );
-  }
-  const pinned = widgets.find((item) => isPinnedHistogram(item));
-  const resized = nudgeClear(
-    clampWidget({ ...current, w, h }),
-    pinned ? [pinned] : [],
-  );
-  return settleWidgets(
+  const resized = clampWidget(isPinnedHistogram(current) ? { ...current, x: 0, y: 0, w, h } : { ...current, w, h });
+  const anchored = pinnedIds(widgets);
+  const anchors = widgets.filter((item) => anchored.has(item.id) && item.id !== id);
+  return gravity(
     widgets.map((item) => (item.id === id ? resized : item)),
-    id,
+    [...anchors, resized],
+    anchored,
   );
+}
+
+function pinnedIds(widgets: WidgetDef[]): Set<string> {
+  return new Set(widgets.filter(isPinnedHistogram).map((item) => item.id));
 }
 
 export function removeWidget(widgets: WidgetDef[], id: string): WidgetDef[] {
