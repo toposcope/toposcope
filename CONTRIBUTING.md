@@ -4,6 +4,8 @@ Issues and pull requests live on **GitHub**. [ROADMAP.md](ROADMAP.md) is the v0.
 
 Open an issue before adding or changing visual chrome. Implementation requires a maintainer-approved public mock; do not invent chrome the mock does not show.
 
+UI work starts from [docs/ui/](docs/ui/README.md): the tokens, the primitives and their pages, the contrast table and the motion rules. A new bracketed value (`text-[13px]`, `rounded-[7px]`, `px-[9px]`, a `[#hex]` colour) or a new primitive needs a sheet first; the lint ratchet in `src/ui/design-lint.test.ts` fails a change that adds one.
+
 ## Repository layout
 
 - `src/` — application code: auth, ingest, query, alerts, shared types, and UI
@@ -11,7 +13,7 @@ Open an issue before adding or changing visual chrome. Implementation requires a
 - `compose.yml` — packaged runtime
 - `compose.dev.yml` — local ClickHouse for development
 - `vector.yaml` — canonical collector path
-- `docs/` — architecture and supporting docs
+- `docs/` — architecture and supporting docs; `docs/ui/` is the design system for people and agents
 - `designs/` — locked chrome mocks (not the shipped app)
 - `ROADMAP.md` — v0.x product contract
 - `README.md` — public overview
