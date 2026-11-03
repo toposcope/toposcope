@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.15.0
 
 Home's Pinned list counts a board's panels. Since 0.14.0 it counted the layout boards had before then, so a board made on 0.14 read `0 panels` whatever it held. It now shows the number the board's own page shows, sections and notes included, and `1 panel` for one.
 
