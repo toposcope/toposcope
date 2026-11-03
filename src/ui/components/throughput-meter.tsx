@@ -58,7 +58,7 @@ export function ThroughputMeter({ onOpenHour }: Props) {
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 font-mono text-[11px] tabular-nums text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-2 font-mono text-xs tabular-nums text-muted-foreground hover:text-foreground"
           aria-label={`${title}. Click to search.`}
           onClick={onOpenHour}
         >
@@ -79,7 +79,7 @@ export function ThroughputMeter({ onOpenHour }: Props) {
               return (
                 <span
                   key={bar.t}
-                  className="min-w-0 flex-1 rounded-[1px] bg-sky-500 opacity-80"
+                  className="min-w-0 flex-1 rounded-sm bg-info opacity-80"
                   style={{ height: `${h}px` }}
                 />
               );
@@ -90,7 +90,7 @@ export function ThroughputMeter({ onOpenHour }: Props) {
       <TooltipContent
         side="top"
         align="end"
-        className="bg-popover text-popover-foreground border px-2 py-1.5 font-mono text-[11px] tabular-nums"
+        className="bg-popover text-popover-foreground border px-2 py-1.5 font-mono text-xs tabular-nums"
       >
         <p>{title}</p>
         <p className="font-sans text-muted-foreground">Click to search</p>

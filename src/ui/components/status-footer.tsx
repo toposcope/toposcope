@@ -15,7 +15,7 @@ type Props = {
 
 export function StatusFooter({ children }: Props) {
   return (
-    <footer className="flex h-7 shrink-0 items-center gap-2.5 border-t bg-background px-3 text-[11px] text-muted-foreground">
+    <footer className="flex h-7 shrink-0 items-center gap-2.5 border-t bg-background px-3 text-xs text-muted-foreground">
       <div className="flex min-w-0 items-center gap-2.5 overflow-hidden">
         <Hint k="/" label="search" />
         <Hint k="↑↓←→" label="focus" />

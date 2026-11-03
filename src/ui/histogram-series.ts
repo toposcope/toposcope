@@ -1,5 +1,5 @@
 import type { HistogramSplit } from "../query/histogram";
-import { levelOrder } from "./level";
+import { levelHex, levelOrder } from "./level";
 import type { HistogramBucket, LogLevel } from "./types";
 
 const palette = [
@@ -12,14 +12,6 @@ const palette = [
   "#c084fc",
   "#2dd4bf",
 ];
-
-export const levelHex: Record<LogLevel, string> = {
-  debug: "#52525b",
-  info: "#0ea5e9",
-  warn: "#f59e0b",
-  error: "#ef4444",
-  fatal: "#fca5a5",
-};
 
 function isLogLevel(value: string): value is LogLevel {
   return (levelOrder as string[]).includes(value);

@@ -26,10 +26,10 @@ function ago(iso: string, nowMs: number): string {
 function InspectRow({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex gap-2">
-      <span className="w-[52px] shrink-0 font-mono text-[10.5px] text-muted-foreground/75">
+      <span className="w-[52px] shrink-0 font-mono text-2xs text-muted-foreground/75">
         {k}
       </span>
-      <span className="font-mono text-[11px] text-foreground/88 whitespace-nowrap">
+      <span className="font-mono text-xs text-foreground/88 whitespace-nowrap">
         {v}
       </span>
     </div>
@@ -57,7 +57,7 @@ function MarkInspectCard({
     <div className="absolute top-[22px] left-11 z-20 w-[254px] rounded-md border bg-popover p-2.5 shadow-lg">
       <div className="flex items-center gap-1.5">
         <MarkGlyph kind={mark.kind} size={12} />
-        <span className="text-[12.5px] font-semibold whitespace-nowrap">
+        <span className="text-sm font-semibold whitespace-nowrap">
           {formatChangeMarkLabel(mark)}
         </span>
       </div>
@@ -75,7 +75,7 @@ function MarkInspectCard({
         compareActive={compareActive}
         onFocusLogs={onFocusLogs}
       />
-      <p className="mt-1.5 text-[10.5px] leading-snug text-muted-foreground/80">
+      <p className="mt-1.5 text-2xs leading-snug text-muted-foreground/80">
         Hiding is per-hunt visibility. The store is not edited from this panel.
       </p>
     </div>
@@ -149,7 +149,7 @@ function SeamShell({
       />
       <span
         className={cn(
-          "relative ml-3.5 inline-flex h-[18px] items-center gap-1.5 rounded-[3.4px] px-1.5",
+          "relative ml-3.5 inline-flex h-[18px] items-center gap-1.5 rounded-sm px-1.5",
           selected || hovered ? "bg-accent" : "bg-card",
           selected
             ? "shadow-[0_0_0_1px_color-mix(in_oklab,var(--ring)_50%,transparent)]"
@@ -197,10 +197,10 @@ export function EventSeam({
       }}
     >
       <MarkGlyph kind={mark.kind} />
-      <span className="text-[11px] text-foreground/80 whitespace-nowrap">
+      <span className="text-xs text-foreground/80 whitespace-nowrap">
         {formatChangeMarkLabel(mark)}
       </span>
-      <span className="font-mono text-[10.5px] text-muted-foreground whitespace-nowrap">
+      <span className="font-mono text-2xs text-muted-foreground whitespace-nowrap">
         {stampText}
       </span>
     </SeamShell>
@@ -241,10 +241,10 @@ export function EventIncidentEnd({
       <span className="opacity-80">
         <MarkGlyph kind="incident" />
       </span>
-      <span className="text-[11px] whitespace-nowrap text-red-300/85">
+      <span className="text-xs whitespace-nowrap text-danger-fg/85">
         {incidentEndLabel(mark)}
       </span>
-      <span className="font-mono text-[10.5px] text-muted-foreground whitespace-nowrap">
+      <span className="font-mono text-2xs text-muted-foreground whitespace-nowrap">
         {stampText}
       </span>
     </SeamShell>
@@ -297,7 +297,7 @@ export function EventFold({
           }
         }}
       >
-        <span className="inline-flex h-[18px] items-center gap-1.5 rounded-[3.4px] border border-white/18 px-1.5">
+        <span className="inline-flex h-[18px] items-center gap-1.5 rounded-sm border border-white/18 px-1.5">
           {mixed ? null : <MarkGlyph kind={head.kind} />}
           {mixed
             ? kinds.slice(0, 3).map((kind) => (
@@ -308,14 +308,14 @@ export function EventFold({
                 />
               ))
             : null}
-          <span className="text-[11px] text-foreground/80 whitespace-nowrap">
+          <span className="text-xs text-foreground/80 whitespace-nowrap">
             {foldMarkLabel(members)}
           </span>
         </span>
       </SeamShell>
       {open ? (
         <div className="absolute top-[22px] left-[340px] z-20 w-[278px] max-w-[calc(100%-24px)] rounded-md border bg-popover shadow-lg">
-          <div className="flex items-center gap-2 border-b px-2.5 py-1.5 text-[12px] font-semibold">
+          <div className="flex items-center gap-2 border-b px-2.5 py-1.5 text-sm font-semibold">
             {foldMarkLabel(members)}
             <button
               type="button"
@@ -336,15 +336,15 @@ export function EventFold({
                 onClick={() => onInspect(row)}
               >
                 <MarkGlyph kind={row.kind} />
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground/85">
+                <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/85">
                   {formatChangeMarkLabel(row)}
                 </span>
-                <span className="font-mono text-[10.5px] text-muted-foreground">
+                <span className="font-mono text-2xs text-muted-foreground">
                   {row.ts.slice(11, 19)}
                 </span>
                 {rowHover === row.id ? (
                   <span
-                    className="rounded-sm border px-1.5 py-px text-[10px]"
+                    className="rounded-sm border px-1.5 py-px text-2xs"
                     onClick={(e) => {
                       e.stopPropagation();
                       onMute(row.id);
@@ -356,7 +356,7 @@ export function EventFold({
               </button>
             ))}
           </div>
-          <div className="border-t px-2.5 py-1.5 text-[10.5px] text-muted-foreground/80">
+          <div className="border-t px-2.5 py-1.5 text-2xs text-muted-foreground/80">
             A row inspects its mark · hide mutes it for this hunt only.
           </div>
         </div>
@@ -380,7 +380,7 @@ export function EventMarksPeek({
   return (
     <button
       type="button"
-      className="sticky bottom-0 z-[5] flex h-[22px] w-full items-center gap-1.5 border-t bg-card px-2 text-left font-mono text-[11px] text-muted-foreground"
+      className="sticky bottom-0 z-[5] flex h-[22px] w-full items-center gap-1.5 border-t bg-card px-2 text-left font-mono text-xs text-muted-foreground"
       onClick={() => onLoadToward(nearest.ts)}
     >
       <MarkGlyph kind={nearest.kind} />

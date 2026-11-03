@@ -101,16 +101,16 @@ export function SignInSettings(props: { onSettings: () => void }) {
     }
   }
 
-  const card = "flex flex-col gap-3 rounded-[10px] border border-white/10 bg-[#131316] px-[18px] py-4";
-  const row = "grid grid-cols-[150px_minmax(0,1fr)] items-center gap-3 text-[13px]";
+  const card = "flex flex-col gap-3 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4";
+  const row = "grid grid-cols-[150px_minmax(0,1fr)] items-center gap-3 text-sm";
   const k = "text-muted-foreground";
-  const input = "h-8 rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none";
+  const input = "h-8 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none";
   const status = body?.status;
   const working = body?.oidc && status?.last_sign_in_at && (!status.last_error_at || status.last_sign_in_at > status.last_error_at);
 
   return (
     <main className="min-h-0 flex-1 overflow-auto px-6 pt-3.5 pb-6">
-      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-[13px]">
+      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm">
         <button type="button" className="text-[#8a8a93] hover:text-foreground" onClick={props.onSettings}>
           Settings
         </button>
@@ -123,14 +123,14 @@ export function SignInSettings(props: { onSettings: () => void }) {
         <div className="flex flex-col gap-4">
           <section className={card}>
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="m-0 text-[14px] font-medium">Sign in with a provider</h2>
+              <h2 className="m-0 text-base font-medium">Sign in with a provider</h2>
               {body?.oidc ? (
                 working ? (
-                  <span className="text-[12px] text-emerald-300">● working · last sign-in {clockAt(status!.last_sign_in_at!, nowMs)}</span>
+                  <span className="text-sm text-ok-fg">● working · last sign-in {clockAt(status!.last_sign_in_at!, nowMs)}</span>
                 ) : status?.last_error ? (
-                  <span className="truncate text-[12px] text-red-300" title={status.last_error}>● {status.last_error}</span>
+                  <span className="truncate text-sm text-danger-fg" title={status.last_error}>● {status.last_error}</span>
                 ) : (
-                  <span className="text-[12px] text-muted-foreground">set up · nobody has signed in with it yet</span>
+                  <span className="text-sm text-muted-foreground">set up · nobody has signed in with it yet</span>
                 )
               ) : null}
             </div>
@@ -185,7 +185,7 @@ export function SignInSettings(props: { onSettings: () => void }) {
                 <option value="none">Not allowed: invite first</option>
               </select>
             </label>
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               Any OIDC provider works: Google, Entra, Okta, Keycloak, Authentik. Redirect URL: <span className="font-mono text-zinc-300">{body?.redirect_uri ?? "…/auth/callback"}</span>
             </span>
             <div className="flex gap-2">
@@ -210,10 +210,10 @@ export function SignInSettings(props: { onSettings: () => void }) {
           </section>
 
           <section className={card}>
-            <h2 className="m-0 text-[14px] font-medium">Passwords and two-step</h2>
+            <h2 className="m-0 text-base font-medium">Passwords and two-step</h2>
             <div className={row}>
               <span className={k}>Passwords</span>
-              <label className="inline-flex items-center gap-2 text-[12.5px]">
+              <label className="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={body?.passwords ?? true} disabled={busy || !body} onChange={(e) => void put({ passwords: e.target.checked }, e.target.checked ? "Passwords on" : "Passwords off")} />
                 {body?.passwords === false ? "off · the provider only" : `on · ${passwordPeople} ${passwordPeople === 1 ? "person uses" : "people use"} one`}
               </label>
@@ -235,33 +235,33 @@ export function SignInSettings(props: { onSettings: () => void }) {
                   <option value={1}>up to 1 day</option>
                   <option value={0}>never: a code at every sign-in</option>
                 </select>
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   The sign-in slider stops here. Lowering it shortens browsers already remembered; <span className="font-mono text-zinc-300">never</span> forgets them all.
                 </span>
               </span>
             </label>
             <div className={row}>
               <span className={k}>Rules</span>
-              <span className="text-[12px] text-muted-foreground">12 characters or more · slows down after misses, never locks · sessions last 30 days</span>
+              <span className="text-sm text-muted-foreground">12 characters or more · slows down after misses, never locks · sessions last 30 days</span>
             </div>
             <div className={row}>
               <span className={k}>Lost an Owner?</span>
-              <span className="text-[12px] text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 A host command makes a new one: <span className="font-mono text-zinc-300">toposcope.sh owner-link</span>
               </span>
             </div>
-            <span className="text-[12px] leading-[1.5] text-muted-foreground">Turning passwords off leaves the provider only. It is refused while an Owner has no other way in.</span>
+            <span className="text-sm leading-[1.5] text-muted-foreground">Turning passwords off leaves the provider only. It is refused while an Owner has no other way in.</span>
           </section>
         </div>
 
         <section className={card}>
           <div className="flex items-baseline justify-between gap-3">
-            <h2 className="m-0 text-[14px] font-medium">What each role may do</h2>
-            <span className="text-[12px] text-muted-foreground">fixed in this edition</span>
+            <h2 className="m-0 text-base font-medium">What each role may do</h2>
+            <span className="text-sm text-muted-foreground">fixed in this edition</span>
           </div>
-          <table className="w-full border-collapse text-[12.5px]">
+          <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="text-[11px] tracking-[0.04em] text-muted-foreground uppercase">
+              <tr className="text-xs tracking-[0.04em] text-muted-foreground uppercase">
                 <th className="border-b border-white/10 px-2 py-1.5 text-left font-medium" />
                 <th className="w-[84px] border-b border-white/10 px-2 py-1.5 text-center font-medium">Viewer</th>
                 <th className="w-[84px] border-b border-white/10 px-2 py-1.5 text-center font-medium">Operator</th>
@@ -272,14 +272,14 @@ export function SignInSettings(props: { onSettings: () => void }) {
               {roleTable.map((r) => (
                 <tr key={r.what}>
                   <td className="border-b border-white/[0.06] px-2 py-[7px] text-zinc-300">{r.what}</td>
-                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.viewer ? "text-emerald-300" : "text-zinc-600")}>{r.viewer ? "✓" : "—"}</td>
-                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.operator ? "text-emerald-300" : "text-zinc-600")}>{r.operator ? "✓" : "—"}</td>
-                  <td className="border-b border-white/[0.06] px-2 text-center text-emerald-300">✓</td>
+                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.viewer ? "text-ok-fg" : "text-zinc-600")}>{r.viewer ? "✓" : "—"}</td>
+                  <td className={cn("border-b border-white/[0.06] px-2 text-center", r.operator ? "text-ok-fg" : "text-zinc-600")}>{r.operator ? "✓" : "—"}</td>
+                  <td className="border-b border-white/[0.06] px-2 text-center text-ok-fg">✓</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <span className="text-[12px] text-muted-foreground">Every write in the right-hand two columns is recorded with the person who made it.</span>
+          <span className="text-sm text-muted-foreground">Every write in the right-hand two columns is recorded with the person who made it.</span>
         </section>
       </div>
     </main>

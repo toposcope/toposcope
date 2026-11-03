@@ -129,7 +129,7 @@ export function TimeseriesSpark({
     <>
       <PlotArea id={timeId} span={span} marks={marks} className={plotClass}>
         {loading && buckets.length === 0 && !aggResult ? (
-          <div className="h-full animate-pulse rounded bg-muted/40" />
+          <div className="h-full animate-pulse rounded-md bg-muted/40" />
         ) : view && !refused ? (
           <MetricSpark
             times={sparkTimes(times, aggResult)}
@@ -147,7 +147,7 @@ export function TimeseriesSpark({
         ) : numeric ? (
           <div className="relative min-h-0 flex-1">
             {refused ? (
-              <span className="font-mono text-[10.5px] text-amber-400">
+              <span className="font-mono text-2xs text-warn-fg">
                 {aggResult?.reason}
               </span>
             ) : (
@@ -167,7 +167,7 @@ export function TimeseriesSpark({
                     opacity="0.95"
                   />
                 </svg>
-                <span className="absolute top-0 left-0 font-mono text-[10.5px] text-muted-foreground">
+                <span className="absolute top-0 left-0 font-mono text-2xs text-muted-foreground">
                   {peakLabel}
                 </span>
               </>
@@ -204,11 +204,11 @@ export function TimeseriesSpark({
               ))}
             </div>
             {keys.length > 0 ? (
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-muted-foreground">
                 {keys.slice(0, 6).map((key, i) => (
                   <span key={key} className="flex items-center gap-1">
                     <span
-                      className="size-1.5 rounded-[2px]"
+                      className="size-1.5 rounded-sm"
                       style={{ background: seriesColor(key, split, i) }}
                     />
                     {key}

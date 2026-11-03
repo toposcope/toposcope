@@ -44,11 +44,11 @@ type Props = {
 };
 
 const fld = "grid grid-cols-[110px_minmax(0,1fr)] items-start gap-3";
-const lab = "pt-1.5 text-[12px] text-muted-foreground";
+const lab = "pt-1.5 text-sm text-muted-foreground";
 const box =
-  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-[13px] outline-none focus-within:border-white/40";
+  "flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm outline-none focus-within:border-white/40";
 const code =
-  "block overflow-hidden rounded-[5px] border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2 text-left font-mono text-[11.5px] leading-[1.55] whitespace-pre text-zinc-200 hover:border-white/25";
+  "block overflow-hidden rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2 text-left font-mono text-xs leading-[1.55] whitespace-pre text-zinc-200 hover:border-white/25";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const hhmmss = (ms: number) => {
@@ -59,14 +59,14 @@ const hhmmss = (ms: number) => {
 function Way({ n, title, children, help }: { n: number; title: string; children: React.ReactNode; help: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="flex items-center gap-2 text-[12.5px] font-semibold">
-        <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-[#27272a] text-[10.5px] text-plate">
+      <span className="flex items-center gap-2 text-sm font-semibold">
+        <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-control text-2xs text-plate">
           {n}
         </span>
         {title}
       </span>
       {children}
-      <span className="text-[11.5px] leading-[1.45] text-muted-foreground">{help}</span>
+      <span className="text-xs leading-[1.45] text-muted-foreground">{help}</span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ function CopyCode({ shown, copied }: { shown: string; copied: string }) {
 function FirstResult({ name, result }: { name: string; result: PushResultRow | null }) {
   if (!result) {
     return (
-      <div className="rounded-md border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2 text-[12px] text-muted-foreground">
+      <div className="rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2 text-sm text-muted-foreground">
         Waiting for its first result…
       </div>
     );
@@ -109,20 +109,20 @@ function FirstResult({ name, result }: { name: string; result: PushResultRow | n
     .filter(Boolean)
     .join(" ");
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-md border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2">
-      <span className="flex min-w-0 items-center gap-2 font-mono text-[12.5px]">
-        <span className="size-2 shrink-0 rounded-full bg-sky-400" />
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2">
+      <span className="flex min-w-0 items-center gap-2 font-mono text-sm">
+        <span className="size-2 shrink-0 rounded-full bg-info" />
         <span>{hhmmss(result.at)}</span>
         <Badge tone={result.result === "fail" ? "red" : result.result === "warn" ? "amber" : "sec"}>{result.result}</Badge>
         {value ? <span>{value}</span> : null}
         {head.length > 0 ? <span className="truncate text-muted-foreground">{head.join(" · ")}</span> : null}
       </span>
       {result.message ? (
-        <span className="truncate font-mono text-[13px]" title={result.message}>
+        <span className="truncate font-mono text-sm" title={result.message}>
           {result.message.split("\n", 1)[0]}
         </span>
       ) : null}
-      <span className="text-[11.5px] text-muted-foreground">
+      <span className="text-xs text-muted-foreground">
         Kept as a row: <span className="font-mono text-foreground">{row}</span>.
         {value ? (
           <>
@@ -334,13 +334,13 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
                     maxLength={100}
                     placeholder="disk-var"
                     onChange={(e) => setName(e.target.value)}
-                    className="min-w-0 flex-1 bg-transparent font-mono text-[14px] outline-none placeholder:text-muted-foreground"
+                    className="min-w-0 flex-1 bg-transparent font-mono text-base outline-none placeholder:text-muted-foreground"
                   />
                 </span>
                 {taken ? (
-                  <span className="text-[11.5px] text-red-300">A {taken} monitor has this name.</span>
+                  <span className="text-xs text-danger-fg">A {taken} monitor has this name.</span>
                 ) : name && !nameOk ? (
-                  <span className="text-[11.5px] text-red-300">{(parsePushName(name) as { error: string }).error}</span>
+                  <span className="text-xs text-danger-fg">{(parsePushName(name) as { error: string }).error}</span>
                 ) : null}
               </span>
             </div>
@@ -358,14 +358,14 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
 
             <div className={fld}>
               <span className={lab}>Expect a result</span>
-              <span className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
+              <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 every
                 <input
                   aria-label="every"
                   value={every}
                   placeholder="5m"
                   onChange={(e) => setEvery(e.target.value)}
-                  className={cn(box, "w-[72px] bg-transparent font-mono text-foreground", everyBad && "border-red-500/60")}
+                  className={cn(box, "w-[72px] bg-transparent font-mono text-foreground", everyBad && "border-danger/60")}
                 />
                 then wait
                 <input
@@ -373,7 +373,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
                   value={grace}
                   placeholder={everyMs ? formatSpan(Math.min(everyMs, 60 * 60_000)) : "2m"}
                   onChange={(e) => setGrace(e.target.value)}
-                  className={cn(box, "w-[72px] bg-transparent font-mono text-foreground", graceBad && "border-red-500/60")}
+                  className={cn(box, "w-[72px] bg-transparent font-mono text-foreground", graceBad && "border-danger/60")}
                 />
                 <span>before it opens · leave empty if it only reports when something happens</span>
               </span>
@@ -415,14 +415,14 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
               <span className={lab}>Calls</span>
               <span className="flex min-w-0 flex-wrap items-center gap-3">
                 {own ? (
-                  <span className={cn(box, "min-w-[280px] flex-1", !urlOk && "border-red-500/60")}>
+                  <span className={cn(box, "min-w-[280px] flex-1", !urlOk && "border-danger/60")}>
                     <input
                       aria-label="Its own webhook"
                       type="url"
                       value={ownUrl}
                       placeholder="https://…"
                       onChange={(e) => setOwnUrl(e.target.value)}
-                      className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground"
+                      className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
                     />
                   </span>
                 ) : (
@@ -430,8 +430,8 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
                     <span className="truncate">default · {fallback ?? "none set"}</span>
                   </span>
                 )}
-                <span className="text-[12.5px] text-muted-foreground">set in Settings, for any monitor without its own</span>
-                <button type="button" className="text-[12.5px] hover:underline" onClick={() => setOwn(!own)}>
+                <span className="text-sm text-muted-foreground">set in Settings, for any monitor without its own</span>
+                <button type="button" className="text-sm hover:underline" onClick={() => setOwn(!own)}>
                   {own ? "The default…" : "Its own…"}
                 </button>
               </span>
@@ -439,9 +439,9 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
           </div>
 
           <div className="flex items-center gap-2 border-t px-[18px] py-3">
-            <span className="text-[12.5px] text-muted-foreground">A warn shows on Watch and calls nobody. A fail opens it.</span>
+            <span className="text-sm text-muted-foreground">A warn shows on Watch and calls nobody. A fail opens it.</span>
             <span className="flex-1" />
-            {serviceOk(service) ? null : <span className="text-[12px] text-muted-foreground">{serviceMissing}</span>}
+            {serviceOk(service) ? null : <span className="text-sm text-muted-foreground">{serviceMissing}</span>}
             {editing ? (
               <Button size="lg" type="button" variant="ghost" className="text-destructive" disabled={busy} onClick={() => void remove()}>
                 Delete

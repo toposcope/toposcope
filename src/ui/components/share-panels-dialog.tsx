@@ -47,9 +47,9 @@ type Props = {
 
 type Done = { share: string; secret: string | null; added: string[]; reads: PanelRead[]; names: string[] };
 
-const section = "pt-1 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase";
+const section = "pt-1 text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase";
 const codeBox =
-  "m-0 overflow-x-auto rounded-[4.4px] border border-white/12 bg-background px-3 py-2.5 font-mono text-[11.5px] leading-[1.6] whitespace-pre text-zinc-300";
+  "m-0 overflow-x-auto rounded-md border border-white/12 bg-background px-3 py-2.5 font-mono text-xs leading-[1.6] whitespace-pre text-zinc-300";
 const yearOut = () => new Date(Date.now() + 364 * 86_400_000).toISOString().slice(0, 10);
 
 function copy(text: string, what: string) {
@@ -203,12 +203,12 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
             </DialogHeader>
             <div className="flex flex-col gap-3.5">
               {panels.length > 1 && picked.length !== 1 ? (
-                <div className="flex flex-col rounded-[6.4px] border border-white/10">
+                <div className="flex flex-col rounded-lg border border-white/10">
                   {panels.map((p) => {
                     const r = readsBy.get(p.widget.id)!;
                     const off = !("reads" in r) && r.offers.length === 0;
                     return (
-                      <label key={p.widget.id} className={`flex items-center gap-2.5 border-b border-white/[0.08] px-3 py-2 text-[13px] last:border-b-0 ${off ? "text-muted-foreground/60" : ""}`}>
+                      <label key={p.widget.id} className={`flex items-center gap-2.5 border-b border-white/[0.08] px-3 py-2 text-sm last:border-b-0 ${off ? "text-muted-foreground/60" : ""}`}>
                         <input
                           type="checkbox"
                           disabled={off}
@@ -219,7 +219,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                           className="accent-[var(--color-plate)]"
                         />
                         <span className="min-w-0 flex-1 truncate">{p.title}</span>
-                        <span className="truncate font-mono text-[11.5px] text-muted-foreground">
+                        <span className="truncate font-mono text-xs text-muted-foreground">
                           {"reads" in r ? readWords(r.reads[0]!) : r.offers.length ? "share one part" : r.why}
                         </span>
                       </label>
@@ -231,14 +231,14 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                 const r = readsBy.get(id)!;
                 if ("reads" in r) return null;
                 return (
-                  <div key={id} className="flex flex-col gap-2 rounded-[6.4px] border border-white/12 p-3">
-                    <span className="text-[13px] leading-[1.5] text-zinc-300">{r.why}</span>
+                  <div key={id} className="flex flex-col gap-2 rounded-lg border border-white/12 p-3">
+                    <span className="text-sm leading-[1.5] text-zinc-300">{r.why}</span>
                     <div className="flex flex-wrap gap-2">
                       {r.offers.map((o) => (
                         <button
                           key={o.label}
                           type="button"
-                          className="h-[30px] rounded-[4.4px] border border-input px-2.5 text-[12.5px] hover:bg-accent"
+                          className="h-[30px] rounded-md border border-input px-2.5 text-sm hover:bg-accent"
                           onClick={() => setOffers((prev) => ({ ...prev, [id]: o.reads }))}
                         >
                           {o.label}
@@ -251,20 +251,20 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
               {reads.length > 0 ? (
                 <>
                   <div className={section}>What it can read</div>
-                  <div className="flex flex-col rounded-[6.4px] border border-white/10">
+                  <div className="flex flex-col rounded-lg border border-white/10">
                     {metricNames.length > 0 ? (
                       <div className="flex flex-col gap-2 border-b border-white/[0.08] px-3 py-2.5 last:border-b-0">
-                        <span className="text-[13px] font-medium">Metrics</span>
-                        <label className="flex items-center gap-2 text-[13px]">
+                        <span className="text-sm font-medium">Metrics</span>
+                        <label className="flex items-center gap-2 text-sm">
                           <input type="radio" name="like" checked={!choices.allLike} onChange={() => setChoices((c) => ({ ...c, allLike: false }))} className="accent-[var(--color-plate)]" />
                           {metricNames.length === 1 ? "Only this one" : `Only these ${new Set(metricNames).size}`}
-                          <span className="truncate font-mono text-[12px] text-muted-foreground">{[...new Set(metricNames)].join(" ")}</span>
+                          <span className="truncate font-mono text-sm text-muted-foreground">{[...new Set(metricNames)].join(" ")}</span>
                         </label>
                         {like ? (
-                          <label className="flex items-center gap-2 text-[13px]">
+                          <label className="flex items-center gap-2 text-sm">
                             <input type="radio" name="like" checked={choices.allLike} onChange={() => setChoices((c) => ({ ...c, allLike: true }))} className="accent-[var(--color-plate)]" />
                             {likeCount !== null ? `All ${likeCount} like it` : "All like it"}
-                            <span className="font-mono text-[12px] text-muted-foreground">{like}</span>
+                            <span className="font-mono text-sm text-muted-foreground">{like}</span>
                           </label>
                         ) : null}
                       </div>
@@ -272,34 +272,34 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                     {scope.metric_labels || scope.logs ? (
                       <div className="flex items-center gap-2 border-b border-white/[0.08] px-3 py-2.5 last:border-b-0">
                         <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                        <span className="font-mono text-[12.5px]">{scope.metric_labels || scope.logs}</span>
-                        <span className="text-[12px] text-muted-foreground">fixed from the panel · the site cannot read others</span>
+                        <span className="font-mono text-sm">{scope.metric_labels || scope.logs}</span>
+                        <span className="text-sm text-muted-foreground">fixed from the panel · the site cannot read others</span>
                       </div>
                     ) : null}
                     {dropped.length > 0 ? (
-                      <div className="border-b border-white/[0.08] px-3 py-2 text-[12px] text-amber-400 last:border-b-0">
+                      <div className="border-b border-white/[0.08] px-3 py-2 text-sm text-warn-fg last:border-b-0">
                         The panels disagree on {dropped.join(", ")}: it is not fixed, so the share reads every value of it.
                       </div>
                     ) : null}
                     {splitKey ? (
-                      <label className="flex items-center gap-2 border-b border-white/[0.08] px-3 py-2.5 text-[13px] last:border-b-0">
+                      <label className="flex items-center gap-2 border-b border-white/[0.08] px-3 py-2.5 text-sm last:border-b-0">
                         <input type="checkbox" checked={choices.splitOn || reads.some((r) => r.kind === "top")} disabled={reads.some((r) => r.kind === "top")} onChange={(e) => setChoices((c) => ({ ...c, splitOn: e.target.checked }))} className="accent-[var(--color-plate)]" />
                         One line per {splitKey}
-                        <span className="text-[12px] text-muted-foreground">its values are shown</span>
+                        <span className="text-sm text-muted-foreground">its values are shown</span>
                       </label>
                     ) : null}
                     {splitKey ? (
-                      <label className="flex items-center gap-2 border-b border-white/[0.08] px-3 py-2.5 text-[13px] last:border-b-0">
+                      <label className="flex items-center gap-2 border-b border-white/[0.08] px-3 py-2.5 text-sm last:border-b-0">
                         <input type="checkbox" checked={choices.narrowOn} onChange={(e) => setChoices((c) => ({ ...c, narrowOn: e.target.checked }))} className="accent-[var(--color-plate)]" />
                         Let a panel pick one {splitKey}
-                        <span className="text-[12px] text-muted-foreground">for a page per {splitKey}</span>
+                        <span className="text-sm text-muted-foreground">for a page per {splitKey}</span>
                       </label>
                     ) : null}
                     {service && !reads.some((r) => r.kind !== "metric") ? (
-                      <label className="flex items-center gap-2 px-3 py-2.5 text-[13px]">
+                      <label className="flex items-center gap-2 px-3 py-2.5 text-sm">
                         <input type="checkbox" checked={choices.logsOn} onChange={(e) => setChoices((c) => ({ ...c, logsOn: e.target.checked }))} className="accent-[var(--color-plate)]" />
                         Also count {service}'s log lines
-                        <span className="text-[12px] text-muted-foreground">how many, how fast · never the lines</span>
+                        <span className="text-sm text-muted-foreground">how many, how fast · never the lines</span>
                       </label>
                     ) : null}
                   </div>
@@ -308,7 +308,7 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                     aria-label="Into"
                     value={into}
                     onChange={(e) => setInto(e.target.value)}
-                    className="h-8 rounded-[4.4px] border border-input bg-transparent px-2 text-[13px]"
+                    className="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
                   >
                     <option value="">A new share</option>
                     {live.map((s) => (
@@ -317,17 +317,17 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
                       </option>
                     ))}
                   </select>
-                  <div className="font-mono text-[11.5px] text-muted-foreground">bars ≥1m · 7-day windows · 30 days back · 120 reads/min · change in Settings → Shares</div>
+                  <div className="font-mono text-xs text-muted-foreground">bars ≥1m · 7-day windows · 30 days back · 120 reads/min · change in Settings → Shares</div>
                 </>
               ) : null}
             </div>
             <DialogFooter className="justify-end">
-              <button type="button" className="h-8 rounded-[4.4px] border border-input px-3 text-[13px] hover:bg-accent" onClick={() => onOpenChange(false)}>
+              <button type="button" className="h-8 rounded-md border border-input px-3 text-sm hover:bg-accent" onClick={() => onOpenChange(false)}>
                 Cancel
               </button>
               <Button size="lg"
                 type="button"
-                className="bg-plate text-[#18181b] hover:bg-plate/90"
+                className="bg-plate text-primary-foreground hover:bg-plate/90"
                 disabled={reads.length === 0}
                 onClick={() => {
                   if (into) {
@@ -346,33 +346,33 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
           <>
             <DialogHeader>
               <DialogTitle>Share this panel</DialogTitle>
-              <DialogDescription className="font-mono text-[12px]">{scopeWords(scope)}</DialogDescription>
+              <DialogDescription className="font-mono text-sm">{scopeWords(scope)}</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-3.5">
               <div className={section}>A new share</div>
               <DialogField label="Name" help="Proposed from the service. It names the share in its use rows.">
                 <DialogControl>
-                  <input value={name} onChange={(e) => setName(e.target.value)} className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none" />
+                  <input value={name} onChange={(e) => setName(e.target.value)} className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none" />
                 </DialogControl>
               </DialogField>
               <DialogField label="Shown on" help="The site that will put the panel in a page. Only it can frame it.">
                 <DialogControl className="border-plate/50">
-                  <input value={site} placeholder="https://admin.example.com" onChange={(e) => setSite(e.target.value)} className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground" />
+                  <input value={site} placeholder="https://admin.example.com" onChange={(e) => setSite(e.target.value)} className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground" />
                 </DialogControl>
               </DialogField>
               <DialogField label="Works until">
                 <DialogControl>
-                  <input value={until} onChange={(e) => setUntil(e.target.value)} className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none" />
-                  <span className="shrink-0 text-[11px] text-muted-foreground">a year · revoke any time</span>
+                  <input value={until} onChange={(e) => setUntil(e.target.value)} className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none" />
+                  <span className="shrink-0 text-xs text-muted-foreground">a year · revoke any time</span>
                 </DialogControl>
               </DialogField>
-              <div className="font-mono text-[11.5px] text-muted-foreground">bars ≥1m · 7-day windows · 30 days back · 120 reads/min</div>
+              <div className="font-mono text-xs text-muted-foreground">bars ≥1m · 7-day windows · 30 days back · 120 reads/min</div>
             </div>
             <DialogFooter className="justify-end">
-              <button type="button" className="h-8 rounded-[4.4px] border border-input px-3 text-[13px] hover:bg-accent" onClick={() => setStep("scope")}>
+              <button type="button" className="h-8 rounded-md border border-input px-3 text-sm hover:bg-accent" onClick={() => setStep("scope")}>
                 Back
               </button>
-              <Button size="lg" type="button" className="bg-plate text-[#18181b] hover:bg-plate/90" disabled={!name.trim()} onClick={() => void createNew()}>
+              <Button size="lg" type="button" className="bg-plate text-primary-foreground hover:bg-plate/90" disabled={!name.trim()} onClick={() => void createNew()}>
                 Create and get the code
               </Button>
             </DialogFooter>
@@ -386,48 +386,48 @@ export function SharePanelsDialog({ open, onOpenChange, panels, picked, query, r
               </DialogDescription>
             </DialogHeader>
             {!done.secret && done.added.length > 0 ? (
-              <div className="mb-3 rounded-[6.4px] border border-amber-400/40 bg-amber-400/[0.06] px-2.5 py-2 text-[12.5px]">
-                <span className="text-amber-400">{done.share} now also reads</span> <span className="font-mono">{done.added.join(" · ")}</span>
+              <div className="mb-3 rounded-lg border border-warn/40 bg-warn/[0.06] px-2.5 py-2 text-sm">
+                <span className="text-warn-fg">{done.share} now also reads</span> <span className="font-mono">{done.added.join(" · ")}</span>
               </div>
             ) : null}
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
               <div className="flex min-w-0 flex-col gap-3.5">
                 {done.secret ? (
                   <Step n="1" title="The secret, on your backend" onCopy={() => copy(`TOPOSCOPE_SHARE=${done.secret}`, "Secret")}>
-                    <div className="truncate rounded-[4.4px] border border-plate/50 px-2.5 py-1.5 font-mono text-[12.5px]">TOPOSCOPE_SHARE={done.secret}</div>
-                    <span className="text-[11px] text-muted-foreground">An environment variable of the app that serves the page. Never in the page.</span>
+                    <div className="truncate rounded-md border border-plate/50 px-2.5 py-1.5 font-mono text-sm">TOPOSCOPE_SHARE={done.secret}</div>
+                    <span className="text-xs text-muted-foreground">An environment variable of the app that serves the page. Never in the page.</span>
                   </Step>
                 ) : null}
                 {done.secret ? (
                   <Step n="2" title="Each page load, your backend asks for a ticket" onCopy={() => copy(ticketCall(origin), "Ticket call")}>
                     <pre className={codeBox}>{ticketCall(origin)}</pre>
-                    <span className="text-[11px] text-muted-foreground">A ticket lasts an hour and can only read. Hand it to the page.</span>
+                    <span className="text-xs text-muted-foreground">A ticket lasts an hour and can only read. Hand it to the page.</span>
                   </Step>
                 ) : null}
                 {!done.secret ? (
                   <div className="flex items-baseline gap-2 opacity-55">
-                    <span className="font-mono text-[12px]">1–2</span>
-                    <span className="text-[13px] font-semibold">Secret and ticket call</span>
-                    <span className="text-[12px] text-muted-foreground">as for its other panels</span>
+                    <span className="font-mono text-sm">1–2</span>
+                    <span className="text-sm font-semibold">Secret and ticket call</span>
+                    <span className="text-sm text-muted-foreground">as for its other panels</span>
                   </div>
                 ) : null}
                 <Step n="3" title="In the page, where the chart goes" onCopy={() => copy(done.names.map((n) => namedPanelTag(origin, n)).join("\n\n"), done.names.length > 1 ? "Tags" : "Tag")}>
                   <pre className={codeBox}>{done.names.map((n) => namedPanelTag(origin, n)).join("\n\n")}</pre>
-                  <span className="text-[11px] text-muted-foreground">Serve your own copy of embed.js, with data-origin, to keep a fallback when Toposcope is down.</span>
+                  <span className="text-xs text-muted-foreground">Serve your own copy of embed.js, with data-origin, to keep a fallback when Toposcope is down.</span>
                 </Step>
               </div>
               <div className="flex min-w-0 flex-col gap-2">
-                <span className="text-[13px] font-semibold">How it will look there</span>
+                <span className="text-sm font-semibold">How it will look there</span>
                 {preview ? (
-                  <iframe title="Preview through the share" src={preview} className="h-[240px] w-full rounded-[6.4px] border border-white/10" />
+                  <iframe title="Preview through the share" src={preview} className="h-[240px] w-full rounded-lg border border-white/10" />
                 ) : (
-                  <div className="h-[240px] animate-pulse rounded-[6.4px] bg-muted/40" />
+                  <div className="h-[240px] animate-pulse rounded-lg bg-muted/40" />
                 )}
-                <span className="text-[11px] text-muted-foreground">Live, through the share: exactly what the site can read.</span>
+                <span className="text-xs text-muted-foreground">Live, through the share: exactly what the site can read.</span>
               </div>
             </div>
             <DialogFooter className="justify-end">
-              <button type="button" className="h-8 rounded-[4.4px] border border-input px-3 text-[13px] hover:bg-accent" onClick={() => onOpenChange(false)}>
+              <button type="button" className="h-8 rounded-md border border-input px-3 text-sm hover:bg-accent" onClick={() => onOpenChange(false)}>
                 Done
               </button>
             </DialogFooter>
@@ -442,10 +442,10 @@ function Step({ n, title, onCopy, children }: { n: string; title: string; onCopy
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline gap-2">
-        <span className="font-mono text-[12px] text-plate">{n}</span>
-        <span className="text-[13px] font-semibold">{title}</span>
+        <span className="font-mono text-sm text-plate">{n}</span>
+        <span className="text-sm font-semibold">{title}</span>
         <span className="flex-1" />
-        <button type="button" className="h-[22px] rounded-[4.4px] border border-input px-2 text-[11px] hover:bg-accent" onClick={onCopy}>
+        <button type="button" className="h-[22px] rounded-md border border-input px-2 text-xs hover:bg-accent" onClick={onCopy}>
           Copy
         </button>
       </div>

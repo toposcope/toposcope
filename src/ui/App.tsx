@@ -4084,7 +4084,7 @@ export function App() {
   // 33d, 33m–33o: what matched and when sits in the pinned plot's own head, not a strip of its own.
   const huntHead = (
     <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 px-3 pt-2.5 pb-2">
-      <span className="text-[20px] leading-none font-semibold tracking-[-0.01em] tabular-nums text-foreground">
+      <span className="text-xl leading-none font-semibold tracking-[-0.01em] tabular-nums text-foreground">
         {scanRefuse?.histogram ? (
           <span className="text-muted-foreground">—</span>
         ) : (
@@ -4092,11 +4092,11 @@ export function App() {
         )}
       </span>
       {scanRefuse?.histogram ? (
-        <span className="text-[13px] text-amber-400">
+        <span className="text-sm text-warn-fg">
           too wide to count · narrow the window or add a service: filter
         </span>
       ) : (
-        <span className="text-[13px] text-muted-foreground">matching</span>
+        <span className="text-sm text-muted-foreground">matching</span>
       )}
       {heldV?.pill ? <HeldPill text={heldV.pill} /> : null}
       {heldV?.chip ? <ScopeChipView chip={heldV.chip} /> : null}
@@ -4108,11 +4108,11 @@ export function App() {
       ) : null}
       <span className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
         {explore ? (
-          <span className={cn("text-xs", live ? "text-sky-300" : "text-amber-400")}>
+          <span className={cn("text-xs", live ? "text-info-fg" : "text-warn-fg")}>
             Custom · {formatSpanShort(spanMs)}
           </span>
         ) : live ? (
-          <span className="text-xs text-sky-300">Live</span>
+          <span className="text-xs text-info-fg">Live</span>
         ) : null}
         {Number.isFinite(windowFromMs) && Number.isFinite(windowToMs) ? (
           <span className="font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
@@ -4139,7 +4139,7 @@ export function App() {
         ) : explore ? (
           <button
             type="button"
-            className="inline-flex h-6 items-center gap-1.5 rounded-md border border-white/16 px-2 text-[12px] text-foreground hover:border-ring hover:bg-accent"
+            className="inline-flex h-6 items-center gap-1.5 rounded-md border border-white/16 px-2 text-sm text-foreground hover:border-ring hover:bg-accent"
             onClick={onResetExplore}
           >
             <Undo2 className="size-3" />
@@ -4164,7 +4164,7 @@ export function App() {
           const mark = (
             <>
               <BrandMark className="size-4 shrink-0 text-plate" />
-              <span className="text-[14px] font-semibold tracking-[-0.015em]">toposcope</span>
+              <span className="text-base font-semibold tracking-[-0.015em]">toposcope</span>
             </>
           );
           return home ? (
@@ -4210,10 +4210,10 @@ export function App() {
                 >
                   <span
                     className={`size-1.5 rounded-full ${
-                      readingPaused ? "bg-amber-400" : live && !searching ? "animate-pulse bg-emerald-400" : live ? "bg-emerald-400" : "bg-muted-foreground"
+                      readingPaused ? "bg-warn" : live && !searching ? "animate-pulse bg-ok" : live ? "bg-ok" : "bg-muted-foreground"
                     }`}
                   />
-                  {readingPaused ? <span className="text-amber-400">Paused while reading</span> : searching ? "Paused" : "Live"}
+                  {readingPaused ? <span className="text-warn-fg">Paused while reading</span> : searching ? "Paused" : "Live"}
                 </Button>
             </div>
           ) : null}
@@ -4233,15 +4233,15 @@ export function App() {
               type="button"
               className={cn(
                 // The Watch tab's dot says it at any width (26a); the counts in words need the room.
-                "hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-[12px] xl:inline-flex",
-                watching.open > 0 ? "border-red-500/50" : "border-white/15",
+                "hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm xl:inline-flex",
+                watching.open > 0 ? "border-danger/50" : "border-white/15",
               )}
               title="Open Watch"
               onClick={() => setView("watch")}
             >
               {watching.open > 0 ? (
                 <>
-                  <span className="size-[7px] rounded-full bg-red-500" />
+                  <span className="size-[7px] rounded-full bg-danger" />
                   {watching.open} open
                 </>
               ) : null}
@@ -4703,7 +4703,7 @@ export function App() {
                     "flex h-8 min-w-0 items-center gap-2 py-0 pr-1 pl-2.5",
                     "rounded-md border",
                     searchSlow
-                      ? "border-amber-400/45 bg-amber-400/10"
+                      ? "border-warn/45 bg-warn/10"
                       : "border-input",
                   )}
                 >
@@ -4715,14 +4715,14 @@ export function App() {
                       : ""}
                   </span>
                   {searchSlow ? (
-                    <span className="min-w-0 truncate border-l border-white/12 pl-2 text-[11.5px] text-amber-400">
+                    <span className="min-w-0 truncate border-l border-white/12 pl-2 text-xs text-warn-fg">
                       narrow the window or add a service: filter
                     </span>
                   ) : null}
                   <Button size="sm"
                     type="button"
                     variant="ghost"
-                    className="shrink-0 rounded-sm px-2.5 text-[11.5px]"
+                    className="shrink-0 rounded-sm px-2.5 text-xs"
                     onClick={cancelSearch}
                   >
                     Stop
@@ -4972,7 +4972,7 @@ export function App() {
                             ? "No events ingested yet."
                             : "No events in this range."}
                       </p>
-                      <p className="max-w-[360px] text-[13px] leading-relaxed text-muted-foreground">
+                      <p className="max-w-[360px] text-sm leading-relaxed text-muted-foreground">
                         {scanRefuse?.events
                           ? "Narrow the range or simplify q."
                           : emptyIngest

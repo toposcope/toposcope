@@ -44,7 +44,7 @@ function GithubMark() {
   );
 }
 
-const external = "inline-flex h-7 items-center rounded-[6.4px] border border-white/15 px-2.5 text-[12px] text-foreground no-underline hover:bg-white/[0.06]";
+const external = "inline-flex h-7 items-center rounded-lg border border-white/15 px-2.5 text-sm text-foreground no-underline hover:bg-white/[0.06]";
 
 /**
  * The GitHub band above Repositories (#416, frames 42a–42h): connect with a device code, the
@@ -84,7 +84,7 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
   const warn = g.state === "ended" || noRepos;
   const left = g.code ? Math.max(0, Math.round((g.code.expires_at - now) / 1000)) : 0;
   return (
-    <section aria-label="GitHub" className={`mb-3.5 flex flex-col gap-2.5 rounded-[10px] border bg-[#131316] px-4 py-3 text-[12.5px] ${warn ? "border-[#e7e1d3]/35" : "border-white/10"}`}>
+    <section aria-label="GitHub" className={`mb-3.5 flex flex-col gap-2.5 rounded-xl border bg-surface-2 px-4 py-3 text-sm ${warn ? "border-plate/35" : "border-white/10"}`}>
       <div className="flex flex-wrap items-center gap-3">
         <GithubMark />
         <span className="font-medium">GitHub</span>
@@ -112,7 +112,7 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
         ) : null}
       </div>
       {g.state === "connecting" && g.code ? (
-        <div className="flex flex-wrap items-center gap-[18px] rounded-[6.4px] border border-white/[0.08] bg-[#0d0d0f] px-3.5 py-3">
+        <div className="flex flex-wrap items-center gap-[18px] rounded-lg border border-white/[0.08] bg-surface-1 px-3.5 py-3">
           <div className="flex flex-col gap-1.5">
             <span className="text-muted-foreground">
               On{" "}
@@ -121,7 +121,7 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
               </a>
               , enter
             </span>
-            <span className="font-mono text-[22px] tracking-[0.12em]">{g.code.user_code}</span>
+            <span className="font-mono text-xl tracking-[0.12em]">{g.code.user_code}</span>
           </div>
           <Button
             type="button"
@@ -139,7 +139,7 @@ export function GithubBand(props: { github: GithubState; canConnect: boolean; on
         </div>
       ) : null}
       {confirm ? (
-        <div className="flex flex-wrap items-center gap-2.5 rounded-[6.4px] border border-[#e7e1d3]/35 bg-[#0d0d0f] px-3.5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-plate/35 bg-surface-1 px-3.5 py-2.5">
           <span>Disconnect GitHub? Repositories set here stay; Set stops listing GitHub's.</span>
           <span className="flex-1" />
           <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => setConfirm(false)}>

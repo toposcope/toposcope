@@ -166,10 +166,10 @@ export function HomeView(props: Props) {
   }
 
   if (failed && !data) {
-    return <main className="p-6 text-[13px] text-muted-foreground">{failed}</main>;
+    return <main className="p-6 text-sm text-muted-foreground">{failed}</main>;
   }
   if (!data) {
-    return <main className="p-6 text-[13px] text-muted-foreground">Loading…</main>;
+    return <main className="p-6 text-sm text-muted-foreground">Loading…</main>;
   }
   if (!data.ingested) {
     return <FirstRun instanceName={props.instanceName} savedCount={props.saved.length} markCount={data.marks.length} onOpenAccess={props.onOpenAccess} />;
@@ -200,8 +200,8 @@ export function HomeView(props: Props) {
         <span className="truncate">{s.name}</span>
         {s.saved_by?.agent ? <AgentBadge name={s.saved_by.name} onOpen={props.onOpenAgents} /> : null}
       </span>
-      <span className="ml-2 flex shrink-0 items-baseline gap-2 font-mono text-[12px] text-muted-foreground">
-        {delta ? <span className={cn("text-[11.5px]", up && "text-red-300")}>{delta}</span> : null}
+      <span className="ml-2 flex shrink-0 items-baseline gap-2 font-mono text-sm text-muted-foreground">
+        {delta ? <span className={cn("text-xs", up && "text-danger-fg")}>{delta}</span> : null}
         {value}
       </span>
     </button>
@@ -210,11 +210,11 @@ export function HomeView(props: Props) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-2 px-6 pt-3.5">
-        <span className="mr-1 text-[12px] text-muted-foreground">Since</span>
+        <span className="mr-1 text-sm text-muted-foreground">Since</span>
         {since.kind === "hour" ? (
           <MarkChip on glyph="" color="" label="the last hour" time={`${hhmmUtc(data.after.from)} → ${hhmmUtc(data.after.to)}`} />
         ) : null}
-        {since.kind === "hour" && data.marks.length === 0 ? <span className="text-[12px] text-muted-foreground">no mark in the last 24 h</span> : null}
+        {since.kind === "hour" && data.marks.length === 0 ? <span className="text-sm text-muted-foreground">no mark in the last 24 h</span> : null}
         {strip.map((m) => (
           <MarkChip
             key={m.id}
@@ -226,15 +226,15 @@ export function HomeView(props: Props) {
             onClick={() => choose(m.id)}
           />
         ))}
-        {more > 0 ? <span className="inline-flex h-[30px] items-center rounded-[7px] border border-white/10 px-[11px] text-[12.5px] text-muted-foreground">{more} more today</span> : null}
+        {more > 0 ? <span className="inline-flex h-[30px] items-center rounded-lg border border-white/10 px-[11px] text-sm text-muted-foreground">{more} more today</span> : null}
         <div className="flex-1" />
         {since.kind === "mark" ? (
-          <button type="button" className="h-[30px] rounded-[7px] border border-white/10 px-[11px] text-[12.5px] text-muted-foreground hover:text-foreground" onClick={() => choose("hour")}>
+          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-[11px] text-sm text-muted-foreground hover:text-foreground" onClick={() => choose("hour")}>
             last hour instead
           </button>
         ) : null}
         {props.readOnly ? null : note === null ? (
-          <button type="button" className="h-[30px] rounded-[7px] border border-white/10 px-[11px] text-[12.5px] text-muted-foreground hover:text-foreground" onClick={() => setNote("")}>
+          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-[11px] text-sm text-muted-foreground hover:text-foreground" onClick={() => setNote("")}>
             + note
           </button>
         ) : (
@@ -256,7 +256,7 @@ export function HomeView(props: Props) {
               }}
               placeholder="what you did, in one line"
               aria-label="Note mark"
-              className="h-[30px] w-[260px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none"
+              className="h-[30px] w-[260px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none"
             />
             <Button type="submit" variant="outline">
               ○ Add
@@ -268,7 +268,7 @@ export function HomeView(props: Props) {
       <div className="flex min-h-0 flex-1">
         <main className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pt-5 pb-6">
           <div className="flex flex-wrap items-baseline gap-3.5">
-            <h1 className="m-0 text-[20px] font-semibold tracking-[-0.01em]">
+            <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">
               {since.kind === "mark" ? (
                 <>
                   What changed since <span className="text-plate">{since.mark.title}</span>
@@ -277,16 +277,16 @@ export function HomeView(props: Props) {
                 "The last hour, against the hour before"
               )}
             </h1>
-            <span className="font-mono text-[12.5px] text-muted-foreground">
+            <span className="font-mono text-sm text-muted-foreground">
               {since.kind === "mark"
                 ? `${hhmmUtc(since.mark.ts)} UTC · ${markAge(since.mark.ts, nowMs)} · ${sideText(data.side_ms)}`
                 : `${hhmmUtc(data.before.from)} → ${hhmmUtc(data.before.to)} · ${hhmmUtc(data.after.from)} → ${hhmmUtc(data.after.to)} · UTC`}
             </span>
-            {since.kind === "mark" && !since.auto ? <span className="text-[12px] text-muted-foreground">· your pick, until a newer deploy or flag</span> : null}
+            {since.kind === "mark" && !since.auto ? <span className="text-sm text-muted-foreground">· your pick, until a newer deploy or flag</span> : null}
           </div>
 
           {data.cards.length === 0 ? (
-            <section className="rounded-[10px] border border-white/10 bg-[#131316] p-4 text-[12.5px] text-muted-foreground">
+            <section className="rounded-xl border border-white/10 bg-surface-2 p-4 text-sm text-muted-foreground">
               Save a hunt and it is a card here, with its before → after around the mark.
             </section>
           ) : (
@@ -305,11 +305,11 @@ export function HomeView(props: Props) {
           {props.onOpenFields ? <EvidenceGaps coverage={coverage} selectedMarkId={selectedId} onOpenFields={props.onOpenFields} /> : null}
 
           <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-            <section className="flex flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#131316] px-[18px] py-4">
+            <section className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4">
               <div className="flex justify-between">
-                <span className="text-[13.5px] font-medium">New fingerprints{fp ? ` · ${fp.first_seen.length}${fp.more ? "+" : ""}` : " · none"}</span>
+                <span className="text-base font-medium">New fingerprints{fp ? ` · ${fp.first_seen.length}${fp.more ? "+" : ""}` : " · none"}</span>
                 {fp && fp.first_seen.length > 0 ? (
-                  <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt(e1Query, data.after)}>
+                  <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt(e1Query, data.after)}>
                     open as a hunt →
                   </button>
                 ) : null}
@@ -324,41 +324,41 @@ export function HomeView(props: Props) {
                   ))}
                 </>
               ) : (
-                <p className="m-0 text-[12px] leading-[1.5] text-muted-foreground">
+                <p className="m-0 text-sm leading-[1.5] text-muted-foreground">
                   {since.kind === "hour" ? "Nothing new in the last hour." : "No fingerprint first seen after this mark, and none stopped."}
                 </p>
               )}
             </section>
-            <section className="flex flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#131316] px-[18px] py-4">
+            <section className="flex flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4">
               <div className="flex justify-between">
-                <span className="text-[13.5px] font-medium">Monitors · {openCount > 0 ? `${openCount} open` : monitors.length ? "all ok" : "none"}</span>
-                <button type="button" className="text-[12px] text-muted-foreground hover:text-foreground" onClick={props.onOpenWatch}>
+                <span className="text-base font-medium">Monitors · {openCount > 0 ? `${openCount} open` : monitors.length ? "all ok" : "none"}</span>
+                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={props.onOpenWatch}>
                   {monitors.length ? `all ${monitors.length} →` : "Watch →"}
                 </button>
               </div>
               {monitors.slice(0, 4).map((m) => (
-                <div key={m.id} className="flex items-start gap-3 border-b border-white/[0.06] py-2 text-[12.5px] last:border-b-0">
-                  <span className={m.open ? "text-red-300" : "text-emerald-300"}>●</span>
+                <div key={m.id} className="flex items-start gap-3 border-b border-white/[0.06] py-2 text-sm last:border-b-0">
+                  <span className={m.open ? "text-danger-fg" : "text-ok-fg"}>●</span>
                   <span className="flex-1">
                     {m.name} <span className="text-muted-foreground">{m.open ? `open since ${hhmmUtc(new Date(m.open.opened_at).toISOString())}` : "ok"}</span>
                   </span>
-                  <span className={cn("font-mono", m.open ? "text-red-300" : "text-muted-foreground")}>
+                  <span className={cn("font-mono", m.open ? "text-danger-fg" : "text-muted-foreground")}>
                     {m.open?.last_value != null ? formatValue(m.open.last_value, m.saved?.agg ?? "count") : m.open ? "open" : "ok"}
                   </span>
                 </div>
               ))}
-              {props.readOnly ? <p className="m-0 text-[12px] text-muted-foreground">read-only for you · ask an Operator to change one</p> : null}
-              {monitors.length === 0 && !props.readOnly ? <p className="m-0 text-[12px] text-muted-foreground">Watch this on a hunt makes the first one.</p> : null}
+              {props.readOnly ? <p className="m-0 text-sm text-muted-foreground">read-only for you · ask an Operator to change one</p> : null}
+              {monitors.length === 0 && !props.readOnly ? <p className="m-0 text-sm text-muted-foreground">Watch this on a hunt makes the first one.</p> : null}
             </section>
           </div>
         </main>
 
         <aside className="hidden min-h-0 w-[300px] shrink-0 flex-col gap-3 overflow-y-auto border-l border-white/[0.06] px-6 pt-5 pb-6 lg:flex">
-          <span className="text-[13.5px] font-medium">Saved hunts · {hunts.length}</span>
+          <span className="text-base font-medium">Saved hunts · {hunts.length}</span>
           {column.fold ? (
             <>
-              <span className="px-2.5 text-[12px] text-muted-foreground">Moved · {column.moved.length || "none"}</span>
-              <div className="flex flex-col gap-0.5 text-[13px]">
+              <span className="px-2.5 text-sm text-muted-foreground">Moved · {column.moved.length || "none"}</span>
+              <div className="flex flex-col gap-0.5 text-sm">
                 {column.moved.map(({ item, card }) => {
                   const delta = deltaText(card.before, card.after, card.kind);
                   return savedRow(item, valueOf(card), delta.text, delta.up && since.kind !== "hour");
@@ -376,7 +376,7 @@ export function HomeView(props: Props) {
                         Quiet <span className="text-muted-foreground">· same as before</span>
                       </span>
                     </span>
-                    <span className="ml-2 font-mono text-[12px] text-muted-foreground">{column.quiet.length}</span>
+                    <span className="ml-2 font-mono text-sm text-muted-foreground">{column.quiet.length}</span>
                   </button>
                 ) : null}
                 {quietOpen ? (
@@ -389,7 +389,7 @@ export function HomeView(props: Props) {
               </div>
             </>
           ) : (
-            <div className="flex flex-col gap-0.5 text-[13px]">
+            <div className="flex flex-col gap-0.5 text-sm">
               {column.items.map((s) => (
                 savedRow(s, valueOf(cardById.get(s.id)))
               ))}
@@ -397,8 +397,8 @@ export function HomeView(props: Props) {
           )}
           {props.saved.some((s) => s.pinned || s.board) ? (
             <>
-              <span className="mt-3 text-[13.5px] font-medium">Pinned</span>
-              <div className="flex flex-col gap-0.5 text-[13px]">
+              <span className="mt-3 text-base font-medium">Pinned</span>
+              <div className="flex flex-col gap-0.5 text-sm">
                 {props.saved
                   .filter((s) => s.pinned || s.board)
                   .map((s) => (
@@ -409,7 +409,7 @@ export function HomeView(props: Props) {
                       onClick={() => (s.board ? props.onOpenBoard(s) : props.onOpenSaved(s, window, selectedId))}
                     >
                       <span className="truncate">{s.name}</span>
-                      <span className="ml-2 font-mono text-[12px] text-muted-foreground">{pinnedTag(s)}</span>
+                      <span className="ml-2 font-mono text-sm text-muted-foreground">{pinnedTag(s)}</span>
                     </button>
                   ))}
               </div>
@@ -427,13 +427,13 @@ function MarkChip({ on, glyph, color, label, time, onClick }: { on: boolean; gly
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex h-[30px] max-w-[320px] items-center gap-[7px] whitespace-nowrap rounded-[7px] border border-white/10 bg-[#131316] px-[11px] text-[12.5px] text-zinc-300",
-        on && "border-plate bg-[#1d1d21] text-foreground",
+        "inline-flex h-[30px] max-w-[320px] items-center gap-[7px] whitespace-nowrap rounded-lg border border-white/10 bg-surface-2 px-[11px] text-sm text-zinc-300",
+        on && "border-plate bg-overlay text-foreground",
       )}
     >
       {glyph ? <span style={{ color }}>{glyph}</span> : null}
       <span className="truncate">{label}</span>
-      <b className="font-mono text-[11.5px] font-normal text-muted-foreground">{time}</b>
+      <b className="font-mono text-xs font-normal text-muted-foreground">{time}</b>
     </button>
   );
 }
@@ -455,16 +455,16 @@ function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; 
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[150px] flex-col gap-2.5 rounded-[10px] border border-white/10 bg-[#131316] px-[18px] py-4 text-left hover:border-zinc-500"
+      className="flex min-h-[150px] flex-col gap-2.5 rounded-xl border border-white/10 bg-surface-2 px-[18px] py-4 text-left hover:border-zinc-500"
     >
       <div className="flex items-baseline justify-between">
-        <span className="text-[13.5px] font-medium">{card.name}</span>
-        <span className="font-mono text-[12px] text-muted-foreground">{card.kind}</span>
+        <span className="text-base font-medium">{card.name}</span>
+        <span className="font-mono text-sm text-muted-foreground">{card.kind}</span>
       </div>
       <div className="flex items-baseline gap-2">
-        <span className="text-[24px] font-semibold tracking-[-0.01em]">{card.refused ? "—" : formatValue(card.after, card.kind)}</span>
-        <span className={cn("font-mono text-[12.5px]", up ? "text-red-300" : "text-muted-foreground")}>{card.refused ? "refused" : delta.text}</span>
-        <span className="text-[12px] text-muted-foreground">{card.refused ? card.refused : `was ${formatValue(card.before, card.kind)}`}</span>
+        <span className="text-xl font-semibold tracking-[-0.01em]">{card.refused ? "—" : formatValue(card.after, card.kind)}</span>
+        <span className={cn("font-mono text-sm", up ? "text-danger-fg" : "text-muted-foreground")}>{card.refused ? "refused" : delta.text}</span>
+        <span className="text-sm text-muted-foreground">{card.refused ? card.refused : `was ${formatValue(card.before, card.kind)}`}</span>
       </div>
       <div className="relative mt-auto flex h-9 items-end gap-px" aria-hidden="true">
         {card.spark.map((v, i) => (
@@ -477,12 +477,12 @@ function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; 
         <div className="absolute -top-1 bottom-0 w-px" style={{ left: `${card.spark.length ? (card.split_at / card.spark.length) * 100 : 50}%`, background: quiet ? "#3f3f46" : "#e7e1d3" }} />
       </div>
       {card.saved_by?.agent ? (
-        <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <AgentBadge name={card.saved_by.name} />
         </span>
       ) : card.saved_by ? (
-        <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-          <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-[#27272a] text-[9px] font-semibold text-zinc-300">{initialsOf(card.saved_by.name)}</span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-control text-2xs font-semibold text-zinc-300">{initialsOf(card.saved_by.name)}</span>
           {card.saved_by.id === meId ? (card.shared ? "yours" : "yours · only you see it") : `saved by ${card.saved_by.name}`}
         </span>
       ) : null}
@@ -492,7 +492,7 @@ function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; 
 
 function Line({ hex, text, sub, n, muted }: { hex: string; text: string; sub: string; n: number; muted?: boolean }) {
   return (
-    <div className={cn("flex items-start gap-3 border-b border-white/[0.06] py-2 text-[12.5px] last:border-b-0", muted && "text-muted-foreground")}>
+    <div className={cn("flex items-start gap-3 border-b border-white/[0.06] py-2 text-sm last:border-b-0", muted && "text-muted-foreground")}>
       <span className={cn("font-mono", !muted && "text-plate")}>e1:{hex}</span>
       <span className="min-w-0 flex-1 truncate">
         {text} <span className="text-muted-foreground">{sub}</span>
@@ -508,24 +508,24 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
   const send = `curl -X POST ${origin}/api/ingest \\\n  -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" \\\n  -d '{"service":"smoke","level":"info","message":"hello from the shell"}'`;
   const mark = `curl -X POST ${origin}/v1/marks -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" \\\n  -d '{"kind":"deploy","label":"deployed: api v1.0","attrs":{"version":"v1.0"}}'`;
   const step = (i: number, title: string, body: React.ReactNode) => (
-    <div className={cn("grid grid-cols-[44px_1fr] gap-x-[18px] rounded-[10px] border border-white/10 bg-[#131316] px-6 py-[22px]", done[i] && "border-white/[0.06] text-muted-foreground", i > 0 && !done[i - 1] && "opacity-60")}>
-      <div className={cn("flex size-[30px] items-center justify-center rounded-full border border-zinc-600 text-[13px]", done[i] ? "border-transparent bg-[#1d1d21] text-emerald-300" : !done[i] && (i === 0 || done[i - 1]) ? "border-plate text-plate" : "")}>
+    <div className={cn("grid grid-cols-[44px_1fr] gap-x-[18px] rounded-xl border border-white/10 bg-surface-2 px-6 py-[22px]", done[i] && "border-white/[0.06] text-muted-foreground", i > 0 && !done[i - 1] && "opacity-60")}>
+      <div className={cn("flex size-[30px] items-center justify-center rounded-full border border-zinc-600 text-sm", done[i] ? "border-transparent bg-overlay text-ok-fg" : !done[i] && (i === 0 || done[i - 1]) ? "border-plate text-plate" : "")}>
         {done[i] ? "✓" : i + 1}
       </div>
       <div className="min-w-0">
-        <div className={cn("text-[15px] font-medium", done[i] ? "text-zinc-400" : "text-foreground")}>{title}</div>
+        <div className={cn("text-base font-medium", done[i] ? "text-zinc-400" : "text-foreground")}>{title}</div>
         {body}
       </div>
     </div>
   );
   return (
     <main className="mx-auto flex w-full max-w-[820px] flex-col gap-3.5 px-4 pt-10">
-      <h1 className="m-0 mb-1 text-[22px] font-semibold tracking-[-0.01em]">This instance has no logs yet</h1>
-      <p className="m-0 mb-3.5 text-[13.5px] leading-[1.5] text-muted-foreground">Three steps. Each one becomes a card on this page as it is done, so the home never changes shape under you.</p>
+      <h1 className="m-0 mb-1 text-xl font-semibold tracking-[-0.01em]">This instance has no logs yet</h1>
+      <p className="m-0 mb-3.5 text-base leading-[1.5] text-muted-foreground">Three steps. Each one becomes a card on this page as it is done, so the home never changes shape under you.</p>
       {step(
         0,
         "Give the instance a name",
-        <div className="text-[12.5px] text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           {instanceName ? (
             <>
               Named <span className="font-mono text-zinc-300">{instanceName}</span> · the sign-in page says it now
@@ -539,8 +539,8 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
         1,
         "Send something",
         <>
-          <div className="text-[12.5px] text-muted-foreground">An app with an OpenTelemetry exporter sends straight in. Or paste one line to see a first event arrive.</div>
-          <pre className="mt-3 mb-0 overflow-hidden whitespace-pre-wrap rounded-[7px] border border-white/10 bg-[#0d0d0f] px-3.5 py-3 font-mono text-[12px] leading-[1.6] text-zinc-300">{send}</pre>
+          <div className="text-sm text-muted-foreground">An app with an OpenTelemetry exporter sends straight in. Or paste one line to see a first event arrive.</div>
+          <pre className="mt-3 mb-0 overflow-hidden whitespace-pre-wrap rounded-lg border border-white/10 bg-surface-1 px-3.5 py-3 font-mono text-sm leading-[1.6] text-zinc-300">{send}</pre>
           <div className="mt-3 flex items-center gap-2.5">
             <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(send)}>
               Copy
@@ -548,9 +548,9 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
             <Button type="button" variant="ghost" onClick={onOpenAccess}>
               Make an ingest token
             </Button>
-            <span className="text-[12.5px] text-muted-foreground">Vector, Fluent Bit and Alloy configs are in the ingest guide.</span>
+            <span className="text-sm text-muted-foreground">Vector, Fluent Bit and Alloy configs are in the ingest guide.</span>
             <div className="flex-1" />
-            <span className="inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
               <span className="size-[7px] rounded-full bg-zinc-600" />
               waiting for the first event
             </span>
@@ -561,8 +561,8 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
         2,
         "Save a first hunt and post a mark",
         <>
-          <div className="text-[12.5px] text-muted-foreground">A saved hunt is a card here. A deploy mark from CI is what the cards compare against.</div>
-          <pre className="mt-3 mb-0 overflow-hidden whitespace-pre-wrap rounded-[7px] border border-white/10 bg-[#0d0d0f] px-3.5 py-3 font-mono text-[12px] leading-[1.6] text-zinc-300">{mark}</pre>
+          <div className="text-sm text-muted-foreground">A saved hunt is a card here. A deploy mark from CI is what the cards compare against.</div>
+          <pre className="mt-3 mb-0 overflow-hidden whitespace-pre-wrap rounded-lg border border-white/10 bg-surface-1 px-3.5 py-3 font-mono text-sm leading-[1.6] text-zinc-300">{mark}</pre>
         </>,
       )}
     </main>

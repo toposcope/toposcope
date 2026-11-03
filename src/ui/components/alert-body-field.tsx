@@ -125,13 +125,13 @@ export function AlertBodyField({
             onChange={pick}
           />
           {bodyKind !== "default" ? (
-            <span className="font-mono text-[11.5px] text-muted-foreground">
+            <span className="font-mono text-xs text-muted-foreground">
               content-type: {alertBodyContentType(bodyKind).replace("; charset=utf-8", "")}
             </span>
           ) : null}
         </span>
         {bodyKind === "default" && resolves ? (
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Sends <span className="font-mono">state</span> as open, reminder or resolved, with{" "}
             <span className="font-mono">opened_at</span> and <span className="font-mono">resolved_at</span>.
           </p>
@@ -140,7 +140,7 @@ export function AlertBodyField({
       {bodyKind !== "default" ? (
         <div className="grid grid-cols-[minmax(0,1fr)_240px] gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            {resolves ? <span className="text-[12px] font-semibold">When it opens, and each reminder</span> : null}
+            {resolves ? <span className="text-sm font-semibold">When it opens, and each reminder</span> : null}
             <textarea
               ref={area}
               aria-label="Body"
@@ -151,12 +151,12 @@ export function AlertBodyField({
               }}
               onChange={(e) => onTemplate(e.target.value)}
               spellCheck={false}
-              className={`h-[150px] resize-none rounded-[6.4px] border bg-background px-2.5 py-2 font-mono text-[12px] leading-[18px] outline-none ${
-                problem ? "border-red-400" : "border-white/15"
+              className={`h-[150px] resize-none rounded-lg border bg-background px-2.5 py-2 font-mono text-sm leading-[18px] outline-none ${
+                problem ? "border-danger" : "border-white/15"
               }`}
             />
             {problem ? (
-              <p role="alert" className="flex gap-1.5 text-[12px] leading-[18px] text-red-300">
+              <p role="alert" className="flex gap-1.5 text-sm leading-[18px] text-danger-fg">
                 <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
                 {jsonFault ? (
                   <span>
@@ -176,7 +176,7 @@ export function AlertBodyField({
             {resolves ? (
               // 18t / 18u: the resolved call's own body, empty until written.
               <>
-                <span className="pt-1.5 text-[12px] font-semibold">When it resolves</span>
+                <span className="pt-1.5 text-sm font-semibold">When it resolves</span>
                 <textarea
                   ref={resolvedArea}
                   aria-label="Resolved body"
@@ -187,21 +187,21 @@ export function AlertBodyField({
                   }}
                   onChange={(e) => onResolvedBody(e.target.value)}
                   spellCheck={false}
-                  className={`resize-none rounded-[6.4px] border px-2.5 py-2 font-mono text-[12px] leading-[18px] outline-none ${
+                  className={`resize-none rounded-lg border px-2.5 py-2 font-mono text-sm leading-[18px] outline-none ${
                     resolvedProblem
-                      ? "h-[150px] border-red-400 bg-background"
+                      ? "h-[150px] border-danger bg-background"
                       : resolvedBody.trim()
                         ? "h-[150px] border-white/15 bg-background"
                         : "h-[96px] border-dashed border-white/[0.18] bg-transparent"
                   }`}
                 />
                 {resolvedProblem ? (
-                  <p role="alert" className="flex gap-1.5 text-[12px] leading-[18px] text-red-300">
+                  <p role="alert" className="flex gap-1.5 text-sm leading-[18px] text-danger-fg">
                     <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
                     <span>{resolvedProblem[0]!.toUpperCase() + resolvedProblem.slice(1)}.</span>
                   </p>
                 ) : (
-                  <span className="text-[12px] text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     {resolvedBody.trim() ? "Sent once, when it resolves." : "Empty: no resolved call is sent."}
                   </span>
                 )}
@@ -209,7 +209,7 @@ export function AlertBodyField({
             ) : null}
           </div>
           <div className="flex flex-col gap-px">
-            <span className="pb-1 text-[10.5px] font-semibold tracking-[0.06em] text-muted-foreground">
+            <span className="pb-1 text-2xs font-semibold tracking-[0.06em] text-muted-foreground">
               FILL IN · click to add
             </span>
             {fillIns.map((f) => (
@@ -217,12 +217,12 @@ export function AlertBodyField({
                 key={f.name}
                 type="button"
                 onClick={() => insert(f.name)}
-                className="flex items-baseline gap-1.5 rounded-[4px] px-1.5 py-0.5 text-left hover:bg-accent"
+                className="flex items-baseline gap-1.5 rounded-md px-1.5 py-0.5 text-left hover:bg-accent"
               >
-                <span className="font-mono text-[11.5px] text-violet-300">{`{{${f.name}}}`}</span>
-                <span className="text-[11px] text-muted-foreground">{f.about}</span>
+                <span className="font-mono text-xs text-violet-300">{`{{${f.name}}}`}</span>
+                <span className="text-xs text-muted-foreground">{f.about}</span>
                 {f.isNew ? (
-                  <span className="rounded-[3px] border border-plate/45 px-1 text-[10px] text-plate">new</span>
+                  <span className="rounded-sm border border-plate/45 px-1 text-2xs text-plate">new</span>
                 ) : null}
               </button>
             ))}
@@ -231,34 +231,34 @@ export function AlertBodyField({
       ) : null}
       {slackDefault ? (
         <div className="flex flex-col gap-2">
-          <p className="flex gap-2 rounded-[6.4px] bg-accent px-3 py-2.5 text-[12.5px] leading-[18px]">
+          <p className="flex gap-2 rounded-lg bg-accent px-3 py-2.5 text-sm leading-[18px]">
             <Info className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
             <span>
               This is a Slack incoming webhook, so the default body is a Slack message, not
               Toposcope's JSON. Choose Text or JSON to send something else.
             </span>
           </p>
-          <span className="text-[10.5px] font-semibold tracking-[0.06em] text-muted-foreground">
+          <span className="text-2xs font-semibold tracking-[0.06em] text-muted-foreground">
             THE MESSAGE IT GETS
           </span>
-          <div className="flex flex-col gap-1 rounded-[6.4px] border border-white/10 bg-background px-3.5 py-3 text-[13px] leading-[19px]">
+          <div className="flex flex-col gap-1 rounded-lg border border-white/10 bg-background px-3.5 py-3 text-sm leading-[19px]">
             <div>
               <b>{preview.name || "this alert"}</b> {alertKind === "http" || alertKind === "net" ? "open" : "fired"}
             </div>
-            <div className="font-mono text-[12px] text-foreground/80">{preview.query || "*"}</div>
+            <div className="font-mono text-sm text-foreground/80">{preview.query || "*"}</div>
             {alertKind === "http" || alertKind === "net" ? (
               <div className="text-foreground/90">{preview.series || "what the run that opened it said"}</div>
             ) : alertKind === "first_seen" ? (
               <div className="text-foreground/90">
-                <span className="font-mono text-[12px]">{"{n}"}</span> new fingerprints after{" "}
-                <span className="font-mono text-[12px]">{"{mark}"}</span>
+                <span className="font-mono text-sm">{"{n}"}</span> new fingerprints after{" "}
+                <span className="font-mono text-sm">{"{mark}"}</span>
               </div>
             ) : (
               <div>
                 <b>{preview.series}</b> {preview.value ?? "…"} {fewerThan ? "<" : "≥"} {preview.threshold}
               </div>
             )}
-            {canLink ? <span className="text-sky-300">Open in Toposcope</span> : null}
+            {canLink ? <span className="text-info-fg">Open in Toposcope</span> : null}
           </div>
         </div>
       ) : null}
@@ -342,7 +342,7 @@ export function TestCall({
         {result ? (
           <span
             role="status"
-            className={`flex items-center gap-1.5 text-[12.5px] ${result.ok ? "text-green-300" : "text-red-300"}`}
+            className={`flex items-center gap-1.5 text-sm ${result.ok ? "text-ok-fg" : "text-danger-fg"}`}
           >
             {result.ok ? <Check className="size-3.5" /> : <CircleAlert className="size-3.5" />}
             <span>
@@ -354,7 +354,7 @@ export function TestCall({
               {result.ok ? "" : " · it would not have paged"}
             </span>
             {result.resolved ? (
-              <span className={result.resolved.ok ? "text-green-300" : "text-red-300"}>
+              <span className={result.resolved.ok ? "text-ok-fg" : "text-danger-fg"}>
                 · then resolved{" "}
                 <b className="font-mono">
                   {result.resolved.status ?? "No reply"}
@@ -365,11 +365,11 @@ export function TestCall({
             ) : null}
           </span>
         ) : error ? (
-          <span role="status" className="text-[12px] text-red-300">
+          <span role="status" className="text-sm text-danger-fg">
             {error}
           </span>
         ) : !hint ? null : (
-          <span className="text-[11.5px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {alertKind === "first_seen"
               ? "Sends this body now, filled in from the last mark it watched."
               : alertKind === "http" || alertKind === "net"
@@ -382,14 +382,14 @@ export function TestCall({
         <>
           {result.status !== null ? (
             <div
-              className={`flex flex-col gap-1.5 rounded-[6.4px] border bg-background px-3 py-2.5 ${
-                result.ok ? "border-white/10" : "border-red-400/35"
+              className={`flex flex-col gap-1.5 rounded-lg border bg-background px-3 py-2.5 ${
+                result.ok ? "border-white/10" : "border-danger/35"
               }`}
             >
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 The reply, its first 200 characters
               </span>
-              <span className="font-mono text-[12px] leading-[18px] break-all">
+              <span className="font-mono text-sm leading-[18px] break-all">
                 {result.reply || "(empty)"}
               </span>
             </div>
@@ -398,12 +398,12 @@ export function TestCall({
             type="button"
             aria-expanded={showSent}
             onClick={() => setShowSent((v) => !v)}
-            className="self-start rounded-[4.4px] px-2 py-0.5 text-[12px] text-muted-foreground hover:bg-accent"
+            className="self-start rounded-md px-2 py-0.5 text-sm text-muted-foreground hover:bg-accent"
           >
             {showSent ? "▾" : "▸"} The body as it was sent
           </button>
           {showSent ? (
-            <pre className="m-0 max-h-[180px] overflow-auto rounded-[6.4px] border border-white/[0.08] bg-[#0f0f11] px-3 py-2.5 font-mono text-[11.5px] leading-[17px] whitespace-pre-wrap text-foreground/85">
+            <pre className="m-0 max-h-[180px] overflow-auto rounded-lg border border-white/[0.08] bg-surface-1 px-3 py-2.5 font-mono text-xs leading-[17px] whitespace-pre-wrap text-foreground/85">
               {result.sent}
             </pre>
           ) : null}

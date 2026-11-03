@@ -65,7 +65,7 @@ export function BoardNameDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Checkout incident"
                 autoFocus
-                className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </DialogControl>
           </DialogField>

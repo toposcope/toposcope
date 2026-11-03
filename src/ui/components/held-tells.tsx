@@ -17,7 +17,7 @@ export function HeldPill({ text }: { text: string }) {
  */
 export function ScopeChipView({ chip }: { chip: ScopeChip }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-[4px] border border-white/12 px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground">
+    <span className="inline-flex items-center gap-1 rounded-md border border-white/12 px-2 py-0.5 text-xs whitespace-nowrap text-muted-foreground">
       {chip.count !== null ? (
         <span className="font-mono text-foreground tabular-nums">
           <CountText n={chip.count} />

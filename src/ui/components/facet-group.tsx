@@ -61,11 +61,11 @@ export function FacetGroup({
   return (
     <div className="min-w-0">
       <div className="mb-1.5 flex items-center gap-1.5">
-        <h2 className="min-w-0 truncate text-[12px] font-semibold tracking-[0.04em] text-muted-foreground uppercase">
+        <h2 className="min-w-0 truncate text-sm font-semibold tracking-[0.04em] text-muted-foreground uppercase">
           {field}
         </h2>
         {selLabel ? (
-          <span className="shrink-0 text-[10.5px] font-normal tracking-normal text-muted-foreground/80 normal-case">
+          <span className="shrink-0 text-2xs font-normal tracking-normal text-muted-foreground/80 normal-case">
             {selLabel}
           </span>
         ) : null}
@@ -73,7 +73,7 @@ export function FacetGroup({
         {selected.length > 0 ? (
           <button
             type="button"
-            className="h-[18px] shrink-0 rounded-[3.4px] px-[5px] text-[10.5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="h-[18px] shrink-0 rounded-sm px-[5px] text-2xs text-muted-foreground hover:bg-accent hover:text-foreground"
             title="Clear this facet"
             onClick={() => onClear(field)}
           >
@@ -94,7 +94,7 @@ export function FacetGroup({
       </div>
       {onPrefixChange ? (
         <Input
-          className="mb-1.5 h-7 font-mono text-[11px]"
+          className="mb-1.5 h-7 font-mono text-xs"
           placeholder="prefix…"
           value={prefix ?? ""}
           onChange={(e) => onPrefixChange(e.target.value)}
@@ -103,7 +103,7 @@ export function FacetGroup({
       {loading && values.length === 0 ? (
         <div className="flex flex-col gap-1">
           {Array.from({ length: 3 }, (_, i) => (
-            <span key={i} className="h-3 animate-pulse rounded bg-muted" />
+            <span key={i} className="h-3 animate-pulse rounded-md bg-muted" />
           ))}
         </div>
       ) : values.length === 0 ? (
@@ -151,7 +151,7 @@ export function FacetGroup({
                   aria-pressed={on}
                 >
                   <span
-                    className={`flex size-2.5 shrink-0 items-center justify-center rounded-[2.4px] border text-[8px] leading-none ${
+                    className={`flex size-2.5 shrink-0 items-center justify-center rounded-sm border text-2xs leading-none ${
                       on
                         ? "border-foreground bg-foreground text-background"
                         : "border-input"
@@ -159,7 +159,7 @@ export function FacetGroup({
                   >
                     {on ? "✓" : ""}
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[12px]">
+                  <span className="min-w-0 flex-1 truncate font-mono text-sm">
                     {item.v}
                   </span>
                   <span className="relative h-[3px] w-[38px] shrink-0 overflow-hidden rounded-full bg-white/[0.08]">
@@ -168,14 +168,14 @@ export function FacetGroup({
                       style={{ width: `${(item.n / max) * 100}%` }}
                     />
                   </span>
-                  <span className="shrink-0 text-right font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
                     <CountText n={item.n} floor={floorFor?.(item.v) ?? false} />
                   </span>
                 </button>
                 {selected.length >= 1 ? (
                   <button
                     type="button"
-                    className={`h-5 shrink-0 rounded-[3.4px] border border-white/12 px-[5px] text-[10.5px] text-muted-foreground/75 hover:border-ring hover:text-foreground ${
+                    className={`h-5 shrink-0 rounded-sm border border-white/12 px-[5px] text-2xs text-muted-foreground/75 hover:border-ring hover:text-foreground ${
                       onlyInert ? "invisible pointer-events-none" : ""
                     }`}
                     title={`Show only ${field}:${item.v}`}

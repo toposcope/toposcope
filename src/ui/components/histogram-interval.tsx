@@ -15,7 +15,7 @@ type Props = {
 
 function chipClass(on: boolean): string {
   return cn(
-    "h-[22px] whitespace-nowrap rounded-sm px-2 font-mono text-[11px]",
+    "h-[22px] whitespace-nowrap rounded-sm px-2 font-mono text-xs",
     on
       ? "bg-accent text-foreground"
       : "bg-transparent text-muted-foreground hover:text-foreground",

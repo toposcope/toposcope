@@ -47,9 +47,9 @@ export function OutageBand({ state }: { state: OutageState }) {
     return (
       <div
         role="status"
-        className="flex h-9 shrink-0 items-center gap-3 border-b border-green-400/30 bg-[#07170d] px-5 text-[13px]"
+        className="flex h-9 shrink-0 items-center gap-3 border-b border-ok/30 bg-[#07170d] px-5 text-sm"
       >
-        <span className="size-[7px] rounded-full bg-green-400" aria-hidden />
+        <span className="size-[7px] rounded-full bg-ok" aria-hidden />
         <span>Back after {outageSpan(state.downMs)}</span>
         <span className="text-muted-foreground">searched again</span>
       </div>
@@ -62,9 +62,9 @@ export function OutageBand({ state }: { state: OutageState }) {
   return (
     <div
       role="status"
-      className="flex h-9 shrink-0 items-center gap-3 border-b border-amber-400/30 bg-[#1a1405] px-5 text-[13px]"
+      className="flex h-9 shrink-0 items-center gap-3 border-b border-warn/30 bg-[#1a1405] px-5 text-sm"
     >
-      <span className="size-[7px] rounded-full bg-amber-400" aria-hidden />
+      <span className="size-[7px] rounded-full bg-warn" aria-hidden />
       <span>
         {state.kind === "clickhouse" ? "Lost ClickHouse" : "Lost the app"} at {utcClock(state.since)}
       </span>
@@ -84,20 +84,20 @@ function Node({ box }: { box: Box }) {
   return (
     <div
       className={cn(
-        "flex h-[84px] w-[168px] shrink-0 flex-col items-center justify-center gap-1 rounded-[10px] border",
+        "flex h-[84px] w-[168px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border",
         box.tone === "ok" && "border-white/16 bg-card/60",
-        box.tone === "bad" && "border-red-400/55 bg-[#140b0b]",
-        box.tone === "warn" && "border-amber-400/55 bg-[#141005]",
+        box.tone === "bad" && "border-danger/55 bg-[#140b0b]",
+        box.tone === "warn" && "border-warn/55 bg-[#141005]",
         box.tone === "unknown" && "border-dashed border-white/16",
       )}
     >
-      <span className={cn("text-[13px]", box.tone === "unknown" && "text-muted-foreground")}>{box.name}</span>
+      <span className={cn("text-sm", box.tone === "unknown" && "text-muted-foreground")}>{box.name}</span>
       <span
         className={cn(
-          "font-mono text-[11.5px]",
-          box.tone === "ok" && "text-green-400",
-          box.tone === "bad" && "text-red-400",
-          box.tone === "warn" && "text-amber-400",
+          "font-mono text-xs",
+          box.tone === "ok" && "text-ok-fg",
+          box.tone === "bad" && "text-danger-fg",
+          box.tone === "warn" && "text-warn-fg",
           box.tone === "unknown" && "text-muted-foreground",
         )}
       >
@@ -109,11 +109,11 @@ function Node({ box }: { box: Box }) {
 
 function Link({ tone }: { tone: "ok" | "bad" | "warn" | "unknown" }) {
   if (tone === "bad" || tone === "warn") {
-    const color = tone === "bad" ? "border-red-400 text-red-400 bg-[#1c0c0c]" : "border-amber-400 text-amber-400 bg-[#1a1405]";
+    const color = tone === "bad" ? "border-danger text-danger-fg bg-[#1c0c0c]" : "border-warn text-warn-fg bg-[#1a1405]";
     return (
       <div className="flex w-[150px] shrink-0 items-center justify-center" aria-hidden>
         <div className={cn("w-[58px] border-t-2 border-dashed", color)} />
-        <div className={cn("mx-1 flex size-[26px] items-center justify-center rounded-full border text-[13px]", color)}>✕</div>
+        <div className={cn("mx-1 flex size-[26px] items-center justify-center rounded-full border text-sm", color)}>✕</div>
         <div className={cn("w-[58px] border-t-2 border-dashed", color)} />
       </div>
     );
@@ -123,7 +123,7 @@ function Link({ tone }: { tone: "ok" | "bad" | "warn" | "unknown" }) {
       <div
         className={cn(
           "w-[120px] border-t-2",
-          tone === "ok" ? "border-solid border-green-400/60" : "border-dotted border-white/18",
+          tone === "ok" ? "border-solid border-ok/60" : "border-dotted border-white/18",
         )}
       />
     </div>
@@ -170,7 +170,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
       </div>
 
       <div className="flex max-w-[660px] flex-col items-center gap-2.5 text-center">
-        <h1 className="m-0 text-[26px] font-semibold tracking-[-0.01em]">
+        <h1 className="m-0 text-display font-semibold tracking-[-0.01em]">
           {ch
             ? "ClickHouse isn’t answering the app"
             : starting
@@ -186,7 +186,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
         </p>
       </div>
 
-      <div className="flex items-center gap-[22px] rounded-[10px] border bg-card/60 px-[22px] py-[18px]">
+      <div className="flex items-center gap-[22px] rounded-xl border bg-card/60 px-[22px] py-[18px]">
         <div className="relative size-14">
           <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden>
             <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="3" />
@@ -204,7 +204,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
               className="transition-[stroke-dashoffset] duration-200"
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center font-mono text-[15px] font-semibold">
+          <span className="absolute inset-0 flex items-center justify-center font-mono text-base font-semibold">
             {left}s
           </span>
         </div>
@@ -213,14 +213,14 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
             {left > 0 ? `${ch ? "Checking again" : "Retrying"} in ${left} s` : "Checking…"}{" "}
             <span className="text-muted-foreground">· attempt {state.attempt}</span>
           </span>
-          <span className="font-mono text-[11.5px] text-muted-foreground">
+          <span className="font-mono text-xs text-muted-foreground">
             {ch && state.detail ? `last error: ${state.detail}` : "waits 2 → 4 → 8 → 15 → 30 s, then every 30 s"}
           </span>
-          <span className="font-mono text-[11.5px] text-muted-foreground">
+          <span className="font-mono text-xs text-muted-foreground">
             down since {utcClock(state.since)} UTC · {outageSpan(now - state.since)}
           </span>
         </div>
-        <Button type="button" className="bg-plate font-medium text-[#18181b] hover:bg-plate/90" onClick={retryNow}>
+        <Button type="button" className="bg-plate font-medium text-primary-foreground hover:bg-plate/90" onClick={retryNow}>
           Retry now
         </Button>
       </div>
@@ -229,7 +229,7 @@ export function OutageScreen({ state, instance }: { state: OutageState; instance
         <span className="text-xs text-muted-foreground">
           {ch ? "On the host, check ClickHouse — a full disk is the usual cause" : "On the host, check the app"}
         </span>
-        <div className="rounded-[6.4px] border bg-[#0d0d0f] px-3.5 py-3 font-mono text-[12.5px] leading-[1.85] select-text">
+        <div className="rounded-lg border bg-surface-1 px-3.5 py-3 font-mono text-sm leading-[1.85] select-text">
           {commands[state.kind].map((line) => (
             <div key={line}>
               <span className="text-muted-foreground select-none">$ </span>
@@ -253,7 +253,7 @@ export function OutageChip({ state }: { state: OutageState }) {
     return null;
   }
   return (
-    <span className={cn("flex items-center gap-1.5 font-mono", state.kind === "clickhouse" ? "text-amber-400" : "text-red-400")}>
+    <span className={cn("flex items-center gap-1.5 font-mono", state.kind === "clickhouse" ? "text-warn-fg" : "text-danger-fg")}>
       <span className="size-1.5 rounded-full bg-current" aria-hidden />
       {state.kind === "clickhouse" ? "clickhouse down" : state.phase ? "app starting" : "app unreachable"}
     </span>

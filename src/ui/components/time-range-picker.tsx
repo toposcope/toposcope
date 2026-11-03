@@ -41,7 +41,7 @@ type Props = {
 };
 
 const sectionLabel =
-  "px-0.5 text-[11px] font-semibold tracking-[0.04em] text-muted-foreground uppercase";
+  "px-0.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground uppercase";
 
 export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
   function TimeRangePicker(
@@ -191,7 +191,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
               <div className="flex h-7 items-center overflow-hidden rounded-md border border-input">
                 <button
                   type="button"
-                  className="flex size-[22px] h-[26px] w-[22px] items-center justify-center text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="flex size-[22px] h-[26px] w-[22px] items-center justify-center text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => {
                     setCount(stepRangeCount(count, unit, -1));
                   }}
@@ -203,7 +203,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
                 </span>
                 <button
                   type="button"
-                  className="flex h-[26px] w-[22px] items-center justify-center text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="flex h-[26px] w-[22px] items-center justify-center text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => {
                     setCount(stepRangeCount(count, unit, 1));
                   }}
@@ -220,7 +220,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
                       type="button"
                       title={rangeUnitTitles[item]}
                       className={cn(
-                        "h-[22px] min-w-0 flex-1 rounded-sm font-mono text-[11px]",
+                        "h-[22px] min-w-0 flex-1 rounded-sm font-mono text-xs",
                         on
                           ? "bg-secondary text-secondary-foreground"
                           : "text-muted-foreground hover:text-foreground",
@@ -253,7 +253,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
             >
               <span className={sectionLabel}>Absolute</span>
               {lockAbsolute ? (
-                <span className="px-0.5 text-[11px] leading-snug text-muted-foreground/80">
+                <span className="px-0.5 text-xs leading-snug text-muted-foreground/80">
                   A board window is a relative range — Quick or Last N only.
                 </span>
               ) : null}
@@ -284,19 +284,19 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
                         key={label}
                         className="flex min-w-0 items-center gap-[7px]"
                       >
-                        <span className="w-7 shrink-0 text-[11px] text-muted-foreground">
+                        <span className="w-7 shrink-0 text-xs text-muted-foreground">
                           {label}
                         </span>
                         <span
                           className={cn(
-                            "min-w-0 flex-1 truncate font-mono text-[11.5px]",
+                            "min-w-0 flex-1 truncate font-mono text-xs",
                             absTouched ? "text-foreground" : "text-muted-foreground",
                           )}
                         >
                           {absStampUtc(val)}
                         </span>
                         {affix && !absTouched ? (
-                          <span className="shrink-0 text-[10px] tracking-[0.04em] text-muted-foreground uppercase">
+                          <span className="shrink-0 text-2xs tracking-[0.04em] text-muted-foreground uppercase">
                             {affix}
                           </span>
                         ) : null}
@@ -333,7 +333,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
             </Button>
             <span
               className={cn(
-                "flex-1 text-[11px] leading-snug",
+                "flex-1 text-xs leading-snug",
                 apply && !(absTouched && !absOk)
                   ? "text-muted-foreground/80"
                   : "text-destructive",

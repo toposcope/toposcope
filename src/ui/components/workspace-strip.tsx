@@ -122,7 +122,7 @@ export function WorkspaceStrip({
   }
 
   return (
-    <div className="-mb-px flex h-[33px] shrink-0 items-end gap-0.5 border-b bg-[#0f0f11] px-2.5">
+    <div className="-mb-px flex h-[33px] shrink-0 items-end gap-0.5 border-b bg-surface-1 px-2.5">
       <div
         ref={scrollerRef}
         data-kbd="tabs"
@@ -163,7 +163,7 @@ export function WorkspaceStrip({
                     labelRefs.current.delete(tab.id);
                   }
                 }}
-                className="min-w-0 flex-1 truncate border-0 bg-transparent p-0 pr-0.5 text-left font-mono text-[11.5px] text-inherit"
+                className="min-w-0 flex-1 truncate border-0 bg-transparent p-0 pr-0.5 text-left font-mono text-xs text-inherit"
                 onClick={() => onSelect(tab.id)}
               >
                 {tab.label}
@@ -173,7 +173,7 @@ export function WorkspaceStrip({
                   type="button"
                   title="Close tab"
                   aria-label="Close tab"
-                  className="flex size-4 shrink-0 items-center justify-center rounded-[2.4px] text-[13px] leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
+                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-sm leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
                   onClick={() => onClose(tab.id)}
                 >
                   ×
@@ -186,7 +186,7 @@ export function WorkspaceStrip({
       {tabs.length > 5 ? (
         <span
           title={`${tabs.length} tabs open`}
-          className="mb-2 shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground/70"
+          className="mb-2 shrink-0 font-mono text-2xs tabular-nums text-muted-foreground/70"
         >
           {tabs.length}
         </span>

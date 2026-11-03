@@ -25,7 +25,7 @@ type Props = {
 };
 
 const fieldClass =
-  "h-[28px] rounded-md border border-white/14 bg-[#0a0a0c] px-2 text-[12.5px] outline-none placeholder:text-muted-foreground/60 focus:border-plate/55";
+  "h-[28px] rounded-md border border-white/14 bg-ground px-2 text-sm outline-none placeholder:text-muted-foreground/60 focus:border-plate/55";
 
 /** A line's name as it is typed: the panel keeps it trimmed, the field keeps what was typed. */
 function NameField({
@@ -107,7 +107,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
   const done = (
     <button
       type="button"
-      className="h-[26px] shrink-0 rounded-md px-2 text-[12px] text-muted-foreground hover:text-foreground"
+      className="h-[26px] shrink-0 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground"
       onClick={() => onEditing(false)}
     >
       Done
@@ -141,7 +141,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
         onClick={() => onEditing(!editing)}
       >
         <SlidersHorizontal className="size-3.5" />
-        {editing ? <span className="font-mono text-[11px]">editing</span> : null}
+        {editing ? <span className="font-mono text-xs">editing</span> : null}
       </button>
       <PopoverContent
         side="bottom"
@@ -159,8 +159,8 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
       >
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[12px] font-semibold tracking-[0.04em] text-muted-foreground uppercase">Lines</span>
-            <div role="group" aria-label="How the lines are made" className="inline-flex overflow-hidden rounded-md border border-white/14 text-[12px]">
+            <span className="text-sm font-semibold tracking-[0.04em] text-muted-foreground uppercase">Lines</span>
+            <div role="group" aria-label="How the lines are made" className="inline-flex overflow-hidden rounded-md border border-white/14 text-sm">
               <button
                 type="button"
                 aria-pressed={merging}
@@ -181,7 +181,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
               </button>
             </div>
             <span className="flex-1" />
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-xs text-muted-foreground">
               {merging ? `${all.length} of ${maxPanelLines}` : `split by ${widget.metricSplit}`}
               {printed ? ` · one unit: ${printed}` : ""}
             </span>
@@ -191,7 +191,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
             <div className="flex flex-col gap-1.5">
               {all.map((line, index) => (
                 <div key={`${line.metric}|${index}`} className="flex items-center gap-2">
-                  <span className="h-[3px] w-3.5 shrink-0 rounded" style={{ background: splitPalette[index % splitPalette.length] }} />
+                  <span className="h-[3px] w-3.5 shrink-0 rounded-md" style={{ background: splitPalette[index % splitPalette.length] }} />
                   <NameField
                     label={`Name for ${line.metric}`}
                     value={names[String(index)] ?? ""}
@@ -200,7 +200,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                     className="w-[130px] shrink-0"
                   />
                   <span
-                    className="flex h-[28px] min-w-0 flex-1 items-center truncate rounded-md border border-white/10 px-2 font-mono text-[12px] text-foreground/85"
+                    className="flex h-[28px] min-w-0 flex-1 items-center truncate rounded-md border border-white/10 px-2 font-mono text-sm text-foreground/85"
                     title={line.metric}
                   >
                     {line.metric}
@@ -208,19 +208,19 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                   {Object.entries(line.labels).map(([k, v]) => (
                     <span
                       key={k}
-                      className="inline-flex h-5 shrink-0 items-center rounded-[4px] border border-violet-400/50 px-1.5 font-mono text-[10.5px] text-violet-300"
+                      className="inline-flex h-5 shrink-0 items-center rounded-md border border-violet-400/50 px-1.5 font-mono text-2xs text-violet-300"
                     >
                       {k}:{v}
                     </span>
                   ))}
-                  <span className="w-[34px] shrink-0 font-mono text-[11px] text-muted-foreground">
+                  <span className="w-[34px] shrink-0 font-mono text-xs text-muted-foreground">
                     {metricReading(kindOf(line.metric), "", true)}
                   </span>
                   {index > 0 ? (
                     <button
                       type="button"
                       aria-label={`Remove the line ${names[String(index)] ?? line.metric}`}
-                      className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
                       onClick={() => onPatch(withoutLine(widget, index))}
                     >
                       <X className="size-3" />
@@ -238,7 +238,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                       disabled={all.length >= maxPanelLines}
                       title={all.length >= maxPanelLines ? "Up to 4 lines a panel; split one metric by a label for more." : undefined}
                       onClick={() => setAdding(!adding)}
-                      className="inline-flex h-[28px] shrink-0 items-center gap-1.5 rounded-md border border-white/16 bg-[#18181b] px-2.5 text-[12.5px] disabled:opacity-50"
+                      className="inline-flex h-[28px] shrink-0 items-center gap-1.5 rounded-md border border-white/16 bg-overlay px-2.5 text-sm disabled:opacity-50"
                     >
                       <Plus className="size-3" />
                       Add a line
@@ -248,10 +248,10 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                     side="right"
                     align="end"
                     sideOffset={8}
-                    className="w-[400px] bg-[#18181b] p-2"
+                    className="w-[400px] bg-overlay p-2"
                     onPointerDown={(e) => e.stopPropagation()}
                   >
-                    <label className="flex h-[30px] items-center gap-1.5 rounded-md border border-white/14 bg-[#0a0a0c] px-2">
+                    <label className="flex h-[30px] items-center gap-1.5 rounded-md border border-white/14 bg-ground px-2">
                       <Search className="size-3 text-muted-foreground" aria-hidden="true" />
                       <input
                         type="text"
@@ -262,12 +262,12 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                           setFind(e.target.value);
                           setRefused(null);
                         }}
-                        className="min-w-0 flex-1 bg-transparent font-mono text-[12px] outline-none"
+                        className="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none"
                       />
                     </label>
                     {refused ? (
-                      <div role="alert" className="mt-2 flex flex-col gap-1.5 rounded-md border border-amber-500/60 bg-amber-500/6 p-2">
-                        <p className="text-[12.5px] leading-snug text-amber-200">
+                      <div role="alert" className="mt-2 flex flex-col gap-1.5 rounded-md border border-warn/60 bg-warn/6 p-2">
+                        <p className="text-sm leading-snug text-warn-fg">
                           {refused.name} is counted in {printUnit(refused.unit) || refused.unit}, and this panel in {printed}. A panel draws one
                           unit on one axis.
                         </p>
@@ -275,7 +275,7 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                           {onNewPanel ? (
                             <button
                               type="button"
-                              className="h-[26px] rounded-md border border-white/16 bg-[#18181b] px-2.5 text-[12px]"
+                              className="h-[26px] rounded-md border border-white/16 bg-overlay px-2.5 text-sm"
                               onClick={() => {
                                 onNewPanel(refused.name);
                                 closePicker();
@@ -284,14 +284,14 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                               Put it on a new panel
                             </button>
                           ) : null}
-                          <button type="button" className="h-[26px] px-2 text-[12px] text-muted-foreground" onClick={() => setRefused(null)}>
+                          <button type="button" className="h-[26px] px-2 text-sm text-muted-foreground" onClick={() => setRefused(null)}>
                             Cancel
                           </button>
                         </div>
                       </div>
                     ) : null}
                     <div className="mt-1 max-h-[320px] overflow-y-auto">
-                      <div className="px-1.5 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-[0.04em] text-muted-foreground uppercase">
+                      <div className="px-1.5 pt-1.5 pb-0.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground uppercase">
                         {printed ? `${printed} — can join this panel` : "Can join this panel"}
                       </div>
                       {choices.fit.map((entry) => (
@@ -300,20 +300,20 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                           type="button"
                           disabled={onPanel.has(entry.name)}
                           onClick={() => addLine(entry)}
-                          className="flex w-full flex-col items-start gap-0.5 rounded px-1.5 py-1 text-left hover:bg-white/5 disabled:opacity-55"
+                          className="flex w-full flex-col items-start gap-0.5 rounded-md px-1.5 py-1 text-left hover:bg-white/5 disabled:opacity-55"
                         >
                           <span className="flex w-full gap-2">
-                            <span className="min-w-0 truncate font-mono text-[12px]">{entry.name}</span>
+                            <span className="min-w-0 truncate font-mono text-sm">{entry.name}</span>
                             <span className="flex-1" />
-                            <span className="shrink-0 text-[11px] text-muted-foreground">{onPanel.has(entry.name) ? "on this panel" : ""}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{onPanel.has(entry.name) ? "on this panel" : ""}</span>
                           </span>
                           {entry.description ? (
-                            <span className="line-clamp-2 text-[11.5px] leading-snug text-muted-foreground">{entry.description}</span>
+                            <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">{entry.description}</span>
                           ) : null}
                         </button>
                       ))}
                       {choices.other.length > 0 ? (
-                        <div className="px-1.5 pt-2 pb-0.5 text-[11px] font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
+                        <div className="px-1.5 pt-2 pb-0.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground/70 uppercase">
                           Other units
                         </div>
                       ) : null}
@@ -322,17 +322,17 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                           key={entry.name}
                           type="button"
                           onClick={() => addLine(entry)}
-                          className="flex w-full gap-2 rounded px-1.5 py-1 text-left opacity-50 hover:opacity-80"
+                          className="flex w-full gap-2 rounded-md px-1.5 py-1 text-left opacity-50 hover:opacity-80"
                         >
-                          <span className="min-w-0 truncate font-mono text-[12px]">{entry.name}</span>
+                          <span className="min-w-0 truncate font-mono text-sm">{entry.name}</span>
                           <span className="flex-1" />
-                          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{printUnit(entry.unit) || entry.unit}</span>
+                          <span className="shrink-0 font-mono text-xs text-muted-foreground">{printUnit(entry.unit) || entry.unit}</span>
                         </button>
                       ))}
                     </div>
                   </PopoverContent>
                 </Popover>
-                <span className="min-w-0 flex-1 text-[11.5px] text-muted-foreground">Up to 4. The name is what the legend and the readout say.</span>
+                <span className="min-w-0 flex-1 text-xs text-muted-foreground">Up to 4. The name is what the legend and the readout say.</span>
                 {done}
               </div>
             </div>
@@ -340,11 +340,11 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
             <div className="flex flex-col gap-1.5">
               {splitValues.map((value, index) => (
                 <div key={value} className="flex items-center gap-2">
-                  <span className="h-[3px] w-3.5 shrink-0 rounded" style={{ background: splitPalette[index % splitPalette.length] }} />
-                  <span className="w-[120px] shrink-0 truncate font-mono text-[12px] text-muted-foreground" title={value}>
+                  <span className="h-[3px] w-3.5 shrink-0 rounded-md" style={{ background: splitPalette[index % splitPalette.length] }} />
+                  <span className="w-[120px] shrink-0 truncate font-mono text-sm text-muted-foreground" title={value}>
                     {widget.metricSplit}:{value}
                   </span>
-                  <span className="text-[11px] text-muted-foreground/70">shows as</span>
+                  <span className="text-xs text-muted-foreground/70">shows as</span>
                   <NameField
                     label={`Name for ${value}`}
                     value={names[value] ?? ""}
@@ -354,9 +354,9 @@ export function PanelEditor({ widget, unit, splitValues, editing, onEditing, onP
                   />
                 </div>
               ))}
-              {splitValues.length === 0 ? <p className="text-[12px] text-muted-foreground">No values in this window yet.</p> : null}
+              {splitValues.length === 0 ? <p className="text-sm text-muted-foreground">No values in this window yet.</p> : null}
               <div className="flex items-center gap-2 pt-1">
-                <span className="min-w-0 flex-1 text-[11.5px] text-muted-foreground">
+                <span className="min-w-0 flex-1 text-xs text-muted-foreground">
                   The name is what the legend says; the value stays one hover away.
                 </span>
                 {done}

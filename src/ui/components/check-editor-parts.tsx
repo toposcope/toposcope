@@ -12,11 +12,11 @@ import type { RemindId } from "../../shared/monitor";
  * and calls rows under it.
  */
 
-export const box = "box-border flex min-h-[30px] items-center gap-2 rounded-[6px] border border-white/15 px-2.5 py-[5px] text-[13px]";
-export const btn2 = "h-[30px] rounded-[6px] border border-white/15 bg-transparent px-3 text-[13px] text-foreground hover:bg-accent disabled:opacity-50";
-export const btn = "h-[30px] rounded-[6px] bg-[#e4e4e7] px-3.5 text-[13px] font-medium text-[#18181b] hover:bg-white disabled:opacity-50";
+export const box = "box-border flex min-h-[30px] items-center gap-2 rounded-md border border-white/15 px-2.5 py-[5px] text-sm";
+export const btn2 = "h-[30px] rounded-md border border-white/15 bg-transparent px-3 text-sm text-foreground hover:bg-accent disabled:opacity-50";
+export const btn = "h-[30px] rounded-md bg-[#e4e4e7] px-3.5 text-sm font-medium text-primary-foreground hover:bg-white disabled:opacity-50";
 const add =
-  "inline-flex h-5 shrink-0 items-center gap-1 rounded-[4px] border border-dashed border-[rgba(231,225,211,.6)] bg-transparent px-[7px] text-[11px] whitespace-nowrap text-[#e7e1d3] hover:bg-[rgba(231,225,211,.08)]";
+  "inline-flex h-5 shrink-0 items-center gap-1 rounded-md border border-dashed border-[rgba(231,225,211,.6)] bg-transparent px-[7px] text-xs whitespace-nowrap text-plate hover:bg-[rgba(231,225,211,.08)]";
 const remindIds = ["off", "1h", "4h", "24h"] as const;
 const failAfterIds = [1, 2, 3, 5] as const;
 
@@ -50,7 +50,7 @@ export function Seg<T extends string | number>({
   text?: (id: T) => string;
 }) {
   return (
-    <span role="radiogroup" aria-label={label} className="inline-flex h-7 overflow-hidden rounded-[6.4px] border border-white/15">
+    <span role="radiogroup" aria-label={label} className="inline-flex h-7 overflow-hidden rounded-lg border border-white/15">
       {ids.map((id) => (
         <button
           key={String(id)}
@@ -60,8 +60,8 @@ export function Seg<T extends string | number>({
           onClick={() => onPick(id)}
           className={
             value === id
-              ? "bg-accent px-2.5 text-[12px] text-foreground"
-              : "px-2.5 text-[12px] text-muted-foreground hover:text-foreground"
+              ? "bg-accent px-2.5 text-sm text-foreground"
+              : "px-2.5 text-sm text-muted-foreground hover:text-foreground"
           }
         >
           {text ? text(id) : String(id)}
@@ -100,8 +100,8 @@ export function ConditionsPanel({
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="text-[12px] font-semibold">Conditions</span>
-        <span className="font-mono text-[11.5px] text-muted-foreground">
+        <span className="text-sm font-semibold">Conditions</span>
+        <span className="font-mono text-xs text-muted-foreground">
           {good > 0 ? `${good} · all must pass` : `none · ${none}`}
         </span>
       </div>
@@ -112,17 +112,17 @@ export function ConditionsPanel({
           !r || r.pass === null
             ? "text-muted-foreground"
             : r.pass
-              ? "text-[#7dd3fc]"
+              ? "text-info-fg"
               : level === "warn"
-                ? "text-[#fcd34d]"
-                : "text-[#fca5a5]";
+                ? "text-warn-fg"
+                : "text-danger-fg";
         return (
           <div
             key={`${row.index}-${row.raw}`}
             data-line={row.index}
             className={cn(
-              "grid grid-cols-[minmax(0,1fr)_auto_22px] items-center gap-2 rounded-[6px] border bg-[#0f0f11] px-2.5 py-[7px] text-[12.5px]",
-              row.error ? "border-red-400/50" : "border-white/[0.08]",
+              "grid grid-cols-[minmax(0,1fr)_auto_22px] items-center gap-2 rounded-md border bg-surface-1 px-2.5 py-[7px] text-sm",
+              row.error ? "border-danger/50" : "border-white/[0.08]",
             )}
           >
             <span className="min-w-0 font-mono [overflow-wrap:anywhere]">
@@ -132,10 +132,10 @@ export function ConditionsPanel({
                   {r.pass === null ? "—" : `${r.pass ? "✓" : "✗"} ${r.got}`}
                 </span>
               ) : null}
-              {row.error ? <span className="block font-sans text-[11.5px] text-red-300">{row.error}</span> : null}
+              {row.error ? <span className="block font-sans text-xs text-danger-fg">{row.error}</span> : null}
             </span>
             {row.line ? (
-              <span className="inline-flex rounded-[5px] border border-white/12 p-px">
+              <span className="inline-flex rounded-md border border-white/12 p-px">
                 {(["fail", "warn"] as const).map((lv) => (
                   <button
                     key={lv}
@@ -143,8 +143,8 @@ export function ConditionsPanel({
                     aria-pressed={level === lv}
                     onClick={() => setLines((t) => setLineLevel(t, row.index, lv, kind))}
                     className={cn(
-                      "rounded-[4px] px-1.5 py-px text-[10.5px]",
-                      level === lv ? "bg-[#27272a] text-foreground" : "text-muted-foreground hover:text-foreground",
+                      "rounded-md px-1.5 py-px text-2xs",
+                      level === lv ? "bg-control text-foreground" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {lv}
@@ -157,7 +157,7 @@ export function ConditionsPanel({
             <button
               type="button"
               aria-label="Remove"
-              className="text-[14px] text-muted-foreground hover:text-foreground"
+              className="text-base text-muted-foreground hover:text-foreground"
               onClick={() => setLines((t) => removeLine(t, row.index))}
             >
               ×
@@ -166,7 +166,7 @@ export function ConditionsPanel({
         );
       })}
       <label className="mt-1 flex flex-col gap-1">
-        <span className="text-[11px] text-muted-foreground">Stored as lines</span>
+        <span className="text-xs text-muted-foreground">Stored as lines</span>
         <textarea
           aria-label="Stored as lines"
           value={lines}
@@ -176,7 +176,7 @@ export function ConditionsPanel({
             const next = e.target.value;
             setLines(() => next);
           }}
-          className="resize-y rounded-[5px] border border-white/[0.08] bg-[#0f0f11] px-2.5 py-2 font-mono text-[11.5px] leading-[1.55] text-[#d4d4d8] outline-none"
+          className="resize-y rounded-md border border-white/[0.08] bg-surface-1 px-2.5 py-2 font-mono text-xs leading-[1.55] text-[#d4d4d8] outline-none"
         />
       </label>
     </>
@@ -248,7 +248,7 @@ export function RunCallsRows({
   const { name, every, failAfter, webhook, remind, bodyKind, bodyTemplate, resolvedBody } = state;
   return (
     <div className="mt-auto flex flex-col gap-1.5 border-t border-white/[0.08] pt-2.5">
-      <span className="flex items-center gap-2 text-[12px]">
+      <span className="flex items-center gap-2 text-sm">
         <span className="w-14 shrink-0 text-muted-foreground">name</span>
         <input
           aria-label="Name"
@@ -259,7 +259,7 @@ export function RunCallsRows({
         />
       </span>
       {afterName}
-      <span className="flex items-center gap-2 text-[12px]">
+      <span className="flex items-center gap-2 text-sm">
         <span className="w-14 shrink-0 text-muted-foreground">run</span>
         <span className="min-w-0 truncate font-mono">
           every {every} · open after {failAfter} failed run{failAfter === 1 ? "" : "s"}
@@ -269,7 +269,7 @@ export function RunCallsRows({
         </button>
       </span>
       {open.run ? (
-        <span className="flex flex-wrap items-center gap-2 rounded-[6px] border border-white/10 bg-[#0f0f11] p-2.5 text-[12px] text-muted-foreground">
+        <span className="flex flex-wrap items-center gap-2 rounded-md border border-white/10 bg-surface-1 p-2.5 text-sm text-muted-foreground">
           every
           <Seg label="Every" ids={httpEveryIds} value={every as (typeof httpEveryIds)[number]} onPick={(v) => set.every(v)} />
           open after
@@ -282,7 +282,7 @@ export function RunCallsRows({
           failed runs
         </span>
       ) : null}
-      <span className="flex items-center gap-2 text-[12px]">
+      <span className="flex items-center gap-2 text-sm">
         <span className="w-14 shrink-0 text-muted-foreground">calls</span>
         <span className={cn("min-w-0 truncate font-mono", webhook.trim() || fallback ? "" : "text-muted-foreground")}>
           {webhook.trim()
@@ -298,8 +298,8 @@ export function RunCallsRows({
         </button>
       </span>
       {open.calls ? (
-        <div className="flex flex-col gap-3 rounded-[6px] border border-white/10 bg-[#0f0f11] p-2.5">
-          <span className="flex items-center gap-2 text-[12px]">
+        <div className="flex flex-col gap-3 rounded-md border border-white/10 bg-surface-1 p-2.5">
+          <span className="flex items-center gap-2 text-sm">
             <span className="w-[58px] shrink-0 text-muted-foreground">webhook</span>
             <input
               ref={webhookRef}
@@ -307,13 +307,13 @@ export function RunCallsRows({
               value={webhook}
               onChange={(e) => set.webhook(e.target.value)}
               placeholder={fallback ? `empty: the default, ${webhookShort(fallback)}` : "https://ntfy.sh/… or https://hooks.slack.com/services/…"}
-              className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-[12px] outline-none placeholder:text-muted-foreground")}
+              className={cn(box, "min-h-7 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground")}
             />
           </span>
-          <span className="pl-[66px] text-[11px] text-muted-foreground">
+          <span className="pl-[66px] text-xs text-muted-foreground">
             Left empty, it calls the default webhook, set in Settings for any monitor without its own.
           </span>
-          <span className="flex items-center gap-2 text-[12px]">
+          <span className="flex items-center gap-2 text-sm">
             <span className="w-[58px] shrink-0 text-muted-foreground">remind</span>
             <Seg label="Remind" ids={remindIds} value={remind as (typeof remindIds)[number]} onPick={(v) => set.remind(v)} />
           </span>

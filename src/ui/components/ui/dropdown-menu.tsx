@@ -29,7 +29,7 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "z-50 min-w-32 overflow-hidden rounded-lg border border-white/12 bg-[#18181b] p-1 text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
+          "z-50 min-w-32 overflow-hidden rounded-lg border border-white/12 bg-overlay p-1 text-popover-foreground shadow-[0_12px_28px_oklch(0_0_0_/_55%)]",
           className,
         )}
         {...props}
@@ -46,7 +46,7 @@ function DropdownMenuItem({
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
       className={cn(
-        "relative flex h-[26px] cursor-pointer select-none items-center rounded-[3.4px] px-[7px] text-[12.5px] outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex h-[26px] cursor-pointer select-none items-center rounded-sm px-[7px] text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}

@@ -149,7 +149,7 @@ function iso(ms: number): string {
 
 function pill(on: boolean): string {
   return cn(
-    "h-[22px] rounded-sm px-2 text-[12px]",
+    "h-[22px] rounded-sm px-2 text-sm",
     on
       ? "bg-accent text-foreground"
       : "bg-transparent text-muted-foreground hover:text-foreground",
@@ -296,14 +296,14 @@ export function HistogramHover({
     .filter((row) => row.n > 0);
   return (
     <div
-      className="pointer-events-none absolute z-20 min-w-32 rounded-md border bg-popover px-2 py-1.5 text-[11px] shadow-md"
+      className="pointer-events-none absolute z-20 min-w-32 rounded-md border bg-popover px-2 py-1.5 text-xs shadow-md"
       style={{
         top: HEAD_H + HEAD_GAP + 4,
         left,
         transform: side === "left" ? "translateX(-100%)" : "translateX(0)",
       }}
     >
-      <div className="border-b border-border/80 pb-1 font-mono text-[10.5px] tabular-nums">
+      <div className="border-b border-border/80 pb-1 font-mono text-2xs tabular-nums">
         {rangeLabel} · {metricLines ? metricLines.reading : abbrevCount(bucket.n)}
       </div>
       {metricLines?.lines.map((row) => (
@@ -315,7 +315,7 @@ export function HistogramHover({
             className="h-0 w-2.5 shrink-0 border-t-2"
             style={{ borderColor: row.color, borderStyle: row.dashed ? "dashed" : "solid" }}
           />
-          <span className="max-w-28 truncate font-mono text-[10.5px] text-foreground/85">{row.key}</span>
+          <span className="max-w-28 truncate font-mono text-2xs text-foreground/85">{row.key}</span>
           <span className="ml-auto pl-2 font-mono tabular-nums text-foreground">
             {withUnit(formatAggStat(row.v), row.unit ?? metricLines.unit)}
           </span>
@@ -327,7 +327,7 @@ export function HistogramHover({
           className="mt-0.5 flex items-center gap-1.5 text-muted-foreground"
         >
           <span
-            className="size-1.5 rounded-[2px]"
+            className="size-1.5 rounded-sm"
             style={{ background: seriesColor(row.key, split, i) }}
           />
           <span className="max-w-24 truncate">{row.key}</span>
@@ -339,7 +339,7 @@ export function HistogramHover({
       {overlay ? (
         <div className="mt-0.5 flex items-center gap-1.5 text-muted-foreground">
           <span
-            className="size-1.5 rounded-[2px]"
+            className="size-1.5 rounded-sm"
             style={{ background: AGG_COLOR }}
           />
           {overlay.name && overlay.label.startsWith(overlay.name) ? (
@@ -349,10 +349,10 @@ export function HistogramHover({
               name={overlay.name}
               trail={overlay.label.slice(overlay.name.length)}
               others={overlay.others}
-              className="font-mono text-[10.5px] text-foreground/85"
+              className="font-mono text-2xs text-foreground/85"
             />
           ) : (
-            <span className="min-w-0 truncate font-mono text-[10.5px] text-foreground/85">
+            <span className="min-w-0 truncate font-mono text-2xs text-foreground/85">
               {overlay.reading ? <span style={{ color: AGG_COLOR }}>{overlay.reading} </span> : null}
               {overlay.label}
             </span>
@@ -363,7 +363,7 @@ export function HistogramHover({
         </div>
       ) : null}
       {overlay?.words ? (
-        <div className="ml-3 text-[10px] text-muted-foreground">{overlay.words}</div>
+        <div className="ml-3 text-2xs text-muted-foreground">{overlay.words}</div>
       ) : null}
       {markLines.slice(0, 2).map((row) => (
         <div
@@ -378,11 +378,11 @@ export function HistogramHover({
         </div>
       ))}
       {markLines.length > 2 ? (
-        <div className="mt-0.5 text-[10px] text-muted-foreground/80">
+        <div className="mt-0.5 text-2xs text-muted-foreground/80">
           +{markLines.length - 2} more marks
         </div>
       ) : null}
-      <div className="mt-1 text-[10px] text-muted-foreground/70">{hint}</div>
+      <div className="mt-1 text-2xs text-muted-foreground/70">{hint}</div>
     </div>
   );
 }
@@ -1230,7 +1230,7 @@ export function HistogramChart({
         <button
           type="button"
           className={cn(
-            "h-[26px] shrink-0 rounded-md border border-input px-[9px] text-[12px]",
+            "h-[26px] shrink-0 rounded-md border border-input px-[9px] text-sm",
             logScale
               ? "border-ring bg-accent text-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -1247,7 +1247,7 @@ export function HistogramChart({
         />
         <div className="h-4 w-px shrink-0 bg-border" />
         <div className="flex min-w-0 shrink items-center gap-2">
-          <span className="shrink-0 text-[11.5px] whitespace-nowrap text-muted-foreground">Series</span>
+          <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">Series</span>
           <SeriesPicker
             variant="toolbar"
             card={false}
@@ -1272,7 +1272,7 @@ export function HistogramChart({
           <button
             key={`${key}:${value}`}
             type="button"
-            className="flex h-[22px] max-w-[11rem] shrink-0 items-center gap-1 rounded-md border px-1.5 font-mono text-[11px]"
+            className="flex h-[22px] max-w-[11rem] shrink-0 items-center gap-1 rounded-md border px-1.5 font-mono text-xs"
             style={{ borderColor: AGG_COLOR, color: AGG_COLOR }}
             title="Drop this metric matcher"
             onClick={onClearMetricLabels}
@@ -1285,7 +1285,7 @@ export function HistogramChart({
         ))}
         {splitName && splitChoices.length > 0 ? (
           <>
-            <span className="shrink-0 text-[11.5px] whitespace-nowrap text-muted-foreground">Split</span>
+            <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">Split</span>
             <div
               role="radiogroup"
               aria-label="Split the series by"
@@ -1306,7 +1306,7 @@ export function HistogramChart({
                   type="button"
                   role="radio"
                   aria-checked={metricSplit === item.key}
-                  className={cn(pill(metricSplit === item.key), "max-w-[10rem] truncate font-mono text-[11.5px]")}
+                  className={cn(pill(metricSplit === item.key), "max-w-[10rem] truncate font-mono text-xs")}
                   title={
                     item.values === null
                       ? undefined
@@ -1354,7 +1354,7 @@ export function HistogramChart({
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
           className={cn(
-            "flex shrink-0 flex-col justify-between py-[3px] text-right font-mono text-[10px] text-muted-foreground/70",
+            "flex shrink-0 flex-col justify-between py-[3px] text-right font-mono text-2xs text-muted-foreground/70",
             axisUnit ? "w-12 whitespace-nowrap" : "w-8",
           )}
           style={{
@@ -1440,8 +1440,8 @@ export function HistogramChart({
                     className={cn(
                       "absolute z-[6] flex items-center justify-center font-mono",
                       armed
-                        ? "top-0 h-3 w-[34px] -translate-x-1/2 rounded-sm bg-foreground text-[9.5px] tracking-tight text-background shadow-md"
-                        : "top-0.5 h-2 w-4 -translate-x-1/2 rounded-[2px] bg-foreground/70",
+                        ? "top-0 h-3 w-[34px] -translate-x-1/2 rounded-sm bg-foreground text-2xs tracking-tight text-background shadow-md"
+                        : "top-0.5 h-2 w-4 -translate-x-1/2 rounded-sm bg-foreground/70",
                       canDrill || headDrag ? "cursor-pointer" : "cursor-default",
                     )}
                     style={{ left: `${hbPct}%` }}
@@ -1461,7 +1461,7 @@ export function HistogramChart({
                   </div>
                 ) : null}
                 {panning ? (
-                  <div className="absolute top-0 left-1/2 z-[6] flex h-3 -translate-x-1/2 items-center rounded-sm bg-accent px-1.5 font-mono text-[9.5px] whitespace-nowrap text-foreground shadow-[inset_0_0_0_1px_oklch(1_0_0_/_18%)]">
+                  <div className="absolute top-0 left-1/2 z-[6] flex h-3 -translate-x-1/2 items-center rounded-sm bg-accent px-1.5 font-mono text-2xs whitespace-nowrap text-foreground shadow-[inset_0_0_0_1px_oklch(1_0_0_/_18%)]">
                     {panChipText}
                   </div>
                 ) : null}
@@ -1676,7 +1676,7 @@ export function HistogramChart({
                   }}
                 >
                   {brushLabel ? (
-                    <div className="absolute top-0.5 left-0 rounded-sm border bg-card px-1 py-px font-mono text-[10px] whitespace-nowrap">
+                    <div className="absolute top-0.5 left-0 rounded-sm border bg-card px-1 py-px font-mono text-2xs whitespace-nowrap">
                       {brushLabel}
                     </div>
                   ) : null}
@@ -1758,7 +1758,7 @@ export function HistogramChart({
         </div>
         {overlayOn && !replaceY ? (
           <div
-            className="relative w-[34px] shrink-0 self-stretch font-mono text-[10px]"
+            className="relative w-[34px] shrink-0 self-stretch font-mono text-2xs"
             // The gridlines' box: under the head strip, inset in the plot, above the mark lane.
             style={{
               marginTop: HEAD_H + HEAD_GAP + PLOT_INSET,
@@ -1798,7 +1798,7 @@ export function HistogramChart({
         {endLabels ? (
           <div
             ref={endLabelRef}
-            className="relative shrink-0 self-stretch font-mono text-[10.5px]"
+            className="relative shrink-0 self-stretch font-mono text-2xs"
             // The plot's box, as the overlay axis has it: each line is named at its last value.
             style={{
               width: END_LABEL_W,
@@ -1824,7 +1824,7 @@ export function HistogramChart({
         ) : null}
       </div>
       <div
-        className="mt-1 flex shrink-0 justify-between pr-2.5 font-mono text-[10px] text-muted-foreground/70"
+        className="mt-1 flex shrink-0 justify-between pr-2.5 font-mono text-2xs text-muted-foreground/70"
         style={{ paddingLeft: plotLeft, paddingRight: underPlotPadRight }}
       >
         {axis.map((label, i) => (
@@ -1832,7 +1832,7 @@ export function HistogramChart({
         ))}
       </div>
       {agg || metric || scanReason ? (
-        <div className="mt-1 pr-2.5 text-[11px] text-muted-foreground" style={{ paddingLeft: plotLeft }}>
+        <div className="mt-1 pr-2.5 text-xs text-muted-foreground" style={{ paddingLeft: plotLeft }}>
           {scanReason ? (
             <span>{scanReason}</span>
           ) : aggResult?.source === "refused" ? (
@@ -1848,7 +1848,7 @@ export function HistogramChart({
               {[metricReadingText, splitExpr, unitText].filter(Boolean).join(" · ")}
             </span>
           ) : metricQuiet ? (
-            <span className="text-amber-400">
+            <span className="text-warn-fg">
               ▲ {view?.name ?? metric} has no points in {catalog.window ? `the last ${catalog.window}` : "this window"} — the line is
               missing, not zero. It stays picked.
             </span>
@@ -1874,7 +1874,7 @@ export function HistogramChart({
           ? keys.map((key, i) => (
               <span
                 key={key}
-                className="flex items-center gap-[5px] text-[11px] text-muted-foreground"
+                className="flex items-center gap-[5px] text-xs text-muted-foreground"
               >
                 <span
                   className="size-[7px] rounded-sm"
@@ -1897,25 +1897,25 @@ export function HistogramChart({
                 onFocus={() => setLegendLine(line.key)}
                 onBlur={() => setLegendLine(null)}
                 className={cn(
-                  "relative flex items-center gap-[5px] rounded px-1 text-muted-foreground outline-none",
-                  lineInfo ? "text-[12px]" : "font-mono text-[11px]",
+                  "relative flex items-center gap-[5px] rounded-md px-1 text-muted-foreground outline-none",
+                  lineInfo ? "text-sm" : "font-mono text-xs",
                   legendLine === line.key && lineInfo?.[line.key] && "bg-accent text-foreground",
                 )}
               >
                 {legendLine === line.key && lineInfo?.[line.key] ? (
                   <span
                     role="tooltip"
-                    className="pointer-events-none absolute bottom-full left-0 z-30 mb-1.5 flex w-[320px] flex-col gap-1.5 rounded-lg border border-white/14 bg-[#18181b] px-3 py-2.5 font-sans shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
+                    className="pointer-events-none absolute bottom-full left-0 z-30 mb-1.5 flex w-[320px] flex-col gap-1.5 rounded-lg border border-white/14 bg-overlay px-3 py-2.5 font-sans shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)]"
                   >
-                    <span className="text-[13px] font-semibold text-foreground">{line.key}</span>
-                    <span className="font-mono text-[11.5px] text-foreground/80">
+                    <span className="text-sm font-semibold text-foreground">{line.key}</span>
+                    <span className="font-mono text-xs text-foreground/80">
                       {[metricReadingText, lineInfo[line.key]!.metric, lineInfo[line.key]!.labels, unitText]
                         .filter(Boolean)
                         .join(" · ")}
                     </span>
                     {lineInfo[line.key]!.description ? (
-                      <span className="flex items-baseline gap-1.5 text-[12px] leading-snug">
-                        <span className="shrink-0 rounded-[4px] border border-white/16 px-1 font-mono text-[10px]">sender</span>
+                      <span className="flex items-baseline gap-1.5 text-sm leading-snug">
+                        <span className="shrink-0 rounded-md border border-white/16 px-1 font-mono text-2xs">sender</span>
                         {lineInfo[line.key]!.description}
                       </span>
                     ) : null}
@@ -1926,13 +1926,13 @@ export function HistogramChart({
                   style={{ borderColor: line.color, borderStyle: line.dashed ? "dashed" : "solid" }}
                 />
                 {line.key}
-                <span className="font-mono text-[11px] text-muted-foreground/65">
+                <span className="font-mono text-xs text-muted-foreground/65">
                   {lineInfo ? withUnit(formatAggStat(lastValue(line.vals)), aggResult?.unit) : formatAggStat(lastValue(line.vals))}
                 </span>
               </span>
             ))
           : overlayOn ? (
-          <span className="flex items-center gap-[5px] text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-[5px] text-xs text-muted-foreground">
             <span
               className="size-[7px] rounded-sm"
               style={{ background: AGG_COLOR }}

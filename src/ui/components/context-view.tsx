@@ -220,7 +220,7 @@ export function ContextView({
           <>
             <MarkGlyph kind={mark.kind} size={12} />
             <span
-              className="min-w-0 truncate text-[12.5px] font-semibold"
+              className="min-w-0 truncate text-sm font-semibold"
               data-focus-mark=""
             >
               {title}
@@ -258,11 +258,11 @@ export function ContextView({
           </div>
         )}
       </div>
-      <div className="shrink-0 border-b px-3 py-2 text-[11.5px] text-muted-foreground/90">
+      <div className="shrink-0 border-b px-3 py-2 text-xs text-muted-foreground/90">
         {markFocus ? markFocusNote(q, n) : frozenQueryNote(mode, q)}
       </div>
       <div className="flex h-10 shrink-0 items-center gap-2.5 border-b bg-background/45 px-3">
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {tape.from}
         </span>
         <span className="relative min-w-0 flex-1 h-6">
@@ -279,10 +279,10 @@ export function ContextView({
             />
           ))}
         </span>
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {tape.to}
         </span>
-        <span className="min-w-0 truncate text-[11px] text-muted-foreground/70">
+        <span className="min-w-0 truncate text-xs text-muted-foreground/70">
           {tape.label}
         </span>
       </div>
@@ -378,7 +378,7 @@ export function ContextView({
               </button>
             ) : null}
             {n >= surroundingMaxN ? (
-              <p className="px-2.5 py-2 text-center text-[11px] text-muted-foreground/70">
+              <p className="px-2.5 py-2 text-center text-xs text-muted-foreground/70">
                 Context caps at {surroundingMaxN} each way
               </p>
             ) : null}
@@ -425,7 +425,7 @@ function ContextRow({
       : selected
         ? "bg-accent/55"
         : hit
-          ? "bg-sky-500/12"
+          ? "bg-info/12"
           : "hover:bg-accent/45",
   );
   const body = (
@@ -434,7 +434,7 @@ function ContextRow({
         className={cn(
           "absolute inset-y-0 left-0",
           current ? "w-[3px] bg-foreground" : "w-0.5",
-          current ? "" : hit ? "bg-sky-500" : levelRail[event.level],
+          current ? "" : hit ? "bg-info" : levelRail[event.level],
         )}
       />
       <span className="truncate whitespace-nowrap text-muted-foreground" title={event.ts}>
@@ -449,7 +449,7 @@ function ContextRow({
           current
             ? "text-foreground"
             : isLoud(event.level)
-              ? "text-red-300"
+              ? "text-danger-fg"
               : event.level === "debug"
                 ? "text-muted-foreground"
                 : "",
@@ -499,10 +499,10 @@ function MarkFocusRow({ mark, stamp }: { mark: ChangeMark; stamp: string }) {
     >
       <span className="absolute inset-y-0 left-0 w-[3px] bg-foreground" />
       <MarkGlyph kind={mark.kind} size={12} />
-      <span className="min-w-0 truncate text-[12px] font-semibold">
+      <span className="min-w-0 truncate text-sm font-semibold">
         {formatChangeMarkLabel(mark)}
       </span>
-      <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+      <span className="ml-auto shrink-0 text-xs text-muted-foreground">
         {stamp}
       </span>
     </div>

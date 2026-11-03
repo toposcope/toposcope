@@ -86,7 +86,7 @@ export function AbsoluteRangeCalendar({
   return (
     <div
       ref={panelRef}
-      className="mt-px flex flex-col gap-[7px] rounded-[6.4px] border border-white/12 bg-background/70 p-2"
+      className="mt-px flex flex-col gap-[7px] rounded-lg border border-white/12 bg-background/70 p-2"
     >
       <div className="flex flex-col gap-[7px]">
         {(
@@ -117,21 +117,21 @@ export function AbsoluteRangeCalendar({
             >
               <span
                 className={cn(
-                  "w-7 shrink-0 text-[11px]",
+                  "w-7 shrink-0 text-xs",
                   on ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {label}
               </span>
-              <span className="min-w-0 flex-1 truncate font-mono text-[11.5px]">
+              <span className="min-w-0 flex-1 truncate font-mono text-xs">
                 {absStampUtc(val)}
               </span>
               {id === "to" && live && !on ? (
-                <span className="shrink-0 text-[10px] tracking-[0.04em] text-muted-foreground uppercase">
+                <span className="shrink-0 text-2xs tracking-[0.04em] text-muted-foreground uppercase">
                   live
                 </span>
               ) : on ? (
-                <span className="shrink-0 text-[9.5px] tracking-[0.06em] text-muted-foreground uppercase">
+                <span className="shrink-0 text-2xs tracking-[0.06em] text-muted-foreground uppercase">
                   {phase === "time" ? "time" : "day"}
                 </span>
               ) : null}
@@ -146,18 +146,18 @@ export function AbsoluteRangeCalendar({
             <button
               type="button"
               aria-label="Previous month"
-              className="flex size-[22px] items-center justify-center rounded-[3.4px] border border-white/12 text-[13px] leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex size-[22px] items-center justify-center rounded-sm border border-white/12 text-sm leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={() => setMonthMs(shiftUtcMonth(shownMonth, -1))}
             >
               ‹
             </button>
-            <span className="flex-1 text-center text-[11.5px] font-medium">
+            <span className="flex-1 text-center text-xs font-medium">
               {UTC_MONTHS[monthIndex]} {monthYear}
             </span>
             <button
               type="button"
               aria-label="Next month"
-              className="flex size-[22px] items-center justify-center rounded-[3.4px] border border-white/12 text-[13px] leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex size-[22px] items-center justify-center rounded-sm border border-white/12 text-sm leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={() => setMonthMs(shiftUtcMonth(shownMonth, 1))}
             >
               ›
@@ -170,7 +170,7 @@ export function AbsoluteRangeCalendar({
             {WEEKDAYS.map((w, i) => (
               <span
                 key={`${w}-${i}`}
-                className="flex h-[18px] items-center justify-center font-mono text-[10px] text-muted-foreground/70"
+                className="flex h-[18px] items-center justify-center font-mono text-2xs text-muted-foreground/70"
               >
                 {w}
               </span>
@@ -190,13 +190,13 @@ export function AbsoluteRangeCalendar({
                   type="button"
                   title={`${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}${ahead ? " — after the clock" : ""}`}
                   className={cn(
-                    "relative flex h-[25px] items-center justify-center border-none font-mono text-[11px]",
+                    "relative flex h-[25px] items-center justify-center border-none font-mono text-xs",
                     isFrom && isTo
-                      ? "rounded-[3.4px]"
+                      ? "rounded-sm"
                       : isFrom
-                        ? "rounded-l-[3.4px]"
+                        ? "rounded-l-sm"
                         : isTo
-                          ? "rounded-r-[3.4px]"
+                          ? "rounded-r-sm"
                           : "rounded-none",
                     end
                       ? "bg-primary text-primary-foreground"
@@ -234,7 +234,7 @@ export function AbsoluteRangeCalendar({
             <button
               type="button"
               title="Back to the calendar"
-              className="flex h-[22px] shrink-0 items-center gap-[5px] rounded-full border border-white/12 px-2 font-mono text-[10.5px] whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex h-[22px] shrink-0 items-center gap-[5px] rounded-full border border-white/12 px-2 font-mono text-2xs whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground"
               onClick={() => {
                 setPhase("date");
                 setHoverDay(null);
@@ -243,7 +243,7 @@ export function AbsoluteRangeCalendar({
               ‹ {absStampUtc(actMs).slice(0, 10)}
             </button>
             <div className="min-w-1 flex-1" />
-            <span className="shrink-0 text-[11px] whitespace-nowrap text-muted-foreground">
+            <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
               {pick === "to" ? "End" : "Start"} time · UTC
             </span>
           </div>
@@ -259,7 +259,7 @@ export function AbsoluteRangeCalendar({
                 key={part}
                 className="flex h-[132px] min-w-0 flex-1 flex-col gap-[3px]"
               >
-                <span className="block text-center font-mono text-[9.5px] tracking-[0.06em] text-muted-foreground/75">
+                <span className="block text-center font-mono text-2xs tracking-[0.06em] text-muted-foreground/75">
                   {part === "h" ? "HH" : part === "m" ? "mm" : "ss"}
                 </span>
                 <TimeColumn
@@ -278,7 +278,7 @@ export function AbsoluteRangeCalendar({
               </div>
             ))}
             <div className="flex min-w-0 shrink-0 basis-[52px] flex-col gap-[3px]">
-              <span className="block text-center font-mono text-[9.5px] tracking-[0.06em] text-muted-foreground/75">
+              <span className="block text-center font-mono text-2xs tracking-[0.06em] text-muted-foreground/75">
                 .mmm
               </span>
               <input
@@ -288,7 +288,7 @@ export function AbsoluteRangeCalendar({
                 inputMode="numeric"
                 aria-label="Milliseconds"
                 className={cn(
-                  "h-[22px] w-full min-w-0 rounded-[3.4px] border bg-background px-[5px] text-center font-mono text-[11px] outline-none",
+                  "h-[22px] w-full min-w-0 rounded-sm border bg-background px-[5px] text-center font-mono text-xs outline-none",
                   msOk ? "border-white/15" : "border-destructive/65",
                 )}
                 onChange={(event) => {
@@ -314,7 +314,7 @@ export function AbsoluteRangeCalendar({
               <button
                 key={label}
                 type="button"
-                className="h-[22px] flex-1 rounded-full border border-white/12 px-1.5 font-mono text-[10.5px] text-muted-foreground hover:border-white/25 hover:text-foreground"
+                className="h-[22px] flex-1 rounded-full border border-white/12 px-1.5 font-mono text-2xs text-muted-foreground hover:border-white/25 hover:text-foreground"
                 onClick={() => commitClock(h, m, s, curMs)}
               >
                 {label}
@@ -322,7 +322,7 @@ export function AbsoluteRangeCalendar({
             ))}
             <button
               type="button"
-              className="h-[22px] flex-1 rounded-full border border-white/12 px-1.5 font-mono text-[10.5px] text-muted-foreground hover:border-white/25 hover:text-foreground"
+              className="h-[22px] flex-1 rounded-full border border-white/12 px-1.5 font-mono text-2xs text-muted-foreground hover:border-white/25 hover:text-foreground"
               onClick={() => {
                 const n = new Date();
                 setMsTxt("000");
@@ -341,7 +341,7 @@ export function AbsoluteRangeCalendar({
       )}
 
       <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 text-[10.5px] leading-snug text-muted-foreground/80">
+        <span className="min-w-0 flex-1 text-2xs leading-snug text-muted-foreground/80">
           {phase === "time"
             ? `${pick === "to" ? "End" : "Start"} time · click hour, minute, second — ms typed`
             : pick === "to"
@@ -350,7 +350,7 @@ export function AbsoluteRangeCalendar({
         </span>
         <button
           type="button"
-          className="h-6 shrink-0 rounded-md bg-white/12 px-2.5 text-[11.5px] hover:bg-white/20"
+          className="h-6 shrink-0 rounded-md bg-white/12 px-2.5 text-xs hover:bg-white/20"
           onClick={() => {
             if (pick === "from") {
               setPick("to");
@@ -408,7 +408,7 @@ function TimeColumn({
           key={i}
           type="button"
           className={cn(
-            "h-5 w-full shrink-0 rounded-[2.4px] font-mono text-[11px]",
+            "h-5 w-full shrink-0 rounded-sm font-mono text-xs",
             i === current
               ? "bg-primary text-primary-foreground"
               : "bg-transparent text-foreground hover:bg-accent",

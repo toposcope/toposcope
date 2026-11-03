@@ -88,8 +88,8 @@ export function SpanFlamegraph({
       data-screen-label="Span flamegraph"
       className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-3"
     >
-      <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-[6.4px] border border-b-0 border-white/10 bg-card px-2.5">
-        <span className="truncate text-[13px] font-medium">
+      <div className="flex h-[38px] shrink-0 items-center gap-2.5 rounded-t-lg border border-b-0 border-white/10 bg-card px-2.5">
+        <span className="truncate text-sm font-medium">
           {service} · {name}
         </span>
         {!empty && !failed && !loading && layout.total > 0 ? (
@@ -97,27 +97,27 @@ export function SpanFlamegraph({
             {formatProfileValue(layout.total, unit)}
           </span>
         ) : null}
-        <span className="whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+        <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
           {loading ? "Loading…" : failed ? "failed" : typeLabel}
         </span>
         {capped ? (
-          <span className="whitespace-nowrap text-[11.5px] text-amber-300">
+          <span className="whitespace-nowrap text-xs text-warn-fg">
             {stacks.length} of {result?.total_samples} stacks
           </span>
         ) : null}
         <div className="min-w-2 flex-1" />
         {where.entered ? (
-          <span className="flex shrink-0 items-center gap-1.5 text-[11.5px] whitespace-nowrap text-muted-foreground">
+          <span className="flex shrink-0 items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground">
             entered at <SourceChip name={where.entered.name} /> · {where.entered.note}
           </span>
         ) : null}
-        <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
+        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
           span_id:{spanId}
         </span>
       </div>
 
       {capped ? (
-        <div className="flex items-center gap-2 border border-b-0 border-white/10 bg-amber-400/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+        <div className="flex items-center gap-2 border border-b-0 border-white/10 bg-warn/10 px-2.5 py-1.5 text-xs text-warn-fg">
           Over the {PROFILE_STACK_CAP}-stack cap — showing the heaviest stacks.
         </div>
       ) : null}
@@ -125,12 +125,12 @@ export function SpanFlamegraph({
       {empty || failed ? (
         <>
           {empty ? (
-            <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-[11px] text-muted-foreground/80">
+            <div className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-muted-foreground/80">
               looked up by span_id · {emptyClock || "—"} UTC
             </div>
           ) : null}
-          <div className="flex flex-col items-center gap-1 rounded-b-[6.4px] border border-white/10 bg-card px-5 py-14">
-            <span className={cn("text-[13px]", !failed && where.notHereYet && "text-amber-300")}>
+          <div className="flex flex-col items-center gap-1 rounded-b-lg border border-white/10 bg-card px-5 py-14">
+            <span className={cn("text-sm", !failed && where.notHereYet && "text-warn-fg")}>
               {failed
                 ? "Could not load this profile"
                 : where.notHereYet
@@ -152,7 +152,7 @@ export function SpanFlamegraph({
             </span>
             <button
               type="button"
-              className="mt-2 h-7 rounded-[4.4px] border border-white/15 px-3 text-[12.5px] hover:bg-accent"
+              className="mt-2 h-7 rounded-md border border-white/15 px-3 text-sm hover:bg-accent"
               onClick={onBack}
             >
               {canBackToTrace ? "Back to the waterfall" : "Back to results"}
@@ -162,7 +162,7 @@ export function SpanFlamegraph({
       ) : (
         <>
           <div
-            className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-[11px] text-muted-foreground/80"
+            className="flex shrink-0 items-center gap-2 border border-b-0 border-white/10 bg-background/45 px-2.5 py-[5px] text-xs text-muted-foreground/80"
             title={
               multi
                 ? `${result?.total_profiles} profiles overlap this span. We render the most recent one and do not merge samples.`
@@ -178,7 +178,7 @@ export function SpanFlamegraph({
               {ticks.map((tick) => (
                 <span
                   key={tick.frac}
-                  className="absolute top-[7px] font-mono text-[10px] text-muted-foreground"
+                  className="absolute top-[7px] font-mono text-2xs text-muted-foreground"
                   style={{
                     left: `${tick.frac * 100}%`,
                     transform:
@@ -197,7 +197,7 @@ export function SpanFlamegraph({
           <div
             className={cn(
               "min-h-0 flex-1 overflow-auto border border-white/10 bg-card",
-              pin ? "border-b-0" : "rounded-b-[6.4px]",
+              pin ? "border-b-0" : "rounded-b-lg",
             )}
           >
             <div
@@ -212,7 +212,7 @@ export function SpanFlamegraph({
                 return (
                   <div
                     key={`${frame.depth}:${frame.x0}:${frame.name}`}
-                    className="absolute box-border flex h-[21px] items-center overflow-hidden rounded-[2.4px] px-1.5 font-mono text-[10.5px] whitespace-nowrap"
+                    className="absolute box-border flex h-[21px] items-center overflow-hidden rounded-sm px-1.5 font-mono text-2xs whitespace-nowrap"
                     style={{
                       left: `${layout.total > 0 ? (frame.x0 / layout.total) * 100 : 0}%`,
                       width: `${Math.max(0.35, width)}%`,
@@ -245,11 +245,11 @@ export function SpanFlamegraph({
           </div>
           {hover && hoverFrame ? (
             <div
-              className="pointer-events-none fixed z-50 w-[244px] rounded-[6.4px] border border-white/14 bg-[#18181b] px-2.5 py-2 shadow-[0_12px_28px_oklch(0_0_0_/_55%)]"
+              className="pointer-events-none fixed z-50 w-[244px] rounded-lg border border-white/14 bg-overlay px-2.5 py-2 shadow-[0_12px_28px_oklch(0_0_0_/_55%)]"
               style={{ top: hover.top, left: hover.left }}
             >
-              <div className="truncate font-mono text-[11.5px]">{hoverFrame.name}</div>
-              <div className="mt-0.5 mb-1.5 font-mono text-[10.5px] text-muted-foreground">
+              <div className="truncate font-mono text-xs">{hoverFrame.name}</div>
+              <div className="mt-0.5 mb-1.5 font-mono text-2xs text-muted-foreground">
                 {hoverFrame.pkg}
               </div>
               {[
@@ -259,7 +259,7 @@ export function SpanFlamegraph({
               ].map(([k, v]) => (
                 <div
                   key={k}
-                  className="flex h-4 items-center justify-between gap-3 font-mono text-[11px]"
+                  className="flex h-4 items-center justify-between gap-3 font-mono text-xs"
                 >
                   <span className="text-muted-foreground">{k}</span>
                   <span className="tabular-nums">{v}</span>
@@ -268,10 +268,10 @@ export function SpanFlamegraph({
             </div>
           ) : null}
           {pin ? (
-            <div className="flex shrink-0 items-center gap-3.5 rounded-b-[6.4px] border border-t-0 border-white/10 bg-background/55 px-2.5 py-2">
+            <div className="flex shrink-0 items-center gap-3.5 rounded-b-lg border border-t-0 border-white/10 bg-background/55 px-2.5 py-2">
               <div className="min-w-0 shrink">
                 <div className="truncate font-mono text-xs">{pin.name}</div>
-                <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                <div className="mt-0.5 font-mono text-xs text-muted-foreground">
                   {pin.pkg} · {formatProfileValue(pin.self, unit)} self ·{" "}
                   {formatProfileValue(pin.value, unit)} total ·{" "}
                   {formatProfileShare(pin.value, layout.total)} of this profile
@@ -280,7 +280,7 @@ export function SpanFlamegraph({
               <div className="min-w-0 flex-1" />
               <button
                 type="button"
-                className="inline-flex size-[22px] shrink-0 items-center justify-center rounded-[4.4px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="inline-flex size-[22px] shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                 title="Clear pinned frame"
                 aria-label="Clear pinned frame"
                 onClick={() => setSelected(null)}
@@ -295,9 +295,9 @@ export function SpanFlamegraph({
     {rail ? (
       <aside
         aria-label="Profile"
-        className="@container flex w-[300px] max-w-[30%] shrink-0 flex-col border-l bg-[#0f0f11]"
+        className="@container flex w-[300px] max-w-[30%] shrink-0 flex-col border-l bg-surface-1"
       >
-        <div className="mx-3 mt-3 mb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+        <div className="mx-3 mt-3 mb-1.5 text-2xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
           Where it entered
         </div>
         <dl className="mx-3 overflow-hidden rounded-lg border">
@@ -309,7 +309,7 @@ export function SpanFlamegraph({
               key={k}
               className="grid min-h-7 grid-cols-[84px_minmax(0,1fr)] items-start gap-2 border-b border-white/[0.08] px-2.5 pt-1.5 pb-[5px] last:border-0"
             >
-              <dt className="truncate font-mono text-[11px] leading-4 text-muted-foreground">{k}</dt>
+              <dt className="truncate font-mono text-xs leading-4 text-muted-foreground">{k}</dt>
               <dd className="font-mono text-xs break-words">
                 {v}
                 {note ? <span className="font-sans text-muted-foreground"> · {note}</span> : null}

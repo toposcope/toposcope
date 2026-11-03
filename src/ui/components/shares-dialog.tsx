@@ -39,9 +39,9 @@ type Draft = {
   frames: string;
 };
 
-const sectionLabel = "pt-1 text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase";
-const inputClass = "min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:text-muted-foreground";
-const rowButton = "h-6 rounded-[4.4px] px-2 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground";
+const sectionLabel = "pt-1 text-xs font-semibold tracking-[0.06em] text-muted-foreground uppercase";
+const inputClass = "min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground";
+const rowButton = "h-6 rounded-md px-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground";
 
 function blankDraft(): Draft {
   return {
@@ -200,10 +200,10 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
           <div className="flex flex-col gap-3.5">
             <DialogField label="Secret · keep it on your backend">
               <DialogControl className="border-plate/50 pr-1">
-                <code className="min-w-0 flex-1 truncate font-mono text-[13px]">{made.secret}</code>
+                <code className="min-w-0 flex-1 truncate font-mono text-sm">{made.secret}</code>
                 <Button size="sm"
                   type="button"
-                  className="px-2.5 text-[12px]"
+                  className="px-2.5 text-sm"
                   onClick={() => void navigator.clipboard.writeText(made.secret).then(() => toast.success("Secret copied"))}
                 >
                   Copy
@@ -211,12 +211,12 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
               </DialogControl>
             </DialogField>
             <DialogField label="Mint a ticket per page load">
-              <pre className="m-0 overflow-x-auto rounded-[4.4px] border border-white/12 bg-background px-3 py-2.5 font-mono text-[12px] leading-[1.6] text-zinc-300">
+              <pre className="m-0 overflow-x-auto rounded-md border border-white/12 bg-background px-3 py-2.5 font-mono text-sm leading-[1.6] text-zinc-300">
                 {`curl -X POST ${origin}/share/v1/tickets \\\n  -H "Authorization: Bearer $TOPOSCOPE_SHARE"\n→ { "ticket": "…", "expires_at": "…" }`}
               </pre>
             </DialogField>
             <DialogField label="Then, in the page">
-              <pre className="m-0 overflow-x-auto rounded-[4.4px] border border-white/12 bg-background px-3 py-2.5 font-mono text-[12px] leading-[1.6] text-zinc-300">
+              <pre className="m-0 overflow-x-auto rounded-md border border-white/12 bg-background px-3 py-2.5 font-mono text-sm leading-[1.6] text-zinc-300">
                 {`<script src="${origin}/embed.js"\n  data-ticket="…" data-metric="…"\n  data-range="24h"></script>`}
               </pre>
             </DialogField>
@@ -242,7 +242,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
           onChange={(e) => set(key, e.target.value)}
           className={inputClass}
         />
-        {opts.aside ? <span className="shrink-0 text-[11px] text-muted-foreground">{opts.aside}</span> : null}
+        {opts.aside ? <span className="shrink-0 text-xs text-muted-foreground">{opts.aside}</span> : null}
       </DialogControl>
     );
     return (
@@ -288,10 +288,10 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
               </DialogField>
             </div>
             <DialogFooter className="justify-end">
-              <button type="button" className="h-8 rounded-[4.4px] border border-input px-3 text-[13px] hover:bg-accent" onClick={() => setMode("list")}>
+              <button type="button" className="h-8 rounded-md border border-input px-3 text-sm hover:bg-accent" onClick={() => setMode("list")}>
                 Cancel
               </button>
-              <Button size="lg" type="submit" className="bg-plate text-[#18181b] hover:bg-plate/90" disabled={!draft.name.trim()}>
+              <Button size="lg" type="submit" className="bg-plate text-primary-foreground hover:bg-plate/90" disabled={!draft.name.trim()}>
                 {mode === "new" ? "Create share" : "Save"}
               </Button>
             </DialogFooter>
@@ -310,13 +310,13 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
         </DialogHeader>
         <div className="flex flex-col border-t border-white/[0.08]">
           {shares.length === 0 ? (
-            <div className="my-3 flex flex-col items-center gap-2.5 rounded-[6.4px] border border-dashed border-white/12 px-4 py-7 text-center">
-              <span className="text-[13px] font-medium">No shares yet</span>
-              <span className="text-[13px] leading-[1.5] text-muted-foreground">
+            <div className="my-3 flex flex-col items-center gap-2.5 rounded-lg border border-dashed border-white/12 px-4 py-7 text-center">
+              <span className="text-sm font-medium">No shares yet</span>
+              <span className="text-sm leading-[1.5] text-muted-foreground">
                 Start from the chart you want to show: <span className="text-foreground">Share…</span> in a panel's copy menu, or{" "}
                 <span className="text-foreground">Share panels…</span> on a board.
               </span>
-              <span className="text-[12px] text-muted-foreground/70">This list is where you see how each share is used, change it, or revoke it.</span>
+              <span className="text-sm text-muted-foreground/70">This list is where you see how each share is used, change it, or revoke it.</span>
             </div>
           ) : null}
           {shares.map((share) => {
@@ -324,22 +324,22 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
             const soon = expiresSoon(share, now);
             if (arming === share.name) {
               return (
-                <div key={share.name} className="my-2 flex flex-col gap-2.5 rounded-[6.4px] border border-red-400/45 bg-red-400/[0.06] p-3">
+                <div key={share.name} className="my-2 flex flex-col gap-2.5 rounded-lg border border-danger/45 bg-danger/[0.06] p-3">
                   <div className="flex items-start gap-3">
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <span className="text-[13px] font-semibold">{share.name}</span>
-                      <span className="truncate font-mono text-[12px] text-zinc-300">{scopeLine(share)}</span>
+                      <span className="text-sm font-semibold">{share.name}</span>
+                      <span className="truncate font-mono text-sm text-zinc-300">{scopeLine(share)}</span>
                     </div>
-                    <span className="font-mono text-[11px] text-muted-foreground">{formatCompactCount(share.use?.reads_24h ?? 0)} reads 24h</span>
+                    <span className="font-mono text-xs text-muted-foreground">{formatCompactCount(share.use?.reads_24h ?? 0)} reads 24h</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="flex-1 text-[13px]">Revoke? Its secret and every ticket stop now; panels show “expired”.</span>
-                    <button type="button" className="h-7 rounded-[4.4px] border border-input px-2.5 text-[12px] hover:bg-accent" onClick={() => setArming(null)}>
+                    <span className="flex-1 text-sm">Revoke? Its secret and every ticket stop now; panels show “expired”.</span>
+                    <button type="button" className="h-7 rounded-md border border-input px-2.5 text-sm hover:bg-accent" onClick={() => setArming(null)}>
                       Keep
                     </button>
                     <button
                       type="button"
-                      className="h-7 rounded-[4.4px] bg-red-400 px-2.5 text-[12px] font-semibold text-[#18181b] hover:bg-red-400/90"
+                      className="h-7 rounded-md bg-danger px-2.5 text-sm font-semibold text-primary-foreground hover:bg-danger/90"
                       onClick={() => void onRevoke(share.name)}
                     >
                       Revoke
@@ -351,9 +351,9 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
             return (
               <div key={share.name} className={cn("group/share flex items-start gap-3 border-b border-white/[0.08] py-3 last:border-b-0", !live && "opacity-55")}>
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className={cn("text-[13px] font-semibold", share.revoked_at !== null && "line-through")}>{share.name}</span>
-                  <span className="truncate font-mono text-[12px] text-zinc-300">{scopeLine(share)}</span>
-                  <span className={cn("font-mono text-[11px]", soon ? "text-amber-400" : "text-muted-foreground")}>
+                  <span className={cn("text-sm font-semibold", share.revoked_at !== null && "line-through")}>{share.name}</span>
+                  <span className="truncate font-mono text-sm text-zinc-300">{scopeLine(share)}</span>
+                  <span className={cn("font-mono text-xs", soon ? "text-warn-fg" : "text-muted-foreground")}>
                     {share.revoked_at !== null
                       ? `revoked ${new Date(share.revoked_at).toISOString().slice(0, 10)}`
                       : !live
@@ -362,13 +362,13 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
                   </span>
                 </div>
                 {live ? (
-                  <div className="flex flex-col items-end gap-1 font-mono text-[11px] text-muted-foreground">
+                  <div className="flex flex-col items-end gap-1 font-mono text-xs text-muted-foreground">
                     <span>{when(share.use?.last_read_at ?? null, now)}</span>
                     <span className="text-zinc-300">{formatCompactCount(share.use?.reads_24h ?? 0)} reads 24h</span>
                     {share.use && share.use.refused_24h > 0 ? (
                       <button
                         type="button"
-                        className="text-amber-400 hover:underline"
+                        className="text-warn-fg hover:underline"
                         onClick={() => onOpenUse(`service:toposcope share:"${share.name}"`)}
                       >
                         {formatCompactCount(share.use.refused_24h)} refused
@@ -401,7 +401,7 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
         <DialogFooter className="justify-end">
           <Button size="lg"
             type="button"
-            className="bg-plate text-[#18181b] hover:bg-plate/90"
+            className="bg-plate text-primary-foreground hover:bg-plate/90"
             onClick={() => {
               setEditing(null);
               setDraft(blankDraft());
