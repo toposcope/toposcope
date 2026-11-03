@@ -346,11 +346,10 @@ function ResultCard({
         </code>
       ) : null}
       <span className="flex items-center gap-1.5">
-        <Button
+        <Button size="sm"
           type="button"
-          size="sm"
           variant="outline"
-          className="h-6 px-2 text-[11px] whitespace-nowrap"
+          className="px-2 text-[11px] whitespace-nowrap"
           onClick={() => onOpen(monitor, card.stretch ?? { opened_at: result.at, resolved_at: result.at })}
         >
           Open in Search
@@ -1004,7 +1003,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
             ))}
           </span>
           {canCreate ? (
-            <Button type="button" size="sm" onClick={onNew}>
+            <Button type="button" onClick={onNew}>
               New monitor
             </Button>
           ) : (
@@ -1021,7 +1020,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 : "An Operator makes monitors; you see each one here as it opens and resolves."}
             </p>
             {canCreate ? (
-              <Button type="button" size="sm" className="mt-3" onClick={onNew}>
+              <Button type="button" className="mt-3" onClick={onNew}>
                 New monitor
               </Button>
             ) : null}

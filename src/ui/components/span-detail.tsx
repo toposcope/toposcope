@@ -199,9 +199,8 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
           {offset ? ` · ${offset}` : ""}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          <Button
+          <Button size="icon"
             type="button"
-            size="icon"
             variant="ghost"
             title="Copy the span as JSON"
             aria-label="Copy the span as JSON"
@@ -212,9 +211,8 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
           >
             <Copy />
           </Button>
-          <Button
+          <Button size="icon"
             type="button"
-            size="icon"
             variant="ghost"
             title="Clear the selected span"
             aria-label="Clear the selected span"
@@ -227,7 +225,6 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
       <div className="flex shrink-0 gap-0.5 border-b px-2 py-1">
         <Button
           type="button"
-          size="sm"
           variant={tab === "fields" ? "secondary" : "ghost"}
           onClick={() => setTab("fields")}
         >
@@ -235,7 +232,6 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
         </Button>
         <Button
           type="button"
-          size="sm"
           variant={tab === "json" ? "secondary" : "ghost"}
           onClick={() => setTab("json")}
         >
@@ -294,9 +290,8 @@ export function SpanDetail({ span, startMs, crumb, onClose, onViewProfiles, clas
       <div className="flex shrink-0 items-center gap-2 border-t px-2.5 py-2">
         <Button
           type="button"
-          size="sm"
           variant="outline"
-          className="h-7 px-2.5 text-[12.5px]"
+          className="px-2.5 text-[12.5px]"
           title={`Flamegraph of the profile samples linked to this span · span_id:${span.span_id}`}
           onClick={() => onViewProfiles(span)}
         >

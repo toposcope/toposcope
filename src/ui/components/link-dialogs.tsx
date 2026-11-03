@@ -254,7 +254,7 @@ export function MintDialog({
               </span>
             </div>
             <div>
-              <Button type="button" size="sm" onClick={onClose}>
+              <Button type="button" onClick={onClose}>
                 Done
               </Button>
             </div>
@@ -353,7 +353,6 @@ export function MintDialog({
             <div className="flex items-center justify-between">
               <Button
                 type="button"
-                size="sm"
                 disabled={busy || faults.length > 0 || !untilOk || (!here && !name.trim()) || kinds.length === 0}
                 onClick={() => void mint()}
               >
@@ -362,7 +361,7 @@ export function MintDialog({
               <span className="min-w-0 flex-1 px-3 text-[11.5px] text-muted-foreground">
                 {kinds.length === 0 ? "Tick at least one kind." : "The other side sees these kinds when it pastes, and cannot widen them."}
               </span>
-              <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+              <Button type="button" variant="ghost" onClick={onClose}>
                 Cancel
               </Button>
             </div>
@@ -577,10 +576,10 @@ export function PasteDialog({
             </div>
           ) : null}
           <div className="flex items-center justify-between">
-            <Button type="button" size="sm" disabled={!usable || busy} onClick={() => void confirm()}>
+            <Button type="button" disabled={!usable || busy} onClick={() => void confirm()}>
               {verb}
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={onClose}>
+            <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
             </Button>
           </div>

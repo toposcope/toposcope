@@ -81,11 +81,10 @@ export function FacetGroup({
           </button>
         ) : null}
         {onRemove ? (
-          <Button
+          <Button size="icon-sm"
             type="button"
-            size="icon"
             variant="ghost"
-            className="size-5 shrink-0"
+            className="shrink-0"
             title={`Remove ${field} facet`}
             onClick={onRemove}
           >

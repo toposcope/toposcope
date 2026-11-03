@@ -258,7 +258,7 @@ export function HomeView(props: Props) {
               aria-label="Note mark"
               className="h-[30px] w-[260px] rounded-[7px] border border-white/10 bg-[#0d0d0f] px-2.5 text-[12.5px] outline-none"
             />
-            <Button type="submit" size="sm" variant="outline">
+            <Button type="submit" variant="outline">
               ○ Add
             </Button>
           </form>
@@ -542,10 +542,10 @@ function FirstRun({ instanceName, savedCount, markCount, onOpenAccess }: { insta
           <div className="text-[12.5px] text-muted-foreground">An app with an OpenTelemetry exporter sends straight in. Or paste one line to see a first event arrive.</div>
           <pre className="mt-3 mb-0 overflow-hidden whitespace-pre-wrap rounded-[7px] border border-white/10 bg-[#0d0d0f] px-3.5 py-3 font-mono text-[12px] leading-[1.6] text-zinc-300">{send}</pre>
           <div className="mt-3 flex items-center gap-2.5">
-            <Button type="button" size="sm" variant="outline" onClick={() => void navigator.clipboard.writeText(send)}>
+            <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(send)}>
               Copy
             </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={onOpenAccess}>
+            <Button type="button" variant="ghost" onClick={onOpenAccess}>
               Make an ingest token
             </Button>
             <span className="text-[12.5px] text-muted-foreground">Vector, Fluent Bit and Alloy configs are in the ingest guide.</span>

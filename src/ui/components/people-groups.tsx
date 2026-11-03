@@ -378,11 +378,11 @@ export function AgentsGroup(props: { agents: PersonRow[]; nowMs: number; isOwner
             <span className="justify-self-end">
               {props.isOwner ? (
                 armed === p.id ? (
-                  <Button type="button" size="sm" variant="outline" className="h-8 text-[12.5px] text-red-300" onClick={() => void revoke(p)}>
+                  <Button type="button" variant="outline" className="text-[12.5px] text-red-300" onClick={() => void revoke(p)}>
                     sure? revoke
                   </Button>
                 ) : (
-                  <Button type="button" size="sm" variant="outline" className="h-8 text-[12.5px]" onClick={() => setArmed(p.id)}>
+                  <Button type="button" variant="outline" className="text-[12.5px]" onClick={() => setArmed(p.id)}>
                     Revoke
                   </Button>
                 )
@@ -474,7 +474,7 @@ function ShownOnce(props: { label: string; value: string; note: React.ReactNode 
       <span className={cn(lab, "text-plate")}>{props.label}</span>
       <div className="flex items-center gap-2.5">
         <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-foreground">{props.value}</code>
-        <Button type="button" size="sm" variant="outline" onClick={() => void navigator.clipboard.writeText(props.value).then(() => toast.success("Copied"))}>
+        <Button type="button" variant="outline" onClick={() => void navigator.clipboard.writeText(props.value).then(() => toast.success("Copied"))}>
           Copy
         </Button>
       </div>
@@ -513,7 +513,7 @@ export function InviteSheet(props: { onClose: () => void; onInvited: () => void 
         <h2 className="m-0 text-[17px] font-semibold">Invite someone</h2>
         <span className="text-[12.5px] text-muted-foreground">They get a link that works once. No mail server needed: send it however you like.</span>
         <div className="flex-1" />
-        <Button type="button" size="sm" variant="ghost" onClick={props.onClose} aria-label="Close">
+        <Button type="button" variant="ghost" onClick={props.onClose} aria-label="Close">
           ×
         </Button>
       </div>

@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-sans text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0 cursor-pointer",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-sans text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 cursor-pointer",
   {
     variants: {
       variant: {
@@ -18,16 +18,19 @@ const buttonVariants = cva(
           "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      /** Sheet 45: xs 18 in a row, sm 22 in panel heads, md 26 in toolbars, lg 30 in the query bar. */
       size: {
-        default: "h-8 px-2.5",
-        sm: "h-8 px-2.5",
-        lg: "h-9 px-4",
-        icon: "size-8",
+        xs: "h-4.5 gap-1 rounded-sm px-1.5 text-2xs [&_svg]:size-3",
+        sm: "h-5.5 gap-1 px-2 text-xs [&_svg]:size-3",
+        md: "h-6.5 px-2.5 [&_svg]:size-3.5",
+        lg: "h-7.5 px-3 [&_svg]:size-3.5",
+        icon: "size-6.5 [&_svg]:size-3.5",
+        "icon-sm": "size-5.5 [&_svg]:size-3",
       },
     },
     defaultVariants: {
       variant: "default",
-      size: "default",
+      size: "md",
     },
   },
 );

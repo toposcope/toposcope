@@ -189,7 +189,7 @@ export function EventDetail({
         </span>
         <div className="ml-auto flex items-center gap-1">
           {hideClose ? null : (
-            <Button type="button" size="icon" variant="ghost" title={closeTitle ?? "Close · Esc"} aria-label="Close the event" onClick={onClose}>
+            <Button size="icon" type="button" variant="ghost" title={closeTitle ?? "Close · Esc"} aria-label="Close the event" onClick={onClose}>
               <X />
             </Button>
           )}
@@ -306,9 +306,8 @@ export function EventDetail({
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/[0.06] px-4 py-3">
         <Button
           type="button"
-          size="sm"
           variant="outline"
-          className="h-7 px-2.5 text-[12.5px]"
+          className="px-2.5 text-[12.5px]"
           title={aroundTitle ?? "The rows around this one, on the same service and host"}
           disabled={aroundDisabled}
           onClick={() => onAround(event)}
@@ -318,9 +317,8 @@ export function EventDetail({
         {traceRef && onTrace ? (
           <Button
             type="button"
-            size="sm"
             variant="outline"
-            className="h-7 px-2.5 text-[12.5px]"
+            className="px-2.5 text-[12.5px]"
             title={`Where time went in this request — joined on ${traceRef.key}:${traceRef.value}`}
             onClick={() => onTrace(event)}
           >
@@ -330,9 +328,8 @@ export function EventDetail({
         {followKey && onFollow ? (
           <Button
             type="button"
-            size="sm"
             variant="outline"
-            className="h-7 px-2.5 text-[12.5px]"
+            className="px-2.5 text-[12.5px]"
             disabled={followDisabled && !existingFollow?.(followKey.k, followKey.v)}
             title={followDisabled ? followCapTitle : `Follow ${formatFieldToken(followKey.k, followKey.v)} — every service, first to last seen within a day`}
             onClick={() => void onFollow(followKey.k, followKey.v, event.ts)}
@@ -342,9 +339,8 @@ export function EventDetail({
         ) : null}
         <Button
           type="button"
-          size="sm"
           variant="ghost"
-          className="h-7 px-2.5 text-[12.5px] text-muted-foreground"
+          className="px-2.5 text-[12.5px] text-muted-foreground"
           onClick={() => {
             void navigator.clipboard.writeText(json);
             toast.success("JSON copied");
@@ -412,8 +408,7 @@ function FollowFieldButton({
         </div>
         <Button
           type="button"
-          size="sm"
-          className="h-7 w-full text-[12.5px]"
+          className="w-full text-[12.5px]"
           disabled={disabled || finding}
           title={disabled ? disabledTitle : undefined}
           onClick={() => void follow()}

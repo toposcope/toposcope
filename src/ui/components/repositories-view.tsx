@@ -152,7 +152,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                 <span>{picked.length} selected</span>
                 <Popover open={open?.service === ""} onOpenChange={(o) => setOpen(o ? { service: "", mode: "pick" } : null)}>
                   <PopoverTrigger asChild>
-                    <Button type="button" size="sm" disabled={busy}>
+                    <Button type="button" disabled={busy}>
                       Set repository ▾
                     </Button>
                   </PopoverTrigger>
@@ -160,11 +160,11 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                     <RepoMenu services={picked} known={known} github={gh.github} busy={busy} onPick={(url) => void setRepo(picked, url)} />
                   </PopoverContent>
                 </Popover>
-                <Button type="button" size="sm" variant="outline" disabled={busy || pickedSetHere.length === 0} title={pickedSetHere.length === 0 ? "None of these is set here" : undefined} onClick={() => void clear(pickedSetHere)}>
+                <Button type="button" variant="outline" disabled={busy || pickedSetHere.length === 0} title={pickedSetHere.length === 0 ? "None of these is set here" : undefined} onClick={() => void clear(pickedSetHere)}>
                   Clear
                 </Button>
                 <span className="flex-1" />
-                <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setSelected(new Set())}>
+                <Button type="button" variant="ghost" className="text-muted-foreground" onClick={() => setSelected(new Set())}>
                   Cancel
                 </Button>
               </div>
@@ -220,7 +220,7 @@ export function RepositoriesView(props: { onSettings: () => void; canWrite: bool
                           <td className={`${td} text-right`}>
                             {props.canWrite ? (
                               <PopoverTrigger asChild>
-                                <Button type="button" size="sm" variant="outline" disabled={busy} aria-haspopup="menu">
+                                <Button type="button" variant="outline" disabled={busy} aria-haspopup="menu">
                                   {repo?.from === "set" ? "Change" : "Set"}
                                 </Button>
                               </PopoverTrigger>
@@ -353,7 +353,7 @@ function RepoMenu(props: { services: string[]; known: KnownRepo[]; github: Githu
             ) : null}
           </span>
           <span className="flex-1" />
-          <Button type="submit" size="sm" disabled={!typed || props.busy}>
+          <Button type="submit" disabled={!typed || props.busy}>
             Save
           </Button>
         </div>
@@ -453,10 +453,10 @@ function FolderForm(props: { service: string; repo: Repo & { path: string | null
         )}
       </p>
       <div className="flex justify-end gap-2">
-        <Button type="button" size="sm" variant="outline" onClick={props.onCancel}>
+        <Button type="button" variant="outline" onClick={props.onCancel}>
           Cancel
         </Button>
-        <Button type="submit" size="sm" disabled={folder === null || props.busy}>
+        <Button type="submit" disabled={folder === null || props.busy}>
           Save
         </Button>
       </div>

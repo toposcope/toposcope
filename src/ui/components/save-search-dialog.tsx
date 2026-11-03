@@ -110,14 +110,13 @@ export function SaveSearchDialog({
             </DialogControl>
           </DialogField>
           <DialogFooter>
-            <Button type="submit" disabled={saving || !canSubmit} className="h-8">
+            <Button size="lg" type="submit" disabled={saving || !canSubmit}>
               {mode === "update" ? "Update" : "Save"}
             </Button>
             {mode === "update" && onSaveAs ? (
-              <Button
+              <Button size="lg"
                 type="button"
                 variant="outline"
-                className="h-8"
                 disabled={saving || !canSubmit}
                 onClick={() => void saveAs()}
               >

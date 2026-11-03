@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+The design system's tokens and control sizes (sheet 45, #437). `styles.css` gains seven type steps (`text-2xs` 10.5 · `xs` 11.5 · `sm` 12.5 · `base` 14 · `lg` 17 · `xl` 22 · `display` 34, with no paired line-height), five surfaces (`ground`, `surface-1`, `surface-2`, `overlay`, `control`), one set of level colours, the states `danger`, `warn`, `ok` and `info` with `-fg` and `-soft`, `faint` text, `rounded-xl` and three motion durations that reduced motion sets to 0; each has a light value for embeds. Buttons come in four heights, `xs` 18 · `sm` 22 · `md` 26 · `lg` 30, with `icon` 26 and `icon-sm` 22: the default is 26px, down from 32, and no button sets its own height. Inputs and chips take the same sizes, and the query bar is 30px. Save ▾ on a hunt and a board is one split button, the chevron as tall as Save. The few classes already named `text-xs`, `text-sm` and `text-lg` take the new steps.
+
 Home's Pinned list counts a board's panels. Since 0.14.0 it counted the layout boards had before then, so a board made on 0.14 read `0 panels` whatever it held. It now shows the number the board's own page shows, sections and notes included, and `1 panel` for one.
 
 ## 0.14.2

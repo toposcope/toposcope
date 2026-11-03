@@ -109,20 +109,20 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
           {link.role === "pull" ? `this instance pulls ${link.peer}'s rows` : `${link.peer} pulls our rows`} · since {new Date(link.created_at).toISOString().slice(0, 10)}
         </span>
         <div className="flex-1" />
-        <Button type="button" size="sm" variant="outline" onClick={() => void put({ paused: !link.paused }, link.paused ? "Resumed" : "Paused: the link stays and keeps its place")}>
+        <Button type="button" variant="outline" onClick={() => void put({ paused: !link.paused }, link.paused ? "Resumed" : "Paused: the link stays and keeps its place")}>
           {link.paused ? "Resume" : link.role === "pull" ? "Pause pulling" : "Pause serving"}
         </Button>
         {link.scope_here || kindsHere ? (
-          <Button type="button" size="sm" variant="outline" onClick={startEditing}>
+          <Button type="button" variant="outline" onClick={startEditing}>
             Change scope
           </Button>
         ) : null}
         {armed ? (
-          <Button type="button" size="sm" variant="outline" className="text-red-300" onClick={() => void revoke()}>
+          <Button type="button" variant="outline" className="text-red-300" onClick={() => void revoke()}>
             Sure? Revoke
           </Button>
         ) : (
-          <Button type="button" size="sm" variant="outline" className="text-red-300" onClick={() => setArmed(true)}>
+          <Button type="button" variant="outline" className="text-red-300" onClick={() => setArmed(true)}>
             Revoke
           </Button>
         )}
@@ -151,7 +151,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
                     ) : (
                       <span className="min-w-0 flex-1 truncate font-mono">{link.q || "every row"}</span>
                     )}
-                    <Button type="submit" size="sm" disabled={kindsHere && editKinds.length === 0}>
+                    <Button type="submit" disabled={kindsHere && editKinds.length === 0}>
                       Save
                     </Button>
                   </div>
@@ -192,7 +192,7 @@ export function LinkPage(props: { id: string; onBack: () => void; onOpenHunt: (q
               <span className="text-[12px] leading-[1.5] text-muted-foreground">
                 On every hunt that matches them, and as a <span className="font-mono text-zinc-300">from {link.peer}</span> chip in the slice. A gap in pulling is drawn as a floor under the bars, so a quiet hour is never mistaken for a lost one.
               </span>
-              <Button type="button" size="sm" variant="outline" className="self-start" onClick={() => props.onOpenHunt(`toposcope:${link.peer}`)}>
+              <Button type="button" variant="outline" className="self-start" onClick={() => props.onOpenHunt(`toposcope:${link.peer}`)}>
                 Open as a hunt · toposcope:{link.peer}
               </Button>
             </section>

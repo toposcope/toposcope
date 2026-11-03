@@ -55,7 +55,6 @@ export function HeaderTabs({
           <Button
             key={tab.view}
             type="button"
-            size="sm"
             variant={view === tab.view ? "secondary" : "ghost"}
             aria-current={view === tab.view ? "page" : undefined}
             onClick={() => onView(tab.view)}
@@ -66,7 +65,7 @@ export function HeaderTabs({
       </nav>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" size="sm" variant="secondary" className="md:hidden" aria-label="Pages">
+          <Button type="button" variant="secondary" className="md:hidden" aria-label="Pages">
             <Menu className="size-4" />
             {headerTabs.find((tab) => tab.view === view)?.label ?? "Pages"}
           </Button>
