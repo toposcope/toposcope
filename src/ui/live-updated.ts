@@ -13,43 +13,33 @@ export function formatLiveUpdatedAge(ageMs: number): string {
   return `${Math.round(min / 60)}h`;
 }
 
-export function liveUpdatedLabel(
+/** Past one 30s pass plus slack, an age turns plate: a pass was missed (36g, sheet 45). */
+export const liveLateMs = 35_000;
+
+export type LiveAgeView = { label: string; late: boolean };
+
+/**
+ * A Live paint's age (sheet 45 `<LiveAge>`): hidden until `minAgeMs` (a missed 2s poll by
+ * default; the facet row shows it from the first second), late past 35s unless Live is paused.
+ */
+export function liveAgeView(
   fetchedAt: number | undefined,
   now: number,
-): string | null {
-  if (fetchedAt === undefined) {
-    return null;
-  }
-  const age = now - fetchedAt;
-  if (age < liveUpdatedMinAgeMs) {
-    return null;
-  }
-  return formatLiveUpdatedAge(age);
-}
-
-/** Facet chips refresh on the 30s Live pass (frame 36c). */
-export const facetRefreshMs = 30_000;
-/** Past one pass plus this slack, the age turns plate: a pass was missed (36g). */
-export const facetOverdueSlackMs = 5_000;
-
-export type FacetAgeView = { label: string; overdue: boolean; tip: string };
-
-/** The age that leads the chip row in Live (36c, 36f, 36g). */
-export function facetAgeView(
-  fetchedAt: number | undefined,
-  now: number,
-  paused: boolean,
-): FacetAgeView | null {
+  opts: { minAgeMs?: number; paused?: boolean } = {},
+): LiveAgeView | null {
   if (fetchedAt === undefined) {
     return null;
   }
   const age = Math.max(0, now - fetchedAt);
-  const label = formatLiveUpdatedAge(age);
-  return {
-    label,
-    overdue: !paused && age > facetRefreshMs + facetOverdueSlackMs,
-    tip: `Counts refresh every 30s in Live · last ${label} ago · minute rollups, the newest minute lands late`,
-  };
+  if (age < (opts.minAgeMs ?? liveUpdatedMinAgeMs)) {
+    return null;
+  }
+  return { label: formatLiveUpdatedAge(age), late: !opts.paused && age > liveLateMs };
+}
+
+/** The facet row's hover text (36c): its cadence, its age, and why the newest minute lags. */
+export function facetAgeTip(label: string): string {
+  return `Counts refresh every 30s in Live · last ${label} ago · minute rollups, the newest minute lands late`;
 }
 
 /** The chip row's age is its oldest list: core facets or pinned attr facets. */

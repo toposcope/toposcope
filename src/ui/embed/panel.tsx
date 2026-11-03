@@ -14,6 +14,7 @@ import {
   type EmbedState,
   type SeriesBody,
 } from "../embed-view";
+import { Refused } from "@/components/ui/states";
 
 function clock(ms: number): string {
   return new Date(ms).toISOString().slice(11, 16);
@@ -83,7 +84,7 @@ export function EmbedPanel({ params }: { params: EmbedParams }) {
       {state.kind === "expired" ? (
         <Notice line="Expired — reload the page" sub={params.ticketUntil ? `This panel's ticket ran out at ${clock(params.ticketUntil)}.` : "This panel's ticket no longer works."} />
       ) : state.kind === "refused" ? (
-        <Notice line={`Refused: ${state.error}`} sub={params.query.toString().replace(/&/g, " · ")} mono />
+        <Refused form="block" title="Refused" reason={state.error} className="flex-1 py-6" />
       ) : state.kind === "stale" && !body ? (
         <Notice line="Toposcope is not answering" sub="It will try again." />
       ) : body ? (
@@ -117,7 +118,7 @@ function Plot({ params, body, muted }: { params: EmbedParams; body: SeriesBody; 
   const metric = params.query.get("metric");
   const reading = (body.series as { reading?: string } | null | undefined)?.reading;
   return (
-    <div className={`flex min-h-0 flex-1 flex-col ${muted ? "opacity-40" : ""}`}>
+    <div className={`flex min-h-0 flex-1 flex-col ${muted ? "opacity-50" : ""}`}>
       {params.chart === "top" || params.chart === "donut" ? (
         <HbarWidget
           view={params.chart === "donut" ? "donut" : "bars"}

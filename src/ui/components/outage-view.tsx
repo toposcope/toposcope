@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { outageScreen, retryNow, retryWaitMs, type OutageState } from "../outage";
+import { Band } from "@/components/ui/states";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -45,14 +46,10 @@ export function OutageBand({ state }: { state: OutageState }) {
   const now = useNow(state.status === "down");
   if (state.status === "back") {
     return (
-      <div
-        role="status"
-        className="flex h-9 shrink-0 items-center gap-3 border-b border-ok/30 bg-[#07170d] px-5 text-sm"
-      >
-        <span className="size-[7px] rounded-full bg-ok" aria-hidden />
+      <Band tone="ok">
         <span>Back after {outageSpan(state.downMs)}</span>
         <span className="text-muted-foreground">searched again</span>
-      </div>
+      </Band>
     );
   }
   if (state.status !== "down" || outageScreen(state, now)) {
@@ -60,21 +57,21 @@ export function OutageBand({ state }: { state: OutageState }) {
   }
   const left = waitLeft(state, now);
   return (
-    <div
-      role="status"
-      className="flex h-9 shrink-0 items-center gap-3 border-b border-warn/30 bg-[#1a1405] px-5 text-sm"
+    <Band
+      tone="warn"
+      action={
+        <Button size="sm" type="button" variant="outline" className="px-2 text-xs" onClick={retryNow}>
+          Retry now
+        </Button>
+      }
     >
-      <span className="size-[7px] rounded-full bg-warn" aria-hidden />
       <span>
         {state.kind === "clickhouse" ? "Lost ClickHouse" : "Lost the app"} at {utcClock(state.since)}
       </span>
       <span className="text-muted-foreground">
         {left > 0 ? `retrying in ${left} s` : "retrying…"} · showing the last paint
       </span>
-      <Button size="sm" type="button" variant="outline" className="ml-auto px-2 text-xs" onClick={retryNow}>
-        Retry now
-      </Button>
-    </div>
+    </Band>
   );
 }
 
@@ -86,8 +83,8 @@ function Node({ box }: { box: Box }) {
       className={cn(
         "flex h-[84px] w-[168px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl border",
         box.tone === "ok" && "border-white/16 bg-card/60",
-        box.tone === "bad" && "border-danger/55 bg-[#140b0b]",
-        box.tone === "warn" && "border-warn/55 bg-[#141005]",
+        box.tone === "bad" && "border-danger/55 bg-danger-soft",
+        box.tone === "warn" && "border-warn/55 bg-warn-soft",
         box.tone === "unknown" && "border-dashed border-white/16",
       )}
     >
@@ -109,7 +106,7 @@ function Node({ box }: { box: Box }) {
 
 function Link({ tone }: { tone: "ok" | "bad" | "warn" | "unknown" }) {
   if (tone === "bad" || tone === "warn") {
-    const color = tone === "bad" ? "border-danger text-danger-fg bg-[#1c0c0c]" : "border-warn text-warn-fg bg-[#1a1405]";
+    const color = tone === "bad" ? "border-danger text-danger-fg bg-danger-soft" : "border-warn text-warn-fg bg-warn-soft";
     return (
       <div className="flex w-[150px] shrink-0 items-center justify-center" aria-hidden>
         <div className={cn("w-[58px] border-t-2 border-dashed", color)} />

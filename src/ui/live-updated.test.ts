@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { blankOnFailedRefresh, facetAgeView, formatLiveUpdatedAge, liveUpdatedLabel, oldestFetchedAt } from "./live-updated";
+import { blankOnFailedRefresh, facetAgeTip, formatLiveUpdatedAge, liveAgeView, oldestFetchedAt } from "./live-updated";
 
 describe("formatLiveUpdatedAge", () => {
   test("seconds, minutes, hours", () => {
@@ -10,34 +10,29 @@ describe("formatLiveUpdatedAge", () => {
   });
 });
 
-describe("liveUpdatedLabel", () => {
+describe("liveAgeView", () => {
   test("hides a fresh primary poll and names a stale extra", () => {
-    expect(liveUpdatedLabel(1_000, 2_500)).toBeNull();
-    expect(liveUpdatedLabel(1_000, 4_200)).toBe("3s");
-    expect(liveUpdatedLabel(undefined, 4_200)).toBeNull();
-  });
-});
-
-describe("facetAgeView", () => {
-  test("names the age from the first second, so a swap reads as 1s", () => {
-    expect(facetAgeView(10_000, 10_200, false)?.label).toBe("1s");
-    expect(facetAgeView(10_000, 28_000, false)?.label).toBe("18s");
-    expect(facetAgeView(undefined, 28_000, false)).toBeNull();
+    expect(liveAgeView(1_000, 2_500)).toBeNull();
+    expect(liveAgeView(1_000, 4_200)?.label).toBe("3s");
+    expect(liveAgeView(undefined, 4_200)).toBeNull();
   });
 
-  test("turns overdue only past one 30s pass plus slack", () => {
-    expect(facetAgeView(0, 35_000, false)?.overdue).toBe(false);
-    expect(facetAgeView(0, 47_000, false)?.overdue).toBe(true);
+  test("the facet row names the age from the first second, so a swap reads as 1s", () => {
+    expect(liveAgeView(10_000, 10_200, { minAgeMs: 0 })?.label).toBe("1s");
+    expect(liveAgeView(10_000, 28_000, { minAgeMs: 0 })?.label).toBe("18s");
+  });
+
+  test("turns late only past one 30s pass plus slack", () => {
+    expect(liveAgeView(0, 35_000)?.late).toBe(false);
+    expect(liveAgeView(0, 47_000)?.late).toBe(true);
   });
 
   test("a pause while reading is not a missed pass", () => {
-    expect(facetAgeView(0, 47_000, true)?.overdue).toBe(false);
+    expect(liveAgeView(0, 47_000, { paused: true })?.late).toBe(false);
   });
 
-  test("the tip names the cadence and the age", () => {
-    expect(facetAgeView(0, 18_000, false)?.tip).toBe(
-      "Counts refresh every 30s in Live · last 18s ago · minute rollups, the newest minute lands late",
-    );
+  test("the facet tip names the cadence and the age", () => {
+    expect(facetAgeTip("18s")).toBe("Counts refresh every 30s in Live · last 18s ago · minute rollups, the newest minute lands late");
   });
 });
 

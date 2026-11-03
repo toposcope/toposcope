@@ -443,7 +443,7 @@ export function PushMonitorDialog({ open, onOpenChange, draft, onCreate, onUpdat
             <span className="flex-1" />
             {serviceOk(service) ? null : <span className="text-sm text-muted-foreground">{serviceMissing}</span>}
             {editing ? (
-              <Button size="lg" type="button" variant="ghost" className="text-destructive" disabled={busy} onClick={() => void remove()}>
+              <Button size="lg" type="button" variant="ghost" className="text-danger-fg" disabled={busy} onClick={() => void remove()}>
                 Delete
               </Button>
             ) : null}
