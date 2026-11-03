@@ -20,9 +20,19 @@ export const BOARD_MAX = 4;
 export const BOARD_PANEL_MAX = 26;
 export const maxPanelName = 80;
 
-/** What a board panel draws (#410): a hunt panel's view, or the hunt's event table. */
-export const boardPanelViews = ["histogram", "stat", "top", "events"] as const;
+/**
+ * What a board panel draws (#410): a hunt panel's view, or the hunt's event table; or, read from
+ * nothing (sheet 44), a section heading or a note.
+ */
+export const boardPanelViews = ["histogram", "stat", "top", "events", "section", "note"] as const;
 export type BoardPanelView = (typeof boardPanelViews)[number];
+/** A note panel's text (sheet 44). */
+export const maxNoteText = 1000;
+
+/** A section heading or a note: it reads no rows and has no query or window. */
+export function isTextPanel(view: BoardPanelView): view is "section" | "note" {
+  return view === "section" || view === "note";
+}
 
 /**
  * A board panel (#410, sheet 39): a copy of a hunt panel. It keeps its own query, its view
@@ -37,6 +47,10 @@ export type BoardPanel = {
   widget: WidgetDef;
   /** A relative range (`24h`); null follows the board's window. */
   fixed: string | null;
+  /** A note panel's text (sheet 44). */
+  text?: string;
+  /** A section heading whose panels are folded away (sheet 44). */
+  folded?: boolean;
 };
 
 export type BoardSlots = {
@@ -124,6 +138,19 @@ function parseBoardPanel(raw: unknown, taken: BoardPanel[]): BoardPanel | null {
   const widget = panelWidget(view, rec.widget, id);
   const name = normalizeName(rec.name) ?? defaultPanelName(view, widget);
   const q = typeof rec.q === "string" ? rec.q.trim() : "";
+  if (isTextPanel(view)) {
+    const text = view === "note" && typeof rec.text === "string" ? rec.text.trim().slice(0, maxNoteText) : "";
+    return {
+      id,
+      name,
+      q: "",
+      view,
+      widget,
+      fixed: null,
+      ...(view === "note" ? { text } : {}),
+      ...(view === "section" && rec.folded === true ? { folded: true } : {}),
+    };
+  }
   const fixed = typeof rec.fixed === "string" && isRelativeRange(rec.fixed.trim()) ? rec.fixed.trim() : null;
   return { id, name, q, view, widget, fixed };
 }
@@ -138,12 +165,19 @@ function normalizeName(raw: unknown): string | null {
 
 /** The widget behind a view: its kind follows the view; the event table keeps only a cell. */
 function panelWidget(view: BoardPanelView, raw: unknown, id: string): WidgetDef {
-  const kind = view === "stat" ? "stat" : view === "top" ? "hbar" : "timeseries";
+  // A note sizes as a stat does; a heading is one full-width row.
+  const kind = view === "stat" || view === "note" ? "stat" : view === "top" ? "hbar" : "timeseries";
   const rec = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const parsed = parseSavedWidget({ w: widgetGridCols, h: view === "events" ? eventsH : 4, ...rec, id: "b", kind });
   const base = parsed ?? clampWidget({ ...defaultTimeseries({ id: "b" }), kind });
   if (view === "events") {
     return { ...clampWidget({ ...defaultTimeseries({ id: "b" }), x: base.x, y: base.y, w: base.w, h: base.h }), id };
+  }
+  if (view === "section") {
+    return { ...clampWidget({ ...defaultTimeseries({ id: "b" }), kind: "stat", y: base.y }), x: 0, w: widgetGridCols, h: 1, id };
+  }
+  if (view === "note") {
+    return { ...clampWidget({ ...defaultTimeseries({ id: "b" }), kind: "stat", x: base.x, y: base.y, w: base.w, h: base.h }), id };
   }
   return { ...base, id };
 }
@@ -162,6 +196,12 @@ export function defaultPanelName(view: BoardPanelView, widget: WidgetDef): strin
   if (view === "events") {
     return "Events";
   }
+  if (view === "section") {
+    return "Section";
+  }
+  if (view === "note") {
+    return "Note";
+  }
   if (widget.title) {
     return widget.title;
   }
@@ -176,6 +216,9 @@ export function panelWhat(view: BoardPanelView, widget: WidgetDef): string {
   switch (view) {
     case "events":
       return "newest first";
+    case "section":
+    case "note":
+      return "";
     case "top":
       return `Top ${widget.n} · ${widget.attr ?? widget.split}`;
     case "stat":
@@ -240,8 +283,10 @@ function formatPanel(panel: BoardPanel): Record<string, unknown> {
     name: panel.name,
     q: panel.q,
     view: panel.view,
-    widget: panel.view === "events" ? { x: widget.x, y: widget.y, w: widget.w, h: widget.h } : widget,
+    widget: panel.view === "events" || isTextPanel(panel.view) ? { x: widget.x, y: widget.y, w: widget.w, h: widget.h } : widget,
     fixed: panel.fixed,
+    ...(panel.view === "note" ? { text: panel.text ?? "" } : {}),
+    ...(panel.view === "section" && panel.folded ? { folded: true } : {}),
   };
 }
 
@@ -299,6 +344,52 @@ export function addBoardPanel(
   };
 }
 
+/** A section heading or a note at the bottom of the board (sheet 44); null at the cap. */
+export function addTextPanel(board: BoardSlots, view: "section" | "note"): BoardSlots | null {
+  const id = nextPanelId(board.panels);
+  if (!id || board.panels.length >= BOARD_PANEL_MAX) {
+    return null;
+  }
+  const bottom = board.panels.reduce((max, p) => Math.max(max, p.widget.y + p.widget.h), 0);
+  const cell = view === "section" ? { x: 0, y: bottom, w: widgetGridCols, h: 1 } : { x: 0, y: bottom, w: 4, h: 2 };
+  const widget = { ...clampWidget({ ...defaultTimeseries({ id: "b" }), kind: "stat" }), ...cell, id };
+  const panel: BoardPanel =
+    view === "section"
+      ? { id, name: "New section", q: "", view, widget, fixed: null }
+      : { id, name: "Note", q: "", view, widget, fixed: null, text: "" };
+  return { ...board, panels: [...board.panels, panel] };
+}
+
+/**
+ * The panels under each folded heading (sheet 44): from the row under it to the next heading.
+ * They are left out of the drawn layout and keep their own cells, so unfolding puts them back.
+ */
+export function foldedPanelIds(panels: BoardPanel[]): Set<string> {
+  const out = new Set<string>();
+  const headings = panels.filter((p) => p.view === "section").sort((a, b) => a.widget.y - b.widget.y);
+  headings.forEach((heading, i) => {
+    if (!heading.folded) {
+      return;
+    }
+    const next = headings[i + 1]?.widget.y ?? Infinity;
+    for (const p of sectionMembers(panels, heading.id, next)) {
+      out.add(p.id);
+    }
+  });
+  return out;
+}
+
+/** The panels under a heading, down to the next heading (or the given row). */
+export function sectionMembers(panels: BoardPanel[], id: string, until?: number): BoardPanel[] {
+  const heading = panels.find((p) => p.id === id);
+  if (!heading) {
+    return [];
+  }
+  const next =
+    until ?? Math.min(Infinity, ...panels.filter((p) => p.view === "section" && p.widget.y > heading.widget.y).map((p) => p.widget.y));
+  return panels.filter((p) => p.view !== "section" && p.widget.y > heading.widget.y && p.widget.y < next);
+}
+
 /** Duplicate: a second copy of the panel under it, in the first free cell. */
 export function duplicateBoardPanel(board: BoardSlots, id: string): BoardSlots | null {
   const panel = board.panels.find((item) => item.id === id);
@@ -310,7 +401,7 @@ export function duplicateBoardPanel(board: BoardSlots, id: string): BoardSlots |
     return null;
   }
   const copy = next.panels[next.panels.length - 1]!;
-  next.panels[next.panels.length - 1] = { ...copy, fixed: panel.fixed };
+  next.panels[next.panels.length - 1] = { ...copy, fixed: panel.fixed, ...(panel.view === "note" ? { text: panel.text ?? "" } : {}) };
   return next;
 }
 

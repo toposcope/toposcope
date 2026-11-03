@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 import { cn } from "@/lib/utils";
-import { gravityMove, gravityResize, gridCols, type GridCell, type GridEdge, type ResizeLimits } from "../shared/grid-gravity";
+import { gravity, gravityMove, gravityResize, gridCols, type GridCell, type GridEdge, type ResizeLimits } from "../shared/grid-gravity";
 
 /**
  * Move and resize on the 12-col grid (sheet 44, E · Gravity), for hunts and boards alike: drag a
@@ -19,6 +19,8 @@ type Drag = {
   oy: number;
   start: GridCell[];
   from: GridCell;
+  /** Panels that move along with this one, keeping their places under it (a section's). */
+  group: string[];
 };
 
 type Options<T extends GridCell> = {
@@ -31,6 +33,8 @@ type Options<T extends GridCell> = {
   layoutRow?: (row: number) => number;
   onCommit: (cells: T[]) => void;
   disabled?: boolean;
+  /** The panels a move carries along (a board section's, sheet 44). */
+  groupOf?: (id: string, cells: T[]) => string[];
 };
 
 export function useGridGestures<T extends GridCell>(opts: Options<T>) {
@@ -85,6 +89,7 @@ export function useGridGestures<T extends GridCell>(opts: Options<T>) {
       oy: e.clientY - m.rect.top - panelTop,
       start: o.cells.map((cell) => ({ ...cell })),
       from: { ...from },
+      group: mode === "move" && o.groupOf ? o.groupOf(id, o.cells) : [],
     });
     setPreview(o.cells);
     setLift({ dx: 0, dy: 0 });
@@ -103,6 +108,14 @@ export function useGridGestures<T extends GridCell>(opts: Options<T>) {
       const x = Math.round((e.clientX - m.rect.left - d.ox) / m.colStep);
       const row = Math.max(0, Math.round((e.clientY - m.rect.top - d.oy) / m.rowStep));
       const y = o.layoutRow ? o.layoutRow(row) : row;
+      if (d.group.length > 0) {
+        // A heading and its panels move as one block, down or up; the block keeps its columns.
+        const ids = new Set([d.id, ...d.group]);
+        const block = start.filter((cell) => ids.has(cell.id));
+        const shift = Math.max(y - d.from.y, -Math.min(...block.map((cell) => cell.y)));
+        setPreview(gravity(start, block.map((cell) => ({ ...cell, y: cell.y + shift })), o.limits.anchored));
+        return;
+      }
       setPreview(gravityMove(start, d.id, x, y, o.limits.anchored));
       return;
     }
