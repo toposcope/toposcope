@@ -2,7 +2,7 @@
 
 Toposcope is self-hosted observability for the question after a deploy: what changed? It puts logs, metrics, traces and profiles on one clock, compares equal windows before and after each deploy, and lists the errors that are new.
 
-It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability.
+It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability. A team that signs in to it depends on that one box: back it up, and point its [watchdog](docs/operations.md#who-watches-toposcope) somewhere else.
 
 Current release: `0.15.0` · [MIT Expat license](LICENSE)
 
@@ -72,7 +72,7 @@ The deployment pins `ghcr.io/toposcope/toposcope:0.15.0`; it never uses `:latest
   - **Checks:** HTTP(S), TCP and certificate checks run from this node, plus push monitors.
 
   Each monitor opens, reminds and resolves through up to five webhooks. **Watch this** on a hunt shows where a monitor would have opened in the last 24 hours.
-- **Access** lists every way in or out: people and their invites, tokens (ingest, personal and service account), links (another Toposcope pulls rows and change marks through any `q`, and Hunt says when a source is short), and shares (named panels, aggregates only, embedded on a page with `data-panel=`).
+- **Access** lists every way in or out: people and their invites, tokens (ingest, personal and service account), links (another Toposcope pulls logs, marks, spans, metric points, profiles and monitors through any `q`, and Hunt says when a source is short), and shares (named panels, aggregates only, embedded on a page with `data-panel=`).
 
 Logs, ingested metrics, spans, profile samples, and change marks are stored in ClickHouse. Saved searches, monitors, tokens, and settings are stored in SQLite inside the Toposcope application.
 
