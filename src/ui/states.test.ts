@@ -38,7 +38,7 @@ describe("data states", () => {
 
   test("Skeleton stops pulsing under reduced motion; Band sits on tokens", () => {
     expect(html(createElement(Skeleton, { kind: "block" }))).toContain("motion-reduce:animate-none");
-    const band = html(createElement(Band, { tone: "warn" }, "Lost ClickHouse"));
+    const band = html(createElement(Band, { tone: "warn", children: "Lost ClickHouse" }));
     expect(band).toContain("bg-warn-soft");
     expect(band).not.toMatch(/#[0-9a-f]{6}/);
   });
