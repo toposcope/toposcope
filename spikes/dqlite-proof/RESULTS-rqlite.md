@@ -2,12 +2,12 @@
 
 The same harness as [`RESULTS.md`](RESULTS.md) (dqlite), run against rqlite v10.6.6: the same operations, workload, fault injection, independent acknowledgement records, resource limits and acceptance criteria. Only the storage layer differs: `cmd/ctlr` (a member that supervises a local `rqlited` and talks to it over HTTP) in place of `cmd/ctl` (dqlite embedded through go-dqlite). Nothing in `src/` changes.
 
-**Verdict: rqlite passes the two requirements dqlite failed: fresh security reads and takeovers. It does that without custom correctness machinery beyond one assertion idiom. It fails two others, both in hashicorp/raft:**
+**Verdict: rqlite is the preferred backend, and the dqlite investigation stops for this release. The HA gate is not passed.**
 
-- **A member from a previous installation can take over a restored cluster** that reuses its peers' addresses, overwriting the restored data. A certificate authority per installation, with mutual TLS, prevents it in every trial. That is a deployment requirement, not code.
-- **One-way partitions during snapshot catch-up can stall the majority**, for 128 s in the trial measured. A follower that is receiving a snapshot blocks Raft's main loop on a network read with no deadline. It happened only with frequent snapshots: 5 of 57 trials where the leader could not receive, plus 4 more that took 12–33 s to recover. At rqlite's defaults it happened in 0 of 42 one-way trials, where the longest write gap was 4.2 s.
+rqlite passed both requirements dqlite failed: fresh authorization reads and prompt takeovers. It did that with workable conditional operations and a much better memory profile. Two problems remain:
 
-By the decision rule in the review: rqlite passes and the operations stay understandable, with two conditions attached. Section 7 has the recommendation.
+- **The snapshot-install stall is a blocker.** A one-way partition while a follower receives a snapshot stalled the majority until the partition healed (128 s in the trial measured). The follower's Raft main loop was blocked on a network read with no deadline. It reproduced in 5 of 57 trials with frequent snapshots, plus 4 that recovered only after 12–33 s. At default snapshot settings it was **not reproduced in 42 trials**. That does not show the defaults prevent it: they may only make the overlap rarer. Section 5 describes the targeted test that comes next.
+- **A member from a lost installation took over a restored cluster** that reused its peers' addresses, overwriting the restored data. A fresh trust boundary on disaster restore (new node CA, mutual TLS) kept it out in every trial. Whether hashicorp/raft should reject such a leader by itself, or the restore procedure must exclude it, is for upstream to judge (section 3).
 
 **Not established here** (as for dqlite): ClickHouse fencing and recovery across both databases; host power loss; losing every disk; amd64 under faults (only arm64 ran); real network latency (one host, bridge network); real disks (Docker Desktop's VM disk, so write latencies are not a durability comparison).
 
@@ -65,17 +65,17 @@ The cost compared with dqlite's interactive transactions is real but small. Each
 | No lost acknowledged write | PASS | PASS | 22,065 sessions, 4,237 revocations, 2,840 runs, 46 claims, 0 missing, through every fault including all three `SIGKILL`ed |
 | Monitor run is one transaction | PASS | PASS | 0 partial runs, 0 orphans |
 | Members' own copies identical (statement replication is deterministic) | PASS | n/a | per-table checksums read locally on each member, equal in every run |
-| **No check begun after a revocation's ack answers valid** | **PASS** | **FAIL** (up to 6.4 s) | 0 stale answers in 180 isolations (360 revocations), section 2 |
+| **No check begun after a revocation's ack answers valid** | **PASS** (none observed) | **FAIL** (up to 6.4 s) | no stale authorization observed in 360 tested revocations (180 isolations), section 2 |
 | Revocation visible everywhere within 2 × election timeout | PASS | FAIL | 0 ms in every trial |
 | Lone member commits nothing, answers no revoked session | PASS | PASS | 0 of 1,136 reads answered, 0 of 5 writes |
 | **Every lease takeover within 10 s** | **PASS** (60 of 60 in the stall matrix) | **FAIL** (17 of 60) | section 4 |
-| **The majority commits during every isolation** | **FAIL** with frequent snapshots: 5 of 57 asym-in trials, majority stalled until heal; PASS at defaults: 0 of 42 one-way trials | not measured (the revocation always committed) | section 5 |
+| **The majority commits during every isolation** | **FAIL, blocker**: 5 of 57 asym-in trials with frequent snapshots stalled until heal; not reproduced in 42 one-way trials at defaults, which is not a workaround | not measured (the revocation always committed) | section 5 |
 | Memory bounded (oversized batches) | PASS: 205–220 MB peak at defaults | FAIL: 1,468 MB and growing | section 6 |
 | Fits the app container (512 MB, 1 CPU) | PASS: 91 MB for Go and rqlited; 214 MB cgroup peak with Bun running | PASS: 101 MB (Bun not measured) | section 6 |
 | Restore matches the backup (twice) | PASS | PASS | row checksums of 11 tables |
 | No acknowledged write before the backup lost | PASS | PASS | 2,886 runs, 568 sessions, 568 blocks |
 | No identity reused across restores | PASS | PASS | 3 incarnations; 12,889 blocks, 3,054 run ids, 52 claims, none repeated within an incarnation |
-| **An old member returning is kept out** | **FAIL** with a shared certificate; **PASS** with a CA per installation | PASS (fenced in the application) | section 3 |
+| **An old member returning is kept out** | **FAIL** with a shared certificate; **PASS** with fresh cluster credentials on restore | PASS (fenced in the application) | section 3 |
 
 ## What it found
 
@@ -104,21 +104,24 @@ The assertion triggers use one trigger per fixed reason. `RAISE` with a computed
 
 Same five isolation modes as for dqlite, 6 trials each in rq-default and in rq-snap, plus 15 per direction in rq-asym and in each of three rq-asym-snap runs. That is 180 isolations, each revoking a session and a token, with 6 readers polling the old leader.
 
-- **No check begun after a revocation's acknowledgement answered valid**, on any member, in any trial. That includes `pause+partition`, where dqlite's resumed old leader answered stale for 3.2–6.4 s. A linearizable read on an isolated or resumed old leader cannot reach a quorum, so it fails. The old leader stopped answering 350–900 ms after being cut off; the read timeout bounds that, not staleness.
+- **No stale authorization was observed in 360 tested revocations**: no check begun after a revocation's acknowledgement answered valid, on any member, in any trial. That includes `pause+partition`, where dqlite's resumed old leader answered stale for 3.2–6.4 s. A linearizable read on an isolated or resumed old leader cannot reach a quorum, so it fails. The old leader stopped answering 350–900 ms after being cut off; the read timeout bounds that, not staleness.
 - Not one stale answer on the majority, or anywhere after heal.
 - Cost: an auth check from Bun over the Unix socket, through Go, as a linearizable read on the leader, takes p50 332 µs, p95 577 µs, p99 1.3 ms. From a follower it is p50 434 µs. From one Bun process with 32 in flight: 19,400 checks/s. dqlite's non-proving read took p50 284 µs and reached 26,400/s. The floor (socket ping, no database) is about 150 µs. The linearizable read itself costs about 190 µs inside Go (session check p50 188 µs on the leader), against 119 µs for dqlite's local read.
 
-### 3. A previous installation's member can take over a restored cluster
+### 3. A lost installation's member took over a restored cluster
 
 The restore test loses n1–n3, restores the same backup twice onto fresh members f1–f3 (f1 and f2 on n1's and n2's addresses), and then starts the lost n3 again with its old disk.
 
-**With one certificate shared across installations (rq-default)**, n3 came back with a higher Raft term. f1 and f2 rejected its pre-votes ("node is not in configuration"), yet then **accepted it as leader and installed its snapshot**: `node n3 at 10.213.7.13:4002 is now Leader`, then `initiating node restore`. The restored installation's data on f1 and f2 was replaced by the lost installation's data, and their configuration by n3's. The application fence then fenced f1 and f2 themselves, because they now saw the old incarnation. n3 was not fenced, since the data it read was its own, and it acknowledged 756 writes. f3 was stranded. The restored cluster stopped writing (17.8 s until the test killed n3) and was left with no usable configuration. hashicorp/raft checks configuration membership for votes but not for `AppendEntries` or `InstallSnapshot` from a leader with a higher term.
+**With one certificate shared across installations (rq-default)**, n3 came back with a higher Raft term. f1 and f2 rejected its pre-votes ("node is not in configuration"), yet then **accepted it as leader and installed its snapshot**: `node n3 at 10.213.7.13:4002 is now Leader`, then `initiating node restore`. The restored installation's data on f1 and f2 was replaced by the lost installation's data, and their configuration by n3's. The application fence then fenced f1 and f2 themselves, because they now saw the old incarnation. n3 was not fenced, since the data it read was its own, and it acknowledged 756 writes. f3 was stranded. The restored cluster stopped writing (17.8 s until the test killed n3) and was left with no usable configuration. In this run, Raft rejected the old member's votes for not being in the configuration but accepted its `AppendEntries` and `InstallSnapshot` as leader. Reusing peer addresses while old state can return may be a restore-procedure problem as much as a library one, so the upstream report states the reproduction and the expected behaviour without claiming a defect.
 
 dqlite in the same test let n3's client reach the restored leader. Its Raft did not adopt n3, and the application fence held.
 
-**With a certificate authority per installation and client verification (`-node-verify-client`; rq-restore and rq-snap)**, n3 could not open a connection to anyone. It acknowledged 0 writes, its API refused writes, and the restored cluster's longest write gap was 127 ms (rq-restore) and 1.7 s (rq-snap). The incarnation fence stays as the application's own check. The installation CA makes "a member of another installation" something Raft never sees.
+**With fresh cluster credentials (a new node CA and `-node-verify-client`; rq-restore and rq-snap)**, n3 could not open a connection to anyone. It acknowledged 0 writes, its API refused writes, and the restored cluster's longest write gap was 127 ms (rq-restore) and 1.7 s (rq-snap).
 
-This applies whenever a member is replaced at an address an old member may come back to, not only after a restore. The deployment must therefore issue node certificates per installation, and issue new ones on restore.
+The procedure keeps two protections, at two levels:
+
+- **Fresh cluster credentials and membership on disaster restore.** Old members are rejected before they can take part in Raft. rqlite's node mutual TLS is off unless explicitly enabled, and changing the CA means restarting the nodes so they load the new trust configuration. That is acceptable for a disaster restore, where every member is new. An ordinary member restart or replacement within an installation keeps the installation's CA and does not regenerate it.
+- **A fresh application incarnation.** Obsolete operations are refused and no identity is reused, as for dqlite.
 
 ### 4. Takeovers are prompt, including a paused leader
 
@@ -157,7 +160,16 @@ github.com/hashicorp/raft.(*Raft).runFollower         raft.go:172
 ```
  That stream stalls because n2 never gets n3's TCP acknowledgements, and the read has no deadline. While blocked there, n3 cannot time out, vote or stand for election. Its status said follower of n2, last contact 2 minutes ago. n1 stood for election alone, so there was no quorum. Healing restored service in 1.8 s; the write gap was 128 s. How long it would have lasted without the heal was not measured.
 
-The conditions are frequent snapshots, a lagging follower, and a leader that can send but not receive. rqlite's defaults snapshot 64 times less often, so a follower rarely needs one and the measured rate was 0. They lower the risk without removing it. Ways out to try, in order: keep the default snapshot settings, keep enough trailing logs that a follower which falls behind catches up from the log, and report the blocking read upstream (hashicorp/raft v1.8.0, `raft.go:1909`).
+The ingredients are a lagging follower that needs a snapshot, a transfer in progress, and a leader that can send but not receive. rqlite's defaults snapshot 64 times less often, so the overlap is rarer, and it was not reproduced in 42 trials. Rarer is not prevented: if a snapshot install can block indefinitely, the defaults only lower the frequency. **This remains a blocker for the HA guarantee.**
+
+The next test creates the overlap deliberately, **at the intended production settings**:
+
+1. Hold a follower back until it needs a snapshot.
+2. Confirm the snapshot transfer has started.
+3. Cut the leader's inbound traffic at that point.
+4. Require the two members that can still talk to each other to resume writes within the recovery target, **without** healing the partition.
+
+If it reproduces, the fix has to be shown working: for example a receive deadline on the snapshot stream, with the cleanup path after it fires, or a bounded and tested recovery mechanism. Changing snapshot frequency alone is not enough.
 
 The first rq-snap run stopped at its failure, before any asym-out trial; its report was overwritten by the second run, so only this text records it. rq-asym-snap was run three times by hand (`out/rq-asym-snap-1` to `-3`). Run 1 predates a harness fix, so its "within bound" check reads a meaningless window for its one never-committed revocation; its stale-read counts are unaffected.
 
@@ -170,24 +182,24 @@ Memory here is **both processes**: `ctlr` and `rqlited` RSS summed. The cgroup f
 
 The real Bun application, not this auth client, is what has to fit in the rest. That has still not been measured.
 
-### 7. Recommendation
+### 7. Decisions
 
-| Work | Decision |
+| Decision | Status |
 | --- | --- |
-| Go operation API (both proofs used the same operation set) | Proceed |
-| Choose rqlite as the database for the clustered control plane | Proceed, with the two conditions below; stop the dqlite investigation for this release |
-| Condition: node certificates per installation, mutual TLS, new certificates on every restore | Required before any clustered deployment |
-| Condition: rqlite's default snapshot settings, no frequent snapshotting; a test of a lagging follower catching up under a one-way partition at the chosen settings | Required; report the blocking snapshot read upstream |
-| Restore incarnations and the application fence | Keep: the second line behind the CA |
-| Move production domains onto rqlite | After the two conditions, one domain at a time |
-| Ship clustered HA | After that, with ClickHouse fencing designed and tested |
+| Publish both harnesses and their results for review | Yes |
+| Prefer rqlite and stop dqlite work for this release | Yes |
+| Continue the Go API and rqlite integration on a development branch | Yes |
+| Claim the complete HA gate has passed | **No** |
+| Treat default snapshot settings as a proven workaround for the stall | **No** |
 
-rqlite fixed what failed dqlite. Security reads prove leadership, a paused leader is replaced in about 3 s, and memory follows the database rather than the log. Its operations are short statement lists with stated preconditions, easier to audit than dqlite's interactive transactions with a connection guard. Both of its failures are in hashicorp/raft, and both are bounded by how it is deployed: a CA per installation keeps old members out, and default snapshot settings made the stall unobserved. They are the things to watch.
+Next engineering task: resolve the snapshot-install stall under production settings (section 5). The evidence is enough to choose a direction, but not yet to ship the HA guarantee.
 
-As a supervised process, `rqlited` sits beside Bun and Go in the app container. That keeps the two-container deployment, and the budget run measured the three together.
+Conditions already established for any clustered deployment: node mutual TLS, with fresh cluster credentials and membership on disaster restore; restore incarnations and the application fence; `?transaction` on every multi-statement request; linearizable reads for authorization and ownership. Still not covered: ClickHouse fencing, power loss, amd64 under faults, and the real Bun application's memory.
 
-**Upstream reports to file:**
+rqlite runs as a supervised process beside Bun and Go in the app container. That keeps the two-container deployment, and the budget run measured the three together.
 
-- hashicorp/raft: a follower accepts `AppendEntries` and `InstallSnapshot` from a leader outside its configuration (section 3).
-- hashicorp/raft: `installSnapshot` reads the stream on the main loop with no deadline (section 5).
+**Upstream reports to file** (reproductions and expected behaviour, without claiming fault):
+
+- hashicorp/raft (via rqlite): a follower in a restored cluster accepted `AppendEntries` and `InstallSnapshot` from a member that was not in its configuration (section 3).
+- hashicorp/raft v1.8.0: `installSnapshot` reads the stream on the main loop with no deadline, and a stalled sender blocks the follower's elections (section 5, `raft.go:1909`).
 - rqlite docs: `?transaction` is what makes a batch stop at the first failed statement (section 1).

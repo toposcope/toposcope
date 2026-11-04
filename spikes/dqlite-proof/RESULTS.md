@@ -4,7 +4,7 @@ Step 1 of the cluster design in [`docs/ha-research.md`](../../docs/ha-research.m
 
 **Verdict: dqlite does not pass the gate yet.**
 
-**Update:** the same harness has now run against rqlite. See [`RESULTS-rqlite.md`](RESULTS-rqlite.md) for the results and the comparison.
+**Update:** the same harness has now run against rqlite; rqlite is preferred and dqlite work stops for this release. See [`RESULTS-rqlite.md`](RESULTS-rqlite.md).
 
 - **Correctness held.** With the mitigations below enabled, no violation was observed in the tested control-plane operations: no duplicate claim, no reused identity, no stale owner's write, no lost acknowledged write, no partial monitor run.
 - **Two things fail.**
