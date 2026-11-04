@@ -6,8 +6,10 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -22,16 +24,29 @@ const schema = `
 CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, revoked_at INTEGER);
 CREATE TABLE IF NOT EXISTS tokens (id TEXT PRIMARY KEY, hash TEXT NOT NULL, generation INTEGER NOT NULL, created_at INTEGER NOT NULL, revoked_at INTEGER);
 CREATE TABLE IF NOT EXISTS leases (name TEXT PRIMARY KEY, owner TEXT, gen INTEGER NOT NULL, expires_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS lease_claims (name TEXT NOT NULL, gen INTEGER NOT NULL, owner TEXT NOT NULL, claimed_at INTEGER NOT NULL, PRIMARY KEY (name, gen));
+CREATE TABLE IF NOT EXISTS lease_claims (name TEXT NOT NULL, gen INTEGER NOT NULL, owner TEXT NOT NULL, claimed_at INTEGER NOT NULL, inc TEXT NOT NULL, PRIMARY KEY (name, gen));
 CREATE TABLE IF NOT EXISTS monitors (id INTEGER PRIMARY KEY, name TEXT NOT NULL, spec TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS monitor_state (monitor_id INTEGER PRIMARY KEY, state TEXT NOT NULL, version INTEGER NOT NULL, last_run TEXT, changed_at INTEGER);
-CREATE TABLE IF NOT EXISTS runs (run_id TEXT PRIMARY KEY, monitor_id INTEGER NOT NULL, gen INTEGER NOT NULL, owner TEXT NOT NULL, at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS runs (run_id TEXT PRIMARY KEY, monitor_id INTEGER NOT NULL, gen INTEGER NOT NULL, owner TEXT NOT NULL, at INTEGER NOT NULL, inc TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS results (run_id TEXT PRIMARY KEY, ok INTEGER NOT NULL, latency_ms INTEGER NOT NULL, detail TEXT);
 CREATE TABLE IF NOT EXISTS outbox (id INTEGER PRIMARY KEY, call_id TEXT NOT NULL UNIQUE, run_id TEXT, payload TEXT NOT NULL, created_at INTEGER NOT NULL, delivered_at INTEGER);
 CREATE TABLE IF NOT EXISTS history_export (id INTEGER PRIMARY KEY, run_id TEXT, payload TEXT NOT NULL, created_at INTEGER NOT NULL, exported_at INTEGER);
 CREATE TABLE IF NOT EXISTS allocators (name TEXT PRIMARY KEY, next INTEGER NOT NULL, epoch INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS link_positions (link TEXT PRIMARY KEY, position INTEGER NOT NULL, gen INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS cluster_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `
+
+// incFence is part of every owner's conditional write: the installation's
+// incarnation must still be the one the writer belongs to. A restore makes
+// a new incarnation, so nothing from before it can write after it, and
+// every identity handed out after it carries the new one.
+const incFence = `EXISTS (SELECT 1 FROM cluster_meta WHERE key = 'incarnation' AND value = ?)`
+
+func newIncarnation() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
 
 var (
 	errStale    = errors.New("stale generation refused")
@@ -44,6 +59,7 @@ type Store struct {
 	node      string
 	discarded atomic.Int64
 	txErrs    sync.Map
+	guard     bool
 }
 
 func nowMs() int64 { return time.Now().UnixMilli() }
@@ -86,8 +102,11 @@ func (s *Store) discard(conn *sql.Conn, why string) {
 	}
 	s.txErrs.Store(why, true)
 	s.discarded.Add(1)
-	log.Printf("tx guard: closing connection after failed %s (guard on: %v)", why, txGuard)
-	if txGuard {
+	log.Printf("tx guard: discarding connection after failed %s (guard on: %v)", why, s.guard)
+	if s.guard {
+		// Returning driver.ErrBadConn from Raw makes database/sql discard
+		// the driver connection (releaseConn(ErrBadConn) closes it) instead
+		// of putting it back in the pool; sql.Conn.Close alone would reuse it.
 		_ = conn.Raw(func(any) error { return driver.ErrBadConn })
 	}
 }
@@ -104,6 +123,7 @@ func (s *Store) Init(ctx context.Context, monitors int) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		for _, q := range []string{
 			`INSERT OR IGNORE INTO allocators (name, next, epoch) VALUES ('arrival', 1, 1)`,
+			`INSERT OR IGNORE INTO cluster_meta (key, value) VALUES ('incarnation', '` + newIncarnation() + `')`,
 			`INSERT OR IGNORE INTO leases (name, owner, gen, expires_at) VALUES ('scheduler', NULL, 0, 0)`,
 			`INSERT OR IGNORE INTO leases (name, owner, gen, expires_at) VALUES ('link:peer-a', NULL, 0, 0)`,
 			`INSERT OR IGNORE INTO link_positions (link, position, gen) VALUES ('peer-a', 0, 0)`,
@@ -188,11 +208,11 @@ func (s *Store) CheckToken(ctx context.Context, id string) (bool, int64, error) 
 // Ownership: a durable record with a generation.
 
 // Claim takes an expired or free lease and moves its generation on by one.
-func (s *Store) Claim(ctx context.Context, name string, ttlMs int64) (int64, error) {
+func (s *Store) Claim(ctx context.Context, inc, name string, ttlMs int64) (int64, error) {
 	var gen int64
 	err := s.tx(ctx, func(tx *sql.Tx) error {
 		n := nowMs()
-		res, err := tx.ExecContext(ctx, `UPDATE leases SET owner = ?, gen = gen + 1, expires_at = ? WHERE name = ? AND (owner IS NULL OR expires_at < ?)`, s.node, n+ttlMs, name, n)
+		res, err := tx.ExecContext(ctx, `UPDATE leases SET owner = ?, gen = gen + 1, expires_at = ? WHERE name = ? AND (owner IS NULL OR expires_at < ?) AND `+incFence, s.node, n+ttlMs, name, n, inc)
 		if err != nil {
 			return err
 		}
@@ -202,14 +222,14 @@ func (s *Store) Claim(ctx context.Context, name string, ttlMs int64) (int64, err
 		if err := tx.QueryRowContext(ctx, `SELECT gen FROM leases WHERE name = ?`, name).Scan(&gen); err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO lease_claims (name, gen, owner, claimed_at) VALUES (?, ?, ?, ?)`, name, gen, s.node, n)
+		_, err = tx.ExecContext(ctx, `INSERT INTO lease_claims (name, gen, owner, claimed_at, inc) VALUES (?, ?, ?, ?, ?)`, name, gen, s.node, n, inc)
 		return err
 	})
 	return gen, err
 }
 
-func (s *Store) Renew(ctx context.Context, name string, gen, ttlMs int64) error {
-	res, err := s.db.ExecContext(ctx, `UPDATE leases SET expires_at = ? WHERE name = ? AND owner = ? AND gen = ?`, nowMs()+ttlMs, name, s.node, gen)
+func (s *Store) Renew(ctx context.Context, inc, name string, gen, ttlMs int64) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE leases SET expires_at = ? WHERE name = ? AND owner = ? AND gen = ? AND `+incFence, nowMs()+ttlMs, name, s.node, gen, inc)
 	if err != nil {
 		return err
 	}
@@ -222,11 +242,11 @@ func (s *Store) Renew(ctx context.Context, name string, gen, ttlMs int64) error 
 // CommitRun is a monitor run as one transaction: the run (fenced by the
 // scheduler generation), its result, the monitor's state move, the call
 // intent in the outbox and a pending history export row.
-func (s *Store) CommitRun(ctx context.Context, lease string, gen int64, monitorID int64, runID string, ok bool) error {
+func (s *Store) CommitRun(ctx context.Context, inc, lease string, gen int64, monitorID int64, runID string, ok bool) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		n := nowMs()
-		res, err := tx.ExecContext(ctx, `INSERT INTO runs (run_id, monitor_id, gen, owner, at) SELECT ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM leases WHERE name = ? AND gen = ? AND owner = ?)`,
-			runID, monitorID, gen, s.node, n, lease, gen, s.node)
+		res, err := tx.ExecContext(ctx, `INSERT INTO runs (run_id, monitor_id, gen, owner, at, inc) SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM leases WHERE name = ? AND gen = ? AND owner = ?) AND `+incFence,
+			runID, monitorID, gen, s.node, n, inc, lease, gen, s.node, inc)
 		if err != nil {
 			return err
 		}
@@ -258,18 +278,22 @@ func (s *Store) CommitRun(ctx context.Context, lease string, gen int64, monitorI
 
 // AllocBlock claims [start, start+size) of the arrival counter by a
 // conditional write on the value read; a lost race is retried.
-func (s *Store) AllocBlock(ctx context.Context, size int64) (int64, int64, error) {
+func (s *Store) AllocBlock(ctx context.Context, inc string, size int64) (int64, int64, error) {
 	for attempt := 0; attempt < 20; attempt++ {
 		var start int64
 		err := s.tx(ctx, func(tx *sql.Tx) error {
 			if err := tx.QueryRowContext(ctx, `SELECT next FROM allocators WHERE name = 'arrival'`).Scan(&start); err != nil {
 				return err
 			}
-			res, err := tx.ExecContext(ctx, `UPDATE allocators SET next = ? WHERE name = 'arrival' AND next = ?`, start+size, start)
+			res, err := tx.ExecContext(ctx, `UPDATE allocators SET next = ? WHERE name = 'arrival' AND next = ? AND `+incFence, start+size, start, inc)
 			if err != nil {
 				return err
 			}
 			if k, _ := res.RowsAffected(); k == 0 {
+				var cur string
+				if err := tx.QueryRowContext(ctx, `SELECT value FROM cluster_meta WHERE key = 'incarnation'`).Scan(&cur); err == nil && cur != inc {
+					return errStale
+				}
 				return errHeld
 			}
 			return nil
@@ -286,10 +310,10 @@ func (s *Store) AllocBlock(ctx context.Context, size int64) (int64, int64, error
 }
 
 // AdvanceLink moves a link-pull position on, only for the current owner.
-func (s *Store) AdvanceLink(ctx context.Context, lease, link string, gen, by int64) (int64, error) {
+func (s *Store) AdvanceLink(ctx context.Context, inc, lease, link string, gen, by int64) (int64, error) {
 	var pos int64
 	err := s.tx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE link_positions SET position = position + ?, gen = ? WHERE link = ? AND EXISTS (SELECT 1 FROM leases WHERE name = ? AND gen = ? AND owner = ?)`, by, gen, link, lease, gen, s.node)
+		res, err := tx.ExecContext(ctx, `UPDATE link_positions SET position = position + ?, gen = ? WHERE link = ? AND EXISTS (SELECT 1 FROM leases WHERE name = ? AND gen = ? AND owner = ?) AND `+incFence, by, gen, link, lease, gen, s.node, inc)
 		if err != nil {
 			return err
 		}

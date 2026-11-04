@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -45,6 +46,49 @@ type Server struct {
 	stats   *Stats
 	acks    *Acks
 	started time.Time
+	inc     atomic.Value // string: the incarnation this member belongs to
+	fenced  atomic.Bool
+}
+
+func (s *Server) localInc() string {
+	v, _ := s.inc.Load().(string)
+	return v
+}
+
+// fenceLoop compares the member's own incarnation with the installation's.
+// A member with none (new, or wiped as the recovery procedure) adopts it; a
+// member that remembers another one (an old member coming back after a
+// restore) is fenced: it serves nothing, and its workers' writes, which
+// still carry its old incarnation, are refused by the database.
+func (s *Server) fenceLoop() {
+	path := filepath.Join(s.dataDir, "incarnation")
+	if b, err := os.ReadFile(path); err == nil {
+		s.inc.Store(strings.TrimSpace(string(b)))
+	}
+	for {
+		if st := s.store.Load(); st != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			var cur string
+			err := st.db.QueryRowContext(ctx, `SELECT value FROM cluster_meta WHERE key = 'incarnation'`).Scan(&cur)
+			cancel()
+			if err == nil && cur != "" {
+				switch local := s.localInc(); {
+				case local == "":
+					_ = os.WriteFile(path, []byte(cur), 0o644)
+					s.inc.Store(cur)
+					log.Printf("%s joins incarnation %s", s.node, cur)
+				case local != cur:
+					if !s.fenced.Load() {
+						log.Printf("%s FENCED: it belongs to incarnation %s, the installation is %s", s.node, local, cur)
+					}
+					s.fenced.Store(true)
+				default:
+					s.fenced.Store(false)
+				}
+			}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 }
 
 func main() {
@@ -107,10 +151,11 @@ func main() {
 		}
 		db.SetMaxOpenConns(32)
 		db.SetMaxIdleConns(32)
-		st := &Store{db: db, node: node}
-		s.workers = &Workers{s: st, acks: s.acks, stats: stats, monitors: 100}
+		st := &Store{db: db, node: node, guard: txGuard}
+		s.workers = &Workers{s: st, acks: s.acks, stats: stats, monitors: 100, inc: s.localInc}
 		s.db.Store(db)
 		s.store.Store(st)
+		go s.fenceLoop()
 		s.workers.Start()
 		log.Printf("%s ready at %s", node, addr)
 	}()
@@ -158,6 +203,14 @@ func (s *Server) op(fn func(ctx context.Context, st *Store, q map[string]string)
 		if st == nil {
 			reply(w, 503, map[string]any{"error": "not ready"})
 			return
+		}
+		switch r.URL.Path {
+		case "/q", "/mem", "/checksums":
+		default:
+			if s.fenced.Load() {
+				reply(w, 503, map[string]any{"error": "fenced: this member belongs to another incarnation"})
+				return
+			}
 		}
 		q := map[string]string{}
 		for k, v := range r.URL.Query() {
@@ -211,6 +264,10 @@ func (s *Server) routes() *http.ServeMux {
 		_, err := st.db.ExecContext(ctx, `INSERT INTO health (id, at) VALUES (?, ?)`, q["id"], nowMs())
 		return nil, err
 	}))
+	m.HandleFunc("POST /alloc", s.op(func(ctx context.Context, st *Store, q map[string]string) (any, error) {
+		a, b, err := st.AllocBlock(ctx, s.localInc(), 1000)
+		return map[string]any{"s": a, "e": b, "inc": s.localInc()}, err
+	}))
 	m.HandleFunc("POST /revoke", s.op(func(ctx context.Context, st *Store, q map[string]string) (any, error) {
 		return nil, st.RevokeSession(ctx, q["id"])
 	}))
@@ -234,6 +291,7 @@ func (s *Server) routes() *http.ServeMux {
 	m.HandleFunc("POST /seed", s.op(s.seed))
 	m.HandleFunc("POST /churn", s.op(s.churn))
 	m.HandleFunc("POST /expire", s.op(s.expire))
+	m.HandleFunc("POST /expire-chunk", s.op(s.expireChunk))
 	m.HandleFunc("POST /vacuum", s.op(func(ctx context.Context, st *Store, q map[string]string) (any, error) {
 		_, err := st.db.ExecContext(ctx, `VACUUM`)
 		return nil, err
@@ -243,6 +301,7 @@ func (s *Server) routes() *http.ServeMux {
 		return checksums(ctx, st.db)
 	}))
 	m.HandleFunc("POST /backup", s.op(s.backup))
+	m.HandleFunc("POST /selftest/guard", s.op(s.guardTest))
 	m.HandleFunc("POST /restore", s.op(s.restore))
 	return m
 }
@@ -270,6 +329,7 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 	runtime.ReadMemStats(&ms)
 	out["rss_kb"], out["hwm_kb"], out["go_sys_kb"], out["go_heap_kb"] = rss, hwm, ms.Sys/1024, ms.HeapInuse/1024
 	out["stats"] = s.stats.JSON()
+	out["incarnation"], out["fenced"] = s.localInc(), s.fenced.Load()
 	if st := s.store.Load(); st != nil {
 		var errs []string
 		st.txErrs.Range(func(k, _ any) bool { errs = append(errs, k.(string)); return true })

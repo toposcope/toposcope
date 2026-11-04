@@ -1,183 +1,222 @@
 # dqlite proof: results
 
-Step 1 of the cluster design in [`docs/ha-research.md`](../../docs/ha-research.md) (branch `claude/ha-research-b67473`): a proof of dqlite before any Toposcope code moves to Go. Nothing in `src/` changes.
+Step 1 of the cluster design in [`docs/ha-research.md`](../../docs/ha-research.md) (branch `claude/ha-research-b67473`): a proof of dqlite before any Toposcope state moves to it. Nothing in `src/` changes.
 
-**Verdict: dqlite passes the safety gate and does not yet pass the liveness gate.** Across every fault the harness found no duplicate claim, no reused position, no lost acknowledged write, no partial monitor run and no stale owner's write. That holds only with three mitigations the harness had to add, and two problems are still open. The recommendation is at the end.
+**Verdict: dqlite does not pass the gate yet.**
+
+- **Correctness held.** With the mitigations below enabled, no violation was observed in the tested control-plane operations: no duplicate claim, no reused identity, no stale owner's write, no lost acknowledged write, no partial monitor run.
+- **Two things fail.**
+  - **No bound on stale security reads.** An old leader that was paused while it was isolated answers revoked sessions as valid for about 2 × the election timeout after it resumes. Measured from the revocation's acknowledgement that was up to 6.4 s at default timeouts and 0.9 s tuned. A longer pause makes it longer, and dqlite's read path offers nothing to bound it.
+  - **Takeovers stall.** When the leader is paused, the other two often go 8 s or more without electing a new one: up to 22 s, and once more than 80 s.
+- **Not established here:** ClickHouse fencing, telemetry deduplication and recovery across both databases (there is no ClickHouse in the harness); host power loss; permanent loss of every node; amd64 behaviour (built and started only).
+
+Earlier versions of this file overstated three things. "Safety passed" now means only the operations listed below. The "2 × election timeout" revocation bound was the consistency model's claim, not a measurement, and the new trials break it. The restore offsets did not give a safe identity scheme; restore incarnations (section 2) replace them.
 
 ## How to run
 
 ```bash
-./run.sh            # both configurations, about 25 minutes
-./run.sh default    # or one of them
+./run.sh            # default, tuned and budget, about 50 minutes
+./run.sh stalls     # the paused-owner matrix, about 25 minutes
+./run.sh <config>   # one of: default tuned budget stall-timeouts stall-snapshot stall-both stall-notls
 ```
 
-Docker only; nothing is installed on the host. The image builds the dqlite C library from source (v1.18.7, raft bundled) with `go-dqlite` v3.0.4, for linux/arm64 and linux/amd64 (the amd64 image was built under emulation and its binary links and starts; the runs below are arm64). Each run writes `out/<config>/report.md`, `results.json`, the members' logs and every member's acknowledged writes.
+Docker only; nothing is installed on the host. The image builds the dqlite C library from source (v1.18.7, raft bundled) with `go-dqlite` v3.0.4 for linux/arm64 and linux/amd64. Only arm64 has run the suite; the amd64 image builds, links and starts under emulation, which says nothing about its behaviour under faults. Each run writes `out/<config>/report.md`, `results.json`, the members' logs and every acknowledged write.
 
-What runs: six members (`n1`–`n3` under test, `r1`–`r3` as fresh members for the restore) and a runner, in Compose on their own network, with no port published. The runner drives faults through the Docker socket: `SIGKILL`, `SIGSTOP`/`SIGCONT` of the process, `iptables` inside a member for a 2–1 partition (the runner's own address is never cut, so it can keep asking an isolated member what it believes), restart, and loss of the whole cluster.
+Three members (`n1`–`n3`) and a runner run in Compose on their own network, with no published port. The runner drives faults through the Docker socket: `SIGKILL`; `SIGSTOP`/`SIGCONT`; `iptables` inside a member for full and one-way partitions (the runner's own address is never cut, so it can keep asking an isolated member what it believes); CPU throttling; restarts; and loss of the whole cluster. For restores it creates fresh members (`f1`–`f3`) through the Docker API, two of them on the lost members' addresses.
 
-| File | What it is |
+| Path | What it is |
 | --- | --- |
-| `cmd/ctl` | a member: dqlite via `go-dqlite/app`, the Toposcope-shaped operations, background workers, an HTTP API for the runner and a Unix socket for Bun |
+| `cmd/ctl` | a member: dqlite via `go-dqlite/app`, the operations, background workers, an HTTP API for the runner, a Unix socket for Bun, and a self-test of the transaction guard |
 | `cmd/runner` | faults, workload, measurements, checks, report |
 | `bench/auth.ts` | the Bun side of the auth-check benchmark |
 
-### The work it does
+### What is tested
 
-All of it Toposcope-shaped, running throughout every fault, from all three members at once, written to be adversarial (an owner writes with the generation it remembers and never checks its own clock first, so a paused owner that wakes does write):
+Toposcope-shaped work runs throughout every fault, from all three members at once. Owners are adversarial: they write with the generation they remember and never check their own clock first.
 
-- **Ownership with generations.** A scheduler lease and a link-pull lease. A claim moves the generation on by one and records `(name, gen, owner)`; every write by an owner is conditional on its generation still being current.
-- **A monitor run as one transaction.** Fenced on the scheduler generation: the run, its result, the monitor's state move and version bump, a call in the outbox with a stable id, and a pending history-export row.
-- **A block allocator** for arrival positions: read `next`, conditional write `next + 1000` where `next` is still the value read.
-- **A link position** advanced by the link owner, conditional on its generation.
-- **Sessions and tokens**, created and revoked through every member by the runner (about 25 writes a second each), and checked.
+- **Ownership:** a scheduler lease and a link-pull lease, each claimed by moving its generation on by one. Every owner write is conditional on its generation **and the installation's incarnation** still being current.
+- **A monitor run as one transaction:** the run, its result, the monitor's state move and version, an outbox call with a stable id, and a pending history-export row.
+- **Arrival blocks:** read `next`, then a conditional write of `next + 1000`.
+- **A link position**, advanced by its owner.
+- **Sessions and tokens**, created, revoked and checked through every member.
 
-Every acknowledged write is recorded where it was acknowledged (members append to a file per member, one `write(2)` per line, so it survives `SIGKILL`); the checks compare those against the database at the end.
+Acknowledgements are recorded in two places. Members append each write they acknowledge to a file, one `write(2)` per line, so the record survives `SIGKILL`. The runner, independently, records every session, revocation and arrival block it saw acknowledged (12,055 blocks in the default run). The checks compare both records with the database.
 
-### Two configurations
+### Configurations
 
-| | default | tuned |
-| --- | --- | --- |
-| election timeout / heartbeat | 3000 / 500 ms (dqlite's defaults) | 300 / 30 ms (`WithNetworkLatency(20ms)`) |
-| raft snapshot | every 1024 entries, keep 8192 (go-dqlite's defaults) | every 128, keep 512 |
-| peer TLS | on (see 2 below) | on |
-| lease TTL / renew | 3000 / 100 ms | same |
+| config | election / heartbeat | raft snapshot | peer TLS | phases |
+| --- | --- | --- | --- | --- |
+| default | 3000 / 500 ms (dqlite's defaults) | every 1024, keep 8192 (go-dqlite's defaults) | on | guard, faults, latency, memory, backup |
+| tuned | 300 / 30 ms | every 128, keep 512 | on | guard, faults, latency, memory |
+| budget | 300 / 30 ms | every 128, keep 512 | on | realistic memory at the app container's 512 MB / 1 CPU |
+| stall-* | one variable at a time | | | 15 paused-owner trials each |
 
-Environment: one Mac (arm64, 8 CPUs) running Docker Desktop. All members share one kernel and clock, and the network is a bridge with sub-millisecond latency. Latencies on a real LAN will be higher by the round trips, and fsync costs are those of Docker Desktop's VM disk.
+Environment: one Mac (arm64, 8 CPUs) running Docker Desktop. All members share one kernel and one clock, the network is a bridge with sub-millisecond latency, and fsync costs are those of Docker Desktop's VM disk.
 
 ## Pass / fail
 
-| Criterion | default | tuned | Evidence (default run) |
+| Criterion | default | tuned | Evidence (default unless noted) |
 | --- | --- | --- | --- |
-| No duplicate claims | PASS | PASS | 18 claims across 18 generations, none twice, no gaps |
-| Stale owner's write refused | PASS | PASS | 1,409 committed runs, none with an older generation after a newer one, none by a member that did not hold that generation; 0 link advances by a non-owner. After `SIGCONT` the paused owners wrote under their old generation 6 times (once per lease held, 3 pauses) and all 6 were refused |
-| No reused positions | PASS | PASS | 2,075 arrival blocks of 1,000: 0 overlaps, none past the allocator; 991 link advances, none repeated |
-| No lost acknowledged write | PASS* | PASS* | 15,194 sessions, 2,974 revocations, 1,408 monitor runs, 18 claims acknowledged; 0 missing, across leader kill, 5 leader partitions, a follower partition, 3 pauses, two restarts and all three members `SIGKILL`ed at once |
-| Monitor run is one transaction | PASS | PASS | 0 runs missing a result, call or history row; 0 orphans; every monitor's version equals its run count |
-| Revocation visible everywhere within a stated bound | PASS* | PASS | bound = 2 × election timeout (6 s default, 600 ms tuned); see the table below |
-| Lone member commits nothing, answers no revoked session | PASS | PASS | isolated follower: 0 of 5 writes committed, 0 of 28 reads answered at all |
-| Memory bounded | **FAIL** | **FAIL** as stated, bounded in fact | see Memory |
-| Restore matches the backup | PASS | not run | row checksums of 10 tables equal |
-| No acknowledged write before the backup lost | PASS | not run | 1,450 runs and 542 sessions acknowledged before the backup began: all present after restore |
-| No reused positions or generations after restore | PASS | not run | with the restore fence (allocator +10¹², generations +10⁶); 45 blocks had been handed out after the dump and would otherwise have been handed out again |
-
-\* **only with the transaction guard** (1 below). Without it the harness reproduced acknowledged writes that never committed.
-\* **revocation**: the bound held in every final trial, but one development run under default timeouts caught the isolated old leader answering a revoked token as valid **1.2 s after the revocation was sent**, 3 reads sent after its acknowledgement. Stale security reads are real, and that one stayed within the bound.
+| Guard: a failed COMMIT never poisons the pool | PASS | PASS | deterministic test, section 1 |
+| No duplicate claims | PASS | PASS | 27 claims across 27 generations; none twice, no gaps |
+| Stale owner's write refused | PASS | PASS | 3,025 committed runs, none with an older generation after a newer one or by a non-holder; 0 link advances by a non-owner; 6 writes by resumed paused owners under their old generation, all refused |
+| No reused positions | PASS | PASS | 16,152 blocks (12,055 recorded at the runner): 0 overlaps, none past the allocator; 2,127 link advances, none repeated |
+| No lost acknowledged write | PASS | PASS | 24,998 sessions, 4,871 revocations, 3,025 runs, 27 claims, 0 missing, through every fault below including all three `SIGKILL`ed at once |
+| Monitor run is one transaction | PASS | PASS | 0 partial runs, 0 orphans, every version equals its run count |
+| Lone member commits nothing and answers no revoked session | PASS | PASS | isolated follower: 0 of 5 writes, 0 of 28 reads answered |
+| **Revocation visible everywhere within a bound** | **FAIL** | **FAIL** | section 3 |
+| **Every lease takeover within 10 s** | PASS (3/3) | PASS (3/3) | the stall matrix fails it, section 5 |
+| Memory bounded (oversized batches) | **FAIL** | **FAIL** | section 4 |
+| Fits the app container (512 MB, 1 CPU, realistic work) | | PASS (budget) | peak 101 MB, flat across 60k monitor runs |
+| Restore matches the backup (twice, same backup) | PASS | | row checksums of 11 tables equal, both times |
+| No acknowledged write before the backup lost | PASS | | 3,069 runs (member record), 518 sessions and 254 blocks (runner record): none missing |
+| No identity reused across restores of the same backup | PASS | | section 2 |
+| An old member returning is fenced | PASS | | section 2 |
 
 ## What it found
 
-### 1. A failed COMMIT poisons a pooled connection: acknowledged writes that never commit (fixed in the harness)
+### 1. A failed COMMIT poisons a pooled connection (fixed in the service, tested deterministically)
 
-After a heal, writes through two members failed with `database is locked` for minutes while the third member's writes kept "succeeding". Those writes were acknowledged (HTTP 200) and visible only through that member's own connection; the other members never saw them. Cause: `go-dqlite`'s `Tx.Commit` turns only network and leadership errors into `driver.ErrBadConn`. A COMMIT that fails any other way can leave the transaction open on the leader (SQLite keeps a transaction open after a busy COMMIT), and `database/sql` puts the connection back in the pool. Every later statement on it then runs inside that open transaction, is acknowledged, never commits, and holds the leader's write lock against every other member.
+go-dqlite's `Tx.Commit` maps only network and leadership errors to `driver.ErrBadConn`. When COMMIT fails any other way, SQLite can keep the transaction open (it does after a deferred constraint violation or a busy COMMIT), and `database/sql` puts the connection back in the pool. Later statements on that connection are acknowledged, run inside the open transaction, never commit, and hold the leader's write lock against every other member. In the first runs this showed up as `database is locked` everywhere except on one member, whose writes "succeeded" and were invisible to the other members.
 
-The fix is in `cmd/ctl/store.go`: each transaction runs on a `sql.Conn` of its own, and on any failed COMMIT or ROLLBACK that connection is closed instead of returned to the pool. With it, every run passed "no lost acknowledged write"; the guard fired 34 times in the default run (`TX_GUARD=0` turns it off). The Go control service must do the same, and this should be reported upstream.
+The guard (`cmd/ctl/store.go`) runs each transaction on its own `sql.Conn`, and on any failed COMMIT or ROLLBACK it calls `conn.Raw(func(any) error { return driver.ErrBadConn })`. `sql.Conn.Close()` alone would return the connection to the pool. `Raw` returning `ErrBadConn` makes `database/sql` call `releaseConn(ErrBadConn)`, which closes the driver connection (`database/sql` `Conn.Raw` → `closemuRUnlockCondReleaseConn` → `close` → `releaseConn`). Closing it is what makes the leader release the transaction.
 
-### 2. Without TLS, a member isolated mid-transaction blocks every write until the network heals
+The deterministic test (`cmd/ctl/guardtest.go`, the `guard` phase) uses a pool of exactly one connection, so the next request is guaranteed to get the same connection unless it was discarded. A deferred foreign-key violation makes COMMIT fail on demand:
 
-The first runs had peer TLS off. Isolating a follower stopped all writes on the majority (`database is locked`) for as long as the partition lasted, more than 2 minutes, and released 0.7 s after the heal. A transaction the isolated member had open on the leader held the write lock, and nothing noticed the connection was dead: dqlite's client heartbeat is a `TODO` in go-dqlite, and only go-dqlite's TLS path sets TCP keepalive (3 s, 3 probes) and `TCP_USER_TIMEOUT` on peer connections. With TLS on, the majority's write stall when a follower is isolated was 37 ms (default) and 162 ms (tuned). Peer TLS must be on, which the design wants anyway, and a member must not hold interactive transactions open across the network longer than it must.
+| case | guard | next write on that pool | visible to another pool | after the pool closes | another writer |
+| --- | --- | --- | --- | --- | --- |
+| COMMIT fails (deferred FK) | off | acknowledged | **no** | **gone** (rolled back) | **blocked** (`context deadline exceeded`) |
+| COMMIT fails (deferred FK) | on | acknowledged | yes | yes | proceeds |
+| deadline passes before COMMIT | off / on | acknowledged | yes | yes | proceeds |
 
-### 3. How stale a read gets, and whether a revoked session stays valid
+The deadline case is already safe: `database/sql` itself discards a transaction's connection when its context ends. Two limits remain. **A failed COMMIT can have an unknown outcome:** discarding the connection protects later operations, but it does not prove the transaction failed, so every operation that may be retried needs a stable identity (run ids and outbox call ids do here). And **go-dqlite's `Commit` ignores the caller's context** (it uses `context.Background()`), so a COMMIT in flight cannot be cancelled. It ends only when the leader answers or the connection dies.
 
-Every read goes to the leader, and a leader answers without checking it still leads. An old leader cut off from the majority keeps answering until it notices, which takes one to two election timeouts. Meanwhile the majority elects a leader and commits the revocation. In each trial the runner isolated the leader, revoked a session and a token through the majority, and asked the old leader about both every few milliseconds (6 pollers).
+### 2. Restore: a fresh incarnation, not offsets
 
-| | default (3 s) | tuned (300 ms) |
+The earlier fix (move the allocator on by 10¹², generations by 10⁶) was not an identity scheme. Restoring the same backup twice gives both restorations the same bumped counters.
+
+Now every installation has an **incarnation**, a random 64-bit id in `cluster_meta`. A restore replays the dump and then writes a new incarnation, never the dump's. Every owner's conditional write and every allocation requires the incarnation to match. Run ids carry it, and acknowledged blocks and claims are recorded with it, so an identity is (incarnation, value). Existing rows keep their old identities. A member keeps the incarnation it belongs to in its data directory: a member with none (new, or deliberately wiped) adopts the installation's, and a member that remembers another one is **fenced**. It serves nothing, and its workers' writes, still carrying the old incarnation, are refused by the database.
+
+Tested in the default run:
+
+- **The same backup restored twice** onto fresh members, with work run on each restoration: 3 distinct incarnations; 6,271 blocks, none overlapping within an incarnation; 3,404 run ids and 33 claims, none repeated. 834 block ranges repeat as *numbers* across incarnations, which is expected: the namespace is what keeps them apart.
+- **An old member returning.** The restored installation runs on two of the lost members' addresses, and lost member `n3` starts again with its old disk. Its go-dqlite driver found the restored installation's leader and connected: **dqlite has no notion of an installation identity**, so nothing below the application stops an old member from talking to a new cluster. The application fence did stop it. `n3` fenced itself and refused API writes, its workers' 49 allocation attempts under the old incarnation were refused by the database, and it acknowledged 0 writes. The restored installation's longest write gap meanwhile was 143 ms.
+- **A race, found and fixed.** The replay first copied the dump's old incarnation, and one fresh member adopted it in the moment before the new one was written. Restore now skips `cluster_meta` and writes the new incarnation last.
+
+**Consequences for the design.** Arrival positions restart their numbering per incarnation, so anything that orders by position (link feeds, dedupe keys) must key on (incarnation, position), and a link consumer that sees a new incarnation has to reconcile rather than resume. Rejoining a member to a restored installation is an explicit procedure: wipe its data, then join.
+
+### 3. Stale security reads have no time bound
+
+Every read goes to the leader, and a leader answers without first checking that it still leads. Each trial isolated the leader in one of five ways, revoked a session and a token through the majority, and polled the old leader with 6 pollers. The metric is the review's: from the revocation's **acknowledgement** to the last "valid" answer to a read sent after that acknowledgement. 3 trials per mode per config, 2 kinds each.
+
+| mode | default (election 3 s) | tuned (300 ms) |
 | --- | --- | --- |
-| old leader's last answer after isolation | 3.5–5.7 s | 0.7–2.5 s |
-| revocation acknowledged on the majority after isolation | 4.9–11.1 s | 2.5–4.6 s |
-| longest the old leader said valid after the revocation was sent (final runs) | 0 ms (10 trials) | 0 ms (10 trials) |
-| same, development run | **1,202 ms**, 3 reads sent after the ack answered valid | |
-| stale answers on the majority, or anywhere after heal | 0 | 0 |
-| isolated follower | never answers (reads go to the leader it can't reach) | same |
+| full partition | 0 ms | 0 ms |
+| partition, old leader throttled to 5% of a CPU | 0 ms | 0 ms |
+| old leader receives nothing from its peers (one-way) | **366 ms** (1 of 3 trials; 171 stale answers) | 0 ms |
+| old leader can send nothing to its peers (one-way) | 0 ms | 0 ms |
+| **old leader paused, partitioned, revocation acknowledged, then resumed still partitioned** | **3.2–6.4 s** (every trial; up to 2,755 stale answers) | **0.6–0.9 s** (every trial; up to 263) |
 
-So the bound is the one the consistency model gives: **a revoked session or token can be accepted by an isolated old leader for up to about 2 × the election timeout after the majority commits the revocation**. That is 6 s at dqlite's defaults and 600 ms tuned. It happened in 1 of the 11 default-timeout leader partitions run with TLS, and in none of the 6 tuned ones. Usually the old leader steps down before the majority has even elected a new leader. A member's own read never proves ownership, which is why every claim above is a conditional write, and those were never fooled.
+In the pause case the resumed old leader keeps answering as leader for about 2 × the election timeout **after it resumes**, however long it was paused. A pause longer than the time the majority needs to commit the revocation therefore extends the staleness one for one. Garbage collection, a stalled VM or a `SIGSTOP` can all do that. There is no wall-clock bound measured from the revocation, so "a revoked session is refused everywhere within X" cannot be promised from dqlite reads. The election timeout only sets the size of the window after the old leader resumes. No stale answer ever came from the majority, or from anyone after the partition healed.
 
-The other side of this is availability. While a leader is being replaced, reads fail on every member, so **auth checks fail** too: about 6 s per leader loss at default timeouts and about 0.6 s tuned.
+What would bound it is a read that proves leadership: a quorum round before answering (Raft's read index) or a leader lease the read checks. go-dqlite exposes neither. The workaround inside dqlite is to make security checks writes, at about 2 ms and about 400 a second instead of 0.3 ms and over 25,000 a second (section 8). rqlite, the fallback named in the research, offers linearizable reads as a read level, which is a reason to put it through this harness.
 
-### 4. Memory grows with the retained raft log, not with the database
+The tuned 300 ms timeout is an experimental setting, not a recommendation. Election churn under load has not been measured.
 
-With 50,000 sessions, 10,000 monitors and 5,000 tokens, the SQLite database itself is 11 MB. Writing 1M outbox rows and 1M history-export rows (1,000 batches of 1,000 + 1,000, expiry keeping the newest 20,000) never takes it past 25 MB, and `VACUUM` works (back to 8 MB). RSS is something else:
+### 4. Memory follows the retained raft log; realistic work fits the budget
 
-| stage | default RSS (n1) | default raft dir | tuned RSS (n1) | tuned raft dir |
-| --- | --- | --- | --- | --- |
-| start (after the fault phase) | 255 MB | 220 MB | 56 MB | 47 MB |
-| seeded to control-plane size | 262 MB | 220 MB | 57 MB | 42 MB |
-| 300k batch rows | 630 MB | 566 MB | 437 MB | 378 MB |
-| 600k | 988 MB | 919 MB | 746 MB | 671 MB |
-| 800k | 1,227 MB | 1,145 MB | 787 MB | 634 MB |
-| 1M | 1,467 MB | 1,381 MB | 787 MB | 597 MB |
-| expired, `VACUUM`, 30 s later | 1,497 MB | 1,398 MB | 787 MB | 614 MB |
+dqlite keeps trailing raft entries in memory as well as on disk, so RSS is roughly the database plus the trailing entries times their size. Two runs:
 
-dqlite keeps the trailing raft entries in memory as well as on disk. RSS ≈ database + trailing entries × entry size. With 8,192 trailing entries and these 1.2 MB batch transactions it had not levelled off at 1.5 GB, and would not before about 10 GB. With 512 it levels off at 790 MB from 600k on. Neither run meets the criterion as written (RSS at the end within 25% of RSS at 30% through), because the plateau comes late; the tuned run is bounded in fact. The batches here are far larger than Toposcope's real transactions (a monitor run is a few KB), so the real bound is much lower. But the service must set the snapshot parameters itself, keep each transaction small, and size memory as `trailing × largest routine transaction`. The default `trailing = 8192` is not safe to ship. Frequent snapshots have a cost: in the tuned run the leader's latencies were several times the follower's.
+- **Oversized batches** (1M outbox and 1M history rows in 1,000 transactions of 2,000 rows): the database never passes 26 MB, yet RSS reached 1,468 MB at default settings and was still growing. With 512 trailing entries it reached 780–790 MB by 600k rows and then went to 1,032 MB. These transactions are hundreds of times larger than Toposcope's, so this only shows the mechanism; it is not a budget.
+- **The budget run:** realistic work held to the app container's real limits (`compose.yml`: 512 MB, 1 CPU), tuned settings. 50k sessions, 10k monitors and 5k tokens seeded in 1,000-row chunks, then 60,000 monitor runs (five rows each, from 16 callers), with a cleanup job deleting in 500-row transactions to keep 20,000 rows per table. That is 300,000 rows over many snapshot cycles. Peak RSS was **101 MB**, flat from 30k runs on (100 MB at 30k, 60k and after settling); the database was 21 MB, nothing was OOM-killed, and throughput was 150–263 runs/s at 1 CPU.
 
-### 5. Failover is slower than the election, because timed-out connections stay in the pool
+So the member fits, with room left for Bun in the same 512 MB, provided the service enforces three things: explicit snapshot parameters, a cap on transaction size, and chunked maintenance. go-dqlite's default `trailing = 8192` is not safe to ship. Bun's own memory in that container has not been measured here.
 
-A query that hits its context deadline is not marked as a bad connection by go-dqlite, so `database/sql` keeps handing out connections to a dead or paused leader. After a leader `SIGKILL`, writes stopped for 6.4 s in the final default run, 13–21 s in earlier ones, and 0.6 s tuned. A lease takeover while the paused owner was also the dqlite leader took 37 s before the guard in 1 (which also closes those connections) and 3–6 s after. The control service needs short operation deadlines and has to drop a connection that times out.
+### 5. Takeover stalls: not TLS; leader pauses, made worse by frequent snapshots
 
-### 6. Unexplained: `tls: bad record MAC`, and takeovers that stall
+The earlier report attributed improvement to "TLS". More precisely, go-dqlite's TLS path is the only one that sets **TCP keepalive and `TCP_USER_TIMEOUT`** on peer connections, and those liveness settings are what released a transaction stranded by a partitioned member. Encryption had nothing to do with it. Keepalive does not help when the member is paused rather than gone: a stopped process's kernel still acknowledges.
 
-During pause and partition faults, members logged `proxy: … tls: bad record MAC` (1 in the default run, 9–20 in each tuned run). The connection is dropped and redialled, and no check failed because of it. But in 2 of the 12 tuned pause trials across runs, a takeover took 20 s, and once it did not happen within 90 s (the run stopped), with the MAC errors repeating every few seconds between two healthy members. This is a liveness failure with all three members up, and I have not found its cause. It may be go-dqlite's TLS proxy (it reaches into `tls.Conn` with `reflect`/`unsafe` to set socket options) or the short tuned timeouts. **This must be explained before HA ships.**
+The stall matrix ran 15 paused-owner trials per config, changing one variable at a time. A trial pauses the scheduler owner, waits for a takeover, and lets go after 20 s if there is none. At 8 s it probes a write through each other member.
 
-### 7. Contention: deferred transactions and checkpoints
+| config | election | snapshot | TLS | takeovers over 10 s | `bad record MAC` lines |
+| --- | --- | --- | --- | --- | --- |
+| stall-timeouts | 300 ms | default | on | 1 of 15 (21 s) | 23 |
+| stall-snapshot | 3 s | 128 / 512 | on | **11 of 15** (11–22 s) | 52 |
+| stall-both | 300 ms | 128 / 512 | on | 3 of 15 (11–13 s) | 38 |
+| stall-notls | 300 ms | 128 / 512 | off | 2 of 15 (13 s, and none within 80 s) | 0 |
+| default / tuned main runs | | | on | 0 of 3 / 0 of 3 | 28 / 5 |
 
-Under 16 concurrent callers on the leader, the read-then-conditional-write allocator failed 94% of attempts with `database is locked` (a deferred transaction that read first cannot upgrade, and the busy timeout does not help), and autocommit inserts sometimes failed with `checkpoint in progress`. Nothing was wrong: refused attempts are refused. But the service should start write transactions as `BEGIN IMMEDIATE` (or make each claim one statement), serialise hot claims like the allocator in-process, and retry `checkpoint in progress`.
+What this shows:
 
-### 8. Backup and restore
+- **TLS and the MAC errors are not the cause.** Stalls happen with TLS off and zero MAC errors. The MAC errors (dropped and redialled connections, only on the TLS path) are a separate, still unexplained fault worth reporting upstream.
+- **The slow cases are almost all trials where the paused owner was also the dqlite leader.** At 8 s the other two members typically answered `no available dqlite leader server found`: they had not elected a new leader in more than 2 election timeouts, while a killed leader is replaced in 0.8–3.6 s.
+- **Frequent snapshots make it much worse** (11 of 15 against 1 of 15 when only the timeouts change).
+- With TLS off, a paused follower also produced `context deadline exceeded` on the others' writes, consistent with an open transaction it held on the leader.
 
-`client.Dump` gave a consistent copy from the leader under full load in 42 ms (8.7 MB: database file, empty WAL). dqlite has no restore. The harness replays the dump table by table into a fresh cluster (14 s for 75k sessions, 10k monitors, 7.5k runs), and the row checksums match. A restore must also **fence what the backup cannot know**: positions and generations handed out after the dump. In the run, 45 arrival blocks were handed out after the dump; restored as-is, the allocator would have handed them out again. The harness moves the allocator on by 10¹² and every generation by 10⁶, and the restored cluster then reused nothing. `toposcope restore` must do the same.
+The cause of the slow elections is not established. Candidates are the raft layer's handling of a peer that is alive at TCP level but silent, and snapshot work on the followers. That is the next thing to isolate, with dqlite's raft tracing on.
 
-### 9. Auth check over the Unix socket
+### 6. Failover and timed-out connections
 
-Measured from Bun, the real caller, on a member with 50,000 sessions:
+A query that hits its deadline is not marked as a bad connection by go-dqlite, so `database/sql` keeps handing out connections to a dead or paused leader. The guard also discards those, since they surface as failed transactions. After a leader `SIGKILL`, writes stopped for 5.1 s at default timeouts and 1.4 s tuned.
+
+### 7. Contention
+
+Under 16 concurrent callers on the leader, the read-then-conditional-write allocator lost about 94% of its attempts to `database is locked`, because a deferred transaction that read first cannot upgrade to a write and the busy timeout does not help. Autocommit inserts sometimes failed with `checkpoint in progress`. Nothing incorrect was committed. The service should use `BEGIN IMMEDIATE` (or single-statement claims), serialise hot claims in-process, and retry `checkpoint in progress`.
+
+### 8. Auth check over the Unix socket
+
+Measured from Bun with 50,000 sessions, default run, on the leader:
 
 | | p50 | p95 | p99 |
 | --- | --- | --- | --- |
-| today: `bun:sqlite` in process, prepared query | 1.1 µs | 1.2 µs | 2 µs |
-| Unix socket to Go, no database (the floor of any cache) | 118 µs | 185 µs | 396 µs |
-| Unix socket to Go, dqlite read, on the leader | 264 µs | 462 µs | 1,013 µs |
-| same, on a follower (forwarded to the leader) | 304 µs | 614 µs | 1,253 µs |
-| 32 in flight from one Bun process, leader | 1.0 ms | 2.3 ms | 3.4 ms (27,400 checks/s) |
-| Go in process, dqlite read (no socket), leader | 134 µs | 196 µs | 352 µs |
+| today: `bun:sqlite` in process | 1.1 µs | 5 µs | 8 µs |
+| Unix socket, no database (the floor of any cache) | 132 µs | 234 µs | 846 µs |
+| Unix socket, dqlite read | 284 µs | 739 µs | 1,645 µs |
+| same from a follower | 301 µs | 415 µs | 927 µs |
+| 32 in flight from one Bun process | 0.97 ms | 2.7 ms | 4.5 ms (26,400 checks/s) |
+| Go in process, dqlite read, no socket | 119 µs | 157 µs | 195 µs |
 
-An auth check over the socket costs about 0.3 ms against about 1 µs today: 250 times slower, and still well under a millisecond per request. A cache is not needed for latency. Half the cost is the socket and HTTP framing, and a cache cannot go below that floor (0.12 ms). What a cache would actually buy is availability: auth keeps working through the seconds of an election (3 above). But it widens the staleness bound by its own lifetime, so the first release should go without one, then add a generation-voided cache only if elections prove disruptive.
+There is no performance case for an auth cache. A cache would not fix section 3 either: it adds its own lifetime to the staleness.
 
-### Write latency per operation
-
-Inside the Go service, one caller, default configuration (µs):
+### Write latency (Go service, one caller, default run, µs)
 
 | operation | via leader p50 / p95 / p99 | via follower p50 / p95 / p99 |
 | --- | --- | --- |
-| session check (read) | 134 / 196 / 352 | 119 / 214 / 372 |
-| token check (read) | 141 / 207 / 400 | 129 / 233 / 402 |
-| session create | 2,060 / 4,202 / 5,503 | 2,231 / 4,794 / 12,112 |
-| session revoke | 1,546 / 3,337 / 7,847 | 1,630 / 3,321 / 4,785 |
-| lease claim | 2,218 / 4,983 / 9,344 | 2,359 / 5,870 / 13,861 |
-| lease renew | 1,483 / 3,597 / 8,900 | 1,903 / 3,774 / 5,933 |
-| monitor run commit (5 writes) | 3,154 / 6,285 / 19,226 | 3,616 / 7,243 / 21,548 |
-| block allocation | 1,735 / 3,961 / 10,128 | 1,893 / 3,571 / 6,464 |
-| link advance | 1,818 / 3,573 / 7,979 | 4,064 / 18,281 / 29,628 |
+| session check | 119 / 157 / 195 | 172 / 391 / 927 |
+| session create | 1,677 / 3,310 / 4,189 | 1,903 / 4,189 / 9,627 |
+| session revoke | 1,630 / 3,618 / 6,793 | 1,673 / 3,275 / 6,763 |
+| lease claim | 2,393 / 5,154 / 12,398 | 2,278 / 4,563 / 11,854 |
+| lease renew | 1,670 / 3,315 / 6,743 | 1,756 / 3,596 / 8,624 |
+| monitor run commit (5 writes) | 2,839 / 5,876 / 12,852 | 2,755 / 5,739 / 16,995 |
+| block allocation | 1,892 / 4,219 / 11,408 | 2,003 / 4,251 / 10,616 |
+| link advance | 1,852 / 3,354 / 7,643 | 3,506 / 10,994 / 15,421 |
 
-With 16 callers on the leader: 22,100 session checks/s, 390 session creates/s, 156 monitor-run commits/s (p99 350 ms). That is plenty for a control plane, which commits a monitor run every few seconds rather than hundreds a second, but it means the scheduler must never put telemetry-rate work through dqlite.
+With 16 callers on the leader: 38,700 session checks/s, 390 session creates/s, 237 monitor-run commits/s.
 
-### Fault timings (default run, then tuned)
+### Fault timings (default / tuned)
 
 | fault | default | tuned |
 | --- | --- | --- |
-| leader `SIGKILL`: new leader / write gap | 5.7 s / 6.4 s | 0.04 s / 0.6 s |
-| leader isolated: revocation committed on majority | 4.9–11.1 s | 2.5–4.6 s |
-| follower isolated: majority write stall | 37 ms | 162 ms |
-| scheduler owner `SIGSTOP`ped: lease taken over | 3.1 s (×3) | 3.3 s, 20.3 s, 5.8 s |
-| graceful restart of a follower / the leader: write gap | 275 / 63 ms | 183 / 102 ms |
-| all three `SIGKILL`ed, then started: healthy after start | 5.2 s | 1.8 s |
+| leader `SIGKILL`: new leader / write gap | 3.6 s / 5.1 s | 0.8 s / 1.4 s |
+| follower isolated: majority write stall | 52 ms | 177 ms |
+| scheduler owner paused (follower): takeover | 3.0–3.1 s | 3.0–3.1 s |
+| graceful restart, follower / leader: write gap | 48 / 63 ms | 269 / 211 ms |
+| all three `SIGKILL`ed, then started: healthy after start | 6.4 s | 2.3 s |
+
+"All three `SIGKILL`ed" tests restart recovery from intact disks. It is not a test of host power loss (the page cache survives a process kill) or of losing every disk, which only a restore covers.
 
 ## Recommendation
 
-dqlite passes the part of the gate that would be hard to fix later: under leader loss, partitions, paused processes, restarts, total loss and restore, the conditional-write design held. Nothing was claimed twice, no position was reused, no stale owner wrote, and no acknowledged write was lost. A revoked session stayed acceptable on an isolated old leader only within the stated 2 × election timeout bound.
+| Work | Decision |
+| --- | --- |
+| Go operation API, generated types, service skeleton | Proceed: storage-neutral |
+| Transaction guard, restore incarnations, chunked maintenance, explicit snapshot settings | Done in the harness; required in the service whatever the database |
+| Root-cause the election stalls with a paused leader (raft tracing; snapshot interaction) | Inside the proof gate, time-boxed |
+| A read that proves leadership for security checks | Inside the proof gate: not available in go-dqlite today |
+| The same harness against rqlite (linearizable reads; no interactive transactions) | Next, in parallel with the two items above |
+| Move production domains onto dqlite | Hold |
+| Ship clustered HA | Hold |
 
-It does not yet pass as shipped software. Go ahead with step 2 (the Go boundary, standalone) on dqlite, since a single member is unaffected by every open problem here, with these as requirements of the control service from its first PR:
+dqlite's write path did everything the design asks of it once the service guards its connections and fences restores. Its read path cannot bound how long a revoked session stays acceptable on a paused old leader, and a paused leader can stall takeover far beyond the election timeout. Those are the two conditions for passing the gate. If a time-boxed investigation cannot fix both, rqlite run through this same harness is the comparison to make. Its lack of interactive transactions is the cost to weigh: every multi-row operation above would have to become a single conditional batch.
 
-1. Each transaction on its own connection, closed on any failed COMMIT or ROLLBACK (1). Short deadlines, and a timed-out connection dropped (5). `BEGIN IMMEDIATE` for writes, and a retry on `checkpoint in progress` (7).
-2. Peer TLS always on (2).
-3. Snapshot parameters set explicitly and memory budgeted as `trailing × largest routine transaction` (4); no batch-sized transactions.
-4. Election timeout well below the default (the tuned 300 ms gives a 600 ms revocation bound and sub-second failover), with the auth-check availability gap during elections stated in the failure contract (3).
-5. `toposcope restore` replays and then fences allocator and generations (8).
-
-Keep HA (step 5) gated on one more thing: the `bad record MAC` stalls (6) must be explained and fixed or worked around, and this harness must then pass, tuned, 50 pause trials in a row with no takeover over 10 s. If that cannot be done, the fallback in section 4 of the research (rqlite behind the same Go API) is the next thing to prove. The upstream reports to file are 1, 2 (client heartbeat), 5 and 6.
+Upstream reports to file: the failed-COMMIT connection reuse (1), `Commit` ignoring the caller's context (1), no client heartbeat or keepalive off the TLS path (5), the `bad record MAC` errors (5), and slow elections with a paused leader (5).

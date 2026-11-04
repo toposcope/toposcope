@@ -11,6 +11,9 @@ import (
 func criteria() []Check {
 	resMu.Lock()
 	var out []Check
+	if c, ok := results["checks_guard"].([]Check); ok {
+		out = append(out, c...)
+	}
 	if c, ok := results["checks_faults"].([]Check); ok {
 		out = append(out, c...)
 	}
@@ -40,6 +43,22 @@ func criteria() []Check {
 	if len(mem) > 0 {
 		out = append(out, memoryCheck(mem))
 	}
+	resMu.Lock()
+	bmem, _ := results["budget_memory"].([]MemRow)
+	budget, _ := results["budget"].(map[string]any)
+	resMu.Unlock()
+	if len(bmem) > 0 {
+		out = append(out, budgetCheck(bmem, budget))
+	}
+	if len(pauses) > 0 {
+		slow := 0
+		for _, p := range pauses {
+			if t, _ := p["takeover_ms"].(int64); t < 0 || t > 10000 {
+				slow++
+			}
+		}
+		out = append(out, Check{"every lease takeover within 10 s", slow == 0, fmt.Sprintf("%d of %d pauses took longer or had none", slow, len(pauses))})
+	}
 	out = append(out, bk...)
 	return out
 }
@@ -47,6 +66,45 @@ func criteria() []Check {
 // memoryCheck: bounded means RSS stops growing once the live set stops
 // growing. The live set is constant from the first tenth of the churn on,
 // so RSS at the end of the churn must be within 25% of RSS at 30%.
+// budgetCheck: the member fits the app container's limit with half of it
+// left for Bun, never OOM-killed, and RSS levels off across the cleanup
+// cycles (end within 25% of the value at a third of the way).
+func budgetCheck(rows []MemRow, b map[string]any) Check {
+	limit := int64(512 << 10) // KB
+	var peak int64
+	at := map[string]map[string]int64{}
+	for _, r := range rows {
+		if r.HWMKB > peak {
+			peak = r.HWMKB
+		}
+		if at[r.Stage] == nil {
+			at[r.Stage] = map[string]int64{}
+		}
+		at[r.Stage][r.Node] = r.RSSKB
+	}
+	rounds, _ := b["rounds"].(int)
+	early, late := fmt.Sprintf("runs %dk", (rounds/3)*5), fmt.Sprintf("runs %dk", rounds*5)
+	level := true
+	var parts []string
+	for _, n := range cluster {
+		e, l := at[early][n.Name], at[late][n.Name]
+		if e == 0 || float64(l) > 1.25*float64(e) {
+			level = false
+		}
+		parts = append(parts, fmt.Sprintf("%s %d -> %d MB", n.Name, e/1024, l/1024))
+	}
+	oom := false
+	if cs, ok := b["containers"].(map[string]any); ok {
+		for _, v := range cs {
+			if m, _ := v.(map[string]any); m["oom_killed"] == true || m["running"] != true {
+				oom = true
+			}
+		}
+	}
+	return Check{"fits the app container's budget (512 MB, 1 CPU)", !oom && peak <= limit/2 && level,
+		fmt.Sprintf("peak RSS %d MB of 512 (pass if at most half, leaving the rest for Bun); OOM or stopped: %v; RSS from %s to %s: %s", peak/1024, oom, early, late, strings.Join(parts, ", "))}
+}
+
 func memoryCheck(rows []MemRow) Check {
 	at := func(stage, node string) int64 {
 		for _, r := range rows {

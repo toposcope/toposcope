@@ -23,17 +23,22 @@ var cluster = []Node{
 	{"n2", "10.213.7.12", "dqproof-n2"},
 	{"n3", "10.213.7.13", "dqproof-n3"},
 }
+
+// The members a backup is restored onto: two take the addresses of lost
+// members n1 and n2, so an old member that comes back finds its old peers'
+// addresses answered by the restored installation.
 var fresh = []Node{
-	{"r1", "10.213.7.21", "dqproof-r1"},
-	{"r2", "10.213.7.22", "dqproof-r2"},
-	{"r3", "10.213.7.23", "dqproof-r3"},
+	{"f1", "10.213.7.11", "dqproof-f1"},
+	{"f2", "10.213.7.12", "dqproof-f2"},
+	{"f3", "10.213.7.23", "dqproof-f3"},
 }
 
 var (
 	electionMs   = envInt("ELECTION_MS", 3000)
 	label        = env("LABEL", "default")
 	phases       = env("PHASES", "faults,latency,memory,backup")
-	revTrials    = envInt("REV_TRIALS", 5)
+	revTrials    = envInt("REV_TRIALS", 3)
+	revModes     = env("REV_MODES", "partition,partition+cpu,pause+partition,asym-in,asym-out")
 	pauseTrials  = envInt("PAUSE_TRIALS", 3)
 	churnBatches = envInt("CHURN_BATCHES", 1000)
 	results      = map[string]any{}
@@ -146,6 +151,8 @@ type Status struct {
 	GoSys  int64             `json:"go_sys_kb"`
 	GoHeap int64             `json:"go_heap_kb"`
 	Stats  map[string]any    `json:"stats"`
+	Inc    string            `json:"incarnation"`
+	Fenced bool              `json:"fenced"`
 }
 
 func status(n Node) (Status, error) {
@@ -281,10 +288,17 @@ type Ack struct {
 	T  int64
 }
 
+type RBlock struct {
+	S, E int64
+	Inc  string
+	T    int64
+}
+
 type Workload struct {
 	mu       sync.Mutex
 	created  []Ack
 	revoked  []Ack
+	blocks   []RBlock
 	okTimes  []time.Time
 	failures int
 	stop     chan struct{}
@@ -316,6 +330,20 @@ func startWorkload(set []Node, prefix string) *Workload {
 				now := time.Now()
 				w.created = append(w.created, Ack{id, now.UnixMilli()})
 				w.okTimes = append(w.okTimes, now)
+				w.mu.Unlock()
+				// An arrival block, recorded here at the runner as well as
+				// by the member's own workers.
+				if r, err := ok(n, "POST", "/alloc", time.Second); err == nil {
+					var b struct {
+						S, E int64
+						Inc  string
+					}
+					_ = json.Unmarshal(r.V, &b)
+					w.mu.Lock()
+					w.blocks = append(w.blocks, RBlock{b.S, b.E, b.Inc, time.Now().UnixMilli()})
+					w.mu.Unlock()
+				}
+				w.mu.Lock()
 				var target string
 				if k%5 == 4 {
 					target = w.created[(k*7919)%len(w.created)].ID
@@ -378,10 +406,21 @@ func main() {
 	logf("cluster healthy in %s", d.Round(time.Millisecond))
 	l, _ := leader(cluster)
 	must(l, "POST", "/init?monitors=100", 30*time.Second)
+	inc0 := waitIncarnation(cluster, "", time.Minute)
+	logf("installation incarnation %s", inc0)
 	record("config", map[string]any{"label": label, "election_timeout_ms": electionMs, "heartbeat_ms": electionMs / 10, "dqlite": "v1.18.7", "go_dqlite": "v3.0.4", "lease_ttl_ms": 3000, "snapshot": env("SNAP", "dqlite default (threshold 1024, trailing 8192)"), "peer_tls": true})
 
+	if strings.Contains(phases, "guard") {
+		guardTest()
+	}
 	if strings.Contains(phases, "faults") {
 		faults()
+	}
+	if strings.Contains(phases, "pauses") {
+		pauses()
+	}
+	if strings.Contains(phases, "budget") {
+		memoryBudget()
 	}
 	if strings.Contains(phases, "latency") {
 		latency()
@@ -392,7 +431,31 @@ func main() {
 	if strings.Contains(phases, "backup") {
 		backupRestore()
 	}
+	record("tls_mac_errors", macErrors(cluster))
 	logf("done")
+}
+
+// waitIncarnation waits until every member has adopted the installation's
+// incarnation (or the given one) and returns it.
+func waitIncarnation(set []Node, want string, timeout time.Duration) string {
+	t := time.Now()
+	for time.Since(t) < timeout {
+		got, same := "", true
+		for _, n := range set {
+			s, err := status(n)
+			if err != nil || s.Inc == "" || (want != "" && s.Inc != want) || (got != "" && s.Inc != got) {
+				same = false
+				break
+			}
+			got = s.Inc
+		}
+		if same && got != "" {
+			return got
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	die("members of %v did not adopt incarnation %q", names(set), want)
+	return ""
 }
 
 func die(format string, a ...any) {

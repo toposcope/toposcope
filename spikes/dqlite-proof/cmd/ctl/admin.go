@@ -21,7 +21,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var tables = []string{"sessions", "tokens", "leases", "lease_claims", "monitors", "monitor_state", "runs", "results", "outbox", "history_export", "allocators", "link_positions"}
+var tables = []string{"cluster_meta", "sessions", "tokens", "leases", "lease_claims", "monitors", "monitor_state", "runs", "results", "outbox", "history_export", "allocators", "link_positions"}
 
 func pct(d []time.Duration) map[string]any {
 	if len(d) == 0 {
@@ -57,7 +57,7 @@ func (s *Server) bench(_ context.Context, st *Store, q map[string]string) (any, 
 		if _, err := st.db.ExecContext(ctx, `UPDATE leases SET owner = NULL WHERE name = ?`, name); err != nil {
 			return err
 		}
-		g, err := st.Claim(ctx, name, 3600_000)
+		g, err := st.Claim(ctx, s.localInc(), name, 3600_000)
 		gen = g
 		return err
 	}
@@ -120,17 +120,17 @@ func (s *Server) bench(_ context.Context, st *Store, q map[string]string) (any, 
 			_, _, err := st.CheckToken(ctx, fmt.Sprintf("bt-%d", i%100))
 			return err
 		case "lease_claim":
-			_, err := st.Claim(ctx, "bench:claim:"+s.node, -10)
+			_, err := st.Claim(ctx, s.localInc(), "bench:claim:"+s.node, -10)
 			return err
 		case "lease_renew":
-			return st.Renew(ctx, "bench:renew:"+s.node, gen, 3600_000)
+			return st.Renew(ctx, s.localInc(), "bench:renew:"+s.node, gen, 3600_000)
 		case "run_commit":
-			return st.CommitRun(ctx, "bench:sched:"+s.node, gen, int64(i%100+1), fmt.Sprintf("bench-%s-%d-%d", s.node, run, i), i%7 != 0)
+			return st.CommitRun(ctx, s.localInc(), "bench:sched:"+s.node, gen, int64(i%100+1), fmt.Sprintf("bench-%s-%d-%d", s.node, run, i), i%7 != 0)
 		case "block_alloc":
-			_, _, err := st.AllocBlock(ctx, 1000)
+			_, _, err := st.AllocBlock(ctx, s.localInc(), 1000)
 			return err
 		case "link_advance":
-			_, err := st.AdvanceLink(ctx, "bench:link:"+s.node, "bench:"+s.node, gen, 1)
+			_, err := st.AdvanceLink(ctx, s.localInc(), "bench:link:"+s.node, "bench:"+s.node, gen, 1)
 			return err
 		}
 		return nil
@@ -255,6 +255,40 @@ func (s *Server) expire(ctx context.Context, st *Store, q map[string]string) (an
 		return nil
 	})
 	return map[string]any{"deleted": deleted}, err
+}
+
+// expireChunk is a cleanup job of the kind the service would run: keep the
+// newest `keep` rows of each growing table, deleting the rest in chunks of
+// `chunk` rows, one short transaction each.
+func (s *Server) expireChunk(_ context.Context, st *Store, q map[string]string) (any, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	keep, chunk := atoi(q["keep"], 20000), atoi(q["chunk"], 500)
+	deleted := map[string]int64{}
+	txs := 0
+	for _, t := range []string{"outbox", "history_export", "results", "runs"} {
+		for {
+			var n int64
+			if err := st.db.QueryRowContext(ctx, "SELECT count(*) FROM "+t).Scan(&n); err != nil {
+				return nil, err
+			}
+			if n <= keep {
+				break
+			}
+			k := n - keep
+			if k > chunk {
+				k = chunk
+			}
+			res, err := st.db.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s WHERE rowid IN (SELECT rowid FROM %s ORDER BY rowid LIMIT ?)", t, t), k)
+			if err != nil {
+				return nil, err
+			}
+			d, _ := res.RowsAffected()
+			deleted[t] += d
+			txs++
+		}
+	}
+	return map[string]any{"deleted": deleted, "transactions": txs}, nil
 }
 
 func procMem() (rss, hwm int64) {
@@ -430,7 +464,6 @@ func (s *Server) restore(_ context.Context, st *Store, q map[string]string) (any
 	if dir == "" {
 		dir = "/out/backup"
 	}
-	bump := atoi(q["bump"], 0)
 	t := time.Now()
 	src, err := openDump(dir)
 	if err != nil {
@@ -455,6 +488,11 @@ func (s *Server) restore(_ context.Context, st *Store, q map[string]string) (any
 	for _, x := range tbls {
 		if _, err := st.db.ExecContext(ctx, x.sql); err != nil {
 			return nil, fmt.Errorf("create %s: %w", x.name, err)
+		}
+		if x.name == "cluster_meta" {
+			// Written last, with a new incarnation: members adopt the
+			// first incarnation they see, so the old one must never show.
+			continue
 		}
 		r, err := src.QueryContext(ctx, "SELECT * FROM "+x.name)
 		if err != nil {
@@ -507,17 +545,21 @@ func (s *Server) restore(_ context.Context, st *Store, q map[string]string) (any
 	if err != nil {
 		return nil, err
 	}
-	if bump > 0 {
-		err = st.tx(ctx, func(tx *sql.Tx) error {
-			if _, err := tx.ExecContext(ctx, `UPDATE allocators SET next = next + ?, epoch = epoch + 1`, bump); err != nil {
-				return err
-			}
-			_, err := tx.ExecContext(ctx, `UPDATE leases SET gen = gen + 1000000, owner = NULL, expires_at = 0`)
+	// What a restore cannot know is what the lost installation handed out
+	// after the dump. A fresh incarnation puts everything handed out from
+	// here on in a new namespace (positions, generations and run ids carry
+	// it), and nothing that still holds the old one can write.
+	from, inc := "", newIncarnation()
+	_ = src.QueryRowContext(ctx, `SELECT value FROM cluster_meta WHERE key = 'incarnation'`).Scan(&from)
+	err = st.tx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `UPDATE leases SET owner = NULL, expires_at = 0`); err != nil {
 			return err
-		})
-		if err != nil {
-			return nil, err
 		}
+		_, err := tx.ExecContext(ctx, `INSERT INTO cluster_meta (key, value) VALUES ('incarnation', ?)`, inc)
+		return err
+	})
+	if err != nil {
+		return nil, err
 	}
-	return map[string]any{"replay_ms": replayMs, "rows": copied, "checksums": sums}, nil
+	return map[string]any{"replay_ms": replayMs, "rows": copied, "checksums": sums, "from_incarnation": from, "incarnation": inc}, nil
 }

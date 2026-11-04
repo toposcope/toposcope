@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,9 +40,11 @@ func faults() {
 
 	// 2-1 partitions isolating the leader: the revocation race.
 	var trials []RevTrial
-	for i := 0; i < revTrials; i++ {
-		trials = append(trials, revocationTrial(i, w)...)
-		time.Sleep(2 * time.Second)
+	for _, mode := range strings.Split(revModes, ",") {
+		for i := 0; i < revTrials; i++ {
+			trials = append(trials, revocationTrial(i, mode, w)...)
+			time.Sleep(2 * time.Second)
+		}
 	}
 	record("revocation_trials", trials)
 
@@ -116,6 +120,7 @@ type Obs struct {
 }
 
 type RevTrial struct {
+	Mode                  string `json:"mode"`
 	Trial                 int    `json:"trial"`
 	Kind                  string `json:"kind"`
 	OldLeader             string `json:"old_leader"`
@@ -125,6 +130,7 @@ type RevTrial struct {
 	OldLeaderLastAnswerMs int64  `json:"old_leader_last_answer_ms"`
 	OldLeaderFirstFailMs  int64  `json:"old_leader_first_fail_ms"`
 	StaleWindowMs         int64  `json:"stale_window_ms"`
+	StaleAfterAckMs       int64  `json:"stale_after_ack_ms"`
 	ProvenStaleReads      int    `json:"proven_stale_reads"`
 	ReadsOnOldLeader      int    `json:"reads_on_old_leader"`
 	MajorityStaleReads    int    `json:"majority_stale_reads"`
@@ -185,7 +191,7 @@ func retryUntil(set []Node, method, path string, deadline time.Duration) (sent, 
 
 // revocationTrial isolates the leader, revokes a session and a token on the
 // majority, and keeps asking the old leader whether they are still valid.
-func revocationTrial(i int, w *Workload) []RevTrial {
+func revocationTrial(i int, mode string, w *Workload) []RevTrial {
 	L, err := leader(cluster)
 	if err != nil {
 		die("%v", err)
@@ -217,8 +223,30 @@ func revocationTrial(i int, w *Workload) []RevTrial {
 	}
 	time.Sleep(300 * time.Millisecond)
 	t0 := time.Now()
-	if err := partition(L, peers); err != nil {
-		die("partition: %v", err)
+	var err2 error
+	switch mode {
+	case "partition":
+		err2 = partition(L, peers)
+	case "partition+cpu":
+		// The old leader gets 5% of a CPU: its ticks, and so its step-down, run late.
+		if err2 = throttle(L, 50_000_000); err2 == nil {
+			err2 = partition(L, peers)
+		}
+	case "pause+partition":
+		// Stopped and cut off; it is let go, still cut off, once the
+		// majority has acknowledged the revocation.
+		if err2 = pause(L); err2 == nil {
+			err2 = partition(L, peers)
+		}
+	case "asym-in":
+		err2 = oneWay(L, peers, "in")
+	case "asym-out":
+		err2 = oneWay(L, peers, "out")
+	default:
+		die("unknown revocation mode %q", mode)
+	}
+	if err2 != nil {
+		die("%s: %v", mode, err2)
 	}
 	var rwg sync.WaitGroup
 	for _, k := range kinds {
@@ -233,6 +261,10 @@ func revocationTrial(i int, w *Workload) []RevTrial {
 		}(k)
 	}
 	rwg.Wait()
+	if mode == "pause+partition" {
+		time.Sleep(100 * time.Millisecond)
+		_ = resume(L)
+	}
 	// The majority must answer revoked from the moment of the ack.
 	majorityStale := map[string]int{}
 	for _, k := range kinds {
@@ -248,11 +280,17 @@ func revocationTrial(i int, w *Workload) []RevTrial {
 	if err := heal(L); err != nil {
 		die("heal: %v", err)
 	}
+	if mode == "partition+cpu" {
+		// NanoCpus 0 means "unchanged" to the update API: give back the whole host.
+		if err := throttle(L, int64(runtime.NumCPU())*1_000_000_000); err != nil {
+			die("unthrottle: %v", err)
+		}
+	}
 	waitHealthy(cluster, 2*time.Minute)
 
 	var out []RevTrial
 	for _, k := range kinds {
-		t := RevTrial{Trial: i, Kind: k.name, OldLeader: L.Name,
+		t := RevTrial{Mode: mode, Trial: i, Kind: k.name, OldLeader: L.Name,
 			RevokeSentMs: k.sent.Sub(t0).Milliseconds(), RevokeAckMs: k.acked.Sub(t0).Milliseconds(),
 			OldLeaderLastValidMs: -1, OldLeaderLastAnswerMs: -1, OldLeaderFirstFailMs: -1,
 			MajorityStaleReads: majorityStale[k.name]}
@@ -269,6 +307,9 @@ func revocationTrial(i int, w *Workload) []RevTrial {
 					lastValid = o.Recv
 					if o.Send.After(k.acked) {
 						t.ProvenStaleReads++
+						if d := o.Recv.Sub(k.acked).Milliseconds(); d > t.StaleAfterAckMs {
+							t.StaleAfterAckMs = d
+						}
 					}
 				}
 			} else if t.OldLeaderFirstFailMs < 0 {
@@ -375,9 +416,11 @@ func nodeStat(n Node, key string) int64 {
 	return -1
 }
 
-// pauseTrial SIGSTOPs the scheduler owner, waits for another member to take
-// the lease over, then SIGCONTs it and counts the writes its old generation
-// tried and had refused.
+// pauseTrial SIGSTOPs the scheduler owner and waits for another member to
+// take the lease over. It sends SIGCONT after the takeover, or after 20 s
+// without one, and then counts the writes its old generation tried and had
+// refused. While the owner is stopped it probes a write through each other
+// member, to see what is holding things up when no takeover comes.
 func pauseTrial(w *Workload) map[string]any {
 	owner, g0, found := leaseRow(cluster, "scheduler")
 	if !found || owner == "" {
@@ -399,26 +442,49 @@ func pauseTrial(w *Workload) map[string]any {
 	var takeover time.Duration
 	var newOwner string
 	var g1 int64
-	for time.Since(t0) < 90*time.Second {
+	probes := map[string]string{}
+	probed := false
+	resumed := time.Time{}
+	for time.Since(t0) < 80*time.Second {
 		if o, g, f := leaseRow(others(O, cluster), "scheduler"); f && g > g0 && o != O.Name {
 			takeover, newOwner, g1 = time.Since(t0), o, g
 			break
 		}
+		if !probed && time.Since(t0) > 8*time.Second {
+			probed = true
+			for _, n := range others(O, cluster) {
+				_, err := ok(n, "POST", fmt.Sprintf("/hw?id=probe-%s-%d", n.Name, time.Now().UnixNano()), 2*time.Second)
+				probes[n.Name] = fmt.Sprint(err)
+			}
+		}
+		if resumed.IsZero() && time.Since(t0) > 20*time.Second {
+			resumed = time.Now()
+			_ = resume(O)
+		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	if takeover == 0 {
-		die("no takeover of the scheduler lease")
-	}
-	time.Sleep(time.Second)
-	if err := resume(O); err != nil {
-		die("resume: %v", err)
+	if resumed.IsZero() {
+		time.Sleep(time.Second)
+		resumed = time.Now()
+		if err := resume(O); err != nil {
+			die("resume: %v", err)
+		}
 	}
 	time.Sleep(5 * time.Second)
 	after := nodeStat(O, "stale_refused")
 	lostAfter := nodeStat(O, "leases_lost")
 	gap := w.gap(t0, time.Now())
 	h := waitHealthy(cluster, 2*time.Minute)
-	return map[string]any{"fault": "SIGSTOP scheduler owner, SIGCONT after takeover", "node": O.Name, "was_dqlite_leader": O == L,
+	out := map[string]any{"fault": "SIGSTOP scheduler owner, SIGCONT after takeover (or after 20 s)", "node": O.Name, "was_dqlite_leader": O == L,
 		"old_gen": g0, "new_gen": g1, "new_owner": newOwner, "takeover_ms": takeover.Milliseconds(),
-		"stale_writes_refused_after_resume": after - before, "leases_given_up_after_resume": lostAfter - lostBefore, "write_gap_ms": gap.Milliseconds(), "healthy_ms": h.Milliseconds()}
+		"took_over_while_paused":            takeover > 0 && t0.Add(takeover).Before(resumed),
+		"stale_writes_refused_after_resume": after - before, "leases_given_up_after_resume": lostAfter - lostBefore,
+		"write_gap_ms": gap.Milliseconds(), "healthy_ms": h.Milliseconds()}
+	if takeover == 0 {
+		out["takeover_ms"] = int64(-1)
+	}
+	if len(probes) > 0 {
+		out["writes_probed_at_8s"] = probes
+	}
+	return out
 }

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -110,3 +111,92 @@ func heal(n Node) error { return sh(n, "iptables -F INPUT && iptables -F OUTPUT"
 
 func pause(n Node) error  { return sh(n, "kill -STOP $(pidof ctl)") }
 func resume(n Node) error { return sh(n, "kill -CONT $(pidof ctl)") }
+
+// throttle limits a member's CPU (nanocpus; 0 removes the limit).
+func throttle(n Node, nanoCPUs int64) error {
+	b, code, err := dockerDo("POST", "/containers/"+n.Container+"/update", map[string]any{"NanoCpus": nanoCPUs})
+	if err != nil {
+		return err
+	}
+	if code >= 300 {
+		return fmt.Errorf("update %s: %d %s", n.Name, code, b)
+	}
+	return nil
+}
+
+// oneWay drops only what n receives from (in) or sends to (out) its peers.
+func oneWay(n Node, peers []Node, dir string) error {
+	script := ""
+	for _, p := range peers {
+		if dir == "in" {
+			script += fmt.Sprintf("iptables -A INPUT -s %s -j DROP && ", p.IP)
+		} else {
+			script += fmt.Sprintf("iptables -A OUTPUT -d %s -j DROP && ", p.IP)
+		}
+	}
+	return sh(n, script+"true")
+}
+
+var hostOut = os.Getenv("HOST_OUT")
+
+// dcreate creates and starts a member outside Compose, with a fresh data
+// volume, on the given address.
+func dcreate(n Node, join string) error {
+	envs := []string{"NODE=" + n.Name, "ADDR=" + n.IP + ":9001", "LATENCY_MS=" + os.Getenv("LATENCY_MS"),
+		"SNAP_THRESHOLD=" + os.Getenv("SNAP_THRESHOLD"), "SNAP_TRAILING=" + os.Getenv("SNAP_TRAILING"), "TLS=" + os.Getenv("TLS")}
+	if join != "" {
+		envs = append(envs, "JOIN="+join)
+	}
+	body := map[string]any{
+		"Image": "dqproof-ctl:local", "Env": envs,
+		"HostConfig": map[string]any{
+			"Init": true, "CapAdd": []string{"NET_ADMIN"}, "Binds": []string{hostOut + ":/out"},
+			"Mounts": []map[string]any{{"Type": "volume", "Target": "/data"}}, "Memory": int64(4) << 30,
+			"NetworkMode": "dqproof_net",
+		},
+		"NetworkingConfig": map[string]any{"EndpointsConfig": map[string]any{"dqproof_net": map[string]any{"IPAMConfig": map[string]any{"IPv4Address": n.IP}}}},
+	}
+	b, code, err := dockerDo("POST", "/containers/create?name="+n.Container, body)
+	if err != nil {
+		return err
+	}
+	if code != 201 {
+		return fmt.Errorf("create %s: %d %s", n.Name, code, b)
+	}
+	return dstart(n)
+}
+
+func dremove(n Node) {
+	_, _, _ = dockerDo("DELETE", "/containers/"+n.Container+"?force=true&v=true", nil)
+}
+
+func limit(n Node, memBytes, nanoCPUs int64) error {
+	b, code, err := dockerDo("POST", "/containers/"+n.Container+"/update", map[string]any{"Memory": memBytes, "MemorySwap": memBytes, "NanoCpus": nanoCPUs})
+	if err != nil {
+		return err
+	}
+	if code >= 300 {
+		return fmt.Errorf("update %s: %d %s", n.Name, code, b)
+	}
+	return nil
+}
+
+func inspect(n Node) map[string]any {
+	b, _, _ := dockerDo("GET", "/containers/"+n.Container+"/json", nil)
+	var m map[string]any
+	_ = json.Unmarshal(b, &m)
+	st, _ := m["State"].(map[string]any)
+	return map[string]any{"oom_killed": st["OOMKilled"], "running": st["Running"], "restart_count": m["RestartCount"]}
+}
+
+// macErrors counts "bad record MAC" in each member's log.
+func macErrors(set []Node) map[string]int {
+	out := map[string]int{}
+	for _, n := range set {
+		b, _, err := dockerDo("GET", "/containers/"+n.Container+"/logs?stdout=1&stderr=1", nil)
+		if err == nil {
+			out[n.Name] = bytes.Count(b, []byte("bad record MAC"))
+		}
+	}
+	return out
+}

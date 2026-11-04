@@ -66,6 +66,10 @@ type Workers struct {
 	stats    *Stats
 	on       atomic.Bool
 	monitors int64
+	// inc is the incarnation this member belongs to (its own record, not
+	// what the database says). Workers write with it even when the member
+	// is fenced, so the database's conditional write is what refuses them.
+	inc func() string
 }
 
 const leaseTTL = 3000 // ms
@@ -80,17 +84,18 @@ func opCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 2*time.Second)
 }
 
-func (w *Workers) leaseLoop(name string, tick time.Duration, work func(gen int64, seq int64) error) {
+func (w *Workers) leaseLoop(name string, tick time.Duration, work func(inc string, gen int64, seq int64) error) {
 	var gen, seq int64
 	for {
 		time.Sleep(tick)
-		if !w.on.Load() {
+		inc := w.inc()
+		if !w.on.Load() || inc == "" {
 			gen = 0
 			continue
 		}
 		if gen > 0 {
 			seq++
-			err := work(gen, seq)
+			err := work(inc, gen, seq)
 			if errors.Is(err, errStale) {
 				w.stats.StaleRefused.Add(1)
 				w.stats.LeasesLost.Add(1)
@@ -98,7 +103,7 @@ func (w *Workers) leaseLoop(name string, tick time.Duration, work func(gen int64
 				continue
 			}
 			ctx, cancel := opCtx()
-			err = w.s.Renew(ctx, name, gen, leaseTTL)
+			err = w.s.Renew(ctx, inc, name, gen, leaseTTL)
 			cancel()
 			switch {
 			case err == nil:
@@ -113,13 +118,13 @@ func (w *Workers) leaseLoop(name string, tick time.Duration, work func(gen int64
 			continue
 		}
 		ctx, cancel := opCtx()
-		g, err := w.s.Claim(ctx, name, leaseTTL)
+		g, err := w.s.Claim(ctx, inc, name, leaseTTL)
 		cancel()
 		switch {
 		case err == nil:
 			gen = g
 			w.stats.Claims.OK.Add(1)
-			w.acks.Write(map[string]any{"k": "claim", "name": name, "gen": g, "node": w.s.node})
+			w.acks.Write(map[string]any{"k": "claim", "name": name, "gen": g, "node": w.s.node, "inc": inc})
 		case errors.Is(err, errHeld):
 		default:
 			w.stats.Claims.Err.Add(1)
@@ -127,16 +132,16 @@ func (w *Workers) leaseLoop(name string, tick time.Duration, work func(gen int64
 	}
 }
 
-func (w *Workers) runOnce(gen, seq int64) error {
+func (w *Workers) runOnce(inc string, gen, seq int64) error {
 	monitor := seq%w.monitors + 1
-	runID := fmt.Sprintf("%s-g%d-%d", w.s.node, gen, seq)
+	runID := fmt.Sprintf("%s-%s-g%d-%d", inc[:8], w.s.node, gen, seq)
 	ctx, cancel := opCtx()
 	defer cancel()
-	err := w.s.CommitRun(ctx, "scheduler", gen, monitor, runID, seq%7 != 0)
+	err := w.s.CommitRun(ctx, inc, "scheduler", gen, monitor, runID, seq%7 != 0)
 	switch {
 	case err == nil:
 		w.stats.Runs.OK.Add(1)
-		w.acks.Write(map[string]any{"k": "run", "id": runID, "gen": gen, "m": monitor, "node": w.s.node})
+		w.acks.Write(map[string]any{"k": "run", "id": runID, "gen": gen, "m": monitor, "node": w.s.node, "inc": inc})
 	case errors.Is(err, errStale):
 		w.stats.Runs.Stale.Add(1)
 	default:
@@ -145,14 +150,14 @@ func (w *Workers) runOnce(gen, seq int64) error {
 	return err
 }
 
-func (w *Workers) linkOnce(gen, seq int64) error {
+func (w *Workers) linkOnce(inc string, gen, seq int64) error {
 	ctx, cancel := opCtx()
 	defer cancel()
-	pos, err := w.s.AdvanceLink(ctx, "link:peer-a", "peer-a", gen, 100)
+	pos, err := w.s.AdvanceLink(ctx, inc, "link:peer-a", "peer-a", gen, 100)
 	switch {
 	case err == nil:
 		w.stats.Links.OK.Add(1)
-		w.acks.Write(map[string]any{"k": "link", "pos": pos, "gen": gen, "node": w.s.node})
+		w.acks.Write(map[string]any{"k": "link", "pos": pos, "gen": gen, "node": w.s.node, "inc": inc})
 	case errors.Is(err, errStale):
 		w.stats.Links.Stale.Add(1)
 	default:
@@ -164,17 +169,23 @@ func (w *Workers) linkOnce(gen, seq int64) error {
 func (w *Workers) allocLoop(tick time.Duration) {
 	for {
 		time.Sleep(tick)
-		if !w.on.Load() {
+		inc := w.inc()
+		if !w.on.Load() || inc == "" {
 			continue
 		}
 		ctx, cancel := opCtx()
-		s, e, err := w.s.AllocBlock(ctx, 1000)
+		s, e, err := w.s.AllocBlock(ctx, inc, 1000)
 		cancel()
+		if errors.Is(err, errStale) {
+			w.stats.Blocks.Stale.Add(1)
+			w.stats.StaleRefused.Add(1)
+			continue
+		}
 		if err != nil {
 			w.stats.Blocks.Err.Add(1)
 			continue
 		}
 		w.stats.Blocks.OK.Add(1)
-		w.acks.Write(map[string]any{"k": "block", "s": s, "e": e, "node": w.s.node})
+		w.acks.Write(map[string]any{"k": "block", "s": s, "e": e, "node": w.s.node, "inc": inc})
 	}
 }

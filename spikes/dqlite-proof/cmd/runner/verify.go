@@ -24,6 +24,7 @@ type NAck struct {
 	ID   string `json:"id"`
 	M    int64  `json:"m"`
 	Pos  int64  `json:"pos"`
+	Inc  string `json:"inc"`
 	S    int64  `json:"s"`
 	E    int64  `json:"e"`
 	T    int64  `json:"t"`
@@ -179,6 +180,12 @@ func verify(w *Workload) {
 
 	// Positions.
 	blocks := blocksOf(acks)
+	w.mu.Lock()
+	runnerBlocks := len(w.blocks)
+	for _, b := range w.blocks {
+		blocks = append(blocks, block{b.S, b.E, "runner"})
+	}
+	w.mu.Unlock()
 	ov := overlaps(blocks)
 	next := num(q(L, "SELECT next AS c FROM allocators WHERE name = 'arrival'")[0]["c"])
 	beyond := 0
@@ -200,8 +207,8 @@ func verify(w *Workload) {
 		linkBeyond = 1
 	}
 	add("no reused positions", ov == 0 && beyond == 0 && dupPos == 0 && linkBeyond == 0,
-		"%d acknowledged arrival blocks of 1000: %d overlapping, %d past the allocator (next %d); %d link advances: %d repeated, final position %d",
-		len(blocks), ov, beyond, next, len(linkPos), dupPos, finalLink)
+		"%d acknowledged arrival blocks of 1000 (%d recorded at the runner, the rest by members): %d overlapping, %d past the allocator (next %d); %d link advances: %d repeated, final position %d",
+		len(blocks), runnerBlocks, ov, beyond, next, len(linkPos), dupPos, finalLink)
 
 	// Acknowledged writes all present.
 	sess := map[string]bool{}
