@@ -1,0 +1,231 @@
+# HA research
+
+Research for the [One node](../ROADMAP.md#one-node) rule, written against 0.15.1 (`b5915bc`). Nothing here is locked. It sets out what a lost node costs today, what has to change for Toposcope to survive one, three whole designs, and a recommendation with the choices that lock it.
+
+The constraints that bind: self-host only, no hosted control plane; no Helm, k8s, or S3 / cold volume ([Will not](../ROADMAP.md#will-not)); Vector is the collector and there is no Toposcope ingest daemon; much lighter than Graylog or OpenSearch.
+
+## In short
+
+- Toposcope is built as **one writer**. The arrival counter that orders rows for links, the monitor pass, HTTP checks, link pulls and the dedupe of pulled rows are each guarded by a variable in one process. Two app processes on one store would page twice, probe twice, store pulled rows twice and hand out the same arrival positions to different rows. So every design below keeps **one active app at a time**. Active/active is a rewrite, not a step.
+- Links already copy every kind from one instance to another every 5 seconds, never store a row twice, and resume after a restart. A second instance that links everything from the first is **already a warm copy of the telemetry**. What it lacks is the control plane (people, hunts, boards, monitors, tokens, links, shares) and a way to take over.
+- Recommendation: **design A, a warm standby made from a link**: two nodes, the same two containers on each, about 7 PRs, minutes to recover, seconds of telemetry lost. Replicated ClickHouse (designs B and C) needs a third node for ClickHouse Keeper on any layout, and C also needs a new store for the control plane.
+
+## 1. What lives where, and what a dead box costs today
+
+### ClickHouse (`ch_data`)
+
+Every table is a plain `MergeTree` or one of its single-node siblings. There is no `Replicated*` engine, no `ON CLUSTER` and no Keeper anywhere in the repository.
+
+| Table | Engine | Notes |
+| --- | --- | --- |
+| `logs` | MergeTree, by day | `seq`, `src_id`, `src_seq` for links (`src/shared/migrate.ts:176`) |
+| `logs_by_minute`, `logs_attr_keys_by_minute`, `logs_attr_values_by_minute`, `logs_attr_numeric_by_minute` | AggregatingMergeTree, fed by MVs from `logs` | dropped and made again on each boot when their key differs; empty days backfilled at boot (`migrate.ts:490–664, 925–1070`) |
+| `metrics`, `metric_buckets` and their `_by_minute` rollups | MergeTree / AggregatingMergeTree | metrics retention (`migrate.ts:666–762`) |
+| `spans`, `profile_samples`, `change_marks` | MergeTree | `migrate.ts:825–887` |
+| `monitor_results` | MergeTree | every result of every monitor (`migrate.ts:394`) |
+| `arrival_seq` | MergeTree, no TTL | the block of arrival positions reserved ahead (`migrate.ts:359`) |
+| `field_role_skip` | ReplacingMergeTree | truncated and refilled at boot (`migrate.ts:450–471`) |
+
+Each app boot runs the whole migration (`src/index.ts:698`); there is no schema version table. Retention is TTL only, set at boot and on save (`migrate.ts:141`).
+
+### SQLite (`app_data`, `/data/toposcope.sqlite`)
+
+One file, WAL, opened once per process (`src/control/index.ts:21–45`), no `busy_timeout`. About 425 synchronous `bun:sqlite` calls across 41 files.
+
+| What | Tables |
+| --- | --- |
+| People and sign-in | `people` (password hash, sealed TOTP seed), `sessions`, `person_tokens`, `invites`, `owner_links`, `remembered_browsers`, `oidc_states` |
+| Machines | `api_tokens` (hashed ingest tokens) |
+| Hunts and boards | `saved_searches`, `person_pins` |
+| Monitors | `alert_rules` (state on the rule), `monitor_stretches`, `monitor_calls`, `monitor_http`, `monitor_net` (`next_run_at`, `fails_in_row`), `alert_sent_fingerprints` |
+| Links | `link_keys`, `links` (the pull position and the peer's secret), `feeds`, `pulled_monitors`, `link_volume` |
+| Shares, fields, code | `shares`, `field_roles`, `field_links`, `coverage_accepted*`, `repositories`, `github_connection` (GitHub's token) |
+| `settings` | `instance_id` (also names the session cookie), `instance_name`, `session_secret` (signs cookies, seals TOTP and the OIDC secret unless `TOPOSCOPE_SESSION_SECRET` is set), retention, default webhook, the release check |
+
+Also in `app_data`: `/data/upgrade/` (the request and status files for upgrading from the footer, `src/control/upgrader.ts`). `.env` lives on the host, outside both volumes and outside the backup.
+
+### In the process only
+
+The arrival counter (`src/ingest/arrival-seq.ts:27–31`), the syslog UDP queue (10,000 rows), the half-assembled Prometheus histograms (30 s), the sign-in throttle, share rate limits and use tallies, the GitHub device code, and the "pass still running" flags of every loop. No ingest batching: a sender gets its 2xx only once ClickHouse has answered the insert (`src/ingest/index.ts:146–157`). Live is polled; there are no sockets to move.
+
+### When the box dies
+
+- Everything stops: search, boards, monitors, links served from here, shares embedded elsewhere, MCP. The watchdog's check-ins stop, so the outside service pages; that is the only page.
+- Senders: Vector's packaged disk buffer (256 MB per sink, `when_full: block`, `vector.yaml:97–119`) holds and retries; OTLP SDKs and collectors retry for their own limit (the Collector's default is 5 minutes, then the batch is dropped [6]); syslog over UDP is lost.
+- Getting back means a new box, and the last backup. `upgrade.sh backup` is a cold tar of both volumes with the stack stopped (`upgrade.sh:203–243`), kept on the same host, last 2 only. Unless the operator copies backups elsewhere, a dead disk loses everything; with copies, everything since the last one.
+- Links: an edge's own store is the buffer, so a centre that comes back from a backup re-pulls from its stored position. A centre lost without backup must be linked again, and reads every source from its start.
+
+## 2. What must run once, and what two app processes would do
+
+Nothing coordinates across processes. Every guard is a module variable or a `Map`.
+
+| Work | Period | Guard today | Two processes |
+| --- | --- | --- | --- |
+| Monitor pass (`src/alerts/cron.ts:130–171`) | 60 s | `passRunning` flag | Both evaluate. A stretch is read, then begun, outside one transaction (`monitor.ts:268–286`), so both can open one. Every open, reminder and resolved call is sent twice: the send is not claimed first (`monitor.ts:177–265`, one attempt in `delivery.ts:113–131`). New-fingerprint calls the same (`first-seen.ts:207–251`). |
+| HTTP, TCP, cert checks (`http-cron.ts:25–103`) | 1 s tick, each monitor 30 s–1 h | in-process `running` set | `next_run_at` is moved with a plain `UPDATE` (`http-store.ts:126`), so both probe the same target, race on `fails_in_row` and write two results. |
+| Push lateness (`push.ts:123–147`) | in the pass | none | both can open the missed stretch |
+| Watchdog (`watchdog.ts:62–86`) | end of each pass | none | two check-ins a minute: a dead process hides behind a live one |
+| Link pull (`src/links/puller.ts:208–251`) | 5 s | `running` flag; `onePulledAtATime` (`src/ingest/pulled.ts:17`) | Dedupe is read-then-insert (`pulled.ts:55–75`, `src/feed/wire.ts:143–149`), serialised only in one process, so both store the row. `links.position` is written last-writer-wins (`src/links/store.ts:171`) and can move back. |
+| Arrival positions (`arrival-seq.ts`) | each insert | module counter, blocks of 100,000 | Both start from the same top and hand out the same numbers to different rows. Downstream, `(src_id, src_seq)` then collides and the second row is dropped as already held. `arrivalSeqSettled()` counts only its own process, so a feed can move past rows the other is still writing and a puller skips them for good. |
+| Boot migration | each start | none | Two boots can both backfill one missing day into a rollup (doubled counts), both rebuild an MV (rows in between miss the rollup), and one truncates `field_role_skip` under the other. |
+| Retention | boot, on save | none | converges; one may kill the other's TTL mutation |
+| Release check (`release-check.ts:206`) | daily | none | two calls a day; harmless |
+| Share and access tallies | 60 s | none | one row per process; harmless, but share rate limits are per process |
+| Prometheus buckets | 5 s | none | a histogram split across processes is stored in two halves |
+
+So any design must have **exactly one process** doing the monitor pass, checks, watchdog, link pulls, arrival positions and boot migration, and should send ingest to that same process. Making them safe under two writers is possible (claim rows with `UPDATE … WHERE next_run_at = ?`, positions from a shared counter, dedupe in ClickHouse), but it is a pass through most of `src/alerts`, `src/links` and `src/ingest`, and it buys little while ingest is a small share of the app's 30 MiB and 1 CPU.
+
+## 3. Options by layer
+
+### ClickHouse
+
+**a. A second instance that links everything.** Already shipped. The standby's ClickHouse is its own, with no cluster config. Lag is one pull, 5 s, plus the source's settle. Every kind travels, and a row is never stored twice. Costs: the source keeps a `by_seq_full` projection per kind (about 90 % more disk on `spans`, 130 % on `metrics`, per [operations](operations.md#upgrading-from-09)); a pulled row takes a new position at the standby, so positions differ on the two sides (see Design A, *Taking over*).
+
+**b. ReplicatedMergeTree with ClickHouse Keeper.** ClickHouse's own answer. Replication is per table, "asynchronous and multi-master" [1]; Keeper holds the replicas' metadata and uses Raft, so it needs a majority: 3 Keeper nodes survive 1 lost [2]. It can run inside `clickhouse-server` or on its own [2]. With Keeper gone, replicated tables refuse writes [1]. `insert_quorum` makes an insert wait for N replicas, and fails when fewer are up [7], so with two data replicas a quorum of 2 stops ingest when one dies; no data loss needs three replicas and a quorum of 2. Inserted blocks are deduplicated [1, 8], but Toposcope stamps a fresh arrival position on each try, so a retried request is never the same block. Existing tables can be turned replicated in place (`convert_to_replicated` flag file, or `ATTACH TABLE … AS REPLICATED`) [1]. Every DDL then has to reach every replica (`ON CLUSTER`, or a `Replicated` database, which replicates the DDL through Keeper [9]), which the boot migration does not do.
+
+**c. A cold standby restored from backup.** `BACKUP … TO Disk/File` is a query on the running server and made incremental with `base_backup` [3], so a host job can ship a backup to a second box every hour or so and restore there on loss. No new runtime parts, but the loss window is the interval, and a restore of a large store takes as long as copying it.
+
+ClickHouse Cloud's SharedMergeTree is not self-hosted and is out.
+
+### SQLite (the control plane)
+
+**a. A snapshot over the standby link.** `VACUUM INTO` a temporary file every minute, offered on one more `/link/v1/` route to the standby, which keeps the last few. No new container, no new dependency; loss window is the interval. It carries everything secret the instance holds (sealed TOTP seeds, the session secret, token hashes, GitHub's token, link secrets), so a key that takes it is a different, much stronger key than a link key today.
+
+**b. Litestream.** A sidecar that streams the WAL to a replica every second by default [4, 5]; 0.5 added point-in-time restore [10]. Replicas: S3 and compatible, GCS, Azure, OSS, NATS, SFTP, WebDAV or a local path [5]. SFTP to the standby node keeps it off object storage. It is a third container, it is a backup to restore from, not a hot replica, and 0.5 cannot read 0.3's files [10].
+
+**c. LiteFS.** Replicated SQLite through a FUSE mount with a primary. LiteFS Cloud was sunset in 2025 and Fly support is thin [11]; it needs FUSE privileges in the container. Not a good base for a self-hosted product.
+
+**d. rqlite.** SQLite under Raft, 3 nodes; reached through an HTTP API, not the file [12]. Every one of the ~425 synchronous SQLite calls would become an async HTTP call, explicit `BEGIN`/`COMMIT` is not supported [12], and it is a third container on every node.
+
+**e. Move the control plane into ClickHouse or Postgres.** ClickHouse has no transactions and no cheap row updates; monitors, sessions and link positions are read-modify-write rows, so it is a poor fit. Postgres fits the data, but HA Postgres means Patroni and etcd or similar, which is the Graylog weight this product avoids, and it is the same ~425-call rewrite.
+
+### The app
+
+**Active/passive.** One app serves; the other runs no loops and takes no writes until it takes over. What decides who is active:
+
+- *The operator* (`upgrade.sh promote` on the standby). No split brain unless the operator makes one; the old primary must be kept from coming back as primary (*fencing*, below).
+- *A lease in Keeper*, for designs with Keeper. ClickHouse's `KeeperMap` table is a key-value table in Keeper with linearizable writes and, in strict mode, atomic read-and-update [13]: a row `leader → (node, until)` taken and renewed with one `ALTER … UPDATE … WHERE` might serve as a lease. The docs do not present it as a lock, so it needs a spike before it is a plan. Every loop, the migration and the arrival counter start only while the lease is held, and stop at once when a renewal fails.
+
+**Active/active.** Rejected for now, per section 2.
+
+### Collectors during a failover
+
+Vector's HTTP-based sinks retry 408, 429 and every 5xx but 501, without limit by default [14], and the packaged config buffers 256 MB per sink on disk and blocks when full (`vector.yaml:97`). The app already answers 503 while it is not ready, 429 when busy, and gRPC `UNAVAILABLE` for both (`src/ingest/otlp-grpc.ts:58`). So a sender behind Vector loses nothing across a takeover shorter than its buffer, as long as its address now reaches the new node. An OTLP Collector retries for 5 minutes by default and keeps its queue in memory unless given `file_storage` [6]. Syslog UDP is lost while nothing listens, as in an upgrade today.
+
+### The address in front
+
+Vector has one `uri` per sink and no failover between addresses, so the address senders and people use has to move:
+
+- **A floating IP** (keepalived, VRRP) on one network: seconds, no new service, but both nodes on one L2 segment.
+- **DNS** with a short TTL: works across networks; clients that cache longer see the old address for a while.
+- **The reverse proxy the operator already runs** (Caddy, nginx) with both nodes as upstreams, the primary first and the standby only while the primary fails `/api/health` (nginx `backup`, Caddy's `first` policy): simplest where that proxy is on a third machine.
+
+Toposcope ships none of these; operations docs name them, as TLS does today. Link keys carry `TOPOSCOPE_PUBLIC_URL`, so it has to be the moving name for links to follow.
+
+## 4. Three designs
+
+### A. Warm standby from a link — minutes to recover
+
+**Shape.** Two nodes, each the packaged two containers, the same image. The primary runs as today. The standby is an ordinary instance holding one *standby link*: every kind with an empty filter, plus the control plane snapshot each minute. While standing by it is readable (a second place to search the same rows) and runs nothing of the primary's: its own control plane is empty, the primary's monitors arrive read-only as on any link.
+
+**Operator sets up.** A second box with the install; one key minted on the primary (*Make a standby key*) and pasted on the standby; the moving address (proxy, VIP or DNS); the watchdog on both, pointed at the outside service.
+
+**Taking over.** The operator runs `./upgrade.sh promote` on the standby, or a script runs it when the watchdog pages. It stops the app, puts the last snapshot in place as `/data/toposcope.sqlite`, and starts with:
+- the primary's identity: `instance_id`, name and `session_secret` come with the snapshot, so people stay signed in, tokens and shares keep working, and link peers see the same instance;
+- the arrival counter set above both its own positions and every `src_seq` it holds from the primary, so a new row can never take a position the primary used;
+- a new *feed epoch*: a puller downstream whose position is in the old primary's numbering is told to read again from the start; rows it holds are not stored twice (`wire.ts:143–149` dedupes by origin).
+
+It then runs the primary's monitors, checks and links from the state in the snapshot.
+
+**Fencing.** When the old primary comes back it must not run as primary too, or every monitor pages twice. At boot it asks its standby peer over the link whether it has taken over; if so it starts as a standby of the new primary, and with no answer it starts without loops and says why on `/api/health` until the operator chooses. `upgrade.sh` refuses to start a fenced node.
+
+**Recovery time.** Detection (the watchdog's grace, a few minutes) plus promotion (under a minute) plus the address moving (seconds to the DNS TTL). About 5 minutes by hand, about 2 scripted.
+
+**Data lost.** Telemetry the standby had not pulled yet: one 5 s pull and what was in flight. Control plane changes since the last snapshot: up to a minute (a monitor's stretch that opened in that minute opens again; a call can be sent twice). Senders behind Vector resend what the primary never answered. Syslog UDP during the gap.
+
+**upgrade.sh.** Both sides of a link must run the same link protocol, so upgrade the standby first, then the primary; the link stops for those minutes and catches up. `promote` and `demote` are new subcommands. Rollback stays per node.
+
+**Backup.** Still needed: a standby copies a mistake (a deleted board, a lowered retention) within a minute. The backup could run on the standby, so the primary never stops for it.
+
+**Links.** Unchanged for peers that use the moving address; downstream centres re-read once after a takeover (the new epoch). The standby link itself is not listed among a team's links.
+
+**Effort.** About 7 PRs:
+1. Standby key and link: every kind, no filter, marked standby; one per instance.
+2. Control plane snapshot over the link (`VACUUM INTO`, kept on the standby, the last 3).
+3. Feed epoch in the link protocol (a protocol bump: both sides of every link upgrade).
+4. `promote`: snapshot in place, counter above held positions, new epoch.
+5. Fencing at boot, and `/api/health` saying standby / fenced.
+6. `upgrade.sh` order, `promote`, `demote`; operations docs for the address in front.
+7. A two-instance e2e: kill the primary mid-ingest, promote, check no row is lost or doubled behind Vector and no monitor pages twice.
+
+### B. Hot standby, replicated ClickHouse — about a minute, automatic
+
+**Shape.** Two data nodes, each ClickHouse (replicated tables, Keeper inside) and the app; a third small node runs `clickhouse-keeper` alone, so Keeper keeps a majority with one node lost. Five containers. One app holds a lease in Keeper and does everything; the other answers 503 on `/api/health` and runs nothing. SQLite goes to the standby app by snapshot (A's mechanism) or by Litestream.
+
+**Operator sets up.** Three machines; a cluster config on each (remote servers, macros, Keeper ids), which the release would generate from three addresses in `.env`; the address in front tied to `/api/health`.
+
+**Recovery time.** Lease expiry (about 15–30 s) plus the standby app's boot. About a minute, no person needed.
+
+**Data lost.** Telemetry: rows the dying node had written but not yet replicated, usually under a second (no insert quorum; with two replicas a quorum of 2 stops ingest when one dies [7]). Control plane: the snapshot interval.
+
+**upgrade.sh.** Rolling: the passive node, then hand over the lease, then the other. The boot migration must run once, on the lease holder, through `ON CLUSTER` or a `Replicated` database; every MV rebuild and backfill done once. ClickHouse major upgrades replica by replica. Backups become `BACKUP` from one replica [3] instead of a cold tar with the stack stopped.
+
+**Links.** Unchanged: the arrival counter lives with the lease holder, and its positions are the same rows on both replicas, so no epoch is needed.
+
+**Effort.** About 14 PRs: cluster config and Keeper; tables replicated, with an in-place conversion for existing installs; migration once on the holder and through `ON CLUSTER`; the `KeeperMap` lease spike, then the lease; every loop, the counter and ingest gated on it; the control plane snapshot; `upgrade.sh` rolling upgrade and `BACKUP`; a three-node e2e.
+
+### C. Three nodes, no data loss — seconds, automatic
+
+**Shape.** Three nodes, each ClickHouse (replica plus Keeper) and the app; `insert_quorum = 2`, so a sender's 2xx means two replicas hold the row. The control plane on rqlite (a third container per node) so it survives a node with nothing lost, or kept in Keeper. Nine containers. One active app by lease, as in B.
+
+**Recovery time.** Lease expiry plus a warm passive app: well under a minute.
+
+**Data lost.** Nothing a sender was told was stored. Syslog UDP during the gap.
+
+**Effort.** B plus the control plane rewrite: ~425 synchronous SQLite calls to an async remote store, transactions reworked for rqlite's limits [12], a third container everywhere. About 30 PRs, and an install heavier than "two containers" by any reading.
+
+### Side by side
+
+| | A. Warm standby | B. Hot standby | C. Three nodes |
+| --- | --- | --- | --- |
+| Nodes / containers | 2 / 4 | 3 / 5 | 3 / 9 |
+| New parts | none | Keeper, cluster config | Keeper, cluster config, rqlite |
+| Takeover | by hand or script | automatic | automatic |
+| Recovery | ~2–5 min | ~1 min | < 1 min |
+| Telemetry lost | ~5 s | < 1 s | none acknowledged |
+| Control plane lost | ≤ 1 min | ≤ 1 min | none |
+| Effort | ~7 PRs | ~14 PRs | ~30 PRs |
+| Two containers per node | yes | yes, plus a Keeper box | no |
+
+## 5. Recommendation
+
+Build **A**. It survives a node with nothing new to run: the same image, two containers a node, no Keeper, no third box, no new store. It is mostly made of links, which already move every kind, dedupe across paths and resume after a restart, so the risky parts are small and testable (the snapshot, the takeover, fencing). It also gives teams something on day one: a second instance to read while the first is upgraded or down. Minutes to recover and seconds of telemetry is the right size for a single-team observability box; a team that needs seconds and zero loss is a team for B, which A does not block: A's snapshot, fencing and "one active app" rules are B's too.
+
+Do not start active/active, LiteFS, rqlite or Postgres.
+
+### What Ian decides to lock it
+
+1. **Is A enough to lift the One node rule** for team features, or does that wait for B?
+2. **Takeover by hand or by script?** By hand is safer against split brain; a script on the watchdog's page is faster. Recommended: by hand in the first cut, with `promote` as one command.
+3. **Control plane: snapshot over the link, or Litestream?** Recommended: the snapshot. It adds no container; a minute of control plane is acceptable. Litestream gives a second, but is a third container and a backup format of its own.
+4. **The standby key carries every secret on the instance.** Agree that it is a separate key kind, Owner-only, one per instance, shown once, and refused by any link that is not a standby.
+5. **The takeover keeps the primary's identity** (people stay signed in; downstream links re-read once from a new epoch), rather than the standby keeping its own (everyone signs in again; every link made again). Recommended: keep the primary's.
+6. **The address in front is the operator's** (their proxy, a VIP or DNS), documented, not shipped; `TOPOSCOPE_PUBLIC_URL` must be that address.
+7. **Roadmap wording.** "Checks from more than one place" stays in Will not: the standby runs no checks until it takes over.
+
+## Sources
+
+1. ClickHouse, [Data replication](https://clickhouse.com/docs/engines/table-engines/mergetree-family/replication)
+2. ClickHouse, [ClickHouse Keeper](https://clickhouse.com/docs/guides/sre/keeper/clickhouse-keeper)
+3. ClickHouse, [Backup and restore](https://clickhouse.com/docs/operations/backup)
+4. [Litestream](https://litestream.io/)
+5. Litestream, [Configuration reference](https://litestream.io/reference/config/)
+6. OpenTelemetry Collector, [exporterhelper](https://github.com/open-telemetry/opentelemetry-collector/blob/main/exporter/exporterhelper/README.md)
+7. ClickHouse, [insert_quorum](https://clickhouse.com/docs/reference/settings/session-settings/insert-quorum)
+8. ClickHouse, [replicated_deduplication_window](https://clickhouse.com/docs/reference/settings/merge-tree-settings/replicated-deduplication-window)
+9. ClickHouse, [Replicated database engine](https://clickhouse.com/docs/engines/database-engines/replicated)
+10. Fly.io, [Litestream v0.5.0 is here](https://fly.io/blog/litestream-v050-is-here/); Simon Willison, [on Litestream 0.5](https://simonwillison.net/2025/Oct/3/litestream)
+11. Fly.io community, [What is the status of LiteFS?](https://community.fly.io/t/what-is-the-status-of-litefs/23883)
+12. rqlite, [FAQ](https://rqlite.io/docs/faq/)
+13. ClickHouse, [KeeperMap](https://clickhouse.com/docs/engines/table-engines/special/keeper-map)
+14. Vector, [HTTP sink](https://vector.dev/docs/reference/configuration/sinks/http/)
