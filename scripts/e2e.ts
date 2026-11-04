@@ -4251,7 +4251,10 @@ async function main(): Promise<void> {
       const resolved = await until("a 200 resolves it", names.flip, (m) => m.state === "ok", 45_000);
       const stretch = resolved.stretches?.[0];
       if (!stretch?.resolved_at || stretch.closed_by !== "ok") throw new Error(`it should resolve on the 200, got ${JSON.stringify(resolved)}`);
-      const flipCalls = calls.filter((c) => c.path === `/${names.flip.split(" ").join("-")}`).map((c) => c.state);
+      // The monitor reads ok once its stretch closes; the resolved call is posted after that.
+      const flipCallsNow = () => calls.filter((c) => c.path === `/${names.flip.split(" ").join("-")}`).map((c) => c.state);
+      for (let i = 0; i < 50 && flipCallsNow().length < 2; i++) await Bun.sleep(200);
+      const flipCalls = flipCallsNow();
       if (JSON.stringify(flipCalls) !== '["open","resolved"]') throw new Error(`it should call once open and once resolved, got ${JSON.stringify(flipCalls)}`);
 
       // Watch's ticks: each run is a result, the worst of its minute, for the lanes.
