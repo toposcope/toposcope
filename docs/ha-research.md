@@ -8,7 +8,7 @@ The constraints that bind: self-host only, no hosted control plane; no Helm, k8s
 
 - Toposcope is built as **one writer**. The arrival counter that orders rows for links, the monitor pass, HTTP checks, link pulls and the dedupe of pulled rows are each guarded by a variable in one process. Two app processes on one store would page twice, probe twice, store pulled rows twice and hand out the same arrival positions to different rows.
 - The design: **a cluster**, two containers on each node. Toposcope (Bun for the web, API and ingest; a Go control service with embedded dqlite for all control state and all background work) and ClickHouse (replicated, with Keeper in cluster mode). Standalone is the pair on one machine; HA is the same pair on three machines.
-- One machine lost loses nothing acknowledged; recovery under a minute. About 40 PRs, gated on a proof of dqlite. The first steps ship as single-node releases and fix the one-writer problems above on a single node too.
+- One machine lost loses no acknowledged control change or telemetry, under the cluster's durability policy; the recovery target is under a minute, validated before release. About 40 PRs, gated on a proof of dqlite. The first steps ship as single-node releases and fix the one-writer problems above on a single node too.
 - A cluster is one installation. A link stays a link between installations and is never the HA mechanism.
 
 ## 1. What lives where, and what a dead box costs today
@@ -78,7 +78,7 @@ So each of these needs **one owner** across the cluster, and the owner must be c
 
 ## 3. The design: a cluster
 
-A Go control service with dqlite, and replicated ClickHouse. A takeover is automatic: when a member is lost, its work moves to another once ownership and readiness are checked.
+A Go control service with dqlite, and replicated ClickHouse. A takeover is automatic: when a member is lost, its work moves to another once ownership and readiness are checked. Three protocols in this section are still to be written and tested before the steps that need them (§ Gates): fencing an old owner's ClickHouse writes, replay and dedupe, and the monitor's export to ClickHouse.
 
 ### Shape
 
@@ -99,7 +99,7 @@ All control state and all background work, behind a versioned internal API with 
 
 ### Why dqlite
 
-Canonical's C library: SQLite under Raft, linked into the process that uses it, with ordinary multi-statement transactions. A write is acknowledged once a quorum has persisted it; the database itself is held in memory and the Raft log is what goes to disk [3], so it suits a small control database and never a copy of telemetry. Reads are served by the leader without first checking it still leads, so a read can be stale by up to an election timeout, "a few hundred milliseconds" by default [4]: a read never proves ownership, and every claim is a conditional write. It is reached from Go through `go-dqlite`, which binds the C library [5]; Bun cannot load it, hence the Go service. Incus, often cited as dqlite in production, now runs Cowsql, a fork [6], so its record is not dqlite's own.
+Canonical's C library: SQLite under Raft, linked into the process that uses it, with ordinary multi-statement transactions. A write is acknowledged once a quorum has persisted it; the database itself is held in memory and the Raft log is what goes to disk [3], so it suits a small control database and never a copy of telemetry. Reads are served by the leader without first checking it still leads, so a read can be stale by up to an election timeout, "a few hundred milliseconds" by default [4]: a read never proves ownership, and every claim is a conditional write. We integrate through Go's supported bindings, `go-dqlite`, which binds the C library [5]; putting the control plane behind a Go service is our choice of boundary, not a limit of Bun. Incus, often cited as dqlite in production, now runs Cowsql, a fork [6], so its record is not dqlite's own.
 
 Moving behind a Go service also changes every one of the ~425 SQLite calls, but into operations with their transactions in one place, rather than into SQL sent over HTTP (rqlite [7], which also refuses explicit `BEGIN`/`COMMIT`).
 
@@ -109,13 +109,43 @@ dqlite holds bounded operational state: people, sessions, tokens, settings, hunt
 
 ### One owner for each piece of work
 
-The first clustered release keeps today's model, one scheduler, one ingest owner and one owner per link pull, but each ownership is a durable record with a generation. Every write from an owner carries its generation and Go refuses an old one, so a paused worker that wakes cannot overwrite current state. A monitor run is: make a run id, claim it, check, commit result + move + call intent together, deliver from the outbox. That fixes every row of the table in section 2. It does not make webhooks exactly once: a call whose acknowledgement was lost is sent again, so each call carries a stable id a receiver can dedupe on. Spreading runs across nodes can come later.
+The first clustered release keeps today's model, one scheduler, one ingest owner and one owner per link pull, but each ownership is a durable record in dqlite with a generation. Every control-state write from an owner carries its generation, and Go refuses an old one in the same conditional transaction, so a paused worker that wakes cannot overwrite dqlite state. That covers the control-state rows of the table in section 2 (stretches, calls, `next_run_at`, link positions, the arrival allocator); it does not cover what an owner writes to ClickHouse.
+
+**ClickHouse does not know the generation.** Bun writes to ClickHouse directly. An owner can pass its check, pause, and resume after another has taken over; its insert then lands, with its materialized views, whatever dqlite says. So the generation protects control state, and telemetry needs its own defence:
+
+- An owner stops starting inserts a safety margin before its lease ends, and every insert it makes has a ClickHouse time limit shorter than that margin (today's is 30 s, `src/shared/clickhouse.ts:88`). This narrows the window; a paused process can still outlive it.
+- Every insert an owner makes carries a batch identity recorded in dqlite before the insert starts (section *Replay and dedupe*), so a late insert from an old owner is either rejected as a duplicate or is a batch the new owner never writes again.
+- An old owner's late link insert cannot move the link position: positions advance only by conditional write with the current generation.
+
+**Monitor runs span two stores.** There is no transaction across dqlite and ClickHouse. A run is:
+
+1. Claim the run id with the current generation; check.
+2. In one dqlite transaction: the operational result, the monitor's move, the call intent in the outbox, and a pending export of the result to history.
+3. Deliver the call from the outbox, and export the result to `monitor_results` with the run id as its batch identity, so a repeated export is neutralised.
+4. Expire the operational rows only once their export and call are done.
+
+Calls are not exactly once: a call whose acknowledgement was lost, or a pause around the send, sends it again, so each call carries a stable id a receiver can dedupe on. Spreading runs across nodes can come later.
 
 ### Telemetry
 
-Replicated tables on Keeper, `insert_quorum = 2` of three, one policy, never weakened quietly when a replica is down: with two replicas lost, ingest refuses. Two fixes in the app: an origin identity that no new writer can reuse (the arrival counter becomes a block allocator in Go, claimed by conditional write), and a link position that moves only after its rows meet the quorum, with a feed that follows completed writes, not a per-process counter (`arrivalSeqSettled()` today). A replica that is behind is kept from monitor evaluation until it is current, or the pass says it is delayed, so a takeover does not page *fewer than* on missing rows.
+Replicated tables on Keeper, `insert_quorum = 2` of three: the cluster's one durability policy, never weakened quietly when a replica is down. With two replicas lost, ingest refuses. Standalone keeps single-node durability, as today: no quorum, a sender's 2xx means the one ClickHouse has the row.
 
-ClickHouse replication is per table, "asynchronous and multi-master" [8]. Keeper holds the replicas' metadata under Raft, so 3 Keeper members survive 1 lost [9]; it runs inside `clickhouse-server` [9]. With Keeper gone, replicated tables refuse writes [8]. `insert_quorum` makes an insert wait for N replicas and fails when fewer are up [10]. Inserted blocks are deduplicated [8, 11], but Toposcope stamps a fresh arrival position on each try, so a retried request is never the same block; the origin identity above is what dedupes. Existing tables turn replicated in place (a `convert_to_replicated` flag file, or `ATTACH TABLE … AS REPLICATED`) [8], and every DDL must then reach every replica (`ON CLUSTER`, or a `Replicated` database [12]), which the boot migration does not do today.
+**Ingest reaches one owner.** The load balancer sends a request to any healthy node. A node that does not own ingest forwards it over the peer channel to the owner, keeping the request's identity, and answers the sender with the owner's final answer: 2xx only once the insert met the quorum, 429 or 503 otherwise. The forward is the one internal retry path, so it keeps the batch identity the owner gave it.
+
+A replica that is behind is kept from monitor evaluation until it is current, or the pass says it is delayed, so a takeover does not page *fewer than* on missing rows.
+
+ClickHouse replication is per table, "asynchronous and multi-master" [8]. Keeper holds the replicas' metadata under Raft, so 3 Keeper members survive 1 lost [9]; it runs inside `clickhouse-server` [9]. With Keeper gone, replicated tables refuse writes [8]. `insert_quorum` makes an insert wait for N replicas and fails when fewer are up [10]. Inserted blocks are deduplicated [8, 11], but only within a window, and Toposcope stamps a fresh arrival position on each try, so a retried request is never the same block unless it carries a token (below). Existing tables turn replicated in place (a `convert_to_replicated` flag file, or `ATTACH TABLE … AS REPLICATED`) [8], and every DDL must then reach every replica (`ON CLUSTER`, or a `Replicated` database [12]), which the boot migration does not do today.
+
+### Replay and dedupe
+
+A durable allocator stops a position being handed out twice. It does not stop one event being stored twice, and an identity column is not a uniqueness constraint. Four things are separate:
+
+- **A retry keeps its identity.** Every insert Toposcope makes is a batch with an id recorded in dqlite before it starts: the forward to the ingest owner, a link pull (its source range), a monitor export (its run id). Its arrival positions are allocated with the batch and reused on every retry, so a retry sends the same rows in the same order as one block.
+- **What rejects a duplicate.** The batch id is sent as `insert_deduplication_token`, which ClickHouse uses in place of the block's hash; a matching token in the deduplication log is not inserted again, and the insert still answers success [15]. The log is finite (`replicated_deduplication_window`, `…_seconds`) [11, new-dedupe], so a retry later than the window is not caught there; for link pulls the single pull owner then falls back on today's read-before-insert by origin (`src/feed/wire.ts:143–149`).
+- **Rollups stay right.** Blocks pushed into materialized views are deduplicated too, by default since ClickHouse 26.2 (`deduplicate_blocks_in_dependent_materialized_views`), provided each view keeps one block in, one block out [15]. Toposcope pins 26.3; the failure tests check counts in every `_by_minute` rollup after a duplicate.
+- **Feed progress.** A range of positions is open from allocation until its batch is stored or abandoned, recorded in dqlite. The feed serves only up to the lowest open range across the cluster, replacing `arrivalSeqSettled()`, which counts one process. A range is abandoned only after its owner is fenced and its insert time limit has passed; the feed then passes it. A row of an abandoned range that lands later still is the case to settle in the protocol: re-scan abandoned ranges once after a grace, or refuse them.
+
+A sender's own retry with no stable idempotency key cannot be promised duplicate-free: a Vector or OTLP retry after a lost acknowledgement is a new request with new rows, as it is today. An idempotency header for senders is a later choice.
 
 ### Cluster and link are different things
 
@@ -127,16 +157,16 @@ A cluster is one installation: one identity and public URL, one set of people, t
 | --- | --- |
 | One machine fails | the other two keep both quorums; work resumes once ownership and readiness are checked |
 | Network splits 2–1 | the majority carries on; the lone member can commit no control change and meet no insert quorum |
-| A worker pauses, then resumes | its old generation commits nothing; a webhook may still go twice |
+| A worker pauses, then resumes | its old generation commits no control state; a late ClickHouse insert is a batch that dedupes or is never written again; a webhook may still go twice |
 | A failed machine returns | rejoins and catches up before it takes work |
 | Quorum is lost | writes stop; there is no "force primary" |
 | A new replica is behind | kept from freshness-bound work until ready |
 
-The promise: one machine lost, no acknowledged control change or telemetry lost. Not: no interruption, exactly-once calls, or two machines lost at once. Target recovery under a minute, then publish what failure tests measure.
+The promise: one machine lost, no acknowledged control change or telemetry lost, under the cluster's durability policy. Not: no interruption, exactly-once calls, duplicate-free sender retries, or two machines lost at once. The recovery target is under a minute, validated by the failure tests before release, which then publish what they measure.
 
 ### During a takeover
 
-Vector's HTTP-based sinks retry 408, 429 and every 5xx but 501, without limit by default [13], and the packaged config buffers 256 MB per sink on disk and blocks when full (`vector.yaml:97`). The app answers 503 while not ready, 429 when busy, and gRPC `UNAVAILABLE` for both (`src/ingest/otlp-grpc.ts:58`). So a sender behind Vector loses nothing across a takeover shorter than its buffer, provided the address it sends to reaches a live node. An OTLP Collector retries for 5 minutes by default and keeps its queue in memory unless given `file_storage` [1]. Syslog over UDP is lost while nothing listens on the address, as in an upgrade today.
+Vector's HTTP-based sinks retry 408, 429 and every 5xx but 501, without limit by default [13], and the packaged config buffers 256 MB per sink on disk and blocks when full (`vector.yaml:97`). The app answers 503 while not ready, 429 when busy, and gRPC `UNAVAILABLE` for both (`src/ingest/otlp-grpc.ts:58`). So a sender behind the packaged Vector keeps what it could not deliver and sends it again once a node answers, provided the takeover is shorter than what its disk buffer holds at its rate, Vector itself survives, and its source can wait while the buffer blocks: a source that cannot wait (UDP, a file that rotates away) loses rows once the buffer is full. A sender with a memory buffer loses it if Vector restarts. An OTLP Collector retries for 5 minutes by default and keeps its queue in memory unless given `file_storage` [1]. Syslog over UDP is lost while nothing listens on the address, as in an upgrade today.
 
 Vector has one `uri` per sink, so that address is the load balancer's. `TOPOSCOPE_PUBLIC_URL` is the same address, so link keys and alert links follow the cluster, not a member.
 
@@ -159,21 +189,29 @@ Unchanged as federation. Positions move into dqlite with the rest; one owner pul
 ### Costs
 
 - A second language and a C dependency: `go-dqlite` binds the dqlite C library [5], packaged for Linux. The image builds it for amd64 and arm64; `bun run dev` on a Mac runs the control service in a container.
-- Every request's session or ingest-token check becomes a socket call to Go instead of a SQLite read in process, so it needs a cache that the token's generation can void.
+- Every request's session or ingest-token check becomes a socket call to Go instead of a SQLite read in process. Measure it first (step 1); a cache is not assumed. If one is needed, it must say how a revocation reaches every node, what a node does when cut off from the quorum (refuse once its cache is older than the bound), and the longest a revoked token may still work. A node cannot learn of a revocation from its own cached copy.
 - Three machines for HA. A cluster is six containers with three ClickHouse replicas, closer to Graylog's weight; standalone stays two containers.
 
 ### Effort
 
 About 40 PRs, in this order:
 
-1. **Prove dqlite first** (~3): a three-node Go harness running Toposcope-shaped transactions through leader loss, partitions, paused processes, restarts, backup and restore, measuring stale reads and memory. This is the gate: if it fails, the cluster does not go ahead on dqlite.
+1. **Prove dqlite first** (~3): a three-node Go harness running Toposcope-shaped transactions through leader loss, partitions, paused processes, restarts, backup and restore. It tests security-sensitive reads under partition (can an isolated old leader still accept a revoked session, and for how long), measures memory and the cost of an auth check over the socket. This is the gate: if it fails, the cluster does not go ahead on dqlite.
 2. **The Go boundary, standalone** (~15): the image with s6, the internal API and generated types, then one domain at a time (people and sessions, tokens, hunts and boards, monitors, links, shares, settings, fields and repositories), each with one writer and a tested export back to SQLite.
 3. **Background work in Go** (~6): claims, generations, run ids, the outbox, the scheduler, link pulls.
-4. **Identity and replay** (~4): the arrival allocator, positions after quorum, the feed on completed writes.
+4. **Identity and replay** (~5): the arrival allocator, batch identities and deduplication tokens, ingest forwarded to its owner, positions after quorum, the feed on open and abandoned ranges.
 5. **Replication and the cluster** (~9): Keeper and replicated tables with in-place conversion, `init`/`join`/`status`/`drain`/`remove`, readiness, migrations once per cluster, rolling `upgrade.sh`, backup and restore.
 6. **Failure tests before HA ships** (~3): writes acknowledged just before a kill, inserts cut half way, positions cut half way, stale workers, returning nodes, upgrades, restores.
 
 Steps 1–4 ship as ordinary single-node releases; HA ships after 6.
+
+### Gates
+
+Before step 3 (ownership) and step 4 (replay), three protocols are written down with their failure tests, and reviewed:
+
+1. Fencing an old owner's ClickHouse writes: the lease margin, the insert time limit, and what a late insert can and cannot do.
+2. Replay and dedupe: batch identity, tokens and the window, rollups, and the feed's open and abandoned ranges, including a row that lands in an abandoned range.
+3. The monitor run across dqlite and ClickHouse: the four steps above, and the export retried after a crash at each step.
 
 ## 4. What Ian decides to lock it
 
@@ -183,7 +221,8 @@ Steps 1–4 ship as ordinary single-node releases; HA ships after 6.
 4. **When the One node rule lifts.** When clustered HA ships (after step 6), or earlier.
 5. **What fails the dqlite proof**, and what then: rqlite [7] behind the same Go API, or a lighter design.
 6. **Compatibility rules:** each release names its tested dqlite / `go-dqlite` / ClickHouse versions and how far back it can roll.
-7. **Roadmap wording.** "Checks from more than one place" stays in Will not: a cluster runs each check once, from whichever member owns it.
+7. **Roadmap wording.** "Checks from more than one place" stays in Will not: a cluster has one authoritative scheduled run and result per check, from whichever member owns it; a failover can repeat a physical probe.
+8. **Sender retries.** No duplicate-free promise for a sender's own retry without an idempotency key, as today; an idempotency header is a later choice.
 
 ## Sources
 
@@ -201,3 +240,4 @@ Steps 1–4 ship as ordinary single-node releases; HA ships after 6.
 12. ClickHouse, [Replicated database engine](https://clickhouse.com/docs/engines/database-engines/replicated)
 13. Vector, [HTTP sink](https://vector.dev/docs/reference/configuration/sinks/http/)
 14. ClickHouse, [Backup and restore](https://clickhouse.com/docs/operations/backup)
+15. ClickHouse, [Deduplicating inserts on retries](https://clickhouse.com/docs/guides/developer/deduplicating-inserts-on-retries)
