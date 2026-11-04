@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -135,6 +137,10 @@ type RevTrial struct {
 	ReadsOnOldLeader      int    `json:"reads_on_old_leader"`
 	MajorityStaleReads    int    `json:"majority_stale_reads"`
 	ValidAfterHeal        bool   `json:"valid_after_heal"`
+	WriteGapMs            int64  `json:"write_gap_ms"`
+	CommitFailed          bool   `json:"revocation_never_committed"`
+	HealedMs              int64  `json:"healthy_after_heal_ms_if_failed,omitempty"`
+	RecoveredMs           int64  `json:"healthy_after_heal_ms"`
 }
 
 func poller(n Node, path string, parse func(json.RawMessage) bool, stop <-chan struct{}, out *[]Obs, mu *sync.Mutex, wg *sync.WaitGroup) {
@@ -207,6 +213,7 @@ func revocationTrial(i int, mode string, w *Workload) []RevTrial {
 		parse               func(json.RawMessage) bool
 		obs                 []Obs
 		sent, acked         time.Time
+		failed              bool
 	}
 	kinds := []*kind{
 		{name: "session", check: "/check?id=" + sid, revoke: "/revoke?id=" + sid, parse: parseBool},
@@ -255,12 +262,22 @@ func revocationTrial(i int, mode string, w *Workload) []RevTrial {
 			defer rwg.Done()
 			s, a, err := retryUntil(peers, "POST", k.revoke, 120*time.Second)
 			if err != nil {
-				die("%v", err)
+				// An unsuccessful recovery: recorded, not fatal.
+				logf("  RECOVERY FAILED (%s trial %d): %v", mode, i, err)
+				k.failed = true
+				return
 			}
 			k.sent, k.acked = s, a
 		}(k)
 	}
 	rwg.Wait()
+	anyFailed := false
+	for _, k := range kinds {
+		anyFailed = anyFailed || k.failed
+	}
+	if anyFailed {
+		diagnose(fmt.Sprintf("%s-%s-%d", label, mode, i))
+	}
 	if mode == "pause+partition" {
 		time.Sleep(100 * time.Millisecond)
 		_ = resume(L)
@@ -286,14 +303,21 @@ func revocationTrial(i int, mode string, w *Workload) []RevTrial {
 			die("unthrottle: %v", err)
 		}
 	}
-	waitHealthy(cluster, 2*time.Minute)
+	recovered := waitHealthy(cluster, 2*time.Minute)
+	gap := w.gap(t0, time.Now())
 
 	var out []RevTrial
 	for _, k := range kinds {
 		t := RevTrial{Mode: mode, Trial: i, Kind: k.name, OldLeader: L.Name,
 			RevokeSentMs: k.sent.Sub(t0).Milliseconds(), RevokeAckMs: k.acked.Sub(t0).Milliseconds(),
 			OldLeaderLastValidMs: -1, OldLeaderLastAnswerMs: -1, OldLeaderFirstFailMs: -1,
-			MajorityStaleReads: majorityStale[k.name]}
+			MajorityStaleReads: majorityStale[k.name], WriteGapMs: gap.Milliseconds(), RecoveredMs: recovered.Milliseconds(), CommitFailed: k.failed}
+		if k.failed {
+			// Never acknowledged: valid answers were correct, and the
+			// revocation was not there to see after heal either.
+			k.acked = time.Now().Add(time.Hour)
+			t.HealedMs = recovered.Milliseconds()
+		}
 		var lastValid time.Time
 		for _, o := range k.obs {
 			if o.Send.Before(t0) {
@@ -318,8 +342,13 @@ func revocationTrial(i int, mode string, w *Workload) []RevTrial {
 		}
 		// Conservative: the revocation may have committed as soon as it was
 		// sent, and the stale read may have been served as late as received.
-		if !lastValid.IsZero() && lastValid.After(k.sent) {
+		if k.failed {
+			t.RevokeSentMs, t.RevokeAckMs = -1, -1
+		} else if !lastValid.IsZero() && lastValid.After(k.sent) {
 			t.StaleWindowMs = lastValid.Sub(k.sent).Milliseconds()
+		}
+		if k.failed {
+			mustRetry(cluster, "POST", k.revoke)
 		}
 		for _, n := range cluster {
 			if r, err := ok(n, "GET", k.check, 2*time.Second); err != nil || k.parse(r.V) {
@@ -475,7 +504,7 @@ func pauseTrial(w *Workload) map[string]any {
 	lostAfter := nodeStat(O, "leases_lost")
 	gap := w.gap(t0, time.Now())
 	h := waitHealthy(cluster, 2*time.Minute)
-	out := map[string]any{"fault": "SIGSTOP scheduler owner, SIGCONT after takeover (or after 20 s)", "node": O.Name, "was_dqlite_leader": O == L,
+	out := map[string]any{"fault": "SIGSTOP scheduler owner, SIGCONT after takeover (or after 20 s)", "node": O.Name, "was_leader": O == L,
 		"old_gen": g0, "new_gen": g1, "new_owner": newOwner, "takeover_ms": takeover.Milliseconds(),
 		"took_over_while_paused":            takeover > 0 && t0.Add(takeover).Before(resumed),
 		"stale_writes_refused_after_resume": after - before, "leases_given_up_after_resume": lostAfter - lostBefore,
@@ -487,4 +516,27 @@ func pauseTrial(w *Workload) map[string]any {
 		out["writes_probed_at_8s"] = probes
 	}
 	return out
+}
+
+// diagnose saves each member's goroutines (rqlited's pprof; nothing for
+// dqlite) and its status, for a recovery that did not happen.
+func diagnose(tag string) {
+	_ = os.MkdirAll("/out/diag", 0o755)
+	for _, n := range cluster {
+		c := *httpc
+		c.Timeout = 10 * time.Second
+		if resp, err := c.Get(fmt.Sprintf("http://%s:4001/debug/pprof/goroutine?debug=2", n.IP)); err == nil {
+			b, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			_ = os.WriteFile(fmt.Sprintf("/out/diag/%s-%s-goroutines.txt", tag, n.Name), b, 0o644)
+		}
+		if resp, err := c.Get(fmt.Sprintf("http://%s:4001/status", n.IP)); err == nil {
+			b, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			_ = os.WriteFile(fmt.Sprintf("/out/diag/%s-%s-status.json", tag, n.Name), b, 0o644)
+		}
+		out, _, _ := dexec(n, "sh", "-c", "iptables -S; ps -o pid,stat,rss,comm -e 2>/dev/null || ps aux")
+		_ = os.WriteFile(fmt.Sprintf("/out/diag/%s-%s-host.txt", tag, n.Name), []byte(out), 0o644)
+	}
+	logf("  diagnostics saved under out/diag/%s-*", tag)
 }

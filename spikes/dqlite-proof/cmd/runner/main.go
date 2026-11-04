@@ -41,6 +41,7 @@ var (
 	revModes     = env("REV_MODES", "partition,partition+cpu,pause+partition,asym-in,asym-out")
 	pauseTrials  = envInt("PAUSE_TRIALS", 3)
 	churnBatches = envInt("CHURN_BATCHES", 1000)
+	backend      = env("BACKEND", "dqlite")
 	results      = map[string]any{}
 	resMu        sync.Mutex
 	startedAt    = time.Now()
@@ -397,7 +398,7 @@ func (w *Workload) gap(from, to time.Time) time.Duration {
 
 func main() {
 	log.SetFlags(0)
-	logf("dqlite proof, config %s (election timeout %d ms), phases %s", label, electionMs, phases)
+	logf("%s proof, config %s (election timeout %d ms), phases %s", backend, label, electionMs, phases)
 	_ = os.MkdirAll("/out", 0o755)
 	defer writeResults()
 
@@ -408,10 +409,17 @@ func main() {
 	must(l, "POST", "/init?monitors=100", 30*time.Second)
 	inc0 := waitIncarnation(cluster, "", time.Minute)
 	logf("installation incarnation %s", inc0)
-	record("config", map[string]any{"label": label, "election_timeout_ms": electionMs, "heartbeat_ms": electionMs / 10, "dqlite": "v1.18.7", "go_dqlite": "v3.0.4", "lease_ttl_ms": 3000, "snapshot": env("SNAP", "dqlite default (threshold 1024, trailing 8192)"), "peer_tls": true})
+	if backend == "rqlite" {
+		record("config", map[string]any{"backend": backend, "label": label, "election_timeout_ms": electionMs, "rqlite": "v10.6.6", "rqlited_args": env("RQ_ARGS", "(defaults: election 1s, heartbeat 1s, snapshot 8192 entries or 4 MB WAL)"), "lease_ttl_ms": 3000, "peer_tls": env("TLS", "1") != "0", "auth_reads": "linearizable"})
+	} else {
+		record("config", map[string]any{"backend": backend, "label": label, "election_timeout_ms": electionMs, "heartbeat_ms": electionMs / 10, "dqlite": "v1.18.7", "go_dqlite": "v3.0.4", "lease_ttl_ms": 3000, "snapshot": env("SNAP", "dqlite default (threshold 1024, trailing 8192)"), "peer_tls": true})
+	}
 
-	if strings.Contains(phases, "guard") {
+	if strings.Contains(phases, "guard") && backend != "rqlite" {
 		guardTest()
+	}
+	if strings.Contains(phases, "batch") && backend == "rqlite" {
+		batchTest()
 	}
 	if strings.Contains(phases, "faults") {
 		faults()
@@ -456,6 +464,13 @@ func waitIncarnation(set []Node, want string, timeout time.Duration) string {
 	}
 	die("members of %v did not adopt incarnation %q", names(set), want)
 	return ""
+}
+
+func ctlBin() string {
+	if backend == "rqlite" {
+		return "ctlr"
+	}
+	return "ctl"
 }
 
 func die(format string, a ...any) {

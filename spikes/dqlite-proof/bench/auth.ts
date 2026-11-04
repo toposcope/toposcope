@@ -58,4 +58,4 @@ async function load(path: string, inflight: number, ms: number) {
 }
 const authLoad = await load(`/auth?s=${sid}`, 32, 3000);
 
-console.log(JSON.stringify({ bun: Bun.version, in_process_bun_sqlite: inProcess, socket_ping: ping, socket_auth_dqlite: auth, socket_auth_32_inflight: authLoad }));
+console.log(JSON.stringify({ bun: Bun.version, in_process_bun_sqlite: inProcess, socket_ping: ping, socket_auth: auth, socket_auth_32_inflight: authLoad }));

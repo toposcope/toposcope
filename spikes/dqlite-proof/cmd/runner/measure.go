@@ -54,6 +54,9 @@ type MemRow struct {
 	DBKB     int64  `json:"db_kb"`
 	FreeKB   int64  `json:"free_kb"`
 	DiskKB   int64  `json:"raft_dir_kb"`
+	BunKB    int64  `json:"bun_rss_kb,omitempty"`
+	CgroupKB int64  `json:"cgroup_kb,omitempty"`
+	CgPeakKB int64  `json:"cgroup_peak_kb,omitempty"`
 }
 
 func memSnap(stage string, rows *[]MemRow) {
@@ -67,12 +70,16 @@ func memSnap(stage string, rows *[]MemRow) {
 		_ = json.Unmarshal(r.V, &m)
 		s, _ := status(n)
 		ps := num(m["page_size"])
-		row := MemRow{stage, n.Name, num(m["rss_kb"]), num(m["hwm_kb"]), s.GoHeap, num(m["page_count"]) * ps / 1024, num(m["freelist_count"]) * ps / 1024, num(m["data_dir_kb"])}
+		row := MemRow{stage, n.Name, num(m["rss_kb"]), num(m["hwm_kb"]), s.GoHeap, num(m["page_count"]) * ps / 1024, num(m["freelist_count"]) * ps / 1024, num(m["data_dir_kb"]), num(m["bun_rss_kb"]), num(m["cgroup_current_kb"]), num(m["cgroup_peak_kb"])}
 		*rows = append(*rows, row)
 	}
 	var parts []string
 	for _, r := range (*rows)[len(*rows)-len(cluster):] {
-		parts = append(parts, fmt.Sprintf("%s rss %d MB db %d MB disk %d MB", r.Node, r.RSSKB/1024, r.DBKB/1024, r.DiskKB/1024))
+		p := fmt.Sprintf("%s rss %d MB db %d MB disk %d MB", r.Node, r.RSSKB/1024, r.DBKB/1024, r.DiskKB/1024)
+		if r.CgroupKB > 0 {
+			p += fmt.Sprintf(" bun %d MB cgroup %d MB (peak %d)", r.BunKB/1024, r.CgroupKB/1024, r.CgPeakKB/1024)
+		}
+		parts = append(parts, p)
 	}
 	logf("mem %-14s %s", stage, strings.Join(parts, " | "))
 }

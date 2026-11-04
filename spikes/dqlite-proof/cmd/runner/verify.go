@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 )
 
 type Check struct {
@@ -249,6 +250,10 @@ func verify(w *Workload) {
 	add("monitor run is one transaction", partial == 0 && orphans == 0 && versions == 0,
 		"%d runs missing a result, call or history row; %d orphan rows; %d monitors whose state version is not their run count", partial, orphans, versions)
 
+	if backend == "rqlite" {
+		c := replicasIdentical()
+		add(c.Name, c.Pass, "%s", c.Detail)
+	}
 	record("checks_faults", checks)
 }
 
@@ -274,4 +279,79 @@ func revocationCheck() Check {
 	parts = append(parts, fmt.Sprintf("%d reads sent after the revocation's ack answered valid there", proven))
 	parts = append(parts, fmt.Sprintf("%d stale answers on the majority, %d after heal", majority, afterHeal))
 	return Check{"revocation visible everywhere within bound", len(trials) > 0 && max <= bound && majority == 0 && afterHeal == 0, strings.Join(parts, "; ")}
+}
+
+// strictRevocationCheck: a check that began after the revocation was
+// acknowledged must never answer valid, on any member, at any time.
+func strictRevocationCheck() Check {
+	resMu.Lock()
+	trials, _ := results["revocation_trials"].([]RevTrial)
+	resMu.Unlock()
+	proven, majority, afterHeal := 0, 0, 0
+	var maxAfter, maxGap, maxRecover int64
+	for _, t := range trials {
+		proven += t.ProvenStaleReads
+		majority += t.MajorityStaleReads
+		if t.ValidAfterHeal {
+			afterHeal++
+		}
+		maxAfter = max(maxAfter, t.StaleAfterAckMs)
+		maxGap = max(maxGap, t.WriteGapMs)
+		maxRecover = max(maxRecover, t.RecoveredMs)
+	}
+	failed := 0
+	for _, t := range trials {
+		if t.CommitFailed {
+			failed++
+		}
+	}
+	defer func() {
+		resMu.Lock()
+		results["revocation_commit_failures"] = failed
+		resMu.Unlock()
+	}()
+	return Check{"no check begun after a revocation's ack answers valid", len(trials) > 0 && proven == 0 && majority == 0 && afterHeal == 0,
+		fmt.Sprintf("%d trials: %d checks sent after the ack answered valid (longest %d ms after it); %d on the majority; %d after heal; longest write gap in a trial %d ms; longest wait for health after heal %d ms",
+			len(trials), proven, maxAfter, majority, afterHeal, maxGap, maxRecover)}
+}
+
+// replicasIdentical compares every member's own copy (rqlite replicates
+// statements, so this is where nondeterminism would show).
+func replicasIdentical() Check {
+	var last string
+	for attempt := 0; attempt < 20; attempt++ {
+		sums := map[string]string{}
+		for _, n := range cluster {
+			r, err := ok(n, "GET", "/checksums?level=none", time.Minute)
+			if err != nil {
+				sums[n.Name] = "error: " + err.Error()
+				continue
+			}
+			sums[n.Name] = string(r.V)
+		}
+		same := sums["n1"] == sums["n2"] && sums["n2"] == sums["n3"] && !strings.HasPrefix(sums["n1"], "error")
+		last = fmt.Sprintf("%d bytes of checksums per member, identical %v", len(sums["n1"]), same)
+		if same {
+			return Check{"members' own copies identical", true, last + fmt.Sprintf(" (after %d attempts)", attempt+1)}
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return Check{"members' own copies identical", false, last}
+}
+
+// majorityCommitsCheck: while one member is cut off, the other two must go
+// on committing (here: the revocation, within 2 minutes).
+func majorityCommitsCheck() Check {
+	resMu.Lock()
+	trials, _ := results["revocation_trials"].([]RevTrial)
+	resMu.Unlock()
+	failed := 0
+	var worst []string
+	for _, t := range trials {
+		if t.CommitFailed {
+			failed++
+			worst = append(worst, fmt.Sprintf("%s trial %d (%s, old leader %s, healthy %d ms after heal)", t.Mode, t.Trial, t.Kind, t.OldLeader, t.HealedMs))
+		}
+	}
+	return Check{"the majority commits during every isolation", failed == 0, fmt.Sprintf("%d of %d revocations never committed in 2 minutes: %s", failed, len(trials), strings.Join(worst, "; "))}
 }

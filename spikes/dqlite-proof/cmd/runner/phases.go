@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -77,10 +79,32 @@ func memoryBudget() {
 	var rows []MemRow
 	memSnap("start", &rows)
 	t := time.Now()
+	// The limit can cost the cluster its leader for a moment: wait for one.
+	waitHealthy(cluster, 2*time.Minute)
+	if L, err = leader(cluster); err != nil {
+		die("%v", err)
+	}
 	must(L, "POST", "/seed?sessions=50000&monitors=10000&tokens=5000", 10*time.Minute)
 	record("budget_seed_ms", time.Since(t).Milliseconds())
 	memSnap("seeded", &rows)
 	rounds := envInt("BUDGET_ROUNDS", 12)
+	// A Bun process in every member making auth calls throughout, counted
+	// in the same container limit.
+	loads := map[string]string{}
+	var lmu sync.Mutex
+	var lwg sync.WaitGroup
+	for _, n := range cluster {
+		_ = sh(n, "rm -f /tmp/stop-load")
+		lwg.Add(1)
+		go func(n Node) {
+			defer lwg.Done()
+			out, code, err := dexec(n, "bun", "/bench/load.ts", "m-0000042")
+			lmu.Lock()
+			loads[n.Name] = fmt.Sprintf("%s (exit %d, %v)", strings.TrimSpace(out), code, err)
+			lmu.Unlock()
+		}(n)
+	}
+	time.Sleep(3 * time.Second)
 	var tput []map[string]any
 	for r := 1; r <= rounds; r++ {
 		m := bench(L, "run_commit", 5000, 16)
@@ -88,6 +112,11 @@ func memoryBudget() {
 		must(L, "POST", "/expire-chunk?keep=20000&chunk=500", 10*time.Minute)
 		memSnap(fmt.Sprintf("runs %dk", r*5), &rows)
 	}
+	for _, n := range cluster {
+		_ = sh(n, "touch /tmp/stop-load")
+	}
+	lwg.Wait()
+	record("budget_bun_load", loads)
 	time.Sleep(30 * time.Second)
 	memSnap("settled 30s", &rows)
 	state := map[string]any{}
@@ -147,6 +176,7 @@ func backupRestore() {
 		for _, f := range fresh {
 			dremove(f)
 		}
+		certSet = map[int]string{1: "b", 2: "c"}[rn]
 		join := fresh[0].IP + ":9001"
 		for i, f := range fresh {
 			j := join
@@ -374,4 +404,24 @@ func oldMemberReturns(wl *Workload, inc0, inc string) map[string]any {
 	b, _ := json.Marshal(out)
 	logf("old member returns: %s", b)
 	return out
+}
+
+// batchTest runs the member's deterministic check of rqlite's conditional
+// batches against the live cluster.
+func batchTest() {
+	L, err := leader(cluster)
+	if err != nil {
+		die("%v", err)
+	}
+	r := must(L, "POST", "/selftest/batch", time.Minute)
+	var cases []map[string]any
+	_ = json.Unmarshal(r.V, &cases)
+	var checks []Check
+	for _, c := range cases {
+		b, _ := json.Marshal(c)
+		logf("batch test: %s", b)
+		checks = append(checks, Check{"batch: " + fmt.Sprint(c["case"]), c["pass"] == true, fmt.Sprintf("expected %v; error %v", c["expected"], c["error"])})
+	}
+	record("batch_test", cases)
+	record("checks_batch", checks)
 }

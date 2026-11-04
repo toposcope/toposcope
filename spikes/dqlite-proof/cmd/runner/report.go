@@ -14,6 +14,9 @@ func criteria() []Check {
 	if c, ok := results["checks_guard"].([]Check); ok {
 		out = append(out, c...)
 	}
+	if c, ok := results["checks_batch"].([]Check); ok {
+		out = append(out, c...)
+	}
 	if c, ok := results["checks_faults"].([]Check); ok {
 		out = append(out, c...)
 	}
@@ -24,7 +27,7 @@ func criteria() []Check {
 	bk, _ := results["checks_backup"].([]Check)
 	resMu.Unlock()
 	if haveRev {
-		out = append(out, revocationCheck())
+		out = append(out, revocationCheck(), strictRevocationCheck(), majorityCommitsCheck())
 	}
 	if haveFP {
 		v, wr := fp["answered_valid_after_revoke"].(int), fp["writes_committed_on_lone_follower"].(int)
@@ -71,12 +74,13 @@ func criteria() []Check {
 // cycles (end within 25% of the value at a third of the way).
 func budgetCheck(rows []MemRow, b map[string]any) Check {
 	limit := int64(512 << 10) // KB
-	var peak int64
+	var peak, cgPeak, bunPeak int64
 	at := map[string]map[string]int64{}
 	for _, r := range rows {
 		if r.HWMKB > peak {
 			peak = r.HWMKB
 		}
+		cgPeak, bunPeak = max(cgPeak, r.CgPeakKB), max(bunPeak, r.BunKB)
 		if at[r.Stage] == nil {
 			at[r.Stage] = map[string]int64{}
 		}
@@ -102,7 +106,7 @@ func budgetCheck(rows []MemRow, b map[string]any) Check {
 		}
 	}
 	return Check{"fits the app container's budget (512 MB, 1 CPU)", !oom && peak <= limit/2 && level,
-		fmt.Sprintf("peak RSS %d MB of 512 (pass if at most half, leaving the rest for Bun); OOM or stopped: %v; RSS from %s to %s: %s", peak/1024, oom, early, late, strings.Join(parts, ", "))}
+		fmt.Sprintf("peak RSS of the storage side (Go service and database, every process) %d MB of 512 (pass if at most half, leaving the rest for Bun); whole container with a Bun auth client running: cgroup peak %d MB, Bun RSS %d MB; OOM or stopped: %v; RSS from %s to %s: %s", peak/1024, cgPeak/1024, bunPeak/1024, oom, early, late, strings.Join(parts, ", "))}
 }
 
 func memoryCheck(rows []MemRow) Check {
@@ -130,7 +134,7 @@ func memoryCheck(rows []MemRow) Check {
 
 func report(res map[string]any, crit []Check) string {
 	var b strings.Builder
-	b.WriteString("# dqlite proof: run report (" + label + ")\n\n")
+	b.WriteString("# " + backend + " proof: run report (" + label + ")\n\n")
 	if f, ok := res["fatal"]; ok {
 		fmt.Fprintf(&b, "**Run stopped early:** %v\n\n", f)
 	}

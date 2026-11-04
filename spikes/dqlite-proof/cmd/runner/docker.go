@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -109,8 +110,9 @@ func partition(n Node, peers []Node) error {
 
 func heal(n Node) error { return sh(n, "iptables -F INPUT && iptables -F OUTPUT") }
 
-func pause(n Node) error  { return sh(n, "kill -STOP $(pidof ctl)") }
-func resume(n Node) error { return sh(n, "kill -CONT $(pidof ctl)") }
+// pause stops the whole member: the Go service and, on rqlite, its rqlited.
+func pause(n Node) error  { return sh(n, "kill -STOP $(pidof rqlited ctlr ctl)") }
+func resume(n Node) error { return sh(n, "kill -CONT $(pidof rqlited ctlr ctl)") }
 
 // throttle limits a member's CPU (nanocpus; 0 removes the limit).
 func throttle(n Node, nanoCPUs int64) error {
@@ -139,6 +141,9 @@ func oneWay(n Node, peers []Node, dir string) error {
 
 var hostOut = os.Getenv("HOST_OUT")
 
+// certSet is the installation the next created member belongs to (MTLS=1).
+var certSet = "a"
+
 // dcreate creates and starts a member outside Compose, with a fresh data
 // volume, on the given address.
 func dcreate(n Node, join string) error {
@@ -147,8 +152,13 @@ func dcreate(n Node, join string) error {
 	if join != "" {
 		envs = append(envs, "JOIN="+join)
 	}
+	var rqJoin []string
+	for _, f := range fresh {
+		rqJoin = append(rqJoin, f.IP+":4002")
+	}
+	envs = append(envs, "RQ_JOIN="+strings.Join(rqJoin, ","), "RQ_ARGS="+os.Getenv("RQ_ARGS"), "MTLS="+os.Getenv("MTLS"), "CERT_SET="+certSet)
 	body := map[string]any{
-		"Image": "dqproof-ctl:local", "Env": envs,
+		"Image": "dqproof-ctl:local", "Env": envs, "Entrypoint": []string{"/usr/local/bin/" + ctlBin()},
 		"HostConfig": map[string]any{
 			"Init": true, "CapAdd": []string{"NET_ADMIN"}, "Binds": []string{hostOut + ":/out"},
 			"Mounts": []map[string]any{{"Type": "volume", "Target": "/data"}}, "Memory": int64(4) << 30,

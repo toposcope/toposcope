@@ -1,0 +1,52 @@
+# n3, rq-asym-snap run 1, asym-in trial 9: the goroutines involved in the snapshot install (full dump trimmed)
+
+goroutine 50 [IO wait, 2 minutes]:
+internal/poll.runtime_pollWait(0xffff605e1400, 0x72)
+	/opt/hostedtoolcache/go/1.27.3/x64/src/runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0x6b6d97722380?, 0x6b6d972625a8?, 0x0)
+	/opt/hostedtoolcache/go/1.27.3/x64/src/internal/poll/fd_poll_runtime.go:84 +0x28
+internal/poll.(*pollDesc).waitRead(...)
+	/opt/hostedtoolcache/go/1.27.3/x64/src/internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x6b6d97722380, {0x6b6d972625a8, 0x2a58, 0x2a58})
+	/opt/hostedtoolcache/go/1.27.3/x64/src/internal/poll/fd_unix.go:170 +0x22c
+net.(*netFD).Read(0x6b6d97722380, {0x6b6d972625a8?, 0x6b6d96bb73e8?, 0x61a3b4?})
+	/opt/hostedtoolcache/go/1.27.3/x64/src/net/fd_posix.go:68 +0x28
+net.(*conn).Read(0x6b6d9728df38, {0x6b6d972625a8?, 0x0?, 0x0?})
+	/opt/hostedtoolcache/go/1.27.3/x64/src/net/net.go:196 +0x34
+crypto/tls.(*Conn).readFromUntil(0x6b6d97239008, {0x2327c50, 0x6b6d9728df38}, 0x4da4a0?)
+	/opt/hostedtoolcache/go/1.27.3/x64/src/crypto/tls/conn.go:820 +0xdc
+crypto/tls.(*Conn).readRecordOrCCS(0x6b6d97239008, 0x0)
+	/opt/hostedtoolcache/go/1.27.3/x64/src/crypto/tls/conn.go:677 +0xad0
+crypto/tls.(*Conn).readRecord(...)
+	/opt/hostedtoolcache/go/1.27.3/x64/src/crypto/tls/conn.go:588
+crypto/tls.(*Conn).Read(0x6b6d97239008, {0x6b6d97836000, 0x40000, 0x32?})
+	/opt/hostedtoolcache/go/1.27.3/x64/src/crypto/tls/conn.go:1392 +0x150
+bufio.(*Reader).Read(0x6b6d972c7aa0, {0x6b6d97254000, 0x8000, 0x125c?})
+	/opt/hostedtoolcache/go/1.27.3/x64/src/bufio/bufio.go:245 +0x188
+io.(*LimitedReader).Read(0x6b6d972a3980, {0x6b6d97254000?, 0x6b6d9724a5a0?, 0x4d0904?})
+	/opt/hostedtoolcache/go/1.27.3/x64/src/io/io.go:479 +0x48
+github.com/hashicorp/raft.(*countingReader).Read(0x6b6d97c4a6e0, {0x6b6d97254000?, 0x6b6d96bb7808?, 0xe5f078?})
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/progress.go:106 +0x2c
+io.copyBuffer({0xffffa92726f0, 0x6b6d97320f00}, {0x232a1b0, 0x6b6d97c4a6e0}, {0x0, 0x0, 0x0})
+	/opt/hostedtoolcache/go/1.27.3/x64/src/io/io.go:429 +0x18c
+io.Copy(...)
+	/opt/hostedtoolcache/go/1.27.3/x64/src/io/io.go:388
+github.com/hashicorp/raft.(*Raft).installSnapshot(0x6b6d96e30008, {{0x1feb308, 0x6b6d97446d10}, {0x2327950, 0x6b6d972a3980}, 0x6b6d96df4690}, 0x6b6d97446d10)
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/raft.go:1909 +0x680
+github.com/hashicorp/raft.(*Raft).processRPC(0x6b6d96e30008, {{0x1feb308, 0x6b6d97446d10}, {0x2327950, 0x6b6d972a3980}, 0x6b6d96df4690})
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/raft.go:1422 +0x80
+github.com/hashicorp/raft.(*Raft).runFollower(0x6b6d96e30008)
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/raft.go:172 +0x488
+github.com/hashicorp/raft.(*Raft).run(0x6b6d96e30008)
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/raft.go:149 +0x6c
+github.com/hashicorp/raft.(*raftState).goFunc.func1()
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/state.go:149 +0x50
+created by github.com/hashicorp/raft.(*raftState).goFunc in goroutine 1
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/state.go:147 +0x80
+
+goroutine 44333 [select]:
+github.com/hashicorp/raft.(*snapshotRestoreMonitor).run(0x6b6d97245ea0, {0x233cfc0, 0x6b6d97245e50})
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/progress.go:58 +0xe0
+created by github.com/hashicorp/raft.startSnapshotRestoreMonitor in goroutine 50
+	/home/runner/go/pkg/mod/github.com/hashicorp/raft@v1.8.0/progress.go:46 +0x134
+

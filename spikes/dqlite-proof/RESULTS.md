@@ -4,6 +4,8 @@ Step 1 of the cluster design in [`docs/ha-research.md`](../../docs/ha-research.m
 
 **Verdict: dqlite does not pass the gate yet.**
 
+**Update:** the same harness has now run against rqlite. See [`RESULTS-rqlite.md`](RESULTS-rqlite.md) for the results and the comparison.
+
 - **Correctness held.** With the mitigations below enabled, no violation was observed in the tested control-plane operations: no duplicate claim, no reused identity, no stale owner's write, no lost acknowledged write, no partial monitor run.
 - **Two things fail.**
   - **No bound on stale security reads.** An old leader that was paused while it was isolated answers revoked sessions as valid for about 2 × the election timeout after it resumes. Measured from the revocation's acknowledgement that was up to 6.4 s at default timeouts and 0.9 s tuned. A longer pause makes it longer, and dqlite's read path offers nothing to bound it.
