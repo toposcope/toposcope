@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.15.1
 
 Syslog over UDP has a bound and says what it drops (#465). At most 10,000 rows wait for ClickHouse; a packet that arrives past that is dropped instead of growing the app's memory. `GET /api/metrics` gains `toposcope_syslog_dropped_total` by `reason`: `queue_full`, `insert_failed` (a batch whose insert failed, which was lost before with one log line) and `unparsed` (not RFC 3164, which was ignored without a count). While drops happen the app writes at most one line a minute to stderr. `toposcope_syslog_packets_total` now counts only the packets taken.
 

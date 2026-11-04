@@ -8,18 +8,18 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 
 | | |
 | --- | --- |
-| **Today** | [0.15.0](https://github.com/toposcope/toposcope/releases/tag/v0.15.0) — what changed after a deploy, on one clock: logs, metrics, traces and profiles under change marks, Compare on equal windows before and after, and the error fingerprints that are new. One node, two containers. |
+| **Today** | [0.15.1](https://github.com/toposcope/toposcope/releases/tag/v0.15.1) — what changed after a deploy, on one clock: logs, metrics, traces and profiles under change marks, Compare on equal windows before and after, and the error fingerprints that are new. One node, two containers. |
 | **v0.x** | The sentence (step 6 below), written from that evidence. Team features wait for an HA design: see [One node](#one-node). |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
-## Today — 0.15.0
+## Today — 0.15.1
 
-Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.15.0`.
+Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.15.1`.
 
 - **Home** — every saved hunt as a card, before and after the latest deploy, flag or incident on equal windows; the error fingerprints first seen since; the monitors that are open.
 - **Hunt** — the log search: a copyable `key:value` bar, saved hunts, histogram, facets, workspaces, Fields, promoted columns and Live. Change marks sit on the plot and as seams between rows. Compare shows before and after for each plotted level, service or host on exact equal windows around a mark; Fingerprints reads the same clock and refuses a side past 200 distinct ids. A matching id opens a trace waterfall and a profile icicle. A deploy's sha and a stack frame link to the code once **Settings › Repositories** knows where it lives. Fields says which keys each service sends and which names do not match.
 - **Boards** — panels that move and resize, fold into sections and carry notes, each with its own `q`, up to 26. A metric draws as lines, bars or stacked bars, a histogram metric as a heatmap, a Top-N as a donut.
-- **Ingest** — OTLP logs, traces, metrics and profiles over HTTP or gRPC; metrics are gauges, counters and histograms with no exporter setting, and an OTLP reply says what was not stored. Prometheus remote write (`POST /v1/prometheus/write`), JSON / NDJSON, syslog UDP, change marks (`POST /v1/marks`) and check results. An error with a type and frames gets an `e1` fingerprint; `service.version` becomes `version`. The packaged Vector config is an optional disk buffer that also sends the machine's health and any `/metrics` page listed in it.
+- **Ingest** — OTLP logs, traces, metrics and profiles over HTTP or gRPC; metrics are gauges, counters and histograms with no exporter setting, and an OTLP reply says what was not stored. Prometheus remote write (`POST /v1/prometheus/write`), JSON / NDJSON, syslog UDP (at most 10,000 rows waiting, with a count of what it drops), change marks (`POST /v1/marks`) and check results. An error with a type and frames gets an `e1` fingerprint; `service.version` becomes `version`. The packaged Vector config is an optional disk buffer that also sends the machine's health and any `/metrics` page listed in it.
 - **Watch** — a saved search that goes quiet or loud, a check-in a script pushes (`POST /v1/checks`, or `/ping/<key>` with Nagios exit codes), or an HTTP(S), TCP or certificate check from this node. Each opens, reminds and resolves; every result is a log row. `TOPOSCOPE_WATCHDOG_URL` checks in somewhere else, so Toposcope stopping is noticed too.
 - **Access** — people with three roles (Owner, Operator, Viewer), two-step and OIDC sign-in, and every write stamped with who made it; tokens; links; shares. A link pulls every kind (logs, marks, spans, metric points, profiles, monitors) from another instance through any `q`, and on down a chain; while a source is short, counts read as floors and the gap shows. A share lets another page embed one scope of numbers, never events, with a token that expires and can be revoked at once.
 - **Agents** — MCP at `/mcp` and the toposcope skill: set up an instance, read it, propose monitors and panels, and save only what you say yes to.
