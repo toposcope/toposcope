@@ -1,14 +1,16 @@
 # HA research
 
-Research for the [One node](../ROADMAP.md#one-node) rule, written against 0.15.1 (`b5915bc`). Nothing here is locked. It sets out what a lost node costs today, what has to change for Toposcope to survive one, three whole designs, and a recommendation with the choices that lock it.
+Research for the [One node](../ROADMAP.md#one-node) rule, written against 0.15.1 (`b5915bc`). Nothing here is locked. It sets out what a lost node costs today, what has to change for Toposcope to survive one, four whole designs, and a recommendation with the choices that lock it. Designs A–C came first; design D came out of review and is the recommendation.
 
 The constraints that bind: self-host only, no hosted control plane; no Helm, k8s, or S3 / cold volume ([Will not](../ROADMAP.md#will-not)); Vector is the collector and there is no Toposcope ingest daemon; much lighter than Graylog or OpenSearch.
 
 ## In short
 
-- Toposcope is built as **one writer**. The arrival counter that orders rows for links, the monitor pass, HTTP checks, link pulls and the dedupe of pulled rows are each guarded by a variable in one process. Two app processes on one store would page twice, probe twice, store pulled rows twice and hand out the same arrival positions to different rows. So every design below keeps **one active app at a time**. Active/active is a rewrite, not a step.
+- Toposcope is built as **one writer**. The arrival counter that orders rows for links, the monitor pass, HTTP checks, link pulls and the dedupe of pulled rows are each guarded by a variable in one process. Two app processes on one store would page twice, probe twice, store pulled rows twice and hand out the same arrival positions to different rows. So every design below keeps **one owner for each piece of work** (A–C: one active app; D: any node serves the UI and queries, but the scheduler, ingest and each link pull have one owner). Spreading that work across nodes is a later step.
 - Links already copy every kind from one instance to another every 5 seconds, never store a row twice, and resume after a restart. A second instance that links everything from the first is **already a warm copy of the telemetry**. What it lacks is the control plane (people, hunts, boards, monitors, tokens, links, shares) and a way to take over.
-- Recommendation: **design A, a warm standby made from a link**: two nodes, the same two containers on each, about 7 PRs, minutes to recover, seconds of telemetry lost. Replicated ClickHouse (designs B and C) needs a third node for ClickHouse Keeper on any layout, and C also needs a new store for the control plane.
+- Replicated ClickHouse needs a third node for ClickHouse Keeper on any layout, and losing no data needs three replicas. Making the control plane survive a node needs a replicated store, and every one of the ~425 SQLite calls changes whichever store it is.
+- Recommendation: **design D, a cluster**. Two containers on each node: Toposcope (Bun for the web, API and ingest; a Go control service with embedded dqlite for all control state and all background work) and ClickHouse (with Keeper in cluster mode). Standalone is the same pair on one machine; HA is that pair on three machines. Nothing acknowledged is lost when one machine dies; recovery under a minute. It is the largest build here, about 40 PRs. A cluster is one installation; a link stays a link between installations and is never the HA mechanism.
+- Design A (a warm standby made from a link, about 7 PRs) is the light alternative. It is not a step towards D: its snapshot transfer and identity takeover would be built and then thrown away.
 
 ## 1. What lives where, and what a dead box costs today
 
@@ -99,6 +101,8 @@ ClickHouse Cloud's SharedMergeTree is not self-hosted and is out.
 
 **e. Move the control plane into ClickHouse or Postgres.** ClickHouse has no transactions and no cheap row updates; monitors, sessions and link positions are read-modify-write rows, so it is a poor fit. Postgres fits the data, but HA Postgres means Patroni and etcd or similar, which is the Graylog weight this product avoids, and it is the same ~425-call rewrite.
 
+**f. dqlite, embedded in a Go service.** Canonical's C library: SQLite under Raft, linked into the process that uses it, with ordinary multi-statement transactions. A write is acknowledged once a quorum has persisted it [15]. The database itself is held in memory and the Raft log is what goes to disk [15], so it suits a small control database, never a copy of telemetry. Reads are served by the leader without first checking it still leads, so a read can be stale by up to an election timeout, "a few hundred milliseconds" by default [16]: a read never proves ownership, and claims must be conditional writes. It is reached from Go through `go-dqlite`, which binds the C library and needs it installed [17]; Bun cannot load it, so the control plane moves behind a Go service. Incus, often cited as dqlite in production, now runs Cowsql, a fork [18], so its record is not dqlite's own.
+
 ### The app
 
 **Active/passive.** One app serves; the other runs no loops and takes no writes until it takes over. What decides who is active:
@@ -122,7 +126,7 @@ Vector has one `uri` per sink and no failover between addresses, so the address 
 
 Toposcope ships none of these; operations docs name them, as TLS does today. Link keys carry `TOPOSCOPE_PUBLIC_URL`, so it has to be the moving name for links to follow.
 
-## 4. Three designs
+## 4. Four designs
 
 ### A. Warm standby from a link — minutes to recover
 
@@ -184,34 +188,96 @@ It then runs the primary's monitors, checks and links from the state in the snap
 
 **Effort.** B plus the control plane rewrite: ~425 synchronous SQLite calls to an async remote store, transactions reworked for rqlite's limits [12], a third container everywhere. About 30 PRs, and an install heavier than "two containers" by any reading.
 
+### D. A cluster: Go control service with dqlite, replicated ClickHouse — under a minute, nothing acknowledged lost
+
+**Shape.** Two containers on every node, as today:
+
+| Container | Contents | Holds |
+| --- | --- | --- |
+| **toposcope** | Bun: UI, public API, query building, search, ingest protocols. Go: the control service with dqlite embedded. s6 supervises both [19]. | dqlite (control state), node identity, the secrets it needs |
+| **clickhouse** | the upstream image; Keeper embedded in cluster mode | telemetry, rollups, Keeper state |
+
+Standalone is the pair on one machine. HA is the same pair on three machines, six containers; three is the minimum. No two-node HA, no witness-only node, no sharding, no cluster stretched across regions in the first release.
+
+Bun and Go ship in one image because they release together and share `/data`; ClickHouse stays its own container so an app restart or rollback never restarts or downgrades ClickHouse, its memory limit stays its own (`clickhouse_size` sizes it from its container), and its image stays upstream's. Only Go opens dqlite; Bun calls it over a Unix socket, and file permissions keep Bun out of the database files.
+
+**What Go owns.** All control state and all background work, behind a versioned internal API with generated TypeScript types. Operations, not SQL: create or change a monitor, check a session or an ingest token, claim a scheduled run, commit a run's result with its monitor move and its pending call, advance a link position, join, drain or remove a member. Each operation that changes several rows is one short transaction in Go; probes, ClickHouse queries and webhooks run outside any transaction. Bun keeps the UI, query builder, charts and protocol parsers, and stops opening SQLite.
+
+**What lives where.** dqlite holds bounded operational state: people, sessions, tokens, settings, hunts and boards, monitors and their current state, runs waiting, the call outbox, link positions. ClickHouse holds telemetry and history, including `monitor_results` as today. Finished operational rows expire. dqlite keeps its database in memory [15], so nothing telemetry-sized goes there.
+
+**One owner for each piece of work.** The first clustered release keeps today's model, one scheduler, one ingest owner and one owner per link pull, but each ownership is a durable record with a generation. Every write from an owner carries its generation and Go refuses an old one, so a paused worker that wakes cannot overwrite current state. A monitor run is: make a run id, claim it, check, commit result + move + call intent together, deliver from the outbox. That fixes every row of the table in section 2. It does not make webhooks exactly once: a call whose acknowledgement was lost is sent again, so each call carries a stable id a receiver can dedupe on. Spreading runs across nodes can come later.
+
+**Telemetry.** Replicated tables on Keeper, `insert_quorum = 2` of three, one policy, never weakened quietly when a replica is down: with two replicas lost, ingest refuses. Two fixes in the app: an origin identity that no new writer can reuse (the arrival counter becomes a block allocator in Go, claimed by conditional write), and a link position that moves only after its rows meet the quorum, with a feed that follows completed writes, not a per-process counter (`arrivalSeqSettled()` today). A replica that is behind is kept from monitor evaluation until it is current, or the pass says it is delayed, so a takeover does not page *fewer than* on missing rows.
+
+**Cluster and link are different things.** A cluster is one installation: one identity and public URL, one set of people, tokens, boards, monitors and settings, replicated underneath, members replaced on their own. A link joins separate installations, each with its own identity, admins, retention and availability, across sites or regions. Links carry no control-plane snapshot and never move an identity.
+
+**Failure contract.**
+
+| Event | Behaviour |
+| --- | --- |
+| One machine fails | the other two keep both quorums; work resumes once ownership and readiness are checked |
+| Network splits 2–1 | the majority carries on; the lone member can commit no control change and meet no insert quorum |
+| A worker pauses, then resumes | its old generation commits nothing; a webhook may still go twice |
+| A failed machine returns | rejoins and catches up before it takes work |
+| Quorum is lost | writes stop; there is no "force primary" |
+| A new replica is behind | kept from freshness-bound work until ready |
+
+The promise: one machine lost, no acknowledged control change or telemetry lost. Not: no interruption, exactly-once calls, or two machines lost at once. Target recovery under a minute, then publish what failure tests measure.
+
+**Operator sets up.** Three machines on one low-latency network; `toposcope init` on the first, a join token (expiring, authenticated, over encrypted peer traffic) on the other two; peer ports open only between them; a load balancer with a health check on every node's `/api/health`. One proxy on a fourth machine is still one point of failure, so the docs name a tested redundant front (two proxies with a floating IP, or the operator's HA load balancer).
+
+**upgrade.sh.** Rolling, one node at a time, each caught up before the next. Migrations run once per cluster, versioned, on the scheduler's owner, with `ON CLUSTER` for ClickHouse; the boot-time MV rebuilds and backfills of section 2 become one-off migration steps. Each release names the dqlite, `go-dqlite` and ClickHouse versions it was tested with, and which earlier release it can roll back to: separate containers make rollback possible, not automatically safe.
+
+**Backup.** A manifest with versions, the secrets a restore needs and recovery points; dqlite's backup and ClickHouse `BACKUP` [3] from one replica, copied off the cluster; `toposcope restore` tested in CI.
+
+**Links.** Unchanged as federation. Positions move into dqlite with the rest; one owner pulls each link.
+
+**Costs.**
+- A second language and a C dependency: `go-dqlite` binds the dqlite C library [17], packaged for Linux. The image builds it for amd64 and arm64; `bun run dev` on a Mac runs the control service in a container.
+- Every request's session or ingest-token check becomes a socket call to Go instead of a SQLite read in process, so it needs a cache that the token's generation can void.
+- Three machines for HA. A cluster is six containers with three ClickHouse replicas, closer to Graylog's weight; standalone stays two containers.
+- The largest build here.
+
+**Effort.** About 40 PRs, in this order:
+1. **Prove dqlite first** (~3): a three-node Go harness running Toposcope-shaped transactions through leader loss, partitions, paused processes, restarts, backup and restore, measuring stale reads and memory. This is the gate: if it fails, D does not go ahead on dqlite.
+2. **The Go boundary, standalone** (~15): the image with s6, the internal API and generated types, then one domain at a time (people and sessions, tokens, hunts and boards, monitors, links, shares, settings, fields and repositories), each with one writer and a tested export back to SQLite.
+3. **Background work in Go** (~6): claims, generations, run ids, the outbox, the scheduler, link pulls.
+4. **Identity and replay** (~4): the arrival allocator, positions after quorum, the feed on completed writes.
+5. **Replication and the cluster** (~9): Keeper and replicated tables with in-place conversion, `init`/`join`/`status`/`drain`/`remove`, readiness, migrations once per cluster, rolling `upgrade.sh`, backup and restore.
+6. **Failure tests before HA ships** (~3): writes acknowledged just before a kill, inserts cut half way, positions cut half way, stale workers, returning nodes, upgrades, restores.
+
+Steps 1–4 ship as ordinary single-node releases; HA ships after 6.
+
 ### Side by side
 
-| | A. Warm standby | B. Hot standby | C. Three nodes |
-| --- | --- | --- | --- |
-| Nodes / containers | 2 / 4 | 3 / 5 | 3 / 9 |
-| New parts | none | Keeper, cluster config | Keeper, cluster config, rqlite |
-| Takeover | by hand or script | automatic | automatic |
-| Recovery | ~2–5 min | ~1 min | < 1 min |
-| Telemetry lost | ~5 s | < 1 s | none acknowledged |
-| Control plane lost | ≤ 1 min | ≤ 1 min | none |
-| Effort | ~7 PRs | ~14 PRs | ~30 PRs |
-| Two containers per node | yes | yes, plus a Keeper box | no |
+| | A. Warm standby | B. Hot standby | C. Three nodes | D. Cluster |
+| --- | --- | --- | --- | --- |
+| Nodes / containers | 2 / 4 | 3 / 5 | 3 / 9 | 3 / 6 (standalone 1 / 2) |
+| New parts | none | Keeper, cluster config | Keeper, cluster config, rqlite | Keeper, cluster config, Go + dqlite |
+| Takeover | by hand or script | automatic | automatic | automatic |
+| Recovery | ~2–5 min | ~1 min | < 1 min | < 1 min target |
+| Telemetry lost | ~5 s | < 1 s | none acknowledged | none acknowledged |
+| Control plane lost | ≤ 1 min | ≤ 1 min | none | none acknowledged |
+| Effort | ~7 PRs | ~14 PRs | ~30 PRs | ~40 PRs |
+| Two containers per node | yes | yes, plus a Keeper box | no | yes |
 
 ## 5. Recommendation
 
-Build **A**. It survives a node with nothing new to run: the same image, two containers a node, no Keeper, no third box, no new store. It is mostly made of links, which already move every kind, dedupe across paths and resume after a restart, so the risky parts are small and testable (the snapshot, the takeover, fencing). It also gives teams something on day one: a second instance to read while the first is upgraded or down. Minutes to recover and seconds of telemetry is the right size for a single-team observability box; a team that needs seconds and zero loss is a team for B, which A does not block: A's snapshot, fencing and "one active app" rules are B's too.
+Build **D**. It is the one design that survives a machine with nothing acknowledged lost and keeps two containers a node. It also mends what section 2 found whether or not anyone runs a cluster: ownership with generations, an outbox for calls, positions that cannot be handed out twice, a feed that follows completed writes. Those ship first, as single-node releases, so each step is useful before HA exists. Splitting cluster from link keeps links what they are and keeps the HA promise out of the federation protocol.
 
-Do not start active/active, LiteFS, rqlite or Postgres.
+The proof of dqlite (step 1) gates the rest. Drop A: its snapshot over a link and its identity takeover would be built and then removed. Do not start active/active, LiteFS, Litestream, rqlite or Postgres.
+
+A stays the answer only if the effort or a second language is not acceptable: two nodes, minutes to recover, seconds lost, about 7 PRs.
 
 ### What Ian decides to lock it
 
-1. **Is A enough to lift the One node rule** for team features, or does that wait for B?
-2. **Takeover by hand or by script?** By hand is safer against split brain; a script on the watchdog's page is faster. Recommended: by hand in the first cut, with `promote` as one command.
-3. **Control plane: snapshot over the link, or Litestream?** Recommended: the snapshot. It adds no container; a minute of control plane is acceptable. Litestream gives a second, but is a third container and a backup format of its own.
-4. **The standby key carries every secret on the instance.** Agree that it is a separate key kind, Owner-only, one per instance, shown once, and refused by any link that is not a standby.
-5. **The takeover keeps the primary's identity** (people stay signed in; downstream links re-read once from a new epoch), rather than the standby keeping its own (everyone signs in again; every link made again). Recommended: keep the primary's.
-6. **The address in front is the operator's** (their proxy, a VIP or DNS), documented, not shipped; `TOPOSCOPE_PUBLIC_URL` must be that address.
-7. **Roadmap wording.** "Checks from more than one place" stays in Will not: the standby runs no checks until it takes over.
+1. **Go and dqlite.** A second language in the repository and a C library in the image, for the control plane and all background work.
+2. **Three machines is HA.** No two-node HA in the first release.
+3. **One durability policy:** two of three replicas acknowledge every insert, and ingest refuses rather than weaken it.
+4. **When the One node rule lifts.** When clustered HA ships (after step 6), or earlier.
+5. **What fails the dqlite proof**, and what then: rqlite behind the same Go API, or back to A.
+6. **Compatibility rules:** each release names its tested dqlite / `go-dqlite` / ClickHouse versions and how far back it can roll.
+7. **Roadmap wording.** "Checks from more than one place" stays in Will not: a cluster runs each check once, from whichever member owns it.
 
 ## Sources
 
@@ -229,3 +295,8 @@ Do not start active/active, LiteFS, rqlite or Postgres.
 12. rqlite, [FAQ](https://rqlite.io/docs/faq/)
 13. ClickHouse, [KeeperMap](https://clickhouse.com/docs/engines/table-engines/special/keeper-map)
 14. Vector, [HTTP sink](https://vector.dev/docs/reference/configuration/sinks/http/)
+15. Canonical, [dqlite replication](https://canonical.com/dqlite/docs/explanation/replication)
+16. Canonical, [dqlite consistency model](https://canonical.com/dqlite/docs/explanation/consistency-model)
+17. [go-dqlite](https://github.com/canonical/go-dqlite)
+18. Incus, [About the Incus database](https://linuxcontainers.org/incus/docs/main/database/)
+19. Docker, [Run multiple processes in a container](https://docs.docker.com/engine/containers/multi-service_container/); [s6-overlay](https://github.com/just-containers/s6-overlay)
