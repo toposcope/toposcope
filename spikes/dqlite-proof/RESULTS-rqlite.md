@@ -2,11 +2,12 @@
 
 The same harness as [`RESULTS.md`](RESULTS.md) (dqlite), run against rqlite v10.6.6: the same operations, workload, fault injection, independent acknowledgement records, resource limits and acceptance criteria. Only the storage layer differs: `cmd/ctlr` (a member that supervises a local `rqlited` and talks to it over HTTP) in place of `cmd/ctl` (dqlite embedded through go-dqlite). Nothing in `src/` changes.
 
-**Verdict: rqlite is the preferred backend, and the dqlite investigation stops for this release. The HA gate is not passed.**
+**Verdict: rqlite is the preferred backend, and the dqlite investigation stops for this release. The HA gate is not passed with stock rqlite; a two-part patch to hashicorp/raft passes the targeted test (section 5), and is not yet upstream or reviewed.**
 
 rqlite passed both requirements dqlite failed: fresh authorization reads and prompt takeovers. It did that with workable conditional operations and a much better memory profile. Two problems remain:
 
-- **The snapshot-install stall is a blocker, and it reproduces at default settings.** The targeted reproducer (rq-snapstall, section 5) lost the leader while a lagging follower was confirmed to be installing a snapshot, and never healed the partition. The two members that could still talk to each other committed nothing for **154–158 s** when the leader's inbound traffic was cut (5 of 5 trials) or the leader was killed (5 of 5), and **not within 300 s** when it was paused (4 of 4). In every trial the follower's Raft main loop was blocked reading the snapshot stream, so it could not vote. No acknowledged write was lost. A demonstrated fix is needed before the HA gate.
+- **The snapshot-install stall is a blocker in stock rqlite, and it reproduces at default settings.** The targeted reproducer (rq-snapstall, section 5) lost the leader while a lagging follower was confirmed to be installing a snapshot, and never healed the partition. The two members that could still talk to each other committed nothing for **154–158 s** when the leader's inbound traffic was cut (5 of 5 trials) or the leader was killed (5 of 5), and **not within 300 s** when it was paused (4 of 4). In every trial the follower's Raft main loop was blocked reading the snapshot stream, so it could not vote. No acknowledged write was lost.
+- **A patched hashicorp/raft fixes it in this test.** The patch is [`patches/raft-snapshot-idle-timeout.patch`](patches/raft-snapshot-idle-timeout.patch), and the same rqlite version is built against it. It makes two changes. A follower now abandons a snapshot stream that delivers nothing for 5 s. A candidate sent a snapshot by the leader of its own term now becomes its follower, as it already did for AppendEntries; the second change was needed once the first let the install return. With the patch, all 30 reproducer trials (10 per mode) committed again within **5.8–9.6 s** without healing, and no acknowledged write was lost. The regression runs pass as before.
 - **A member from a lost installation took over a restored cluster** that reused its peers' addresses, overwriting the restored data. A fresh trust boundary on disaster restore (new node CA, mutual TLS) kept it out in every trial. Whether hashicorp/raft should reject such a leader by itself, or the restore procedure must exclude it, is for upstream to judge (section 3).
 
 **Not established here** (as for dqlite): ClickHouse fencing and recovery across both databases; host power loss; losing every disk; amd64 under faults (only arm64 ran); real network latency (one host, bridge network); real disks (Docker Desktop's VM disk, so write latencies are not a durability comparison).
@@ -16,10 +17,12 @@ rqlite passed both requirements dqlite failed: fresh authorization reads and pro
 ```bash
 ./run.sh rqlite      # rq-default, rq-restore, rq-snap, rq-budget (about 35 minutes)
 ./run.sh rq-stalls   # rq-asym, rq-asym-snap, and the paused-owner matrix (about 30 minutes)
+./run.sh rq-snapstall # the stall reproducer, stock rqlite (about 45 minutes)
+./run.sh rq-fix      # the reproducer, rq-default and rq-asym-snap on the patched raft (about 70 minutes)
 ./run.sh <config>    # any one config
 ```
 
-The image now carries both members. `rqlited` comes from the v10.6.6 release tarball for the target architecture, and `ctlr` is built beside `ctl`. `rq-default` gives every installation the same node certificate, as the dqlite runs do (`MTLS=0`). Every other rqlite config gives each installation its own certificate authority and requires client certificates (`MTLS=1`, section 3).
+The image now carries both members. `rqlited` comes from the v10.6.6 release tarball for the target architecture, `rqlited-patched` is the same version built against the patched raft (section 5), and `ctlr` is built beside `ctl`. `rq-default` gives every installation the same node certificate, as the dqlite runs do (`MTLS=0`). Every other rqlite config gives each installation its own certificate authority and requires client certificates (`MTLS=1`, section 3).
 
 | config | rqlited flags | phases |
 | --- | --- | --- |
@@ -69,7 +72,7 @@ The cost compared with dqlite's interactive transactions is real but small. Each
 | Revocation visible everywhere within 2 × election timeout | PASS | FAIL | 0 ms in every trial |
 | Lone member commits nothing, answers no revoked session | PASS | PASS | 0 of 1,136 reads answered, 0 of 5 writes |
 | **Every lease takeover within 10 s** | **PASS** (60 of 60 in the stall matrix) | **FAIL** (17 of 60) | section 4 |
-| **The majority commits during every isolation** | **FAIL, blocker**: at defaults, losing the leader during a confirmed snapshot install stalled the other two for 154–158 s (asym-in 5/5, kill 5/5) and past 300 s (pause 4/4), without heal | not measured (the revocation always committed) | section 5, rq-snapstall |
+| **The majority commits during every isolation** | stock rqlite: **FAIL, blocker**: at defaults, losing the leader during a confirmed snapshot install stalled the other two for 154–158 s (asym-in 5/5, kill 5/5) and past 300 s (pause 4/4), without heal. **Patched raft: PASS**, 30 of 30 within 10 s (worst 9.6 s), and 0 of 60 asym trials stalled with frequent snapshots | not measured (the revocation always committed) | section 5, rq-snapstall, rq-snapstall-fix, rq-asym-snap-fix |
 | Memory bounded (oversized batches) | PASS: 205–220 MB peak at defaults | FAIL: 1,468 MB and growing | section 6 |
 | Fits the app container (512 MB, 1 CPU) | PASS: 91 MB for Go and rqlited; 214 MB cgroup peak with Bun running | PASS: 101 MB (Bun not measured) | section 6 |
 | Restore matches the backup (twice) | PASS | PASS | row checksums of 11 tables |
@@ -195,6 +198,36 @@ The planned run was 5 trials per mode in one go. It stopped after the fourth pau
 
 Each has to be demonstrated, and the first two are changes in hashicorp/raft or a fork of it.
 
+#### The fix, demonstrated
+
+[`patches/raft-snapshot-idle-timeout.patch`](patches/raft-snapshot-idle-timeout.patch) applies to hashicorp/raft v1.8.0. The image builds rqlite v10.6.6 from source against it, with the same Go and SQLite as the release binary, and installs it as `rqlited-patched` beside the release `rqlited`. `RQLITED=rqlited-patched` selects it, and `./run.sh rq-fix` runs everything below.
+
+1. **An idle deadline on the incoming snapshot stream** (`net_transport.go`). Before each read of the stream, the follower sets a read deadline 5 s ahead (`NetworkTransportConfig.SnapshotIdleTimeout`, default 5 s). A stream that is still delivering is never cut, however slow the whole transfer is; a stream that goes quiet fails its next read. Raft's existing error path then runs: the partial snapshot is cancelled (`sink.Cancel()`) and the RPC answered with the error. The failure is sticky, so Raft's drain of the rest of the stream returns at once instead of waiting again. Unread snapshot bytes are left on that connection, so it is closed after the response is sent, and the leader opens a new one if it is still there. A complete stream clears the deadline and the connection is reused as before.
+2. **A same-term candidate steps down on InstallSnapshot** (`raft.go`). With only the first change, 1 of 5 kill trials still stalled past 300 s, for a different reason. The lagging follower had become a candidate while it was cut off; pre-vote kept its term unchanged. When the leader's snapshot arrived at that same term, `installSnapshot` recorded the leader but left the follower a candidate: it steps down only for a higher term, where `appendEntries` also steps down at the same term. After abandoning the install, the follower was a candidate that still recorded the lost leader. It refused the other member's pre-votes "since we have a leader", and as a candidate it never cleared that leader. The other member refused its pre-votes in turn, because the follower's log was behind. No election could succeed. The patch applies `appendEntries`' rule to `installSnapshot`.
+
+Both changes come with unit tests in the patch. The stalled stream is abandoned after the idle time and its connection closed, while a complete stream keeps its connection. A same-term candidate becomes a follower; this test fails without change 2. Raft's whole suite was run on both versions, 30 times for its timing-sensitive tests. It fails the same tests at similar rates with or without the patch (`TestRaft_HasExistingState`, `TestRaft_ProtocolVersion_Upgrade_2_3`, `TestNetworkTransport_AppendEntriesPipeline_CloseStreams`), plus `TestFileSS_BadPerm`, which cannot pass as root in a container.
+
+**rq-snapstall-fix** (defaults, a CA per installation, 10 trials per mode, the same reproducer):
+
+| mode | trials during a confirmed install | majority's first write after the cut | write gap | acknowledged writes missing |
+| --- | --- | --- | --- | --- |
+| asym-in | 10 | 5.8–8.1 s | 5.1–7.8 s | 0 |
+| pause | 10 | 5.8–9.6 s | 5.5–9.4 s | 0 |
+| kill | 10 | 6.2–9.0 s | 5.3–9.0 s | 0 |
+
+At 10 s, every lagging follower was a follower of a new leader, and none was still installing.
+
+**Regression, with the patched binary:**
+- **rq-default-fix:** passes the same 30 checks as rq-default. The 31st, an old member returning, fails as it does in rq-default, because that config shares one certificate across installations. That includes 60 revocation trials with no stale authorization observed, the 13 batch cases, 3 paused-owner takeovers (3.1–4.3 s), memory and two restores.
+- **rq-asym-snap-fix:** frequent snapshots, 15 trials per direction. 0 of 60 isolations stalled, against 5 of 57 asym-in trials with stock rqlite; the longest write gap was 7.5 s.
+- **Latency (rq-lat against rq-lat-fix):** the latency phase was run back to back with each binary. There was no systematic difference: single-caller medians for checks were 82–141 µs against 85–135 µs, and for writes 2.8–3.3 ms against 2.8–3.4 ms, with each binary faster on some operations. The host was slower than in the earlier rq-default run on both. This is expected, since the patch touches only the snapshot path and the step-down rule. The Bun socket benchmark was not run back to back. In rq-default-fix, its single caller was faster than in rq-default (p50 191 µs against 332 µs), and 32 in flight was slower (p50 4.1 ms against 1.3 ms). That is inconclusive until it is repeated with both binaries in one session.
+
+**Limits of this result:**
+- **The margin is small.** The worst trial took 9.6 s against a 10 s target. That is the 5 s idle deadline plus an election at rqlite's 1 s timeouts. A shorter deadline buys margin; the cost is that a link quiet for that long abandons a transfer the leader will retry.
+- **The patch is ours, not upstream's.** Shipping it means carrying a fork of hashicorp/raft and building rqlite from source until upstream takes an equivalent change.
+- **An earlier run with the patch is excluded.** In it, the harness's pause matched processes named `rqlited` only, so it never paused `rqlited-patched`, and those pause trials did not pause the leader. The harness now matches both names; every pause trial above is from after that fix.
+- **Not tested:** snapshots large enough for a slow real link to go quiet for 5 s mid-transfer; amd64.
+
 The first rq-snap run stopped at its failure, before any asym-out trial; its report was overwritten by the second run, so only this text records it. rq-asym-snap was run three times by hand (`out/rq-asym-snap-1` to `-3`). Run 1 predates a harness fix, so its "within bound" check reads a meaningless window for its one never-committed revocation; its stale-read counts are unaffected.
 
 ### 6. Memory: bounded, and the budget holds with Bun counted
@@ -213,10 +246,10 @@ The real Bun application, not this auth client, is what has to fit in the rest. 
 | Publish both harnesses and their results for review | Yes |
 | Prefer rqlite and stop dqlite work for this release | Yes |
 | Continue the Go API and rqlite integration on a development branch | Yes |
-| Claim the complete HA gate has passed | **No** |
+| Claim the complete HA gate has passed | **No** (the stall is fixed only in a patched raft, not yet reviewed or upstream) |
 | Treat default snapshot settings as a proven workaround for the stall | **No** |
 
-Next engineering task: fix the snapshot-install stall, which reproduces at default settings (section 5). The fix must pass `rq-snapstall` in all three modes. The evidence is enough to choose a direction, but not yet to ship the HA guarantee.
+Next engineering task: decide how to carry the raft fix. The options are proposing it upstream (hashicorp/raft, then a rqlite release) or shipping a pinned fork until then. Either way it needs review by someone who knows hashicorp/raft. The evidence is enough to choose a direction, but not yet to ship the HA guarantee.
 
 Conditions already established for any clustered deployment: node mutual TLS, with fresh cluster credentials and membership on disaster restore; restore incarnations and the application fence; `?transaction` on every multi-statement request; linearizable reads for authorization and ownership. Still not covered: ClickHouse fencing, power loss, amd64 under faults, and the real Bun application's memory.
 
@@ -225,5 +258,6 @@ rqlite runs as a supervised process beside Bun and Go in the app container. That
 **Upstream reports to file** (reproductions and expected behaviour, without claiming fault):
 
 - hashicorp/raft (via rqlite): a follower in a restored cluster accepted `AppendEntries` and `InstallSnapshot` from a member that was not in its configuration (section 3).
-- hashicorp/raft v1.8.0: `installSnapshot` reads the stream on the main loop with no deadline. When the leader is lost mid-transfer, the follower cannot vote, and a 3-member cluster stops writing for about 155 s (leader killed or cut inbound), or indefinitely (leader paused). The reproducer is `rq-snapstall` (section 5, `raft.go:1909`).
+- hashicorp/raft v1.8.0: `installSnapshot` reads the stream on the main loop with no deadline. When the leader is lost mid-transfer, the follower cannot vote, and a 3-member cluster stops writing for about 155 s (leader killed or cut inbound), or indefinitely (leader paused). The reproducer is `rq-snapstall` (section 5, `raft.go:1909`). Offer the idle-deadline change from the patch.
+- hashicorp/raft v1.8.0: `installSnapshot` leaves a same-term candidate a candidate while recording the sender as leader, unlike `appendEntries`. If the install then fails, that member rejects every pre-vote "since we have a leader" until the old leader returns. Offer the one-line change and its test from the patch.
 - rqlite docs: `?transaction` is what makes a batch stop at the first failed statement (section 1).

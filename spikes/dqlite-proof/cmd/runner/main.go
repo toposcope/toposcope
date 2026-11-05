@@ -410,7 +410,7 @@ func main() {
 	inc0 := waitIncarnation(cluster, "", time.Minute)
 	logf("installation incarnation %s", inc0)
 	if backend == "rqlite" {
-		record("config", map[string]any{"backend": backend, "label": label, "election_timeout_ms": electionMs, "rqlite": "v10.6.6", "rqlited_args": env("RQ_ARGS", "(defaults: election 1s, heartbeat 1s, snapshot 8192 entries or 4 MB WAL)"), "lease_ttl_ms": 3000, "peer_tls": env("TLS", "1") != "0", "auth_reads": "linearizable"})
+		record("config", map[string]any{"backend": backend, "label": label, "election_timeout_ms": electionMs, "rqlite": "v10.6.6", "rqlited": env("RQLITED", "rqlited"), "rqlited_args": env("RQ_ARGS", "(defaults: election 1s, heartbeat 1s, snapshot 8192 entries or 4 MB WAL)"), "lease_ttl_ms": 3000, "peer_tls": env("TLS", "1") != "0", "auth_reads": "linearizable"})
 	} else {
 		record("config", map[string]any{"backend": backend, "label": label, "election_timeout_ms": electionMs, "heartbeat_ms": electionMs / 10, "dqlite": "v1.18.7", "go_dqlite": "v3.0.4", "lease_ttl_ms": 3000, "snapshot": env("SNAP", "dqlite default (threshold 1024, trailing 8192)"), "peer_tls": true})
 	}

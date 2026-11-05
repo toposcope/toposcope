@@ -9,6 +9,24 @@ RUN curl -fsSL -o /tmp/rq.tgz https://github.com/rqlite/rqlite/releases/download
     && tar xzf /tmp/rq.tgz -C /tmp && cp /tmp/rqlite-${RQLITE_VERSION}-linux-${TARGETARCH}/rqlited /bin/rqlited \
     && /bin/rqlited -version
 
+# The same rqlite release built from source against hashicorp/raft v1.8.0
+# with patches/raft-snapshot-idle-timeout.patch: a follower abandons a
+# snapshot install whose stream goes quiet (RESULTS-rqlite.md section 5).
+# Installed as rqlited-patched; members run it when RQLITED says so.
+FROM golang:1.27-trixie AS rqlite-patched
+ARG RQLITE_VERSION=v10.6.6
+RUN git clone -q --depth 1 --branch ${RQLITE_VERSION} https://github.com/rqlite/rqlite /src/rqlite
+WORKDIR /src/rqlite
+RUN go mod download github.com/hashicorp/raft \
+    && cp -r "$(go env GOMODCACHE)/github.com/hashicorp/raft@v1.8.0" /src/raft && chmod -R u+w /src/raft
+COPY patches/raft-snapshot-idle-timeout.patch /src/
+RUN cd /src/raft && git apply -p1 /src/raft-snapshot-idle-timeout.patch \
+    && cd /src/rqlite && go mod edit -replace github.com/hashicorp/raft=/src/raft \
+    && CGO_ENABLED=1 go build -tags netgo,osusergo \
+      -ldflags "-w -s -linkmode external -extldflags -static -X github.com/rqlite/rqlite/v10/cmd.Version=${RQLITE_VERSION}-raft-idle" \
+      -o /bin/rqlited ./cmd/rqlited \
+    && /bin/rqlited -version
+
 FROM golang:1.26-trixie AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
       autoconf automake libtool make pkg-config git ca-certificates \
@@ -47,5 +65,6 @@ RUN ldconfig
 COPY --from=build /etc/dqproof /etc/dqproof
 COPY --from=build /bin/ctl /bin/ctlr /bin/runner /usr/local/bin/
 COPY --from=rqlite /bin/rqlited /usr/local/bin/
+COPY --from=rqlite-patched /bin/rqlited /usr/local/bin/rqlited-patched
 COPY bench /bench
 ENTRYPOINT ["/usr/local/bin/ctl"]

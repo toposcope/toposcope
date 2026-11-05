@@ -37,7 +37,7 @@ run() {
   rm -rf "out/$label/acks" && mv out/acks "out/$label/acks" 2>/dev/null || true
   cleanup
 }
-want() { [[ $which == "$1" || ($which == all && $2 == main) || ($which == stalls && $2 == stalls) || ($which == rqlite && $2 == rqlite) || ($which == rq-stalls && $2 == rq-stalls) ]]; }
+want() { [[ $which == "$1" || ($which == all && $2 == main) || ($which == stalls && $2 == stalls) || ($which == rqlite && $2 == rqlite) || ($which == rq-stalls && $2 == rq-stalls) || ($which == rq-fix && $2 == rq-fix) || ($which == rq-lat && $2 == rq-lat) ]]; }
 want default main && run default 0 3000 guard,faults,latency,memory,backup
 want tuned main && run tuned 20 300 guard,faults,latency,memory 128/512
 want budget main && run budget 20 300 budget 128/512
@@ -68,6 +68,14 @@ want rq-budget rqlite && rqrun rq-budget 1000 budget "$SNAPPY"
 # The snapshot-install stall, created on purpose at the settings under test
 # (defaults, a CA per installation): see cmd/runner/snapstall.go.
 want rq-snapstall rq-stalls && rqrun rq-snapstall 1000 snapstall ""
+# The same with rqlited built against the patched hashicorp/raft
+# (patches/raft-snapshot-idle-timeout.patch), and the regression runs with it.
+want rq-snapstall-fix rq-fix && RQLITED=rqlited-patched rqrun rq-snapstall-fix 1000 snapstall ""
+want rq-default-fix rq-fix && MTLS=0 RQLITED=rqlited-patched rqrun rq-default-fix 1000 batch,faults,latency,memory,backup ""
+want rq-asym-snap-fix rq-fix && REV_MODES=asym-in,asym-out REV_TRIALS_RQ=15 RQLITED=rqlited-patched rqrun rq-asym-snap-fix 1000 faults "$SNAPPY"
+# Latency A/B, release binary against the patched one, in one session.
+want rq-lat rq-lat && MTLS=0 rqrun rq-lat 1000 latency ""
+want rq-lat-fix rq-lat && MTLS=0 RQLITED=rqlited-patched rqrun rq-lat-fix 1000 latency ""
 # Asymmetric partitions repeated, with default and frequent snapshots.
 want rq-asym rq-stalls && REV_MODES=asym-in,asym-out REV_TRIALS_RQ=15 rqrun rq-asym 1000 faults ""
 want rq-asym-snap rq-stalls && REV_MODES=asym-in,asym-out REV_TRIALS_RQ=15 rqrun rq-asym-snap 1000 faults "$SNAPPY"

@@ -1,0 +1,308 @@
+diff --git a/net_transport.go b/net_transport.go
+index 174455b..90d8310 100644
+--- a/net_transport.go
++++ b/net_transport.go
+@@ -106,8 +106,12 @@ type NetworkTransport struct {
+ 	streamCancel  context.CancelFunc
+ 	streamCtxLock sync.RWMutex
+ 
+-	timeout      time.Duration
+-	TimeoutScale int
++	timeout time.Duration
++
++	// snapshotIdleTimeout bounds how long a follower waits for the next
++	// byte of an incoming snapshot. See NetworkTransportConfig.
++	snapshotIdleTimeout time.Duration
++	TimeoutScale        int
+ 
+ 	msgpackUseNewTimeFormat bool
+ }
+@@ -167,6 +171,14 @@ type NetworkTransportConfig struct {
+ 	// go-msgpack v1.1.5 by default). Decoding is not affected, as all
+ 	// go-msgpack v2.1.0+ decoders know how to decode both formats.
+ 	MsgpackUseNewTimeFormat bool
++
++	// SnapshotIdleTimeout bounds how long a follower waits for the next byte
++	// of an incoming snapshot before abandoning the install. Without it, a
++	// leader lost mid-transfer (paused, partitioned, or gone without a reset)
++	// leaves the follower's main loop blocked in installSnapshot, unable to
++	// time out or vote, for as long as the connection stays open. Zero means
++	// DefaultSnapshotIdleTimeout; negative disables the bound.
++	SnapshotIdleTimeout time.Duration
+ }
+ 
+ // ServerAddressProvider is a target address to which we invoke an RPC when establishing a connection
+@@ -223,6 +235,9 @@ func NewNetworkTransportWithConfig(
+ 		// Default zero value
+ 		maxInFlight = DefaultMaxRPCsInFlight
+ 	}
++	if config.SnapshotIdleTimeout == 0 {
++		config.SnapshotIdleTimeout = DefaultSnapshotIdleTimeout
++	}
+ 	trans := &NetworkTransport{
+ 		connPool:                make(map[ServerAddress][]*netConn),
+ 		consumeCh:               make(chan RPC),
+@@ -232,6 +247,7 @@ func NewNetworkTransportWithConfig(
+ 		shutdownCh:              make(chan struct{}),
+ 		stream:                  config.Stream,
+ 		timeout:                 config.Timeout,
++		snapshotIdleTimeout:     config.SnapshotIdleTimeout,
+ 		TimeoutScale:            DefaultTimeoutScale,
+ 		serverAddressProvider:   config.ServerAddressProvider,
+ 		msgpackUseNewTimeFormat: config.MsgpackUseNewTimeFormat,
+@@ -619,7 +635,10 @@ func (n *NetworkTransport) handleConn(connCtx context.Context, conn net.Conn) {
+ 		default:
+ 		}
+ 
+-		if err := n.handleCommand(r, dec, enc); err != nil {
++		if err := n.handleCommand(conn, r, dec, enc); err != nil {
++			// Deliver a response already encoded (an abandoned snapshot
++			// is answered before its connection is closed).
++			_ = w.Flush()
+ 			if err != io.EOF {
+ 				n.logger.Error("failed to decode incoming command", "error", err)
+ 			}
+@@ -633,7 +652,7 @@ func (n *NetworkTransport) handleConn(connCtx context.Context, conn net.Conn) {
+ }
+ 
+ // handleCommand is used to decode and dispatch a single command.
+-func (n *NetworkTransport) handleCommand(r *bufio.Reader, dec *codec.Decoder, enc *codec.Encoder) error {
++func (n *NetworkTransport) handleCommand(conn net.Conn, r *bufio.Reader, dec *codec.Decoder, enc *codec.Encoder) error {
+ 	getTypeStart := time.Now()
+ 
+ 	// Get the rpc type
+@@ -655,6 +674,7 @@ func (n *NetworkTransport) handleCommand(r *bufio.Reader, dec *codec.Decoder, en
+ 
+ 	// Decode the command
+ 	isHeartbeat := false
++	var snap *idleReader
+ 	var labels []metrics.Label
+ 	switch rpcType {
+ 	case rpcAppendEntries:
+@@ -701,7 +721,13 @@ func (n *NetworkTransport) handleCommand(r *bufio.Reader, dec *codec.Decoder, en
+ 			return err
+ 		}
+ 		rpc.Command = &req
+-		rpc.Reader = io.LimitReader(r, req.Size)
++		if n.snapshotIdleTimeout > 0 {
++			snap = &idleReader{conn: conn, r: io.LimitReader(r, req.Size), idle: n.snapshotIdleTimeout}
++			rpc.Reader = snap
++			defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
++		} else {
++			rpc.Reader = io.LimitReader(r, req.Size)
++		}
+ 		labels = []metrics.Label{{Name: "rpcType", Value: "InstallSnapshot"}}
+ 	case rpcTimeoutNow:
+ 		var req TimeoutNowRequest
+@@ -757,6 +783,11 @@ RESP:
+ 		if err := enc.Encode(resp.Response); err != nil {
+ 			return err
+ 		}
++		// A snapshot stream abandoned part way leaves unread bytes on the
++		// connection, so it cannot carry another command: close it.
++		if snap != nil && snap.err != nil {
++			return fmt.Errorf("snapshot stream abandoned: %w", snap.err)
++		}
+ 	case <-n.shutdownCh:
+ 		return ErrTransportShutdown
+ 	}
+@@ -907,3 +938,31 @@ func (n *netPipeline) Close() error {
+ 	close(n.shutdownCh)
+ 	return nil
+ }
++
++// DefaultSnapshotIdleTimeout is the default NetworkTransportConfig.SnapshotIdleTimeout.
++const DefaultSnapshotIdleTimeout = 5 * time.Second
++
++// idleReader reads an incoming snapshot stream, failing any read that waits
++// longer than idle for data. The first failure is sticky, so the caller's
++// drain of the rest of the stream returns at once instead of waiting again.
++type idleReader struct {
++	conn net.Conn
++	r    io.Reader
++	idle time.Duration
++	err  error
++}
++
++func (ir *idleReader) Read(p []byte) (int, error) {
++	if ir.err != nil {
++		return 0, ir.err
++	}
++	if err := ir.conn.SetReadDeadline(time.Now().Add(ir.idle)); err != nil {
++		ir.err = err
++		return 0, err
++	}
++	n, err := ir.r.Read(p)
++	if err != nil && err != io.EOF {
++		ir.err = err
++	}
++	return n, err
++}
+diff --git a/net_transport_snapshot_idle_test.go b/net_transport_snapshot_idle_test.go
+new file mode 100644
+index 0000000..a3c1960
+--- /dev/null
++++ b/net_transport_snapshot_idle_test.go
+@@ -0,0 +1,142 @@
++package raft
++
++import (
++	"bufio"
++	"bytes"
++	"io"
++	"net"
++	"testing"
++	"time"
++
++	"github.com/hashicorp/go-hclog"
++	"github.com/hashicorp/go-msgpack/v2/codec"
++)
++
++// A leader lost part way through sending a snapshot (paused, partitioned,
++// or gone without a reset) must not block the follower's install forever.
++func TestNetworkTransport_SnapshotIdleTimeout(t *testing.T) {
++	for _, tc := range []struct {
++		name    string
++		idle    time.Duration
++		stalled bool
++	}{
++		{"stalled stream is abandoned", 200 * time.Millisecond, true},
++		{"complete stream is read and the connection reused", 200 * time.Millisecond, false},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			trans, err := NewTCPTransportWithConfig("127.0.0.1:0", nil, &NetworkTransportConfig{
++				MaxPool: 2, Timeout: time.Second, SnapshotIdleTimeout: tc.idle,
++			})
++			if err != nil {
++				t.Fatal(err)
++			}
++			defer trans.Close()
++
++			conn, err := net.Dial("tcp", string(trans.LocalAddr()))
++			if err != nil {
++				t.Fatal(err)
++			}
++			defer conn.Close()
++			w := bufio.NewWriter(conn)
++			enc := codec.NewEncoder(w, &codec.MsgpackHandle{})
++			const size = 1 << 20
++			sent := size
++			if tc.stalled {
++				sent = 4096
++			}
++			_ = w.WriteByte(rpcInstallSnapshot)
++			if err := enc.Encode(&InstallSnapshotRequest{
++				RPCHeader: RPCHeader{ProtocolVersion: ProtocolVersionMax}, SnapshotVersion: SnapshotVersionMax,
++				Term: 1, Leader: []byte("leader"), LastLogIndex: 10, LastLogTerm: 1, Size: size,
++			}); err != nil {
++				t.Fatal(err)
++			}
++			_, _ = w.Write(make([]byte, sent))
++			_ = w.Flush()
++
++			var rpc RPC
++			select {
++			case rpc = <-trans.Consumer():
++			case <-time.After(2 * time.Second):
++				t.Fatal("no rpc")
++			}
++			start := time.Now()
++			n, copyErr := io.Copy(io.Discard, rpc.Reader)
++			took := time.Since(start)
++			if tc.stalled {
++				if copyErr == nil || n != int64(sent) {
++					t.Fatalf("read %d bytes, err %v; want %d and a timeout", n, copyErr, sent)
++				}
++				if took < tc.idle || took > tc.idle+time.Second {
++					t.Fatalf("gave up after %v, want about %v", took, tc.idle)
++				}
++				// The drain raft does after a failed install returns at once.
++				start = time.Now()
++				if _, err := io.Copy(io.Discard, rpc.Reader); err == nil || time.Since(start) > 50*time.Millisecond {
++					t.Fatalf("second read: err %v after %v", err, time.Since(start))
++				}
++			} else if copyErr != nil || n != size {
++				t.Fatalf("read %d bytes, err %v; want %d", n, copyErr, size)
++			}
++			rpc.Respond(&InstallSnapshotResponse{Term: 1, Success: !tc.stalled}, nil)
++
++			// The response arrives either way.
++			r := bufio.NewReader(conn)
++			dec := codec.NewDecoder(r, &codec.MsgpackHandle{})
++			_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
++			var rpcErr string
++			var resp InstallSnapshotResponse
++			if err := dec.Decode(&rpcErr); err != nil {
++				t.Fatal(err)
++			}
++			if err := dec.Decode(&resp); err != nil {
++				t.Fatal(err)
++			}
++			// Abandoned: the connection is closed, since unread snapshot
++			// bytes are still on it. Complete: it carries the next command
++			// even after waiting longer than the idle timeout.
++			time.Sleep(2 * tc.idle)
++			if tc.stalled {
++				if _, err := r.ReadByte(); err != io.EOF {
++					t.Fatalf("connection still open: %v", err)
++				}
++				return
++			}
++			_ = w.WriteByte(rpcTimeoutNow)
++			_ = enc.Encode(&TimeoutNowRequest{RPCHeader: RPCHeader{ProtocolVersion: ProtocolVersionMax}})
++			_ = w.Flush()
++			select {
++			case rpc = <-trans.Consumer():
++				rpc.Respond(&TimeoutNowResponse{}, nil)
++			case <-time.After(2 * time.Second):
++				t.Fatal("connection not reused after a complete snapshot")
++			}
++		})
++	}
++}
++
++// A candidate sent a snapshot by a leader of its own term becomes its
++// follower, as it would for AppendEntries.
++func TestRaft_InstallSnapshot_CandidateSameTermStepsDown(t *testing.T) {
++	_, transport := NewInmemTransport("")
++	store := NewInmemStore()
++	r := &Raft{trans: transport, logger: hclog.New(nil), stable: store}
++	r.setCurrentTerm(5)
++	r.setState(Candidate)
++
++	// Snapshot version 0 carries Peers, which fail to decode after the term
++	// check, so nothing is read or installed.
++	req := &InstallSnapshotRequest{
++		RPCHeader: RPCHeader{ID: []byte("n3"), Addr: []byte("n3")},
++		Term:      5, Peers: []byte("invalid msgpack"),
++	}
++	chResp := make(chan RPCResponse, 1)
++	r.installSnapshot(RPC{Reader: new(bytes.Buffer), RespChan: chResp}, req)
++	<-chResp
++	if r.getState() != Follower {
++		t.Fatalf("state %v, want Follower", r.getState())
++	}
++	if addr, id := r.LeaderWithID(); id != "n3" || addr == "" {
++		t.Fatalf("leader %q %q, want n3", addr, id)
++	}
++}
+diff --git a/raft.go b/raft.go
+index 6e7a04b..221bb35 100644
+--- a/raft.go
++++ b/raft.go
+@@ -1862,8 +1862,13 @@ func (r *Raft) installSnapshot(rpc RPC, req *InstallSnapshotRequest) {
+ 		return
+ 	}
+ 
+-	// Increase the term if we see a newer one
+-	if req.Term > r.getCurrentTerm() {
++	// Increase the term if we see a newer one, and become a follower of the
++	// sender at the current term too, as appendEntries does. A candidate
++	// that stays one while recording this sender as leader rejects every
++	// other member's pre-vote "since we have a leader", and, as a candidate,
++	// never clears that leader: if the sender is then lost, no election can
++	// succeed while this member's vote is needed.
++	if req.Term > r.getCurrentTerm() || (r.getState() != Follower && !r.candidateFromLeadershipTransfer.Load()) {
+ 		// Ensure transition to follower
+ 		r.setState(Follower)
+ 		r.setCurrentTerm(req.Term)

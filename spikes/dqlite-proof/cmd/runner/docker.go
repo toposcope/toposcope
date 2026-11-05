@@ -111,8 +111,8 @@ func partition(n Node, peers []Node) error {
 func heal(n Node) error { return sh(n, "iptables -F INPUT && iptables -F OUTPUT") }
 
 // pause stops the whole member: the Go service and, on rqlite, its rqlited.
-func pause(n Node) error  { return sh(n, "kill -STOP $(pidof rqlited ctlr ctl)") }
-func resume(n Node) error { return sh(n, "kill -CONT $(pidof rqlited ctlr ctl)") }
+func pause(n Node) error  { return sh(n, "kill -STOP $(pidof rqlited rqlited-patched ctlr ctl)") }
+func resume(n Node) error { return sh(n, "kill -CONT $(pidof rqlited rqlited-patched ctlr ctl)") }
 
 // throttle limits a member's CPU (nanocpus; 0 removes the limit).
 func throttle(n Node, nanoCPUs int64) error {
@@ -156,7 +156,7 @@ func dcreate(n Node, join string) error {
 	for _, f := range fresh {
 		rqJoin = append(rqJoin, f.IP+":4002")
 	}
-	envs = append(envs, "RQ_JOIN="+strings.Join(rqJoin, ","), "RQ_ARGS="+os.Getenv("RQ_ARGS"), "MTLS="+os.Getenv("MTLS"), "CERT_SET="+certSet)
+	envs = append(envs, "RQ_JOIN="+strings.Join(rqJoin, ","), "RQ_ARGS="+os.Getenv("RQ_ARGS"), "MTLS="+os.Getenv("MTLS"), "CERT_SET="+certSet, "RQLITED="+env("RQLITED", "rqlited"))
 	body := map[string]any{
 		"Image": "dqproof-ctl:local", "Env": envs, "Entrypoint": []string{"/usr/local/bin/" + ctlBin()},
 		"HostConfig": map[string]any{

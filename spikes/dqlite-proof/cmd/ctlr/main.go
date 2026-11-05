@@ -112,7 +112,9 @@ func (s *Server) startRqlited() {
 	args = append(args, strings.Fields(os.Getenv("RQ_ARGS"))...)
 	args = append(args, filepath.Join(s.dataDir, "rqlite"))
 	log.Printf("rqlited %s", strings.Join(args, " "))
-	cmd := exec.Command("/usr/local/bin/rqlited", args...)
+	bin := "/usr/local/bin/" + env("RQLITED", "rqlited")
+	log.Printf("rqlited binary %s", bin)
+	cmd := exec.Command(bin, args...)
 	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("rqlited: %v", err)

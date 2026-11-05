@@ -17,19 +17,19 @@ services:
   n1:
     <<: *ctl
     container_name: dqproof-n1
-    environment: { NODE: n1, ADDR: "10.213.7.11:9001", LATENCY_MS: "${LATENCY_MS:-0}", SNAP_THRESHOLD: "${SNAP_THRESHOLD:-}", SNAP_TRAILING: "${SNAP_TRAILING:-}", TLS: "${TLS:-1}", RQ_JOIN: "10.213.7.11:4002,10.213.7.12:4002,10.213.7.13:4002", RQ_ARGS: "${RQ_ARGS:-}", MTLS: "${MTLS:-0}", CERT_SET: a }
+    environment: { NODE: n1, ADDR: "10.213.7.11:9001", LATENCY_MS: "${LATENCY_MS:-0}", SNAP_THRESHOLD: "${SNAP_THRESHOLD:-}", SNAP_TRAILING: "${SNAP_TRAILING:-}", TLS: "${TLS:-1}", RQ_JOIN: "10.213.7.11:4002,10.213.7.12:4002,10.213.7.13:4002", RQ_ARGS: "${RQ_ARGS:-}", MTLS: "${MTLS:-0}", CERT_SET: a, RQLITED: "${RQLITED:-rqlited}" }
     volumes: [./out:/out, n1:/data]
     networks: { net: { ipv4_address: 10.213.7.11 } }
   n2:
     <<: *ctl
     container_name: dqproof-n2
-    environment: { NODE: n2, ADDR: "10.213.7.12:9001", JOIN: "10.213.7.11:9001", LATENCY_MS: "${LATENCY_MS:-0}", SNAP_THRESHOLD: "${SNAP_THRESHOLD:-}", SNAP_TRAILING: "${SNAP_TRAILING:-}", TLS: "${TLS:-1}", RQ_JOIN: "10.213.7.11:4002,10.213.7.12:4002,10.213.7.13:4002", RQ_ARGS: "${RQ_ARGS:-}", MTLS: "${MTLS:-0}", CERT_SET: a }
+    environment: { NODE: n2, ADDR: "10.213.7.12:9001", JOIN: "10.213.7.11:9001", LATENCY_MS: "${LATENCY_MS:-0}", SNAP_THRESHOLD: "${SNAP_THRESHOLD:-}", SNAP_TRAILING: "${SNAP_TRAILING:-}", TLS: "${TLS:-1}", RQ_JOIN: "10.213.7.11:4002,10.213.7.12:4002,10.213.7.13:4002", RQ_ARGS: "${RQ_ARGS:-}", MTLS: "${MTLS:-0}", CERT_SET: a, RQLITED: "${RQLITED:-rqlited}" }
     volumes: [./out:/out, n2:/data]
     networks: { net: { ipv4_address: 10.213.7.12 } }
   n3:
     <<: *ctl
     container_name: dqproof-n3
-    environment: { NODE: n3, ADDR: "10.213.7.13:9001", JOIN: "10.213.7.11:9001", LATENCY_MS: "${LATENCY_MS:-0}", SNAP_THRESHOLD: "${SNAP_THRESHOLD:-}", SNAP_TRAILING: "${SNAP_TRAILING:-}", TLS: "${TLS:-1}", RQ_JOIN: "10.213.7.11:4002,10.213.7.12:4002,10.213.7.13:4002", RQ_ARGS: "${RQ_ARGS:-}", MTLS: "${MTLS:-0}", CERT_SET: a }
+    environment: { NODE: n3, ADDR: "10.213.7.13:9001", JOIN: "10.213.7.11:9001", LATENCY_MS: "${LATENCY_MS:-0}", SNAP_THRESHOLD: "${SNAP_THRESHOLD:-}", SNAP_TRAILING: "${SNAP_TRAILING:-}", TLS: "${TLS:-1}", RQ_JOIN: "10.213.7.11:4002,10.213.7.12:4002,10.213.7.13:4002", RQ_ARGS: "${RQ_ARGS:-}", MTLS: "${MTLS:-0}", CERT_SET: a, RQLITED: "${RQLITED:-rqlited}" }
     volumes: [./out:/out, n3:/data]
     networks: { net: { ipv4_address: 10.213.7.13 } }
   runner:
@@ -54,6 +54,7 @@ services:
       BACKEND: "${BACKEND:-dqlite}"
       RQ_ARGS: "${RQ_ARGS:-}"
       MTLS: "${MTLS:-0}"
+      RQLITED: "${RQLITED:-rqlited}"
       SNAPSTALL_TRIALS: "${SNAPSTALL_TRIALS:-5}"
       SNAPSTALL_MODES: "${SNAPSTALL_MODES:-asym-in,pause,kill}"
       SNAPSTALL_WAIT_S: "${SNAPSTALL_WAIT_S:-300}"
