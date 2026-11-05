@@ -9,7 +9,7 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 | | |
 | --- | --- |
 | **Today** | [0.15.1](https://github.com/toposcope/toposcope/releases/tag/v0.15.1) — what changed after a deploy, on one clock: logs, metrics, traces and profiles under change marks, Compare on equal windows before and after, and the error fingerprints that are new. One node, two containers. |
-| **v0.x** | The sentence (step 6 below), written from that evidence. Team features wait for an HA design: see [One node](#one-node). |
+| **v0.x** | The sentence (step 6 below), written from that evidence. One node is the supported product: see [One node](#one-node). |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
 ## Today — 0.15.1
@@ -52,10 +52,18 @@ The bar stays copy-pasteable `key:value`. Fingerprints are queryable attrs, not 
 
 ## One node
 
-Toposcope runs on one node and does not survive it. Since 0.9 it has people, links and shares, so a team can come to depend on that one box. Until there is an HA design:
+Toposcope runs on one node and does not survive losing it. That is the supported product for the foreseeable future, not a stage before a cluster: SQLite and ClickHouse stay as they are, and team features are weighed on what teams ask for, not held for HA. Clustering was researched and is parked ([HA research](docs/ha-research.md)); it comes back when a concrete requirement pays for building and supporting it.
 
-- What ships holds on one node: a backup and restore bring all of it back, `upgrade.sh` backs up first, and the watchdog says when the node stops ([operations](docs/operations.md#who-watches-toposcope)).
-- No more team features: no new roles or sign-in kinds, and nothing under `ee/` (SAML, SCIM, roles with a data fence, an audit log of every change). A team that needs these needs an instance that survives a node.
+It fits investigating deploys and a team's shared view of what changed. It does not fit being the only monitoring of critical infrastructure, or anything with a contracted uptime.
+
+What one node holds to:
+
+- A lost machine comes back on a new one from a backup kept somewhere else: both volumes, `.env` and `compose.yml` ([backup and restore](docs/operations.md#backup-and-restore)). What arrived after that backup is lost. `upgrade.sh`'s own backups stay on the same machine and serve an upgrade, not a lost machine.
+- The packaged Vector keeps what apps send on its own disk while Toposcope is down, 256 MB per signal unless sized up, then holds the app back. It does not bring back rows Toposcope had already taken and then lost with its disk.
+- The watchdog, on another service, says when the node stops ([who watches Toposcope](docs/operations.md#who-watches-toposcope)). Monitors do not run while it is down, and nothing runs them later.
+- Recovery times and backup frequency are measured and published as what they are, not as an availability promise.
+
+Next for one node: backups off the machine with `.env` and `compose.yml`, a timed restore onto a fresh machine with a realistic dataset, and the buffer sizing in `vector.yaml` stated for the traffic it covers.
 
 ## Ideas we have not locked
 
@@ -63,7 +71,7 @@ These need a drawing or an explicit choice before they are work:
 
 - Histogram-chip catch-up
 - CSV / table export matching promoted columns
-- Enterprise under `ee/` (the root `LICENSE` already reserves it): SAML, SCIM with directory groups to roles, roles with a data fence, an audit log — after an HA design, since a team that needs these needs an instance that survives a node
+- Enterprise under `ee/` (the root `LICENSE` already reserves it): SAML, SCIM with directory groups to roles, roles with a data fence, an audit log
 - A map, by a country or region the collector adds to each row (a local GeoIP lookup in Vector, as the enrich recipes do); Toposcope never looks up an address itself
 
 ## People and roles
@@ -78,4 +86,4 @@ Up to 0.9, a link copied log rows and change marks, and nothing else, so an inst
 
 Do not send these as PRs expecting a merge. They are a different product.
 
-PromQL, Grafana, Helm, k8s, S3 / cold volume, an audit log in the open-source edition (each write names who made it; a log of every change is `ee/`, after HA), email, GELF, Lucene / regex / infix globs, per-widget `q` in a hunt (a hunt has one `q`; board panels each carry their own, #410), generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, upgrading on its own (the footer upgrades only on a click, where the host turned it on).
+PromQL, Grafana, Helm, k8s, S3 / cold volume, an audit log in the open-source edition (each write names who made it; a log of every change is `ee/`), email, GELF, Lucene / regex / infix globs, per-widget `q` in a hunt (a hunt has one `q`; board panels each carry their own, #410), generic event-table sort, a Toposcope ingest daemon, user JS on ingest, HTTP enrichment per event, a hosted control plane, metric-threshold alerts, a Fields role that text-indexes an attr, status pages, on-call schedules and escalation, checks from more than one place, upgrading on its own (the footer upgrades only on a click, where the host turned it on).

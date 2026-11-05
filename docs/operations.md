@@ -152,6 +152,8 @@ The check-in goes from the end of the pass, not from a timer of its own: a timer
 
 Neither notices a webhook target that is down: Toposcope does not page about itself through its own webhooks. Watch shows each monitor's failed calls (`failed 503 ×3`) on its rail and its stretches.
 
+Monitors do not run while the node is down, and nothing runs them later. Telemetry a collector buffered arrives afterwards, but the checks and calls that would have read it on time did not happen. Running Toposcope on a different machine from the apps it watches keeps it up when they go down.
+
 ## Links
 
 A link is one instance pulling rows from another, made from **Access › Let someone in › Link** and listed under **Links** on Access, with **Paste a link key** on that group; a link pulled by this instance reads *we copy from*, one pulled by the other side *copies from us*, and a key not yet pasted *key not used yet*. Each link has a page from its Access row (Access › its name): which way rows move, its scope, its position, how far behind, its last pull, its rate over a day with any gap drawn as a floor, **Pause** (the link and its place stay; nothing is pulled or served) and, where rows leave this instance, **Change scope**. The instance the other can reach mints a key; the other pastes it, and the side that pasted connects. **Offer rows from here** mints a single-use key for one filter: whoever pastes it pulls the rows that match. **Invite a source here** mints a key that lets this instance pull from whoever pastes it, once or for many until a date (30 days at most). A key carries this instance's address, its name, a short id, the filter, the kinds and a secret; it starts `tsl2_`, is shown once and stored hashed. A `tsl1_` key, from before 0.10, is refused at paste: mint a new one on the other side. On the first paste the two instances swap it for a secret of their own, and that secret reads the link's feed and nothing else.
@@ -281,7 +283,7 @@ In order, it:
 2. Downloads the release's files into `releases/X.Y.Z/` and checks each against its `SHA256SUMS`. If one does not match, nothing else happens.
 3. Prints each newer release's Before you upgrade.
 4. Pulls the new image while the old one still runs.
-5. Checks the free disk, stops the stack, and backs up both volumes into `backups/<UTC time>-<from version>/`, with the `compose.yml` in use. ClickHouse's own `system` database (its logs) is left out: ClickHouse makes it again when it starts. It says where the backup went and how big it is, and keeps the last 2. Ingest is refused while the stack is stopped. The packaged Vector buffers on disk and sends when the app is back, OTLP exporters retry or drop according to their own settings, and syslog over UDP is lost. Every run prints how long the stop lasted.
+5. Checks the free disk, stops the stack, and backs up both volumes into `backups/<UTC time>-<from version>/`, with the `compose.yml` in use. ClickHouse's own `system` database (its logs) is left out: ClickHouse makes it again when it starts. It says where the backup went and how big it is, and keeps the last 2. Ingest is refused while the stack is stopped. The packaged Vector buffers on disk, up to 256 MB per signal, and sends when the app is back, OTLP exporters retry or drop according to their own settings, and syslog over UDP is lost. Every run prints how long the stop lasted.
 6. Swaps `compose.yml`, keeping `.env` and `compose.override.yml`. An edited `vector.yaml` is kept, with the new one beside it as `vector.yaml.new`. Any setting the new `env.example` has that `.env` lacks is named.
 7. Starts the stack and waits up to 10 minutes (`--wait <minutes>`) for `/api/health` to report the new version.
 8. Posts a deploy change mark, `Toposcope 0.6.1 → 0.6.2`.
@@ -407,6 +409,8 @@ docker compose up -d
 ```
 
 Compose may warn that `toposcope_ch_data` already exists and was not created by Compose. That is the restore. Do not set `external: true` on packaged `compose.yml`.
+
+**A backup on the same machine does not survive that machine.** `./upgrade.sh` keeps its backups in `backups/` under the installation and keeps the last 2: they are for going back from an upgrade. For a lost machine, copy a backup somewhere else, with `.env` (the ClickHouse password, the ingest token and any setting you added there) and the `compose.yml` it was taken with. A new machine then needs Docker, those two files and the two archives, restored as above. What arrived after the backup is lost, so how often you copy one is how much you can lose. Restoring an upgrade backup on the same machine loses what arrived since, as [Rollback](#rollback) says.
 
 ## Rollback
 

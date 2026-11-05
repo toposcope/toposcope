@@ -1,5 +1,7 @@
 # HA research
 
+**Parked on 2026-11-05.** One node is the supported product ([One node](../ROADMAP.md#one-node)). The storage proofs for step 1 are in [#470](https://github.com/toposcope/toposcope/pull/470): dqlite held every safety check but stalled on takeovers and grew in memory at its defaults; rqlite was preferred but stalled on snapshot installs under a one-way partition. Neither became work. Clustering comes back when a concrete requirement pays for building and supporting it, and then starts from those results, not from step 2 below.
+
 Research for the [One node](../ROADMAP.md#one-node) rule, written against 0.15.1 (`b5915bc`). Nothing here is locked. It sets out what a lost node costs today, what has to change for Toposcope to survive one, the design that does it, and the choices that lock it.
 
 The constraints that bind: self-host only, no hosted control plane; no Helm, k8s, or S3 / cold volume ([Will not](../ROADMAP.md#will-not)); Vector is the collector and there is no Toposcope ingest daemon; much lighter than Graylog or OpenSearch.
