@@ -17,6 +17,9 @@ func criteria() []Check {
 	if c, ok := results["checks_batch"].([]Check); ok {
 		out = append(out, c...)
 	}
+	if c, ok := results["checks_snapstall"].([]Check); ok {
+		out = append(out, c...)
+	}
 	if c, ok := results["checks_faults"].([]Check); ok {
 		out = append(out, c...)
 	}

@@ -421,6 +421,9 @@ func main() {
 	if strings.Contains(phases, "batch") && backend == "rqlite" {
 		batchTest()
 	}
+	if strings.Contains(phases, "snapstall") && backend == "rqlite" {
+		snapStall()
+	}
 	if strings.Contains(phases, "faults") {
 		faults()
 	}

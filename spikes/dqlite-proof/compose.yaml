@@ -54,6 +54,10 @@ services:
       BACKEND: "${BACKEND:-dqlite}"
       RQ_ARGS: "${RQ_ARGS:-}"
       MTLS: "${MTLS:-0}"
+      SNAPSTALL_TRIALS: "${SNAPSTALL_TRIALS:-5}"
+      SNAPSTALL_MODES: "${SNAPSTALL_MODES:-asym-in,pause,kill}"
+      SNAPSTALL_WAIT_S: "${SNAPSTALL_WAIT_S:-300}"
+      SNAPSTALL_RATE: "${SNAPSTALL_RATE:-2mbit}"
     volumes: [./out:/out, /var/run/docker.sock:/var/run/docker.sock]
     networks: { net: { ipv4_address: 10.213.7.5 } }
 

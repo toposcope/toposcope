@@ -40,7 +40,7 @@ RUN mkdir -p /etc/dqproof && openssl req -x509 -newkey ec -pkeyopt ec_paramgen_c
 # Bun is here only for the auth benchmark, as the real caller of the socket.
 FROM oven/bun:1.3
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libuv1t64 libsqlite3-0 liblz4-1 iptables procps \
+      libuv1t64 libsqlite3-0 liblz4-1 iptables iproute2 procps \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /usr/local/lib/libdqlite.so* /usr/local/lib/
 RUN ldconfig

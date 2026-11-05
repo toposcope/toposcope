@@ -6,7 +6,7 @@ The same harness as [`RESULTS.md`](RESULTS.md) (dqlite), run against rqlite v10.
 
 rqlite passed both requirements dqlite failed: fresh authorization reads and prompt takeovers. It did that with workable conditional operations and a much better memory profile. Two problems remain:
 
-- **The snapshot-install stall is a blocker.** A one-way partition while a follower receives a snapshot stalled the majority until the partition healed (128 s in the trial measured). The follower's Raft main loop was blocked on a network read with no deadline. It reproduced in 5 of 57 trials with frequent snapshots, plus 4 that recovered only after 12–33 s. At default snapshot settings it was **not reproduced in 42 trials**. That does not show the defaults prevent it: they may only make the overlap rarer. Section 5 describes the targeted test that comes next.
+- **The snapshot-install stall is a blocker, and it reproduces at default settings.** The targeted reproducer (rq-snapstall, section 5) lost the leader while a lagging follower was confirmed to be installing a snapshot, and never healed the partition. The two members that could still talk to each other committed nothing for **154–158 s** when the leader's inbound traffic was cut (5 of 5 trials) or the leader was killed (5 of 5), and **not within 300 s** when it was paused (4 of 4). In every trial the follower's Raft main loop was blocked reading the snapshot stream, so it could not vote. No acknowledged write was lost. A demonstrated fix is needed before the HA gate.
 - **A member from a lost installation took over a restored cluster** that reused its peers' addresses, overwriting the restored data. A fresh trust boundary on disaster restore (new node CA, mutual TLS) kept it out in every trial. Whether hashicorp/raft should reject such a leader by itself, or the restore procedure must exclude it, is for upstream to judge (section 3).
 
 **Not established here** (as for dqlite): ClickHouse fencing and recovery across both databases; host power loss; losing every disk; amd64 under faults (only arm64 ran); real network latency (one host, bridge network); real disks (Docker Desktop's VM disk, so write latencies are not a durability comparison).
@@ -69,7 +69,7 @@ The cost compared with dqlite's interactive transactions is real but small. Each
 | Revocation visible everywhere within 2 × election timeout | PASS | FAIL | 0 ms in every trial |
 | Lone member commits nothing, answers no revoked session | PASS | PASS | 0 of 1,136 reads answered, 0 of 5 writes |
 | **Every lease takeover within 10 s** | **PASS** (60 of 60 in the stall matrix) | **FAIL** (17 of 60) | section 4 |
-| **The majority commits during every isolation** | **FAIL, blocker**: 5 of 57 asym-in trials with frequent snapshots stalled until heal; not reproduced in 42 one-way trials at defaults, which is not a workaround | not measured (the revocation always committed) | section 5 |
+| **The majority commits during every isolation** | **FAIL, blocker**: at defaults, losing the leader during a confirmed snapshot install stalled the other two for 154–158 s (asym-in 5/5, kill 5/5) and past 300 s (pause 4/4), without heal | not measured (the revocation always committed) | section 5, rq-snapstall |
 | Memory bounded (oversized batches) | PASS: 205–220 MB peak at defaults | FAIL: 1,468 MB and growing | section 6 |
 | Fits the app container (512 MB, 1 CPU) | PASS: 91 MB for Go and rqlited; 214 MB cgroup peak with Bun running | PASS: 101 MB (Bun not measured) | section 6 |
 | Restore matches the backup (twice) | PASS | PASS | row checksums of 11 tables |
@@ -138,7 +138,7 @@ All 60 took over within 4.4 s, against 17 of 60 over 10 s for dqlite. The 3 s fl
 
 Other fault timings (rq-default / rq-snap): after a leader `SIGKILL`, a new leader in 1.5 / 0.7 s and a write gap of 2.1 / 1.3 s. An isolated follower stalled the majority's writes for 150 / 49 ms. Graceful restarts gave write gaps of 50–100 ms. With all three `SIGKILL`ed, the cluster was healthy 1.8 / 2.6 s after start.
 
-### 5. A one-way partition during snapshot catch-up can stall the majority
+### 5. Losing the leader during snapshot catch-up stalls the majority
 
 With frequent snapshots (`-raft-snap 128`), a trial that drops everything the leader **receives** (asym-in) sometimes left the other two unable to commit anything. The runner gives up after 2 minutes, saves goroutine dumps, and heals.
 
@@ -158,18 +158,42 @@ github.com/hashicorp/raft.(*Raft).installSnapshot     raft.go:1909
 github.com/hashicorp/raft.(*Raft).processRPC          raft.go:1422
 github.com/hashicorp/raft.(*Raft).runFollower         raft.go:172
 ```
- That stream stalls because n2 never gets n3's TCP acknowledgements, and the read has no deadline. While blocked there, n3 cannot time out, vote or stand for election. Its status said follower of n2, last contact 2 minutes ago. n1 stood for election alone, so there was no quorum. Healing restored service in 1.8 s; the write gap was 128 s. How long it would have lasted without the heal was not measured.
+ That stream stalls because n2 never gets n3's TCP acknowledgements, and the read has no deadline. While blocked there, n3 cannot time out, vote or stand for election. Its status said follower of n2, last contact 2 minutes ago. n1 stood for election alone, so there was no quorum. Healing restored service in 1.8 s; the write gap was 128 s. The reproducer below measures how long it lasts without the heal.
 
-The ingredients are a lagging follower that needs a snapshot, a transfer in progress, and a leader that can send but not receive. rqlite's defaults snapshot 64 times less often, so the overlap is rarer, and it was not reproduced in 42 trials. Rarer is not prevented: if a snapshot install can block indefinitely, the defaults only lower the frequency. **This remains a blocker for the HA guarantee.**
+The ingredients are a lagging follower that needs a snapshot, a transfer in progress, and a leader that can send but not receive. rqlite's defaults snapshot 64 times less often, so the overlap is rarer, and it was not reproduced in 42 trials. Rarer is not prevented, and the targeted reproducer below confirms it: once the overlap occurs, the stall happens at default settings too. **This is a blocker for the HA guarantee.**
 
-The next test creates the overlap deliberately, **at the intended production settings**:
+#### The targeted reproducer, at default settings
 
-1. Hold a follower back until it needs a snapshot.
-2. Confirm the snapshot transfer has started.
-3. Cut the leader's inbound traffic at that point.
-4. Require the two members that can still talk to each other to resume writes within the recovery target, **without** healing the partition.
+`./run.sh rq-snapstall` (`cmd/runner/snapstall.go`) creates the overlap deliberately, at rqlite's defaults (snapshot every 8,192 entries, 10,240 trailing logs, 10 s transport timeout) with mutual TLS. The database is seeded with 50k sessions, 10k monitors and 5k tokens, so a snapshot is several MB. Each trial:
 
-If it reproduces, the fix has to be shown working: for example a receive deadline on the snapshot stream, with the cleanup path after it fires, or a bounded and tested recovery mechanism. Changing snapshot frequency alone is not enough.
+1. Cuts follower F off and writes until the leader L's last snapshot is past F's last entry plus the 10,240 trailing logs, so F can only catch up from a snapshot (20,000–30,000 writes).
+2. Slows L → F to 2 Mbit/s (tc), lets F back, and waits until F's goroutine dump shows `raft.(*Raft).installSnapshot` (0.2–1.2 s in every trial).
+3. Takes L out by one of three modes, starting writes on F and the other follower O:
+   - **asym-in** drops everything L receives, so L can still send;
+   - **pause** `SIGSTOP`s L's processes, while its kernel still answers TCP;
+   - **kill** `SIGKILL`s L's container, which was meant as the control.
+4. Probes writes through O and F every 250 ms, **without healing**, for up to 300 s.
+5. Heals, then checks every acknowledged write is present.
+
+| mode | trials during a confirmed install | majority's first write after the cut | write gap | acknowledged writes missing |
+| --- | --- | --- | --- | --- |
+| asym-in | 5 | 154.4–157.9 s | 153.9–157.7 s | 0 |
+| pause | 4 | **none within 300 s** | 300.9–301.8 s (the cap) | 0 |
+| kill | 5 | 154.5–156.1 s | 153.7–156.1 s | 0 |
+
+At 10 s and 60 s after the cut, in every trial, F reported itself a follower of the lost leader and was still inside `installSnapshot`, while O stood for election alone as a candidate. The goroutine dumps (in `out/`, not committed) show F's main loop in the same frames as the dump above: `countingReader.Read` under `io.Copy` in `installSnapshot`. Once the partition healed, every trial was healthy again within 0.6–2.3 s.
+
+**What bounds the 155 s is not established.** Earlier versions of this section credited the leader's snapshot-send deadline. The kill trials rule that out, because the sender was dead and the stall lasted just as long. One explanation fits all three modes but has not been tested: TCP keepalive on F's end of the stream. Go enables it by default, and 15 s idle plus 9 unanswered probes at 15 s is about 150 s. When L's kernel is gone (kill), or L's inbound traffic is dropped (asym-in), the probes go unanswered and the connection fails. A paused process's kernel still acknowledges them, so the read never ends. Whatever the mechanism, it is an accident of the transport, not a recovery bound anyone set: a 155 s gap is far past the 10 s target, and a paused or half-alive leader makes it unbounded.
+
+The planned run was 5 trials per mode in one go. It stopped after the fourth pause trial, when the host machine went to sleep and the containers disappeared. Those 9 trials are kept from that run's log. The 5 kill trials were run afterwards on a fresh cluster (`SNAPSTALL_MODES=kill`). An earlier smoke run (asym-in, 1 trial) stalled for 157 s.
+
+**Conclusion: default snapshot settings are not a workaround.** The stall needs only a lagging follower, an install in progress and a lost leader, and it then lasts at least about 155 s whichever way the leader is lost. The fix has to be shown working by this reproducer, holding writes within 10 s in all three modes. The candidates are:
+
+- a receive deadline on the snapshot stream (or one that resets per chunk), with the cleanup that follows it: abort the install, discard the partial snapshot and resume elections;
+- installing the snapshot off Raft's main loop, so the follower can still time out and vote;
+- a bounded, tested recovery mechanism outside Raft.
+
+Each has to be demonstrated, and the first two are changes in hashicorp/raft or a fork of it.
 
 The first rq-snap run stopped at its failure, before any asym-out trial; its report was overwritten by the second run, so only this text records it. rq-asym-snap was run three times by hand (`out/rq-asym-snap-1` to `-3`). Run 1 predates a harness fix, so its "within bound" check reads a meaningless window for its one never-committed revocation; its stale-read counts are unaffected.
 
@@ -192,7 +216,7 @@ The real Bun application, not this auth client, is what has to fit in the rest. 
 | Claim the complete HA gate has passed | **No** |
 | Treat default snapshot settings as a proven workaround for the stall | **No** |
 
-Next engineering task: resolve the snapshot-install stall under production settings (section 5). The evidence is enough to choose a direction, but not yet to ship the HA guarantee.
+Next engineering task: fix the snapshot-install stall, which reproduces at default settings (section 5). The fix must pass `rq-snapstall` in all three modes. The evidence is enough to choose a direction, but not yet to ship the HA guarantee.
 
 Conditions already established for any clustered deployment: node mutual TLS, with fresh cluster credentials and membership on disaster restore; restore incarnations and the application fence; `?transaction` on every multi-statement request; linearizable reads for authorization and ownership. Still not covered: ClickHouse fencing, power loss, amd64 under faults, and the real Bun application's memory.
 
@@ -201,5 +225,5 @@ rqlite runs as a supervised process beside Bun and Go in the app container. That
 **Upstream reports to file** (reproductions and expected behaviour, without claiming fault):
 
 - hashicorp/raft (via rqlite): a follower in a restored cluster accepted `AppendEntries` and `InstallSnapshot` from a member that was not in its configuration (section 3).
-- hashicorp/raft v1.8.0: `installSnapshot` reads the stream on the main loop with no deadline, and a stalled sender blocks the follower's elections (section 5, `raft.go:1909`).
+- hashicorp/raft v1.8.0: `installSnapshot` reads the stream on the main loop with no deadline. When the leader is lost mid-transfer, the follower cannot vote, and a 3-member cluster stops writing for about 155 s (leader killed or cut inbound), or indefinitely (leader paused). The reproducer is `rq-snapstall` (section 5, `raft.go:1909`).
 - rqlite docs: `?transaction` is what makes a batch stop at the first failed statement (section 1).

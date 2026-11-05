@@ -65,6 +65,9 @@ want rq-default rqlite && MTLS=0 rqrun rq-default 1000 batch,faults,latency,memo
 want rq-restore rqlite && rqrun rq-restore 1000 backup ""
 want rq-snap rqlite && rqrun rq-snap 1000 faults,backup "$SNAPPY"
 want rq-budget rqlite && rqrun rq-budget 1000 budget "$SNAPPY"
+# The snapshot-install stall, created on purpose at the settings under test
+# (defaults, a CA per installation): see cmd/runner/snapstall.go.
+want rq-snapstall rq-stalls && rqrun rq-snapstall 1000 snapstall ""
 # Asymmetric partitions repeated, with default and frequent snapshots.
 want rq-asym rq-stalls && REV_MODES=asym-in,asym-out REV_TRIALS_RQ=15 rqrun rq-asym 1000 faults ""
 want rq-asym-snap rq-stalls && REV_MODES=asym-in,asym-out REV_TRIALS_RQ=15 rqrun rq-asym-snap 1000 faults "$SNAPPY"
