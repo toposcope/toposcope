@@ -2,6 +2,8 @@
 
 **Parked on 2026-11-05.** One node is the supported product ([One node](../ROADMAP.md#one-node)). The storage proofs for step 1 are in [#470](https://github.com/toposcope/toposcope/pull/470): dqlite held every safety check but stalled on takeovers and grew in memory at its defaults; rqlite was preferred but stalled on snapshot installs under a one-way partition. Neither became work. Clustering comes back when a concrete requirement pays for building and supporting it, and then starts from those results, not from step 2 below.
 
+The proposal below is the research as it stood before #470. Some of its assumptions are superseded by those results. Where the two disagree, #470 is right.
+
 Research for the [One node](../ROADMAP.md#one-node) rule, written against 0.15.1 (`b5915bc`). Nothing here is locked. It sets out what a lost node costs today, what has to change for Toposcope to survive one, the design that does it, and the choices that lock it.
 
 The constraints that bind: self-host only, no hosted control plane; no Helm, k8s, or S3 / cold volume ([Will not](../ROADMAP.md#will-not)); Vector is the collector and there is no Toposcope ingest daemon; much lighter than Graylog or OpenSearch.
@@ -101,7 +103,7 @@ All control state and all background work, behind a versioned internal API with 
 
 ### Why dqlite
 
-Canonical's C library: SQLite under Raft, linked into the process that uses it, with ordinary multi-statement transactions. A write is acknowledged once a quorum has persisted it; the database itself is held in memory and the Raft log is what goes to disk [3], so it suits a small control database and never a copy of telemetry. Reads are served by the leader without first checking it still leads, so a read can be stale by up to an election timeout, "a few hundred milliseconds" by default [4]: a read never proves ownership, and every claim is a conditional write. We integrate through Go's supported bindings, `go-dqlite`, which binds the C library [5]; putting the control plane behind a Go service is our choice of boundary, not a limit of Bun. Incus, often cited as dqlite in production, now runs Cowsql, a fork [6], so its record is not dqlite's own.
+Canonical's C library: SQLite under Raft, linked into the process that uses it, with ordinary multi-statement transactions. A write is acknowledged once a quorum has persisted it; the database itself is held in memory and the Raft log is what goes to disk [3], so it suits a small control database and never a copy of telemetry. Reads are served by the leader without first checking it still leads, so a read can be stale; dqlite's docs put that at an election timeout, "a few hundred milliseconds" by default [4]. #470 measured worse: an isolated or paused-then-resumed old leader accepted a revoked session for up to 6.4 s at the default timeouts, so no fixed bound holds. A read never proves ownership, and every claim is a conditional write. We integrate through Go's supported bindings, `go-dqlite`, which binds the C library [5]; putting the control plane behind a Go service is our choice of boundary, not a limit of Bun. Incus, often cited as dqlite in production, now runs Cowsql, a fork [6], so its record is not dqlite's own.
 
 Moving behind a Go service also changes every one of the ~425 SQLite calls, but into operations with their transactions in one place, rather than into SQL sent over HTTP (rqlite [7], which also refuses explicit `BEGIN`/`COMMIT`).
 
