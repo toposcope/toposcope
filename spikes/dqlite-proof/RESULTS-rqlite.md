@@ -2,7 +2,7 @@
 
 The same harness as [`RESULTS.md`](RESULTS.md) (dqlite), run against rqlite v10.6.6: the same operations, workload, fault injection, independent acknowledgement records, resource limits and acceptance criteria. Only the storage layer differs: `cmd/ctlr` (a member that supervises a local `rqlited` and talks to it over HTTP) in place of `cmd/ctl` (dqlite embedded through go-dqlite). Nothing in `src/` changes.
 
-**Verdict: rqlite is the preferred backend, and the dqlite investigation stops for this release. The HA gate is not passed with stock rqlite; a two-part patch to hashicorp/raft passes the targeted test (section 5), and is not yet upstream or reviewed.**
+**Verdict: rqlite is the preferred backend, and the dqlite investigation stops for this release. The HA gate is not passed with stock rqlite; a two-part patch to hashicorp/raft passes the targeted test (section 5), and is not yet upstream or reviewed.** **Production HA is parked for this release** (section 7): the patch goes upstream rather than into a fork, and the release ships single-node with tested backup and restore.
 
 rqlite passed both requirements dqlite failed: fresh authorization reads and prompt takeovers. It did that with workable conditional operations and a much better memory profile. Two problems remain:
 
@@ -223,7 +223,7 @@ At 10 s, every lagging follower was a follower of a new leader, and none was sti
 - **Latency (rq-lat against rq-lat-fix):** the latency phase was run back to back with each binary. There was no systematic difference: single-caller medians for checks were 82–141 µs against 85–135 µs, and for writes 2.8–3.3 ms against 2.8–3.4 ms, with each binary faster on some operations. The host was slower than in the earlier rq-default run on both. This is expected, since the patch touches only the snapshot path and the step-down rule. The Bun socket benchmark was not run back to back. In rq-default-fix, its single caller was faster than in rq-default (p50 191 µs against 332 µs), and 32 in flight was slower (p50 4.1 ms against 1.3 ms). That is inconclusive until it is repeated with both binaries in one session.
 
 **Limits of this result:**
-- **The margin is small.** The worst trial took 9.6 s against a 10 s target. That is the 5 s idle deadline plus an election at rqlite's 1 s timeouts. A shorter deadline buys margin; the cost is that a link quiet for that long abandons a transfer the leader will retry.
+- **10 s was a test target, not a product requirement.** The worst trial took 9.6 s: the 5 s idle deadline plus an election at rqlite's 1 s timeouts. The larger cost is not that margin. It is owning an unreviewed consensus patch and carrying it through upgrades.
 - **The patch is ours, not upstream's.** Shipping it means carrying a fork of hashicorp/raft and building rqlite from source until upstream takes an equivalent change.
 - **An earlier run with the patch is excluded.** In it, the harness's pause matched processes named `rqlited` only, so it never paused `rqlited-patched`, and those pause trials did not pause the leader. The harness now matches both names; every pause trial above is from after that fix.
 - **Not tested:** snapshots large enough for a slow real link to go quiet for 5 s mid-transfer; amd64.
@@ -245,11 +245,25 @@ The real Bun application, not this auth client, is what has to fit in the rest. 
 | --- | --- |
 | Publish both harnesses and their results for review | Yes |
 | Prefer rqlite and stop dqlite work for this release | Yes |
-| Continue the Go API and rqlite integration on a development branch | Yes |
+| Continue the Go domain API where it serves the architecture | Yes, but a production database migration is not a prerequisite for it |
+| Ship production HA in this release | **No, parked** unless a current customer or firm commitment requires it; the release ships single-node with tested backup and restore |
 | Claim the complete HA gate has passed | **No** (the stall is fixed only in a patched raft, not yet reviewed or upstream) |
 | Treat default snapshot settings as a proven workaround for the stall | **No** |
+| Carry the raft patch as a fork | **No**; it is offered upstream instead |
+| Further database fault experiments or a restart watchdog in this release | **No** |
 
-Next engineering task: decide how to carry the raft fix. The options are proposing it upstream (hashicorp/raft, then a rqlite release) or shipping a pinned fork until then. Either way it needs review by someone who knows hashicorp/raft. The evidence is enough to choose a direction, but not yet to ship the HA guarantee.
+**Stopping point (2026-11-05).** The investigation was meant to choose a database. It ended up qualifying, and then patching, the consensus library under it. Owning an unreviewed consensus patch, and carrying it through future upgrades, costs more than this release needs. So the work stops here:
+
+1. The harness, results, patch and the explanations of excluded runs stay in this PR as evidence.
+2. The two raft findings go upstream as focused reports with the proposed changes (drafts in [`upstream/`](upstream/)).
+3. No further fault experiments, and no watchdog, for this release.
+4. The release returns to single-node, with a recovery procedure that has been exercised.
+
+rqlite remains the preferred HA candidate.
+
+**If HA becomes a release requirement,** the next step is a strictly time-boxed check of whether a watchdog is feasible, before any fork is accepted. That is a project of its own, not a one-day escape. It must first show that stock rqlite exposes a trustworthy signal for "snapshot installation has stopped progressing". Readiness failing alone does not identify it, and restarting members whenever they cannot serve could disrupt an election or partition that would have recovered. It must then show that restarting the affected process restores service without restart loops. If that cannot be shown simply, the release scope gets reconsidered.
+
+**What stock rqlite does not guarantee:** recovery when the leader is lost during a snapshot install has no bound. About 155 s was observed with the leader killed or cut inbound. That is an observation, not a guarantee, and a paused or half-alive leader stalled the cluster indefinitely. A follower far enough behind to need a snapshot is an ordinary operating condition, not a rare double fault, so how often this would happen is unknown.
 
 Conditions already established for any clustered deployment: node mutual TLS, with fresh cluster credentials and membership on disaster restore; restore incarnations and the application fence; `?transaction` on every multi-statement request; linearizable reads for authorization and ownership. Still not covered: ClickHouse fencing, power loss, amd64 under faults, and the real Bun application's memory.
 
