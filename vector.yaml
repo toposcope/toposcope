@@ -101,8 +101,9 @@ transforms:
 # to what the app sent, as they do without a collector.
 #
 # 256 MB covers an outage only as long as the traffic takes to fill it: at
-# 1 MB/s that is about four minutes. Raise max_size for longer, and keep
-# VECTOR_DATA_DIR on a disk other than Toposcope's if it shares the machine.
+# 1 MB/s that is about four minutes. Raise max_size for longer. To keep
+# collecting while Toposcope's machine is down, run Vector on another machine,
+# usually beside the apps, with VECTOR_DATA_DIR on storage that persists.
 sinks:
   toposcope:
     type: opentelemetry

@@ -58,8 +58,8 @@ It fits investigating deploys and a team's shared view of what changed. It does 
 
 What one node holds to:
 
-- A lost machine comes back on a new one from a backup kept somewhere else: both volumes, `.env` and `compose.yml` ([backup and restore](docs/operations.md#backup-and-restore)). What arrived after that backup is lost. `upgrade.sh`'s own backups stay on the same machine and serve an upgrade, not a lost machine.
-- The packaged Vector keeps what apps send on its own disk while Toposcope is down, 256 MB per signal unless sized up, then holds the app back. It does not bring back rows Toposcope had already taken and then lost with its disk.
+- A lost machine comes back on a new one from a backup kept somewhere else: both volumes, `.env` and `compose.yml` ([backup and restore](docs/operations.md#backup-and-restore)). What arrived after that backup is lost. `upgrade.sh`'s own backups stay on the same machine: they bring back an upgrade, a deletion or corrupt data, not a lost machine. `.env` holds secrets, so wherever the backup goes has to protect them.
+- The packaged Vector, run on another machine beside the apps, keeps what they send on its own disk while Toposcope is down, 256 MB per signal unless sized up, then holds the app back. It does not bring back rows Toposcope had already taken and then lost with its disk.
 - The watchdog, on another service, says when the node stops ([who watches Toposcope](docs/operations.md#who-watches-toposcope)). Monitors do not run while it is down, and nothing runs them later.
 - Recovery times and backup frequency are measured and published as what they are, not as an availability promise.
 
