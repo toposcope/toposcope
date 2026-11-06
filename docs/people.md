@@ -4,7 +4,7 @@ Toposcope has people, not a shared password. Each person signs in as themselves,
 
 ## The first Owner
 
-A new instance, or one upgraded from 0.8, has no Owner, and nobody can sign in until someone with access to the host makes one. Run this where Toposcope runs, beside its `compose.yml`:
+A new instance, or one upgraded from 0.8, has no Owner, and nobody can sign in until someone with access to the host makes one. Run this where Toposcope runs, beside its `compose.yml` (a fresh download needs `chmod +x toposcope.sh upgrade.sh` first; `upgrade.sh` keeps both executable after that):
 
 ```bash
 ./toposcope.sh owner-link you@example.com

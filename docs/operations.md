@@ -312,10 +312,10 @@ Back up both stores first ([Backup and restore](#backup-and-restore)). Then upda
 
 ```bash
 docker compose pull
-docker compose up -d
+docker compose up -d --wait
 ```
 
-`curl -fsS http://127.0.0.1:8080/api/health` prints `version`, so the new pin can be confirmed once it is up.
+`--wait` returns once the app is healthy. `curl -fsS http://127.0.0.1:8080/api/health` then prints `version`, so the new pin can be confirmed.
 
 - ClickHouse tables such as `logs_by_minute` and `logs_attr_values_by_minute` are created on boot, and missing day partitions are backfilled from `logs`.
 - SQLite adds new tables and columns on boot.
@@ -403,7 +403,7 @@ docker run --rm -v toposcope_ch_data:/data -v "$(pwd)":/backup alpine \
   tar xzf /backup/ch_data.tgz -C /data
 docker run --rm -v toposcope_app_data:/data -v "$(pwd)":/backup alpine \
   tar xzf /backup/app_data.tgz -C /data
-docker compose up -d
+docker compose up -d --wait
 ```
 
 Compose may warn that `toposcope_ch_data` already exists and was not created by Compose. That is the restore. Do not set `external: true` on packaged `compose.yml`.
