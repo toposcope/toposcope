@@ -8,13 +8,13 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 
 | | |
 | --- | --- |
-| **Today** | [0.15.1](https://github.com/toposcope/toposcope/releases/tag/v0.15.1) — what changed after a deploy, on one clock: logs, metrics, traces and profiles under change marks, Compare on equal windows before and after, and the error fingerprints that are new. One node, two containers. |
+| **Today** | [0.15.2](https://github.com/toposcope/toposcope/releases/tag/v0.15.2) — what changed after a deploy, on one clock: logs, metrics, traces and profiles under change marks, Compare on equal windows before and after, and the error fingerprints that are new. One node, two containers. |
 | **v0.x** | The sentence (step 6 below), written from that evidence. Team features wait for an HA design: see [One node](#one-node). |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
-## Today — 0.15.1
+## Today — 0.15.2
 
-Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.15.1`.
+Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.15.2`.
 
 - **Home** — every saved hunt as a card, before and after the latest deploy, flag or incident on equal windows; the error fingerprints first seen since; the monitors that are open.
 - **Hunt** — the log search: a copyable `key:value` bar, saved hunts, histogram, facets, workspaces, Fields, promoted columns and Live. Change marks sit on the plot and as seams between rows. Compare shows before and after for each plotted level, service or host on exact equal windows around a mark; Fingerprints reads the same clock and refuses a side past 200 distinct ids. A matching id opens a trace waterfall and a profile icicle. A deploy's sha and a stack frame link to the code once **Settings › Repositories** knows where it lives. Fields says which keys each service sends and which names do not match.
