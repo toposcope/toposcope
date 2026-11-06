@@ -119,6 +119,10 @@ beforeAll(async () => {
       const text = await response.text();
       out[name] = { status: response.status, contentType: response.headers.get("content-type"), body: text.startsWith("{") ? JSON.parse(text) : text };
     }
+    {
+      const response = await app.fetch(new Request("http://app.test/api/health"));
+      out.healthText = { status: response.status, contentType: response.headers.get("content-type"), body: await response.text() };
+    }
     for (const path of ${JSON.stringify(ingestPaths)}) {
       const response = await app.fetch(new Request("http://app.test" + path, { method: "POST", headers: { authorization: "Bearer never-issued", "content-type": "application/json" }, body: "{}" }));
       out["bearer:" + path] = { status: response.status, contentType: response.headers.get("content-type"), body: await response.text() };
@@ -308,5 +312,10 @@ describe("GET /api/version (#196)", () => {
 
   test("/api/health keeps its five keys, and no latest", () => {
     expect(Object.keys(results.health!.body as object).sort()).toEqual(["clickhouse", "ok", "phase", "sqlite", "version"]);
+  });
+
+  test("/api/health is JSON that ends in a newline, so curl leaves the prompt on its own line", () => {
+    expect(results.healthText!.contentType).toStartWith("application/json");
+    expect(results.healthText!.body as string).toEndWith("}\n");
   });
 });

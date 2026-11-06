@@ -118,7 +118,8 @@ app.onError((err, c) => {
 
 app.get("/api/health", async (c) => {
   const health = await getHealth(bootPhase);
-  return c.json(health, health.ok ? 200 : 503);
+  // Ends in a newline, so `curl` on the host leaves the shell prompt on a line of its own.
+  return c.body(`${JSON.stringify(health)}\n`, health.ok ? 200 : 503, { "content-type": "application/json" });
 });
 
 app.get("/api/metrics", (c) => {

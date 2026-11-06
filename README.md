@@ -8,23 +8,33 @@ Current release: `0.15.1` · [MIT Expat license](LICENSE)
 
 ## Quick start
 
-The packaged install is the recommended path for operators. Download these files from the [v0.15.1 release](https://github.com/toposcope/toposcope/releases/tag/v0.15.1) into one directory:
+The packaged install is the recommended path for operators. Download the files of the [v0.15.1 release](https://github.com/toposcope/toposcope/releases/tag/v0.15.1) into one directory:
 
-- `compose.yml`
-- `env.example`
-- `vector.yaml`
-- `LICENSE`
-- `toposcope.sh`
-- `upgrade.sh`
-- `SHA256SUMS`
+```bash
+for f in compose.yml env.example vector.yaml LICENSE toposcope.sh upgrade.sh SHA256SUMS; do
+  curl -fsSLO https://github.com/toposcope/toposcope/releases/download/v0.15.1/$f
+done
+```
 
-Check them against the release's sums before you use them (on macOS, `shasum -a 256 -c SHA256SUMS`):
+Check them against the release's sums. On Linux:
 
 ```bash
 sha256sum -c SHA256SUMS
 ```
 
-Create the environment file, write two independent secrets into it without printing them, and start the stack:
+On macOS:
+
+```bash
+shasum -a 256 -c SHA256SUMS
+```
+
+A download does not keep the scripts runnable, so make them so once; `upgrade.sh` does it again on every upgrade:
+
+```bash
+chmod +x toposcope.sh upgrade.sh
+```
+
+Create the environment file, write two independent secrets into it without printing them, and start the stack. `--wait` returns once the application and ClickHouse are ready:
 
 ```bash
 cp env.example .env
@@ -33,10 +43,10 @@ for key in CLICKHOUSE_PASSWORD TOPOSCOPE_INGEST_TOKEN; do
 done
 rm .env.bak
 chmod 600 .env
-docker compose up -d
+docker compose up -d --wait
 ```
 
-Wait for the application and ClickHouse:
+Then the health check answers with the running version:
 
 ```bash
 curl -fsS http://127.0.0.1:8080/api/health
