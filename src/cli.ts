@@ -49,7 +49,7 @@ if (command === "owner-link") {
     const minutes = Math.round((link.expires_at - Date.now()) / 60_000);
     console.log(link.makes ? `Opens once, for ${minutes} minutes, to make the Owner ${email.toLowerCase()}:` : `Opens once, for ${minutes} minutes, to give the Owner ${email.toLowerCase()} a new password; their sessions end:`);
     console.log(`${origin()}/setup/${link.token}`);
-    console.log("On another address, open /setup/… there instead.");
+    console.log("Reached through a domain or proxy? Open the same /setup/… path there.");
   } catch (err) {
     fail(err instanceof Error ? err.message : String(err));
   }

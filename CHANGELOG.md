@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## 0.15.2
+
+The quick start runs as pasted. The README downloads the release's files in one loop, gives the Linux and macOS checksum commands blocks of their own, makes `toposcope.sh` and `upgrade.sh` executable (a release download is not, so `./toposcope.sh owner-link` said `permission denied`), and starts the stack with `docker compose up -d --wait`, so the health check after it no longer meets an app that is not listening yet. `GET /api/health` ends its JSON in a newline, and `owner-link` says what to do when Toposcope is reached through a domain or proxy.
+
 ## 0.15.1
 
 Syslog over UDP has a bound and says what it drops (#465). At most 10,000 rows wait for ClickHouse; a packet that arrives past that is dropped instead of growing the app's memory. `GET /api/metrics` gains `toposcope_syslog_dropped_total` by `reason`: `queue_full`, `insert_failed` (a batch whose insert failed, which was lost before with one log line) and `unparsed` (not RFC 3164, which was ignored without a count). While drops happen the app writes at most one line a minute to stderr. `toposcope_syslog_packets_total` now counts only the packets taken.

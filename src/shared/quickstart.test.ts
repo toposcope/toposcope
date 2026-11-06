@@ -8,7 +8,7 @@ const secrets = ["CLICKHOUSE_PASSWORD", "TOPOSCOPE_INGEST_TOKEN"];
 
 test("the README quick start writes the two secrets without printing them", async () => {
   const readme = await Bun.file(`${root}/README.md`).text();
-  const block = readme.match(/```bash\n(cp env\.example \.env\n[\s\S]*?docker compose up -d\n)```/)?.[1];
+  const block = readme.match(/```bash\n(cp env\.example \.env\n[\s\S]*?docker compose up -d --wait\n)```/)?.[1];
   expect(block).toBeDefined();
 
   // The release zip, with a docker that does nothing.
@@ -43,4 +43,15 @@ test("the README quick start writes the two secrets without printing them", asyn
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("the README downloads, checks and runs the release it names", async () => {
+  const readme = await Bun.file(`${root}/README.md`).text();
+  const { version } = await Bun.file(`${root}/package.json`).json();
+  const urls = [...readme.matchAll(/releases\/(?:download|tag)\/v(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+  expect(urls.length).toBeGreaterThanOrEqual(2);
+  expect(new Set(urls)).toEqual(new Set([version]));
+  // A release download is not executable; owner-link right after must not say "permission denied".
+  expect(readme).toContain("chmod +x toposcope.sh upgrade.sh");
+  expect(readme.indexOf("chmod +x toposcope.sh")).toBeLessThan(readme.indexOf("./toposcope.sh owner-link"));
 });
