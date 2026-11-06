@@ -99,6 +99,11 @@ transforms:
 # dropping. A request Toposcope cannot take yet (it is down, or busy) is tried
 # again until it lands. One event to a request: Toposcope's limits then apply
 # to what the app sent, as they do without a collector.
+#
+# 256 MB covers an outage only as long as the traffic takes to fill it: at
+# 1 MB/s that is about four minutes. Raise max_size for longer. To keep
+# collecting while Toposcope's machine is down, run Vector on another machine,
+# usually beside the apps, with VECTOR_DATA_DIR on storage that persists.
 sinks:
   toposcope:
     type: opentelemetry
