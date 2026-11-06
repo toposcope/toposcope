@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.15.2
 
 The quick start runs as pasted. The README downloads the release's files in one loop, gives the Linux and macOS checksum commands blocks of their own, makes `toposcope.sh` and `upgrade.sh` executable (a release download is not, so `./toposcope.sh owner-link` said `permission denied`), and starts the stack with `docker compose up -d --wait`, so the health check after it no longer meets an app that is not listening yet. `GET /api/health` ends its JSON in a newline, and `owner-link` says what to do when Toposcope is reached through a domain or proxy.
 
