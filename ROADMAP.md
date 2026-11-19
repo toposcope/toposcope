@@ -8,13 +8,13 @@ New Search chrome still needs a maintainer-approved mock. Prefer a thin slice ac
 
 | | |
 | --- | --- |
-| **Today** | [0.15.3](https://github.com/toposcope/toposcope/releases/tag/v0.15.3) — what changed after a deploy, on one clock: logs, metrics, traces and profiles under change marks, Compare on equal windows before and after, and the error fingerprints that are new. One node, two containers. |
+| **Today** | [0.15.4](https://github.com/toposcope/toposcope/releases/tag/v0.15.4) — what changed after a deploy, on one clock: logs, metrics, traces and profiles under change marks, Compare on equal windows before and after, and the error fingerprints that are new. One node, two containers. |
 | **v0.x** | The sentence (step 6 below), written from that evidence. Team features wait for an HA design: see [One node](#one-node). |
 | **Will not** | PromQL, Grafana, a hosted control plane, … |
 
-## Today — 0.15.3
+## Today — 0.15.4
 
-Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.15.3`.
+Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.15.4`.
 
 - **Home** — every saved hunt as a card, before and after the latest deploy, flag or incident on equal windows; the error fingerprints first seen since; the monitors that are open.
 - **Hunt** — the log search: a copyable `key:value` bar, saved hunts, histogram, facets, workspaces, Fields, promoted columns and Live. Change marks sit on the plot and as seams between rows. Compare shows before and after for each plotted level, service or host on exact equal windows around a mark; Fingerprints reads the same clock and refuses a side past 200 distinct ids. A matching id opens a trace waterfall and a profile icicle. A deploy's sha and a stack frame link to the code once **Settings › Repositories** knows where it lives. Fields says which keys each service sends and which names do not match.
@@ -23,7 +23,7 @@ Two containers, MIT Expat, Compose pin `ghcr.io/toposcope/toposcope:0.15.3`.
 - **Watch** — a saved search that goes quiet or loud, a check-in a script pushes (`POST /v1/checks`, or `/ping/<key>` with Nagios exit codes), or an HTTP(S), TCP or certificate check from this node. Each opens, reminds and resolves; every result is a log row. `TOPOSCOPE_WATCHDOG_URL` checks in somewhere else, so Toposcope stopping is noticed too.
 - **Access** — people with three roles (Owner, Operator, Viewer), two-step and OIDC sign-in, and every write stamped with who made it; tokens; links; shares. A link pulls every kind (logs, marks, spans, metric points, profiles, monitors) from another instance through any `q`, and on down a chain; while a source is short, counts read as floors and the gap shows. A share lets another page embed one scope of numbers, never events, with a token that expires and can be revoked at once.
 - **Agents** — MCP at `/mcp` and the toposcope skill: set up an instance, read it, propose monitors and panels, and save only what you say yes to.
-- **Operating** — `upgrade.sh` takes a backup first and keeps a way back. The footer says when a release is out and can check at once; it upgrades on a click only where the host ran `upgrade.sh enable-ui`. Metrics keep on a retention of their own. ⌘K opens the command palette; [docs/ui](docs/ui/README.md) is the design system.
+- **Operating** — `upgrade.sh` takes a backup first and keeps a way back. The footer says when a release is out and can check at once; it upgrades on a click only where the host ran `upgrade.sh enable-ui`. Metrics keep on a retention of their own, and so can the logs and traces of services you choose. ⌘K opens the command palette; [docs/ui](docs/ui/README.md) is the design system.
 
 Issues and pull requests target `main`. A `v*` tag publishes the image and release zip.
 
