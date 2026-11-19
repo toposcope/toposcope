@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.15.3
 
 `./upgrade.sh` backs up the volumes the stack mounts, and checks the backup before it goes on (#474). It used to work out the volume names from the Compose project's name, which it read as the first `"name"` in `docker compose config --format json`. Since 0.11.1 the packaged `compose.yml` has a `configs:` block, and a Docker Compose that prints it first (5.5 does) gave the project as `toposcope_clickhouse_logs`. The backup then tarred `toposcope_clickhouse_logs_ch_data` and `toposcope_clickhouse_logs_app_data`, which `docker run` made empty on the spot, said `0 MB`, and removed an older good backup to keep the last 2. Now it reads the volumes from the stack's own containers (`docker compose ps`, then `docker inspect`), stops before anything if it cannot find them (a leftover `COMPOSE_PROJECT_NAME` is named), and never mounts a volume Docker does not have. Each archive is read back: one with no files, or with less than half the bytes its volume holds, stops the upgrade, starts the old version again and removes no older backup. Rollback and pruning count only backups that hold data. The size it estimates is now the volume's: for `app_data` it measured the image's `/app` instead. The project name for `enable-ui`'s unit comes from the YAML config's top-level `name:`.
 
