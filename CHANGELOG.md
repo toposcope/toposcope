@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.15.4
 
 Keep chosen services longer than logs (#477, sheet 46). **Settings › Retention › Kept longer** lists up to 8 services, each with its own days, 1 to 730 and never fewer than logs keep; every other service keeps `retention_days`. Pick a service from those sending in the last 30 days. A kept service's logs, their minute rollups and its spans keep its days; profiles, marks and monitor results do not. `PUT /api/settings` takes `retention_rules: [{ "service": "analytics", "days": 730 }]`; an empty list puts every service back on `retention_days`, and logs may not be set to keep longer than a service kept longer. A save that lowers or removes a kept service asks first, since its older rows are deleted at the next sweep. Windows now reach back 730 days (`range=730d`, the zoom and the From/To editor); a window past what logs keep finds only the services kept longer.
 
