@@ -73,7 +73,7 @@ import { requireWatchdogUrl } from "./alerts/watchdog";
 import { startReleaseCheck } from "./control/release-check";
 import { bootAllowsRequest, type BootPhase } from "./shared/boot";
 import { shareAuth, ticketRoute } from "./share/operator";
-import { shareNamesRoute, shareReadCache, shareSeriesRoute, sharePanelRoute, shareTopRoute } from "./share/read";
+import { shareLatestRoute, shareNamesRoute, shareReadCache, shareSeriesRoute, sharePanelRoute, shareTopRoute } from "./share/read";
 import { embedAssetRoute, embedJsRoute, embedPageRoute } from "./share/embed-page";
 import { noFraming } from "./share/embed";
 import { startShareUse } from "./share/use";
@@ -633,6 +633,7 @@ app.get("/share/v1/*", shareReadCache);
 app.get("/share/v1/series", shareSeriesRoute);
 app.get("/share/v1/top", shareTopRoute);
 app.get("/share/v1/names", shareNamesRoute);
+app.get("/share/v1/latest", shareLatestRoute);
 app.get("/share/v1/panels/:name", sharePanelRoute);
 
 app.all("/api/*", (c) => c.json({ error: "Not found" }, 404));

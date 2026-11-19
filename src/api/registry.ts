@@ -222,8 +222,8 @@ export const elsewhere: Array<{ name: string; doc: string; what: string; routes:
   {
     name: "Shares, public side",
     doc: "shares.md",
-    what: "A page or an app reads a share's counts and series with the share's secret or a ticket.",
-    routes: ["POST /share/v1/tickets", "GET /share/v1/series", "GET /share/v1/top", "GET /share/v1/names", "GET /share/v1/panels/{name}"],
+    what: "A page or an app reads a share's counts, series and latest values with the share's secret or a ticket.",
+    routes: ["POST /share/v1/tickets", "GET /share/v1/series", "GET /share/v1/top", "GET /share/v1/names", "GET /share/v1/latest", "GET /share/v1/panels/{name}"],
   },
   {
     name: "Open",
