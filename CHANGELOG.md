@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.15.5
 
 Shares read the latest value per label. `GET /share/v1/latest?metric=&by=&lookback=` answers one row per value of a label (or up to 3, `by=source,cohort`) with the newest point's `value` and its time `at`, for up to 8 metric names at once: the shape of totals a sender re-sends as gauges, one series per day or cohort, which took a series read per day before. It stays inside the share's scope (names in `metric_names`, `metric_labels` ANDed on, `by` keys must be `narrow` keys, `ml=` narrows as elsewhere), counts as one read against `reads_per_minute`, reads only the names asked for, and refuses rather than cuts short a read of more than 2,000 rows. `lookback` is held to the share's `max_lookback`, not `max_range`, since it is not a series. See [Latest value per label](docs/shares.md#latest-value-per-label).
 
