@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatCompactCount, formatFieldCount, setCountFormat, useCountFormat } from "@/count-format";
 import { setTimestampFormat, useTimestampFormat } from "@/event-time";
 import { fieldsCardFacts, namesLine, type FieldsCardFacts } from "../fields-card";
@@ -9,12 +10,23 @@ import { callHost } from "../watch";
 import { FIELDS_RANGE } from "./fields-view";
 import type { InstanceInfo } from "./instance-menu";
 import { signedInUntil } from "./instance-menu";
+import {
+  draftsOf,
+  longestKeptDays,
+  maxRules,
+  ruleFault,
+  rulesOf,
+  shortened,
+  shortenedLine,
+  type RetentionRule,
+  type RuleDraft,
+} from "../retention-rules";
 
 /**
  * Settings as a page of cards (#268, frame 26n): what is left once Access took tokens, links and
  * shares. Each card is facts first, controls second. Nothing here is a secret.
  */
-type SettingsBody = { retention_days: number; metrics_retention_days: number | null; instance_name: string | null; default_webhook_url: string | null };
+type SettingsBody = { retention_days: number; metrics_retention_days: number | null; retention_rules?: RetentionRule[]; instance_name: string | null; default_webhook_url: string | null };
 type VersionBody = { running: string; latest: string; check: "on" | "off"; checked_at: string | null; error: string | null };
 type SystemBody = { app: { mem_used: number | null; mem_limit: number | null }; clickhouse: { disk_used: number | null; disk_total: number | null; stored?: number | null; stored_system?: number | null; mem_used: number | null } };
 
@@ -32,12 +44,15 @@ export function bytes(n: number | null | undefined): string {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
 }
 
-export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number) => void; onSignOut: () => void; onOpenFields: () => void; onOpenSignIn: () => void; onOpenRepositories: () => void; readOnly?: boolean; owners?: string[] }) {
+export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceName: () => void; onRetentionDays: (days: number, windowDays: number) => void; onSignOut: () => void; onOpenFields: () => void; onOpenSignIn: () => void; onOpenRepositories: () => void; readOnly?: boolean; owners?: string[] }) {
   const [body, setBody] = useState<SettingsBody | null>(null);
   const [name, setName] = useState("");
   const [days, setDays] = useState("30");
   const [metricsDays, setMetricsDays] = useState("");
   const [webhook, setWebhook] = useState("");
+  const [drafts, setDrafts] = useState<RuleDraft[]>([]);
+  const [adding, setAdding] = useState<{ days: string; services: { v: string; n: number }[] | null } | null>(null);
+  const [cut, setCut] = useState<{ service: string; days: number }[] | null>(null);
   const [version, setVersion] = useState<VersionBody | null>(null);
   const [system, setSystem] = useState<SystemBody | null>(null);
   const [fields, setFields] = useState<FieldsCardFacts | null>(null);
@@ -62,6 +77,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
       setName(json.instance_name ?? "");
       setDays(String(json.retention_days));
       setMetricsDays(json.metrics_retention_days == null ? "" : String(json.metrics_retention_days));
+      setDrafts(draftsOf(json.retention_rules));
       setWebhook(json.default_webhook_url ?? "");
     }
     if (v.ok) {
@@ -75,7 +91,23 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
     void load().catch(() => undefined);
   }, [load]);
 
-  async function save(what: string) {
+  const savedRules = body?.retention_rules ?? [];
+  const logsNow = Number(days);
+  const fault = drafts.length > 0 && Number.isInteger(logsNow) ? ruleFault(drafts, logsNow) : null;
+
+  async function openAdding() {
+    setAdding({ days: "730", services: null });
+    const res = await fetch("/api/facets?range=30d&limit=50&omit=0").catch(() => null);
+    const json = res?.ok ? ((await res.json()) as { service?: { v: string; n: number }[] }) : null;
+    setAdding((a) => (a ? { ...a, services: json?.service ?? [] } : a));
+  }
+
+  function addRule(service: string) {
+    setDrafts((d) => [...d, { service, days: adding?.days ?? "730" }]);
+    setAdding(null);
+  }
+
+  async function save(what: string, confirmed = false) {
     const retention = Number(days);
     const metrics = metricsDays.trim() === "" ? null : Number(metricsDays);
     if (!Number.isInteger(retention) || retention < 1 || retention > 365) {
@@ -86,12 +118,23 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
       toast.error("Metrics retention is 1–730 days, or empty to follow logs");
       return;
     }
+    if (ruleFault(drafts, retention)) {
+      return;
+    }
+    const rules = rulesOf(drafts);
+    // 46e: a save that shortens a service kept longer deletes its older rows, so it asks first.
+    const willCut = shortened(savedRules, rules, retention);
+    if (what === "Retention" && willCut.length > 0 && !confirmed) {
+      setCut(willCut);
+      return;
+    }
+    setCut(null);
     setBusy(true);
     try {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ retention_days: retention, metrics_retention_days: metrics, instance_name: name, default_webhook_url: webhook.trim() }),
+        body: JSON.stringify({ retention_days: retention, metrics_retention_days: metrics, retention_rules: rules, instance_name: name, default_webhook_url: webhook.trim() }),
       });
       const json = (await res.json().catch(() => null)) as (SettingsBody & { error?: string }) | null;
       if (!res.ok || !json) {
@@ -101,8 +144,9 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
       if ((json.instance_name ?? null) !== (body?.instance_name ?? null)) {
         props.onInstanceName();
       }
-      props.onRetentionDays(json.retention_days);
+      props.onRetentionDays(json.retention_days, longestKeptDays(json));
       setBody(json);
+      setDrafts(draftsOf(json.retention_rules));
       toast.success(`${what} saved`);
     } finally {
       setBusy(false);
@@ -171,7 +215,7 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
                 Logs
               </label>
               <input id="ret-logs" value={days} onChange={(e) => setDays(e.target.value)} className={`${input} max-w-[80px] text-right font-mono`} />
-              <span className="text-muted-foreground">days</span>
+              <span className="text-muted-foreground">{drafts.length > 0 ? "days · every other service" : "days"}</span>
             </div>
             <div className={row}>
               <label htmlFor="ret-metrics" className={k}>
@@ -180,18 +224,169 @@ export function SettingsPage(props: { instance: InstanceInfo | null; onInstanceN
               <input id="ret-metrics" value={metricsDays} onChange={(e) => setMetricsDays(e.target.value)} placeholder={days} className={`${input} max-w-[80px] text-right font-mono`} />
               <span className="text-muted-foreground">{metricsDays.trim() ? "days" : "days · empty follows logs"}</span>
             </div>
+            {!props.readOnly || drafts.length > 0 ? (
+              <div className="flex items-start gap-3 text-sm">
+                <span className={`${k} leading-8`}>Kept longer</span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  {drafts.map((d, i) => {
+                    const bad = fault?.service === d.service;
+                    return (
+                      <div key={d.service} className="flex h-8 items-center gap-2.5">
+                        <span className="w-24 truncate font-mono" title={d.service}>
+                          {d.service}
+                        </span>
+                        {props.readOnly ? (
+                          <span className="w-16 text-right font-mono">{d.days}</span>
+                        ) : (
+                          <input
+                            aria-label={`Days for ${d.service}`}
+                            value={d.days}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setCut(null);
+                              setDrafts((all) => all.map((x, j) => (j === i ? { ...x, days: value } : x)));
+                            }}
+                            className={`${input} max-w-[64px] flex-none text-right font-mono ${bad ? "border-danger-fg" : ""}`}
+                          />
+                        )}
+                        <span className="text-muted-foreground">days</span>
+                        {props.readOnly ? null : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Stop keeping ${d.service} longer`}
+                            className="ml-auto text-faint"
+                            onClick={() => {
+                              setCut(null);
+                              setDrafts((all) => all.filter((_, j) => j !== i));
+                            }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                              <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                            </svg>
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {cut
+                    ? cut
+                        .filter((c) => !drafts.some((d) => d.service === c.service))
+                        .map((c) => (
+                          <div key={`gone-${c.service}`} className="flex h-8 items-center gap-2.5 text-faint">
+                            <span className="w-24 truncate font-mono line-through">{c.service}</span>
+                          </div>
+                        ))
+                    : null}
+                  {fault ? <span className="text-danger-fg">{fault.message}</span> : null}
+                  {adding ? (
+                    <div className="flex h-8 items-center gap-2.5">
+                      <DropdownMenu defaultOpen>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className={`${input} flex max-w-[140px] items-center justify-between font-mono text-faint`}
+                          >
+                            service
+                            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                              <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-60 p-1">
+                          <div className="px-2 py-1.5 text-xs text-faint">Sending in the last 30 days</div>
+                          {adding.services === null ? (
+                            <DropdownMenuItem disabled>…</DropdownMenuItem>
+                          ) : (
+                            (() => {
+                              const open = adding.services.filter((sv) => !drafts.some((d) => d.service === sv.v));
+                              return open.length === 0 ? (
+                                <DropdownMenuItem disabled>No other service</DropdownMenuItem>
+                              ) : (
+                                open.map((sv) => (
+                                  <DropdownMenuItem key={sv.v} className="justify-between font-mono" onSelect={() => addRule(sv.v)}>
+                                    <span className="truncate">{sv.v}</span>
+                                    <span className="text-xs text-faint">{formatCompactCount(sv.n)}</span>
+                                  </DropdownMenuItem>
+                                ))
+                              );
+                            })()
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <input
+                        aria-label="Days"
+                        value={adding.days}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setAdding((a) => (a ? { ...a, days: value } : a));
+                        }}
+                        className={`${input} max-w-[64px] flex-none text-right font-mono`}
+                      />
+                      <span className="text-muted-foreground">days</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Cancel"
+                        className="ml-auto text-faint"
+                        onClick={() => setAdding(null)}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                          <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        </svg>
+                      </Button>
+                    </div>
+                  ) : null}
+                  {!props.readOnly && !adding && drafts.length < maxRules ? (
+                    <Button type="button" variant="ghost" className="self-start px-0 text-plate hover:bg-transparent hover:text-foreground" onClick={() => void openAdding()}>
+                      <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
+                        <path d="M6 1.5v9M1.5 6h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                      Add a service
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <div className={row}>
-              <span className={k}>Traces, profiles</span>
+              <span className={k}>Traces</span>
+              <span className="text-muted-foreground">follow logs, and a service kept longer</span>
+            </div>
+            <div className={row}>
+              <span className={k}>Profiles</span>
               <span className="text-muted-foreground">follow logs</span>
             </div>
             <div className={row}>
               <span className={k}>Marks</span>
               <span className="text-muted-foreground">kept for ever · newest 10 000 listed in a window</span>
             </div>
-            <span className="text-sm text-muted-foreground">Shortening applies at the next sweep. Nothing comes back.</span>
-            <Button type="button" variant="outline" className="self-start" disabled={busy} onClick={() => void save("Retention")}>
-              Save retention
-            </Button>
+            {cut && cut.length > 0 ? (
+              <div className="flex flex-col gap-2 rounded-lg border border-warn/35 bg-warn-soft px-3 py-2.5 text-sm" role="alert">
+                <span className="text-warn-fg">
+                  {cut.length === 1 ? <span className="font-mono">{cut[0]!.service}</span> : cut.map((c) => c.service).join(", ")} {shortenedLine(cut)}
+                </span>
+                <div className="flex gap-2">
+                  <Button type="button" variant="destructive" disabled={busy} onClick={() => void save("Retention", true)}>
+                    Save and delete
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setCut(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {props.readOnly ? null : (
+              <>
+                <span className="text-sm text-muted-foreground">Shortening applies at the next sweep. Nothing comes back.</span>
+                {cut && cut.length > 0 ? null : (
+                  <Button type="button" variant="outline" className="self-start" disabled={busy || fault !== null} onClick={() => void save("Retention")}>
+                    Save retention
+                  </Button>
+                )}
+              </>
+            )}
           </section>
           </fieldset>
           <section className={card}>

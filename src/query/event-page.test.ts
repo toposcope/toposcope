@@ -67,7 +67,7 @@ describe("eventLookbacksMs", () => {
   test("starts at one minute and covers the retention max", () => {
     expect(eventLookbacksMs[0]).toBe(60_000);
     expect(eventLookbacksMs[eventLookbacksMs.length - 1]).toBe(
-      365 * 24 * 60 * 60 * 1000,
+      730 * 24 * 60 * 60 * 1000,
     );
   });
 });

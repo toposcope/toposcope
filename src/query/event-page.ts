@@ -14,6 +14,7 @@ export const eventLookbacksMs = [
   30 * DAY_MS,
   90 * DAY_MS,
   365 * DAY_MS,
+  730 * DAY_MS,
 ] as const;
 
 /** Lower `from` bound for a newest-first page: `max(from, upper - lookback)`. */

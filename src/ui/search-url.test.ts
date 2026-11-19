@@ -128,7 +128,7 @@ describe("parseSearchUrl", () => {
 
   test("unknown range falls back to 1h", () => {
     expect(parseSearchUrl("?range=9y").range).toBe("1h");
-    expect(parseSearchUrl("?range=366d").range).toBe("1h");
+    expect(parseSearchUrl("?range=731d").range).toBe("1h");
   });
 
   test("round-trips 7d range", () => {

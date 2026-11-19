@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1b1b1e"></rect><path fill="#e6e1d7" d="M30 36 H62 L56 48 H36 Z"></path><path fill="#e6e1d7" d="M40 54 H72 L66 66 H46 Z"></path></svg></template>
+
+<style>
+  html, body { margin:0; padding:0; background:oklch(0.115 0.004 285.8); color:oklch(0.985 0 0); -webkit-font-smoothing:antialiased; }
+  a { color:#e7e1d3; text-decoration:none; }
+  a:hover { color:#ffffff; }
+  ::selection { background:oklch(0.274 0.006 286.033); }
+  /* 46a */
+[data-frame="46a"] a{color:#e7e1d3}
+[data-frame="46a"] a:hover{color:#fafafa}
+  /* 46b */
+[data-frame="46b"] a{color:#e7e1d3}
+[data-frame="46b"] a:hover{color:#fafafa}
+  /* 46c */
+[data-frame="46c"] a{color:#e7e1d3}
+[data-frame="46c"] a:hover{color:#fafafa}
+  /* 46d */
+[data-frame="46d"] a{color:#e7e1d3}
+[data-frame="46d"] a:hover{color:#fafafa}
+  /* 46e */
+[data-frame="46e"] a{color:#e7e1d3}
+[data-frame="46e"] a:hover{color:#fafafa}
+  /* 46f */
+[data-frame="46f"] a{color:#e7e1d3}
+[data-frame="46f"] a:hover{color:#fafafa}
+  /* 46g */
+[data-frame="46g"] a{color:#e7e1d3}
+[data-frame="46g"] a:hover{color:#fafafa}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%231b1b1e'/%3E%3Cpath fill='%23e6e1d7' d='M2.6 5 H16.8 L14 10.4 H4.8 Z'/%3E%3Cpath fill='%23e6e1d7' d='M7.2 13.6 H21.4 L18.6 19 H9.4 Z'/%3E%3C/svg%3E">
+</helmet>
+
+<section style="min-height:100vh; padding:46px 48px 90px; font-family:ui-sans-serif, system-ui, sans-serif; font-size:14px;">
+
+  <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+    <span style="display:flex; align-items:center; gap:7px;"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="display:block; color:oklch(0.906 0.014 84);"><path fill="currentColor" d="M2.6 5 H16.8 L14 10.4 H4.8 Z"></path><path fill="currentColor" d="M7.2 13.6 H21.4 L18.6 19 H9.4 Z"></path></svg><span style="font-size:15px; font-weight:600; letter-spacing:-0.015em;">toposcope</span></span>
+    <h1 style="margin:0; font-size:21px; font-weight:650; letter-spacing:-0.015em;">Retention by service</h1>
+    <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11.5px; color:oklch(0.705 0.015 286.067);">frames 46a–46g · Settings › Retention: keep chosen services longer than logs (#477), frames 46a–46g</span>
+  </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Retention by service (#477)</h2>
+
+    <div id="46a" data-frame="46a" data-screen-label="46a Today" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#46a" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">46a</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Today</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×560</span>
+      </div>
+      <div data-crop="46a" style="position:relative; width:520px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 560px; box-sizing: border-box; padding: 28px 30px; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; position: relative">
+  <section style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); background: #131316; border-radius: 10px; padding: 14px 16px">
+    <h2 style="margin: 0; font-size: 14px; font-weight: 500">Retention</h2>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46a-ret-logs" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Logs</label>
+      <sc-if value="{{f46a_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">30</span></sc-if>
+      <sc-if value="{{f46a_rw}}" hint-placeholder-val="{{true}}"><input id="46a-ret-logs" value="30" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">{{f46a_logsUnit}}</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46a-ret-metrics" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Metrics</label>
+      <sc-if value="{{f46a_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">400</span></sc-if>
+      <sc-if value="{{f46a_rw}}" hint-placeholder-val="{{true}}"><input id="46a-ret-metrics" value="400" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">days</span>
+    </div>
+
+    <sc-if value="{{f46a_showKept}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: flex-start; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9; line-height: 30px">Kept longer</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; position: relative">
+          <sc-for list="{{f46a_rules}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <span style="width: 96px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: {{r.nameColor}}; text-decoration: {{r.strike}}">{{r.name}}</span>
+              <sc-if value="{{f46a_ro}}" hint-placeholder-val="{{false}}"><span style="width: 64px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{r.days}}</span></sc-if>
+              <sc-if value="{{f46a_rw}}" hint-placeholder-val="{{true}}"><input aria-label="Days for {{r.name}}" value="{{r.days}}" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid {{r.border}}; background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+              <span style="color: #9f9fa9">days</span>
+              <sc-if value="{{f46a_rw}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Stop keeping {{r.name}} longer" style="margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: #84848e; border-radius: 6.4px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{f46a_fault}}" hint-placeholder-val="{{false}}">
+            <span style="color: #f87171">1–730 days, and not shorter than logs (30)</span>
+          </sc-if>
+
+          <sc-if value="{{f46a_adding}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <button type="button" aria-haspopup="listbox" aria-expanded="true" style="width: 140px; height: 30px; box-sizing: border-box; border: 1px solid rgba(250,250,250,0.4); background: #0f0f11; color: #84848e; border-radius: 6.4px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer">service<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></button>
+              <input aria-label="Days" value="730" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace">
+              <span style="color: #9f9fa9">days</span>
+            </div>
+            <div role="listbox" aria-label="Services" style="position: absolute; top: 36px; left: 0; width: 240px; z-index: 2; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column">
+              <div style="padding: 6px 8px; color: #84848e; font-size: 11.5px">Sending in the last 30 days</div>
+              <sc-for list="{{f46a_services}}" as="s" hint-placeholder-count="5">
+                <div role="option" aria-selected="{{s.sel}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 5px; background: {{s.bg}}">
+                  <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{s.name}}</span>
+                  <span style="color: #84848e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px">{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f46a_canAdd}}" hint-placeholder-val="{{true}}">
+            <button type="button" style="align-self: flex-start; height: 26px; border: 0; background: transparent; color: #e7e1d3; padding: 0; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add a service</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">{{f46a_tracesLabel}}</span>
+      <span style="color: #9f9fa9">{{f46a_tracesText}}</span>
+    </div>
+    <sc-if value="{{f46a_showProfiles}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Profiles</span>
+        <span style="color: #9f9fa9">follow logs</span>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Marks</span>
+      <span style="color: #9f9fa9">kept for ever · newest 10 000 listed in a window</span>
+    </div>
+
+    <sc-if value="{{f46a_confirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(245,158,11,0.16); border: 1px solid rgba(245,158,11,0.35); border-radius: 8px; padding: 10px 12px">
+        <span style="color: #fbbf24"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">billing</span> goes back to 30 days. Its rows older than 30 days are deleted at the next sweep.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 0; background: #dc2626; color: #fafafa; font: inherit; cursor: pointer">Save and delete</button>
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{f46a_rw}}" hint-placeholder-val="{{true}}">
+      <span style="color: #9f9fa9">Shortening applies at the next sweep. Nothing comes back.</span>
+    </sc-if>
+    <sc-if value="{{f46a_showSave}}" hint-placeholder-val="{{true}}">
+      <button type="button" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Save retention</button>
+    </sc-if>
+    <sc-if value="{{f46a_ro}}" hint-placeholder-val="{{false}}">
+      <span style="color: #fbbf24">Only an Owner changes retention: Maya K.</span>
+    </sc-if>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="46b" data-frame="46b" data-screen-label="46b No service kept longer" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#46b" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">46b</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">No service kept longer</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×560</span>
+      </div>
+      <div data-crop="46b" style="position:relative; width:520px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 560px; box-sizing: border-box; padding: 28px 30px; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; position: relative">
+  <section style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); background: #131316; border-radius: 10px; padding: 14px 16px">
+    <h2 style="margin: 0; font-size: 14px; font-weight: 500">Retention</h2>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46b-ret-logs" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Logs</label>
+      <sc-if value="{{f46b_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">30</span></sc-if>
+      <sc-if value="{{f46b_rw}}" hint-placeholder-val="{{true}}"><input id="46b-ret-logs" value="30" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">{{f46b_logsUnit}}</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46b-ret-metrics" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Metrics</label>
+      <sc-if value="{{f46b_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">400</span></sc-if>
+      <sc-if value="{{f46b_rw}}" hint-placeholder-val="{{true}}"><input id="46b-ret-metrics" value="400" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">days</span>
+    </div>
+
+    <sc-if value="{{f46b_showKept}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: flex-start; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9; line-height: 30px">Kept longer</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; position: relative">
+          <sc-for list="{{f46b_rules}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <span style="width: 96px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: {{r.nameColor}}; text-decoration: {{r.strike}}">{{r.name}}</span>
+              <sc-if value="{{f46b_ro}}" hint-placeholder-val="{{false}}"><span style="width: 64px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{r.days}}</span></sc-if>
+              <sc-if value="{{f46b_rw}}" hint-placeholder-val="{{true}}"><input aria-label="Days for {{r.name}}" value="{{r.days}}" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid {{r.border}}; background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+              <span style="color: #9f9fa9">days</span>
+              <sc-if value="{{f46b_rw}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Stop keeping {{r.name}} longer" style="margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: #84848e; border-radius: 6.4px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{f46b_fault}}" hint-placeholder-val="{{false}}">
+            <span style="color: #f87171">1–730 days, and not shorter than logs (30)</span>
+          </sc-if>
+
+          <sc-if value="{{f46b_adding}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <button type="button" aria-haspopup="listbox" aria-expanded="true" style="width: 140px; height: 30px; box-sizing: border-box; border: 1px solid rgba(250,250,250,0.4); background: #0f0f11; color: #84848e; border-radius: 6.4px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer">service<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></button>
+              <input aria-label="Days" value="730" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace">
+              <span style="color: #9f9fa9">days</span>
+            </div>
+            <div role="listbox" aria-label="Services" style="position: absolute; top: 36px; left: 0; width: 240px; z-index: 2; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column">
+              <div style="padding: 6px 8px; color: #84848e; font-size: 11.5px">Sending in the last 30 days</div>
+              <sc-for list="{{f46b_services}}" as="s" hint-placeholder-count="5">
+                <div role="option" aria-selected="{{s.sel}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 5px; background: {{s.bg}}">
+                  <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{s.name}}</span>
+                  <span style="color: #84848e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px">{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f46b_canAdd}}" hint-placeholder-val="{{true}}">
+            <button type="button" style="align-self: flex-start; height: 26px; border: 0; background: transparent; color: #e7e1d3; padding: 0; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add a service</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">{{f46b_tracesLabel}}</span>
+      <span style="color: #9f9fa9">{{f46b_tracesText}}</span>
+    </div>
+    <sc-if value="{{f46b_showProfiles}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Profiles</span>
+        <span style="color: #9f9fa9">follow logs</span>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Marks</span>
+      <span style="color: #9f9fa9">kept for ever · newest 10 000 listed in a window</span>
+    </div>
+
+    <sc-if value="{{f46b_confirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(245,158,11,0.16); border: 1px solid rgba(245,158,11,0.35); border-radius: 8px; padding: 10px 12px">
+        <span style="color: #fbbf24"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">billing</span> goes back to 30 days. Its rows older than 30 days are deleted at the next sweep.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 0; background: #dc2626; color: #fafafa; font: inherit; cursor: pointer">Save and delete</button>
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{f46b_rw}}" hint-placeholder-val="{{true}}">
+      <span style="color: #9f9fa9">Shortening applies at the next sweep. Nothing comes back.</span>
+    </sc-if>
+    <sc-if value="{{f46b_showSave}}" hint-placeholder-val="{{true}}">
+      <button type="button" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Save retention</button>
+    </sc-if>
+    <sc-if value="{{f46b_ro}}" hint-placeholder-val="{{false}}">
+      <span style="color: #fbbf24">Only an Owner changes retention: Maya K.</span>
+    </sc-if>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="46c" data-frame="46c" data-screen-label="46c Add a service" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#46c" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">46c</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Add a service</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×560</span>
+      </div>
+      <div data-crop="46c" style="position:relative; width:520px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 560px; box-sizing: border-box; padding: 28px 30px; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; position: relative">
+  <section style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); background: #131316; border-radius: 10px; padding: 14px 16px">
+    <h2 style="margin: 0; font-size: 14px; font-weight: 500">Retention</h2>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46c-ret-logs" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Logs</label>
+      <sc-if value="{{f46c_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">30</span></sc-if>
+      <sc-if value="{{f46c_rw}}" hint-placeholder-val="{{true}}"><input id="46c-ret-logs" value="30" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">{{f46c_logsUnit}}</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46c-ret-metrics" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Metrics</label>
+      <sc-if value="{{f46c_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">400</span></sc-if>
+      <sc-if value="{{f46c_rw}}" hint-placeholder-val="{{true}}"><input id="46c-ret-metrics" value="400" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">days</span>
+    </div>
+
+    <sc-if value="{{f46c_showKept}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: flex-start; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9; line-height: 30px">Kept longer</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; position: relative">
+          <sc-for list="{{f46c_rules}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <span style="width: 96px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: {{r.nameColor}}; text-decoration: {{r.strike}}">{{r.name}}</span>
+              <sc-if value="{{f46c_ro}}" hint-placeholder-val="{{false}}"><span style="width: 64px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{r.days}}</span></sc-if>
+              <sc-if value="{{f46c_rw}}" hint-placeholder-val="{{true}}"><input aria-label="Days for {{r.name}}" value="{{r.days}}" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid {{r.border}}; background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+              <span style="color: #9f9fa9">days</span>
+              <sc-if value="{{f46c_rw}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Stop keeping {{r.name}} longer" style="margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: #84848e; border-radius: 6.4px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{f46c_fault}}" hint-placeholder-val="{{false}}">
+            <span style="color: #f87171">1–730 days, and not shorter than logs (30)</span>
+          </sc-if>
+
+          <sc-if value="{{f46c_adding}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <button type="button" aria-haspopup="listbox" aria-expanded="true" style="width: 140px; height: 30px; box-sizing: border-box; border: 1px solid rgba(250,250,250,0.4); background: #0f0f11; color: #84848e; border-radius: 6.4px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer">service<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></button>
+              <input aria-label="Days" value="730" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace">
+              <span style="color: #9f9fa9">days</span>
+            </div>
+            <div role="listbox" aria-label="Services" style="position: absolute; top: 36px; left: 0; width: 240px; z-index: 2; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column">
+              <div style="padding: 6px 8px; color: #84848e; font-size: 11.5px">Sending in the last 30 days</div>
+              <sc-for list="{{f46c_services}}" as="s" hint-placeholder-count="5">
+                <div role="option" aria-selected="{{s.sel}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 5px; background: {{s.bg}}">
+                  <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{s.name}}</span>
+                  <span style="color: #84848e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px">{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f46c_canAdd}}" hint-placeholder-val="{{true}}">
+            <button type="button" style="align-self: flex-start; height: 26px; border: 0; background: transparent; color: #e7e1d3; padding: 0; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add a service</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">{{f46c_tracesLabel}}</span>
+      <span style="color: #9f9fa9">{{f46c_tracesText}}</span>
+    </div>
+    <sc-if value="{{f46c_showProfiles}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Profiles</span>
+        <span style="color: #9f9fa9">follow logs</span>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Marks</span>
+      <span style="color: #9f9fa9">kept for ever · newest 10 000 listed in a window</span>
+    </div>
+
+    <sc-if value="{{f46c_confirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(245,158,11,0.16); border: 1px solid rgba(245,158,11,0.35); border-radius: 8px; padding: 10px 12px">
+        <span style="color: #fbbf24"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">billing</span> goes back to 30 days. Its rows older than 30 days are deleted at the next sweep.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 0; background: #dc2626; color: #fafafa; font: inherit; cursor: pointer">Save and delete</button>
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{f46c_rw}}" hint-placeholder-val="{{true}}">
+      <span style="color: #9f9fa9">Shortening applies at the next sweep. Nothing comes back.</span>
+    </sc-if>
+    <sc-if value="{{f46c_showSave}}" hint-placeholder-val="{{true}}">
+      <button type="button" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Save retention</button>
+    </sc-if>
+    <sc-if value="{{f46c_ro}}" hint-placeholder-val="{{false}}">
+      <span style="color: #fbbf24">Only an Owner changes retention: Maya K.</span>
+    </sc-if>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="46d" data-frame="46d" data-screen-label="46d Two services kept longer" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#46d" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">46d</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Two services kept longer</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×560</span>
+      </div>
+      <div data-crop="46d" style="position:relative; width:520px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 560px; box-sizing: border-box; padding: 28px 30px; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; position: relative">
+  <section style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); background: #131316; border-radius: 10px; padding: 14px 16px">
+    <h2 style="margin: 0; font-size: 14px; font-weight: 500">Retention</h2>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46d-ret-logs" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Logs</label>
+      <sc-if value="{{f46d_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">30</span></sc-if>
+      <sc-if value="{{f46d_rw}}" hint-placeholder-val="{{true}}"><input id="46d-ret-logs" value="30" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">{{f46d_logsUnit}}</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46d-ret-metrics" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Metrics</label>
+      <sc-if value="{{f46d_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">400</span></sc-if>
+      <sc-if value="{{f46d_rw}}" hint-placeholder-val="{{true}}"><input id="46d-ret-metrics" value="400" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">days</span>
+    </div>
+
+    <sc-if value="{{f46d_showKept}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: flex-start; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9; line-height: 30px">Kept longer</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; position: relative">
+          <sc-for list="{{f46d_rules}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <span style="width: 96px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: {{r.nameColor}}; text-decoration: {{r.strike}}">{{r.name}}</span>
+              <sc-if value="{{f46d_ro}}" hint-placeholder-val="{{false}}"><span style="width: 64px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{r.days}}</span></sc-if>
+              <sc-if value="{{f46d_rw}}" hint-placeholder-val="{{true}}"><input aria-label="Days for {{r.name}}" value="{{r.days}}" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid {{r.border}}; background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+              <span style="color: #9f9fa9">days</span>
+              <sc-if value="{{f46d_rw}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Stop keeping {{r.name}} longer" style="margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: #84848e; border-radius: 6.4px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{f46d_fault}}" hint-placeholder-val="{{false}}">
+            <span style="color: #f87171">1–730 days, and not shorter than logs (30)</span>
+          </sc-if>
+
+          <sc-if value="{{f46d_adding}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <button type="button" aria-haspopup="listbox" aria-expanded="true" style="width: 140px; height: 30px; box-sizing: border-box; border: 1px solid rgba(250,250,250,0.4); background: #0f0f11; color: #84848e; border-radius: 6.4px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer">service<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></button>
+              <input aria-label="Days" value="730" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace">
+              <span style="color: #9f9fa9">days</span>
+            </div>
+            <div role="listbox" aria-label="Services" style="position: absolute; top: 36px; left: 0; width: 240px; z-index: 2; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column">
+              <div style="padding: 6px 8px; color: #84848e; font-size: 11.5px">Sending in the last 30 days</div>
+              <sc-for list="{{f46d_services}}" as="s" hint-placeholder-count="5">
+                <div role="option" aria-selected="{{s.sel}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 5px; background: {{s.bg}}">
+                  <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{s.name}}</span>
+                  <span style="color: #84848e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px">{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f46d_canAdd}}" hint-placeholder-val="{{true}}">
+            <button type="button" style="align-self: flex-start; height: 26px; border: 0; background: transparent; color: #e7e1d3; padding: 0; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add a service</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">{{f46d_tracesLabel}}</span>
+      <span style="color: #9f9fa9">{{f46d_tracesText}}</span>
+    </div>
+    <sc-if value="{{f46d_showProfiles}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Profiles</span>
+        <span style="color: #9f9fa9">follow logs</span>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Marks</span>
+      <span style="color: #9f9fa9">kept for ever · newest 10 000 listed in a window</span>
+    </div>
+
+    <sc-if value="{{f46d_confirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(245,158,11,0.16); border: 1px solid rgba(245,158,11,0.35); border-radius: 8px; padding: 10px 12px">
+        <span style="color: #fbbf24"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">billing</span> goes back to 30 days. Its rows older than 30 days are deleted at the next sweep.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 0; background: #dc2626; color: #fafafa; font: inherit; cursor: pointer">Save and delete</button>
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{f46d_rw}}" hint-placeholder-val="{{true}}">
+      <span style="color: #9f9fa9">Shortening applies at the next sweep. Nothing comes back.</span>
+    </sc-if>
+    <sc-if value="{{f46d_showSave}}" hint-placeholder-val="{{true}}">
+      <button type="button" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Save retention</button>
+    </sc-if>
+    <sc-if value="{{f46d_ro}}" hint-placeholder-val="{{false}}">
+      <span style="color: #fbbf24">Only an Owner changes retention: Maya K.</span>
+    </sc-if>
+  </section>
+</div>
+      </div>
+    </div>
+
+  <h2 style="margin:56px 0 0; font-size:17px; font-weight:600; letter-spacing:-0.01em;">Terms: retention, logs, metrics, service, days, kept longer, sweep.
+
+Rules: only services; 1–730 days; never shorter than logs; at most 8. Unset changes nothing.
+
+Traces of a kept service keep its days. Profiles, marks and monitor results do not.</h2>
+
+    <div id="46e" data-frame="46e" data-screen-label="46e Save shortens a service" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#46e" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">46e</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Save shortens a service</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×560</span>
+      </div>
+      <div data-crop="46e" style="position:relative; width:520px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 560px; box-sizing: border-box; padding: 28px 30px; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; position: relative">
+  <section style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); background: #131316; border-radius: 10px; padding: 14px 16px">
+    <h2 style="margin: 0; font-size: 14px; font-weight: 500">Retention</h2>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46e-ret-logs" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Logs</label>
+      <sc-if value="{{f46e_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">30</span></sc-if>
+      <sc-if value="{{f46e_rw}}" hint-placeholder-val="{{true}}"><input id="46e-ret-logs" value="30" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">{{f46e_logsUnit}}</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46e-ret-metrics" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Metrics</label>
+      <sc-if value="{{f46e_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">400</span></sc-if>
+      <sc-if value="{{f46e_rw}}" hint-placeholder-val="{{true}}"><input id="46e-ret-metrics" value="400" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">days</span>
+    </div>
+
+    <sc-if value="{{f46e_showKept}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: flex-start; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9; line-height: 30px">Kept longer</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; position: relative">
+          <sc-for list="{{f46e_rules}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <span style="width: 96px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: {{r.nameColor}}; text-decoration: {{r.strike}}">{{r.name}}</span>
+              <sc-if value="{{f46e_ro}}" hint-placeholder-val="{{false}}"><span style="width: 64px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{r.days}}</span></sc-if>
+              <sc-if value="{{f46e_rw}}" hint-placeholder-val="{{true}}"><input aria-label="Days for {{r.name}}" value="{{r.days}}" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid {{r.border}}; background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+              <span style="color: #9f9fa9">days</span>
+              <sc-if value="{{f46e_rw}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Stop keeping {{r.name}} longer" style="margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: #84848e; border-radius: 6.4px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{f46e_fault}}" hint-placeholder-val="{{false}}">
+            <span style="color: #f87171">1–730 days, and not shorter than logs (30)</span>
+          </sc-if>
+
+          <sc-if value="{{f46e_adding}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <button type="button" aria-haspopup="listbox" aria-expanded="true" style="width: 140px; height: 30px; box-sizing: border-box; border: 1px solid rgba(250,250,250,0.4); background: #0f0f11; color: #84848e; border-radius: 6.4px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer">service<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></button>
+              <input aria-label="Days" value="730" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace">
+              <span style="color: #9f9fa9">days</span>
+            </div>
+            <div role="listbox" aria-label="Services" style="position: absolute; top: 36px; left: 0; width: 240px; z-index: 2; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column">
+              <div style="padding: 6px 8px; color: #84848e; font-size: 11.5px">Sending in the last 30 days</div>
+              <sc-for list="{{f46e_services}}" as="s" hint-placeholder-count="5">
+                <div role="option" aria-selected="{{s.sel}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 5px; background: {{s.bg}}">
+                  <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{s.name}}</span>
+                  <span style="color: #84848e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px">{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f46e_canAdd}}" hint-placeholder-val="{{true}}">
+            <button type="button" style="align-self: flex-start; height: 26px; border: 0; background: transparent; color: #e7e1d3; padding: 0; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add a service</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">{{f46e_tracesLabel}}</span>
+      <span style="color: #9f9fa9">{{f46e_tracesText}}</span>
+    </div>
+    <sc-if value="{{f46e_showProfiles}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Profiles</span>
+        <span style="color: #9f9fa9">follow logs</span>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Marks</span>
+      <span style="color: #9f9fa9">kept for ever · newest 10 000 listed in a window</span>
+    </div>
+
+    <sc-if value="{{f46e_confirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(245,158,11,0.16); border: 1px solid rgba(245,158,11,0.35); border-radius: 8px; padding: 10px 12px">
+        <span style="color: #fbbf24"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">billing</span> goes back to 30 days. Its rows older than 30 days are deleted at the next sweep.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 0; background: #dc2626; color: #fafafa; font: inherit; cursor: pointer">Save and delete</button>
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{f46e_rw}}" hint-placeholder-val="{{true}}">
+      <span style="color: #9f9fa9">Shortening applies at the next sweep. Nothing comes back.</span>
+    </sc-if>
+    <sc-if value="{{f46e_showSave}}" hint-placeholder-val="{{true}}">
+      <button type="button" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Save retention</button>
+    </sc-if>
+    <sc-if value="{{f46e_ro}}" hint-placeholder-val="{{false}}">
+      <span style="color: #fbbf24">Only an Owner changes retention: Maya K.</span>
+    </sc-if>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="46f" data-frame="46f" data-screen-label="46f Days out of range" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#46f" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">46f</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Days out of range</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×560</span>
+      </div>
+      <div data-crop="46f" style="position:relative; width:520px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 560px; box-sizing: border-box; padding: 28px 30px; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; position: relative">
+  <section style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); background: #131316; border-radius: 10px; padding: 14px 16px">
+    <h2 style="margin: 0; font-size: 14px; font-weight: 500">Retention</h2>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46f-ret-logs" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Logs</label>
+      <sc-if value="{{f46f_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">30</span></sc-if>
+      <sc-if value="{{f46f_rw}}" hint-placeholder-val="{{true}}"><input id="46f-ret-logs" value="30" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">{{f46f_logsUnit}}</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46f-ret-metrics" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Metrics</label>
+      <sc-if value="{{f46f_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">400</span></sc-if>
+      <sc-if value="{{f46f_rw}}" hint-placeholder-val="{{true}}"><input id="46f-ret-metrics" value="400" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">days</span>
+    </div>
+
+    <sc-if value="{{f46f_showKept}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: flex-start; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9; line-height: 30px">Kept longer</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; position: relative">
+          <sc-for list="{{f46f_rules}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <span style="width: 96px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: {{r.nameColor}}; text-decoration: {{r.strike}}">{{r.name}}</span>
+              <sc-if value="{{f46f_ro}}" hint-placeholder-val="{{false}}"><span style="width: 64px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{r.days}}</span></sc-if>
+              <sc-if value="{{f46f_rw}}" hint-placeholder-val="{{true}}"><input aria-label="Days for {{r.name}}" value="{{r.days}}" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid {{r.border}}; background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+              <span style="color: #9f9fa9">days</span>
+              <sc-if value="{{f46f_rw}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Stop keeping {{r.name}} longer" style="margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: #84848e; border-radius: 6.4px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{f46f_fault}}" hint-placeholder-val="{{false}}">
+            <span style="color: #f87171">1–730 days, and not shorter than logs (30)</span>
+          </sc-if>
+
+          <sc-if value="{{f46f_adding}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <button type="button" aria-haspopup="listbox" aria-expanded="true" style="width: 140px; height: 30px; box-sizing: border-box; border: 1px solid rgba(250,250,250,0.4); background: #0f0f11; color: #84848e; border-radius: 6.4px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer">service<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></button>
+              <input aria-label="Days" value="730" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace">
+              <span style="color: #9f9fa9">days</span>
+            </div>
+            <div role="listbox" aria-label="Services" style="position: absolute; top: 36px; left: 0; width: 240px; z-index: 2; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column">
+              <div style="padding: 6px 8px; color: #84848e; font-size: 11.5px">Sending in the last 30 days</div>
+              <sc-for list="{{f46f_services}}" as="s" hint-placeholder-count="5">
+                <div role="option" aria-selected="{{s.sel}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 5px; background: {{s.bg}}">
+                  <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{s.name}}</span>
+                  <span style="color: #84848e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px">{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f46f_canAdd}}" hint-placeholder-val="{{true}}">
+            <button type="button" style="align-self: flex-start; height: 26px; border: 0; background: transparent; color: #e7e1d3; padding: 0; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add a service</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">{{f46f_tracesLabel}}</span>
+      <span style="color: #9f9fa9">{{f46f_tracesText}}</span>
+    </div>
+    <sc-if value="{{f46f_showProfiles}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Profiles</span>
+        <span style="color: #9f9fa9">follow logs</span>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Marks</span>
+      <span style="color: #9f9fa9">kept for ever · newest 10 000 listed in a window</span>
+    </div>
+
+    <sc-if value="{{f46f_confirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(245,158,11,0.16); border: 1px solid rgba(245,158,11,0.35); border-radius: 8px; padding: 10px 12px">
+        <span style="color: #fbbf24"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">billing</span> goes back to 30 days. Its rows older than 30 days are deleted at the next sweep.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 0; background: #dc2626; color: #fafafa; font: inherit; cursor: pointer">Save and delete</button>
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{f46f_rw}}" hint-placeholder-val="{{true}}">
+      <span style="color: #9f9fa9">Shortening applies at the next sweep. Nothing comes back.</span>
+    </sc-if>
+    <sc-if value="{{f46f_showSave}}" hint-placeholder-val="{{true}}">
+      <button type="button" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Save retention</button>
+    </sc-if>
+    <sc-if value="{{f46f_ro}}" hint-placeholder-val="{{false}}">
+      <span style="color: #fbbf24">Only an Owner changes retention: Maya K.</span>
+    </sc-if>
+  </section>
+</div>
+      </div>
+    </div>
+
+    <div id="46g" data-frame="46g" data-screen-label="46g Viewer" style="margin-top:28px;">
+      <div style="display:flex; gap:12px; align-items:baseline;">
+        <a href="#46g" style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:30px; height:20px; padding:0 5px; border:1px solid oklch(1 0 0 / 18%); border-radius:4.4px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.906 0.014 84);">46g</a>
+        <div style="font-size:14px; font-weight:600; color:oklch(0.985 0 0);">Viewer</div>
+        <span style="font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:oklch(0.705 0.015 286.067);">520×560</span>
+      </div>
+      <div data-crop="46g" style="position:relative; width:520px; height:560px; margin-top:12px; overflow:hidden; border:1px solid oklch(1 0 0 / 10%); border-radius:8px; background:#09090b; box-shadow:0 20px 50px oklch(0 0 0 / 35%);">
+<div style="width: 520px; height: 560px; box-sizing: border-box; padding: 28px 30px; background: #09090b; color: #fafafa; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12.5px; position: relative">
+  <section style="display: flex; flex-direction: column; gap: 10px; border: 1px solid rgba(255,255,255,0.1); background: #131316; border-radius: 10px; padding: 14px 16px">
+    <h2 style="margin: 0; font-size: 14px; font-weight: 500">Retention</h2>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46g-ret-logs" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Logs</label>
+      <sc-if value="{{f46g_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">30</span></sc-if>
+      <sc-if value="{{f46g_rw}}" hint-placeholder-val="{{true}}"><input id="46g-ret-logs" value="30" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">{{f46g_logsUnit}}</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <label for="46g-ret-metrics" style="width: 110px; flex-shrink: 0; color: #9f9fa9">Metrics</label>
+      <sc-if value="{{f46g_ro}}" hint-placeholder-val="{{false}}"><span style="width: 80px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">400</span></sc-if>
+      <sc-if value="{{f46g_rw}}" hint-placeholder-val="{{true}}"><input id="46g-ret-metrics" value="400" readonly style="width: 80px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+      <span style="color: #9f9fa9">days</span>
+    </div>
+
+    <sc-if value="{{f46g_showKept}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: flex-start; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9; line-height: 30px">Kept longer</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; position: relative">
+          <sc-for list="{{f46g_rules}}" as="r" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <span style="width: 96px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: {{r.nameColor}}; text-decoration: {{r.strike}}">{{r.name}}</span>
+              <sc-if value="{{f46g_ro}}" hint-placeholder-val="{{false}}"><span style="width: 64px; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{r.days}}</span></sc-if>
+              <sc-if value="{{f46g_rw}}" hint-placeholder-val="{{true}}"><input aria-label="Days for {{r.name}}" value="{{r.days}}" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid {{r.border}}; background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace"></sc-if>
+              <span style="color: #9f9fa9">days</span>
+              <sc-if value="{{f46g_rw}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Stop keeping {{r.name}} longer" style="margin-left: auto; width: 26px; height: 26px; border: 0; background: transparent; color: #84848e; border-radius: 6.4px; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{f46g_fault}}" hint-placeholder-val="{{false}}">
+            <span style="color: #f87171">1–730 days, and not shorter than logs (30)</span>
+          </sc-if>
+
+          <sc-if value="{{f46g_adding}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; align-items: center; gap: 10px; height: 30px">
+              <button type="button" aria-haspopup="listbox" aria-expanded="true" style="width: 140px; height: 30px; box-sizing: border-box; border: 1px solid rgba(250,250,250,0.4); background: #0f0f11; color: #84848e; border-radius: 6.4px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer">service<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg></button>
+              <input aria-label="Days" value="730" readonly style="width: 64px; height: 30px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.1); background: #0f0f11; color: #fafafa; border-radius: 6.4px; padding: 0 10px; text-align: right; font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace">
+              <span style="color: #9f9fa9">days</span>
+            </div>
+            <div role="listbox" aria-label="Services" style="position: absolute; top: 36px; left: 0; width: 240px; z-index: 2; background: #18181b; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; flex-direction: column">
+              <div style="padding: 6px 8px; color: #84848e; font-size: 11.5px">Sending in the last 30 days</div>
+              <sc-for list="{{f46g_services}}" as="s" hint-placeholder-count="5">
+                <div role="option" aria-selected="{{s.sel}}" style="display: flex; justify-content: space-between; align-items: center; height: 28px; padding: 0 8px; border-radius: 5px; background: {{s.bg}}">
+                  <span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">{{s.name}}</span>
+                  <span style="color: #84848e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px">{{s.n}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f46g_canAdd}}" hint-placeholder-val="{{true}}">
+            <button type="button" style="align-self: flex-start; height: 26px; border: 0; background: transparent; color: #e7e1d3; padding: 0; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 6px"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5v9M1.5 6h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add a service</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">{{f46g_tracesLabel}}</span>
+      <span style="color: #9f9fa9">{{f46g_tracesText}}</span>
+    </div>
+    <sc-if value="{{f46g_showProfiles}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Profiles</span>
+        <span style="color: #9f9fa9">follow logs</span>
+      </div>
+    </sc-if>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span style="width: 110px; flex-shrink: 0; color: #9f9fa9">Marks</span>
+      <span style="color: #9f9fa9">kept for ever · newest 10 000 listed in a window</span>
+    </div>
+
+    <sc-if value="{{f46g_confirm}}" hint-placeholder-val="{{false}}">
+      <div style="display: flex; flex-direction: column; gap: 8px; background: rgba(245,158,11,0.16); border: 1px solid rgba(245,158,11,0.35); border-radius: 8px; padding: 10px 12px">
+        <span style="color: #fbbf24"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace">billing</span> goes back to 30 days. Its rows older than 30 days are deleted at the next sweep.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 0; background: #dc2626; color: #fafafa; font: inherit; cursor: pointer">Save and delete</button>
+          <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Cancel</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{f46g_rw}}" hint-placeholder-val="{{true}}">
+      <span style="color: #9f9fa9">Shortening applies at the next sweep. Nothing comes back.</span>
+    </sc-if>
+    <sc-if value="{{f46g_showSave}}" hint-placeholder-val="{{true}}">
+      <button type="button" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6.4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #fafafa; font: inherit; cursor: pointer">Save retention</button>
+    </sc-if>
+    <sc-if value="{{f46g_ro}}" hint-placeholder-val="{{false}}">
+      <span style="color: #fbbf24">Only an Owner changes retention: Maya K.</span>
+    </sc-if>
+  </section>
+</div>
+      </div>
+    </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    // one artboard each, keys prefixed by frame id
+    const pre = (ns, vals) => Object.fromEntries(Object.entries(vals).map(([k, v]) => [ns + '_' + k, v]));
+    return {
+      ...pre('f46a', new (class {
+  renderVals() {
+    const v = 'a';
+    const ro = v === 'g';
+    const plain = 'rgba(255,255,255,0.1)';
+    const rule = (name, days, o) => Object.assign({ name: name, days: days, border: plain, nameColor: '#fafafa', strike: 'none' }, o || {});
+    let rules = [];
+    if (v === 'd' || v === 'g') rules = [rule('analytics', '730'), rule('billing', '90')];
+    if (v === 'e') rules = [rule('analytics', '730'), rule('billing', '90', { nameColor: '#84848e', strike: 'line-through' })];
+    if (v === 'f') rules = [rule('analytics', '900', { border: '#f87171' }), rule('billing', '90')];
+    const services = [
+      { name: 'analytics', n: '41 k', sel: 'true', bg: 'rgba(255,255,255,0.08)' },
+      { name: 'api', n: '18.2 M', sel: 'false', bg: 'transparent' },
+      { name: 'billing', n: '960 k', sel: 'false', bg: 'transparent' },
+      { name: 'worker', n: '3.1 M', sel: 'false', bg: 'transparent' },
+      { name: 'sandbox', n: '7.4 M', sel: 'false', bg: 'transparent' }
+    ];
+    const hasRules = rules.length > 0;
+    return {
+      ro: ro,
+      rw: !ro,
+      rules: rules,
+      services: services,
+      showKept: v !== 'a',
+      adding: v === 'c',
+      canAdd: v === 'b' || v === 'd' || v === 'f',
+      fault: v === 'f',
+      confirm: v === 'e',
+      showSave: !ro && v !== 'e',
+      logsUnit: hasRules ? 'days · every other service' : 'days',
+      tracesLabel: v === 'a' ? 'Traces, profiles' : 'Traces',
+      tracesText: v === 'a' ? 'follow logs' : 'follow logs, and a service kept longer',
+      showProfiles: v !== 'a'
+    };
+  }
+})().renderVals()),
+      ...pre('f46b', new (class {
+  renderVals() {
+    const v = 'b';
+    const ro = v === 'g';
+    const plain = 'rgba(255,255,255,0.1)';
+    const rule = (name, days, o) => Object.assign({ name: name, days: days, border: plain, nameColor: '#fafafa', strike: 'none' }, o || {});
+    let rules = [];
+    if (v === 'd' || v === 'g') rules = [rule('analytics', '730'), rule('billing', '90')];
+    if (v === 'e') rules = [rule('analytics', '730'), rule('billing', '90', { nameColor: '#84848e', strike: 'line-through' })];
+    if (v === 'f') rules = [rule('analytics', '900', { border: '#f87171' }), rule('billing', '90')];
+    const services = [
+      { name: 'analytics', n: '41 k', sel: 'true', bg: 'rgba(255,255,255,0.08)' },
+      { name: 'api', n: '18.2 M', sel: 'false', bg: 'transparent' },
+      { name: 'billing', n: '960 k', sel: 'false', bg: 'transparent' },
+      { name: 'worker', n: '3.1 M', sel: 'false', bg: 'transparent' },
+      { name: 'sandbox', n: '7.4 M', sel: 'false', bg: 'transparent' }
+    ];
+    const hasRules = rules.length > 0;
+    return {
+      ro: ro,
+      rw: !ro,
+      rules: rules,
+      services: services,
+      showKept: v !== 'a',
+      adding: v === 'c',
+      canAdd: v === 'b' || v === 'd' || v === 'f',
+      fault: v === 'f',
+      confirm: v === 'e',
+      showSave: !ro && v !== 'e',
+      logsUnit: hasRules ? 'days · every other service' : 'days',
+      tracesLabel: v === 'a' ? 'Traces, profiles' : 'Traces',
+      tracesText: v === 'a' ? 'follow logs' : 'follow logs, and a service kept longer',
+      showProfiles: v !== 'a'
+    };
+  }
+})().renderVals()),
+      ...pre('f46c', new (class {
+  renderVals() {
+    const v = 'c';
+    const ro = v === 'g';
+    const plain = 'rgba(255,255,255,0.1)';
+    const rule = (name, days, o) => Object.assign({ name: name, days: days, border: plain, nameColor: '#fafafa', strike: 'none' }, o || {});
+    let rules = [];
+    if (v === 'd' || v === 'g') rules = [rule('analytics', '730'), rule('billing', '90')];
+    if (v === 'e') rules = [rule('analytics', '730'), rule('billing', '90', { nameColor: '#84848e', strike: 'line-through' })];
+    if (v === 'f') rules = [rule('analytics', '900', { border: '#f87171' }), rule('billing', '90')];
+    const services = [
+      { name: 'analytics', n: '41 k', sel: 'true', bg: 'rgba(255,255,255,0.08)' },
+      { name: 'api', n: '18.2 M', sel: 'false', bg: 'transparent' },
+      { name: 'billing', n: '960 k', sel: 'false', bg: 'transparent' },
+      { name: 'worker', n: '3.1 M', sel: 'false', bg: 'transparent' },
+      { name: 'sandbox', n: '7.4 M', sel: 'false', bg: 'transparent' }
+    ];
+    const hasRules = rules.length > 0;
+    return {
+      ro: ro,
+      rw: !ro,
+      rules: rules,
+      services: services,
+      showKept: v !== 'a',
+      adding: v === 'c',
+      canAdd: v === 'b' || v === 'd' || v === 'f',
+      fault: v === 'f',
+      confirm: v === 'e',
+      showSave: !ro && v !== 'e',
+      logsUnit: hasRules ? 'days · every other service' : 'days',
+      tracesLabel: v === 'a' ? 'Traces, profiles' : 'Traces',
+      tracesText: v === 'a' ? 'follow logs' : 'follow logs, and a service kept longer',
+      showProfiles: v !== 'a'
+    };
+  }
+})().renderVals()),
+      ...pre('f46d', new (class {
+  renderVals() {
+    const v = 'd';
+    const ro = v === 'g';
+    const plain = 'rgba(255,255,255,0.1)';
+    const rule = (name, days, o) => Object.assign({ name: name, days: days, border: plain, nameColor: '#fafafa', strike: 'none' }, o || {});
+    let rules = [];
+    if (v === 'd' || v === 'g') rules = [rule('analytics', '730'), rule('billing', '90')];
+    if (v === 'e') rules = [rule('analytics', '730'), rule('billing', '90', { nameColor: '#84848e', strike: 'line-through' })];
+    if (v === 'f') rules = [rule('analytics', '900', { border: '#f87171' }), rule('billing', '90')];
+    const services = [
+      { name: 'analytics', n: '41 k', sel: 'true', bg: 'rgba(255,255,255,0.08)' },
+      { name: 'api', n: '18.2 M', sel: 'false', bg: 'transparent' },
+      { name: 'billing', n: '960 k', sel: 'false', bg: 'transparent' },
+      { name: 'worker', n: '3.1 M', sel: 'false', bg: 'transparent' },
+      { name: 'sandbox', n: '7.4 M', sel: 'false', bg: 'transparent' }
+    ];
+    const hasRules = rules.length > 0;
+    return {
+      ro: ro,
+      rw: !ro,
+      rules: rules,
+      services: services,
+      showKept: v !== 'a',
+      adding: v === 'c',
+      canAdd: v === 'b' || v === 'd' || v === 'f',
+      fault: v === 'f',
+      confirm: v === 'e',
+      showSave: !ro && v !== 'e',
+      logsUnit: hasRules ? 'days · every other service' : 'days',
+      tracesLabel: v === 'a' ? 'Traces, profiles' : 'Traces',
+      tracesText: v === 'a' ? 'follow logs' : 'follow logs, and a service kept longer',
+      showProfiles: v !== 'a'
+    };
+  }
+})().renderVals()),
+      ...pre('f46e', new (class {
+  renderVals() {
+    const v = 'e';
+    const ro = v === 'g';
+    const plain = 'rgba(255,255,255,0.1)';
+    const rule = (name, days, o) => Object.assign({ name: name, days: days, border: plain, nameColor: '#fafafa', strike: 'none' }, o || {});
+    let rules = [];
+    if (v === 'd' || v === 'g') rules = [rule('analytics', '730'), rule('billing', '90')];
+    if (v === 'e') rules = [rule('analytics', '730'), rule('billing', '90', { nameColor: '#84848e', strike: 'line-through' })];
+    if (v === 'f') rules = [rule('analytics', '900', { border: '#f87171' }), rule('billing', '90')];
+    const services = [
+      { name: 'analytics', n: '41 k', sel: 'true', bg: 'rgba(255,255,255,0.08)' },
+      { name: 'api', n: '18.2 M', sel: 'false', bg: 'transparent' },
+      { name: 'billing', n: '960 k', sel: 'false', bg: 'transparent' },
+      { name: 'worker', n: '3.1 M', sel: 'false', bg: 'transparent' },
+      { name: 'sandbox', n: '7.4 M', sel: 'false', bg: 'transparent' }
+    ];
+    const hasRules = rules.length > 0;
+    return {
+      ro: ro,
+      rw: !ro,
+      rules: rules,
+      services: services,
+      showKept: v !== 'a',
+      adding: v === 'c',
+      canAdd: v === 'b' || v === 'd' || v === 'f',
+      fault: v === 'f',
+      confirm: v === 'e',
+      showSave: !ro && v !== 'e',
+      logsUnit: hasRules ? 'days · every other service' : 'days',
+      tracesLabel: v === 'a' ? 'Traces, profiles' : 'Traces',
+      tracesText: v === 'a' ? 'follow logs' : 'follow logs, and a service kept longer',
+      showProfiles: v !== 'a'
+    };
+  }
+})().renderVals()),
+      ...pre('f46f', new (class {
+  renderVals() {
+    const v = 'f';
+    const ro = v === 'g';
+    const plain = 'rgba(255,255,255,0.1)';
+    const rule = (name, days, o) => Object.assign({ name: name, days: days, border: plain, nameColor: '#fafafa', strike: 'none' }, o || {});
+    let rules = [];
+    if (v === 'd' || v === 'g') rules = [rule('analytics', '730'), rule('billing', '90')];
+    if (v === 'e') rules = [rule('analytics', '730'), rule('billing', '90', { nameColor: '#84848e', strike: 'line-through' })];
+    if (v === 'f') rules = [rule('analytics', '900', { border: '#f87171' }), rule('billing', '90')];
+    const services = [
+      { name: 'analytics', n: '41 k', sel: 'true', bg: 'rgba(255,255,255,0.08)' },
+      { name: 'api', n: '18.2 M', sel: 'false', bg: 'transparent' },
+      { name: 'billing', n: '960 k', sel: 'false', bg: 'transparent' },
+      { name: 'worker', n: '3.1 M', sel: 'false', bg: 'transparent' },
+      { name: 'sandbox', n: '7.4 M', sel: 'false', bg: 'transparent' }
+    ];
+    const hasRules = rules.length > 0;
+    return {
+      ro: ro,
+      rw: !ro,
+      rules: rules,
+      services: services,
+      showKept: v !== 'a',
+      adding: v === 'c',
+      canAdd: v === 'b' || v === 'd' || v === 'f',
+      fault: v === 'f',
+      confirm: v === 'e',
+      showSave: !ro && v !== 'e',
+      logsUnit: hasRules ? 'days · every other service' : 'days',
+      tracesLabel: v === 'a' ? 'Traces, profiles' : 'Traces',
+      tracesText: v === 'a' ? 'follow logs' : 'follow logs, and a service kept longer',
+      showProfiles: v !== 'a'
+    };
+  }
+})().renderVals()),
+      ...pre('f46g', new (class {
+  renderVals() {
+    const v = 'g';
+    const ro = v === 'g';
+    const plain = 'rgba(255,255,255,0.1)';
+    const rule = (name, days, o) => Object.assign({ name: name, days: days, border: plain, nameColor: '#fafafa', strike: 'none' }, o || {});
+    let rules = [];
+    if (v === 'd' || v === 'g') rules = [rule('analytics', '730'), rule('billing', '90')];
+    if (v === 'e') rules = [rule('analytics', '730'), rule('billing', '90', { nameColor: '#84848e', strike: 'line-through' })];
+    if (v === 'f') rules = [rule('analytics', '900', { border: '#f87171' }), rule('billing', '90')];
+    const services = [
+      { name: 'analytics', n: '41 k', sel: 'true', bg: 'rgba(255,255,255,0.08)' },
+      { name: 'api', n: '18.2 M', sel: 'false', bg: 'transparent' },
+      { name: 'billing', n: '960 k', sel: 'false', bg: 'transparent' },
+      { name: 'worker', n: '3.1 M', sel: 'false', bg: 'transparent' },
+      { name: 'sandbox', n: '7.4 M', sel: 'false', bg: 'transparent' }
+    ];
+    const hasRules = rules.length > 0;
+    return {
+      ro: ro,
+      rw: !ro,
+      rules: rules,
+      services: services,
+      showKept: v !== 'a',
+      adding: v === 'c',
+      canAdd: v === 'b' || v === 'd' || v === 'f',
+      fault: v === 'f',
+      confirm: v === 'e',
+      showSave: !ro && v !== 'e',
+      logsUnit: hasRules ? 'days · every other service' : 'days',
+      tracesLabel: v === 'a' ? 'Traces, profiles' : 'Traces',
+      tracesText: v === 'a' ? 'follow logs' : 'follow logs, and a service kept longer',
+      showProfiles: v !== 'a'
+    };
+  }
+})().renderVals()),
+    };
+  }
+}
+</script>
+</body>
+</html>

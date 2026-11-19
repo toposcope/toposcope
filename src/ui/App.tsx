@@ -91,6 +91,7 @@ import { formatMetricLabels, parseMetricRef } from "../shared/metric";
 import { histogramIntervalMs, type HistogramChartKind, type HistogramIntervalId, type HistogramSplit } from "../query/histogram";
 import { clampHistogramWindow, autoChipInterval, displayedHistogramInterval, histogramExploreResetLabel, histogramChartNeedsRefetch, resolveQueryHistogramStep } from "./histogram-zoom";
 import { parseRangeMs, retentionRangeMs } from "../query/relative";
+import { longestKeptDays } from "./retention-rules";
 import { surroundingDefaultN, surroundingMaxN, surroundingStepN } from "../query/surrounding";
 import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, toggleFingerprintCutFilter } from "./query-tokens";
 import { histogramTotal, livePageSize, mergeHistogramBuckets, mergeLiveEvents } from "./merge-live";
@@ -483,6 +484,8 @@ export function App() {
   const outage = useOutage();
   const [scanRefuse, setScanRefuse] = useState<SearchScan | null>(null);
   const [retentionDays, setRetentionDays] = useState(30);
+  // How far back a window may pan: logs' days, or a service kept longer (#477).
+  const [windowDays, setWindowDays] = useState(30);
   const [unauthorized, setUnauthorized] = useState(false);
   const [instance, setInstance] = useState<InstanceInfo | null>(null);
   // Where a trace's spans and a profile entered (#330, #332), against what this instance holds.
@@ -1710,9 +1713,10 @@ export function App() {
       if (!res.ok) {
         return;
       }
-      const json = (await res.json()) as { retention_days: number };
+      const json = (await res.json()) as { retention_days: number; retention_rules?: { days: number }[] };
       if (Number.isInteger(json.retention_days)) {
         setRetentionDays(json.retention_days);
+        setWindowDays(longestKeptDays(json));
       }
     });
   }, []);
@@ -2593,7 +2597,7 @@ export function App() {
       Date.parse(fromIso),
       Date.parse(toIso),
       Date.now(),
-      retentionRangeMs(retentionDays),
+      retentionRangeMs(windowDays),
     );
     if (!clamped) {
       return;
@@ -4212,7 +4216,10 @@ export function App() {
         <SettingsPage
           instance={instance}
           onInstanceName={() => void loadInstance().catch(() => undefined)}
-          onRetentionDays={setRetentionDays}
+          onRetentionDays={(days, longest) => {
+            setRetentionDays(days);
+            setWindowDays(longest);
+          }}
           onSignOut={() => void signOut()}
           onOpenFields={() => setView("fields")}
           onOpenSignIn={() => setView("sign-in")}
@@ -4708,7 +4715,7 @@ export function App() {
                   onWindow={onHistogramWindow}
                   onCommand={onHbarCommand}
                   locked={boardOn}
-                  retentionMs={retentionRangeMs(retentionDays)}
+                  retentionMs={retentionRangeMs(windowDays)}
                   scanReason={
                     scanRefuse?.histogram ? scanRefuse.reason : null
                   }

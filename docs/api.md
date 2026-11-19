@@ -88,7 +88,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 | `cursor` | string |  | The cursor of the last page, for the next page of events. |
 | `since` | string |  | The newest event's time the caller has: only newer rows and the current bar come back. |
@@ -124,7 +124,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `kind` | "" \| "deploy" \| "flag" \| "incident" \| "note" |  | Only marks of this kind; any case. |
 | `service` | string |  | Only marks for this service. |
 
@@ -163,7 +163,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `service` | string |  | Only probes of this service. |
 
 ### GET /api/profiles
@@ -224,7 +224,7 @@ Query:
 | `mark` | string | yes | The change mark's id. |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 | `opened` | string |  | The fingerprint whose row is open, kept in the answer. |
 | `live` | string |  | 1 or true: the after side ends now. |
@@ -242,7 +242,7 @@ Query:
 | `mark` | string | yes | The change mark's id. |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 | `agg` | string |  | Compare a series derived from the rows: rate, or p99, avg, min, max or sum of a numeric attribute (p99:duration_ms). |
 | `metric` | string |  | Compare an ingested metric instead, a histogram's with its reading first (p99:http.server.request.duration). |
@@ -303,7 +303,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 | `limit` | string |  | How many to return at most, a whole number. |
 | `omit` | string |  | 0 or false counts each facet over the whole query; by default a facet leaves its own field out of it. |
@@ -321,7 +321,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 
 ### GET /api/attr-facets
@@ -336,7 +336,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 | `attrs` | string |  | The attribute keys to count, separated by commas. |
 | `limit` | string |  | How many to return at most, a whole number. |
@@ -354,7 +354,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 | `key` | string |  | The attribute key. |
 | `prefix` | string |  | What the values start with. |
@@ -371,7 +371,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `q` | string |  | A query in Toposcope's query language (docs/query.md); empty matches every row. |
 
 ### GET /api/metric-names
@@ -386,7 +386,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `find` | string |  | Only names that contain this. |
 | `picked` | string |  | Names to list whatever the cap, separated by commas. |
 
@@ -402,7 +402,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `name` | string | yes | The metric's name, a histogram's with its reading first (p99:http.server.request.duration). |
 | `ml` | string |  | Label matchers, key:value separated by spaces, at most 4. |
 | `msplit` | string |  | A label key to split the series by: one line per value, the 8 with the most points and other. |
@@ -420,7 +420,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `name` | string | yes | The metric's name. |
 
 ### GET /api/service-signals
@@ -435,7 +435,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `service` | string | yes | The service, as its rows name it. |
 
 ## Saved searches
@@ -1002,7 +1002,7 @@ Query:
 | --- | --- | --- | --- |
 | `from` | string |  | Where the window starts, an ISO time. |
 | `to` | string |  | Where the window ends, an ISO time. |
-| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 365d; it wins over from and to. |
+| `range` | string |  | A window that ends now, as 15m, 1h, 24h, 7d or any \d+(ms\|s\|m\|h\|d\|w) up to 730d; it wins over from and to. |
 | `wave` | "" \| "keys" \| "values" \| "suggest" |  | One slice of the catalog: keys, values or suggest; all of it when left out or empty. |
 | `cheap` | string |  | With wave=suggest: keys to suggest from cheaply, separated by commas. |
 
@@ -1631,6 +1631,9 @@ Body:
 | --- | --- | --- | --- |
 | `retention_days` | number |  | How many days rows are kept, 1 to 365. |
 | `metrics_retention_days` | number \| "" \| null |  | How many days metric points are kept; null or empty follows retention_days. |
+| `retention_rules` | object[] \| null |  | Services whose logs and traces are kept longer than retention_days, at most 8; an empty list or null keeps every service retention_days. |
+| `retention_rules[].service` | string | yes | The service, as rows carry it. |
+| `retention_rules[].days` | number | yes | How many days its logs and traces are kept, 1 to 730, and not fewer than retention_days. |
 | `instance_name` | string \| null |  | This instance's name, as links and the tab title show it; null or empty unnames it. |
 | `default_webhook_url` | string \| null |  | Where monitors call when they name no URL of their own, http(s); null or empty for none. |
 | `two_step_for` | "everyone" \| "owners" |  | Who must have a second step: everyone with a password, or Owners only. |

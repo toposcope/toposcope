@@ -341,7 +341,7 @@ export const TimeRangePicker = forwardRef<HTMLButtonElement, Props>(
             >
               {absTouched
                 ? absApplyPreview(absFromMs, absToMs)
-                : "Windows cap at 365 days."}
+                : "Windows cap at 730 days."}
             </span>
           </div>
         </PopoverContent>

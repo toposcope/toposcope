@@ -70,7 +70,7 @@ export function absApplyPreview(fromMs: number, toMs: number): string {
   return `Applies ${absStampUtc(fromMs)} → ${toLabel} · ${formatDuration(toMs - fromMs, "short")}`;
 }
 
-/** Pin a From/To edit to a legal custom window (1ms…365d). */
+/** Pin a From/To edit to a legal custom window (1ms…730d). */
 export function commitAbsLocal(
   field: AbsField,
   nextLocal: string,

@@ -1812,11 +1812,11 @@ async function main(): Promise<void> {
   if (monthMs < 29 * 24 * 60 * 60 * 1000 || monthMs > 31 * 24 * 60 * 60 * 1000) {
     throw new Error(`range=30d span was ${monthMs}ms`);
   }
-  const tooLong = await fetch(`${APP_URL}/api/search?range=366d`, {
+  const tooLong = await fetch(`${APP_URL}/api/search?range=731d`, {
     headers: { authorization: await operatorAuth("e2e") },
   });
   if (tooLong.status !== 400) {
-    throw new Error(`expected 400 for range=366d, got ${tooLong.status}`);
+    throw new Error(`expected 400 for range=731d, got ${tooLong.status}`);
   }
 
   const badRange = await fetch(`${APP_URL}/api/search?range=nope`, {
