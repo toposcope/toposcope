@@ -40,7 +40,7 @@ import { actorName } from "./control/actors";
 import { getDb, getHealth } from "./control";
 import { importEnvIngestToken } from "./control/tokens";
 import { storedSkipKeys } from "./control/fields";
-import { effectiveMetricsRetentionDays, getRetentionDays } from "./control/settings";
+import { effectiveMetricsRetentionDays, getRetentionDays, getRetentionRules } from "./control/settings";
 import { instanceName } from "./control/instance";
 import { setHereName } from "./shared/here";
 import { homeSaved } from "./control/home";
@@ -707,7 +707,7 @@ async function startBoot(): Promise<void> {
     }
     setHereName(instanceName());
     await syncFieldRoleSkip(storedSkipKeys());
-    await applyRetentionDays(getRetentionDays(), effectiveMetricsRetentionDays());
+    await applyRetentionDays(getRetentionDays(), effectiveMetricsRetentionDays(), getRetentionRules());
     startAlertCron();
     // HTTP(S) monitors keep their own pace, 30s … 1h each, apart from the 60s alert pass.
     startHttpMonitors();

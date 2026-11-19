@@ -164,7 +164,7 @@ describe("absApplyPreview", () => {
 });
 
 describe("clampAbsWindow", () => {
-  test("leaves a window under 365d alone", () => {
+  test("leaves a window under 730d alone", () => {
     const from = Date.UTC(2026, 7, 1, 0, 0, 0, 0);
     const to = Date.UTC(2026, 7, 14, 0, 0, 0, 0);
     expect(clampAbsWindow(from, to, "from")).toEqual({
@@ -173,8 +173,8 @@ describe("clampAbsWindow", () => {
     });
   });
 
-  test("caps a From edit at 365 days", () => {
-    const from = Date.UTC(2025, 0, 1, 0, 0, 0, 0);
+  test("caps a From edit at 730 days", () => {
+    const from = Date.UTC(2024, 0, 1, 0, 0, 0, 0);
     const to = Date.UTC(2026, 7, 14, 0, 0, 0, 0);
     expect(clampAbsWindow(from, to, "from")).toEqual({
       fromMs: from,

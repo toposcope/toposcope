@@ -39,7 +39,8 @@ describe("nextHistogramZoomMs", () => {
     expect(nextHistogramZoomMs(5 * MINUTE, -1)).toBe(MINUTE);
     expect(nextHistogramZoomMs(1, -1)).toBeNull();
     expect(nextHistogramZoomMs(7 * 24 * HOUR, 1)).toBe(14 * 24 * HOUR);
-    expect(nextHistogramZoomMs(365 * 24 * HOUR, 1)).toBeNull();
+    expect(nextHistogramZoomMs(365 * 24 * HOUR, 1)).toBe(730 * 24 * HOUR);
+    expect(nextHistogramZoomMs(730 * 24 * HOUR, 1)).toBeNull();
   });
 });
 

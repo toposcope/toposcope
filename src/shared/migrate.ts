@@ -89,16 +89,16 @@ export async function requireClickHouseVersion(): Promise<void> {
 }
 
 export const retentionTtlTables = [
-  { table: "logs", clock: "ts" },
-  { table: "logs_by_minute", clock: "minute" },
-  { table: "logs_attr_keys_by_minute", clock: "minute" },
-  { table: "logs_attr_values_by_minute", clock: "minute" },
-  { table: "logs_attr_numeric_by_minute", clock: "minute" },
+  { table: "logs", clock: "ts", byService: true },
+  { table: "logs_by_minute", clock: "minute", byService: true },
+  { table: "logs_attr_keys_by_minute", clock: "minute", byService: true },
+  { table: "logs_attr_values_by_minute", clock: "minute", byService: true },
+  { table: "logs_attr_numeric_by_minute", clock: "minute", byService: true },
   { table: "metrics", clock: "ts", metrics: true },
   { table: "metrics_by_minute", clock: "minute", metrics: true },
   { table: "metric_buckets", clock: "ts", metrics: true },
   { table: "metric_buckets_by_minute", clock: "minute", metrics: true },
-  { table: "spans", clock: "ts" },
+  { table: "spans", clock: "ts", byService: true },
   { table: "profile_samples", clock: "ts" },
   { table: "change_marks", clock: "ts" },
   { table: "monitor_results", clock: "at" },
@@ -108,13 +108,69 @@ export const retentionTtlTables = [
 export const retentionTtlAlterSettings =
   "SETTINGS mutations_sync = 0, alter_sync = 0";
 
+/** A service whose logs and traces keep longer than `retention_days` (#477). */
+export type RetentionRule = { service: string; days: number };
+
+/** Kept longer is a short list: each rule is one more branch in the TTL every merge evaluates. */
+export const maxRetentionRules = 8;
+export const maxRetentionRuleDays = 730;
+export const maxServiceNameLength = 128;
+
+/** The rules a TTL is built from: sorted by service, so the same rules always give the same expression. */
+export function normalRetentionRules(rules: readonly RetentionRule[]): RetentionRule[] {
+  return [...rules]
+    .map((r) => ({ service: r.service, days: Math.min(maxRetentionRuleDays, Math.max(1, Math.floor(r.days))) }))
+    .sort((a, b) => (a.service < b.service ? -1 : a.service > b.service ? 1 : 0));
+}
+
+/** A ClickHouse string literal, quoted the way `engine_full` prints it back. */
+export function clickhouseStringLiteral(value: string): string {
+  return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+}
+
+/**
+ * The TTL of one table. Without rules it is today's `toDate(clock) + INTERVAL n DAY`, so an
+ * install that sets none sees no ALTER. With rules, a table that has `service` keeps each listed
+ * service its own days: `addDays(toDate(ts), transform(service, ['analytics'], [730], 30))`.
+ */
+export function retentionTtlExpr(
+  table: (typeof retentionTtlTables)[number]["table"],
+  clock: (typeof retentionTtlTables)[number]["clock"],
+  days: number,
+  rules: readonly RetentionRule[] = [],
+): string {
+  const metrics = isMetricsRetentionTable(table);
+  const n = metrics ? clampMetricsRetentionDays(days) : clampRetentionDays(days);
+  const kept = isServiceRetentionTable(table) ? normalRetentionRules(rules) : [];
+  if (kept.length === 0) {
+    return `toDate(${clock}) + INTERVAL ${n} DAY`;
+  }
+  const names = kept.map((r) => clickhouseStringLiteral(r.service)).join(", ");
+  const keep = kept.map((r) => String(Math.max(r.days, n))).join(", ");
+  return `addDays(toDate(${clock}), transform(service, [${names}], [${keep}], ${n}))`;
+}
+
 export function retentionTtlAlterSql(
   table: (typeof retentionTtlTables)[number]["table"],
   clock: (typeof retentionTtlTables)[number]["clock"],
   days: number,
+  rules: readonly RetentionRule[] = [],
 ): string {
-  const n = isMetricsRetentionTable(table) ? clampMetricsRetentionDays(days) : clampRetentionDays(days);
-  return `ALTER TABLE ${table} MODIFY TTL toDate(${clock}) + INTERVAL ${n} DAY ${retentionTtlAlterSettings}`;
+  return `ALTER TABLE ${table} MODIFY TTL ${retentionTtlExpr(table, clock, days, rules)} ${retentionTtlAlterSettings}`;
+}
+
+/** Logs, their rollups and spans carry `service`, so a rule can keep one service longer there. */
+export function isServiceRetentionTable(table: string): boolean {
+  return retentionTtlTables.some((spec) => spec.table === table && "byService" in spec);
+}
+
+/** Whether a table's stored TTL is already the one these settings ask for. */
+export function ttlMatches(engineFull: string, expr: string): boolean {
+  if (expr.startsWith("addDays(")) {
+    return engineFull.includes(`TTL ${expr}`);
+  }
+  const want = Number(expr.match(/INTERVAL (\d+) DAY/)?.[1]);
+  return !engineFull.includes("transform(") && parseTtlIntervalDays(engineFull) === want;
 }
 
 /** Ingested metrics and their rollups keep `metrics_retention_days`; every other table keeps `retention_days`. */
@@ -137,8 +193,15 @@ export function parseTtlIntervalDays(engineFull: string): number | null {
   return null;
 }
 
-/** `metricsDays` defaults to `days`: metrics follow logs until they have a retention of their own. */
-export async function applyRetentionDays(days: number, metricsDays: number = days): Promise<void> {
+/**
+ * `metricsDays` defaults to `days`: metrics follow logs until they have a retention of their own.
+ * `rules` keep listed services longer in logs, their rollups and spans (#477).
+ */
+export async function applyRetentionDays(
+  days: number,
+  metricsDays: number = days,
+  rules: readonly RetentionRule[] = [],
+): Promise<void> {
   const n = clampRetentionDays(days);
   const m = clampMetricsRetentionDays(metricsDays);
   try {
@@ -146,24 +209,24 @@ export async function applyRetentionDays(days: number, metricsDays: number = day
   } catch {
     // A failed KILL must not block issuing the new TTL.
   }
-  const have = await currentTtlIntervalDays();
+  const have = await currentEngines();
   for (const spec of retentionTtlTables) {
-    const want = "metrics" in spec ? m : n;
-    if (have[spec.table] === want) {
+    const expr = retentionTtlExpr(spec.table, spec.clock, "metrics" in spec ? m : n, rules);
+    if (ttlMatches(have[spec.table] ?? "", expr)) {
       continue;
     }
-    await clickhouseCommand(retentionTtlAlterSql(spec.table, spec.clock, want));
+    await clickhouseCommand(`ALTER TABLE ${spec.table} MODIFY TTL ${expr} ${retentionTtlAlterSettings}`);
   }
 }
 
-async function currentTtlIntervalDays(): Promise<Record<string, number | null>> {
+async function currentEngines(): Promise<Record<string, string>> {
   const names = retentionTtlTables.map((spec) => `'${spec.table}'`).join(", ");
   const rows = await clickhouseQuery<{ name: string; engine_full: string }>(
     `SELECT name, engine_full FROM system.tables WHERE database = currentDatabase() AND name IN (${names})`,
   );
-  const have: Record<string, number | null> = {};
+  const have: Record<string, string> = {};
   for (const row of rows) {
-    have[row.name] = parseTtlIntervalDays(row.engine_full);
+    have[row.name] = row.engine_full;
   }
   return have;
 }
@@ -709,7 +772,7 @@ export const metricRollupKeys = {
  */
 async function ensureMetricRollups(): Promise<void> {
   const rebuilt: string[] = [];
-  const days = (await currentTtlIntervalDays()).metrics ?? 30;
+  const days = parseTtlIntervalDays((await currentEngines()).metrics ?? "") ?? 30;
   for (const table of ["metrics_by_minute", "metric_buckets_by_minute"] as const) {
     const sorting = await tableSortingKey(table);
     if (sorting !== null && sorting !== metricRollupKeys[table]) {

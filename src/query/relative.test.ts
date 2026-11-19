@@ -25,7 +25,7 @@ describe("parseRangeMs", () => {
     expect(parseRangeMs("")).toBeNull();
     expect(parseRangeMs("15")).toBeNull();
     expect(parseRangeMs("0m")).toBeNull();
-    expect(parseRangeMs("366d")).toBeNull();
+    expect(parseRangeMs("731d")).toBeNull();
     expect(parseRangeMs("9y")).toBeNull();
   });
 
@@ -38,7 +38,9 @@ describe("parseRangeMs", () => {
     expect(parseRangeMs("1w")).toBe(7 * 24 * 60 * 60 * 1000);
     expect(parseRangeMs("2w")).toBe(14 * 24 * 60 * 60 * 1000);
     expect(parseRangeMs("52w")).toBe(52 * 7 * 24 * 60 * 60 * 1000);
-    expect(parseRangeMs("53w")).toBeNull();
+    expect(parseRangeMs("730d")).toBe(730 * 24 * 60 * 60 * 1000);
+    expect(parseRangeMs("104w")).toBe(104 * 7 * 24 * 60 * 60 * 1000);
+    expect(parseRangeMs("105w")).toBeNull();
   });
 
   test("parses milliseconds and seconds without swallowing ms as m", () => {
@@ -64,7 +66,7 @@ describe("parseRangeParts", () => {
   test("splits count and unit", () => {
     expect(parseRangeParts("90m")).toEqual({ count: 90, unit: "m" });
     expect(parseRangeParts("1h")).toEqual({ count: 1, unit: "h" });
-    expect(parseRangeParts("366d")).toBeNull();
+    expect(parseRangeParts("731d")).toBeNull();
   });
 });
 
@@ -103,19 +105,19 @@ describe("partsFromMs", () => {
 describe("formatRangeToken", () => {
   test("joins count and unit", () => {
     expect(formatRangeToken(90, "m")).toBe("90m");
-    expect(parseRangeMs(formatRangeToken(366, "d"))).toBeNull();
+    expect(parseRangeMs(formatRangeToken(731, "d"))).toBeNull();
     expect(parseRangeMs(formatRangeToken(8, "d"))).toBe(8 * 24 * 60 * 60 * 1000);
   });
 });
 
 describe("clampSearchSpan", () => {
-  test("raises from when the span exceeds 365d", () => {
+  test("raises from when the span exceeds 730d", () => {
     const to = "2026-08-14T12:00:00.000Z";
-    const from = "2025-01-01T00:00:00.000Z";
+    const from = "2024-01-01T00:00:00.000Z";
     const clamped = clampSearchSpan(from, to);
     expect(clamped.to).toBe(to);
     expect(Date.parse(clamped.from ?? "")).toBe(
-      Date.parse(to) - 365 * 24 * 60 * 60 * 1000,
+      Date.parse(to) - 730 * 24 * 60 * 60 * 1000,
     );
   });
 
@@ -130,11 +132,12 @@ describe("clampSearchSpan", () => {
 });
 
 describe("retentionRangeMs", () => {
-  test("clamps days the same way Settings does", () => {
+  test("clamps days to the longest a row is kept", () => {
     expect(retentionRangeMs(30)).toBe(30 * 24 * 60 * 60 * 1000);
     expect(retentionRangeMs(365)).toBe(365 * 24 * 60 * 60 * 1000);
     expect(retentionRangeMs(0)).toBe(24 * 60 * 60 * 1000);
-    expect(retentionRangeMs(400)).toBe(365 * 24 * 60 * 60 * 1000);
+    expect(retentionRangeMs(400)).toBe(400 * 24 * 60 * 60 * 1000);
+    expect(retentionRangeMs(800)).toBe(730 * 24 * 60 * 60 * 1000);
   });
 });
 

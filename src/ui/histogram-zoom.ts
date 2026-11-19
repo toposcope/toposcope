@@ -34,6 +34,7 @@ export const histogramZoomSpansMs = [
   90 * 24 * 60 * 60_000,
   180 * 24 * 60 * 60_000,
   365 * 24 * 60 * 60_000,
+  730 * 24 * 60 * 60_000,
 ] as const;
 
 export const minHistogramZoomMs = histogramZoomSpansMs[0];

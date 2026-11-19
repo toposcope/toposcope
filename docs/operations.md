@@ -340,7 +340,8 @@ docker compose up -d --wait
 - SQLite adds new tables and columns on boot.
 - Retention follows `PUT /api/settings` with `{ "retention_days": 30 }` and requires an integer from 1 to 365. Invalid values return **400** before any SQLite write or TTL change. A valid lower retention can delete older data as ClickHouse applies TTL.
 - Metrics can keep longer than logs: `PUT /api/settings` with `{ "metrics_retention_days": 400 }` (1 to 730) sets `metrics`, `metric_buckets` and their minute rollups alone; `null` puts them back on `retention_days`, which they follow until set. Logs, spans, profiles and marks keep `retention_days`. A year of metrics is small next to logs, and they carry no addresses, so a 30-day privacy line on logs can stay where it is.
-- TTL is always `toDate(ts) + INTERVAL n DAY`, never `TTL ts + …`.
+- A service can keep longer than logs: `PUT /api/settings` with `{ "retention_rules": [{ "service": "analytics", "days": 730 }] }` (at most 8 services, 1 to 730 days, never fewer than `retention_days`) keeps that service's logs, their minute rollups and its spans that long. Every other service keeps `retention_days`. `[]` puts every service back. A product event stream that carries no addresses can keep two years while the logs that carry them keep 30 days; send it under a service of its own.
+- TTL is `toDate(ts) + INTERVAL n DAY`, never `TTL ts + …`; with a service kept longer, the tables that carry `service` use `addDays(toDate(ts), transform(service, ['analytics'], [730], n))`.
 - The `ALTER` does not wait for `MATERIALIZE TTL` (`alter_sync = 0`), and SQLite is written first.
 - `spans`, `profile_samples`, and `change_marks` are created on boot.
 

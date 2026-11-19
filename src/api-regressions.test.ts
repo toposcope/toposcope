@@ -9,7 +9,7 @@ type Result = {
   status: number;
   contentType: string | null;
   body: unknown;
-  stored?: number | null;
+  stored?: number | null | { service: string; days: number }[];
   logs?: number;
   commands?: string[];
 };
@@ -93,6 +93,25 @@ beforeAll(async () => {
       const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: JSON.stringify({ retention_days: days }) }));
       out["valid-" + days] = { status: response.status, contentType: response.headers.get("content-type"), body: await response.json(), stored: settings.getRetentionDays(), commands: [...commands] };
     }
+    // #477: services kept longer.
+    for (const [key, setup, body] of [
+      ["rules-ok", [], { retention_rules: [{ service: "analytics", days: 730 }] }],
+      ["rules-short", [], { retention_rules: [{ service: "analytics", days: 20 }] }],
+      ["rules-over", [], { retention_rules: [{ service: "analytics", days: 731 }] }],
+      ["rules-twice", [], { retention_rules: [{ service: "a", days: 90 }, { service: "a", days: 90 }] }],
+      ["rules-nine", [], { retention_rules: Array.from({ length: 9 }, (_, i) => ({ service: "s" + i, days: 90 })) }],
+      ["rules-logs-past", [{ service: "billing", days: 90 }], { retention_days: 120 }],
+      ["rules-name-only", [{ service: "billing", days: 90 }], { instance_name: "" }],
+      ["rules-clear", [{ service: "billing", days: 90 }], { retention_rules: [] }],
+    ]) {
+      settings.writeRetentionDays(30);
+      settings.writeRetentionRules(setup);
+      commands.length = 0;
+      const response = await app.fetch(new Request("http://app.test/api/settings", { method: "PUT", headers, body: JSON.stringify(body) }));
+      out[key] = { status: response.status, body: await response.json(), stored: settings.getRetentionRules(), logs: settings.getRetentionDays(), commands: [...commands] };
+    }
+    settings.writeRetentionRules([]);
+    settings.writeRetentionDays(365);
     for (const [name, path, requestHeaders, method] of [
       ["unauthorized", "/api/no-such-endpoint", {}, "GET"],
       ["known", "/api/settings", headers, "GET"],
@@ -218,6 +237,52 @@ describe("metrics retention over HTTP", () => {
     expect(alters).toHaveLength(13);
     expect(alters.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain("INTERVAL 14 DAY");
     expect(alters.find((sql) => sql.startsWith("ALTER TABLE metrics "))).toContain("INTERVAL 400 DAY");
+  });
+});
+
+describe("retention by service over HTTP (#477)", () => {
+  test("a kept service gets its own days in logs, their rollups and spans", () => {
+    const result = results["rules-ok"]!;
+    expect(result.status).toBe(200);
+    expect(result.stored).toEqual([{ service: "analytics", days: 730 }]);
+    expect((result.body as { retention_rules: unknown }).retention_rules).toEqual([{ service: "analytics", days: 730 }]);
+    const alters = result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"));
+    expect(alters.map((sql) => sql.split(" ")[2]).sort()).toEqual([
+      "logs",
+      "logs_attr_keys_by_minute",
+      "logs_attr_numeric_by_minute",
+      "logs_attr_values_by_minute",
+      "logs_by_minute",
+      "spans",
+    ]);
+    expect(alters.find((sql) => sql.startsWith("ALTER TABLE logs "))).toContain(
+      "TTL addDays(toDate(ts), transform(service, ['analytics'], [730], 30))",
+    );
+  });
+  test.each(["rules-short", "rules-over", "rules-twice", "rules-nine"])("%s is refused before anything changes", (key) => {
+    const result = results[key]!;
+    expect(result.status).toBe(400);
+    expect(result.stored).toEqual([]);
+    expect(result.commands).toEqual([]);
+  });
+  test("logs may not keep longer than a service kept longer", () => {
+    const result = results["rules-logs-past"]!;
+    expect(result.status).toBe(400);
+    expect((result.body as { error: string }).error).toBe("billing is kept 90 days, shorter than logs (120)");
+    expect(result.logs).toBe(30);
+    expect(result.commands).toEqual([]);
+  });
+  test("a save that leaves retention alone keeps the rules", () => {
+    const result = results["rules-name-only"]!;
+    expect(result.status).toBe(200);
+    expect(result.stored).toEqual([{ service: "billing", days: 90 }]);
+  });
+  test("an empty list puts every service back on logs' days", () => {
+    const result = results["rules-clear"]!;
+    expect(result.status).toBe(200);
+    expect(result.stored).toEqual([]);
+    // The stub reports every table at 30 days already, so nothing changes.
+    expect(result.commands!.filter((sql) => sql.startsWith("ALTER TABLE"))).toEqual([]);
   });
 });
 

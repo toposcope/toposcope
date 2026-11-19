@@ -10,6 +10,17 @@ const twoStepFor = v.optional(described(v.picklist(["everyone", "owners"], "two_
 export const settingsBody = v.object({
   retention_days: v.optional(described(v.number(), "How many days rows are kept, 1 to 365.")),
   metrics_retention_days: v.nullish(described(v.union([v.number(), v.literal("")]), "How many days metric points are kept; null or empty follows retention_days.")),
+  retention_rules: v.nullish(
+    described(
+      v.array(
+        v.object({
+          service: described(v.string(), "The service, as rows carry it."),
+          days: described(v.number(), "How many days its logs and traces are kept, 1 to 730, and not fewer than retention_days."),
+        }),
+      ),
+      "Services whose logs and traces are kept longer than retention_days, at most 8; an empty list or null keeps every service retention_days.",
+    ),
+  ),
   instance_name: v.nullish(described(v.string("instance_name must be text"), "This instance's name, as links and the tab title show it; null or empty unnames it.")),
   default_webhook_url: v.nullish(described(v.string(), "Where monitors call when they name no URL of their own, http(s); null or empty for none.")),
   two_step_for: twoStepFor,

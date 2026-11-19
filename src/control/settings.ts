@@ -7,6 +7,11 @@ import {
   clampMetricsRetentionDays,
   clampRetentionDays,
   maxMetricsRetentionDays,
+  maxRetentionRuleDays,
+  maxRetentionRules,
+  maxServiceNameLength,
+  normalRetentionRules,
+  type RetentionRule,
 } from "../shared/migrate";
 import { getDb } from "./index";
 import { setHereName } from "../shared/here";
@@ -84,6 +89,80 @@ export function parseMetricsRetentionDays(value: unknown): number | null | { err
   return value;
 }
 
+/** Services kept longer than `retention_days` (#477); empty when none is set. */
+export function getRetentionRules(db: Database = getDb()): RetentionRule[] {
+  const row = db.query("SELECT value FROM settings WHERE key = 'retention_rules'").get() as
+    | { value: string }
+    | null;
+  if (!row) {
+    return [];
+  }
+  try {
+    const parsed = parseRetentionRules(JSON.parse(row.value), 1);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeRetentionRules(rules: readonly RetentionRule[], db: Database = getDb()): RetentionRule[] {
+  const kept = normalRetentionRules(rules);
+  if (kept.length === 0) {
+    db.query("DELETE FROM settings WHERE key = 'retention_rules'").run();
+    return [];
+  }
+  db.query(
+    "INSERT INTO settings (key, value) VALUES ('retention_rules', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(JSON.stringify(kept));
+  return kept;
+}
+
+/** The longest any row is kept: what a window may reach back to. */
+export function longestRetentionDays(db: Database = getDb()): number {
+  return Math.max(getRetentionDays(db), ...getRetentionRules(db).map((r) => r.days));
+}
+
+/**
+ * At most 8 services, each named once, 1–730 days and not shorter than logs keep: a rule only
+ * lengthens, so 30 days stays the one line for every other service.
+ */
+export function parseRetentionRules(value: unknown, logsDays: number): RetentionRule[] | { error: string } {
+  if (value === null) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return { error: "retention_rules is a list of { service, days }" };
+  }
+  if (value.length > maxRetentionRules) {
+    return { error: `At most ${maxRetentionRules} services are kept longer` };
+  }
+  const seen = new Set<string>();
+  const rules: RetentionRule[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") {
+      return { error: "retention_rules is a list of { service, days }" };
+    }
+    const rec = item as Record<string, unknown>;
+    const service = typeof rec.service === "string" ? rec.service.trim() : "";
+    if (service === "" || service.length > maxServiceNameLength || /[\u0000-\u001f\u007f]/.test(service)) {
+      return { error: `A service kept longer needs a name of 1–${maxServiceNameLength} characters` };
+    }
+    if (seen.has(service)) {
+      return { error: `${service} is listed twice` };
+    }
+    seen.add(service);
+    const days = rec.days;
+    if (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > maxRetentionRuleDays) {
+      return { error: `${service}: 1–${maxRetentionRuleDays} whole days` };
+    }
+    if (days < logsDays) {
+      return { error: `${service}: ${days} days is shorter than logs (${logsDays})` };
+    }
+    rules.push({ service, days });
+  }
+  return normalRetentionRules(rules);
+}
+
 /**
  * The webhook any monitor without its own calls (#177), such as one created by its first result.
  * Null when none is set: such a monitor keeps its state and calls nobody.
@@ -124,11 +203,12 @@ function settingsBody(extra: { retention_days: number; instance_name: string | n
   return {
     ...extra,
     metrics_retention_days: getMetricsRetentionDays(),
+    retention_rules: getRetentionRules(),
     default_webhook_url: getDefaultWebhook(),
     two_step_for: twoStepFor(),
     // #307: who last changed each, and when.
     changed_by: Object.fromEntries(
-      ["retention_days", "metrics_retention_days", "default_webhook_url", "instance_name", "fields"].map((k) => [k, settingStamp(k)]),
+      ["retention_days", "metrics_retention_days", "retention_rules", "default_webhook_url", "instance_name", "fields"].map((k) => [k, settingStamp(k)]),
     ),
   };
 }
@@ -151,7 +231,8 @@ export async function putSettings(c: Context): Promise<Response> {
   const hasName = "instance_name" in rec;
   const hasWebhook = "default_webhook_url" in rec;
   const hasMetrics = "metrics_retention_days" in rec;
-  if (rec.retention_days === undefined && !hasName && !hasWebhook && !hasMetrics && rec.two_step_for === undefined) {
+  const hasRules = "retention_rules" in rec;
+  if (rec.retention_days === undefined && !hasName && !hasWebhook && !hasMetrics && !hasRules && rec.two_step_for === undefined) {
     return c.json({ error: "retention_days is required" }, 400);
   }
   if (rec.retention_days !== undefined && typeof rec.retention_days !== "number") {
@@ -176,6 +257,18 @@ export async function putSettings(c: Context): Promise<Response> {
   if (metricsDays && typeof metricsDays === "object") {
     return c.json({ error: metricsDays.error }, 400);
   }
+  // Rules are checked against the logs days this request leaves, so neither can undercut the other.
+  const logsAfter = typeof rec.retention_days === "number" ? rec.retention_days : getRetentionDays();
+  const rules = hasRules ? parseRetentionRules(rec.retention_rules, logsAfter) : getRetentionRules();
+  if (!Array.isArray(rules)) {
+    return c.json({ error: rules.error }, 400);
+  }
+  if (!hasRules && typeof rec.retention_days === "number") {
+    const under = rules.find((r) => r.days < logsAfter);
+    if (under) {
+      return c.json({ error: `${under.service} is kept ${under.days} days, shorter than logs (${logsAfter})` }, 400);
+    }
+  }
   // #309: who must have a second step: everyone with a password, or Owners only.
   if (rec.two_step_for !== undefined) {
     if (rec.two_step_for !== "everyone" && rec.two_step_for !== "owners") {
@@ -198,7 +291,11 @@ export async function putSettings(c: Context): Promise<Response> {
     writeMetricsRetentionDays(metricsDays);
     stampSetting("metrics_retention_days");
   }
-  if (typeof rec.retention_days !== "number" && !hasMetrics) {
+  if (hasRules) {
+    writeRetentionRules(rules);
+    stampSetting("retention_rules");
+  }
+  if (typeof rec.retention_days !== "number" && !hasMetrics && !hasRules) {
     return c.json(settingsBody({ retention_days: getRetentionDays(), instance_name: savedName }));
   }
   const days =
@@ -207,7 +304,7 @@ export async function putSettings(c: Context): Promise<Response> {
     stampSetting("retention_days");
   }
   try {
-    await applyRetentionDays(days, effectiveMetricsRetentionDays());
+    await applyRetentionDays(days, effectiveMetricsRetentionDays(), getRetentionRules());
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "ClickHouse command failed";

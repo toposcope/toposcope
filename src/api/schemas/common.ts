@@ -38,7 +38,7 @@ export const q = optionalText("A query in Toposcope's query language (docs/query
 export const window = {
   from: optionalText("Where the window starts, an ISO time."),
   to: optionalText("Where the window ends, an ISO time."),
-  range: optionalText("A window that ends now, as 15m, 1h, 24h, 7d or any \\d+(ms|s|m|h|d|w) up to 365d; it wins over from and to."),
+  range: optionalText("A window that ends now, as 15m, 1h, 24h, 7d or any \\d+(ms|s|m|h|d|w) up to 730d; it wins over from and to."),
 };
 
 export const limit = optionalText("How many to return at most, a whole number.");

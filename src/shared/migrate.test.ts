@@ -5,7 +5,11 @@ import {
   attrValueMvWhereSql,
   clampMetricsRetentionDays,
   clampRetentionDays,
+  clickhouseStringLiteral,
   isMetricsRetentionTable,
+  isServiceRetentionTable,
+  retentionTtlExpr,
+  ttlMatches,
   clickhouseVersionAtLeast,
   isDayPartition,
   killUnfinishedTtlMutationSql,
@@ -169,5 +173,68 @@ describe("retention TTL ALTER", () => {
     ).toBe(365);
     expect(parseTtlIntervalDays("TTL toDate(ts) + INTERVAL 30 DAY")).toBe(30);
     expect(parseTtlIntervalDays("MergeTree ORDER BY ts")).toBeNull();
+  });
+});
+
+describe("retention by service (#477)", () => {
+  const rules = [
+    { service: "billing", days: 90 },
+    { service: "analytics", days: 730 },
+  ];
+
+  test("logs, their rollups and spans keep a service longer; nothing else does", () => {
+    expect(retentionTtlTables.map((spec) => spec.table).filter(isServiceRetentionTable)).toEqual([
+      "logs",
+      "logs_by_minute",
+      "logs_attr_keys_by_minute",
+      "logs_attr_values_by_minute",
+      "logs_attr_numeric_by_minute",
+      "spans",
+    ]);
+  });
+
+  test("with no rules the TTL is today's, so an install that sets none sees no ALTER", () => {
+    expect(retentionTtlExpr("logs", "ts", 30)).toBe("toDate(ts) + INTERVAL 30 DAY");
+    expect(retentionTtlExpr("logs", "ts", 30, [])).toBe("toDate(ts) + INTERVAL 30 DAY");
+  });
+
+  test("rules become one transform over service, sorted, with logs' days as the default", () => {
+    expect(retentionTtlExpr("logs", "ts", 30, rules)).toBe(
+      "addDays(toDate(ts), transform(service, ['analytics', 'billing'], [730, 90], 30))",
+    );
+    expect(retentionTtlExpr("logs_by_minute", "minute", 30, rules)).toBe(
+      "addDays(toDate(minute), transform(service, ['analytics', 'billing'], [730, 90], 30))",
+    );
+    expect(retentionTtlAlterSql("spans", "ts", 30, rules)).toBe(
+      "ALTER TABLE spans MODIFY TTL addDays(toDate(ts), transform(service, ['analytics', 'billing'], [730, 90], 30)) SETTINGS mutations_sync = 0, alter_sync = 0",
+    );
+  });
+
+  test("tables without service ignore the rules", () => {
+    expect(retentionTtlExpr("metrics", "ts", 400, rules)).toBe("toDate(ts) + INTERVAL 400 DAY");
+    expect(retentionTtlExpr("profile_samples", "ts", 30, rules)).toBe("toDate(ts) + INTERVAL 30 DAY");
+    expect(retentionTtlExpr("change_marks", "ts", 30, rules)).toBe("toDate(ts) + INTERVAL 30 DAY");
+  });
+
+  test("a rule never keeps fewer days than logs, and never past 730", () => {
+    expect(retentionTtlExpr("logs", "ts", 60, [{ service: "a", days: 10 }])).toContain("[60], 60)");
+    expect(retentionTtlExpr("logs", "ts", 30, [{ service: "a", days: 9000 }])).toContain("[730], 30)");
+  });
+
+  test("a service name is quoted as ClickHouse prints it back", () => {
+    expect(clickhouseStringLiteral("it's")).toBe("'it\\'s'");
+    expect(clickhouseStringLiteral("a\\b")).toBe("'a\\\\b'");
+  });
+
+  test("an engine already on the asked TTL needs no ALTER", () => {
+    const plain = "MergeTree PARTITION BY toDate(ts) TTL toDate(ts) + toIntervalDay(30) SETTINGS index_granularity = 8192";
+    expect(ttlMatches(plain, "toDate(ts) + INTERVAL 30 DAY")).toBe(true);
+    expect(ttlMatches(plain, "toDate(ts) + INTERVAL 31 DAY")).toBe(false);
+    const expr = retentionTtlExpr("logs", "ts", 30, rules);
+    const kept = `MergeTree PARTITION BY toDate(ts) ORDER BY (tenant_id, service, ts) TTL ${expr} SETTINGS index_granularity = 8192`;
+    expect(ttlMatches(kept, expr)).toBe(true);
+    expect(ttlMatches(kept, "toDate(ts) + INTERVAL 30 DAY")).toBe(false);
+    expect(ttlMatches(kept, retentionTtlExpr("logs", "ts", 30, [{ service: "analytics", days: 730 }]))).toBe(false);
+    expect(ttlMatches("", "toDate(ts) + INTERVAL 30 DAY")).toBe(false);
   });
 });

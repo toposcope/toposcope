@@ -3,8 +3,11 @@ const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const WEEK_MS = 7 * DAY_MS;
-/** Matches Settings retention clamp (1–365). Search does not invent a tighter cap. */
-export const MAX_RETENTION_DAYS = 365;
+/**
+ * The longest any row is kept: logs 1–365 days, a service kept longer up to 730 (#477). Search
+ * does not invent a tighter cap; a window past what logs keep finds the services kept longer.
+ */
+export const MAX_RETENTION_DAYS = 730;
 export const MAX_RANGE_MS = MAX_RETENTION_DAYS * DAY_MS;
 
 export function retentionRangeMs(days: number): number {
@@ -15,7 +18,7 @@ export function retentionRangeMs(days: number): number {
   return n * DAY_MS;
 }
 
-/** Cap a custom `from`/`to` span at 365d (keep `to`, raise `from`). */
+/** Cap a custom `from`/`to` span at 730d (keep `to`, raise `from`). */
 export function clampSearchSpan(
   from?: string,
   to?: string,
