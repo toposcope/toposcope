@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { deriveShareScope, panelReadParams, parseSharePanels, rawParamsUsed, scopeGaps, type SharePanel } from "./panels";
 import { parseShareScope, type ShareScope } from "./scope";
+import { pingClickHouse } from "../shared/clickhouse";
+import { migrateStore } from "../shared/migrate";
 
 const panels = parseSharePanels([
   { name: "latency-p99", params: { chart: "line", metric: "p99:fleet_latency", ml: "service:agental,host:ovh-01", split: "host", range: "24h" }, from: "the Ops board" },
@@ -48,7 +50,12 @@ describe("named panels on a share (#266, 26k)", () => {
 
 let reads: Record<string, { status: number; body: Record<string, unknown> }>;
 
-beforeAll(() => {
+beforeAll(async () => {
+  // The reads need the ClickHouse schema; on a fresh ClickHouse this file may run before any test made it.
+  process.env.CLICKHOUSE_USER ??= "default";
+  process.env.CLICKHOUSE_PASSWORD ??= "toposcope";
+  if (!(await pingClickHouse())) throw new Error("ClickHouse is required for share panel reads");
+  await migrateStore();
   // A child process keeps this SQLite out of the other tests; reads go to the ClickHouse the suite uses.
   const script = `
     const root = ${JSON.stringify(import.meta.dir)} + "/..";
