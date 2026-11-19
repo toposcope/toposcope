@@ -67,26 +67,65 @@ beforeAll(() => {
     },
   });
   // Docker stands in: it records each call; `up` makes a version healthy unless it is listed as
-  // broken; a restore mends the version it restores; a backup's tar writes its file; the images
-  // are FAKE_IMAGES, and each one removed is recorded.
+  // broken; a restore mends the version it restores; the images are FAKE_IMAGES, and each one
+  // removed is recorded. Named volumes are directories under volumes/, made empty on first mount as
+  // Docker makes them; `docker run` runs its script on the host with each mount's path put in place
+  // of its target, so a backup's tar and a restore really read and write them. A service's
+  // container is containers/<service>, which holds the volume it mounts. The config prints a
+  // config's own name before the project's, as Compose does (#474).
   fakeBin = mkdtempSync(join(tmpdir(), "toposcope-fake-docker-"));
   writeFileSync(
     join(fakeBin, "docker"),
     `#!/usr/bin/env bash
 printf '%s\\n' "$*" >>"$FAKE_STATE/calls"
 args=("$@")
+last="\${args[$((\${#args[@]} - 1))]}"
 file=""
 for ((i = 0; i < \${#args[@]}; i++)); do
   [ "\${args[$i]}" = "-f" ] && [ -z "$file" ] && file="\${args[$((i + 1))]}"
 done
 broken() { grep -qx "$1" "$FAKE_STATE/broken" 2>/dev/null; }
+vol_dir() {
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    toposcope_app_data) printf '%s' "\${FAKE_VOLUME:-$FAKE_STATE/volumes/$1}" ;;
+    *) printf '%s' "$FAKE_STATE/volumes/$1" ;;
+  esac
+}
+if [ "$1" = run ]; then
+  orig="$last"
+  script="\${orig//\\/tmp\\/skip/$FAKE_STATE/skip}"
+  v=""
+  for ((i = 1; i < \${#args[@]}; i++)); do
+    case "\${args[$i]}" in
+      -v)
+        spec="\${args[$((i + 1))]}"; src="\${spec%%:*}"; rest="\${spec#*:}"; dest="\${rest%%:*}"
+        d="$(vol_dir "$src")"; mkdir -p "$d"
+        [ -z "$FAKE_TAR_EMPTY" ] || [ "$dest" != /data ] || { mkdir -p "$FAKE_STATE/empty"; script="\${script//-C \\/data ./-C $FAKE_STATE/empty .}"; }
+        script="$(printf '%s' "$script" | sed -E "s#(^|[^.])$dest#\\\\1$d#g")" ;;
+      ghcr.io/toposcope/toposcope:*) v="\${args[$i]#*:}" ;;
+    esac
+  done
+  if [ -n "$FAKE_DU" ] && [[ "$orig" == *"du -sk"* ]]; then echo "$FAKE_DU"; exit 0; fi
+  bash -c "$script"
+  code=$?
+  if [[ "$orig" == *"tar xzf /backup/"*"-C /data"* ]]; then
+    grep -vx "$v" "$FAKE_STATE/broken" >"$FAKE_STATE/broken.next" 2>/dev/null; mv "$FAKE_STATE/broken.next" "$FAKE_STATE/broken"
+  fi
+  exit $code
+fi
 case " $* " in
-  *"--entrypoint /bin/sh"*)
-    # A script run inside the app's volume: the stand-in volume is a directory here.
-    script="\${args[$((\${#args[@]} - 1))]}"
-    exec bash -c "\${script//\/data/$FAKE_VOLUME}" ;;
-  *" config --format json"*) printf '{\\n  "name": "toposcope",\\n  "services": {}\\n}\\n' ;;
-  *"volume inspect"*) [ -n "$FAKE_VOLUME" ] && printf '%s\\n' "$FAKE_VOLUME" || exit 1 ;;
+  *" config --format json"*) printf '{\\n  "configs": {\\n    "clickhouse_logs": {\\n      "name": "toposcope_clickhouse_logs"\\n    }\\n  },\\n  "name": "toposcope"\\n}\\n' ;;
+  *" config"*) printf 'configs:\\n  clickhouse_logs:\\n    name: toposcope_clickhouse_logs\\nname: toposcope\\nservices: {}\\n' ;;
+  *" ps -a -q "*)
+    # Compose finds the containers only under the project they run in.
+    [ -z "$COMPOSE_PROJECT_NAME" ] || [ "$COMPOSE_PROJECT_NAME" = toposcope ] || exit 0
+    [ ! -f "$FAKE_STATE/containers/$last" ] || printf 'c_%s\\n' "$last" ;;
+  *"volume inspect"*)
+    d="$(vol_dir "$last")"
+    [ -d "$d" ] || exit 1
+    [[ " $* " != *" -f "* ]] || printf '%s\\n' "$d" ;;
+  " inspect "*) cat "$FAKE_STATE/containers/\${last#c_}" ;;
   *" pull "*) exit 0 ;;
   *" stop"*) rm -f "$FAKE_STATE/version" ;;
   *" up -d"*)
@@ -95,14 +134,6 @@ case " $* " in
   *" logs "*) echo "fake app log line" ;;
   *"image ls"*) for i in $FAKE_IMAGES; do printf '%s\\n' "$i"; done ;;
   *"image rm"*) printf '%s\\n' "\${args[2]}" >>"$FAKE_STATE/removed" ;;
-  *"--entrypoint sh"*"du -sk"*) printf '%s\\n' "\${FAKE_DU:-100}" ;;
-  *"--entrypoint sh"*"tar czf"*)
-    for a in "$@"; do case "$a" in *:/backup) dir="\${a%:/backup}" ;; esac; done
-    part="$(printf '%s' "$*" | sed -n 's#.*/backup/\\([a-z_]*\\.tgz\\).*#\\1#p')"
-    echo backup >"$dir/$part" ;;
-  *"--entrypoint sh"*)
-    for a in "$@"; do case "$a" in ghcr.io/toposcope/toposcope:*) v="\${a#*:}" ;; esac; done
-    grep -vx "$v" "$FAKE_STATE/broken" >"$FAKE_STATE/broken.next" 2>/dev/null; mv "$FAKE_STATE/broken.next" "$FAKE_STATE/broken" ;;
   *) exit 0 ;;
 esac
 `,
@@ -123,7 +154,8 @@ let install: string;
 beforeEach(() => {
   releases = { "0.6.1": releaseFiles("0.6.1"), "0.6.2": releaseFiles("0.6.2") };
   marks = [];
-  for (const f of ["calls", "broken", "version", "systemctl", "removed"]) rmSync(join(state, f), { force: true });
+  for (const f of ["calls", "broken", "version", "systemctl", "removed", "volumes", "containers", "empty"]) rmSync(join(state, f), { recursive: true, force: true });
+  seedStack();
   writeFileSync(join(state, "version"), "0.6.1\n");
   writeFileSync(join(state, "broken"), "");
   install = mkdtempSync(join(tmpdir(), "toposcope-install-"));
@@ -131,6 +163,42 @@ beforeEach(() => {
   writeFileSync(join(install, ".env"), `TOPOSCOPE_PASSWORD=operator-secret\nTOPOSCOPE_INGEST_TOKEN=${token}\n`);
   writeFileSync(join(install, "vector.yaml"), vector);
 });
+
+// A ClickHouse volume as an Atomic database lays it out, with Toposcope's table and the system
+// database a backup leaves out, and the app's SQLite: the stack's containers mount both.
+const chFiles: Record<string, string> = {
+  "metadata/default.sql": "ATTACH DATABASE default\n",
+  "store/abc/abc-1/all_1_1_0/data.bin": "logs ".repeat(40_000),
+  "store/sys/sys-1/all_1_1_0/data.bin": "system query log ".repeat(10_000),
+};
+function seedVolume(name: string, files: Record<string, string>) {
+  const dir = join(state, "volumes", name);
+  for (const [f, body] of Object.entries(files)) {
+    mkdirSync(join(dir, f, ".."), { recursive: true });
+    writeFileSync(join(dir, f), body);
+  }
+  return dir;
+}
+function mount(service: string, volume: string) {
+  mkdirSync(join(state, "containers"), { recursive: true });
+  writeFileSync(join(state, "containers", service), `${volume}\n`);
+}
+function seedStack(ch = "toposcope_ch_data", app = "toposcope_app_data") {
+  const dir = seedVolume(ch, chFiles);
+  for (const d of ["data/default", "data/system", "metadata/system"]) mkdirSync(join(dir, d), { recursive: true });
+  if (!existsSync(join(dir, "data/default/logs"))) symlinkSync("../../store/abc/abc-1", join(dir, "data/default/logs"));
+  if (!existsSync(join(dir, "data/system/query_log"))) symlinkSync("../../store/sys/sys-1", join(dir, "data/system/query_log"));
+  seedVolume(app, { "toposcope.sqlite": "SQLite format 3\0".padEnd(64_000, "x") });
+  mount("clickhouse", ch);
+  mount("app", app);
+}
+const volumes = () => (existsSync(join(state, "volumes")) ? readdirSync(join(state, "volumes")).sort() : []);
+// What an archive holds: its file names and their bytes, read with the host's tar.
+async function archive(path: string) {
+  const list = await new Response(Bun.spawn(["tar", "tzf", path]).stdout).text();
+  const bytes = (await new Response(Bun.spawn(["tar", "xzf", path, "-O"]).stdout).arrayBuffer()).byteLength;
+  return { files: list.split("\n").filter((l) => l && !l.endsWith("/")).sort(), bytes };
+}
 
 async function run(args: string[], env: Record<string, string> = {}) {
   const child = Bun.spawn(["bash", script, ...args], {
@@ -216,7 +284,7 @@ describe("upgrade.sh upgrades with a backup first (#198)", () => {
     expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
     expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
     expect(marks.map((m) => m.body.title)).toEqual(["Toposcope 0.6.2 did not start; back on 0.6.1"]);
-    expect(calls()).not.toContain("tar xzf");
+    expect(calls()).not.toContain("find /data -mindepth");
   });
 
   test("when 0.6.1 cannot open its data either, both volumes come back from the backup", async () => {
@@ -358,6 +426,120 @@ describe("backup and rollback", () => {
   });
 });
 
+describe("a backup holds the volumes the stack mounts (#474)", () => {
+  const backupDir = () => join(install, "backups", backups().find((b) => existsSync(join(install, "backups", b, "version")))!);
+  // A backup as upgrade.sh leaves it, with archives made by the host's tar from these files.
+  async function oldBackup(name: string, files: Record<string, string>) {
+    const dir = join(install, "backups", name);
+    for (const part of ["ch_data", "app_data"]) {
+      const src = join(dir, `${part}.src`);
+      mkdirSync(src, { recursive: true });
+      for (const [f, body] of Object.entries(files)) writeFileSync(join(src, f), body);
+      expect(await Bun.spawn(["tar", "czf", join(dir, `${part}.tgz`), "-C", src, "."]).exited).toBe(0);
+      rmSync(src, { recursive: true });
+    }
+    writeFileSync(join(dir, "compose.yml"), composeFor("0.6.0"));
+    writeFileSync(join(dir, "version"), "0.6.0\n");
+    return dir;
+  }
+
+  test("the archives hold the mounted volumes' files, all but ClickHouse's system database, byte for byte", async () => {
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(0);
+    const dir = backupDir();
+    const ch = await archive(join(dir, "ch_data.tgz"));
+    expect(ch.files).toEqual(["./data/default/logs", "./metadata/default.sql", "./store/abc/abc-1/all_1_1_0/data.bin"]);
+    expect(ch.bytes).toBe(chFiles["metadata/default.sql"]!.length + chFiles["store/abc/abc-1/all_1_1_0/data.bin"]!.length);
+    const app = await archive(join(dir, "app_data.tgz"));
+    expect(app.files).toEqual(["./toposcope.sqlite"]);
+    expect(app.bytes).toBe(64_000);
+    expect(readFileSync(join(dir, "volumes"), "utf8")).toBe("ch_data toposcope_ch_data\napp_data toposcope_app_data\n");
+    // A config's own name in Compose's output is not taken for the project's: no volume is made.
+    expect(volumes()).toEqual(["toposcope_app_data", "toposcope_ch_data"]);
+    expect(r.all).toContain("from toposcope_ch_data and toposcope_app_data");
+  });
+
+  test("a stack on volumes named otherwise is backed up from those, and they are what rollback restores", async () => {
+    seedStack("logs_ch_data", "logs_app_data");
+    rmSync(join(state, "volumes", "toposcope_ch_data"), { recursive: true });
+    rmSync(join(state, "volumes", "toposcope_app_data"), { recursive: true });
+    expect((await run(["0.6.2"])).code).toBe(0);
+    const dir = backupDir();
+    expect((await archive(join(dir, "app_data.tgz"))).files).toEqual(["./toposcope.sqlite"]);
+    expect((await archive(join(dir, "ch_data.tgz"))).files).toContain("./store/abc/abc-1/all_1_1_0/data.bin");
+    writeFileSync(join(state, "volumes", "logs_app_data", "toposcope.sqlite"), "changed after the backup");
+    expect((await run(["rollback", "--yes"])).code).toBe(0);
+    expect(readFileSync(join(state, "volumes", "logs_app_data", "toposcope.sqlite"), "utf8")).toHaveLength(64_000);
+    expect(volumes()).toEqual(["logs_app_data", "logs_ch_data"]);
+  });
+
+  test("a leftover COMPOSE_PROJECT_NAME that is not the stack's stops before anything does", async () => {
+    const r = await run(["0.6.2"], { COMPOSE_PROJECT_NAME: "toposcope_clickhouse_logs" });
+    expect(r.code).toBe(1);
+    expect(r.all).toContain('Could not find the containers of this install\'s stack (Compose project "toposcope_clickhouse_logs")');
+    expect(r.all).toContain("unset it if the stack runs under another name");
+    expect(r.all).toContain("Nothing was changed.");
+    expect(calls()).not.toContain(" stop");
+    expect(volumes()).toEqual(["toposcope_app_data", "toposcope_ch_data"]);
+    expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
+  });
+
+  test("an archive much smaller than its volume is refused: no upgrade, the old version up, older backups kept", async () => {
+    const a = await oldBackup("20261101T000000Z-0.5.9", { "toposcope.sqlite": "old" });
+    const b = await oldBackup("20261103T000000Z-0.6.0", { "toposcope.sqlite": "older" });
+    const r = await run(["0.6.2"], { FAKE_TAR_EMPTY: "1" });
+    expect(r.code).toBe(1);
+    expect(r.all).toMatch(/The backup of toposcope_ch_data holds 0 files and 0\.0 MB, but the volume holds 0\.\d MB\. It is not a way back/);
+    expect(r.all).toContain("no older backup was removed");
+    expect(r.all).toContain("Starting 0.6.1 again; nothing was upgraded.");
+    expect(readFileSync(join(install, "compose.yml"), "utf8")).toBe(composeFor("0.6.1"));
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
+    expect(existsSync(a) && existsSync(b)).toBe(true);
+    // The refused one is left for a look, but never counted as a way back.
+    const refused = backups().filter((d) => !existsSync(join(install, "backups", d, "version")));
+    expect(refused).toHaveLength(1);
+    expect(marks).toEqual([]);
+  });
+
+  test("an empty volume makes an empty backup, which is refused too", async () => {
+    rmSync(join(state, "volumes", "toposcope_app_data"), { recursive: true });
+    mkdirSync(join(state, "volumes", "toposcope_app_data"));
+    const r = await run(["backup"]);
+    expect(r.code).toBe(1);
+    expect(r.all).toContain("The backup of toposcope_app_data holds 0 files");
+    expect(r.all).toContain("No backup was kept. Toposcope 0.6.1 is up again.");
+    expect(readFileSync(join(state, "version"), "utf8").trim()).toBe("0.6.1");
+  });
+
+  test("a backup that holds no data is neither kept in place of a good one nor rolled back to", async () => {
+    const good = await oldBackup("20261103T000000Z-0.6.0", { "toposcope.sqlite": "good" });
+    // What 0.15.0–0.15.2 could leave: archives of an empty directory.
+    const empty = join(install, "backups", "20261118T000000Z-0.6.0");
+    mkdirSync(join(empty, "src"), { recursive: true });
+    for (const part of ["ch_data", "app_data"]) expect(await Bun.spawn(["tar", "czf", join(empty, `${part}.tgz`), "-C", join(empty, "src"), "."]).exited).toBe(0);
+    rmSync(join(empty, "src"), { recursive: true });
+    writeFileSync(join(empty, "compose.yml"), composeFor("0.6.0"));
+    writeFileSync(join(empty, "version"), "0.6.0\n");
+    const r = await run(["0.6.2"]);
+    expect(r.code).toBe(0);
+    expect(r.all).toContain(`The backup ${empty} holds no data, so it is not kept as a way back.`);
+    expect(existsSync(good)).toBe(true);
+    expect(existsSync(empty)).toBe(true);
+    expect(backups()).toHaveLength(3);
+    // Rollback goes to the newest backup with data: the one just taken, not the empty one.
+    const told = await run(["rollback"]);
+    expect(told.all).toMatch(/The last backup is .*-0\.6\.1: Toposcope 0\.6\.1/);
+    rmSync(join(install, "backups"), { recursive: true });
+    mkdirSync(join(install, "backups"));
+    mkdirSync(join(install, "backups", "20261118T000000Z-0.6.0"));
+    for (const f of ["ch_data.tgz", "app_data.tgz"]) writeFileSync(join(install, "backups", "20261118T000000Z-0.6.0", f), "");
+    writeFileSync(join(install, "backups", "20261118T000000Z-0.6.0", "version"), "0.6.0\n");
+    const none = await run(["rollback", "--yes"]);
+    expect(none.code).toBe(1);
+    expect(none.all).toContain("There is no backup in");
+  });
+});
+
 describe("the script's reach", () => {
   test("it never opens a path in the app's volume itself: reads and writes there run in a container (#220)", () => {
     const section = scriptText.slice(scriptText.indexOf("# --- Upgrade from here"));
@@ -386,6 +568,7 @@ describe("upgrade from here (#220)", () => {
   let systemdRun: string;
   beforeEach(() => {
     volume = mkdtempSync(join(tmpdir(), "toposcope-app-volume-"));
+    writeFileSync(join(volume, "toposcope.sqlite"), "SQLite format 3\0".padEnd(64_000, "x"));
     units = mkdtempSync(join(tmpdir(), "toposcope-units-"));
     systemdRun = mkdtempSync(join(tmpdir(), "toposcope-systemd-run-"));
   });

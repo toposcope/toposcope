@@ -67,15 +67,53 @@ running_version() {
   health_version "$body"
 }
 
-# The Compose project, so the volumes are the ones this install uses.
+# The Compose project: its top-level name, the only unindented `name:` in the YAML config. The
+# JSON config is not read: there a config's or a volume's own "name" can come first (#474).
 project() {
   if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
     printf '%s' "$COMPOSE_PROJECT_NAME"
     return
   fi
-  compose_with "$ROOT/compose.yml" config --format json 2>/dev/null |
-    sed -n 's/^ *"name": *"\([^"]*\)".*/\1/p' | head -n 1
+  compose_with "$ROOT/compose.yml" config 2>/dev/null | sed -n 's/^name: *//p' | head -n 1
 }
+
+# The volume a service of this install mounts at a path, read from its container, running or
+# stopped: a named volume's name, or a bind mount's host path. Nothing when there is no container.
+mounted_volume() {
+  local service="$1" dest="$2" id
+  id="$(compose_with "$ROOT/compose.yml" ps -a -q "$service" 2>/dev/null | head -n 1)"
+  [ -n "$id" ] || return 0
+  docker inspect -f '{{ range .Mounts }}{{ if eq .Destination "'"$dest"'" }}{{ if eq .Type "volume" }}{{ .Name }}{{ else }}{{ .Source }}{{ end }}{{ end }}{{ end }}' "$id" 2>/dev/null |
+    head -n 1
+}
+
+# 0 when a volume (or a bind mount's directory) is there. `docker run -v` would make a missing one,
+# empty, so nothing here mounts a volume before this says it exists.
+volume_exists() {
+  case "$1" in
+    /*) [ -d "$1" ] ;;
+    *) docker volume inspect "$1" >/dev/null 2>&1 ;;
+  esac
+}
+
+# Sets CH_VOLUME and APP_VOLUME to the volumes the stack's containers mount, or says why not.
+# Never guessed from the project's name: a backup of the wrong volumes is an empty backup (#474).
+find_volumes() {
+  CH_VOLUME="$(mounted_volume clickhouse /var/lib/clickhouse)"
+  APP_VOLUME="$(mounted_volume app /data)"
+  if [ -z "$CH_VOLUME" ] || [ -z "$APP_VOLUME" ]; then
+    say "Could not find the containers of this install's stack (Compose project \"$(project)\"), so not the volumes they use." >&2
+    [ -z "${COMPOSE_PROJECT_NAME:-}" ] || say "COMPOSE_PROJECT_NAME is set to \"$COMPOSE_PROJECT_NAME\" here; unset it if the stack runs under another name." >&2
+    return 1
+  fi
+  volume_exists "$CH_VOLUME" && volume_exists "$APP_VOLUME" || {
+    say "The stack mounts $CH_VOLUME and $APP_VOLUME, but Docker does not have both." >&2
+    return 1
+  }
+}
+
+# The volume of a part, once find_volumes has run.
+volume_of() { if [ "$1" = ch_data ]; then printf '%s' "$CH_VOLUME"; else printf '%s' "$APP_VOLUME"; fi; }
 
 # docker compose on a given compose.yml, with this install's .env and override.
 compose_with() {
@@ -186,27 +224,53 @@ if [ -d data/system ]; then
 fi'
 
 # What a backup leaves out of a volume: ClickHouse's system database, nothing of the app's.
-skip_for() { if [ "$1" = ch_data ]; then printf '%s' "$SKIP_SYSTEM"; else printf ': >/tmp/skip'; fi; }
+skip_for() { if [ "$1" = ch_data ]; then printf '%s' "$SKIP_SYSTEM"; else printf 'cd /data && : >/tmp/skip'; fi; }
 
-# The part of a volume a backup takes, in KB.
+# Run inside a volume at /data after skip_for: the bytes in its files, less the ones skipped.
+BYTES='bytes_of() { find "$1" -type f -exec wc -c {} + | awk '"'"'$2 != "total" { s += $1 } END { print s + 0 }'"'"'; }
+bytes=$(bytes_of .); while read -r p; do if [ -e "$p" ]; then bytes=$((bytes - $(bytes_of "$p"))); fi; done </tmp/skip'
+
+# The part of a volume a backup takes, in KB, for the free-disk check.
 volume_kb() {
-  local image="$1" name="$2" part="$3"
-  docker run --rm -v "${name}_$part:/data:ro" --entrypoint sh "$image" -c \
+  local image="$1" volume="$2" part="$3"
+  docker run --rm -v "$volume:/data:ro" --entrypoint sh "$image" -c \
     "$(skip_for "$part")"' && kb=$(du -sk . | cut -f1) && while read -r p; do
       if [ -e "$p" ]; then kb=$((kb - $(du -sk "$p" | cut -f1))); fi
     done </tmp/skip && echo "$kb"' 2>/dev/null |
     awk '{ print $1; exit }'
 }
 
-# Both volumes into backups/<UTC time>-<version>/, with the compose.yml in use, without
-# ClickHouse's system database. Prints the path.
+# Run inside a volume at /data, with the backup folder at /backup: counts the bytes in the volume's
+# files, writes the archive, then reads it back. Prints: bytes in the volume, bytes in the archive,
+# files in the archive.
+backup_script() {
+  printf '%s\n%s\n%s' "$(skip_for "$1")" "$BYTES" \
+    "tar czf /backup/$1.tgz -X /tmp/skip -C /data . || exit 1
+kept=\$(tar xzf /backup/$1.tgz -O | wc -c) || exit 1
+files=\$(tar tzf /backup/$1.tgz | grep -vc '/\$')
+echo \"\$bytes \$kept \$files\""
+}
+
+mb() { awk -v b="$1" 'BEGIN { printf "%.1f", b / 1048576 }'; }
+
+# 0 when a backup folder holds files in both archives: one that does not is no way back (#474).
+holds_data() {
+  local part
+  for part in ch_data app_data; do
+    [ -s "$1/$part.tgz" ] || return 1
+    { tar tzf "$1/$part.tgz" 2>/dev/null || true; } | grep -qv '/$' || return 1
+  done
+}
+
+# Both volumes the stack mounts into backups/<UTC time>-<version>/, with the compose.yml in use,
+# without ClickHouse's system database. Each archive is read back: one with no files, or with much
+# less than its volume holds, is refused and no older backup is removed. Prints the path.
 take_backup() {
-  local version="$1" image="$2" name dir ch app need free started part
-  name="$(project)"
-  [ -n "$name" ] || die "Could not tell this install's Compose project, so not which volumes to back up."
-  ch="$(volume_kb "$image" "$name" ch_data)"
-  app="$(volume_kb "$image" "$name" app_data)"
-  [ -n "$ch" ] && [ -n "$app" ] || die "Could not read the size of ${name}_ch_data and ${name}_app_data. Nothing was changed."
+  local version="$1" image="$2" dir ch app need free started part volume bytes kept files
+  find_volumes || die "So nothing was backed up, and nothing was changed."
+  ch="$(volume_kb "$image" "$CH_VOLUME" ch_data)"
+  app="$(volume_kb "$image" "$APP_VOLUME" app_data)"
+  [ -n "$ch" ] && [ -n "$app" ] || die "Could not read the size of $CH_VOLUME and $APP_VOLUME. Nothing was changed."
   need=$((ch + app))
   mkdir -p "$BACKUPS"
   free="$(df -Pk "$BACKUPS" | awk 'NR == 2 { print $4 }')"
@@ -221,12 +285,12 @@ take_backup() {
   mkdir -p "$dir"
   cp "$ROOT/compose.yml" "$dir/compose.yml"
   [ ! -f "$ROOT/compose.override.yml" ] || cp "$ROOT/compose.override.yml" "$dir/compose.override.yml"
-  printf '%s\n' "$version" >"$dir/version"
-  say "Backing up about $((need / 1024)) MB into $dir. Ingest is stopped while it runs." >&2
+  printf 'ch_data %s\napp_data %s\n' "$CH_VOLUME" "$APP_VOLUME" >"$dir/volumes"
+  say "Backing up about $((need / 1024)) MB from $CH_VOLUME and $APP_VOLUME into $dir. Ingest is stopped while it runs." >&2
   started="$(date +%s)"
   for part in ch_data app_data; do
-    docker run --rm -v "${name}_$part:/data:ro" -v "$dir:/backup" --entrypoint sh "$image" -c \
-      "$(skip_for "$part") && tar czf /backup/$part.tgz -X /tmp/skip -C /data ." &
+    volume="$(volume_of "$part")"
+    docker run --rm -v "$volume:/data:ro" -v "$dir:/backup" --entrypoint sh "$image" -c "$(backup_script "$part")" >"$dir/$part.check" &
     local pid=$! ticks=0
     # Says how far it has got every 10 seconds, so a long backup is never silent.
     while kill -0 "$pid" 2>/dev/null; do
@@ -235,18 +299,32 @@ take_backup() {
       [ $((ticks % 50)) -ne 0 ] || ! kill -0 "$pid" 2>/dev/null ||
         say "  still writing $part.tgz: $(($(date +%s) - started))s, $(du -sk "$dir" | awk '{ print int($1 / 1024) }') MB so far" >&2
     done
-    wait "$pid" || die "The backup of ${name}_$part did not finish. The stack is stopped; start it with: docker compose up -d"
+    wait "$pid" || die "The backup of $volume did not finish. No older backup was removed."
+    read -r bytes kept files <"$dir/$part.check" || true
+    # The stack is stopped, so the archive holds what the volume does; half is far more than any
+    # difference in how the two are counted.
+    if [ -z "${files:-}" ] || [ "$files" -eq 0 ] || [ $((kept * 2)) -lt "$bytes" ]; then
+      die "The backup of $volume holds ${files:-no} files and $(mb "${kept:-0}") MB, but the volume holds $(mb "${bytes:-0}") MB. It is not a way back, so the upgrade stops here and no older backup was removed. It is left in $dir for a look."
+    fi
   done
+  # Written last: only a checked backup is one that rollback and pruning count.
+  printf '%s\n' "$version" >"$dir/version"
   say "Backup done in $(($(date +%s) - started))s: $dir, $(du -sk "$dir" | awk '{ print int($1 / 1024) }') MB." >&2
   prune_backups
   printf '%s' "$dir"
 }
 
-# Keeps the newest $KEEP backups.
+# Keeps the newest $KEEP backups that hold data. One that holds none is neither counted nor
+# removed: it is said, for the operator to look at and delete.
 prune_backups() {
   local all=() d i
   for d in "$BACKUPS"/*/; do
-    [ -f "$d/version" ] && all+=("${d%/}")
+    [ -f "$d/version" ] || continue
+    if holds_data "${d%/}"; then
+      all+=("${d%/}")
+    else
+      say "The backup ${d%/} holds no data, so it is not kept as a way back. Look at it, then delete it." >&2
+    fi
   done
   [ "${#all[@]}" -gt "$KEEP" ] || return 0
   for ((i = 0; i < ${#all[@]} - KEEP; i++)); do
@@ -270,23 +348,33 @@ remove_old_images() {
     done
 }
 
+# The newest backup that holds data.
 latest_backup() {
   local d last=""
   for d in "$BACKUPS"/*/; do
-    [ -f "$d/version" ] && last="${d%/}"
+    [ -f "$d/version" ] && holds_data "${d%/}" && last="${d%/}"
   done
   printf '%s' "$last"
 }
 
-# Empties both volumes and fills them from a backup, with the backup's own image.
+# Empties the volumes the stack mounts and fills them from a backup, with the backup's own image.
+# Without containers to ask, the volumes the backup came from, if Docker still has them.
 restore_backup() {
-  local dir="$1" name image part
-  name="$(project)"
+  local dir="$1" image part volume
+  holds_data "$dir" || die "$dir holds no data, so restoring it would empty the volumes. Nothing was changed."
   image="$(app_image "$dir/compose.yml")"
+  if ! find_volumes 2>/dev/null; then
+    [ -f "$dir/volumes" ] || die "Could not find the volumes the stack uses, so not where to restore $dir."
+    CH_VOLUME="$(sed -n 's/^ch_data //p' "$dir/volumes")"
+    APP_VOLUME="$(sed -n 's/^app_data //p' "$dir/volumes")"
+    volume_exists "$CH_VOLUME" && volume_exists "$APP_VOLUME" ||
+      die "Could not find the volumes the stack uses, nor $CH_VOLUME and $APP_VOLUME, so not where to restore $dir."
+  fi
   for part in ch_data app_data; do
-    docker run --rm -v "${name}_$part:/data" -v "$dir:/backup:ro" --entrypoint sh "$image" -c \
+    volume="$(volume_of "$part")"
+    docker run --rm -v "$volume:/data" -v "$dir:/backup:ro" --entrypoint sh "$image" -c \
       "find /data -mindepth 1 -maxdepth 1 -exec rm -rf {} + && tar xzf /backup/$part.tgz -C /data" ||
-      die "Could not restore ${name}_$part from $dir."
+      die "Could not restore $volume from $dir."
   done
   cp "$dir/compose.yml" "$ROOT/compose.yml"
 }
@@ -376,11 +464,17 @@ cmd_continue() {
   print_before "$from" "$to"
   compose_with "$new" pull -q app >/dev/null 2>&1 || die "Could not pull $(app_image "$new"). Nothing was changed."
   [ "$no_backup" = 0 ] || say "No backup (--no-backup): if $to does not come up, the way back is the $from compose.yml only."
+  # The volumes are found before anything stops: when they cannot be, nothing is changed.
+  [ "$no_backup" = 1 ] || find_volumes || die "So no backup can be taken. Nothing was changed."
   stopped="$(date +%s)"
   compose_with "$ROOT/compose.yml" stop >/dev/null 2>&1 || die "Could not stop the stack. Nothing was changed."
-  # A backup that fails stops here: the stack stays stopped and the message says how to start it.
+  # A backup that fails or is refused stops the upgrade: $from starts again, and no older backup goes.
   if [ "$no_backup" = 0 ]; then
-    backup="$(take_backup "$from" "$old_image")" || exit 1
+    backup="$(take_backup "$from" "$old_image")" || {
+      say "Starting $from again; nothing was upgraded."
+      start_and_wait "$ROOT/compose.yml" "$from" || die "$from did not come back up. See: docker compose logs"
+      exit 1
+    }
   fi
   swap_files "$from" "$to"
   if start_and_wait "$ROOT/compose.yml" "$to"; then
@@ -419,8 +513,12 @@ cmd_backup() {
   local version image dir
   version="$(compose_version "$ROOT/compose.yml")"
   image="$(app_image "$ROOT/compose.yml")"
+  find_volumes || die "So no backup can be taken. Nothing was changed."
   compose_with "$ROOT/compose.yml" stop >/dev/null 2>&1 || die "Could not stop the stack."
-  dir="$(take_backup "$version" "$image")" || exit 1
+  dir="$(take_backup "$version" "$image")" || {
+    start_and_wait "$ROOT/compose.yml" "$version" || die "Toposcope did not come back up. See: docker compose logs"
+    die "No backup was kept. Toposcope $version is up again."
+  }
   start_and_wait "$ROOT/compose.yml" "$version" || die "The backup is in $dir, but Toposcope did not come back up. See: docker compose logs"
   say "Toposcope $version is up again. Backup: $dir"
 }
@@ -454,20 +552,28 @@ cmd_rollback() {
 # write there runs in a throwaway container that mounts only that volume, with no network, where a
 # link can only name a path inside that container.
 
-app_volume() { printf '%s_app_data' "$(project)"; }
+# The volume the app container mounts at /data; never one guessed from the project's name (#474).
+app_volume() { mounted_volume app /data; }
 
 # Where the volume is on this host: only for the path unit to watch, never opened here.
 ui_dir() {
-  local mount
-  [ -n "$(project)" ] || return 1
-  mount="$(docker volume inspect -f '{{ .Mountpoint }}' "$(app_volume)" 2>/dev/null)" || return 1
+  local volume mount
+  volume="$(app_volume)"
+  [ -n "$volume" ] || return 1
+  case "$volume" in
+    /*) mount="$volume" ;;
+    *) mount="$(docker volume inspect -f '{{ .Mountpoint }}' "$volume" 2>/dev/null)" || return 1 ;;
+  esac
   [ -n "$mount" ] || return 1
   printf '%s/upgrade' "$mount"
 }
 
 # Runs a shell script inside the volume, as /data, with this script's stdin.
 in_volume() {
-  docker run --rm -i --network none -v "$(app_volume):/data" --entrypoint /bin/sh "$(app_image "$ROOT/compose.yml")" -c "$1"
+  local volume
+  volume="$(app_volume)"
+  [ -n "$volume" ] && volume_exists "$volume" || return 1
+  docker run --rm -i --network none -v "$volume:/data" --entrypoint /bin/sh "$(app_image "$ROOT/compose.yml")" -c "$1"
 }
 
 now_utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }

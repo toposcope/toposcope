@@ -281,7 +281,7 @@ In order, it:
 2. Downloads the release's files into `releases/X.Y.Z/` and checks each against its `SHA256SUMS`. If one does not match, nothing else happens.
 3. Prints each newer release's Before you upgrade.
 4. Pulls the new image while the old one still runs.
-5. Checks the free disk, stops the stack, and backs up both volumes into `backups/<UTC time>-<from version>/`, with the `compose.yml` in use. ClickHouse's own `system` database (its logs) is left out: ClickHouse makes it again when it starts. It says where the backup went and how big it is, and keeps the last 2. Ingest is refused while the stack is stopped. The packaged Vector buffers on disk and sends when the app is back, OTLP exporters retry or drop according to their own settings, and syslog over UDP is lost. Every run prints how long the stop lasted.
+5. Reads which volumes the stack's containers mount, checks the free disk, stops the stack, and backs up those volumes into `backups/<UTC time>-<from version>/`, with the `compose.yml` in use and their names in `volumes`. ClickHouse's own `system` database (its logs) is left out: ClickHouse makes it again when it starts. Each archive is read back: one with no files, or with less than half the bytes its volume holds, stops the upgrade, starts the old version again and removes no older backup. It says where the backup went and how big it is, and keeps the last 2 that hold data. Ingest is refused while the stack is stopped. The packaged Vector buffers on disk and sends when the app is back, OTLP exporters retry or drop according to their own settings, and syslog over UDP is lost. Every run prints how long the stop lasted.
 6. Swaps `compose.yml`, keeping `.env` and `compose.override.yml`. An edited `vector.yaml` is kept, with the new one beside it as `vector.yaml.new`. Any setting the new `env.example` has that `.env` lacks is named.
 7. Starts the stack and waits up to 10 minutes (`--wait <minutes>`) for `/api/health` to report the new version.
 8. Posts a deploy change mark, `Toposcope 0.6.1 → 0.6.2`.
@@ -291,6 +291,25 @@ If the new version does not come up, it prints the app's last log lines, starts 
 
 - **`./upgrade.sh backup`** takes the same backup on its own, then starts the stack again.
 - **`./upgrade.sh rollback --yes`** goes back to the last backup: its `compose.yml` and both volumes. Everything stored since that backup is lost, so without `--yes` it only says which backup and when it was taken.
+
+If the containers cannot be found, for example because `COMPOSE_PROJECT_NAME` is set in the shell to a name the stack does not run under, it stops before anything does. A backup that holds no data, such as one taken by 0.15.2 or earlier on the wrong volumes, is never counted among the 2 kept and never rolled back to; it is named on each run for you to delete.
+
+### Check a backup
+
+A backup is two archives of the volumes the stack mounts. To check one, compare what it holds with those volumes:
+
+```bash
+# The volumes the stack mounts, and the ones the backup was taken from (0.15.3 and later)
+docker inspect -f '{{ range .Mounts }}{{ .Name }} {{ end }}' $(docker compose ps -aq)
+cat backups/<backup>/volumes
+# Every backup's size: one of a few KB is empty
+du -sh backups/*/
+# The app's archive holds toposcope.sqlite; ClickHouse's holds a file per table part, thousands on a busy install
+tar tzf backups/<backup>/app_data.tgz | grep toposcope.sqlite
+tar tzf backups/<backup>/ch_data.tgz | grep -vc '/$'
+```
+
+A backup of an install that has stored anything is never a few hundred bytes. `ch_data.check` and `app_data.check` beside the archives hold three numbers each: the bytes in the volume, the bytes in the archive and its file count.
 
 ### From the app
 
@@ -383,7 +402,7 @@ To go back to 0.9.0, `./upgrade.sh rollback --yes` restores the backup it took b
 
 ## Backup and restore
 
-Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`. `./upgrade.sh backup` does this for you, without ClickHouse's own logs.
+Stop the stack, then copy both volumes: ClickHouse `ch_data` and SQLite `app_data`. `./upgrade.sh backup` does this for you, without ClickHouse's own logs. The names below are for the compose project `toposcope`; `docker inspect -f '{{ range .Mounts }}{{ .Name }} {{ end }}' $(docker compose ps -aq)` prints the ones your stack mounts.
 
 ```bash
 docker compose down
