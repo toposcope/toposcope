@@ -10,8 +10,8 @@ import { InvalidRangeError } from "../query/relative";
 import { histogramIntervalMs } from "../query/histogram";
 import { metricNames } from "../query/metric-series";
 import { QueryCompileError } from "../query/compile";
-import { clickhouseQuery } from "../shared/clickhouse";
-import { InvalidMetricError, parseMetricRef } from "../shared/metric";
+import { clickhouseQuery, toIsoTimestamp } from "../shared/clickhouse";
+import { InvalidMetricError, isMetricIdent, parseMetricRef } from "../shared/metric";
 import {
   logQueryFor,
   metricAllowed,
@@ -20,7 +20,7 @@ import {
   type ShareScope,
 } from "./scope";
 import type { ShareRecord } from "./store";
-import { windowWithin } from "./limits";
+import { durationMs, windowWithin, type ShareLimits } from "./limits";
 import { originOf, rateTurn } from "./operator";
 import { cacheMs, readShareCache, shareCacheKey, writeShareCache } from "./cache";
 import { noteRead, noteRefused } from "./use";
@@ -419,4 +419,159 @@ export function sharePanelRoute(c: Context): Response {
     return refuse(c, `this share has no panel named ${c.req.param("name") ?? ""}`, 404);
   }
   return c.json({ name: panel.name, params: panel.params, raw_params: c.get("share").raw_params });
+}
+
+/** The most metric names one latest read takes, the most labels it groups by, and the most rows it answers. */
+export const maxLatestNames = 8;
+export const maxLatestBy = 3;
+export const maxLatestRows = 2000;
+
+export type LatestPlan = {
+  names: string[];
+  by: string[];
+  labels: Record<string, string>;
+  lookback: string;
+  from: string;
+};
+
+/**
+ * A latest-value read under a share: the names the scope allows, the `narrow` keys to group by,
+ * the scope's labels with the caller's narrowing, and how far back to look. Not a series, so the
+ * lookback is held to `max_lookback`, not `max_range`.
+ */
+export function planLatest(
+  scope: ShareScope,
+  limits: ShareLimits,
+  params: { metric?: string; by?: string; ml?: string; lookback?: string },
+  now = Date.now(),
+): LatestPlan | Refuse {
+  const names = [...new Set((params.metric ?? "").split(",").map((n) => n.trim()).filter(Boolean))];
+  if (names.length === 0) {
+    return { error: "metric is required: one name, or up to 8 separated by commas", status: 400 };
+  }
+  if (names.length > maxLatestNames) {
+    return { error: `at most ${maxLatestNames} metrics in one read`, status: 400 };
+  }
+  for (const name of names) {
+    // A reading (`p99:`) or a name outside the scope reads as a name that does not exist.
+    if (!isMetricIdent(name) || !metricAllowed(scope, name)) {
+      return { error: `no such metric: ${name}`, status: 404 };
+    }
+  }
+  const by = [...new Set((params.by ?? "").split(",").map((k) => k.trim().toLowerCase()).filter(Boolean))];
+  if (by.length === 0) {
+    return { error: "by is required: the label to group by, or up to 3 separated by commas", status: 400 };
+  }
+  if (by.length > maxLatestBy) {
+    return { error: `by takes at most ${maxLatestBy} labels`, status: 400 };
+  }
+  for (const key of by) {
+    if (!scope.narrow.includes(key)) {
+      return { error: `this share cannot group by ${key}: it is not a narrow key`, status: 400 };
+    }
+  }
+  const narrowing = parseNarrowing(scope, params.ml);
+  if ("error" in narrowing) {
+    return { error: narrowing.error, status: 400 };
+  }
+  for (const key of by) {
+    if (key in narrowing) {
+      return { error: `${key} is both grouped by and narrowed`, status: 400 };
+    }
+  }
+  const labels = metricLabelsFor(scope, narrowing);
+  if ("error" in labels) {
+    return { error: labels.error, status: 400 };
+  }
+  const lookback = (params.lookback ?? "").trim();
+  if (!lookback) {
+    return { error: "lookback is required: how far back to look, as 30d or 400d", status: 400 };
+  }
+  const ms = durationMs(lookback);
+  if (ms === null) {
+    return { error: `lookback=${lookback} is not a duration (30d, 12h, 2w)`, status: 400 };
+  }
+  if (ms > durationMs(limits.max_lookback)!) {
+    return { error: `this share reaches back ${limits.max_lookback}`, status: 400 };
+  }
+  return { names, by, labels, lookback, from: new Date(now - ms).toISOString() };
+}
+
+/**
+ * The newest point per value of the `by` labels, per name: one pass over the names' own part of
+ * `metrics` (its ORDER BY is tenant, name, ts). One row past the cap is read, so a read that
+ * would be cut short is refused instead.
+ */
+export async function latestRows(plan: LatestPlan): Promise<Record<string, unknown>[]> {
+  const params: Record<string, string> = {
+    tenant_id: "default",
+    names: JSON.stringify(plan.names),
+    from: plan.from,
+  };
+  const where = [
+    "tenant_id = {tenant_id:String}",
+    "name IN JSONExtract({names:String}, 'Array(String)')",
+    "ts >= parseDateTime64BestEffort({from:String})",
+  ];
+  Object.entries(plan.labels).forEach(([k, v], i) => {
+    where.push(`labels[{lk${i}:String}] = {lv${i}:String}`);
+    params[`lk${i}`] = k;
+    params[`lv${i}`] = v;
+  });
+  const cols = plan.by.map((key, i) => {
+    params[`b${i}`] = key;
+    where.push(`labels[{b${i}:String}] != ''`);
+    return `labels[{b${i}:String}] AS b${i}`;
+  });
+  const groups = plan.by.map((_, i) => `b${i}`);
+  const rows = await clickhouseQuery<Record<string, string | number>>(
+    `
+    SELECT name AS metric, ${cols.join(", ")}, argMax(value, ts) AS value, max(ts) AS at
+    FROM metrics
+    WHERE ${where.join(" AND ")}
+    GROUP BY metric, ${groups.join(", ")}
+    ORDER BY metric, ${groups.join(", ")}
+    LIMIT ${maxLatestRows + 1}
+    SETTINGS max_rows_to_group_by = ${maxLatestRows + 1}, group_by_overflow_mode = 'break'
+  `,
+    params,
+  );
+  return rows.map((row) => {
+    const out: Record<string, unknown> = { metric: String(row.metric) };
+    plan.by.forEach((key, i) => {
+      out[key] = String(row[`b${i}`]);
+    });
+    out.value = Number(row.value);
+    out.at = toIsoTimestamp(String(row.at));
+    return out;
+  });
+}
+
+/**
+ * `GET /share/v1/latest?metric=&by=&lookback=` — the newest point of each value of the `by`
+ * labels, for totals a sender re-sends as gauges (a day's sign-ups, a cohort's count). One read.
+ */
+export async function shareLatestRoute(c: Context): Promise<Response> {
+  const share = c.get("share");
+  if (!share.raw_params) {
+    return refuse(c, "this share answers its named panels only: name one with panel=", 400);
+  }
+  const p = c.req.query();
+  const plan = planLatest(share.scope, share.limits, { metric: p.metric, by: p.by, ml: p.ml, lookback: p.lookback });
+  if ("error" in plan) {
+    return refuse(c, plan.error, plan.status);
+  }
+  try {
+    const rows = await latestRows(plan);
+    if (rows.length > maxLatestRows) {
+      return refuse(
+        c,
+        `more than ${maxLatestRows.toLocaleString("en-US")} rows: narrow with ml=, fewer metrics or a shorter lookback`,
+        400,
+      );
+    }
+    return done(c, { metrics: plan.names, by: plan.by, lookback: plan.lookback, from: plan.from, rows });
+  } catch (err) {
+    return readError(c, err) ?? Promise.reject(err);
+  }
 }

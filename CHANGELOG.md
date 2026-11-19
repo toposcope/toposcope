@@ -4,6 +4,10 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
+## Unreleased
+
+Shares read the latest value per label. `GET /share/v1/latest?metric=&by=&lookback=` answers one row per value of a label (or up to 3, `by=source,cohort`) with the newest point's `value` and its time `at`, for up to 8 metric names at once: the shape of totals a sender re-sends as gauges, one series per day or cohort, which took a series read per day before. It stays inside the share's scope (names in `metric_names`, `metric_labels` ANDed on, `by` keys must be `narrow` keys, `ml=` narrows as elsewhere), counts as one read against `reads_per_minute`, reads only the names asked for, and refuses rather than cuts short a read of more than 2,000 rows. `lookback` is held to the share's `max_lookback`, not `max_range`, since it is not a series. See [Latest value per label](docs/shares.md#latest-value-per-label).
+
 ## 0.15.4
 
 Keep chosen services longer than logs (#477, sheet 46). **Settings › Retention › Kept longer** lists up to 8 services, each with its own days, 1 to 730 and never fewer than logs keep; every other service keeps `retention_days`. Pick a service from those sending in the last 30 days. A kept service's logs, their minute rollups and its spans keep its days; profiles, marks and monitor results do not. `PUT /api/settings` takes `retention_rules: [{ "service": "analytics", "days": 730 }]`; an empty list puts every service back on `retention_days`, and logs may not be set to keep longer than a service kept longer. A save that lowers or removes a kept service asks first, since its older rows are deleted at the next sweep. Windows now reach back 730 days (`range=730d`, the zoom and the From/To editor); a window past what logs keep finds only the services kept longer.

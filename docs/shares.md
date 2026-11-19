@@ -84,8 +84,8 @@ A scope alone would still let a holder pull a fine-grained copy of everything in
 | | Default | |
 | --- | --- | --- |
 | `min_step` | `1m` | The finest bar. Auto snaps up to it; an explicit finer `step=` is refused (400 names the limit), so a caller always knows which number it got. |
-| `max_range` | `7d` | The longest window one read covers, up to `365d`. |
-| `max_lookback` | `30d` | How far before now a window may start, up to `730d`. Without it, a 7d window at `1m` walks all of history a week at a time. |
+| `max_range` | `7d` | The longest window one series or Top-N read covers, up to `365d`. A `latest` read is not held to it. |
+| `max_lookback` | `30d` | How far before now a window may start, up to `730d`. Without it, a 7d window at `1m` walks all of history a week at a time. It is also the longest `lookback` of a `latest` read. |
 | `reads_per_minute` | `120` | Per share. Over it is `429` with `Retry-After`. |
 
 A refused read never reaches ClickHouse. The scan budget that guards `logs` reads applies unchanged: over it, a log series answers 200 with `refused` and why.
@@ -107,6 +107,39 @@ curl -H "Authorization: Bearer $TOPOSCOPE_SHARE" \
 - `GET /share/v1/series?agg=count` (or `rate`) — the scope's log rows, `split=level|service|host` when that key is listed.
 - `GET /share/v1/top?key=host&n=10` — the busiest values of a split key among the scope's log rows.
 - `GET /share/v1/names` — the metric names the share can read in the window, with kind and unit, and the values of its split and narrow keys.
+- `GET /share/v1/latest?metric=&by=&lookback=` — the newest point of each value of a label: see below.
+
+### Latest value per label
+
+For totals a sender re-sends as gauges, one per day or cohort (a day's sign-ups, re-sent every few minutes and again when a refund changes it), the answer for a day is the newest point of its series. `latest` gives every day at once instead of a series per day.
+
+```bash
+curl -H "Authorization: Bearer $TOPOSCOPE_SHARE" \
+  'https://logs.example.com/share/v1/latest?metric=agental.business.sign_ups,agental.business.received_usd&by=day&lookback=400d'
+```
+
+```json
+{
+  "metrics": ["agental.business.sign_ups", "agental.business.received_usd"],
+  "by": ["day"],
+  "lookback": "400d",
+  "from": "2025-10-15T12:00:00.000Z",
+  "rows": [
+    { "metric": "agental.business.received_usd", "day": "2026-11-03", "value": 120.5, "at": "2026-11-19T11:58:00.000Z" },
+    { "metric": "agental.business.sign_ups", "day": "2026-11-03", "value": 4, "at": "2026-11-19T11:58:00.000Z" }
+  ]
+}
+```
+
+- `metric` — one name, or up to 8 separated by commas, each inside `metric_names`. Plain names only: a histogram's reading (`p99:`) is not a latest value.
+- `by` — the label to group by, or up to 3 (`by=source,cohort`). Each must be in the scope's **`narrow`** list. A point without the label is not a row.
+- `ml` — narrowing as everywhere (`ml=source:all`), on `narrow` keys other than those grouped by. The scope's `metric_labels` are always ANDed on.
+- `lookback` — how far back to look, as `30d` or `400d`. Required.
+- One row per name and value of the `by` labels, sorted by name, then by the values: `value` is the newest point's, `at` its time. When several series share a row's values (say two hosts both send `day:2026-11-03`), the newest point among them wins; narrow with `ml` to pick one.
+- At most **2,000 rows**. A read that would answer more is refused (400) rather than cut short: narrow it, ask for fewer names, or look back less.
+- It reads the names' own part of the metrics table (the table is ordered by name, then time), never every metric in the lookback, and counts as **one read** against `reads_per_minute`.
+- **Limits:** `lookback` is held to **`max_lookback`**, not `max_range`: it is not a series, so a 400d lookback works on a share whose longest window is 7d, as long as `max_lookback` is at least `400d`. Over it is 400 `this share reaches back …`. `min_step` does not apply. Metrics older than `metrics_retention_days` are gone whatever the lookback.
+- A share with `raw_params` off answers its named panels only, and refuses `latest`.
 
 Only a share's secret opens `/share/v1`; a person's session or token and the ingest token do not, and a share's secret opens nothing else. A refusal is `401` with no Basic prompt.
 
