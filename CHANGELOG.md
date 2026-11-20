@@ -4,7 +4,7 @@ Newest first. Unreleased work is listed here until the next `v*` tag. Shipped ve
 
 A version section may carry one paragraph that starts **Before you upgrade:**: behaviour operators rely on that changes, whether a backup matters, new settings. The release body carries it, and the footer's release panel shows it before the notes.
 
-## Unreleased
+## 0.15.6
 
 Home is one column (sheet 49b). The Since bar lists marks newest first and picks the newest deploy or flag by default (it picked the oldest one in the last 24 h); it shows four chips, the rest under `N earlier`, each with `HH:MM`, `yesterday HH:MM` or a date, and **Last hour** and **＋ Note** sit at its end. The title reads `Since <mark>` with when it was and how long ago. **Moved** shows only the saved hunts whose number changed, as small cards with the value, the change, what it was and a sparkline; or one line, Nothing moved since the mark. **Boards** shows each board as a tile with a sketch of its panels and its panel and section counts, with **＋ New board**. The hunts that did not move fold into one **Quiet** line. The right column is gone. The header field now reads `Search, or a hunt or board by name`: typing lists saved hunts and boards whose names match, arrows and Enter or a click open one, and Enter with none highlighted opens a hunt with the text as before.
 
