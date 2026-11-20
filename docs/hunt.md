@@ -107,7 +107,7 @@ Probes are the ingested metric `up`: draw one with `metric=up`, narrowed with `m
 
 A saved hunt keeps its `agg` and its panel layout, metric and labels included, so it opens as you left it. An alert on a saved hunt watches its log series: the count when there is no `agg`, otherwise the window figure. A refused read or a key that is not numeric does not fire. Alerts on a metric threshold are not supported.
 
-A saved hunt you no longer read can be archived from its ⋯ menu on Home. It leaves Home and search for everyone, still opens by its link, and its monitor keeps running. Archived hunts are listed under **Archived** on Home, each with Unarchive.
+A saved hunt you no longer read can be archived from its ⋯ menu on Home. It leaves Home and search for everyone, still opens by its link, and its monitor keeps running. Archived hunts are listed under **Archived** on Home, each with Unarchive. When saved hunts read only hosts that have sent nothing for 7 days, Home names them under **Quiet** with **Archive N…**, which archives them together after one question.
 
 ## Panels on a hunt
 

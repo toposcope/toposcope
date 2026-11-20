@@ -685,6 +685,10 @@ It is one column (sheet 49b, `src/ui/home-saved.ts`, `src/ui/home-since.ts`):
 
 Since sheet 50b, a Moved card draws two bars labelled `before` and `after` in place of its sparkline when fewer than four buckets read anything. Under Boards come three lines that each open in place: **Quiet** (folded by default, naming on its right the three largest hunts not at zero, then `+N`; its open state kept under `toposcope.homeQuietOpen.50`), **Archived** (only when something is archived; rows without values, each with Unarchive) and **Coverage** (only when there are gaps; it opens to the coverage card).
 
+Since sheet 51b, a busier Moved card draws its buckets as two labelled rows, `before` and `after` the mark, against one peak, so every card reads the same way. Coverage leads with the gap Home would list first (`api: no version: …`), its fix as a link, and `N more in Fields ›`.
+
+Under Quiet sits one more line when some quiet hunts read only gone hosts (`src/control/gone-hosts.ts`). A host is gone when `logs_by_minute` has nothing from it for 7 days; a hunt counts when every `host:` its query names is gone and no OR reaches past them. `GET /api/home/since` returns them as `gone: { saved_ids, hosts: [{ host, last_seen, hunts }] }`. `Archive N…` asks once, listing each host and when it last sent anything, then archives them one by one and stops at the first refusal.
+
 Each Moved card and Quiet row has a ⋯ menu (50c), not for a Viewer: Open, Rename, Archive and Delete…, which asks again in place. The header's suggestions (`src/ui/header-search.ts`) leave archived hunts and boards out.
 
 ### The hunt

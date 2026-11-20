@@ -4304,6 +4304,19 @@ export function App() {
               toast.success(archived ? `Archived ${item.name}` : `Unarchived ${item.name}`);
             }
           }}
+          onArchiveMany={async (items) => {
+            let done = 0;
+            // One refusal stops the rest, so a failure shows once.
+            for (const item of items) {
+              if (!(await saveBoard(item, { archived: true }))) {
+                break;
+              }
+              done++;
+            }
+            if (done > 0) {
+              toast.success(`Archived ${done} saved ${done === 1 ? "hunt" : "hunts"}`);
+            }
+          }}
           onDeleteSaved={(item) => onDelete(item.id)}
         />
       ) : view === "access" && sharePage ? (

@@ -2,10 +2,12 @@ import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
 import type { HomeCard, HomeSince } from "../../control/home-since";
+import type { GoneHost } from "../../control/gone-hosts";
 import { formatCompactCount } from "../count-format";
 import {
   archivedSaved,
@@ -13,13 +15,17 @@ import {
   beforeAfterWidths,
   boardCountText,
   boardPreview,
-  coverageLineText,
+  coverageLead,
   drawsBeforeAfter,
+  goneInQuiet,
+  goneSince,
+  goneText,
   homeBoards,
   homeHunts,
   quietNotZero,
   quietText,
   quietValue,
+  sparkRows,
   splitHunts,
 } from "../home-saved";
 import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
@@ -55,6 +61,8 @@ type Props = {
   /** A saved hunt's ⋯ menu (50c): Rename, Archive or Unarchive, Delete. Absent, or a Viewer: no menu. */
   onRenameSaved?: (item: SavedSearch, name: string) => Promise<void>;
   onArchiveSaved?: (item: SavedSearch, archived: boolean) => Promise<void>;
+  /** `Archive 18` (51c): archive these saved hunts together. Absent: no Archive line. */
+  onArchiveMany?: (items: SavedSearch[]) => Promise<void>;
   onDeleteSaved?: (item: SavedSearch) => Promise<void>;
 };
 
@@ -222,7 +230,8 @@ export function HomeView(props: Props) {
   const openHunt = (s: SavedSearch) => props.onOpenSaved(s, window, selectedId);
   const openAny = (s: SavedSearch) => (s.board ? props.onOpenBoard(s) : openHunt(s));
   const notZero = quietNotZero(split.quiet, data.cards);
-  const coverageLine = props.onOpenFields ? coverageLineText(coverage, selectedId) : null;
+  const coverageLine = props.onOpenFields ? coverageLead(coverage, selectedId) : null;
+  const gone = goneInQuiet(split.quiet, data.gone?.saved_ids ?? []);
   const { onRenameSaved, onArchiveSaved, onDeleteSaved } = props;
   // 50c: the ⋯ menu is for whoever may change a hunt; a Viewer has none.
   const canChange = !props.readOnly && onRenameSaved && onArchiveSaved && onDeleteSaved;
@@ -389,6 +398,9 @@ export function HomeView(props: Props) {
                     ))}
                   </div>
                 ) : null}
+                {gone.length > 0 && canChange && props.onArchiveMany ? (
+                  <GoneLine items={gone} hosts={data.gone.hosts} onArchive={props.onArchiveMany} />
+                ) : null}
               </section>
             ) : null}
             {archived.length > 0 ? (
@@ -422,12 +434,24 @@ export function HomeView(props: Props) {
                 <FoldLine
                   open={coverageOpen}
                   label="Coverage"
-                  sub={coverageLine}
+                  sub={coverageLine.text}
                   onToggle={() => setCoverageOpen(!coverageOpen)}
                   after={
-                    <button type="button" className="shrink-0 rounded-md text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" onClick={() => props.onOpenFields?.(false)}>
-                      Fields ›
-                    </button>
+                    <span className="flex shrink-0 items-center gap-2 text-sm">
+                      {coverageLine.href ? (
+                        <a href={coverageLine.href} target="_blank" rel="noreferrer" className="rounded-md text-foreground no-underline hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                          {coverageLine.fix}
+                        </a>
+                      ) : (
+                        <button type="button" className="rounded-md text-foreground hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" onClick={() => props.onOpenFields?.(true)}>
+                          {coverageLine.fix}
+                        </button>
+                      )}
+                      <span className="text-faint" aria-hidden="true">·</span>
+                      <button type="button" className="rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" onClick={() => props.onOpenFields?.(false)}>
+                        {coverageLine.more > 0 ? `${coverageLine.more} more in Fields ›` : "Fields ›"}
+                      </button>
+                    </span>
                   }
                 />
                 {coverageOpen ? (
@@ -540,8 +564,8 @@ function MarkChip({ on, mark, label, time, onClick }: { on: boolean; mark?: Chan
 function MovedCard({ card, name, quiet, onClick, menu }: { card: HomeCard; name: string; quiet: boolean; onClick: () => void; menu?: React.ReactNode }) {
   const delta = deltaText(card.before, card.after, card.kind);
   const up = !quiet && delta.up;
-  const peak = Math.max(1, ...card.spark);
   const bars = drawsBeforeAfter(card) ? beforeAfterWidths(card.before, card.after) : null;
+  const rows = sparkRows(card.spark, card.split_at);
   return (
     <div className="group relative flex min-w-0">
       <button
@@ -561,18 +585,89 @@ function MovedCard({ card, name, quiet, onClick, menu }: { card: HomeCard; name:
             <BeforeAfterBar label="after" width={bars.after} className={up ? "bg-danger/70" : "bg-muted-foreground/30"} />
           </span>
         ) : (
-          <span className="relative flex w-full flex-1 items-end gap-px" aria-hidden="true">
-            {card.spark.map((v, i) => (
-              <span
-                key={i}
-                className={cn("min-w-0 flex-1", i >= card.split_at && up ? "bg-danger/70" : "bg-muted-foreground/30")}
-                style={{ height: `${Math.max(4, Math.round((v / peak) * 100))}%` }}
-              />
-            ))}
+          <span className="flex min-h-0 w-full flex-1 flex-col justify-center gap-1.5 font-mono text-2xs leading-none text-muted-foreground" aria-hidden="true">
+            <SparkRow label="before" heights={rows.before} className="bg-muted-foreground/30" />
+            <SparkRow label="after" heights={rows.after} className={up ? "bg-danger/70" : "bg-muted-foreground/30"} />
           </span>
         )}
       </button>
       {menu ? <span className="absolute top-2 right-2">{menu}</span> : null}
+    </div>
+  );
+}
+
+/** A busy Moved card's buckets on one side of the mark (51b), labelled like the before and after bars. */
+function SparkRow({ label, heights, className }: { label: string; heights: number[]; className: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="w-10 shrink-0">{label}</span>
+      <span className="flex h-3 min-w-0 flex-1 items-end gap-px">
+        {heights.map((h, i) => (
+          <span key={i} className={cn("min-w-0 flex-1 rounded-sm", className)} style={{ height: `${h}%` }} />
+        ))}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Under Quiet (51b): the saved hunts that read only hosts that sent nothing in 7 days, the hosts,
+ * and `Archive N…`, which asks once with each host and when it last sent anything (51c).
+ */
+function GoneLine({ items, hosts, onArchive }: { items: SavedSearch[]; hosts: GoneHost[]; onArchive: (items: SavedSearch[]) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const n = items.length;
+  return (
+    <div className="flex min-h-10 items-center gap-3 pb-1 pl-6 text-sm">
+      <span className="shrink-0">{goneText(n)}</span>
+      <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{hosts.map((h) => h.host).join(" · ")}</span>
+      <span className="flex-1" />
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" size="md" className="shrink-0">
+            Archive {n}…
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" side="top" className="flex w-96 flex-col gap-2.5 p-4">
+          <span className="text-base font-semibold">Archive {n} saved {n === 1 ? "hunt" : "hunts"}?</span>
+          <span className="text-sm leading-[1.5] text-muted-foreground">
+            Each reads a host that has sent nothing since its day below. They leave Home and search; their monitors stay. Archived on Home brings any back.
+          </span>
+          <div className="flex flex-col font-mono text-xs">
+            {hosts.map((h) => (
+              <div key={h.host} className="flex h-6 items-center gap-2">
+                <span className="w-24 truncate">{h.host}</span>
+                <span className="flex-1 text-muted-foreground">
+                  {h.hunts} saved {h.hunts === 1 ? "hunt" : "hunts"}
+                </span>
+                <span className="text-muted-foreground">{goneSince(h.last_seen)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-0.5 flex justify-end gap-2">
+            <Button type="button" variant="outline" size="md" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="md"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await onArchive(items);
+                  setOpen(false);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Archive {n}
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
@@ -601,7 +696,7 @@ function FoldLine({ open, label, sub, right, after, onToggle }: { open: boolean;
       >
         {open ? <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
         <span className="shrink-0 text-foreground">{label}</span>
-        <span className="shrink-0 text-muted-foreground">{sub}</span>
+        <span className="min-w-0 truncate text-muted-foreground" title={sub}>{sub}</span>
         <span className="flex-1" />
         {right ? <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{right}</span> : null}
       </button>
