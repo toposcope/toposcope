@@ -3,6 +3,7 @@ import { compileQuery } from "../query/compile";
 import { formatSearchAgg, numericAggOps, parseSearchAgg, type NumericAggOp } from "../query/agg";
 import { clampWidget, defaultHbarN, defaultTimeseries, defaultWidgetH, type WidgetDef } from "../shared/widgets";
 import { panelSection, type BoardPanel, type PanelFields } from "../shared/boards";
+import { panelDisplayName } from "../shared/panel-name";
 
 /**
  * The panel sheet (sheet 49, 49e–49f): one form for Add panel and Edit panel. Show picks the view;
@@ -120,11 +121,11 @@ export function newDraft(seed?: { name?: string; q?: string; show?: PanelShow; s
   };
 }
 
-/** The draft Edit panel starts from. */
+/** The draft Edit panel starts from; a generic name starts as the one made from its query (50e). */
 export function draftOf(panel: BoardPanel, panels: BoardPanel[]): PanelDraft {
   const w = panel.widget;
   return {
-    name: panel.name,
+    name: panelDisplayName(panel),
     q: panel.q,
     show: showOf(panel),
     split: w.split,

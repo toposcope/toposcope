@@ -26,6 +26,7 @@ import {
   updatePanelInSection,
   type PanelFields,
 } from "../../shared/boards";
+import { panelDisplayName } from "../../shared/panel-name";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -1082,11 +1083,12 @@ function BoardPanelCard(props: CardProps) {
   const empty = Boolean(data && !data.error && total === 0 && props.setKeys.length > 0);
   const [armed, setArmed] = useState(false);
   const head = panelHead(panel, data, props.live);
+  const name = panelDisplayName(panel);
   return (
     <Panel lifted={props.lifted}>
       {armed ? (
         <PanelArmed
-          name={panel.name}
+          name={name}
           onRemove={() => {
             setArmed(false);
             props.onRemove();
@@ -1095,7 +1097,7 @@ function BoardPanelCard(props: CardProps) {
         />
       ) : (
         <PanelHead className={cn(props.onMovePointerDown && "cursor-grab active:cursor-grabbing")} onPointerDown={props.onMovePointerDown}>
-          <PanelTitle className="shrink-0">{panel.name}</PanelTitle>
+          <PanelTitle className="shrink-0">{name}</PanelTitle>
           <PanelQuery className="text-faint" title={panelSubtitle(panel, props.inputs) || undefined}>
             {panelSubtitle(panel, props.inputs)}
           </PanelQuery>

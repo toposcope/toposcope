@@ -8,10 +8,11 @@ import { panelNoEvents, panelSubtitle, statWords } from "./panel-head";
 
 const data = (total: number): PanelData => ({ histogram: [], agg: null, total, from: null, to: null, fetchedAt: 0 });
 
-describe("the board menu (49g)", () => {
-  test("offers Pin or Unpin as the board is, and Delete last", () => {
-    expect(boardMenuItems(false).map((i) => i.label)).toEqual(["Rename", "Duplicate board", "Pin to Home", "Delete board…"]);
-    expect(boardMenuItems(true).map((i) => i.label)).toEqual(["Rename", "Duplicate board", "Unpin from Home", "Delete board…"]);
+describe("the board menu (49g, 50e)", () => {
+  test("offers Fit panels to the width, Pin or Unpin as the board is, and Delete last", () => {
+    expect(boardMenuItems(false).map((i) => i.label)).toEqual(["Rename", "Fit panels to the width", "Duplicate board", "Pin to Home", "Delete board…"]);
+    expect(boardMenuItems(true).map((i) => i.label)).toEqual(["Rename", "Fit panels to the width", "Duplicate board", "Unpin from Home", "Delete board…"]);
+    expect(boardMenuItems(false).find((i) => i.id === "fit")?.sub).toBe("Each row's panels share the 12 columns");
   });
 });
 
