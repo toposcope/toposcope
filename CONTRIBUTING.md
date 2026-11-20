@@ -21,6 +21,18 @@ UI work starts from [docs/ui/](docs/ui/README.md): the tokens, the primitives an
 - `CHANGELOG.md` — shipped releases
 - `ee/` — reserved tree; `LICENSE` only; the MIT app does not import it
 
+## Writing docs
+
+The docs in `docs/` are read on toposcope.io/docs and on GitHub, by people running Toposcope and by their agents. A page is read to do one job: send data, write a query, run an upgrade. `src/shared/docs-lint.test.ts` checks the shape rules below.
+
+- **One job per page.** The title names it. The first paragraph says, in one or two sentences, what the page covers and who it is for.
+- **Headings every few paragraphs.** At most about 350 words between headings, and no deeper than `###`. A heading names what is under it (`Upgrade with upgrade.sh`), not a category (`Notes`, `Misc`).
+- **Short blocks.** A paragraph is at most about 100 words. A list item is one fact, at most about 60 words; more than that becomes its own paragraph or heading. Options, parameters, limits, roles and errors that share a shape go in a table.
+- **Every example says what it does**, in a sentence before it or a table column beside it.
+- **Say what the reader does and sees.** How Toposcope computes it (rollup tables, read budgets, materialized views, ClickHouse functions, `src/` paths, issue and sheet numbers, which release changed what) belongs in [ARCHITECTURE.md](docs/ARCHITECTURE.md) or [CHANGELOG.md](CHANGELOG.md), not in a page about using the product. A limit the reader can hit stays, said as a limit (`A custom window is at most 730 days`).
+- **The product's words.** hunt, saved hunt, board, panel, query, window, input, as the UI says them ([docs/ui/README.md](docs/ui/README.md#words)). Bold for UI labels (**Add to board**), code for anything typed or sent (`level:error`, `POST /v1/logs`).
+- **Anchors are kept.** Other pages, the app, the site and old releases link to headings. A heading that moves to another page leaves a one-line section under the same heading that links to its new place.
+
 ## Local development
 
 Use `.env.example` as the starting point for local work:

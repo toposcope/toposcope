@@ -1,8 +1,13 @@
 # Architecture
 
-Two containers. Logs, ingested metrics, spans, profile samples, monitor results, and change marks live in ClickHouse. The control plane (saved searches, monitors and their stretches, tokens, settings) lives in SQLite in the app process. Logs never go in SQLite. Metrics, spans, profiles, and change marks are not written into `logs`. Consumed probes write the `up` metric, not a second table. A pushed check result (#177) is a log row, and its value the `monitor_value` metric; an attached probe is also one.
+This page is the **shipped** system, for engineers and agents changing Toposcope: where each kind of data lives, how a request is read and written, and which file does it. How to use the product is in the other pages under `docs/`.
 
-This file is the **shipped** system.
+Toposcope is two containers: one app (Bun + Hono) and ClickHouse. Logs, ingested metrics, spans, profile samples, monitor results and change marks live in ClickHouse. The control plane (saved searches, monitors and their stretches, tokens, settings) lives in SQLite in the app process.
+
+- Logs never go in SQLite.
+- Metrics, spans, profiles and change marks are not written into `logs`.
+- Consumed probes write the `up` metric, not a second table.
+- A pushed check result (#177) is a log row, and its value the `monitor_value` metric; an attached probe is also one.
 
 ```
 [curl / OTLP / syslog / seed / browser]
@@ -19,9 +24,9 @@ Packaged `compose.yml` runs ClickHouse and one version-pinned Toposcope applicat
 
 During local development, only ClickHouse runs in Docker. Vite runs at `127.0.0.1:5173` and proxies API requests to Hono at `127.0.0.1:8080`. See [CONTRIBUTING.md](../CONTRIBUTING.md) for local commands and load profiles.
 
-The API `idleTimeout` is 120 seconds so long bounded searches are not killed by Bun's shorter default. Newest-first event pages widen their lookback before reading more of the window. HTTP ingest returns 503 when a write fails, or 429 with `Retry-After: 1` when ClickHouse is overloaded or insert capacity is exhausted. Syslog UDP cannot return 429, so it retries busy inserts in process.
-
 ## Contract
+
+### The row every layer speaks
 
 Every layer speaks `LogEvent` from `src/shared/log-event.ts`:
 
@@ -30,106 +35,610 @@ Every layer speaks `LogEvent` from `src/shared/log-event.ts`:
 - `host` — optional
 - `level` — `debug | info | warn | error | fatal`
 - `message` — string
-- `attrs` — optional JSON object. Ingest lifts exception attrs from dotted OTEL keys or a nested `exception` object and parses known `exception.stacktrace` formats only when no valid `exception.frames` arrive. It aliases OTEL `service.version` onto attr `version` when `version` is unset (drops the duplicate dotted key), writes `e1` when frames are present (hash type + up to 50 `file`/`function`; if any frame is `in_app`, hash only those) or when `exception.type` is set or the level is `error`/`fatal` (type + a stabilized `message`), then flattens with `flattenAttrs` (`src/shared/attrs.ts`) into both a JSON string and `attr_map Map(LowCardinality(String), String)` so the JSON tab and filters cannot disagree. Values are strings (numbers become `"500"`). At most 50 keys per event (`e1` is stamped first so the cap cannot drop it). Flatten is **top-level only**: nested objects/arrays become JSON strings, not dotted paths. A dotted key (`http.status_code`) is one name if the sender already flattened it. Ingest does not parse stacks from `message`, does not rewrite old rows, and does not use log templates.
-
-Fingerprint hash inputs normalize source paths across dated release directories and common deployment roots; supplied frame paths and raw stacktraces stay stored. Known stack formats are Node/V8, Python, JVM, .NET, PHP, and Go. Unknown formats keep the type plus stabilized log-body fallback. Because old rows keep their ids, an affected error can receive a new `e1` once at the 0.4.9 upgrade, and again at 0.4.11 if it has one of the stack shapes corrected there. Exact path rules and sender inputs are in the [ingest guide](ingest.md#exception-fingerprints).
+- `attrs` — optional JSON object
 
 Ingest accepts one event, a JSON array (max 500), or NDJSON. Body cap is 1MB (decoded). OTLP gzip on logs, traces, and profiles inflates under that cap. Missing `ts` is stamped server-side.
 
-**Ingest boundary:** Vector / Fluent Bit / Alloy parse lines, flatten nested JSON, and write any derived attr that `q` / Top-N / rollups must see (alias/copy, combine, bucket, local file lookup). Enrich is collector-owned; recipes live in the [ingest guide](ingest.md). Toposcope ingest stamps `ts`, caps keys, stringifies leftover objects, copies OTLP `traceId`/`spanId` onto attrs, fills `logs.trace_id` from `trace_id` / `traceid` / `request_id` / `req_id`, aliases `service.version` onto `version` when `version` is unset, computes `e1` fingerprints, and writes ClickHouse. It does not eval user JS, call an HTTP API per event, own lookup files, or run a rule table. Direct `POST /api/ingest` / `POST /v1/logs` without a collector does not grow collector-style derived keys (alias/combine/bucket/lookup). A separate ingest daemon stays out.
+### Attributes
 
-OTLP `POST /v1/logs` accepts JSON (`application/json`) or protobuf (`application/x-protobuf`). Both map to `LogEvent`, with the record’s own attributes ahead of a map body’s top-level fields, then its trace and span ids, then the scope’s name as `otel.scope.name`, and the resource’s attributes last, so the 50-key cap cuts the resource first. Syslog UDP parses RFC 3164 into the same contract. OTLP `POST /v1/traces` maps `resourceSpans` to `Span` (`src/shared/span.ts`) and writes the `spans` table — not `logs`. OTLP `POST /v1/profiles` maps each decoded `Profile` to `ProfileSample` rows (`src/shared/profile.ts`) and writes `profile_samples` — not `logs` or `spans`. One `Profile` is one renderable unit; do not merge.
+Ingest flattens `attrs` with `flattenAttrs` (`src/shared/attrs.ts`) into `attr_map Map(LowCardinality(String), String)`. Rows are read back from it too, so the JSON tab and filters cannot disagree. The JSON `attrs` column is no longer written; rows stored before 0.12 still hold a copy until they age out.
 
-`toposcope` (#134) is a core field like `host`: a column on `logs` and the last key of every minute rollup (`logs_by_minute` and the three attr rollups), so `toposcope:<name> level:error` stays on the rollups. Rows ingested here are stamped with this instance's name from Settings (`src/shared/here.ts`, set at boot and on rename); while the instance has no name they store it empty, as before. Renaming starts a new value; rows already stored keep theirs. Boot adds the column to rollups made before it at the end of their key, keeping every row. `GET /api/facets` counts it only when asked (`fields=toposcope`). Query and facets read `attr_map`. `logs` has bloom skip indexes on `trace_id` and `mapValues(attr_map)`, and a text index on `lowerUTF8(message)` (`TYPE text`, `splitByNonAlpha`) so a message term can prune granules. `logs_by_minute` includes `host`. `logs_attr_keys_by_minute` rolls up attr **key names** per minute/service/level/host. `logs_attr_values_by_minute` rolls up indexable key/value pairs (≤64 chars; not JSON blobs or UUID-like ids) for single-attr histogram/count/facets. UUID-like / lookup-role / ignore-role equality scans `logs` (never the empty values summary) so histogram `total` matches the table. `logs_attr_numeric_by_minute` is the sibling for values that parse as finite numbers (count/sum/min/max and a p99 t-digest). Numbers stay strings in `attr_map`; the MV parses at insert. Ingested metrics live in `metrics` (name, value, labels map) with `metrics_by_minute` (count/sum/min/max, no labels, keyed by name, minute, `kind`, `unit` and `toposcope`). They are not written into `logs` and are not a PromTSDB. Unlabeled overlays read the metric MV; label matchers scan `metrics`. Overlay reducer is avg.
+- Values are strings: numbers become `"500"`. Numbers stay strings in `attr_map`; the numeric rollup parses them at insert.
+- At most 50 keys per event. `e1` is stamped first so the cap cannot drop it.
+- Flatten is **top-level only**: nested objects and arrays become JSON strings, not dotted paths.
+- A dotted key (`http.status_code`) is one name if the sender already flattened it.
+- OTEL `service.version` is aliased onto attr `version` when `version` is unset, and the duplicate dotted key is dropped.
+- Ingest does not parse stacks from `message`, does not rewrite old rows, and does not use log templates.
 
-## Auth
+### Exception fingerprints
 
-- `GET /api/health` and `GET /api/metrics` are open.
-- Browser UI and all other `/api/*` routes: a person — a session cookie from signing in (email, password and two-step, or the OIDC provider; `src/control/people.ts`, `two-step.ts`, `oidc.ts`), or `Authorization: Bearer` with a personal or service account token (`tsp1_…`). HTTP Basic is refused. Each route names its row of the role table (`src/control/roles.ts`); every write is stamped with its actor (`src/control/actors.ts`). The first Owner comes from `bun run src/cli.ts owner-link <email>` on the host.
-- Signing in (#102): a browser asking for a page (`GET` with `Accept: text/html`, not `/api` or `/v1`) without credentials gets the sign-in page, `401` with no `WWW-Authenticate`, so it never shows the native prompt. `POST /api/sign-in` (form or JSON `{ password, next }`, no auth) answers a wrong password after 750 ms; the right one sets `toposcope_session_<8 hex of the instance id>` (HttpOnly, SameSite=Strict, Secure over HTTPS, 30 days) and `303`s back to `next` (a path on this instance). The cookie names a row in SQLite `sessions` and is signed with a key made from the password, so changing the password ends every sign-in. `POST /api/sign-out` deletes the row and clears the cookie. An API call with no credentials keeps `401` and the challenge; one that carries a cookie that no longer works gets `401` without it. The realm is `toposcope · <name>` once the instance has a name.
-- `GET /api/instance` — `{ id, name, address, session }`: the id (made once, kept in SQLite settings), the name set in Settings (`PUT /api/settings` `instance_name`, at most 64 characters, empty unsets it), the address the browser opened, and `session` `{ kind: "cookie", expires_at }` or `{ kind: "basic" }`. The name is also on the sign-in page, the realm, the tab title (`<name> · toposcope`, or the address while unnamed) and the header; the id is not shown without the password. Packaged boot refuses missing, empty, or demo (`toposcope` / `toposcope-ingest`) secrets and does not listen. `bun run dev` may fill localhost defaults.
-- `POST /api/ingest` and `POST /v1/logs` / `POST /v1/metrics` / `POST /v1/marks` / `POST /v1/checks` / `POST /v1/probes` / `POST /v1/traces` / `POST /v1/profiles` also accept `Authorization: Bearer` — env `TOPOSCOPE_INGEST_TOKEN` or a hashed row from `api_tokens`.
-- `/share/v1/*` (#225) takes a share's secret (`Authorization: Bearer tss1_…`) and nothing else: the password, a session and the ingest token answer `401` there, a share's secret answers `401` everywhere else, and a refusal never sends `WWW-Authenticate`. See Shares.
-- `/ping/<key>` (#177) takes no password and no token: the key in the path is the credential, and it writes only that push monitor's result. It sits beside `/v1/`, which stays "token required".
+Ingest lifts exception attrs from dotted OTEL keys or a nested `exception` object. It parses known `exception.stacktrace` formats only when no valid `exception.frames` arrive. It then writes `e1`, a 16-hex SHA-256:
 
-## HTTP
+- When frames are present, it hashes the type and up to 50 `file`/`function` pairs. If any frame is `in_app`, it hashes only those.
+- Otherwise, when `exception.type` is set or the level is `error`/`fatal`, it hashes the type and a stabilized `message`.
 
-- `GET /api/health` — `{ ok, phase, clickhouse, sqlite, version }`. `phase` is `starting` | `schema` | `repair` | `ready`. `version` is the running release: the `package.json` version, the same string as the image tag. **200** only when `phase` is `ready` and both stores ping; otherwise **503**. Hunt and ingest are 503 until ready. The process listens before migrate so Compose can healthcheck during schema.
-- `GET /api/metrics` — Prometheus text
-- `POST /api/ingest` — JSON, JSON array, or NDJSON → `{ ingested }`
-- `POST /v1/logs` — OTLP JSON or protobuf logs → `{ ingested }`, or an OTLP protobuf response for a protobuf request. The reply’s partial success says what was not stored or was cut; the same on traces and profiles. Up to 1,024 records per request. Optional `Content-Encoding: gzip` inflates under the 1MB cap.
-- `POST /v1/metrics` — OTLP JSON or protobuf metrics (1MB decoded, gzip under that cap, no cap on points), or a JSON metric point or array (max 500, 1MB) `{ name, value, ts?, labels?, unit?, description? }` → `{ ingested }`. From OTLP a gauge is stored as it is, a counter as the amount per interval, and a histogram as `<name>.count` and `<name>.sum` in `metrics` plus its buckets in `metric_buckets`: one row for each interval of each series, upper bounds in `le` and counts in `n`, with one more count for what was above them all. `metric_buckets_by_minute` keeps one row for each bound, so series with different bounds add up and an empty bound still says where the next bucket starts. Both minute rollups key by `kind`, `unit` and `toposcope` before the bound (#331), so one name sent in ms and in s, or from two instances, stays apart rows; boot makes a rollup with another key again and fills it from the stored points. An exponential histogram is brought under explicit bounds, no finer than scale 3. A summary keeps its count and sum only. A counter, histogram or summary sent as a running total is converted at ingest from the last total of its series, kept in memory (`src/ingest/running-totals.ts`); after a restart the first total from a series that was already running is only its baseline. Every point and bucket carries its name's `kind` (`gauge`, `counter` or `histogram`), `unit` (OTLP `unit`, or a JSON point's `unit`, as sent) and `description` as columns of `metrics` and `metric_buckets`, written at ingest (#331), so they travel with the point over a link. A name's kind, unit and description are read off its newest point that has one; the kind decides how a bar is read. The per-name tables `metric_kinds`, `metric_units` and `metric_descriptions` are dropped at boot. A metric series and `GET /api/metric-names` carry the unit as `unit`. Same bearer/basic as log ingest. Not Prometheus scrape.
-- `POST /v1/marks` — JSON change mark or array (max 500, 1MB) `{ kind, title, ts?, service?, attrs?, id?, end_ts? }` → one object `{ ingested, id }`, array `{ ingested, ids }`. `kind` is `deploy` | `flag` | `incident` | `note`. Omit `id` and ingest mints `mk_…`. Same caller `id` without `end_ts` while still open is skipped (CI retry; glyph stays). Same `id` with `end_ts` while open appends a close and **keeps the stored start**. Already closed is skipped (not a reopen). Valid POST is always 200. `end_ts` must be after the start (incident duration band on the hunt plot; other kinds stay points). Same bearer/basic. Writes `change_marks`, not `logs`.
-- `GET /api/marks?from=&to=&range=&kind=&service=` — `{ marks, before, after }` (the newest 10,000 in the window, listed oldest first; #252). A mark pulled over a link (#138) says `toposcope`, the instance it was posted at, and its id ends with `@` and that name. `before` / `after` are the nearest neighbors outside the window. `range` or `from`+`to` required. Basic auth. Search / Follow draw them on the pinned volume plot; extra widgets, Surroundings, and boards do not.
-- Code links (#393, `src/shared/code-links.ts`, `src/control/repositories.ts`): links, no repository content is fetched. Connect GitHub (#416, `src/control/github.ts`, `src/shared/github-app.ts`) is the one exception to keeping no token: an Owner runs GitHub's device flow against the one Toposcope GitHub App (metadata read-only, no webhook, no callback; the client ID is public and ships in the code); the token lands in SQLite `github_connection` (one row: `token`, `login`, `connected_by`, `connected_at`, `ended_at`) and only lists the installations' repositories for Set (`GET /api/github/repositories?q=`, cached 30 s). The device flow is driven by reads: while a code waits, `GET /api/github` asks GitHub once its interval has passed, so no timer runs. A `401` from GitHub clears the token and keeps `ended_at` (42h). Actions: `connect GitHub` (Owner) connects, cancels and disconnects. A service's repository is a row in SQLite `repositories` (`service`, `url`, `path`, `set_by`, `set_at`; an Operator sets it with `PUT /api/repositories/:service { url, path? }`, where `path` is the folder its stack paths start in (#413) and is kept while `url` is and clears it with `DELETE`, action `set repositories`), else `vcs.repository.url.full` on its resource (`logs_attr_values_by_minute` over 7 days, plus a budgeted read of the last day of `spans` and the last hour of `logs` for a URL past the rollup's 64 characters), else `attrs.repo` on its newest deploy mark. `GET /api/repositories` lists every service seen in 7 days, with a deploy mark, or set here, and where its repository is known from. `parseRepo` reads `https://`, scheme-less and `git@host:` forms into an `https://host/owner/name` base (any other scheme is refused) and names the host's link shape: GitHub, GitLab, Bitbucket, else Gitea / Forgejo. `GET /api/code?mark=` answers a deploy, its service's repository and the previous deploy of that service (the marks panel's `code` row: commit and compare); `GET /api/code?service=&version=` answers the repository and the deploy mark of that version (the Stack tab: `blob` at its sha, else the default branch). Stack frames link when their path is under the roots `e1` strips (`src/shared/app-path.ts`, shared with the fingerprint) and not a library's.
-- `POST /v1/probes` — JSON check or array (max 500, 1MB). Attach `{ service, up: 0|1, ts?, host?, check?, url? }` or pull one `{ service, url }` (`http`/`https`, 5s GET). `up` is the number `0` or `1`. A failed pull (timeout, connect error, non-2xx) stores `up=0` — not a skip. Arrays are attach-only. One object `{ ingested, up }`, array `{ ingested }`. Same bearer/basic. Writes the ingested metric `up` (labels `service` / `host` / `check` / `target` / `source`), not `logs`. Hunt paints with the shipped Series overlay (`metric=up`). An attached probe is also a push monitor's result (#177): `up` 1 ok, 0 a fail, its monitor named by `check` (else `service`); a result a monitor cannot take (500 push monitors, or a search monitor's name) adds `monitor_error` to the reply and `up` is stored all the same. Not a check editor, not `/api/health`, not metric-threshold alerts.
-- `POST /v1/checks` (#177) — one result or an array (max 500, 1MB; JSON or NDJSON) `{ monitor, status, message?, value?, unit?, every?, grace?, host?, service?, ts?, exit_code?, duration_ms? }` → `{ ingested, created }`. `status` is `ok` | `warn` | `fail` | `0`–`3` (Nagios: ok, warning, critical, unknown). A name not seen before creates a push monitor (up to 500 push monitors; past that, or for a name a non-push monitor has, 400 with the reason and nothing stored). Each result is a log row (`service` the result's, else `monitor`; `level` `error` for a fail, `warn` for a warn, else `info`; attrs `monitor`, `status`, `source: push`, `exit_code`, `duration_ms`) and its `value` the metric `monitor_value` `{monitor}`. Rows go to ClickHouse before SQLite moves, so a 429 or 503 changed nothing. A request from `toposcope.sh check` (user agent `toposcope.sh/…`) is kept as coming through it.
-- `GET|POST /ping/<key>[/start|/fail|/<exit code>]` (#177) — a push monitor's keyed URL, Healthchecks' shape. Bare is ok, `/fail` a fail, `/<0–255>` ok on 0 and a fail otherwise; `/start` begins a run (a row `signal:start`, and the next result's `duration_ms` is measured from it). A POST body (first 10 KB) is the message. `200 OK`; every key is compared with every push monitor's in constant time, and an unknown key or path is `404 not found` and writes nothing; a second start or result of one key within a second is `429` and writes nothing.
-- `GET /api/probes?from=&to=&range=&service=` — `{ probes }` (cap 500, oldest first). `range` or `from`+`to` required. Signed in. Each sample is `{ ts, service, host, check, target, up, source }`.
-- OTLP over gRPC — a second listener (`src/ingest/otlp-grpc.ts`, `node:http2`, port `OTLP_GRPC_PORT`, default 4319, `0` off) for the Export method of the logs, trace, metrics and profiles services. It holds no logic of its own: each call’s message is handed to the app as a protobuf `POST` to that signal’s route, with the call’s `authorization` metadata and `content-encoding: gzip` when the message is compressed, and the route’s answer becomes the reply. So the token, the caps and the partial success are the HTTP ones; 400 is `INVALID_ARGUMENT`, 401 `UNAUTHENTICATED`, 413 `RESOURCE_EXHAUSTED`, 429 and 503 `UNAVAILABLE`. The server’s settings say it will not push: Bun’s default says it may, and a client built on nghttp2 then drops the connection. On SIGTERM it stops with the main listener: calls in flight get their reply.
-- `POST /v1/traces` — OTLP JSON or protobuf traces → `{ ingested }`. Same bearer/basic, 1MB decoded body (gzip under that cap), and up to 1,024 spans per request. 429 when ClickHouse is busy. Maps `resourceSpans` onto `spans` (not `logs`). A span’s last `exception` event is kept in its `attrs` as `exception.type`, `exception.message`, `exception.stacktrace` and the `e1` the log fingerprint code gives them, ahead of its other attributes; other span events are dropped, and no log row is written from a span. Store what arrives; sampling stays at the collector.
-- `GET /api/traces/:trace_id` — `{ spans, total }` for one request. The id must be 32 hex, not all zeros (400 otherwise; lowercased). 200 even when empty — not a 404. Cap 500 keeps the longest-duration branches plus their ancestors; `total` is the unclipped count. Each span carries `toposcope` (the instance it entered at) and `pulled_at` (when it arrived here over a link; null for its own, #330). View trace joins when a log alias (`trace_id`, then `request_id`, then `traceid` / `req_id`) is that 32-hex shape; `req-…` is Follow only. Histogram / Follow / `q` stay on `logs`.
-- `POST /v1/profiles` — OTLP JSON or protobuf profiles → `{ ingested }`. Same bearer/basic, 1MB decoded body (gzip under that cap), and up to 1,024 `Profile`s per request. 429 when ClickHouse is busy. One decoded `Profile` is one renderable unit; do not merge. Store unlinked samples with empty `trace_id` / `span_id`. Sampling and whether `Link`s are attached stay at the collector.
-- `GET /api/profiles?trace_id=&span_id=` — one Profile’s samples linked to that pair (200 even when empty). Requires a 32-hex `trace_id` and a 16-hex `span_id` (400 otherwise). If several Profiles match, pick the latest (`total_profiles` is the matching count, including the one rendered). Fold identical stacks inside that Profile only. Cap 500 heaviest stacks; `total_samples` is the unclipped folded stack count. The reply names where the profile entered (`toposcope`) and when it was pulled (`pulled_at`, #332).
-- `POST /api/feeds` `{ q }` → `201 { id, q, created_at }`; `GET /api/feeds` → `{ feeds }`; `GET /api/feeds/:id?after=&limit=` — a feed (#135, `src/feed/feed.ts`): rows by arrival through one `q`, compiled and refused (400 with `faults`) when the feed is defined and never changed after. A read returns the rows of positions `(after, through]` that match, in arrival order, as stored (`attrs` with `e1`, `toposcope`, `seq`); `through` is the end of a span of 100,000 positions or what is settled, whichever is first, or the last row of a full page (`limit`, 1,000 by default, 5,000 at most). The reply always says what it covered: `after`, `through`, `settled`, `arrived` (when the newest row of the range arrived here; null for an empty range), `oldest` (the oldest position still stored), `horizon` (retention), and `gone` — positions retention passed before they were read, closed at both ends. An empty range is an answer, not an end; a read over the scan budget returns `refused`. `marks` are the change marks posted or closed in the same positions (#138: marks take a position from the same counter and carry `toposcope`, the instance they were posted at): every one whose `service` the `q` does not rule out by a plain mismatch, since a mark is not a log line and `level:error` does not apply to it. Rows carry `arrived` from ingest. The first feed builds a projection ordered by `seq` (`by_seq`), so any range stays cheap however old. Behind the operator password; keys come with links (#136).
+Hash inputs normalize source paths across dated release directories and common deployment roots; supplied frame paths and raw stacktraces stay stored. Known stack formats are Node/V8, Python, JVM, .NET, PHP, and Go. Unknown formats keep the type plus the stabilized log-body fallback. A span's last `exception` event gets its `e1` from the same function that fingerprints a log row. Exact path rules and sender inputs are in the [ingest guide](ingest.md#exception-fingerprints).
 
-  Every kind takes its position from the one counter (#324): `spans`, `metrics`, `metric_buckets` and `profile_samples` carry the columns `logs` has for it (`seq`, `arrived`, `toposcope`, `src_id`, `src_seq`, with minmax indexes on `seq` and `src_seq`), and so does `monitor_results`. The counter loads from every positioned table at boot. Rows stored before 0.10 have position 0 and are never fed. `GET /api/feeds/:id` takes `kinds=` (`logs`, `marks`, `spans`, `metrics`, `metric_buckets`, `profile_samples`, `monitor_results`, comma-separated; empty is every kind, an unknown name is 400), and reads each kind asked for on the same range of positions (#325). Logs and marks stay `rows` and `marks`; the reply's `kinds` holds each other kind as `{ rows, gone, not_sent? }`: its rows as stored, its own hole (positions below its oldest row, only when that row sits at the kind's own retention edge; metrics follow metrics retention when set), and why it is not sent at all. One page limit covers every kind, so the page ends where the first full kind ends or at the limit-th row in arrival order; `through`, `settled` and `arrived` stay one number each. The feed's `q` runs on each kind by the fields it has (#326, `src/feed/kind-filter.ts`): `service`, `host` and other keys map onto spans (`service`, `attrs['host.name']`, `attrs`), points and buckets (`labels['service']`, `labels['host']`, `labels`) and monitor results (`service`, `host`; no map), `toposcope` onto its column; a field a kind lacks (`level`, a message term, a comparison or other key on monitor results) sets `not_sent` (`the filter names level`). A profile sample goes when `(trace_id, span_id)` is a span the filter lets through at or below `through`; one with no span goes by `service` and `toposcope` alone. Once a link carries a kind, `ensureFullSeqProjection` adds a full projection ordered by `seq` (`by_seq_full`, `SELECT * ORDER BY seq`) to `spans`, `metrics`, `metric_buckets`, `profile_samples` or `monitor_results`, once, on the side rows leave from, since their sort orders scatter positions that arrived together.
-- Links (#136, `src/links/`): `GET /api/links` → `{ here, links, keys }` (no secrets); `POST /api/links/offer` / `invite` `{ q, until?, name?, kinds? }` → `201 { key, kid, label, kinds }`, where the key is `tsl2_o|tsl2_i . name . address . kid . q . until|- . secret . kinds` (base64url; `src/links/key.ts`), shown once and stored hashed in `link_keys` (`kinds`, #329: `logs,marks,traces,metrics,profiles,monitors`, all by default); a `tsl1_` key is refused at preview and confirm with “This key is from an older Toposcope; mint a new one there”; `POST /api/links/preview { key }` decodes it and makes one lookup to the minter; `POST /api/links/confirm { key, name? }` claims it there; `DELETE /api/links/:id` removes a link (deletes nothing); `DELETE /api/links/keys/:kid` revokes a key. Minting or pasting asks for the instance's name the first time. Instance to instance, under `/link/v1/` and not behind a person's sign-in: `POST lookup` and `POST claim` prove the key's secret; `GET feed?after=&limit=`, `POST ask`, `POST rows` and `POST remove` prove the link's own secret (Bearer), which the claim swaps the key for. The minter keeps its hash, the side that pasted (the side that connects) keeps the secret; a link's secret reads its feed (#135) and nothing else. Links live in SQLite (`links`: role `pull`|`serve`, `connects` `we`|`they`, position, settled, the arrival time at the position, behind rows on an every-row link, a hole, last contact, last error). The pull loop (`src/links/puller.ts`, every 5s, like the alert cron) reads each link it pulls and calls out for, up to 20 pages a pass, and stores rows with `insertPulled` (`src/ingest/pulled.ts`): as they were (`e1` and attrs untouched, the source's `toposcope`, or the source's name for a row that entered it unnamed), with their origin in `logs.src_id` / `src_seq` (a minmax index), so a row already here by origin — a retry, overlapping filters, a re-pull, or a row that left here and came back — is not stored again; each stored row takes a position here. The counter is loaded at boot so a restarted source reports how far it has settled. A link where the source pasted (an invite, #137) is served by the source calling out: each pass it `ask`s the puller where it stands, reads its own feed from there and `POST`s the reply to `rows`; the puller stores it with `insertPulled` and moves its position, refusing (409) a range that does not start where it stands. A reply that reports `gone` also records the hole in time on the link (#139, `gone_from_at` / `gone_to_at`): from where its rows were known to, to the start of the oldest day the source keeps. Search reads `GET /api/links` every 5 seconds and works out what it holds in `src/shared/held.ts`: per source (its pull links merged, the worst one speaking), caught up, behind (read to the arrival time at its position), quiet (no contact for 30 seconds, or a failed one), and its hole; which sources are short over a window; and whether a short source could feed a count — not when the hunt rules its `toposcope` out, nor when every filter it comes through mismatches the count's plain `key:value` terms. `src/ui/held-view.ts` turns that into the floors, the pill, the hatch, the table rows and the scope chip, and facets ask for `fields=toposcope` once anything is linked. A cut checks the same before it scans (#140, #141): `shortAcrossCut` in `src/query/fingerprint-cut.ts` reads the links and names the sources short inside each side. While there is one, each side's `e1` counts are read by `toposcope` too, and `judgeAcrossGap` (`src/shared/fingerprint-cut.ts`) files each line: as ever when no short source fed it; by its counts, with floors and a `partly from` note, when a caught-up source fed it too; and as can't tell (`?` on the short side, counted apart in `cantTell`) when only short sources fed it and the short side reads zero. The reply carries `held` (sides and sources) and head notes from `cutGapNotes`; the new-fingerprints alert pages only lines that are not can't tell. The Compare fold reads the held view when it fetches: a short side is a floor and there is no delta. Marks in a reply are stored with `insertPulledMarks` (#138) under the instance they were posted at: the id gains `@<instance>` (once; a mark that came through a third instance keeps its suffix) and `toposcope` names it, so the same id from two sources stays two marks, each cutting its own window; a mark posted here that came back is skipped, and a mark the source closed arrives again closed and is the one read, as with any mark id. Marks stored before 0.5.5 have no position and do not travel.
+Old rows keep their ids. An affected error can receive a new `e1` once at the 0.4.9 upgrade, and again at 0.4.11 if it has one of the stack shapes corrected there (deep Python tracebacks, Node `at async` frames, PHP closure frames). From 0.5.5 the key names the rules that made the id (#142): `e1` now, `e2` when the hash inputs change again. Fingerprint cuts handle a hunt whose rows carry more than one key ([Fingerprint cuts](#fingerprint-cuts)).
 
-  Versions (#328, `src/links/version.ts`): every contact (lookup, claim, feed, ask, rows, remove) sends `x-toposcope-link` (the link protocol, 2), `x-toposcope-schema` (the schema of the tables a link carries, 1) and `x-toposcope-version` (the release), both ways. A `/link/v1/` route whose caller sends another protocol or schema answers 409 `{ error: "versions differ", here, there }`; the puller, a source that calls out and the paste store nothing, record which side to upgrade as the link's last error, and carry on from the same position once they match. The release only names the side. `links.protocol` records the protocol a link was made with; boot removes every link with a protocol below 2, as Revoke does, keeping its record.
+### The ingest boundary
 
-  The wire (#327, `src/feed/wire.ts`): `/link/v1/feed` and `/link/v1/rows` carry one body (`application/x-toposcope-feed`): a 4-byte big-endian length, a JSON header (the feed reply with logs and marks as before, each other kind's `{ gone, not_sent? }` in `kinds`, `blocks: [{ kind, rows, bytes, origins }]`, the source, and a monitor snapshot when there is one), then one zstd ClickHouse Native block per kind in the header's order. The source reads only the positions of those kinds to cut the page (`positionsOnly`), then each kind once as `SELECT … FORMAT Native` with the kind's filter. The puller stores each block with one `INSERT … SELECT … FROM input() FORMAT Native` in which each row takes `seq` from here (`from + rowNumberInAllBlocks()`), `arrived` now, keeps `toposcope`, `src_id` and `src_seq` where it first entered (the source's own when it entered there), and is skipped when its origin is this instance or a row with the same origin and `src_seq` is already here (looked up within the header's `origins`, each origin's range of positions). So rows of every kind chain edge → region → centre and are stored once however they come (#334).
+Vector, Fluent Bit and Alloy parse lines, flatten nested JSON, and write any derived attr that `q`, Top-N or the rollups must see: alias or copy, combine, bucket, local file lookup. Rollups only aggregate stored top-level attrs, so a derived key has to exist at ingest. Enrich is collector-owned; recipes live in [Collectors](collectors.md#enrich-at-the-collector). Direct `POST /api/ingest` or `POST /v1/logs` without a collector does not grow those keys.
 
-  Kinds on a link (#329, `src/links/kinds.ts`): `links.kinds` holds the set the key carried (the minter's; the paste cannot widen it), and the feed reads exactly those. `PUT /api/links/:id` takes `kinds` beside `paused` and `q`, only where rows leave this instance (409 otherwise): a set that adds a kind is 409 “A kind is never added to a key already used: to send it too, make a new key”, and is checked before anything is saved. `links.kind_state` keeps each kind's last word from the feed (a hole, or `not_sent`), and `link_volume` (`link_id, kind, day, rows, bytes`) the rows and bytes each call moved, on each side that moved them. `GET /api/links/:id` adds `kinds`, one line per kind: `{ kind, ticked, state, not_sent?, gone?, rows_day, bytes_day }`, `state` one of `caught up`, `behind`, `a hole`, `not sent`, `unticked at the source` or `paused`, the day being today and yesterday's share of the last 24 h.
+Toposcope ingest does only this:
 
-  Monitors over a link (#333, `src/links/monitors-snapshot.ts`): on a page that catches a link carrying monitors up, the source adds to the header a snapshot of the monitors the link's `q` lets through (matched on `service`, `host` and `toposcope`; none when the filter names a field monitors lack), their stretches open now or resolved within 30 days, and, under `forwarded`, the monitors that came to it over its own links, filtered the same way, under the instance they entered at (#334). The puller keeps each source's newest in SQLite `pulled_monitors` (`source`, `snapshot` JSON, `at`), never one under its own name, and judges and calls nothing.
-- `GET /api/search?from=&to=&range=&q=&cursor=&since=&limit=&split=&step=&agg=&metric=&ml=&events=` — `{ events, histogram, total, nextCursor, from, to, ingested?, agg?, scan? }`. `split` is `level` (default), `service`, `host`, or `none`. `step` is `1ms|10ms|100ms|1s|10s|1m|5m|15m|1h|4h|1d|7d` (omit for auto). `agg` is `rate` or `{avg|min|max|sum|p99}:key` (omit for volume only). `metric` is an ingested metric name (`cpu_seconds`); `ml` is optional label matchers (`service:api,host:api-1`, cap 4). `metric=` skips log `agg` and does **not** apply log `q`. `events=0` skips the event page and lookback widening (histogram/`agg`/`total` still run). `since` (ISO) is the live-tail delta: events with `ts >= since`, histogram only from that bucket onward. `cursor` (ISO, Load more) is events-only: `histogram` is `[]` and `total` is `0` (the UI keeps the first search’s chart). `total` is otherwise the sum of the returned histogram (partial when `since` is set; the UI merges). `ingested` is whether `logs` has any row (not this window). Full searches that already have histogram/event hits set it true without a probe; an empty window probes `SELECT 1 … LIMIT 1`. Load-more and empty live `since=` deltas omit it so the UI keeps the last known store state. `agg` is `{ expr, source: numeric|rate|refused|metric, reason?, buckets: [{ t, v }], stat }`. Rate is count / bucket width from the volume histogram. Numeric reducers use `logs_attr_numeric_by_minute` only when volume would use `logs_by_minute` and the bar is ≥1m; message terms, extra attrs, a single-attr `q`, or a sub-minute bar scan `logs` with the read budget rather than lie from a minute rollup. Metric overlays use `metrics_by_minute` when unlabeled and the bar is ≥1m (avg), or scan `metrics` when `ml=` is set or the bar is sub-minute. Window `stat` for p99 is `quantileTDigestMerge` over the window, not an average of per-bucket p99s. Load-more skips `agg`.
+- stamps `ts`, caps keys, and stringifies leftover objects
+- copies OTLP `traceId`/`spanId` onto attrs
+- fills `logs.trace_id` from `trace_id` / `traceid` / `request_id` / `req_id`
+- aliases `service.version` onto `version` when `version` is unset
+- computes `e1` fingerprints and writes ClickHouse
 
-  Compare adds `exact=1` for half-open `[from, to)` timestamp bounds. Histogram and numeric reads then scan `logs` under the existing read budget; metric reads use the exact sample timestamps. Repeated `keep=` values (cap 8 named keys) retain the plot's service/host keys in both windows and fold every remaining key into `other`. With a metric, `other=1` and the same `split` / `keep` exclude those named label values when reading its samples. These options do not change the hunt query or URL.
-- `GET /api/search/context?ts=&service=&host=&n=&q=` — `{ before, after }` surrounding events (default 50, max 200) on the same service, and host when `host` is set. Optional `q` ANDs the search bar (Matching).
-- `GET /api/search/around?ts=&from=&to=&q=&n=` — `{ before, after }` (default 50, max 200) in the hunt window, not scoped to a service. Focus in logs opens Surroundings titled with the mark (50 older above, 50 newer below). It does not rewrite `q`. Optional `q` ANDs a filter. `before` is older (oldest first); `after` is newer (closest first).
-- `GET /api/search/cut?mark=&opened=&from=&to=&range=&q=&live=` — fingerprint sets (first seen / still here / stopped) around a stored mark. The after side runs from the mark to `opened` (or the window's end); the before side is as long, but at least an hour (`windows.beforeMs`), so a young mark is compared with the whole hour before it. While the after side is shorter (`windows.waiting`), Stopped is not called: its set carries `waiting: { haveMs, needMs }` and no rows. A closed incident band keeps equal sides. Other marks inside either side come back as `windows.inside` (the four nearest the cut, `insideMore` for the rest), and a first-seen row names the later mark it follows (`follows`). `mark` is required. Compare vs a mark does **not** use this route and keeps equal windows: the fold issues two `GET /api/search` (`events=0`, same `q` / `agg` / `metric` / `split`) for the after and before windows. Histogram `split` (`level` | `service` | `host` | `none`) is the hunt control; `none` is one row, otherwise one row per series key (cap 8 + `other`).
+It does not eval user JS, call an HTTP API per event, own lookup files, or run a rule table. A separate ingest daemon stays out.
 
-  Before it counts, a cut asks which fingerprint keys (`e1`, `e2`, …, #142) the hunt's rows carry on each side, without the hunt's own id terms (`cutFingerprintKey`): one key is read under that key (`key` in the reply when it is not `e1`); more than one returns `revisions` (each side's keys) and no sets, since one error has an id under each set of rules. `GET /api/search/revisions?q=&from=&after=&to=` answers the same for the Compare fold, which shows no delta when a hunt on an id spans two. The new-fingerprints alert refuses across two keys, and pages `e1` ids only. Cut counts and samples use exact half-open `[from, to)` log timestamp bounds under the existing scan budget. Each side reads up to 201 distinct `e1` counts. If either exceeds the 200-id limit, the cut refuses with no sets, so missing ranks cannot become first seen or stopped. A count refusal returns no sets; a sampling refusal retains counts with a warning. Returned `windows` drive both the rail labels and plot wash, so bucket width does not change the cut.
-- `GET /api/facets?from=&to=&range=&q=&limit=&omit=` — `{ level, service, host }`, each a top-N `{ v, n }` list (default 10, max 50). Each field omits its own filter so a facet chip can switch values; `omit=0` keeps the full `q` (Top-N). The reply also carries `e1`, the window's ten loudest fingerprints over the full `q`, for the slice's fingerprint chips.
-- `GET /api/attr-keys?from=&to=&range=&q=` — `{ keys: [{ k, n }] }` (up to 200) for Add facet
-- `GET /api/attr-facets?from=&to=&range=&q=&attrs=path,user_id&limit=&omit=` — `{ [key]: [{ v, n }] }` top-N per pinned key (max 8 keys; default 10 values, max 50). Same `omit` as `/api/facets`.
-- `GET /api/attr-values?from=&to=&range=&q=&key=&prefix=` — `{ values: [{ v, n }] }` prefix match on one map key
-- `GET /api/numeric-keys?from=&to=&range=&q=` — `{ keys: [{ k, n }] }` numeric-rollup keys when the minute MV applies (empty otherwise). The histogram Series picker uses this list (duration_ms first, cap 8, keep the current `agg` key) with p99/avg/max/min/sum; Rate is always on the menu.
-- `GET /api/metric-names?from=&to=&range=&find=&picked=` — `{ keys: [{ k, n, kind, unit?, description? }], total, picked }`: ingested metric names with points in the window from `metrics_by_minute`, busiest first (up to 200), each with its kind read off its points; `total` counts every name with points. A histogram is one name: its `<name>.count` and `<name>.sum` are not listed beside it, and a picked `<name>.count` is answered with `of` and `reading`. `find` keeps the names that contain it, in any case. `picked` (comma-separated) answers for names a card already holds, points or not. Ignores log `q`. The Series list shows the eight busiest and finds the rest by typing.
-- `GET /api/metric-labels?name=&from=&to=&range=` — `{ labels: [{ key, values }] }`: the label keys a metric's points carry in the window, with how many values each (a histogram's from its `.count` and `.sum`), for a panel's split picker.
-- A metric series takes `msplit=<label>` on `GET /api/search` (#104): one line per value of that label, the 8 with the most points and `other` for the rest, read the way the metric is (a gauge's average, a counter's sum, a histogram's reading — a percentile from each value's summed buckets). It reads the stored points, as label matchers do, and `ml` still narrows it. The reply carries `split` and `splits: [{ key, buckets, stat }]`; Live refreshes it on the 30s pass. When a name's points in the window carry more than one kind or unit (#331), the series splits by them, beside any label split, never summing what disagrees: each line has its `kind` and `unit`, and the reply adds `units_differ: [{ kind, unit, sources, first, last }]` (the instances those points entered at, and the first and last of them). A point with no kind reads as the name's own; one with no unit is apart only when two others disagree. A panel and the pinned plot (by Replace or Overlay) draw those lines in one plot, each against its own unit's peak (`unitAxes`), and say `unitsDifferWords` under it, naming a deploy mark the unit changed around. A percentile is read off buckets summed within one unit. `toposcope` is a split key and an `ml` matcher on points, and `GET /api/metric-labels` offers it once points came from more than one instance. Unlabeled bars of a minute or more read the split by kind and unit off the minute rollups, which key by them; a label split, a matcher or a finer bar reads the stored points, and a histogram's average pairs each count with its sum on the points. A timeseries panel keeps it in its token as `s:<label>` (a dot in the key is `%2E`). A metric panel draws as lines, bars or stacked bars (#237, `metricChart` on the widget; `b` or `k` after `y`/`z` in its token's flags): `MetricSpark`'s `chart` paints a rect per bucket (`barRects`), a split's bars side by side or stacked (the stack's peak is each bucket's sum), named in a legend; `metricStackable` allows stacking only for a counter or a histogram's count or sum with a split, and the head's Line · Bars · Stacked (`MetricChartPicker`, passed as `ExtraPanel`'s `headControls`) disables it with why otherwise. A Top-N panel draws as bars or a donut (#239, `topView: "donut"`, `donut` as its token's last part): `HbarWidget`'s `view` paints `donutSlices` (each row's share of the ring, `other` grey) with the total in the centre and a legend whose rows open Filter / Exclude; `TopViewPicker` in its head sets N to 5 when it was the default. A histogram metric's `heatmap` reading (#238; `heatmapSeries` in `src/query/metric-series.ts`) answers its p99 per bar (`buckets`, `stat`) plus `heat { le, cells: [{ t, n[] }] }`: the bucket counts summed by bound per bar from `metric_buckets_by_minute` at ≥1m or the points below, laid on the union of bounds (`heatCells`). `MetricSpark` paints it with `HeatSpark`: rows by bound, columns by bar, a log shade of one hue, the p99 line over it (a checkbox), and a cell readout. No split. The pinned plot splits only a metric it draws by Replace (frame 13a): a Split control on its toolbar lists the metric's label keys; its split rides the URL as `msplit=` beside `metric=` and `ml=` (in its `s:` token when there are extra panels) and is dropped by Overlay or another Series. While a metric is drawn by Replace the volume group-by (Level / Service / Host / None) is hidden, and a unit on the left axis widens it to 48px so the tick reads on one line. On the pinned plot a split is on Live's 2s `since=` poll like the rest of the main search, merged into the painted lines value by value. A saved search with its log table off and a metric drawn by Replace on the pinned plot shows no count in the sidebar, but a panels mark: it has no log rows to count.
-- A metric panel can merge metrics (#169, frames 17a–17j): up to three more beside its own (`lines: [{ metric, labels }]` on the panel in a saved search's JSON, `+m:` / `+l:` parts in its `w=` token), never with a split. Each line is fetched as its own series and drawn as a split's line is, on the one axis. A panel can name its lines (`names`: `"0"`–`"3"` for merged lines, a label value for a split's; 24 characters each), carry a `title` (80) and a `note` (160, plain text; `n:`, `t:`, `o:` in the token, written percent-encoded with `.` and `~` escaped). Saving a panel whose merged metrics have known, different units is refused with a 400 that names the line and both units; a metric sent in another unit after it was merged is left off with a line saying so. With no note, a one-line panel shows its metric's description (#167), marked as the sender's. The byte units print as people write them (`By`, `KiBy`, `MiBy`, `GiBy` → `B`, `KiB`, `MiB`, `GiB`); every other unit as sent. A panel is edited in place (17c–17e, 17i): the sliders button on the pinned plot's head or in an extra panel's footer marks it editing (one panel at a time, Escape or Done ends it). Its title and note become fields where they show (`PanelTitleField`, `PanelNoteField`; the title's placeholder is the one it makes, `avg · name + n`), and its lines open under it as wide as it is (`src/ui/components/panel-editor.tsx`, anchored to the cell's `data-panel`; its changes in `src/ui/panel-edit.ts`): merge or split, a name per line (names follow their lines when one is removed), and Add a line from the metric catalog, grouped by whether the unit fits; another unit is refused in place and offered a panel of its own while there is room for one. A field keeps what is typed while the panel keeps it trimmed (`src/ui/use-draft.ts`). Named lines get a legend under the plot with their values in place of end labels. In the pinned legend, hover or focus on a name dims the other lines and opens a card with its reading, metric, labels, unit and description (`lineInfo`, from `panelLines(...).legend`).
-- `GET /api/throughput` — `{ per_second, histogram: [{ t, n }] }`. Live events/s (last 5s of ingest, else last minute / 60). Histogram is 60 minutes from `logs_by_minute`. No extra store; the status footer draws it as an inline sparkline next to `/s`. Click opens search `range=1h` with Live on.
-- `GET /api/system` — `{ app, clickhouse }` process stats: `mem_used`, `mem_limit` (cgroup, or null on the host), `disk_used` / `disk_total` (the filesystem ClickHouse's default disk is on, everything on it; app `disk_used` is the SQLite file), `stored` / `stored_system` (ClickHouse only: bytes of its active parts, and of those in its `system` database, from `system.parts`), `cpu` (percent of cgroup CPUs, or of one core), `io_read` / `io_write` (bytes/s, ClickHouse only). First poll has null rates. ClickHouse comes from `system.metrics` / `system.asynchronous_metrics` / `system.events`; the app from RSS + cgroup files. No Docker socket. `clickhouse` is null if the query fails.
-- `GET/POST /api/saved-searches`
-- `PUT /api/saved-searches/:id` — name, query, range / from_ts / to_ts, optional `agg`, `widgets` (grid JSON), `cols` (promoted hunt-table keys, cap 3) and `archived` (true or false, `saved_searches.archived`, sheet 50: off Home, the header's suggestions and the palette for everyone; the hunt or board still opens by its link and a monitor on it keeps running); copies `query` onto linked alert rules. `GET` lists every saved search with its `archived`; `GET /api/home/since` reads no card for an archived one
-- `DELETE /api/saved-searches/:id` — 409 if an alert rule references it; a deleted Home is no longer Home
-- `GET/PUT /api/home` — `{ saved_id }`: the saved search the bare address opens on (#109), the instance's own (SQLite settings), `null` for none; a board is refused (400): Home is a saved hunt. `GET /` with no query string redirects (302) to that saved search's own URL — its `q`, window, series, panels, columns and `saved=` — so Copy link, the tab's name and “· edited” work as for any saved search. Any other URL opens as it says.
-- `GET /api/saved-searches/:id/run` — search result plus `count`, `value` (the saved search’s series: count or window `stat`), `refused`, `reason`
-- `POST /api/saved-searches/:id/test` — `{ count, value, agg, refused, reason, sample }`
-- `GET/POST /api/alert-rules` — `PUT /api/alert-rules/:id` — `DELETE /api/alert-rules/:id`. `kind` is `threshold` (the default) or `first_seen`. `threshold` is a positive finite number; for `first_seen` it is a whole number of events, at least 1. `body_kind` is `default` | `text` | `json` and `body_template` the body with `{{…}}` fill-ins, refused (400) when a fill-in is not the kind's or a JSON body does not parse. `GET` also says `link: true` when `TOPOSCOPE_PUBLIC_URL` is set. Every save names `service` (#335, `src/control/monitor-place.ts`; `alert_rules.service`, at most 200 characters): `POST`, `PUT /api/alert-rules/:id` and `PUT /api/monitors/:name` without one, and with none stored, answer 400 “A monitor names its service: the service it is about”; a save that leaves it out keeps the stored one. `host` (`alert_rules.host`) defaults to an HTTP(S) monitor's URL host or a TCP or certificate monitor's target host, and is kept when left out. Both come back on the rule. Monitors made before 0.10 name no service and are not kept: `migrateControlDb` removes every monitor whose service is empty at each start, with what is kept for it in SQLite, and logs how many; its ClickHouse results age out with retention.
-  Each rule is a monitor (#175) and also carries `source` (`search` for `threshold`, `fingerprints` for `first_seen`), `state` (`ok` | `open`), `remind_every` (`off` | `window` | `1h` | `4h` | `24h`; a new one defaults to `4h`), `resolved_body` (a text or JSON body's resolved call; refused for `first_seen`), `enabled`, and its last result (`last_result`, `last_value`, `last_result_at`). A search monitor also carries `opens_when` (`at_least` | `fewer_than`, #176; default `at_least`) and `cant_tell` (why a fewer-than monitor stayed shut on its last pass: `{ kind: "starting", at, until }` or `{ kind: "held", at, sources: [{ name, state }] }`, else null). `POST` and `PUT` take `remind_every`, `resolved_body`, `opens_when`, and `PUT` also `enabled` (pause). Fewer than on a `{avg|min|max|sum|p99}:key` agg, or on a saved search with a fixed `from`/`to`, is 400 with the reason. The list stays `{ rules, link }`.
-- `POST /api/alert-rules/test-call` — the dialog's test: the draft rule as it stands (unsaved), filled in from the last evaluation or, for `first_seen`, the last mark it would watch, POSTed now (5s). `{ ok, status, status_text, ms, at, reply (first 200 characters), sent, content_type, resolved }`; with a text or JSON body and a `resolved_body`, that one is sent after the open one and `resolved` is its result, otherwise `null`. 400 when there is nothing to fill it in from.
-- `GET /api/monitors` — every monitor (the rule plus `saved` — its saved search's `id`, `name`, `query`, `range`, `agg` — and `open`, its open stretch with its calls; a fewer-than monitor adds `last_line_at`, its search's newest matching line, null when none in a year, left out when it could not be read), the stretches open at any time in the window, each with its calls, and the new-fingerprints calls sent in it (`sent`). The window is `range=24h|7d|30d` (default 24h) or a hunt's `from`/`to` (at most 366d). `{ now, from, to, monitors, stretches, sent, results, sources, link }`: `results` are monitors' results in the window, for Watch's ticks (`{ monitor_id, at, result, exit_code, duration_ms, value, unit, message (cut to 300), host, via }`), cut into at most 240 columns a monitor, each the worst result of its column (fail > warn > ok, the later of equals). A push monitor carries `every_ms`, `grace_ms`, `due_from`, `started_at`, `last_ok_at`, and any monitor `paused_at`. No list prints a push monitor's key. `sources` (#333) is each linked source's monitors, read-only: `[{ source, at, monitors, stretches }]`, each monitor its definition with `service` and `host`, the stretches those open in the window, their results in `results` by id. `/api/alert-rules` stays as its alias for 0.6.
-- `POST /api/monitors/send` — the HTTP(S) editor's Send (18r): `{ url, method?, headers?, body?, conditions?, id? }` run once from this node, nothing stored; with `id`, a header given as `null` is that monitor's. `{ at, url, method, response: { status, status_text, http_version, headers, body (first 256 KB), body_bytes, truncated } | null, error, timings: { dns, connect, tls, wait, body, total }, cert: { subject, issuer, valid_to } | null, duration_ms, verdict: { result, line, why, lines: [{ text, level, pass, got, why }] } }`. An `http` monitor in `GET /api/monitors` also carries `http`: its `url`, `method`, `body`, header names, `every`, `conditions`, `fail_after`, `fails_in_row`, `next_run_at` and `last_run`.
-- `GET /api/monitors/:name` — one monitor and its last 200 stretches, newest first, with their calls; a push monitor's also has its `ping_key` (its page is the only place it is printed) and its `last` result. `PUT /api/monitors/:name` creates (201) or replaces (200) the monitor of that name, so a script or an agent can declare one: `{ source: "search" | "fingerprints", saved_search_id | saved_search (a unique name), threshold, webhook_url, opens_when?, body_kind?, body_template?, resolved_body?, remind_every? }`, or `{ source: "push", every?, grace?, webhook_url? (null: the default), remind_every?, key? (a random UUID the editor minted; a new one replaces the old) }`, or `{ source: "http", url, method?, body?, headers?, every?, conditions? (text, one a line, or a list), fail_after?, webhook_url? (null: the default), body_kind?, body_template?, resolved_body?, remind_every? }`, or `{ source: "tcp" | "cert", target (host:port), starttls? ("smtp" | "imap" | "pop3", cert only; null: TLS from the first byte), every?, conditions?, fail_after?, webhook_url?, body_kind?, body_template?, resolved_body?, remind_every? }`; what is left out takes its default, and a replace keeps the monitor's record, silence and pause. A push, HTTP(S), TCP or certificate monitor stays one, and no other monitor becomes one (400). With a token, each of these saves (and `POST`/`PUT /api/alert-rules`) needs a preview of the same body in the last 10 minutes (`POST /api/monitors/preview`, #360, `src/design/preview-gate.ts`), else 428; a body the save would refuse is refused there in the same words. A browser session needs none, nor a body that only pauses or silences on a change by id or a replace of a monitor that exists (which then only pauses or silences it). `PUT /api/alert-rules/:id` on a push monitor takes the same fields, keeping what it leaves out. `DELETE /api/monitors/:name` removes it and its record. Two monitors of one name answer 409.
-- `POST /api/monitors/:name/ack` (sheet 50g) — acknowledge the monitor's open stretch: who and when, for that stretch only; no body. It answers the monitor as `GET /api/monitors` lists it, with `acked: { at, by }`; acknowledging again keeps the first. No reminders go out while acknowledged; the resolved call still does. 409 `{ error: "<name> is not open" }` when it is not open, 404 when there is no such monitor, 403 for a Viewer.
-- `GET/POST /api/api-tokens` — `DELETE /api/api-tokens/:id` (create returns `token` once)
-- `GET/PUT /api/settings` — `{ retention_days, metrics_retention_days, retention_rules, instance_name, default_webhook_url }`. `retention_rules` (#477) is `[{ service, days }]`, at most 8, 1–730 days and not fewer than `retention_days`; a `retention_days` that would keep longer than a listed service is 400. `PUT` requires an integer from 1 to 365; invalid input is 400 before any SQLite write or TTL change. `metrics_retention_days` is an integer from 1 to 730, or `null` to follow `retention_days` (the default). `default_webhook_url` (#177) is an http(s) URL, or empty for none: called by any monitor without its own.
-- `GET /api/coverage` (#391, `src/query/coverage.ts`, words in `src/shared/coverage.ts`) — the last 24 h, per logs service: rows, error/fatal rows, and the share carrying `version` and `trace_id` (`logs_attr_keys_by_minute`), `host` (`logs_by_minute`), and a stack on error/fatal rows (`exception.stacktrace` or `exception.frames`; each minute cell counts the larger of the two, never their sum); `trace_id` is `null` for a service with no spans in the window, `stack` `null` with no error rows; deploy marks (`change_marks`, count and newest). A key is complete at 90%; `complete` counts services with every applicable key complete and a deploy mark. `mismatches` lists a service on spans, metrics (`labels['service']`) or marks that is a logs service but for case, a leading `v`, or an `-api` / `-svc` suffix, and a deploy mark whose `attrs.version` is not a `version` value on its service's rows (`logs_attr_values_by_minute`) but is one with or without a leading `v`. It never reads `logs`; a spans or metrics list that fails or times out drops out (`null`) instead of failing the answer.
-- Accepted gaps (#392, `src/control/coverage-accepted.ts`): `POST /api/coverage/accepted` `{ service, key }` (Operator; `key` is `version`, `host`, `trace_id`, `stack` or `marks`) accepts a gap at its share now; `DELETE /api/coverage/accepted?service=&key=` undoes it. SQLite `coverage_accepted` (service, key, share at accept, by, at) holds the ones in force and `coverage_accepted_log` records every accept, undo and clear with who and when. `GET /api/coverage` folds them in (`applyAccepted` in `src/shared/coverage.ts`): `accepted` lists each with who accepted it (their name; `by_role` for the hover), its share now and `state` `holds` | `back`; a held gap is in its service's `accepted` and is not counted against `complete`, Home's lines, the notes, or the event panel's no-stack line. A gap is `back` when its share (floored to a percent) falls below the share at accept, and is cleared (row deleted, logged `clear`) when the key reaches 90% or a deploy mark arrives.
-- `GET/PUT /api/fields` — `{ roles, links }` in SQLite. `roles` is attr key → `chart` | `lookup` | `ignore` (omit unset; default chart). `links` is log attr key or `service`/`host` → metric label (cap 8). Not in the search URL. Roles apply to new ingest only. `GET ?wave=keys|values|suggest` returns that catalog slice (`cheap=` for suggest tops); omit `wave` for the full catalog. `PUT` writes SQLite and returns `{ roles, links }` only.
+## Storage
 
-Unknown `/api/*` and `/v1/*` paths, and a wrong method on an ingest path, return JSON `{ error: "Not found" }` with **404** after auth and readiness checks. They do not use the UI HTML fallback.
+### ClickHouse tables
 
-`q` is compiled by `src/query/compile.ts` (boolean AST → parameterized SQL). A parse error is 400 `{ error, faults }`. See [query.md](query.md). `range` (`15m`, `1h`, `4h`, `24h`, `7d`, or `\d+(ms|s|m|h|d|w)` up to 365d) is resolved with `Date.now()` in the search handler and overrides `from`/`to`. Custom `from`/`to` spans clamp to 365d. Histogram buckets are `{ t, n, series, by_level }`. Bar width is auto (finest of `1ms`…`7d` with ≤200 bars: 15m → `10s`, 1h → `1m`, 30d → `4h`, 365d → `7d`, 730d → `7d`) unless `step=` pins a tick (clamped: 1–500 bars; 1 legal at the 1ms floor). Interval `< 1m` scans `logs`. `split=level|service|host|none` (default level) chooses the series keys. Level/service/host/none read `logs_by_minute` when the bar is ≥1m and `q` has no message terms and no attr filters. A single attr equality reads `logs_attr_values_by_minute` unless the value is UUID-like or the key is lookup/ignore (then `logs` + bloom). A comparison (`duration_ms:>100`) scans `logs`. A message term reads `logs` (text index on `message`, not `logs_by_minute`). A `logs` volume histogram always uses the read budget (including `1m+` bars); overflow returns `scan: { source: "refused", reason, histogram, events }` (200), not a 500. Service/host series cap at 8 keys plus `other`. `total` is the sum of histogram buckets. Optional `agg` adds a derived series (`rate`, or avg/min/max/sum/p99 of a numeric attr) from the volume histogram, `logs_attr_numeric_by_minute` when volume would use `logs_by_minute`, or matching `logs` rows (budgeted) when volume already scans `logs`. Overflow of that agg scan refuses the reducer (`source: "refused"`) instead of a partial p99. Optional `metric=` overlays an ingested metric from `metrics_by_minute` / `metrics`, read by its kind: a gauge as an average, a counter as a sum. A histogram takes its reading in front of the name, `metric=p99:http.server.request.duration` (`count`, `sum`, `avg`, `p50`, `p90`, `p99`; `p99` when none is given): a percentile sums bucket counts by bound over every matching series and bar, from `metric_buckets_by_minute` / `metric_buckets`, and is read off the sum (`src/shared/histogram-quantile.ts`). A histogram’s `<name>.count` or `<name>.sum` reads as that reading of `<name>`. The series result carries `kind`, and for a histogram `reading` and `metric`. Log `q` is not applied to that series. Mutually exclusive with `agg` on one request. Events paginate with `cursor` = the oldest row on the page as `<ts>~<seq>` (time, then arrival sequence), ordered `ts DESC, seq DESC`, so rows that share a millisecond page through without one dropped or repeated; a cursor without `~<seq>`, or a row stored before the sequence (`seq` 0), pages by time alone as before. Every log row is stamped at ingest with `seq`, a per-instance counter in arrival order (`src/ingest/arrival-seq.ts`): the counter is reserved 100,000 ahead in the `arrival_seq` table, so a restart starts above every number handed out, even after retention has aged out every row, and the instance keeps *settled up to N* (no insert still running holds a number at or below N). A minmax index on `seq` reads the newest numbers exactly. A newest-first page widens lookback from `to`/`cursor` (1m → 365d, clamped to `from`) instead of sorting the whole window. The floor / last lookback is budgeted the same way as a logs histogram. Load-more (`cursor=` without `since=`) skips the histogram and `agg`. `since=` live deltas skip lookback widening and already have a tight bound. Live polls send `since` (newest event, or last `to`) so ClickHouse only reads new rows and the in-progress histogram bucket; the UI merges those into the open page and fills the sliding window. A full search (no `since`) still runs every 30s while Live is on. Mergeable extra timeseries refresh on the 2s `since=` poll; whole-window aggregates stay on the 30s pass. Live chrome shows last-updated age only on cards that missed the last 2s poll. On the client every Live resource is an entry in one refresh registry (`src/ui/live-refresh.ts`) with its own cadence, abort controller and `fetchedAt`: the 2s delta and the 30s full search share a lane (the full pass wins and covers the delta); core facets, attr facets, numeric keys, metric names and attr keys are 30s entries a replace search also runs at once. In Live the facet chip row leads with the age of its oldest list (frame 36c), plate past one missed pass, muted while Live is paused for reading.
+| Table | Holds |
+| --- | --- |
+| `logs` | Log rows. Bloom skip indexes on `trace_id` and `mapValues(attr_map)`; a text index on `lowerUTF8(message)` (`TYPE text`, `splitByNonAlpha`) so a message term can prune granules; minmax indexes on `seq` and `src_seq`. |
+| `logs_by_minute` | Row counts per minute by service, level, `host` and `toposcope`. |
+| `logs_attr_keys_by_minute` | Attr **key names** per minute, service, level and host. |
+| `logs_attr_values_by_minute` | Indexable key/value pairs (≤64 chars; not JSON blobs or UUID-like ids) for single-attr histogram, count and facets. |
+| `logs_attr_numeric_by_minute` | Values that parse as finite numbers: count, sum, min, max and a p99 t-digest. |
+| `metrics` | Ingested metric points: name, value, labels map, and `kind`, `unit`, `description` columns. |
+| `metrics_by_minute` | Count, sum, min and max, no labels, keyed by name, minute, `kind`, `unit` and `toposcope`. |
+| `metric_buckets` | Histogram buckets: one row for each interval of each series, upper bounds in `le`, counts in `n`, plus one count for what was above them all. |
+| `metric_buckets_by_minute` | One row for each bound, so series with different bounds add up and an empty bound still says where the next bucket starts. |
+| `spans` | Spans from `POST /v1/traces` (`Span`, `src/shared/span.ts`). |
+| `profile_samples` | Samples from `POST /v1/profiles` (`ProfileSample`, `src/shared/profile.ts`). |
+| `monitor_results` | Every monitor result, push and checks alike ([Push monitors](#push-monitors)). |
+| `change_marks` | Change marks, kept apart from log rows. |
+| `arrival_seq` | The counter that orders rows by arrival ([Arrival positions](#arrival-positions)). |
 
-Facets drill down: each field is counted with its own filter removed, so `level:error` still lists every level while `service` and `host` narrow. A field may hold several values OR’d as `(level:error OR level:fatal)`; counts still omit that field’s own filter. Top-N widgets call the same endpoints with `omit=0` so they follow the full `q` (a Level Top-N with `level:error` shows error, not every level). Level, service, and host use the matching rollup (`logs_by_minute` or `logs_attr_values_by_minute`). Attr facets are opt-in (`af=` in the URL, max 8). Key names come from `logs_attr_keys_by_minute` when the minute MV applies, otherwise `mapKeys` on matching `logs`. Add facet and Top-N attr pickers omit lookup/ignore keys (Follow is the lookup path; the search-bar field menu still lists them). Pinned value lists and prefix search use the values rollup when the remaining query has no message/attr filters; otherwise they scan `attr_map` on `logs`. Pinned attr values refresh on the 30s Live pass and on q / range / `af` change, not 2s.
+Query and facets read `attr_map`. UUID-like, lookup-role or ignore-role equality scans `logs` (never the empty values summary) so the histogram `total` matches the table.
 
-Fields opens with **Coverage** (37j, 37q, `src/ui/components/coverage-section.tsx`) above the keys: a row per service with a bar per key (plate under 50%) and deploy marks. Services with a gap that is not accepted come first, largest (rows) first, 8 shown, then one line for the rest (`N more with gaps, smaller first · the smallest has N rows · Show all`); services complete or with only accepted gaps fold into **Complete or accepted · N**, and **Names that do not match** into one line (count, the first two pairs) that opens the pairs with a link to fix each at the source. Under the folds one muted line gives the rule (complete at 90%; `—` under trace_id when the service sends no spans), and the head links What an investigation reads (`docs/evidence.md`). **Find a service** (37r) matches any part of a name across every group, folded or not, under each group's own header; opened groups stay open in the browser (`localStorage` `toposcope.coverageOpen`), nothing in the URL. Home draws **What this answer stands on** (37k, 37s) under its cards: at most three lines, a mismatch on the selected mark first, then the incomplete services with the most rows, each with its lowest share, then `and N more services with gaps, the largest first · See them in Fields ›`; it never scrolls inside itself and is not drawn when nothing is missing. A gap cell opens Accept this gap / How to send it (37n, Operator); an accepted cell keeps its number with `accepted · undo`, and the head's `N gaps accepted · K came back` opens the Accepted gaps list (37o). The event panel's fingerprint line on an error or fatal row with no stack says its `e1` came from the message (37l); under the Compare fold, a selected deploy mark whose `version` is not one on its service's rows says the after side holds both releases (37m). Fields (`?view=fields`) lives under Settings (a Settings card opens it; the crumb returns) and reads a fixed last 24 h, not the hunt's clock. The table lists that window's keys (core `service` / `host` / `level` / display-only `message`, then Add facet’s chart keys plus lookup/ignore as “not charted”): event count, distinct values when the key is charted else “not charted” (`message` Values is `—`, Role `text` — not a picker). Role is `chart` default / `lookup` / `ignore` on attrs; optional metric-label link (cap 8). The catalog paints in three waves (keys, values, suggestions) with Stop / elapsed / a 2px bar; a window change dims the previous rows. Suggestions (role tint, dashed link chip) never write a row until clicked. A link is suggested only to a metric label of the field’s own name (or `service.version` for `version`) that shares a top value with it in the window; a shared value under another name is not suggested. Graph on a linked event-detail field sets `metric=` + `ml=` from the link; `+` still adds `key:value` to `q`. **Follow this value** (lookup or id-shaped Fields row) opens a new Follow workspace: token-only `q`, Live off; the previous workspace stays. The window is the value's first to last row within 24h either side of the event (never shorter than ±5m), read first by `GET /api/search/follow-span?q=&at=` (`{ n, first, last, pastBefore?, pastAfter? }`, one read under the logs read budget that also looks an hour past each end of the day). A value still seen past an end is cut at a day, and the chip says so ("cut at a day before"). One row, none, a refused read (`refused`), or a failed request opens ±5m. The tab's chip says which (`src/shared/follow-span.ts`); the clock stays editable, and once it moves the chip turns dashed with the opened span and **Reset** returns to it. Roles are per key name (nginx `type` and sendmail `type` are one field).
+Ingested metrics are not written into `logs` and are not a PromTSDB. Unlabeled overlays read `metrics_by_minute`; label matchers scan `metrics`. The overlay reducer on the minute rollup is avg. Both metric minute rollups key by `kind`, `unit` and `toposcope` before the bound (#331), so one name sent in ms and in s, or from two instances, stays in apart rows.
 
-The operator UI (Vite + React + shadcn/Tailwind, no React Router) keeps search state in the page URL via `history.replaceState`. Copy-link and back/forward restore the same search. The hunt table can show up to three extra attr columns between Host and Message (`cols=`); values come from the loaded page; missing cells are an em dash; Message-header `+` adds, header `×` removes. Follow copies the parent tab’s columns; New starts empty; Surroundings stays five-col. Saved searches store the same list. Counts (facet chips, Home's cards) default to compact `1.24K` / `3.04M`; Settings toggles Count format (human vs raw) and Timestamps (compact vs full) — this browser, not `/api/settings`. Compact event stamps follow the histogram date rule (`HH:MM:SS`, or `MM-DD HH:MM:SS` when the window is ≥1d, not today, or crosses midnight); Full is always `YYYY-MM-DD HH:MM:SS.mmm`. Hover `title` is the stored ISO. Params:
+### The toposcope column
+
+`toposcope` (#134) is a core field like `host`: a column on `logs` and the last key of every minute rollup (`logs_by_minute` and the three attr rollups), so `toposcope:<name> level:error` stays on the rollups.
+
+Rows ingested here are stamped with this instance's name from Settings (`src/shared/here.ts`, set at boot and on rename). While the instance has no name they store it empty, as before. Renaming starts a new value; rows already stored keep theirs. `GET /api/facets` counts it only when asked (`fields=toposcope`).
+
+### Arrival positions
+
+Every log row is stamped at ingest with `seq`, a per-instance counter in arrival order (`src/ingest/arrival-seq.ts`). The counter is reserved 100,000 ahead in the `arrival_seq` table, so a restart starts above every number handed out, even after retention has aged out every row. The instance keeps *settled up to N*: no insert still running holds a number at or below N. A minmax index on `seq` reads the newest numbers exactly.
+
+Every kind takes its position from the one counter (#324). `spans`, `metrics`, `metric_buckets`, `profile_samples` and `monitor_results` carry the columns `logs` has for it: `seq`, `arrived`, `toposcope`, `src_id`, `src_seq`, with minmax indexes on `seq` and `src_seq`. Change marks take a position from the same counter too (#138).
+
+The counter loads from every positioned table at boot, so a restarted source reports how far it has settled. Rows stored before 0.10 have position 0 and are never fed. Marks stored before 0.5.5 have no position and do not travel.
+
+### What boot creates
+
+- ClickHouse tables such as `logs_by_minute` and `logs_attr_values_by_minute` are created on boot, and missing day partitions are backfilled from `logs`.
+- `spans`, `profile_samples` and `change_marks` are created on boot.
+- Boot adds the `toposcope` column to rollups made before it, at the end of their key, keeping every row.
+- Boot makes a metric minute rollup with another key again and fills it from the stored points.
+- The per-name tables `metric_kinds`, `metric_units` and `metric_descriptions` are dropped at boot.
+- SQLite adds new tables and columns on boot.
+
+### Retention
+
+TTL is `toDate(ts) + INTERVAL {n} DAY`, never `TTL ts + …`:
+
+| Tables | TTL expression | `n` |
+| --- | --- | --- |
+| `logs`, `spans`, `profile_samples`, `change_marks` | `toDate(ts) + INTERVAL {n} DAY` | `retention_days` |
+| `monitor_results` | `toDate(at) + INTERVAL {n} DAY` | `retention_days` |
+| `logs_by_minute`, `logs_attr_keys_by_minute`, `logs_attr_values_by_minute`, `logs_attr_numeric_by_minute` | `toDate(minute) + INTERVAL {n} DAY` | `retention_days` |
+| `metrics`, `metric_buckets` | `toDate(ts) + INTERVAL {n} DAY` | `metrics_retention_days` when set, else `retention_days` |
+| `metrics_by_minute`, `metric_buckets_by_minute` | `toDate(minute) + INTERVAL {n} DAY` | `metrics_retention_days` when set, else `retention_days` |
+
+`retention_days` comes from SQLite settings (default 30, stored values clamped to 1–365). `metrics_retention_days` is 1–730. `PUT /api/settings` validates an integer from 1 to 365 before either write; invalid input is 400 before any SQLite write or TTL change.
+
+Services kept longer (`retention_rules`, #477) change the TTL of the tables that carry `service` — `logs`, its four minute rollups and `spans` — to `addDays(toDate(ts), transform(service, ['analytics', 'billing'], [730, 90], n))`, sorted by service. With none, the TTL stays the plain form above. Windows reach back 730 days (`MAX_RANGE_MS`, `src/query/relative.ts`); the UI lets a window pan back as far as the longest kept service.
+
+### Applying a TTL change
+
+Boot and valid `PUT` requests apply `ALTER TABLE ... MODIFY TTL` with `mutations_sync = 0, alter_sync = 0`: issue the change, do not wait for `MATERIALIZE TTL`.
+
+- Whether a table needs an `ALTER` is read from `engine_full`, so the same settings issue none. Tables already at `n` are left alone.
+- After validation, `PUT` writes SQLite first, so a later ClickHouse error cannot roll back the setting.
+- A valid lower retention can delete older data asynchronously.
+- Unfinished TTL mutations are killed before the new `ALTER`, so a failed materialize does not block the next save.
+
+### Compression
+
+`columnCodecs` in `src/shared/migrate.ts` names a codec for the columns that hold the most: ZSTD(1) on `logs.message`, `attrs`, `attr_map` and `trace_id` and on `logs_attr_values_by_minute.value`, and DoubleDelta or Delta before it on `logs.ts`, `logs.seq` and the rollup's `minute`. Every other column keeps ClickHouse's LZ4.
+
+Each start sets a codec that differs and leaves the rest. The change is metadata only, so parts written after it use it and older parts take it as they merge. On 500k generated rows `logs` held 28 MiB instead of 51 MiB and the values rollup 10 MiB instead of 15 MiB, with searches no slower.
+
+### Schema changes by release
+
+The upgrade notes in [Upgrades](upgrades.md) describe these in plain words. The exact names:
+
+| Release | Change |
+| --- | --- |
+| 0.5.0 | ClickHouse table `metric_kinds` (whether a metric name is a gauge or a counter). |
+| 0.5.2 | ClickHouse tables `metric_buckets` and `metric_buckets_by_minute` (histogram buckets). |
+| 0.5.4 | ClickHouse table `metric_units`. SQLite tables `sessions` (browser sign-ins) and `alert_sent_fingerprints`; new `alert_rules` columns `kind`, `last_mark`, `body_kind`, `body_template`. |
+| 0.5.5 | `logs` gains `seq` and `src_seq` (each with a minmax index), `toposcope`, `arrived` and `src_id`; `toposcope` is added to the end of each minute rollup's key; `change_marks` gains `seq` and `toposcope`; ClickHouse table `arrival_seq`. The first feed read adds a projection ordered by arrival to `logs`. SQLite gains `feeds`, `link_keys` and `links`. |
+| 0.5.7 | ClickHouse table `metric_descriptions`. |
+| 0.6.0 | SQLite columns on `alert_rules`, and tables `monitor_stretches`, `monitor_calls`, `monitor_results` and `monitor_http`. |
+| 0.6.1 | SQLite table `monitor_net` (TCP and certificate monitors) and `settings` rows `update_check` and `update_announced`. |
+| 0.6.2 | Optional `settings` row `metrics_retention_days`; applies to `metrics`, `metric_buckets` and their minute rollups. |
+| 0.7.0 | SQLite table `shares`; a share's use is written as `service:toposcope` rows in `logs`. |
+| 0.8.0 | Columns only: `saved_searches.pinned`, `alert_rules.measure` and `webhook_urls`, `api_tokens.last_used_at`, `links.paused`, and `shares.panels` and `raw_params`. |
+| 0.9.0 | SQLite `people`, `person_tokens`, `invites`, `owner_links`, `oidc_states` and new columns; 0.8.0 ignores them. Ingest tokens live in `api_tokens`, which is why ones made or imported on 0.9 keep working on 0.8.0. |
+| 0.10.0 | ClickHouse gains `monitor_results` and columns on `spans`, `metrics`, `metric_buckets` and `profile_samples`; SQLite gains `link_volume`, `pulled_monitors` and columns on `links`, `link_keys` and `alert_rules`. Monitor results kept in SQLite are not copied to ClickHouse; results of removed monitors in ClickHouse are not read. `metric_kinds`, `metric_units` and `metric_descriptions` are no longer read. |
+| 0.11.0 | Column `people.agent`. |
+| 0.12.0 | Changes column codecs in place and stops writing `logs.attrs` (only `attr_map`). |
+| 0.12.1 | Table `remembered_browsers` and column `sessions.remembered_until`. |
+| 0.13.0 | Tables `coverage_accepted`, `coverage_accepted_log` and `repositories`. |
+| 0.14.0 | SQLite table `github_connection` and column `repositories.path`; every board rewritten into panels at boot. |
+| 0.15.4 | `settings` row `retention_rules`; with a service kept longer it changes the TTL of `logs`, its minute rollups and `spans`. |
+
+## Ingest
+
+### Ingest routes
+
+Every ingest route takes `Authorization: Bearer` with the ingest token: env `TOPOSCOPE_INGEST_TOKEN` or a hashed row from `api_tokens`.
+
+| Route | Takes | Answers | Writes |
+| --- | --- | --- | --- |
+| `POST /api/ingest` | One event, a JSON array (max 500), or NDJSON; 1MB decoded | `{ ingested }` | `logs` |
+| `POST /v1/logs` | OTLP JSON or protobuf; up to 1,024 records; optional `Content-Encoding: gzip` inflates under the 1MB cap | `{ ingested }`, or an OTLP protobuf response for a protobuf request | `logs` |
+| `POST /v1/metrics` | OTLP JSON or protobuf (1MB decoded, gzip under that cap, no cap on points), or a JSON point or array (max 500, 1MB) `{ name, value, ts?, labels?, unit?, description? }` | `{ ingested }` | `metrics`, `metric_buckets` |
+| `POST /v1/prometheus/write` | Prometheus remote write 1.0 | | `metrics`, `metric_buckets` |
+| `POST /v1/traces` | OTLP JSON or protobuf; 1MB decoded (gzip under that cap); up to 1,024 spans | `{ ingested }` | `spans` |
+| `POST /v1/profiles` | OTLP JSON or protobuf; 1MB decoded (gzip under that cap); up to 1,024 `Profile`s | `{ ingested }` | `profile_samples` |
+| `POST /v1/marks` | A change mark or array (max 500, 1MB) | One object `{ ingested, id }`, array `{ ingested, ids }` | `change_marks` |
+| `POST /v1/probes` | A check or array (max 500, 1MB) | One object `{ ingested, up }`, array `{ ingested }` | metric `up` |
+| `POST /v1/checks` | One result or an array (max 500, 1MB; JSON or NDJSON) | `{ ingested, created }` | `logs`, metric `monitor_value`, `monitor_results` |
+| `GET\|POST /ping/<key>` | A push monitor's keyed URL, no token | `200 OK` | as `/v1/checks` |
+
+On logs, traces and profiles, the reply's partial success says what was not stored or was cut. `/v1/metrics` is not Prometheus scrape.
+
+### Backpressure
+
+HTTP ingest returns 503 when a write fails, or 429 with `Retry-After: 1` when ClickHouse is overloaded or insert capacity is exhausted. Traces and profiles answer 429 when ClickHouse is busy.
+
+Syslog UDP cannot return 429, so it retries busy inserts in process. Its in-memory queue to the ClickHouse insert holds at most 10,000 rows, inserted in batches of up to 500.
+
+### Logs over OTLP and syslog
+
+OTLP `POST /v1/logs` accepts JSON (`application/json`) or protobuf (`application/x-protobuf`). Both map to `LogEvent`, in this order: the record's own attributes, then a map body's top-level fields, then its trace and span ids, then the scope's name as `otel.scope.name`, and the resource's attributes last. So the 50-key cap cuts the resource first.
+
+Syslog UDP parses RFC 3164 into the same contract.
+
+### Metrics over OTLP
+
+From OTLP, a gauge is stored as it is and a counter as the amount per interval. A histogram becomes `<name>.count` and `<name>.sum` in `metrics` plus its buckets in `metric_buckets`. An exponential histogram is brought under explicit bounds, no finer than scale 3. A summary keeps its count and sum only.
+
+A counter, histogram or summary sent as a running total is converted at ingest from the last total of its series, kept in memory (`src/ingest/running-totals.ts`). After a restart, the first total from a series that was already running is only its baseline.
+
+Every point and bucket carries its name's `kind` (`gauge`, `counter` or `histogram`), `unit` (OTLP `unit`, or a JSON point's `unit`, as sent) and `description` as columns of `metrics` and `metric_buckets`, written at ingest (#331), so they travel with the point over a link. A name's kind, unit and description are read off its newest point that has one; the kind decides how a bar is read. A metric series and `GET /api/metric-names` carry the unit as `unit`.
+
+### Prometheus remote write
+
+`POST /v1/prometheus/write` stores each series the way the same metric would be stored from OTLP ([ingest guide](ingest.md#how-remote-write-series-are-stored)). A histogram's bucket series arrive spread over parallel requests. So its buckets wait in memory for the same histogram's next scrape, or 30 seconds, and are written whole; on a stop they are written at once.
+
+### Change marks
+
+`POST /v1/marks` takes `{ kind, title, ts?, service?, attrs?, id?, end_ts? }`. `kind` is `deploy` | `flag` | `incident` | `note`. A valid POST is always 200. It writes `change_marks`, not `logs`.
+
+- Omit `id` and ingest mints `mk_…`.
+- The same caller `id` without `end_ts`, while still open, is skipped (a CI retry; the glyph stays).
+- The same `id` with `end_ts`, while open, appends a close and **keeps the stored start**.
+- An already closed mark is skipped, not reopened.
+- `end_ts` must be after the start. An incident's duration draws a band on the hunt plot; other kinds stay points.
+
+### Probes
+
+`POST /v1/probes` takes an attach `{ service, up: 0|1, ts?, host?, check?, url? }` or a pull `{ service, url }` (`http`/`https`, 5s GET). Arrays are attach-only. `up` is the number `0` or `1`.
+
+- A failed pull (timeout, connect error, non-2xx) stores `up=0`, not a skip.
+- It writes the ingested metric `up` (labels `service` / `host` / `check` / `target` / `source`), not `logs`. Hunt paints it with the shipped Series overlay (`metric=up`).
+- An attached probe is also a push monitor's result (#177): `up` 1 is ok, 0 a fail, its monitor named by `check`, else `service`.
+- A result a monitor cannot take (500 push monitors, or a search monitor's name) adds `monitor_error` to the reply, and `up` is stored all the same.
+
+It is not a check editor, not `/api/health`, and not metric-threshold alerts.
+
+### Check results
+
+`POST /v1/checks` (#177) takes `{ monitor, status, message?, value?, unit?, every?, grace?, host?, service?, ts?, exit_code?, duration_ms? }`. `status` is `ok` | `warn` | `fail` | `0`–`3` (Nagios: ok, warning, critical, unknown).
+
+- A name not seen before creates a push monitor, up to 500 push monitors. Past that, or for a name a non-push monitor has, it answers 400 with the reason and stores nothing.
+- Each result is a log row: `service` the result's, else `monitor`; `level` `error` for a fail, `warn` for a warn, else `info`; attrs `monitor`, `status`, `source: push`, `exit_code`, `duration_ms`.
+- Its `value` is the metric `monitor_value` `{monitor}`.
+- Rows go to ClickHouse before SQLite moves, so a 429 or 503 changed nothing.
+- A request from `toposcope.sh check` (user agent `toposcope.sh/…`) is kept as coming through it.
+
+### Keyed pings
+
+`GET|POST /ping/<key>[/start|/fail|/<exit code>]` (#177) is a push monitor's keyed URL, in Healthchecks' shape. The key in the path is the credential, and it writes only that push monitor's result. It sits beside `/v1/`, which stays "token required".
+
+- Bare is ok, `/fail` a fail, `/<0–255>` ok on 0 and a fail otherwise.
+- `/start` begins a run: a row `signal:start`, and the next result's `duration_ms` is measured from it.
+- A POST body (first 10 KB) is the message.
+- Every key is compared with every push monitor's in constant time. An unknown key or path is `404 not found` and writes nothing.
+- A second start or result of one key within a second is `429` and writes nothing.
+
+### Traces
+
+OTLP `POST /v1/traces` maps `resourceSpans` to `Span` (`src/shared/span.ts`) and writes `spans`, not `logs`.
+
+A span's last `exception` event is kept in its `attrs` as `exception.type`, `exception.message`, `exception.stacktrace` and its `e1`, ahead of its other attributes. Other span events are dropped, and no log row is written from a span. A stored span keeps its own attributes, then the resource's, in one map: own first since 0.5.4, so the 50-key cap cuts the resource. Spans stored before 0.5.4 have the resource's first. Toposcope stores what arrives; sampling stays at the collector.
+
+### Profiles
+
+OTLP `POST /v1/profiles` maps each decoded `Profile` to `ProfileSample` rows (`src/shared/profile.ts`) and writes `profile_samples`, not `logs` or `spans`. One decoded `Profile` is one renderable unit; do not merge. Unlinked samples are stored with empty `trace_id` / `span_id`. Sampling, and whether `Link`s are attached, stay at the collector.
+
+### OTLP over gRPC
+
+A second listener (`src/ingest/otlp-grpc.ts`, `node:http2`, port `OTLP_GRPC_PORT`, default 4319, `0` off) serves the Export method of the logs, trace, metrics and profiles services. It holds no logic of its own. Each call's message is handed to the app as a protobuf `POST` to that signal's HTTP route, with the call's `authorization` metadata, and `content-encoding: gzip` when the message is compressed. The route's answer becomes the reply.
+
+So the token, the caps and the partial success are the HTTP ones. Status maps as:
+
+| HTTP | gRPC |
+| --- | --- |
+| 400 | `INVALID_ARGUMENT` |
+| 401 | `UNAUTHENTICATED` |
+| 413 | `RESOURCE_EXHAUSTED` |
+| 429, 503 | `UNAVAILABLE` |
+
+The server's settings say it will not push. Bun's default says it may, and a client built on nghttp2 then drops the connection. On SIGTERM it stops with the main listener: calls in flight get their reply.
+
+## Query and search
+
+### Compiling q
+
+The search bar compiles to ClickHouse filters on the server: `src/query/compile.ts` turns `q` into a boolean AST, then parameterized SQL. The UI never sends SQL. A parse error is 400 `{ error, faults }`. The language is in [Query language](query.md).
+
+- Core fields `level`, `service`, `host` (and `toposcope`) are equality on those columns.
+- Any other `key:value` whose key matches `[a-zA-Z_][a-zA-Z0-9_.]*` and is not reserved is equality on `attr_map[key]`. Reserved are `ts`, `message`, `tenant_id` and the core fields (`src/shared/attrs.ts`). `path`, `status`, `user_id` are ordinary map keys.
+- A prefix glob `status:5*` is `startsWith` on that field.
+- A comparison (`>`, `>=`, `<`, `<=`) is true only when the attr parses as a finite number and the operator holds. `not` / `-` is boolean NOT of that predicate, so missing and non-numeric values match the negation.
+- Bare words are tokens of `message`: `splitByNonAlpha` after `lowerUTF8`.
+- A phrase (`"connection reset"`) is `hasToken` per word plus `hasSubstr` on `splitByNonAlpha(lowerUTF8(message))` (consecutive tokens). ClickHouse 26.3 has no `hasPhrase`.
+
+### Windows and bar width
+
+`range` (`15m`, `1h`, `4h`, `24h`, `7d`, or `\d+(ms|s|m|h|d|w)` up to 730d) is resolved with `Date.now()` in the search handler and overrides `from`/`to`. Custom `from`/`to` spans clamp to 730d (`clampSearchSpan` keeps `to` and raises `from`; `MAX_RETENTION_DAYS`, `src/query/relative.ts`).
+
+Bar width is auto unless `step=` pins a tick: the finest of `1ms`…`7d` with ≤200 bars. So 15m → `10s`, 1h → `1m`, 30d → `4h`, 365d → `7d`, 730d → `7d`. A pinned `step=` is clamped to 1–500 bars (1 is legal at the 1ms floor); ticks over 500 bars are disabled.
+
+Histogram buckets are `{ t, n, series, by_level }`: a `series` map, and `by_level` when the split is level. `split=level|service|host|none` (default level) chooses the series keys. Service and host series cap at 8 keys plus `other`. Search `total` is the sum of the histogram buckets, with no extra `count()` on `logs`.
+
+### Which table a hunt reads
+
+| The hunt | Reads |
+| --- | --- |
+| A bar ≥1m, no message terms, no attr filters (host filters, split-by-host, and core-field `OR` / `NOT` / `-` included) | `logs_by_minute` |
+| A bar `< 1m` | matching `logs`, under the read budget |
+| A single attr equality or prefix glob (`status:5*`, or `status:500 OR status:502`) with a bar ≥1m | `logs_attr_values_by_minute` |
+| UUID-like value, or a lookup-role or ignore-role key | `logs`, with the bloom on `trace_id` and `mapValues(attr_map)` |
+| Two or more attr keys, an attr under `NOT`, `level:error OR status:500`, or a comparison (`duration_ms:>100`) | `logs` |
+| A message term | `logs`, using the text index on `message` |
+
+The values rollup is equality and prefix, and the numeric rollup is p99/avg; neither is a range index, so a comparison scans `logs`. Values longer than 64 characters, JSON blobs and UUID-like ids are not rolled up. Monitors use the same rollups.
+
+### The read budget
+
+A `logs` volume histogram always uses the read budget, including `1m+` bars. Overflow returns `scan: { source: "refused", reason, histogram, events }` with a 200, not a 500: the chart is refused rather than partial.
+
+The API `idleTimeout` is 120 seconds, so long bounded searches are not killed by Bun's shorter default.
+
+### Derived series
+
+Optional `agg` adds a derived series to the histogram: `rate`, or avg/min/max/sum/p99 of a numeric attr. The reply's `agg` is `{ expr, source: numeric|rate|refused|metric, reason?, buckets: [{ t, v }], stat }`.
+
+- Rate is count / bucket width from the volume histogram.
+- A numeric reducer reads `logs_attr_numeric_by_minute` only when volume would use `logs_by_minute` and the bar is ≥1m.
+- Message terms, extra attrs, a single-attr `q`, a comparison, or a sub-minute bar scan matching `logs` with a hard read budget (`throw`) rather than lie from a minute rollup. So `agg=p99:duration_ms` on a comparison query is the p99 of the matching rows.
+- Overflow or timeout of that scan refuses the reducer (`source: "refused"`, `p99/avg over this query exceeds the scan budget`), never a partial p99.
+- Lookup and ignore keys refuse (`p99/avg need a numeric field`).
+- Window `stat` is the reducer over the window. For p99 it is `quantileTDigestMerge` over the window, not an average of per-bucket p99s.
+- Empty buckets are `null`, not 0.
+- Load-more skips `agg`. `agg` and `metric=` are mutually exclusive on one request.
+
+### Metric series
+
+Optional `metric=` overlays an ingested metric from `metrics_by_minute` / `metrics`, read by its kind: a gauge as an average, a counter as a sum. Log `q` is not applied to that series, and `metric=` skips log `agg`. Unlabeled bars of 1m or more read `metrics_by_minute` (avg); label matchers (`ml=`, cap 4) and sub-minute bars scan `metrics`.
+
+A histogram takes its reading in front of the name, `metric=p99:http.server.request.duration`: `count`, `sum`, `avg`, `p50`, `p90` or `p99`, and `p99` when none is given. A percentile sums bucket counts by bound over every matching series and bar, from `metric_buckets_by_minute` / `metric_buckets`, and is read off the sum (`src/shared/histogram-quantile.ts`). A histogram's `<name>.count` or `<name>.sum` reads as that reading of `<name>`. The series result carries `kind`, and for a histogram `reading` and `metric`.
+
+### Metric splits
+
+A metric series takes `msplit=<label>` on `GET /api/search` (#104): one line per value of that label, the 8 with the most points and `other` for the rest. Each is read the way the metric is: a gauge's average, a counter's sum, a histogram's reading (a percentile from each value's summed buckets).
+
+- It reads the stored points, as label matchers do, and `ml` still narrows it.
+- The reply carries `split` and `splits: [{ key, buckets, stat }]`.
+- `toposcope` is a split key and an `ml` matcher on points. `GET /api/metric-labels` offers it once points came from more than one instance.
+- Unlabeled bars of a minute or more read the split by kind and unit off the minute rollups, which key by them. A label split, a matcher or a finer bar reads the stored points.
+- A histogram's average pairs each count with its sum on the points.
+
+### Units that differ
+
+When a name's points in the window carry more than one kind or unit (#331), the series splits by them, beside any label split, never summing what disagrees. Each line has its `kind` and `unit`, and the reply adds `units_differ: [{ kind, unit, sources, first, last }]`: the instances those points entered at, and the first and last of them.
+
+A point with no kind reads as the name's own. One with no unit is apart only when two others disagree. A percentile is read off buckets summed within one unit.
+
+### Histogram heatmap
+
+A histogram metric's `heatmap` reading (#238; `heatmapSeries` in `src/query/metric-series.ts`) answers its p99 per bar (`buckets`, `stat`) plus `heat { le, cells: [{ t, n[] }] }`. The cells are the bucket counts summed by bound per bar, from `metric_buckets_by_minute` at ≥1m or the points below, laid on the union of bounds (`heatCells`). It takes no split.
+
+### Event pages and cursors
+
+Event pages are `ORDER BY ts DESC, seq DESC LIMIT 100`. A newest-first page starts in a 1-minute lookback from `to` / `cursor` and widens (4m, 16m, 1h, 4h, 24h, 7d, 30d, 90d, 365d, 730d) until it fills or hits `from`, so a dense window does not sort the whole table. The floor / last lookback is budgeted like a logs histogram and refuses (`scan.events`) rather than a 500.
+
+Events paginate with `cursor` = the oldest row on the page as `<ts>~<seq>` (time, then arrival sequence). So rows that share a millisecond page through without one dropped or repeated. A cursor without `~<seq>`, or a row stored before the sequence (`seq` 0), pages by time alone as before.
+
+- Load-more (`cursor=` without `since=`) returns events only: `histogram` is `[]`, `total` is `0` and `agg` is skipped. The UI keeps the first search's chart.
+- `events=0` skips the event page and lookback widening (Logs-off widgets); histogram, `agg` and `total` still run over the full window.
+- `since=` live deltas skip lookback widening and already have a tight bound.
+
+### Whether anything was ingested
+
+`ingested` says whether `logs` has any row, not this window, so the UI can say "No events match `q` in the last 1h" instead of "No events ingested yet." A refused logs scan shows the refuse reason instead.
+
+Full searches that already have histogram or event hits set it true without a probe; an empty window probes `SELECT 1 … LIMIT 1`. Load-more and empty live `since=` deltas omit it, so the UI keeps the last known store state.
+
+### Live polling
+
+Live keeps sending the same `range`, so the window ends now; Custom + Live slides the From/To duration on the client. Live polls send `since` (the newest event, or the last `to`), so ClickHouse only reads new rows and the in-progress histogram bucket. `since` is ISO: events with `ts >= since`, and the histogram only from that bucket onward, so `total` is partial and the UI merges. The client fills empty buckets so the chart scrolls and the sliding window stays full. A full search (no `since`) still runs every 30s while Live is on.
+
+- Mergeable extra timeseries refresh on the 2s `since=` poll like the pinned plot: rollup-backed volume, rate, min, max and sum, and unlabeled metric bars.
+- Whole-window aggregates stay on the 30s pass: Top-N except a complete level projection, window p99/avg, logs-scan extras and labeled metric scans. The logs-scan reducer is skipped on 2s polls.
+- Count and rate stats are projections of the merged primary histogram.
+- Only the active Search tab polls (Follow if Live is on; Surroundings and boards do not).
+- Live polls skip a `q` that fails to compile and keep the last-good results.
+
+### The client refresh registry
+
+On the client every Live resource is an entry in one refresh registry (`src/ui/live-refresh.ts`) with its own cadence, abort controller and `fetchedAt`. The 2s delta and the 30s full search share a lane; the full pass wins and covers the delta. Core facets, attr facets, numeric keys, metric names and attr keys are 30s entries that a replace search also runs at once. Pinned attr values refresh on the 30s pass and on `q` / range / `af` change, not 2s.
+
+Live chrome shows last-updated age only on cards that missed the last 2s poll. In Live the facet chip row leads with the age of its oldest list (frame 36c): plate past one missed pass, muted while Live is paused for reading.
+
+### Facets
+
+Facets drill down: each field is counted with its own filter removed, so `level:error` still lists every level while `service` and `host` narrow. A field may hold several values OR'd as `(level:error OR level:fatal)`; counts still omit that field's own filter. Top-N widgets call the same endpoints with `omit=0`, so they follow the full `q`: a Level Top-N with `level:error` shows error, not every level.
+
+- Level, service and host use the matching rollup (`logs_by_minute` or `logs_attr_values_by_minute`).
+- Attr facets are opt-in (`af=` in the URL, max 8).
+- Key names come from `logs_attr_keys_by_minute` when the minute rollup applies, otherwise `mapKeys` on matching `logs`.
+- Add facet and Top-N attr pickers omit lookup and ignore keys: Follow is the lookup path. The search-bar field menu still lists them.
+- Pinned value lists and prefix search use the values rollup when the remaining query has no message or attr filters; otherwise they scan `attr_map` on `logs`.
+- The empty state that lists other values per field is sheet 48.
+
+### Fingerprint cuts
+
+`GET /api/search/cut` returns fingerprint sets (first seen / still here / stopped) around a stored mark. The after side runs from the mark to `opened` (or the window's end). The before side is as long, but at least an hour (`windows.beforeMs`), so a young mark is compared with the whole hour before it.
+
+- While the after side is shorter (`windows.waiting`), Stopped is not called: its set carries `waiting: { haveMs, needMs }` and no rows.
+- A closed incident band keeps equal sides.
+- Other marks inside either side come back as `windows.inside` (the four nearest the cut, `insideMore` for the rest). A first-seen row names the later mark it follows (`follows`).
+- Returned `windows` drive both the rail labels and the plot wash, so bucket width does not change the cut.
+
+### Counting a cut
+
+Before it counts, a cut asks which fingerprint keys (`e1`, `e2`, …, #142) the hunt's rows carry on each side, without the hunt's own id terms (`cutFingerprintKey`). One key is read under that key (`key` in the reply when it is not `e1`). More than one returns `revisions` (each side's keys) and no sets, since one error has an id under each set of rules. `GET /api/search/revisions` answers the same for the Compare fold, which shows no delta when a hunt on an id spans two. The new-fingerprints alert refuses across two keys, and pages `e1` ids only.
+
+Cut counts and samples use exact half-open `[from, to)` log timestamp bounds under the scan budget. Each side reads up to 201 distinct `e1` counts. If either exceeds the 200-id limit, the cut refuses with no sets, so missing ranks cannot become first seen or stopped. A count refusal returns no sets; a sampling refusal keeps counts with a warning.
+
+### Compare windows
+
+Compare vs a mark does **not** use the cut route and keeps equal windows: the fold issues two `GET /api/search` (`events=0`, same `q` / `agg` / `metric` / `split`) for the after and before windows. Histogram `split` (`level` | `service` | `host` | `none`) is the hunt control; `none` is one row, otherwise one row per series key (cap 8 + `other`).
+
+Compare adds `exact=1` for half-open `[from, to)` timestamp bounds. Histogram and numeric reads then scan `logs` under the read budget; metric reads use the exact sample timestamps. Repeated `keep=` values (cap 8 named keys) retain the plot's service/host keys in both windows and fold every remaining key into `other`. With a metric, `other=1` and the same `split` / `keep` exclude those named label values when reading its samples. These options do not change the hunt query or URL.
+
+### Coverage
+
+`GET /api/coverage` (#391, `src/query/coverage.ts`, words in `src/shared/coverage.ts`) reads the last 24 h, per logs service, from the minute rollups and `change_marks`. It never reads `logs`, so the table costs no scan of the rows.
+
+- Per service: rows, error/fatal rows, and the share carrying `version` and `trace_id` (`logs_attr_keys_by_minute`), `host` (`logs_by_minute`), and a stack on error/fatal rows (`exception.stacktrace` or `exception.frames`; each minute cell counts the larger of the two, never their sum).
+- `trace_id` is `null` for a service with no spans in the window; `stack` is `null` with no error rows.
+- Deploy marks: count and newest.
+- A key is complete at 90%. `complete` counts services with every applicable key complete and a deploy mark.
+- A spans or metrics list that fails or times out drops out (`null`) instead of failing the answer.
+
+`mismatches` lists a service on spans, metrics (`labels['service']`) or marks that is a logs service but for case, a leading `v`, or an `-api` / `-svc` suffix. It also lists a deploy mark whose `attrs.version` is not a `version` value on its service's rows (`logs_attr_values_by_minute`) but is one with or without a leading `v`.
+
+### Accepted gaps
+
+Accepted gaps (#392, `src/control/coverage-accepted.ts`) live in SQLite: `coverage_accepted` (service, key, share at accept, by, at) holds the ones in force, and `coverage_accepted_log` records every accept, undo and clear with who and when.
+
+`GET /api/coverage` folds them in (`applyAccepted` in `src/shared/coverage.ts`). `accepted` lists each with who accepted it (their name; `by_role` for the hover), its share now and `state` `holds` | `back`. A held gap is in its service's `accepted` and is not counted against `complete`, Home's lines, the notes, or the event panel's no-stack line. A gap is `back` when its share (floored to a percent) falls below the share at accept. It is cleared (row deleted, logged `clear`) when the key reaches 90% or a deploy mark arrives.
+
+## Auth and sessions
+
+### Who may call what
+
+| Path | Credential |
+| --- | --- |
+| `GET /api/health`, `GET /api/metrics` | None: open. |
+| Browser UI and all other `/api/*` routes | A person: a session cookie from signing in, or `Authorization: Bearer` with a personal or service account token (`tsp1_…`). HTTP Basic is refused. |
+| `POST /api/ingest`, `POST /v1/logs`, `/v1/metrics`, `/v1/marks`, `/v1/checks`, `/v1/probes`, `/v1/traces`, `/v1/profiles` | Also `Authorization: Bearer` with env `TOPOSCOPE_INGEST_TOKEN` or a hashed row from `api_tokens`. |
+| `/share/v1/*` (#225) | A share's secret (`Authorization: Bearer tss1_…`) or ticket, and nothing else ([Shares](#shares)). |
+| `/link/v1/*` | A link key's secret or the link's own secret ([Link keys and routes](#link-keys-and-routes)). |
+| `/ping/<key>` (#177) | No password and no token: the key in the path is the credential ([Keyed pings](#keyed-pings)). |
+
+A person signs in with email, password and two-step, or the OIDC provider (`src/control/people.ts`, `two-step.ts`, `oidc.ts`). Each route names its row of the role table (`src/control/roles.ts`), and every write is stamped with its actor (`src/control/actors.ts`). The first Owner comes from `bun run src/cli.ts owner-link <email>` on the host.
+
+On `/share/v1/*` the password, a session and the ingest token answer `401`; a share's secret answers `401` everywhere else; and a refusal there never sends `WWW-Authenticate`.
+
+### Signing in
+
+Signing in (#102): a browser asking for a page (`GET` with `Accept: text/html`, not `/api` or `/v1`) without credentials gets the sign-in page. It is a `401` with no `WWW-Authenticate`, so it never shows the native prompt.
+
+- `POST /api/sign-in` (form or JSON `{ password, next }`, no auth) answers a wrong password after 750 ms.
+- The right one sets `toposcope_session_<8 hex of the instance id>` (HttpOnly, SameSite=Strict, Secure over HTTPS, 30 days) and `303`s back to `next`, a path on this instance.
+- The cookie names a row in SQLite `sessions` and is signed with a key made from the password, so changing the password ends every sign-in.
+- `POST /api/sign-out` deletes the row and clears the cookie.
+- An API call with no credentials keeps `401` and the challenge; one that carries a cookie that no longer works gets `401` without it.
+- The realm is `toposcope · <name>` once the instance has a name.
+
+### Instance identity
+
+`GET /api/instance` answers `{ id, name, address, session }`:
+
+- `id` is made once and kept in SQLite settings. It is not shown without the password.
+- `name` is set in Settings (`PUT /api/settings` `instance_name`, at most 64 characters, empty unsets it). It is also on the sign-in page, the realm, the tab title (`<name> · toposcope`, or the address while unnamed) and the header.
+- `address` is the address the browser opened.
+- `session` is `{ kind: "cookie", expires_at }` or `{ kind: "basic" }`.
+
+Packaged boot refuses missing, empty, or demo (`toposcope` / `toposcope-ingest`) secrets and does not listen. `bun run dev` may fill localhost defaults.
+
+### People and agents
+
+`src/ui/agents.ts` builds frame 34a's two lists (what an agent may and may never do) from the roles table in [People and roles](people.md#roles). Keep the table's rows in step with it.
+
+## HTTP routes
+
+Unknown `/api/*` and `/v1/*` paths, and a wrong method on an ingest path, return JSON `{ error: "Not found" }` with **404** after auth and readiness checks. They do not use the UI HTML fallback. Ingest routes are under [Ingest routes](#ingest-routes); feeds, links and shares under their own sections.
+
+### Health and process
+
+| Route | Answers |
+| --- | --- |
+| `GET /api/health` | `{ ok, phase, clickhouse, sqlite, version }` |
+| `GET /api/metrics` | Prometheus text |
+| `GET /api/throughput` | `{ per_second, histogram: [{ t, n }] }` |
+| `GET /api/system` | `{ app, clickhouse }` process stats |
+
+`GET /api/health`: `phase` is `starting` | `schema` | `repair` | `ready`. `version` is the running release: the `package.json` version, the same string as the image tag. It answers **200** only when `phase` is `ready` and both stores ping; otherwise **503**. Hunt and ingest are 503 until ready. The process listens before migrate, so Compose can healthcheck during schema.
+
+`GET /api/throughput`: live events/s is the last 5s of ingest, else the last minute / 60. The histogram is 60 minutes from `logs_by_minute`; there is no extra store. The status footer draws it as an inline sparkline next to `/s`. A click opens search `range=1h` with Live on.
+
+### System stats
+
+`GET /api/system` reports, for the app and ClickHouse:
+
+- `mem_used`, `mem_limit` (cgroup, or null on the host)
+- `disk_used` / `disk_total`: the filesystem ClickHouse's default disk is on, everything on it. The app's `disk_used` is the SQLite file.
+- `stored` / `stored_system` (ClickHouse only): bytes of its active parts, and of those in its `system` database, from `system.parts`
+- `cpu`: percent of cgroup CPUs, or of one core
+- `io_read` / `io_write`: bytes/s, ClickHouse only
+
+The first poll has null rates. ClickHouse's come from `system.metrics` / `system.asynchronous_metrics` / `system.events`; the app's from RSS and cgroup files. There is no Docker socket. `clickhouse` is null if the query fails.
+
+### Search
+
+`GET /api/search?from=&to=&range=&q=&cursor=&since=&limit=&split=&step=&agg=&metric=&ml=&events=` answers `{ events, histogram, total, nextCursor, from, to, ingested?, agg?, scan? }`. `range` or `from`+`to` is required. How it reads is under [Query and search](#query-and-search).
+
+| Param | Values |
+| --- | --- |
+| `split` | `level` (default), `service`, `host`, `none` |
+| `step` | `1ms\|10ms\|100ms\|1s\|10s\|1m\|5m\|15m\|1h\|4h\|1d\|7d`; omit for auto |
+| `agg` | `rate` or `{avg\|min\|max\|sum\|p99}:key`; omit for volume only |
+| `metric` | an ingested metric name (`cpu_seconds`), with a histogram's reading in front |
+| `ml` | label matchers (`service:api,host:api-1`, cap 4) |
+| `msplit` | a metric label to split by |
+| `events=0` | skip the event page and lookback widening |
+| `since` | ISO; the live-tail delta |
+| `cursor` | ISO `<ts>~<seq>`; Load more, events only |
+| `exact=1`, `keep`, `other=1` | Compare's bounds and series ([Compare windows](#compare-windows)) |
+
+### Search around an event
+
+| Route | Answers |
+| --- | --- |
+| `GET /api/search/context?ts=&service=&host=&n=&q=` | `{ before, after }` surrounding events (default 50, max 200) on the same service, and host when `host` is set. Optional `q` ANDs the search bar (Matching). |
+| `GET /api/search/around?ts=&from=&to=&q=&n=` | `{ before, after }` (default 50, max 200) in the hunt window, not scoped to a service. It does not rewrite `q`; optional `q` ANDs a filter. `before` is older (oldest first); `after` is newer (closest first). Focus in logs reads it. |
+| `GET /api/search/follow-span?q=&at=` | `{ n, first, last, pastBefore?, pastAfter? }` ([Follow this value](#follow-this-value)) |
+| `GET /api/search/cut?mark=&opened=&from=&to=&range=&q=&live=` | Fingerprint sets around a stored mark; `mark` is required ([Fingerprint cuts](#fingerprint-cuts)). |
+| `GET /api/search/revisions?q=&from=&after=&to=` | Each side's fingerprint keys, for the Compare fold. |
+
+### Facets and keys
+
+| Route | Answers |
+| --- | --- |
+| `GET /api/facets?from=&to=&range=&q=&limit=&omit=` | `{ level, service, host }` (core fields only), each a top-N `{ v, n }` list (default 10, max 50). Each field omits its own filter, so a facet chip can switch values; `omit=0` keeps the full `q` (Top-N). Also `e1`: the window's ten loudest fingerprints over the full `q`, for the slice's fingerprint chips. `fields=toposcope` adds that field. |
+| `GET /api/attr-keys?from=&to=&range=&q=` | `{ keys: [{ k, n }] }` (up to 200) in the window, for Add facet |
+| `GET /api/attr-facets?from=&to=&range=&q=&attrs=path,user_id&limit=&omit=` | `{ [key]: [{ v, n }] }` top-N per pinned key (max 8 keys; default 10 values, max 50). Same `omit` as `/api/facets`. |
+| `GET /api/attr-values?from=&to=&range=&q=&key=&prefix=` | `{ values: [{ v, n }] }`: prefix match on one map key, for a prefix typed on a pinned group |
+| `GET /api/numeric-keys?from=&to=&range=&q=` | `{ keys: [{ k, n }] }`: numeric-rollup keys when the minute rollup applies, empty otherwise |
+
+The histogram Series picker lists `GET /api/numeric-keys` (duration_ms first, cap 8, keeping the current `agg` key) with p99/avg/max/min/sum; Rate is always on the menu. It then lists `GET /api/metric-names` (cap 8, keeping the URL's name).
+
+### Metric catalog
+
+`GET /api/metric-names?from=&to=&range=&find=&picked=` answers `{ keys: [{ k, n, kind, unit?, description? }], total, picked }`: ingested metric names with points in the window, from `metrics_by_minute`, busiest first (up to 200), each with its kind read off its points. It ignores log `q`.
+
+- `total` counts every name with points.
+- A histogram is one name: its `<name>.count` and `<name>.sum` are not listed beside it, and a picked `<name>.count` is answered with `of` and `reading`.
+- `find` keeps the names that contain it, in any case.
+- `picked` (comma-separated) answers for names a card already holds, points or not.
+- The Series list shows the eight busiest and finds the rest by typing.
+
+`GET /api/metric-labels?name=&from=&to=&range=` answers `{ labels: [{ key, values }] }`: the label keys a metric's points carry in the window, with how many values each (a histogram's from its `.count` and `.sum`), for a panel's split picker.
+
+### Marks, probes, traces and profiles
+
+| Route | Answers |
+| --- | --- |
+| `GET /api/marks?from=&to=&range=&kind=&service=` | `{ marks, before, after }`: the newest 10,000 in the window, listed oldest first (#252, #253). `before` / `after` are the nearest neighbors outside the window. |
+| `GET /api/probes?from=&to=&range=&service=` | `{ probes }` (cap 500, oldest first). Each sample is `{ ts, service, host, check, target, up, source }`. |
+| `GET /api/traces/:trace_id` | `{ spans, total }` for one request |
+| `GET /api/profiles?trace_id=&span_id=` | One Profile's samples linked to that pair |
+
+Marks and probes need `range` or `from`+`to`, and a sign-in. A mark pulled over a link (#138) says `toposcope`, the instance it was posted at, and its id ends with `@` and that name. Search and Follow draw marks on the pinned volume plot; Surroundings does not. Extra time charts and board time charts draw the window's marks too ([Panels and the grid](#panels-and-the-grid)).
+
+### Traces and profiles reads
+
+`GET /api/traces/:trace_id`: the id must be 32 hex, not all zeros (400 otherwise; it is lowercased). It answers 200 even when empty, not a 404. The cap of 500 keeps the longest-duration branches plus their ancestors; `total` is the unclipped count. Each span carries `toposcope` (the instance it entered at) and `pulled_at` (when it arrived here over a link; null for its own, #330).
+
+View trace joins when a log alias (`trace_id`, then `request_id`, then `traceid` / `req_id`) has that 32-hex shape; `req-…` is Follow only. Histogram, Follow and `q` stay on `logs`.
+
+`GET /api/profiles` requires a 32-hex `trace_id` and a 16-hex `span_id` (400 otherwise), and matches an exact `Link` only. It answers 200 even when empty.
+
+- If several Profiles match, it picks the latest; `total_profiles` is the matching count, including the one rendered.
+- It folds identical stacks inside that Profile only.
+- The cap is the 500 heaviest stacks; `total_samples` is the unclipped folded stack count.
+- The reply names where the profile entered (`toposcope`) and when it was pulled (`pulled_at`, #332).
+
+### Saved searches and Home
+
+| Route | Does |
+| --- | --- |
+| `GET/POST /api/saved-searches` | Lists and makes saved searches. |
+| `PUT /api/saved-searches/:id` | Name, query, range / from_ts / to_ts, optional `agg`, `widgets` (grid JSON, including `metric` / `metricLabels`), and `cols` (promoted hunt-table keys, cap 3). Copies `query` onto linked alert rules. |
+| `DELETE /api/saved-searches/:id` | 409 if an alert rule references it. A deleted Home is no longer Home. |
+| `GET /api/saved-searches/:id/run` | The search result plus `count`, `value` (the saved search's series: count or window `stat`), `refused`, `reason` |
+| `POST /api/saved-searches/:id/test` | `{ count, value, agg, refused, reason, sample }` |
+| `GET/PUT /api/home` | `{ saved_id }` |
+| `GET /api/home/since` | What Home draws ([Home](#home)). |
+
+`/api/home`'s `saved_id` is the saved search the bare address opens on (#109), the instance's own (SQLite settings), `null` for none. A board is refused (400): Home is a saved hunt. `GET /` with no query string redirects (302) to that saved search's own URL — its `q`, window, series, panels, columns and `saved=` — so Copy link, the tab's name and "· edited" work as for any saved search. Any other URL opens as it says.
+
+A saved search can be archived (sheet 50): `saved_searches.archived`, `INTEGER NOT NULL DEFAULT 0`, added at boot as `pinned` was. `PUT /api/saved-searches/:id` takes `archived` (true or false; anything else is a 400), and `GET` lists it on every row. An archived hunt or board is left out of Home, the header's suggestions and the command palette for everyone. It still opens by its link, and a monitor on it keeps running. `GET /api/home/since` reads no card for it.
+
+### Tokens, settings and fields
+
+| Route | Does |
+| --- | --- |
+| `GET/POST /api/api-tokens`, `DELETE /api/api-tokens/:id` | Create returns `token` once. |
+| `GET/PUT /api/settings` | `{ retention_days, metrics_retention_days, retention_rules, instance_name, default_webhook_url }` |
+| `GET/PUT /api/fields` | `{ roles, links }` in SQLite |
+| `GET /api/coverage` | [Coverage](#coverage) |
+| `POST /api/coverage/accepted` `{ service, key }` | Accepts a gap at its share now (Operator). `key` is `version`, `host`, `trace_id`, `stack` or `marks`. |
+| `DELETE /api/coverage/accepted?service=&key=` | Undoes an accept. |
+
+`PUT /api/settings`:
+
+- `retention_days` is an integer from 1 to 365; invalid input is 400 before any SQLite write or TTL change.
+- `metrics_retention_days` is an integer from 1 to 730, or `null` to follow `retention_days` (the default).
+- `retention_rules` (#477) is `[{ service, days }]`, at most 8, 1–730 days and not fewer than `retention_days`. A `retention_days` that would keep longer than a listed service is 400.
+- `default_webhook_url` (#177) is an http(s) URL, or empty for none: called by any monitor without its own.
+
+`/api/fields`: `roles` is attr key → `chart` | `lookup` | `ignore` (unset omitted; the default is chart). `links` is log attr key or `service`/`host` → metric label (cap 8). Neither is in the search URL. Roles apply to new ingest only. `GET ?wave=keys|values|suggest` returns that catalog slice (`cheap=` for suggest tops); omit `wave` for the full catalog. `PUT` writes SQLite and returns `{ roles, links }` only.
+
+## Operator UI
+
+### URL state
+
+The operator UI (Vite + React + shadcn/Tailwind, no React Router) keeps search state in the page URL via `history.replaceState`. Copy-link and back/forward restore the same search. Params:
 
 - `q` — search bar
 - `range` — `15m` | `1h` | `4h` | `24h` | `7d` | any `\d+(ms|s|m|h|d|w)` ≤ 730d (e.g. `90m`, `30d`, `2w`), or `custom` with `from`/`to` (ISO)
@@ -142,6 +651,7 @@ The operator UI (Vite + React + shadcn/Tailwind, no React Router) keeps search s
 - `agg` — `rate` or `{avg|min|max|sum|p99}:key` overlay on the histogram (omit when off or when `metric=` is set)
 - `metric` — ingested metric name (`cpu_seconds`) overlay, with a histogram’s reading in front (`p99:http.server.request.duration`) (omit when off)
 - `ml` — metric label matchers `service:api,host:api-1` (omit when none; cap 4)
+- `msplit` — the pinned plot's metric split, beside `metric=` and `ml=`
 - `y=agg` — replace the volume Y axis with the derived series (omit for overlay)
 - `logs=0` — hide the event table (omit for logs on)
 - `w` — compact 12-col widget grid (omit for today’s single histogram)
@@ -151,52 +661,881 @@ The operator UI (Vite + React + shadcn/Tailwind, no React Router) keeps search s
 - `cut` — a mark id: opens that mark's Fingerprints on arrival, cut at `to`, once (a first-seen alert's link); not written back
 - `view=fields` — fields catalog (omit for search). Roles/links are not URL state; `range=` / `from` / `to` stay so the clock matches Search.
 
-Examples: `/?q=level:error&range=1h&live=1` and `/?view=watch`. Save in the search bar updates the active saved search (Save as… makes another). Watch is a separate view; each monitor reads a saved search.
+Examples: `/?q=level:error&range=1h&live=1` and `/?view=watch`. Save in the search bar updates the active saved search (Save as… makes another).
 
-Layout (0.8, frames 26a–26p): a header of words — Home · Hunt · Watch, then Access · Settings, with Fields under Settings and links in Access (`?view=links` is Access filtered to links) — over every page (`?view=home|watch|fields|links|access|settings`, no `view` is the hunt), and a full-width status footer (keyboard hints; ingest `/s` plus an inline last-hour sparkline; ClickHouse + App text chips). **Home** (`src/ui/components/home-view.tsx`, `GET /api/home/since`) answers *since what?*: the newest deploy or flag of the last 24 h (an incident is never picked on its own; a clicked mark stays picked in the browser until a newer deploy or flag), equal windows around it (each side the gap to the next mark, 5 min to 60 min), one column (sheet 49b, `src/ui/home-saved.ts`, `src/ui/home-since.ts`): the Since bar's marks newest first, four chips and the rest under `N earlier`; **Moved**, a card only for each saved hunt whose before and after differ (value, delta, `was`, a sparkline, or two bars labelled `before` and `after` when fewer than four buckets read anything, sheet 50b); **Boards**, a tile per board (pinned to Home first) with a sketch of its panels' grid cells and its panel and section counts, and `＋ New board`; then three lines that each open in place (sheet 50b): **Quiet**, the hunts that did not move (pinned hunts, `saved_searches.pinned`, first), folded by default with the ones not at zero named on its right (the three largest, then `+N`; its open state kept in the browser under `toposcope.homeQuietOpen.50`); **Archived**, the archived hunts and boards without values, each with Unarchive, shown only when something is archived; **Coverage**, `N of M services have gaps` and `Fields ›`, opening to the coverage card, shown only when there are gaps; then new and stopped fingerprints and monitors. Each Moved card and Quiet row has a ⋯ menu (50c, not for a Viewer): Open, Rename, Archive, Delete…, which asks again in place. The header's field suggests saved hunts and boards by name as you type, archived ones left out, as the command palette leaves them out (`src/ui/header-search.ts`); Enter with none highlighted opens a hunt with the text. with no mark in 24 h it reads the last hour against the hour before, and with nothing ingested it is the three setup steps. The **hunt** is a session-only workspace strip (Search / Follow / Surroundings / boards, uncapped, overflow scrolls), the bar (the query, then the selected mark and the hunt's verbs — Save, Watch this, Share ▾ with Copy link and Share panels… — at its end; sheet 47b, a board or an Edit panel tab keeps its crumb row), the widget canvas with the named-marks rail and the Compare fold (Add, Logs on/off and the marks chip sit in the pinned plot's head), one line of facet chips (each field labelled, level in full and other fields' top three, scrolling sideways until a field is opened), and the event table; under an 820px tall window a hunt's panels draw on 32px rows and the event table on 20px rows instead of 64, the pinned plot's controls open from a Chart button in its head and a level, service or host split leaves its legend to the facet line; an open event or the marks panel takes a 560px slot beside the rows and shrinks the canvas to a third; Live pauses while an event is open. On the named-marks rail (sheet 50i) every lone mark's chip carries its name (`markLaneName`, `src/ui/change-marks.ts`: the title, a deploy's service before it unless the title names it, `a → b` as `b`) and its time; `railNameRooms` (`src/ui/components/histogram-marks.tsx`) gives each chip the width it needs, two neighbours that both need more than half the gap between them half each, and a name is cut with an ellipsis rather than dropped (before, a name that did not fit whole was left off). Marks closer than 1.6% of the window still fold into a count chip. An empty query box reads `Search all logs, e.g.` with the dashed examples `level:error` and `service:api` (`queryExamples` in `search-query-field.tsx`); a click puts one in the box and focuses it, without running it. There is no sidebar. **Access** (`src/access/`, `GET /api/access`) is the one door: it groups the `.env` token and made tokens (Tokens), link keys and links (Links) and shares (Shares) with their 24 h use; each row's `verb` is its kind in plain words (`token`, `we copy from`, `copies from us`, `key not used yet`, `share`) and `direction` is `in` or `out`, read from the one use-row shape `service:toposcope access:<name> kind:token|link|share status:used|refused`; a share opens its page (named panels, the derived fence, the raw-params switch, the tag and a preview) and a link its page (`GET`/`PUT /api/links/:id`: position, behind, rate, gaps, pause, scope, and a line per kind). **Settings** is a page of cards. Watch / Fields stay out of both strips. The default canvas is today’s single volume histogram. That plot is a **pinned cell** at (0,0) on the 12-col grid (resize yes; move / × / Duplicate no). Panels move by their head and resize from any edge (sheet 44, `src/shared/grid-gravity.ts`, `src/ui/grid-gestures.tsx`): a panel lands in the columns it is dropped on, the panels in its way go down while you drag, and every panel floats up so no hole is left; the left and top edges move the border with the panels touching them (or shrink the panel when nothing does), the right and bottom edges push; a panel is up to 16 rows tall. A board's panels use the same grid and gestures. A board can also hold section headings (`view: "section"`, one full-width row, `folded`) and note panels (`view: "note"`, `text` up to 1,000 characters); neither reads rows. A heading's section is the panels under it down to the next heading: dragging the heading moves them, folding it leaves them out of the drawn layout with their cells kept. Charts on one hunt or board share a hover line (`src/ui/hover-time.tsx`): the moment under the pointer is drawn on every chart, the volume plot leading it; extra time charts and every board time chart draw the window's change marks (◆ on a dashed tick, named on hover). Any panel kind can carry a note (160 characters), set from Add note on its ⋯ menu. Add / Duplicate / Copy-to-clipboard / extra-panel move / resize / in-place remove fill the remaining slots up to 6 total (`a`–`f`: histogram, stat, top-N bars). Duplicate is two cards (new grid id). Copy is overlapping pages (clipboard CSV/JSON/SVG/PNG of the painted series; Export still downloads). The pinned plot has neither. Stat and Top-N heads **are** the query (`p99(duration_ms)`, `Top 10 · status`); those cards have no footer strip. Extra timeseries keep a title plus footer selects and are small multiples (no zoom). At ≤4 columns on the mock canvas, Duplicate / Copy / Export collapse behind ⋯. Collapse follows the painted head width (not grid `w`); Copy… / Export… stay on that same ⋯ menu. Top-N groups by level/service/host or an attr key (`status`) via `GET /api/facets` / `GET /api/attr-facets` with `omit=0` (full `q`, not the sidebar’s omit-own-field). Values rollup when the query allows; N is 5/10/20 (default 10, custom 1–50) with an `other` remainder when N truncates the list, and a `%` toggle shows each row as a share of the window total (display-only). A Top-N row opens a Filter / Exclude popover — it does not rewrite `q` on click. Logs off (`logs=0`) unmounts the table, detail, Surroundings, table Export, Load more, and row keys; widget chrome Export (CSV/JSON/SVG/PNG of the painted series) stays; window changes then call `events=0`. Facet clicks toggle membership in a field’s OR group; the detail panel’s `+` adds that value — `src/ui/query-tokens.ts` rewrites `q` so the URL stays the whole state. The search-bar × clears `q` and runs the search (same as Enter on an empty bar). Queries run on Enter, facet clicks, Top-N Filter/Exclude, range, Live, and that × — not as you type; while a search is in flight, Stop sits beside the field, and while the field holds a query that has not run the rows and plot dim, the count says "for the last query" and a Run button sits beside the field (47f). Histogram interval is chips (`Auto` or `1ms`…`7d` that draw) in the chart card header; the legend sits under the plot. Stacked columns are the scaled bucket total sliced by share (no intra-bar gap). ⌘/Ctrl+wheel (a trackpad pinch too) or `+`/`−` zooms about the cursor on a 1ms…730d ladder; a plain wheel scrolls the page and the plot says how to zoom (47e) (same now/retention clamp as pan; Absolute From/To can still type a future To). Drag pans (span unchanged, whole buckets, clamped to now and Settings retention); Shift+drag selects a span (floored at 1ms, same now clamp); head-drill uses that clamp too; a plain click on the bars is a no-op. A 12px head strip above the plot is the commit: hover on the knob previews the drill, click drills to the smallest ladder span that still draws, drag sweeps and pins. `←`/`→` pan one bucket when the plot is focused; Shift+arrows pan one window. Live pauses on pan/select. The pinned plot's head (33d, 33m–33o) leads with the matching count and names the window on the right (`from → to UTC · bar width`, `→ now` in Live, `Custom · span` on a moved window); Custom-window Reset there restores the memoized span, bar width, and Live together. There is no strip between the bar and the canvas. When the app or ClickHouse stops answering (33i–33l, `src/ui/outage.ts`), any failed or 10 s-slow `/api/` call asks `/api/health`; only health decides what is down. The first 15 s keep the last paint dimmed under an amber band; then a full screen draws browser → app → ClickHouse with the broken link, the retry countdown (2 → 4 → 8 → 15 → 30 s, then every 30 s, and at once when the browser comes back online) and the host commands to check. A passing probe shows a green "Back after …" band for 4 s and the hunt searches again. A Saved / board / Watch-lane click opens a new Search tab at the end (current hunt stays; exact repeats get an ordinal). Switching Search / Follow restores last paint when the hunt is unchanged (no replace). **Surroundings** in the detail footer opens a reader workspace (facets inert, Saved still live, tick tape, no query/clock/Live/widgets). Histogram **Focus in logs** opens Surroundings titled with the mark (50 older above, 50 newer below, hunt tab stays). Inspector **Compare** (Search / Follow) opens a 30px fold under the pinned volume lane: this hunt series on equal windows after vs before the selected mark (percent + absolute). Session-only; does not rewrite `q`. Live freezes both windows at open. When Fingerprints is also open, the cut’s washes win. Extra widgets, boards, Surroundings, and Watch do not draw the fold. **View trace** (hidden without a joinable `trace_id` / `request_id`) opens a waterfall tab on that workspace’s Results strip (cap 5). Clicking a waterfall span reads it in the rail, where the event's detail sits (`src/ui/components/span-detail.tsx`): Fields one attribute a row, as an event's are, in three groups: the recorded exception (`type`, `message`, the whole `stacktrace` with its line breaks, `e1`), the span's own attributes, then the resource folded under its count. A stored span keeps its own attributes, then the resource's, in one map (own first since 0.5.4, so the 50-key cap cuts the resource), so the rail tells the resource by OpenTelemetry's resource namespaces (`service.`, `host.`, `os.`, `process.`, `telemetry.`, …; `src/ui/span-fields.ts`). A stack past 20 lines keeps its first 8 and last 6 and folds the middle. JSON and Copy give the span as `/api/traces` returns it. A crumb steps back to the event the trace was opened from, with the span still selected, and the event's crumb steps forward again. **View profiles** is in the span's footer and opens an icicle tab on that strip (`GET /api/profiles?trace_id=&span_id=`). Chart+canvas shrinks to 32% while a Results-strip tab is open on Search / Follow; on Surroundings the inspect view replaces the reader. The tree is an indented parent/child plot (not service lanes); empty / orphan / 500-cap copy matches the mock. Leave is the tab × or Results / Surroundings — URL and `q` stay put. A Surroundings row click selects; footer Surroundings re-centers this tab. All is ±N on the same service (+host); Matching ANDs inherited `q`. Earlier/Later grow N by 50 to 200. Esc returns to Results.
+### Layout
 
-**Boards** (#410, sheet 39, `src/shared/boards.ts`, `src/ui/components/board-view.tsx`). A hunt is one query, one window, one screen; a board is a saved screen of panels, each with its own query. It is a `saved_searches` row whose `board` JSON is `{ keys, panels }`: `keys` are its inputs (cap 4), and each of its panels (cap 26, one letter each: `u`–`z`, then `a`–`t`) holds a `name`, its own `q`, its `view` (`histogram` with its series and split, `stat`, `top`, or `events`), its `widget` (the view's settings and its grid cell on the same 12-col grid) and `fixed`, a relative range or null. A panel is a **copy**, not a link: **Add to board** (a hunt panel's ⋯ menu, and a button in the pinned plot's head) copies the panel's query and view, never the hunt's window, so editing or deleting a saved hunt never changes a board. The board has one window, the row's `range` (Quick or Last N, and Live); a panel follows it unless it has a fixed window, and only those panels show a tag (`24h · fixed`). Each set input is ANDed onto every panel's `q` (a query with a top-level OR goes in parentheses first); an unset input is `any` and adds nothing. A board never runs the hunt's search: each panel reads `/api/search` (`events=0`, its series), `/api/facets` / `/api/attr-facets` for a Top-N, or an event page, and in Live a count or rate histogram and the event table ask for what is new every 2s (`since=`) while every panel reads its whole window every 30s. A panel with a set input and no rows says which input emptied it: its field's values on the panel's own rows from the minute rollups, or that those rows have no such field in the window; a panel with no events and no set input says "No events in the last 24h" and draws no change marks (a metric panel is read from its series and never says it). The board's head (sheet 49, 49d, `src/ui/components/board-head.tsx`) is Home › its name (a click renames it in place, `PUT /api/saved-searches/:id` with `name`), its panel count (`countedPanels`: headings and notes are not counted), the window it follows (50e, `· the board's window, Last 24h`), `pinned`, the save state, Share and a ⋯ menu (49g, `src/ui/board-menu.ts`): Rename, Fit panels to the width (50e, `fitPanelsToWidth`: the panels that start on one grid row grow, in their order and in proportion to their widths, to share the 12 columns, less any a note or a taller panel holds there; each keeps `panelMinW`; headings, notes and rows that already fill their columns keep their cells; then `gravity`, and the board saves), Duplicate board (a new board from this one, under a new name), Pin to Home or Unpin from Home as `pinned` is, and Delete board…, armed in the menu before it deletes. **＋ Add panel** (49e) offers Volume (`histogram`), Top values (`top`), Number (`stat`) and Metric (`histogram` with `widget.metric`), or From a saved hunt (its `q` and name); each opens the panel sheet (49f, `src/ui/components/panel-sheet.tsx`, `src/ui/panel-draft.ts`), a 440px sheet from the right that also serves Edit panel: name, query, Show, Split by (Volume's split; Top values' field), Metric (its name), Section, Window (the board's, or fixed) and a preview read as the board would read it. A new panel goes at the end of its section (`placeAtSectionEnd`: beside the section's last row when it fits, else on a new row with the panels under it moved down), Volume and Metric 6 columns wide, Number and Top values 4; an edited panel keeps its cell unless its section changed, and keeps the rest of its widget while Show is unchanged. The sheet's **Open as hunt ↗** opens the Edit panel tab (`Edit · <panel>`, on the sheet's query with inputs off, Cancel / Update panel in place of Save / Watch this / Share) for what the sheet does not hold. A panel's head is its name, then its query, the set inputs and its split in faint mono, and its count; a Number panel's head has no value and its body says `in the last 24h` or `no events in the last 24h`. A panel draws at least `panelMinW(view)` columns (`widenCells` in `src/shared/grid-gravity.ts`, then `gravity`): a Number panel 3, so one saved 1 column wide draws 3 wide and slides right in its row, or goes down when its row is full; other panels keep their stored sizes. The panel menu is Open as hunt (a Search tab on the panel's `q` plus the set inputs, on the board's window), Edit panel, Fixed window…, Duplicate, Copy…, Export…, Remove. Panel, input, name and fixed-window changes save as they are made; Save stores the window. A board opens at the window it saved (`src/ui/board-window.ts`): from Home, the palette or the header's search, and from a link with no `range=`; a link that names one opens at it. It reads `all changes saved` until the window it shows differs from the saved one (`boardUnsaved`), and only then offers Save. A panel whose stored name is generic (its `defaultPanelName`, or `Volume`, `Metric`, `Number`, `count`, `rate`, `Top values`) is shown with a name made from its query (`src/shared/panel-name.ts`, 50e): the query's `service` and `level` values, or a short query itself, then what it reads, `agental volume`, `incus call time` (a sum of a duration), `incus warn rate`, `All logs` for a Volume panel on every row; the stored name is not rewritten, and Edit panel starts with the made name, so Update panel stores it. A board cannot be watched, nor can a panel, and a board is never Home. A board saved before 0.14 (a template query and its widgets) is migrated at boot (`src/control/board-panels-migrate.ts`) to one panel per widget on that query, its event table as an events panel, its inputs kept, its window the board's (`1h` when it had none). The URL of a board is `saved=` plus its set inputs and the window.
+Layout (0.8, frames 26a–26p) is a header of words over every page: Home · Hunt · Watch, then Access · Settings, with Fields under Settings and links in Access (`?view=links` is Access filtered to links). Pages are `?view=home|watch|fields|links|access|settings`; no `view` is the hunt. There is no sidebar. Watch and Fields stay out of both strips.
 
-## Retention
+A full-width status footer holds keyboard hints, ingest `/s` plus an inline last-hour sparkline, and ClickHouse + App text chips.
 
-TTL is `toDate(ts) + INTERVAL {n} DAY` on `logs`, `metrics`, `metric_buckets`, `spans`, `profile_samples`, and `change_marks`, `toDate(at) + INTERVAL {n} DAY` on `monitor_results`, and `toDate(minute) + INTERVAL {n} DAY` on `logs_by_minute`, `logs_attr_keys_by_minute`, `logs_attr_values_by_minute`, `logs_attr_numeric_by_minute`, `metrics_by_minute`, and `metric_buckets_by_minute`. `n` comes from SQLite settings (default 30, stored values clamped to 1–365). The metric tables (`metrics`, `metric_buckets`, `metrics_by_minute`, `metric_buckets_by_minute`) take `metrics_retention_days` instead (1–730) when it is set, and `n` when it is not. Services kept longer (`retention_rules`, #477) change the TTL of the tables that carry `service` — `logs`, its four minute rollups and `spans` — to `addDays(toDate(ts), transform(service, ['analytics', 'billing'], [730, 90], n))`, sorted by service; with none, the TTL stays the plain form above. Whether a table needs an `ALTER` is read from `engine_full`, so the same settings issue none. Windows reach back 730 days (`MAX_RANGE_MS`, `src/query/relative.ts`); the UI lets a window pan back as far as the longest kept service. `PUT /api/settings` validates an integer from 1 to 365 before either write; invalid input is 400. Boot and valid `PUT` requests apply `ALTER TABLE ... MODIFY TTL` with `mutations_sync = 0, alter_sync = 0` (issue the change; do not wait for `MATERIALIZE TTL`). Tables already at `n` are left alone. After validation, `PUT` writes SQLite first so a later ClickHouse error cannot roll back the setting. A valid lower retention can delete older data asynchronously. Unfinished TTL mutations are killed before the new `ALTER` so a failed materialize does not block the next save.
+The header's field suggests saved hunts and boards by name as you type (`src/ui/header-search.ts`); Enter with none highlighted opens a hunt with the text. **Settings** is a page of cards. Counts (facet chips, Home's cards) default to compact `1.24K` / `3.04M`. Settings toggles Count format (human vs raw) and Timestamps (compact vs full) for this browser, not `/api/settings`. Compact event stamps follow the histogram date rule (`HH:MM:SS`, or `MM-DD HH:MM:SS` when the window is ≥1d, not today, or crosses midnight); Full is always `YYYY-MM-DD HH:MM:SS.mmm`. Hover `title` is the stored ISO.
 
-## Compression
+### Home
 
-`columnCodecs` in `src/shared/migrate.ts` names a codec for the columns that hold the most: ZSTD(1) on `logs.message`, `attrs`, `attr_map` and `trace_id` and on `logs_attr_values_by_minute.value`, and DoubleDelta or Delta before it on `logs.ts`, `logs.seq` and the rollup's `minute`. Every other column keeps ClickHouse's LZ4. Each start sets a codec that differs and leaves the rest; the change is metadata only, so parts written after it use it and older parts take it as they merge. On 500k generated rows `logs` held 28 MiB instead of 51 MiB and the values rollup 10 MiB instead of 15 MiB, with searches no slower.
+**Home** (`src/ui/components/home-view.tsx`, `GET /api/home/since`) answers *since what?*. It picks the newest deploy or flag of the last 24 h. An incident is never picked on its own, and a clicked mark stays picked in the browser until a newer deploy or flag. It compares equal windows around it, each side the gap to the next mark, 5 min to 60 min. With no mark in 24 h it reads the last hour against the hour before, and with nothing ingested it is the three setup steps.
+
+It is one column (sheet 49b, `src/ui/home-saved.ts`, `src/ui/home-since.ts`):
+
+- the Since bar's marks, newest first: four chips and the rest under `N earlier`
+- **Moved**: a card only for each saved hunt whose before and after differ (value, delta, `was`, a sparkline)
+- **Boards**: a tile per board (pinned to Home first) with a sketch of its panels' grid cells and its panel and section counts, and `＋ New board`
+- one **Quiet** line that opens the hunts that did not move: pinned hunts (`saved_searches.pinned`) first, its open state kept in the browser
+- then new and stopped fingerprints, and monitors
+
+Since sheet 50b, a Moved card draws two bars labelled `before` and `after` in place of its sparkline when fewer than four buckets read anything. Under Boards come three lines that each open in place: **Quiet** (folded by default, naming on its right the three largest hunts not at zero, then `+N`; its open state kept under `toposcope.homeQuietOpen.50`), **Archived** (only when something is archived; rows without values, each with Unarchive) and **Coverage** (only when there are gaps; it opens to the coverage card).
+
+Each Moved card and Quiet row has a ⋯ menu (50c), not for a Viewer: Open, Rename, Archive and Delete…, which asks again in place. The header's suggestions (`src/ui/header-search.ts`) leave archived hunts and boards out.
+
+### The hunt
+
+The **hunt** is a session-only workspace strip: Search / Follow / Surroundings / boards, uncapped, overflow scrolls. Under it:
+
+- the bar: the query, then the selected mark and the hunt's verbs — Save, Watch this, Share ▾ with Copy link and Share panels… — at its end (sheet 47b; a board or an Edit panel tab keeps its crumb row)
+- the widget canvas, with the named-marks rail (28px, above the pinned plot) and the Compare fold. Add, Logs on/off and the marks chip sit in the pinned plot's head.
+- one line of facet chips: each field labelled, level in full and other fields' top three, scrolling sideways until a field is opened
+- the event table
+
+Under an 820px tall window, a hunt's panels draw on 32px rows and the event table on 20px rows instead of 64. The pinned plot's controls then open from a Chart button in its head, and a level, service or host split leaves its legend to the facet line. An open event or the marks panel takes a 560px slot beside the rows and shrinks the canvas to a third. Live pauses while an event is open.
+
+### Workspaces and tabs
+
+A Saved, board or Watch-lane click opens a new Search tab at the end; the current hunt stays, and exact repeats get an ordinal. Switching Search / Follow restores the last paint when the hunt is unchanged (no replace).
+
+The hunt table can show up to three extra attr columns between Host and Message (`cols=`). Values come from the loaded page, and missing cells are an em dash. The Message header's `+` adds and a header's `×` removes. Follow copies the parent tab's columns; New starts empty; Surroundings stays five-col. Saved searches store the same list.
+
+### Running a query
+
+Queries run on Enter, facet clicks, Top-N Filter/Exclude, range, Live, and the search-bar × — not as you type. The × clears `q` and runs the search, the same as Enter on an empty bar. While a search is in flight, Stop sits beside the field. While the field holds a query that has not run, the rows and plot dim, the count says "for the last query", and a Run button sits beside the field (47f).
+
+Facet clicks toggle membership in a field's OR group; the detail panel's `+` adds that value. `src/ui/query-tokens.ts` rewrites `q`, so the URL stays the whole state. Logs off (`logs=0`) unmounts the table, detail, Surroundings, table Export, Load more and row keys; widget chrome Export (CSV/JSON/SVG/PNG of the painted series) stays, and window changes then call `events=0`.
+
+An empty query box reads `Search all logs, e.g.` with the dashed examples `level:error` and `service:api` (`queryExamples` in `search-query-field.tsx`, sheet 50i). A click puts one in the box and focuses it without running it.
+
+### Panels and the grid
+
+The default canvas is today's single volume histogram. That plot is a **pinned cell** at (0,0) on the 12-col grid: resize yes; move, ×, Duplicate no.
+
+Panels move by their head and resize from any edge (sheet 44, `src/shared/grid-gravity.ts`, `src/ui/grid-gestures.tsx`):
+
+- A panel lands in the columns it is dropped on. The panels in its way go down while you drag, and every panel floats up so no hole is left.
+- The left and top edges move the border with the panels touching them, or shrink the panel when nothing does. The right and bottom edges push.
+- A panel is up to 16 rows tall.
+
+A board's panels use the same grid and gestures. Charts on one hunt or board share a hover line (`src/ui/hover-time.tsx`): the moment under the pointer is drawn on every chart, the volume plot leading it. Extra time charts and every board time chart draw the window's change marks (◆ on a dashed tick, named on hover). Any panel kind can carry a note (160 characters), set from Add note on its ⋯ menu.
+
+### Extra panels
+
+Add / Duplicate / Copy-to-clipboard / extra-panel move / resize / in-place remove fill the remaining slots, up to 6 in total (`a`–`f`: histogram, stat, top-N bars). Duplicate is two cards (a new grid id). Copy is overlapping pages: clipboard CSV/JSON/SVG/PNG of the painted series, while Export still downloads. The pinned plot has neither.
+
+- Stat and Top-N heads **are** the query (`p99(duration_ms)`, `Top 10 · status`); those cards have no footer strip.
+- Extra timeseries keep a title plus footer selects and are small multiples (no zoom).
+- At ≤4 columns on the mock canvas, Duplicate / Copy / Export collapse behind ⋯. Collapse follows the painted head width, not grid `w`; Copy… / Export… stay on that same ⋯ menu.
+
+### Top-N panels
+
+Top-N groups by level/service/host or an attr key (`status`) via `GET /api/facets` / `GET /api/attr-facets` with `omit=0`: the full `q`, not the chips' omit-own-field. It uses the values rollup when the query allows.
+
+- N is 5/10/20 (default 10, custom 1–50), with an `other` remainder when N truncates the list.
+- A `%` toggle shows each row as a share of the window total (display-only).
+- A Top-N row opens a Filter / Exclude popover; it does not rewrite `q` on click.
+- A Top-N panel draws as bars or a donut (#239, `topView: "donut"`, `donut` as its token's last part). `HbarWidget`'s `view` paints `donutSlices` (each row's share of the ring, `other` grey) with the total in the centre and a legend whose rows open Filter / Exclude.
+- `TopViewPicker` in its head sets N to 5 when it was the default.
+
+### The volume chart
+
+Histogram interval is chips (`Auto` or `1ms`…`7d` that draw) in the chart card header; the legend sits under the plot. Stacked columns are the scaled bucket total sliced by share, with no intra-bar gap.
+
+The pinned plot's head (33d, 33m–33o) leads with the matching count and names the window on the right: `from → to UTC · bar width`, `→ now` in Live, `Custom · span` on a moved window. Custom-window Reset there restores the memoized span, bar width and Live together. There is no strip between the bar and the canvas.
+
+Every lone mark on the lane under the plot carries its name and time (sheet 50i). `markLaneName` (`src/ui/change-marks.ts`) shortens it: the title, a deploy's service before it unless the title names it, and `a → b` as `b`. `railNameRooms` (`histogram-marks.tsx`) gives each chip a width; two neighbours that both need more than half the gap get half each, and a name is cut with an ellipsis rather than dropped. Marks closer than 1.6% of the window still fold into a count chip.
+
+### Zoom, pan and drill
+
+- ⌘/Ctrl+wheel (a trackpad pinch too) or `+`/`−` zooms about the cursor on a 1ms…730d ladder, with the same now/retention clamp as pan. A plain wheel scrolls the page, and the plot says how to zoom (47e). Absolute From/To can still type a future To.
+- Drag pans: span unchanged, whole buckets, clamped to now and Settings retention.
+- Shift+drag selects a span, floored at 1ms, with the same now clamp. Head-drill uses that clamp too.
+- A plain click on the bars is a no-op.
+- A 12px head strip above the plot is the commit: hover on the knob previews the drill, a click drills to the smallest ladder span that still draws, and a drag sweeps and pins.
+- `←`/`→` pan one bucket when the plot is focused; Shift+arrows pan one window.
+- Live pauses on pan or select.
+
+### When the app or ClickHouse stops answering
+
+Outage handling (33i–33l, `src/ui/outage.ts`): any failed or 10 s-slow `/api/` call asks `/api/health`; only health decides what is down.
+
+- The first 15 s keep the last paint dimmed under an amber band.
+- Then a full screen draws browser → app → ClickHouse with the broken link, the retry countdown (2 → 4 → 8 → 15 → 30 s, then every 30 s, and at once when the browser comes back online) and the host commands to check.
+- A passing probe shows a green "Back after …" band for 4 s, and the hunt searches again.
+
+### Surroundings and Compare
+
+**Surroundings** in the detail footer opens a reader workspace: facets inert, Saved still live, tick tape, no query, clock, Live or widgets. Histogram **Focus in logs** opens Surroundings titled with the mark (50 older above, 50 newer below; the hunt tab stays). A Surroundings row click selects; footer Surroundings re-centers this tab. All is ±N on the same service (+host); Matching ANDs the inherited `q` via `q=` on `GET /api/search/context`. Earlier/Later grow N by 50 to 200. Esc returns to Results.
+
+Inspector **Compare** (Search / Follow) opens a 30px fold under the pinned volume lane: this hunt's series on equal windows after vs before the selected mark (percent + absolute). It is session-only and does not rewrite `q`. Live freezes both windows at open. When Fingerprints is also open, the cut's washes win. Extra widgets, boards, Surroundings and Watch do not draw the fold. The fold reads the held view when it fetches: a short side is a floor and there is no delta.
+
+### Traces and profiles in the UI
+
+**View trace** (hidden without a joinable `trace_id` / `request_id`) opens a waterfall tab on that workspace's Results strip (cap 5). The tree is an indented parent/child plot, not service lanes; empty, orphan and 500-cap copy matches the mock. Chart and canvas shrink to 32% while a Results-strip tab is open on Search / Follow; on Surroundings the inspect view replaces the reader. Leave is the tab × or Results / Surroundings; the URL and `q` stay put.
+
+Clicking a waterfall span reads it in the rail, where the event's detail sits (`src/ui/components/span-detail.tsx`). Fields are one attribute a row, as an event's are, in three groups: the recorded exception (`type`, `message`, the whole `stacktrace` with its line breaks, `e1`), the span's own attributes, then the resource folded under its count. The rail tells the resource by OpenTelemetry's resource namespaces (`service.`, `host.`, `os.`, `process.`, `telemetry.`, …; `src/ui/span-fields.ts`).
+
+- A stack past 20 lines keeps its first 8 and last 6 and folds the middle.
+- JSON and Copy give the span as `/api/traces` returns it.
+- A crumb steps back to the event the trace was opened from, with the span still selected, and the event's crumb steps forward again.
+- **View profiles** is in the span's footer and opens an icicle tab on that strip (`GET /api/profiles?trace_id=&span_id=`).
+
+### Metric panels
+
+A metric panel draws as lines, bars or stacked bars (#237, `metricChart` on the widget; `b` or `k` after `y`/`z` in its token's flags). `MetricSpark`'s `chart` paints a rect per bucket (`barRects`), a split's bars side by side or stacked (the stack's peak is each bucket's sum), named in a legend. `metricStackable` allows stacking only for a counter or a histogram's count or sum with a split. The head's Line · Bars · Stacked (`MetricChartPicker`, passed as `ExtraPanel`'s `headControls`) disables it with why otherwise.
+
+A timeseries panel keeps a split in its token as `s:<label>` (a dot in the key is `%2E`). A panel and the pinned plot (by Replace or Overlay) draw a series split by unit in one plot, each line against its own unit's peak (`unitAxes`), and say `unitsDifferWords` under it, naming a deploy mark the unit changed around.
+
+`MetricSpark` paints a heatmap reading with `HeatSpark`: rows by bound, columns by bar, a log shade of one hue, the p99 line over it (a checkbox), and a cell readout.
+
+### The pinned plot's metric
+
+The pinned plot splits only a metric it draws by Replace (frame 13a). A Split control on its toolbar lists the metric's label keys. Its split rides the URL as `msplit=` beside `metric=` and `ml=` (in its `s:` token when there are extra panels), and is dropped by Overlay or another Series.
+
+- While a metric is drawn by Replace, the volume group-by (Level / Service / Host / None) is hidden. A unit on the left axis widens it to 48px so the tick reads on one line.
+- On the pinned plot a split is on Live's 2s `since=` poll like the rest of the main search, merged into the painted lines value by value. A panel's split refreshes on the 30s pass.
+- A saved search with its log table off and a metric drawn by Replace on the pinned plot shows no count in the saved list, but a panels mark: it has no log rows to count.
+
+### Merged metrics
+
+A metric panel can merge metrics (#169, frames 17a–17j): up to three more beside its own, never with a split. They are `lines: [{ metric, labels }]` on the panel in a saved search's JSON, and `+m:` / `+l:` parts in its `w=` token. Each line is fetched as its own series and drawn as a split's line is, on the one axis.
+
+- A panel can name its lines (`names`: `"0"`–`"3"` for merged lines, a label value for a split's; 24 characters each).
+- It can carry a `title` (80) and a `note` (160, plain text). In the token these are `n:`, `t:`, `o:`, written percent-encoded with `.` and `~` escaped.
+- Saving a panel whose merged metrics have known, different units is refused with a 400 that names the line and both units. A metric sent in another unit after it was merged is left off, with a line saying so.
+- With no note, a one-line panel shows its metric's description (#167), marked as the sender's.
+- The byte units print as people write them (`By`, `KiBy`, `MiBy`, `GiBy` → `B`, `KiB`, `MiB`, `GiB`); every other unit as sent.
+
+### Editing a panel in place
+
+A panel is edited in place (17c–17e, 17i). The sliders button on the pinned plot's head, or in an extra panel's footer, marks it editing: one panel at a time, and Escape or Done ends it.
+
+- Its title and note become fields where they show (`PanelTitleField`, `PanelNoteField`). The title's placeholder is the one it makes, `avg · name + n`.
+- Its lines open under it as wide as it is (`src/ui/components/panel-editor.tsx`, anchored to the cell's `data-panel`; its changes in `src/ui/panel-edit.ts`): merge or split, a name per line (names follow their lines when one is removed), and Add a line from the metric catalog, grouped by whether the unit fits.
+- Another unit is refused in place and offered a panel of its own while there is room for one.
+- A field keeps what is typed while the panel keeps it trimmed (`src/ui/use-draft.ts`).
+
+Named lines get a legend under the plot, with their values in place of end labels. In the pinned legend, hover or focus on a name dims the other lines and opens a card with its reading, metric, labels, unit and description (`lineInfo`, from `panelLines(...).legend`).
+
+### Fields
+
+Fields (`?view=fields`) lives under Settings (a Settings card opens it; the crumb returns) and reads a fixed last 24 h, not the hunt's clock. The table lists that window's keys: core `service` / `host` / `level` / display-only `message`, then Add facet's chart keys, plus lookup/ignore as "not charted". Each has an event count, and distinct values when the key is charted, else "not charted" (`message` Values is `—`, Role `text`, not a picker).
+
+- Role is `chart` (default) / `lookup` / `ignore` on attrs, per key name: nginx `type` and sendmail `type` are one field. There is an optional metric-label link (cap 8).
+- The catalog paints in three waves (keys, values, suggestions) with Stop / elapsed / a 2px bar; a window change dims the previous rows.
+- Suggestions (role tint, dashed link chip) never write a row until clicked.
+- A link is suggested only to a metric label of the field's own name (or `service.version` for `version`) that shares a top value with it in the window. A shared value under another name is not suggested.
+- Graph on a linked event-detail field sets `metric=` + `ml=` from the link; `+` still adds `key:value` to `q`.
+
+### Coverage in Fields
+
+Fields opens with **Coverage** (37j, 37q, `src/ui/components/coverage-section.tsx`) above the keys: a row per service with a bar per key (plate under 50%) and deploy marks.
+
+- Services with a gap that is not accepted come first, largest (rows) first, 8 shown, then one line for the rest (`N more with gaps, smaller first · the smallest has N rows · Show all`).
+- Services complete or with only accepted gaps fold into **Complete or accepted · N**.
+- **Names that do not match** fold into one line (count, the first two pairs) that opens the pairs, with a link to fix each at the source.
+- Under the folds one muted line gives the rule (complete at 90%; `—` under trace_id when the service sends no spans). The head links What an investigation reads (`docs/evidence.md`).
+- **Find a service** (37r) matches any part of a name across every group, folded or not, under each group's own header. Opened groups stay open in the browser (`localStorage` `toposcope.coverageOpen`), nothing in the URL.
+- A gap cell opens Accept this gap / How to send it (37n, Operator). An accepted cell keeps its number with `accepted · undo`, and the head's `N gaps accepted · K came back` opens the Accepted gaps list (37o).
+
+### Coverage elsewhere
+
+Home draws **What this answer stands on** (37k, 37s) under its cards: at most three lines. A mismatch on the selected mark comes first, then the incomplete services with the most rows, each with its lowest share, then `and N more services with gaps, the largest first · See them in Fields ›`. It never scrolls inside itself and is not drawn when nothing is missing.
+
+The event panel's fingerprint line on an error or fatal row with no stack says its `e1` came from the message (37l). Under the Compare fold, a selected deploy mark whose `version` is not one on its service's rows says the after side holds both releases (37m).
+
+### Follow this value
+
+**Follow this value** (a lookup or id-shaped Fields row) opens a new Follow workspace: token-only `q`, Live off; the previous workspace stays. The window is the value's first to last row within 24h either side of the event, never shorter than ±5m. It is read first by `GET /api/search/follow-span`: one read under the logs read budget that also looks an hour past each end of the day.
+
+- A value still seen past an end is cut at a day, and the chip says so ("cut at a day before").
+- One row, none, a refused read (`refused`), or a failed request opens ±5m.
+- The tab's chip says which (`src/shared/follow-span.ts`). The clock stays editable; once it moves the chip turns dashed with the opened span, and **Reset** returns to it.
+
+### Access
+
+**Access** (`src/access/`, `GET /api/access`) is the one door. It groups the `.env` token and made tokens (Tokens), link keys and links (Links), and shares (Shares), with their 24 h use.
+
+- Each row's `verb` is its kind in plain words (`token`, `we copy from`, `copies from us`, `key not used yet`, `share`), and `direction` is `in` or `out`.
+- Use is read from the one use-row shape `service:toposcope access:<name> kind:token|link|share status:used|refused`. These are ordinary log rows in `logs`.
+- A share opens its page: named panels, the derived fence, the raw-params switch, the tag and a preview.
+- A link opens its page (`GET`/`PUT /api/links/:id`): position, behind, rate, gaps, pause, scope, and a line per kind.
+
+## Boards
+
+### What a board is
+
+**Boards** (#410, sheet 39, `src/shared/boards.ts`, `src/ui/components/board-view.tsx`). A hunt is one query, one window, one screen; a board is a saved screen of panels, each with its own query. It is a `saved_searches` row whose `board` JSON is `{ keys, panels }`:
+
+- `keys` are its inputs (cap 4).
+- Each panel (cap 26, one letter each: `u`–`z`, then `a`–`t`) holds a `name`, its own `q`, its `view` (`histogram` with its series and split, `stat`, `top`, or `events`), its `widget` (the view's settings and its grid cell on the same 12-col grid) and `fixed`, a relative range or null.
+- A board can also hold section headings (`view: "section"`, one full-width row, `folded`) and note panels (`view: "note"`, `text` up to 1,000 characters). Neither reads rows.
+
+A heading's section is the panels under it, down to the next heading: dragging the heading moves them, and folding it leaves them out of the drawn layout with their cells kept.
+
+A panel is a **copy**, not a link. **Add to board** (a hunt panel's ⋯ menu, and a button in the pinned plot's head) copies the panel's query and view, never the hunt's window. So editing or deleting a saved hunt never changes a board. The URL of a board is `saved=` plus its set inputs and the window.
+
+### Reading a board
+
+The board has one window, the row's `range` (Quick or Last N, and Live). A panel follows it unless it has a fixed window, and only those panels show a tag (`24h · fixed`). Each set input is ANDed onto every panel's `q`; a query with a top-level OR goes in parentheses first. An unset input is `any` and adds nothing.
+
+A board never runs the hunt's search. Each panel reads `/api/search` (`events=0`, its series), `/api/facets` / `/api/attr-facets` for a Top-N, or an event page. In Live, a count or rate histogram and the event table ask for what is new every 2s (`since=`), while every panel reads its whole window every 30s.
+
+A panel with a set input and no rows says which input emptied it: its field's values on the panel's own rows from the minute rollups, or that those rows have no such field in the window. A panel with no events and no set input says "No events in the last 24h" and draws no change marks. A metric panel is read from its series and never says it.
+
+A board opens at the window it saved (`src/ui/board-window.ts`, sheet 50e): from Home, the palette, the header's search, or a link with no `range=`. A link that names a window opens at it. The head reads `all changes saved` until the window shown differs from the saved one (`boardUnsaved`), and only then offers Save.
+
+### The board's head and menu
+
+The board's head (sheet 49, 49d, `src/ui/components/board-head.tsx`) is Home › its name, its panel count, `pinned`, the save state, Share and a ⋯ menu.
+
+- A click on the name renames it in place (`PUT /api/saved-searches/:id` with `name`).
+- The panel count is `countedPanels`: headings and notes are not counted.
+- The ⋯ menu (49g, `src/ui/board-menu.ts`) holds Rename, Duplicate board (a new board from this one, under a new name), Pin to Home or Unpin from Home as `pinned` is, and Delete board…, armed in the menu before it deletes.
+
+Panel, input, name and fixed-window changes save as they are made; Save stores the window. A board cannot be watched, nor can a panel, and a board is never Home.
+
+The head also names the window the board follows (`· the board's window, Last 24h`). The ⋯ menu's **Fit panels to the width** (`fitPanelsToWidth`, 50e) grows the panels that start on one grid row, in order and in proportion to their widths, to share the 12 columns, less any a note or a taller panel holds there. Each keeps `panelMinW`; headings, notes and rows that already fill their columns are left alone. Then `gravity` runs and the board saves.
+
+### Adding and editing a panel
+
+**＋ Add panel** (49e) offers Volume (`histogram`), Top values (`top`), Number (`stat`) and Metric (`histogram` with `widget.metric`), or From a saved hunt (its `q` and name). Each opens the panel sheet (49f, `src/ui/components/panel-sheet.tsx`, `src/ui/panel-draft.ts`), a 440px sheet from the right that also serves Edit panel. It holds name, query, Show, Split by (Volume's split; Top values' field), Metric (its name), Section, Window (the board's, or fixed) and a preview read as the board would read it.
+
+- A new panel goes at the end of its section (`placeAtSectionEnd`): beside the section's last row when it fits, else on a new row with the panels under it moved down.
+- Volume and Metric are 6 columns wide, Number and Top values 4.
+- An edited panel keeps its cell unless its section changed, and keeps the rest of its widget while Show is unchanged.
+- The sheet's **Open as hunt ↗** opens the Edit panel tab (`Edit · <panel>`, on the sheet's query with inputs off, Cancel / Update panel in place of Save / Watch this / Share) for what the sheet does not hold.
+
+### A board's panels
+
+A panel's head is its name, then its query, the set inputs and its split in faint mono, and its count. A Number panel's head has no value, and its body says `in the last 24h` or `no events in the last 24h`.
+
+A panel draws at least `panelMinW(view)` columns (`widenCells` in `src/shared/grid-gravity.ts`, then `gravity`). A Number panel is 3, so one saved 1 column wide draws 3 wide and slides right in its row, or goes down when its row is full. Other panels keep their stored sizes.
+
+The panel menu is Open as hunt (a Search tab on the panel's `q` plus the set inputs, on the board's window), Edit panel, Fixed window…, Duplicate, Copy…, Export…, Remove.
+
+A board saved before 0.14 (a template query and its widgets) is migrated at boot (`src/control/board-panels-migrate.ts`): one panel per widget on that query, its event table as an events panel, its inputs kept, and its window the board's (`1h` when it had none).
+
+A panel whose stored name is generic (its `defaultPanelName`, or `Volume`, `Metric`, `Number`, `count`, `rate`, `Top values`) is shown with a name made from its query (`src/shared/panel-name.ts`, 50e): the query's `service` and `level` values, or a short query itself, then what it reads, as in `incus warn rate`, `incus call time` or `All logs`. The stored name is not rewritten; Edit panel starts with the made name, so Update panel stores it.
 
 ## Monitors
 
-A monitor (#175) is a name, a source, a state and the calls it sends; every alert rule is one. Its source is a saved search (`threshold`), new fingerprints after a mark (`first_seen`), results pushed to it (`push`, #177), a URL it calls (`http`, #178), or a port it connects to and the certificate it answers with (`tcp`, `cert`, #180). Its state is `ok` or `open`, kept in SQLite on the rule (`state`), with each open-to-resolved stretch in `monitor_stretches` and every call sent for it in `monitor_calls` (`open`, `reminder`, `resolved`, with its status; `silenced` when a silence kept it from being sent). The last 200 stretches a monitor are kept. An open stretch can be acknowledged (sheet 50g, `POST /api/monitors/:name/ack`, action `change monitors`, so an Operator or Owner): `monitor_stretches.acked_at` and `acked_by` (an actor ref, as `created_by` is) are set on the open stretch, the first acknowledge standing; `passCalls` sends no reminder for a stretch with `acked_at` set, while its open call (already sent) and its resolved call go as before. Since it lives on the stretch, it clears when the stretch resolves or closes by edit, and a new open starts unacknowledged. `GET /api/monitors` and `GET /api/monitors/:name` carry `acked: { at, by }` (by as `made_by` is) for an acknowledged open monitor, else null, and each stretch its `acked_at` / `acked_by`. 409 when the monitor is not open.
+How to use them is in [Monitors](monitors.md).
 
-A search monitor is read by an in-process loop (60s) the same way Search reads its saved search: `countLogs` when `agg` is null; window `stat` for `rate` or `{avg|min|max|sum|p99}:key`. A reading at or above the threshold is a fail, below it an ok; with `opens_when: fewer_than` (#176) below the threshold is a fail and at or above it an ok. A fewer-than reading below the threshold is no result while it can't tell (`src/alerts/cant-tell.ts`): until the loop has been up one whole window (`range`), or while a linked source that could feed the search is behind, quiet, or has a hole inside the window (the floor rule of `src/shared/held.ts`); it writes `cant_tell` and changes nothing, so a stretch open from before stays open and a line still resolves it. Fewer than reads a count or a rate (no rows is a rate of 0); a percentile, an average or a fixed window is refused at the pass as at save. "Last line" is the newest matching row, one row newest first through the event page's widening lookback, read for each fewer-than monitor with Watch's refresh (`src/alerts/last-line.ts`: at most once per 25s a query, and after the first read only back to the line it found). A fail while ok opens it and starts a stretch; the first ok while open resolves it. A refused reading (invalid numeric key or scan budget) or a failed one (ClickHouse down, unexpected SQL) is no result and changes nothing; it writes `last_status=refused|error`. A warn (from a pushed result, later) is kept as the last result and changes nothing. The open call goes out on the pass that opens it; while open, a reminder goes out every `remind_every` (`window` is the saved `range`, else 5m; off sends none) counted from the last call that went through; a resolved call goes out on the pass that resolves it. An open or resolved call that does not go through is tried each pass for an hour, then the stretch shows it failed; a failed reminder is tried the next pass. While `silenced_until` is in the future nothing is sent, but stretches open and resolve and the calls kept back are recorded as `silenced`; when the silence ends nothing is made up. Changing what a monitor reads (its search, source or threshold, or the saved search's `q`, window or `agg`) or pausing it (`enabled: false`) while it is open closes the stretch without a call (`closed_by: edit`); so does its saved search going away or becoming a board, on the next pass. A restart changes nothing: the state is SQLite's. A tick while the last pass is still running is skipped (`monitorTick`, `src/alerts/cron.ts`), so a slow pass never sends one call twice. After each pass, with `TOPOSCOPE_WATCHDOG_URL` set (#179, `src/alerts/watchdog.ts`), the loop checks in there: `GET <url>` when the pass ran and ClickHouse answered `SELECT 1`, `GET <url>/fail` (`/fail` on the path, a query kept) when it did not; a skipped or stuck pass checks in nowhere.
+### The monitor model
 
-Slack incoming webhook URLs (`hooks.slack.com`) get a Slack message that names the series (`p99(duration_ms) 912 ≥ 800`), says “still open · 1h” on a reminder and “resolved after 22m” when it resolves. Other URLs get `{ alert, count, value, agg, query, fired_at, state, opened_at, resolved_at }`, `state` being `open`, `reminder` or `resolved`; the open call carries the reading that opened it, a reminder or resolved call the latest. `count` is still the matching volume so existing generic hooks do not go silent. With `TOPOSCOPE_PUBLIC_URL` set, the generic body also carries `link` and the Slack message ends with an “Open in Toposcope” link: the saved search’s `q` and `agg` as `range=custom` from the window that opened it to now, and `saved=<id>`. `last_attempt_at` is last cron processing that was a refuse, an eval error, or a POST. `last_status` is `200` | HTTP code | `timeout` | `error` | `refused`. A 2xx sets `last_fired_at` and clears `consecutive_failures`; webhook failures increment `consecutive_failures`. Refuse and eval error do not increment `consecutive_failures` and do not touch `last_fired_at`. A successful eval clears `last_status` / `last_error` when they were `refused` or `error`. Changing the webhook URL clears the attempt fields. PUT `silence_for` (`1h`|`4h`|`24h`) or `silenced_until` (ms epoch, or `null` to clear). Rules that existed before 0.6 remind every window, so they call as often as they did; a new one reminds every 4h.
+A monitor (#175) is a name, a source, a state and the calls it sends; every alert rule is one. Its source is one of:
 
-A `first_seen` monitor watches the same saved search for new fingerprints instead of a threshold. It never opens: each call is kept in `monitor_calls` outside any stretch (`sent`), and Watch draws them as dots. Every minute, for each deploy or flag mark of the last 24 hours whose `service` the search's `q` does not rule out by a plain mismatch (the `q` read with only its `service:` terms known; a mark with no service always counts), it works out the First seen set the Fingerprints panel would show for that mark, cut at now with the panel's windows (the before side at least an hour), every row and not the panel's ten. Fingerprints with at least `threshold` events after the mark that the rule has not sent go in one call per mark, each under one mark only: a fingerprint new after several marks (a burst of deploys) goes under the latest of them at or before its first event, the mark the panel names ("after v0.9.3"), and on a 2xx it is recorded as sent for all of them. The call is `{ alert: { …, kind: "first_seen" }, query, mark, count, fingerprints: [{ e1, type, message, first_seen, events }], more, fired_at, link? }`, with ten listed and the rest counted. The ones sent are kept in SQLite (`alert_sent_fingerprints`: rule, mark, `e1`) only on a 2xx, so a failed call is tried again the next minute, and pruned after two days. A Slack URL gets “2 new fingerprints after deploy v0.9.3”. The link opens the mark's Fingerprints (`cut=<mark id>`). A cut refused for more than 200 fingerprints a side, or by the scan budget, records `refused` with the mark and does not page. Silence works as for a search monitor. `last_mark` keeps the mark it last paged on, and how many fingerprints.
+| Source | Kind | Reads |
+| --- | --- | --- |
+| `search` | `threshold` | a saved search |
+| `fingerprints` | `first_seen` | new fingerprints after a mark |
+| `push` | (#177) | results pushed to it |
+| `http` | (#178) | a URL it calls |
+| `tcp`, `cert` | (#180) | a port it connects to, and the certificate it answers with |
 
-A monitor's own body (`body_kind` `text` or `json`) replaces the default for either kind, with the same fill-ins the dialog lists; a search monitor's also has `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}` and `{{message}}` (the result that opened it, `Count 57 ≥ 50`, or `no line for 15m` for a fewer-than count that read none). A fewer-than monitor's default body carries `alert.opens_when: "fewer_than"`, and Slack reads it the other way round (`Count 0 < 1` when it opens). With a body of its own, a search monitor sends a resolved call only when it has a `resolved_body`, so a message written for “it opened” never arrives when it ended. In a JSON body every fill-in is JSON-escaped string content, so it belongs inside quotes; the body is checked at save with fill-ins read as strings. Text goes as `text/plain; charset=utf-8`, JSON as `application/json`. A `default` body is the JSON above, Slack's included.
+Its state is `ok` or `open`, kept in SQLite on the rule (`state`). Each open-to-resolved stretch is in `monitor_stretches`, and every call sent for it in `monitor_calls` (`open`, `reminder`, `resolved`, with its status; `silenced` when a silence kept it from being sent). The last 200 stretches a monitor are kept. HTTP(S) request headers, monitor bodies and webhook addresses are stored in SQLite.
 
-A push monitor (#177, `src/alerts/push.ts`) is a row in `alert_rules` with `source = 'push'`, no saved search, `query = monitor:<name>`, its keyed URL's key (`ping_key`, a random UUID, unique), `every_ms` and `grace_ms`. A result moves it at once, in the request that brought it: it is kept for Watch's ticks in `monitor_results`, the ClickHouse table monitors with results share (#324; `monitor_id, at, result, exit_code, duration_ms, value, unit, message, host, via, service`, and a position; every result is kept, by TTL on logs retention, and a read keeps the worst of each minute, fail > warn > ok and of equals the later; unknown is not kept; the log row is the record), its next result is due counted from now (`due_from`), and a run it ends is over (`started_at`). A fail opens it, the first ok after that resolves it, a warn is its last result and changes nothing, and unknown changes nothing at all. A paused one keeps its results and does not open. The pass reads lateness from SQLite alone: past `due_from + every` it is late (shown, no call), and past that plus `grace` (default: `every`, at most an hour) it opens with the due time it missed (`monitor_stretches.due_at`) and "missed: no result since …". Without `every` it is never late. A resume or a new schedule counts from then. Its calls are any monitor's; the default body is `{ alert: { id, name, source: "push" }, query, message, value, fired_at, state, opened_at, resolved_at, link? }`, the link a custom-window Search of its `monitor:` query, and Slack gets one line.
+A monitor without a webhook of its own calls `default_webhook_url` from Settings. With neither it calls nobody, records its open and resolved calls as `none`, and keeps its state. The pass reads every monitor whether or not anybody is called.
 
-A monitor without a webhook of its own calls `default_webhook_url` from Settings; with neither it calls nobody, records its open and resolved calls as `none`, and keeps its state. The pass reads every monitor whether or not anybody is called.
+### The search monitor pass
 
-An `http` monitor (#178; `src/alerts/http-*.ts`, `src/shared/http-check.ts`) keeps what it calls in `monitor_http` beside its rule: `url`, `method` (`GET` | `HEAD` | `POST`, with `body`), `headers` (sent, never returned: the API lists their names only, and a header given as `null` keeps the stored value), `every_ms` (30s … 1h), `conditions` (the stored lines), `fail_after` (2), and where its runs stand (`fails_in_row`, `next_run_at`, `last_run`). It runs on its own loop, not the 60s pass: each second the loop reads which enabled `http` monitors are due, moves each one's `next_run_at` on by `every_ms` (from its schedule, or from now when it fell behind) before starting it, and runs up to 8 at a time; a run in flight is not started twice. A run is one HTTP/1.1 request over a socket of its own (`node:net` / `node:tls`), so it can time dns, connect, tls, wait and body, and read the certificate: `Connection: close`, `Accept-Encoding` gzip/deflate/br, the body read to 1 MB, 10s in all. A certificate that is not trusted for the URL's host (by name or address) ends the run before a header is sent; a 3xx with a `Location` is never followed and fails the run. The lines (`status == 200`, `status in 200..299`, `time < 300ms`, `body contains "ok"`, `$.a.b[0] == value` and `<` / `>` with the restricted JSONPath, `header <name> contains …`, `cert > 14d`) all must pass; a line ending in `warn` warns instead of failing; with no lines a 2xx passes; no response is a fail with its error (`connect ECONNREFUSED`, `timeout after 10s`, `certificate is not trusted`). A fail adds to `fails_in_row` and opens it at `fail_after`; an ok resets it and resolves an open one; a warn resets it and changes nothing else. Its row in `alert_rules` has `source = 'http'`, no saved search and `query = monitor:<name>`. Its calls are any monitor's (`passCalls`: its own webhook, else the default in Settings, else nobody): reminders `off` | `1h` | `4h` | `24h`, no `window`; the default body is `{ alert: { id, name, source: "http" }, method, url, status, duration_ms, message, state, opened_at, resolved_at, fired_at, link? }`, Slack's says it in words, and the link opens `monitor:<name>` around the stretch. Every run is a `logs` row from service `toposcope`, host the URL's host, level `info` | `warn` | `error`, `monitor`, `status` (`ok` | `warn` | `fail`), `source: http`, `method`, `url`, `duration_ms`, `http.status`, `line` and `error`; a run that got an answer also writes `monitor_duration_ms` (labels `monitor`, `source`) to `metrics`. A row or metric that fails to insert is logged and the run still counts: the monitor opens and resolves while ClickHouse is down. Each run is also a result in `monitor_results`, the table push results share (written through `recordPushResult`, `via: http`): every result a row, read as the worst of each minute (fail > warn > ok, of equals the later), aged out by TTL on logs retention; the log rows stay the full record. A result that fails to write (ClickHouse down) is logged and the monitor still opens and calls. The SQLite `monitor_results` table of 0.6–0.9 is left in place and no longer read. Changing what it calls or its lines while open closes the stretch without a call, starts its failures over and runs it now.
+A search monitor is read by an in-process loop (60s) the same way Search reads its saved search: `countLogs` when `agg` is null, the window `stat` for `rate` or `{avg|min|max|sum|p99}:key`. A reading at or above the threshold is a fail, below it an ok. With `opens_when: fewer_than` (#176), below the threshold is a fail and at or above it an ok.
 
-A `tcp` or `cert` monitor (#180; `src/alerts/net-*.ts`, `src/shared/net-check.ts`) keeps where it connects in `monitor_net` beside its rule: `target` (host:port), `starttls` (`smtp` | `imap` | `pop3`, or null; a certificate monitor's only), `every_ms`, `conditions`, `fail_after`, `fails_in_row`, `next_run_at` and `last_run`. The HTTP(S) loop runs them too, from `monitor_net.next_run_at`, under the same 8 in flight. A run connects (`node:net`, IPv4 first) and, for `cert`, reads a mail server's greeting and sends its STARTTLS when asked (`EHLO` then `STARTTLS`, `a1 STARTTLS`, `STLS`), then does the TLS handshake with the host as its name and no ALPN, reads the certificate (its CN, its DNS and IP names, its issuer, when it ends, and why a client would not trust it) and the TLS version, and closes; nothing else is sent, 10s in all. Its lines are its own: `connected` and `time < Nms` for `tcp` (dns and connect); those, `cert > Nd` and `cert name == host` for `cert` (one of its names up to case, `*.` for one leftmost label); a line of another monitor is refused when saved. Not connecting, or a handshake or STARTTLS that did not finish, fails the run with its error. A `cert` run fails on a certificate a client would not trust, and on one not for its host unless a `cert name` line names the one it must be; with no lines it passes. Opening, resolving and calls are the HTTP(S) monitor's (`settleNodeRun`); the default body is `{ alert: { id, name, source }, target, starttls?, cert_valid_to?, duration_ms, message, state, opened_at, resolved_at, fired_at, link? }`. Every run is a `logs` row from service `toposcope`, host the target's host, with `monitor`, `status`, `source` (`tcp` | `cert`), `target`, `duration_ms`, `line`, `error`, and for `cert` `starttls`, `cert.subject`, `cert.valid_to` and `cert.days_left`; a run that got as far as it goes writes `monitor_duration_ms`. Each run is a result in `monitor_results` (`via: tcp | cert`).
+- A fail while ok opens it and starts a stretch; the first ok while open resolves it.
+- A refused reading (invalid numeric key or scan budget) or a failed one (ClickHouse down, unexpected SQL) is no result and changes nothing. It writes `last_status=refused|error`.
+- A warn (from a pushed result, later) is kept as the last result and changes nothing.
+- A restart changes nothing: the state is SQLite's.
+- A tick while the last pass is still running is skipped (`monitorTick`, `src/alerts/cron.ts`), so a slow pass never sends one call twice.
 
-Watch (`?view=watch`, `src/ui/components/watch-view.tsx`, frame 18c) draws every monitor as a lane on one clock (24h, 7d or 30d), open ones first and each with a card above the lanes: its stretches as bands (red while open), a new-fingerprints monitor's calls as dots, its state and last reading on the right, and the deploy and flag marks on the last row. A push monitor's lane (18f) has each result as a tick (amber a warn, red a fail), a run as a bar back to its `/start`, its stretches red, late amber from the due time, an outline while a run is going and a dashed line at the due time it waits for; a click on a tick reads that result (its exit code, how long it ran, from where, its message, and the stretch it opened) with Open in Search. On the Push segment its lanes are taller and say when the next result is due ("next 11:06", "down 11:12" while late, "due 02:04 · missed" once open). The header says how many are open, late and warn on every view. New monitor first asks where its results come from (18p), then opens the dialog (18j, 18t, 18u), the push editor (18s), or the HTTP(S) editor (18r, 18v, `src/ui/components/http-monitor-dialog.tsx`): Send, the response with conditions picked from it, the lines as stored, and the request's headers and POST body. The TCP · certificate editor (18x, `src/ui/components/net-monitor-dialog.tsx`) is 18r with a kind for the method (TCP "connects"; TLS, SMTP, IMAP, POP3 a certificate, the last three over STARTTLS) and host:port for the URL; its Answer shows how it connected (`TLS 1.3 via STARTTLS`), where the time went (dns · connect · tls) and the certificate (expires, name, issuer), with `connected`, `time <`, `cert >` and `cert name ==` to pick, and the conditions, name, run and calls as 18r draws them (`check-editor-parts.tsx`, shared with the HTTP(S) editor). Watch's segments add TCP and Certificate after HTTP (18y); their lanes read `tcp · 30s · connected` and `certificate · SMTP · 1h`, a TCP lane its last time and a certificate lane its days left, and draw their runs as an HTTP(S) lane does. An HTTP(S) monitor's lane reads `http · 30s · 3 conditions` and its last time (days left for a `cert` line alone), a warn amber; its runs are a texture when they are closer than a column (every 30s over 24h), with each column that warned or failed drawn on it, and a tick each when sparser; it opens as a hunt on `monitor:<name>`, with its stretches under the plot. A monitor opens as a hunt (18i): its saved search in a new tab, over a clock that holds its stretch, with the monitor beside it (Edit, Pause, Silence). A push monitor opens on its `monitor:<name>` query with `status` and `signal` facets and the `status` and `duration_ms` columns; its rail shows its keyed URL with Copy, its schedule, its last ok and who it calls, and its editor (18s) shows how to send results and the first one that arrived. On a hunt of a saved search a monitor reads, its stretches sit under the marks on the plot (18o): a click reads one, with the deploy or flag before it and the calls sent; the table gets a row where it opened, and the Saved list a red dot while one is open. Each monitor shows its service and host beside its name (#335). Since sheet 50g each monitor is one line, about 38px: its dot, name and service, CHECKS once and short (`checksLine` in `src/ui/watch.ts`: a search's query and `≥ N in <window>` or `< N`, an HTTP(S) monitor's method and URL and its lines, a TCP or certificate monitor's target and lines, a push monitor's schedule; the full text in a keyboard-reachable tooltip), its strip and Now; the state line (`open since … · …`, `ok · last open … for …`), who acknowledged it and the last check are Now's tooltip (`nowTitle`). An open monitor has an **Acknowledge** button in Now for anyone who can change monitors; acknowledged, its dot is grey, Now reads `acked by <name> · <how long open>`, it sorts after the unacknowledged open ones, and the header's `N open` (and the header pill's count) leaves it out (`watchCounts`). Once a link brings monitors (#333, frame 33g), Watch groups Here and one group per source (`sources` on `GET /api/monitors`) with a read-only tag, how far the source is read and a link to its link's page; a short source's lanes are hatched, never green, and its monitors open with their definition, results and stretches and no Edit, Pause, Silence or Delete. The filter segment reads All, Here, and each source.
+Changing what a monitor reads (its search, source or threshold, or the saved search's `q`, window or `agg`) or pausing it (`enabled: false`) while it is open closes the stretch without a call (`closed_by: edit`). So does its saved search going away or becoming a board, on the next pass.
+
+### Fewer than and can't tell
+
+A fewer-than reading below the threshold is no result while it can't tell (`src/alerts/cant-tell.ts`):
+
+- until the loop has been up one whole window (`range`), or
+- while a linked source that could feed the search is behind, quiet, or has a hole inside the window (the floor rule of `src/shared/held.ts`).
+
+It then writes `cant_tell` and changes nothing, so a stretch open from before stays open and a line still resolves it. Fewer than reads a count or a rate (no rows is a rate of 0). A percentile, an average or a fixed window is refused at the pass as at save.
+
+"Last line" is the newest matching row: one row newest first through the event page's widening lookback, read for each fewer-than monitor with Watch's refresh. `src/alerts/last-line.ts` reads it at most once per 25s a query, and after the first read only back to the line it found.
+
+### Calls, reminders and silence
+
+The open call goes out on the pass that opens it. While open, a reminder goes out every `remind_every`, counted from the last call that went through: `window` is the saved `range`, else 5m; `off` sends none. A resolved call goes out on the pass that resolves it.
+
+- An open or resolved call that does not go through is tried each pass for an hour, then the stretch shows it failed. A failed reminder is tried the next pass.
+- While `silenced_until` is in the future nothing is sent, but stretches open and resolve and the calls kept back are recorded as `silenced`. When the silence ends nothing is made up.
+- PUT `silence_for` (`1h`|`4h`|`24h`) or `silenced_until` (ms epoch, or `null` to clear).
+- Rules that existed before 0.6 remind every window, so they call as often as they did; a new one reminds every 4h.
+
+An open stretch can be acknowledged (sheet 50g): `monitor_stretches.acked_at` and `acked_by` (an actor ref, as `created_by` is) are set on the open stretch, and the first acknowledgement stands. `passCalls` sends no reminder while `acked_at` is set; the resolved call goes as before. Because it lives on the stretch, it clears when the stretch resolves or closes by edit, and the next open starts unacknowledged.
+
+### Call status fields
+
+- `last_attempt_at` is the last cron processing that was a refuse, an eval error, or a POST.
+- `last_status` is `200` | HTTP code | `timeout` | `error` | `refused`.
+- A 2xx sets `last_fired_at` and clears `consecutive_failures`; webhook failures increment `consecutive_failures`.
+- A refuse or eval error does not increment `consecutive_failures` and does not touch `last_fired_at`.
+- A successful eval clears `last_status` / `last_error` when they were `refused` or `error`.
+- Changing the webhook URL clears the attempt fields.
+
+### Default call bodies
+
+Slack incoming webhook URLs (`hooks.slack.com`) get a Slack message that names the series (`p99(duration_ms) 912 ≥ 800`), says "still open · 1h" on a reminder and "resolved after 22m" when it resolves.
+
+Other URLs get `{ alert, count, value, agg, query, fired_at, state, opened_at, resolved_at }`, `state` being `open`, `reminder` or `resolved`. The open call carries the reading that opened it; a reminder or resolved call the latest. `count` is still the matching volume, so existing generic hooks do not go silent.
+
+With `TOPOSCOPE_PUBLIC_URL` set, the generic body also carries `link`, and the Slack message ends with an "Open in Toposcope" link. The link is the saved search's `q` and `agg` as `range=custom` from the window that opened it to now, and `saved=<id>`.
+
+### Bodies of its own
+
+A monitor's own body (`body_kind` `text` or `json`) replaces the default for either kind, with the same fill-ins the dialog lists. A search monitor's also has `{{state}}`, `{{opened_at}}`, `{{resolved_at}}`, `{{duration}}` and `{{message}}`: the result that opened it (`Count 57 ≥ 50`), or `no line for 15m` for a fewer-than count that read none.
+
+- A fewer-than monitor's default body carries `alert.opens_when: "fewer_than"`, and Slack reads it the other way round (`Count 0 < 1` when it opens).
+- With a body of its own, a search monitor sends a resolved call only when it has a `resolved_body`, so a message written for "it opened" never arrives when it ended.
+- In a JSON body every fill-in is JSON-escaped string content, so it belongs inside quotes. The body is checked at save with fill-ins read as strings.
+- Text goes as `text/plain; charset=utf-8`, JSON as `application/json`.
+- A `default` body is the JSON above, Slack's included.
+
+### New-fingerprints monitors
+
+A `first_seen` monitor watches the same saved search for new fingerprints instead of a threshold. It never opens: each call is kept in `monitor_calls` outside any stretch (`sent`), and Watch draws them as dots.
+
+Every minute it looks at each deploy or flag mark of the last 24 hours whose `service` the search's `q` does not rule out by a plain mismatch (the `q` read with only its `service:` terms known; a mark with no service always counts). For each, it works out the First seen set the Fingerprints panel would show for that mark, cut at now with the panel's windows (the before side at least an hour): every row, not the panel's ten.
+
+Fingerprints with at least `threshold` events after the mark that the rule has not sent go in one call per mark, each under one mark only. A fingerprint new after several marks (a burst of deploys) goes under the latest of them at or before its first event, the mark the panel names ("after v0.9.3"). On a 2xx it is recorded as sent for all of them.
+
+### A new-fingerprints call
+
+The call is `{ alert: { …, kind: "first_seen" }, query, mark, count, fingerprints: [{ e1, type, message, first_seen, events }], more, fired_at, link? }`, with ten listed and the rest counted. A Slack URL gets "2 new fingerprints after deploy v0.9.3". The link opens the mark's Fingerprints (`cut=<mark id>`).
+
+- The ones sent are kept in SQLite (`alert_sent_fingerprints`: rule, mark, `e1`) only on a 2xx, so a failed call is tried again the next minute. They are pruned after two days.
+- A cut refused for more than 200 fingerprints a side, or by the scan budget, records `refused` with the mark and does not page.
+- Silence works as for a search monitor.
+- `last_mark` keeps the mark it last paged on, and how many fingerprints.
+
+### Push monitors
+
+A push monitor (#177, `src/alerts/push.ts`) is a row in `alert_rules` with `source = 'push'`, no saved search, `query = monitor:<name>`, its keyed URL's key (`ping_key`, a random UUID, unique), `every_ms` and `grace_ms`.
+
+A result moves it at once, in the request that brought it. The result is kept for Watch's ticks in `monitor_results`; its next result is due counted from now (`due_from`); and a run it ends is over (`started_at`). A fail opens it, the first ok after that resolves it, a warn is its last result and changes nothing, and unknown changes nothing at all. A paused one keeps its results and does not open.
+
+The pass reads lateness from SQLite alone. Past `due_from + every` it is late (shown, no call). Past that plus `grace` (default: `every`, at most an hour) it opens with the due time it missed (`monitor_stretches.due_at`) and "missed: no result since …". Without `every` it is never late. A resume or a new schedule counts from then.
+
+Its calls are any monitor's. The default body is `{ alert: { id, name, source: "push" }, query, message, value, fired_at, state, opened_at, resolved_at, link? }`, the link a custom-window Search of its `monitor:` query, and Slack gets one line.
+
+### Monitor results
+
+`monitor_results` is the ClickHouse table every monitor with results shares (#324): `monitor_id, at, result, exit_code, duration_ms, value, unit, message, host, via, service`, and a position.
+
+- Every result is kept, aged out by TTL on logs retention. A read keeps the worst of each minute: fail > warn > ok, and of equals the later.
+- Unknown is not kept. The log rows stay the full record.
+- A result that fails to write (ClickHouse down) is logged, and the monitor still opens and calls.
+- The SQLite `monitor_results` table of 0.6–0.9 is left in place and no longer read.
+
+### HTTP(S) monitors
+
+An `http` monitor (#178; `src/alerts/http-*.ts`, `src/shared/http-check.ts`) keeps what it calls in `monitor_http` beside its rule:
+
+- `url`, `method` (`GET` | `HEAD` | `POST`, with `body`)
+- `headers`: sent, never returned. The API lists their names only, and a header given as `null` keeps the stored value.
+- `every_ms` (30s … 1h), `conditions` (the stored lines), `fail_after` (2)
+- where its runs stand: `fails_in_row`, `next_run_at`, `last_run`
+
+Its row in `alert_rules` has `source = 'http'`, no saved search and `query = monitor:<name>`. Changing what it calls or its lines while open closes the stretch without a call, starts its failures over and runs it now.
+
+### The HTTP(S) run loop
+
+It runs on its own loop, not the 60s pass. Each second the loop reads which enabled `http` monitors are due, moves each one's `next_run_at` on by `every_ms` (from its schedule, or from now when it fell behind) before starting it, and runs up to 8 at a time. A run in flight is not started twice.
+
+A run is one HTTP/1.1 request over a socket of its own (`node:net` / `node:tls`), so it can time dns, connect, tls, wait and body, and read the certificate. It sends `Connection: close` and `Accept-Encoding` gzip/deflate/br, reads the body to 1 MB, and has 10s in all.
+
+- A certificate that is not trusted for the URL's host (by name or address) ends the run before a header is sent.
+- A 3xx with a `Location` is never followed and fails the run.
+
+### HTTP(S) conditions and results
+
+The lines (`status == 200`, `status in 200..299`, `time < 300ms`, `body contains "ok"`, `$.a.b[0] == value` and `<` / `>` with the restricted JSONPath, `header <name> contains …`, `cert > 14d`) all must pass. A line ending in `warn` warns instead of failing. With no lines a 2xx passes. No response is a fail with its error (`connect ECONNREFUSED`, `timeout after 10s`, `certificate is not trusted`).
+
+A fail adds to `fails_in_row` and opens it at `fail_after`. An ok resets it and resolves an open one. A warn resets it and changes nothing else.
+
+Its calls are any monitor's (`passCalls`: its own webhook, else the default in Settings, else nobody). Reminders are `off` | `1h` | `4h` | `24h`, no `window`. The default body is `{ alert: { id, name, source: "http" }, method, url, status, duration_ms, message, state, opened_at, resolved_at, fired_at, link? }`; Slack's says it in words, and the link opens `monitor:<name>` around the stretch.
+
+### HTTP(S) runs as rows
+
+Every run is a `logs` row from service `toposcope`, host the URL's host, level `info` | `warn` | `error`, with `monitor`, `status` (`ok` | `warn` | `fail`), `source: http`, `method`, `url`, `duration_ms`, `http.status`, `line` and `error`. A run that got an answer also writes `monitor_duration_ms` (labels `monitor`, `source`) to `metrics`.
+
+A row or metric that fails to insert is logged and the run still counts: the monitor opens and resolves while ClickHouse is down. Each run is also a result in `monitor_results`, written through `recordPushResult` with `via: http`.
+
+### TCP and certificate monitors
+
+A `tcp` or `cert` monitor (#180; `src/alerts/net-*.ts`, `src/shared/net-check.ts`) keeps where it connects in `monitor_net` beside its rule: `target` (host:port), `starttls` (`smtp` | `imap` | `pop3`, or null; a certificate monitor's only), `every_ms`, `conditions`, `fail_after`, `fails_in_row`, `next_run_at` and `last_run`. The HTTP(S) loop runs them too, from `monitor_net.next_run_at`, under the same 8 in flight.
+
+A run connects (`node:net`, IPv4 first). For `cert`, it reads a mail server's greeting and sends its STARTTLS when asked (`EHLO` then `STARTTLS`, `a1 STARTTLS`, `STLS`). It then does the TLS handshake with the host as its name and no ALPN, reads the certificate (its CN, its DNS and IP names, its issuer, when it ends, and why a client would not trust it) and the TLS version, and closes. Nothing else is sent, and it has 10s in all.
+
+### TCP and certificate lines and results
+
+Its lines are its own: `connected` and `time < Nms` for `tcp` (dns and connect); those, `cert > Nd` and `cert name == host` for `cert` (one of its names up to case, `*.` for one leftmost label). A line of another monitor is refused when saved.
+
+- Not connecting, or a handshake or STARTTLS that did not finish, fails the run with its error.
+- A `cert` run fails on a certificate a client would not trust, and on one not for its host unless a `cert name` line names the one it must be. With no lines it passes.
+- Opening, resolving and calls are the HTTP(S) monitor's (`settleNodeRun`).
+
+The default body is `{ alert: { id, name, source }, target, starttls?, cert_valid_to?, duration_ms, message, state, opened_at, resolved_at, fired_at, link? }`. Every run is a `logs` row from service `toposcope`, host the target's host, with `monitor`, `status`, `source` (`tcp` | `cert`), `target`, `duration_ms`, `line`, `error`, and for `cert` `starttls`, `cert.subject`, `cert.valid_to` and `cert.days_left`. A run that got as far as it goes writes `monitor_duration_ms`. Each run is a result in `monitor_results` (`via: tcp | cert`).
+
+### The watchdog
+
+After each pass, with `TOPOSCOPE_WATCHDOG_URL` set (#179, `src/alerts/watchdog.ts`), the loop checks in there. It sends `GET <url>` when the pass ran and ClickHouse answered `SELECT 1`, and `GET <url>/fail` (`/fail` on the path, a query kept) when it did not. A skipped or stuck pass checks in nowhere.
+
+### Alert rule routes
+
+`GET/POST /api/alert-rules`, `PUT /api/alert-rules/:id`, `DELETE /api/alert-rules/:id`. The list stays `{ rules, link }`; `GET` says `link: true` when `TOPOSCOPE_PUBLIC_URL` is set.
+
+| Field | Values |
+| --- | --- |
+| `kind` | `threshold` (the default) or `first_seen` |
+| `threshold` | A positive finite number; for `first_seen` a whole number of events, at least 1 |
+| `body_kind`, `body_template` | `default` \| `text` \| `json`, and the body with `{{…}}` fill-ins: refused (400) when a fill-in is not the kind's or a JSON body does not parse |
+| `service`, `host` | Where the monitor is about (#335) |
+| `remind_every` | `off` \| `window` \| `1h` \| `4h` \| `24h`; a new one defaults to `4h` |
+| `resolved_body` | A text or JSON body's resolved call; refused for `first_seen` |
+| `opens_when` | `at_least` \| `fewer_than` (#176), default `at_least`; search monitors only |
+| `enabled` | `PUT` only; `false` pauses |
+
+Each rule also carries `source` (`search` for `threshold`, `fingerprints` for `first_seen`), `state` (`ok` | `open`), `enabled`, and its last result (`last_result`, `last_value`, `last_result_at`). A search monitor also carries `cant_tell`: why a fewer-than monitor stayed shut on its last pass, `{ kind: "starting", at, until }` or `{ kind: "held", at, sources: [{ name, state }] }`, else null. Fewer than on a `{avg|min|max|sum|p99}:key` agg, or on a saved search with a fixed `from`/`to`, is 400 with the reason.
+
+### A monitor's service and host
+
+Every save names `service` (#335, `src/control/monitor-place.ts`; `alert_rules.service`, at most 200 characters). `POST`, `PUT /api/alert-rules/:id` and `PUT /api/monitors/:name` without one, and with none stored, answer 400 "A monitor names its service: the service it is about". A save that leaves it out keeps the stored one.
+
+`host` (`alert_rules.host`) defaults to an HTTP(S) monitor's URL host or a TCP or certificate monitor's target host, and is kept when left out. Both come back on the rule.
+
+Monitors made before 0.10 name no service and are not kept. `migrateControlDb` removes every monitor whose service is empty at each start, with what is kept for it in SQLite, and logs how many; its ClickHouse results age out with retention.
+
+### The test call
+
+`POST /api/alert-rules/test-call` is the dialog's test. The draft rule as it stands (unsaved) is filled in from the last evaluation or, for `first_seen`, the last mark it would watch, and POSTed now (5s). It answers `{ ok, status, status_text, ms, at, reply (first 200 characters), sent, content_type, resolved }`. With a text or JSON body and a `resolved_body`, that one is sent after the open one and `resolved` is its result, otherwise `null`. It is 400 when there is nothing to fill it in from.
+
+### Monitor routes
+
+| Route | Does |
+| --- | --- |
+| `GET /api/monitors` | Every monitor, its stretches and results in a window |
+| `GET /api/monitors/:name` | One monitor and its last 200 stretches, newest first, with their calls. A push monitor's also has its `ping_key` (its page is the only place it is printed) and its `last` result. |
+| `PUT /api/monitors/:name` | Creates (201) or replaces (200) the monitor of that name |
+| `DELETE /api/monitors/:name` | Removes it and its record |
+| `POST /api/monitors/preview` | The preview a token's save needs |
+| `POST /api/monitors/send` | The HTTP(S) editor's Send |
+
+`/api/alert-rules` stays as an alias of `/api/monitors` for 0.6. Two monitors of one name answer 409. `PUT /api/alert-rules/:id` on a push monitor takes the same fields as `PUT /api/monitors/:name`, keeping what it leaves out.
+
+### GET /api/monitors
+
+The window is `range=24h|7d|30d` (default 24h) or a hunt's `from`/`to` (at most 366d). It answers `{ now, from, to, monitors, stretches, sent, results, sources, link }`:
+
+- `monitors`: each rule plus `saved` (its saved search's `id`, `name`, `query`, `range`, `agg`) and `open`, its open stretch with its calls. A fewer-than monitor adds `last_line_at`, its search's newest matching line: null when none in a year, left out when it could not be read.
+- A push monitor carries `every_ms`, `grace_ms`, `due_from`, `started_at`, `last_ok_at`, and any monitor `paused_at`. No list prints a push monitor's key.
+- An `http` monitor carries `http`: its `url`, `method`, `body`, header names, `every`, `conditions`, `fail_after`, `fails_in_row`, `next_run_at` and `last_run`.
+- `stretches`: those open at any time in the window, each with its calls. `sent`: the new-fingerprints calls sent in it.
+- `results`: monitors' results in the window, for Watch's ticks (`{ monitor_id, at, result, exit_code, duration_ms, value, unit, message (cut to 300), host, via }`), cut into at most 240 columns a monitor, each the worst result of its column (fail > warn > ok, the later of equals).
+- `sources` (#333): each linked source's monitors, read-only: `[{ source, at, monitors, stretches }]`, each monitor its definition with `service` and `host`, the stretches those open in the window, and their results in `results` by id.
+
+Each monitor carries `acked: { at, by }` for an acknowledged open stretch, else null, and each stretch its `acked_at` and `acked_by`. `POST /api/monitors/:name/ack` (action `change monitors`, no body) acknowledges the open stretch and answers the monitor as this list shows it: 409 when it is not open, 404 when there is no such monitor, 403 for a Viewer.
+
+### PUT /api/monitors/:name
+
+A script or an agent can declare a monitor with one of these bodies. What is left out takes its default, and a replace keeps the monitor's record, silence and pause.
+
+| Source | Body |
+| --- | --- |
+| `search`, `fingerprints` | `saved_search_id` \| `saved_search` (a unique name), `threshold`, `webhook_url`, `opens_when?`, `body_kind?`, `body_template?`, `resolved_body?`, `remind_every?` |
+| `push` | `every?`, `grace?`, `webhook_url?` (null: the default), `remind_every?`, `key?` (a random UUID the editor minted; a new one replaces the old) |
+| `http` | `url`, `method?`, `body?`, `headers?`, `every?`, `conditions?` (text, one a line, or a list), `fail_after?`, `webhook_url?` (null: the default), `body_kind?`, `body_template?`, `resolved_body?`, `remind_every?` |
+| `tcp`, `cert` | `target` (host:port), `starttls?` (`"smtp"` \| `"imap"` \| `"pop3"`, cert only; null: TLS from the first byte), `every?`, `conditions?`, `fail_after?`, `webhook_url?`, `body_kind?`, `body_template?`, `resolved_body?`, `remind_every?` |
+
+A push, HTTP(S), TCP or certificate monitor stays one, and no other monitor becomes one (400).
+
+### The preview gate
+
+With a token, each of these saves (and `POST`/`PUT /api/alert-rules`) needs a preview of the same body in the last 10 minutes (`POST /api/monitors/preview`, #360, `src/design/preview-gate.ts`), else 428. This arrived in 0.11. A body the save would refuse is refused there in the same words. A browser session needs none. Neither does a body that only pauses or silences, on a change by id or on a replace of a monitor that exists (which then only pauses or silences it). The rules an agent sees are in [MCP](mcp.md#a-monitor-is-previewed-before-it-is-saved).
+
+### Send
+
+`POST /api/monitors/send` is the HTTP(S) editor's Send (design frame 18r). It takes `{ url, method?, headers?, body?, conditions?, id? }`, runs it once from this node, and stores nothing. With `id`, a header given as `null` is that monitor's. It answers:
+
+`{ at, url, method, response: { status, status_text, http_version, headers, body (first 256 KB), body_bytes, truncated } | null, error, timings: { dns, connect, tls, wait, body, total }, cert: { subject, issuer, valid_to } | null, duration_ms, verdict: { result, line, why, lines: [{ text, level, pass, got, why }] } }`
+
+### Watch
+
+Watch is a separate view; each monitor reads a saved search. Watch (`?view=watch`, `src/ui/components/watch-view.tsx`, frame 18c) draws every monitor as a lane on one clock (24h, 7d or 30d), open ones first. Each has a card above the lanes: its stretches as bands (red while open), a new-fingerprints monitor's calls as dots, its state and last reading on the right, and the deploy and flag marks on the last row. Each monitor shows its service and host under its name (#335). The header says how many are open, late and warn on every view.
+
+A push monitor's lane (18f) has each result as a tick (amber a warn, red a fail), a run as a bar back to its `/start`, its stretches red, late amber from the due time, an outline while a run is going, and a dashed line at the due time it waits for.
+
+A click on a tick reads that result (its exit code, how long it ran, from where, its message, and the stretch it opened) with Open in Search. On the Push segment its lanes are taller and say when the next result is due ("next 11:06", "down 11:12" while late, "due 02:04 · missed" once open).
+
+Since sheet 50g each monitor is one line, about 38px: dot, name and service, CHECKS once and short (`checksLine` in `src/ui/watch.ts`, the full text in a tooltip), the strip and Now. The state line, who acknowledged it and the last check are Now's tooltip (`nowTitle`). An acknowledged monitor's dot is grey, Now reads `acked by <name> · <how long open>`, it sorts after the unacknowledged open ones, and `watchCounts` leaves it out of `N open`.
+
+### Check lanes in Watch
+
+Watch's segments add TCP and Certificate after HTTP (18y). Their lanes read `tcp · 30s · connected` and `certificate · SMTP · 1h`, a TCP lane its last time and a certificate lane its days left, and draw their runs as an HTTP(S) lane does.
+
+An HTTP(S) monitor's lane reads `http · 30s · 3 conditions` and its last time (days left for a `cert` line alone), a warn amber. Its runs are a texture when they are closer than a column (every 30s over 24h), with each column that warned or failed drawn on it, and a tick each when sparser. It opens as a hunt on `monitor:<name>`, with its stretches under the plot.
+
+### Monitor editors
+
+New monitor first asks where its results come from (18p), then opens the dialog (18j, 18t, 18u), the push editor (18s), or the HTTP(S) editor (18r, 18v, `src/ui/components/http-monitor-dialog.tsx`). The HTTP(S) editor has Send, the response with conditions picked from it, the lines as stored, and the request's headers and POST body.
+
+The TCP · certificate editor (18x, `src/ui/components/net-monitor-dialog.tsx`) is 18r with a kind for the method (TCP "connects"; TLS, SMTP, IMAP, POP3 a certificate, the last three over STARTTLS) and host:port for the URL. Its Answer shows how it connected (`TLS 1.3 via STARTTLS`), where the time went (dns · connect · tls) and the certificate (expires, name, issuer), with `connected`, `time <`, `cert >` and `cert name ==` to pick. The conditions, name, run and calls are drawn as 18r draws them (`check-editor-parts.tsx`, shared with the HTTP(S) editor).
+
+### A monitor as a hunt
+
+A monitor opens as a hunt (18i): its saved search in a new tab, over a clock that holds its stretch, with the monitor beside it (Edit, Pause, Silence). A push monitor opens on its `monitor:<name>` query with `status` and `signal` facets and the `status` and `duration_ms` columns. Its rail shows its keyed URL with Copy, its schedule, its last ok and who it calls, and its editor (18s) shows how to send results and the first one that arrived.
+
+On a hunt of a saved search a monitor reads, its stretches sit under the marks on the plot (18o). A click reads one, with the deploy or flag before it and the calls sent. The table gets a row where it opened, and the saved list a red dot while one is open.
+
+### Monitors from linked sources in Watch
+
+Once a link brings monitors (#333, frame 33g), Watch groups Here and one group per source (`sources` on `GET /api/monitors`), with a read-only tag, how far the source is read, and a link to its link's page. A short source's lanes are hatched, never green. Its monitors open with their definition, results and stretches, and no Edit, Pause, Silence or Delete. The filter segment reads All, Here, and each source.
+
+## Feeds and links
+
+How to use links is in [Links](links.md).
+
+### Feeds
+
+A feed (#135, `src/feed/feed.ts`) is rows by arrival through one `q`. The `q` is compiled and refused (400 with `faults`) when the feed is defined, and never changed after. Feeds are behind the operator sign-in; keys come with links (#136).
+
+| Route | Does |
+| --- | --- |
+| `POST /api/feeds` `{ q }` | `201 { id, q, created_at }` |
+| `GET /api/feeds` | `{ feeds }` |
+| `GET /api/feeds/:id?after=&limit=&kinds=` | The rows of positions `(after, through]` that match |
+
+A read returns matching rows in arrival order, as stored: `attrs` with `e1`, `toposcope`, `seq`, and `arrived` from ingest. `through` is the end of a span of 100,000 positions or what is settled, whichever is first, or the last row of a full page (`limit`, 1,000 by default, 5,000 at most). An empty range is an answer, not an end. A read over the scan budget returns `refused`.
+
+The first feed builds a projection of `logs` ordered by `seq` (`by_seq`), so any range stays cheap however old.
+
+### What a feed reply says
+
+The reply always says what it covered:
+
+- `after`, `through`, `settled`
+- `arrived`: when the newest row of the range arrived here; null for an empty range
+- `oldest`: the oldest position still stored
+- `horizon`: retention
+- `gone`: positions retention passed before they were read, closed at both ends
+- `marks`: the change marks posted or closed in the same positions (#138), each carrying `toposcope`, the instance it was posted at
+
+A mark goes when the `q` does not rule out its `service` by a plain mismatch: a mark is not a log line, and `level:error` does not apply to it.
+
+### Kinds in a feed
+
+`GET /api/feeds/:id` takes `kinds=`: `logs`, `marks`, `spans`, `metrics`, `metric_buckets`, `profile_samples`, `monitor_results`, comma-separated. Empty is every kind, and an unknown name is 400. It reads each kind asked for on the same range of positions (#325).
+
+Logs and marks stay `rows` and `marks`. The reply's `kinds` holds each other kind as `{ rows, gone, not_sent? }`: its rows as stored; its own hole (positions below its oldest row, only when that row sits at the kind's own retention edge; metrics follow metrics retention when set); and why it is not sent at all. One page limit covers every kind, so the page ends where the first full kind ends or at the limit-th row in arrival order. `through`, `settled` and `arrived` stay one number each.
+
+### How q applies to each kind
+
+The feed's `q` runs on each kind by the fields it has (#326, `src/feed/kind-filter.ts`):
+
+| Kind | `service`, `host` and other keys map onto |
+| --- | --- |
+| spans | `service`, `attrs['host.name']`, `attrs` |
+| points and buckets | `labels['service']`, `labels['host']`, `labels` |
+| monitor results | `service`, `host`; no map |
+
+`toposcope` maps onto its column. A field a kind lacks (`level`, a message term, a comparison or other key on monitor results) sets `not_sent` (`the filter names level`). A profile sample goes when `(trace_id, span_id)` is a span the filter lets through at or below `through`; one with no span goes by `service` and `toposcope` alone.
+
+Once a link carries a kind, `ensureFullSeqProjection` adds a full projection ordered by `seq` (`by_seq_full`, `SELECT * ORDER BY seq`) to `spans`, `metrics`, `metric_buckets`, `profile_samples` or `monitor_results`. It does so once, on the side rows leave from, since their sort orders scatter positions that arrived together. Measured on synthetic data it costs about 90% more disk on `spans` and 130% more on `metrics`.
+
+### Link keys and routes
+
+Links (#136) live in `src/links/`. A key is `tsl2_o|tsl2_i . name . address . kid . q . until|- . secret . kinds` (base64url; `src/links/key.ts`), shown once and stored hashed in `link_keys`. Its `kinds` (#329) are `logs,marks,traces,metrics,profiles,monitors`, all by default.
+
+| Route | Does |
+| --- | --- |
+| `GET /api/links` | `{ here, links, keys }`, no secrets |
+| `POST /api/links/offer` / `invite` `{ q, until?, name?, kinds? }` | `201 { key, kid, label, kinds }` |
+| `POST /api/links/preview { key }` | Decodes it and makes one lookup to the minter |
+| `POST /api/links/confirm { key, name? }` | Claims it there |
+| `GET`/`PUT /api/links/:id` | A link's page; `PUT` takes `paused`, `q` and `kinds` |
+| `DELETE /api/links/:id` | Removes a link (deletes nothing) |
+| `DELETE /api/links/keys/:kid` | Revokes a key |
+
+A `tsl1_` key is refused at preview and confirm with "This key is from an older Toposcope; mint a new one there". Minting or pasting asks for the instance's name the first time.
+
+### Instance to instance
+
+Instance to instance, routes sit under `/link/v1/`, not behind a person's sign-in. `POST lookup` and `POST claim` prove the key's secret. `GET feed?after=&limit=`, `POST ask`, `POST rows` and `POST remove` prove the link's own secret (Bearer), which the claim swaps the key for. The minter keeps its hash; the side that pasted (the side that connects) keeps the secret. A link's secret reads its feed (#135) and nothing else.
+
+Links live in SQLite `links`: role `pull`|`serve`, `connects` `we`|`they`, position, settled, the arrival time at the position, behind rows on an every-row link, a hole, last contact, and last error.
+
+### The pull loop
+
+The pull loop (`src/links/puller.ts`, every 5s, like the alert cron) reads each link it pulls and calls out for, up to 20 pages a pass. It stores rows with `insertPulled` (`src/ingest/pulled.ts`) as they were: `e1` and attrs untouched, the source's `toposcope`, or the source's name for a row that entered it unnamed. Their origin goes in `logs.src_id` / `src_seq` (a minmax index). So a row already here by origin — a retry, overlapping filters, a re-pull, or a row that left here and came back — is not stored again. Each stored row takes a position here.
+
+A link where the source pasted (an invite, #137) is served by the source calling out. Each pass it `ask`s the puller where it stands, reads its own feed from there, and `POST`s the reply to `rows`. The puller stores it with `insertPulled` and moves its position, refusing (409) a range that does not start where it stands.
+
+A reply that reports `gone` also records the hole in time on the link (#139, `gone_from_at` / `gone_to_at`): from where its rows were known to, to the start of the oldest day the source keeps.
+
+### Marks over a link
+
+Marks in a reply are stored with `insertPulledMarks` (#138) under the instance they were posted at. The id gains `@<instance>` once; a mark that came through a third instance keeps its suffix. `toposcope` names it, so the same id from two sources stays two marks, each cutting its own window. A mark posted here that came back is skipped. A mark the source closed arrives again closed and is the one read, as with any mark id.
+
+### What Search holds
+
+Search reads `GET /api/links` every 5 seconds and works out what it holds in `src/shared/held.ts`:
+
+- per source (its pull links merged, the worst one speaking): caught up, behind (read to the arrival time at its position), quiet (no contact for 30 seconds, or a failed one), and its hole
+- which sources are short over a window
+- whether a short source could feed a count: not when the hunt rules its `toposcope` out, nor when every filter it comes through mismatches the count's plain `key:value` terms
+
+`src/ui/held-view.ts` turns that into the floors, the pill, the hatch, the table rows and the scope chip. Facets ask for `fields=toposcope` once anything is linked.
+
+### Cuts across a gap
+
+A cut checks the same before it scans (#140, #141). `shortAcrossCut` in `src/query/fingerprint-cut.ts` reads the links and names the sources short inside each side. While there is one, each side's `e1` counts are read by `toposcope` too, and `judgeAcrossGap` (`src/shared/fingerprint-cut.ts`) files each line:
+
+- as ever, when no short source fed it
+- by its counts, with floors and a `partly from` note, when a caught-up source fed it too
+- as can't tell (`?` on the short side, counted apart in `cantTell`), when only short sources fed it and the short side reads zero
+
+The reply carries `held` (sides and sources) and head notes from `cutGapNotes`. The new-fingerprints alert pages only lines that are not can't tell.
+
+### Versions
+
+Every contact (lookup, claim, feed, ask, rows, remove; #328, `src/links/version.ts`) sends three headers, both ways:
+
+| Header | Says |
+| --- | --- |
+| `x-toposcope-link` | The link protocol, 2 |
+| `x-toposcope-schema` | The schema of the tables a link carries, 1 |
+| `x-toposcope-version` | The release |
+
+A `/link/v1/` route whose caller sends another protocol or schema answers 409 `{ error: "versions differ", here, there }`. The puller, a source that calls out, and the paste store nothing; they record which side to upgrade as the link's last error, and carry on from the same position once they match. The release only names the side. `links.protocol` records the protocol a link was made with; boot removes every link with a protocol below 2, as Revoke does, keeping its record.
+
+### The wire
+
+`/link/v1/feed` and `/link/v1/rows` carry one body (#327, `src/feed/wire.ts`, `application/x-toposcope-feed`):
+
+- a 4-byte big-endian length
+- a JSON header: the feed reply with logs and marks as before, each other kind's `{ gone, not_sent? }` in `kinds`, `blocks: [{ kind, rows, bytes, origins }]`, the source, and a monitor snapshot when there is one
+- one zstd ClickHouse Native block per kind, in the header's order. ClickHouse writes the block at the source and reads it at the puller.
+
+The source reads only the positions of those kinds to cut the page (`positionsOnly`), then each kind once as `SELECT … FORMAT Native` with the kind's filter.
+
+### Storing a block
+
+The puller stores each block with one `INSERT … SELECT … FROM input() FORMAT Native`. In it each row:
+
+- takes `seq` from here (`from + rowNumberInAllBlocks()`) and `arrived` now
+- keeps `toposcope`, `src_id` and `src_seq` where it first entered (the source's own when it entered there)
+- is skipped when its origin is this instance, or when a row with the same origin and `src_seq` is already here (looked up within the header's `origins`, each origin's range of positions)
+
+So rows of every kind chain edge → region → centre and are stored once however they come (#334).
+
+### Kinds on a link
+
+`links.kinds` holds the set the key carried (#329, `src/links/kinds.ts`): the minter's, and the paste cannot widen it. The feed reads exactly those. `PUT /api/links/:id` takes `kinds` only where rows leave this instance (409 otherwise). A set that adds a kind is 409 "A kind is never added to a key already used: to send it too, make a new key", checked before anything is saved.
+
+`links.kind_state` keeps each kind's last word from the feed (a hole, or `not_sent`). `link_volume` (`link_id, kind, day, rows, bytes`) keeps the rows and bytes each call moved, on each side that moved them. `GET /api/links/:id` adds `kinds`, one line per kind: `{ kind, ticked, state, not_sent?, gone?, rows_day, bytes_day }`. `state` is one of `caught up`, `behind`, `a hole`, `not sent`, `unticked at the source` or `paused`; the day is today plus yesterday's share of the last 24 h.
+
+### Monitors over a link
+
+On a page that catches a link carrying monitors up, the source adds a snapshot to the header (#333, `src/links/monitors-snapshot.ts`):
+
+- the monitors the link's `q` lets through, matched on `service`, `host` and `toposcope` (none when the filter names a field monitors lack)
+- their stretches open now or resolved within 30 days
+- under `forwarded`, the monitors that came to it over its own links, filtered the same way, under the instance they entered at (#334)
+
+The puller keeps each source's newest in SQLite `pulled_monitors` (`source`, `snapshot` JSON, `at`), never one under its own name, and judges and calls nothing.
 
 ## Shares
 
-A share (#225; `src/share/`) lets another app read one scope of numbers without the password. SQLite `shares` holds its name, its scope (JSON), the sha256 of its secret (`tss1_` + 24 random bytes, base64url, returned once by the call that makes it), `expires_at` (required, at most 365 days out), `revoked_at`, and when it was made and changed. Signed in: `GET /api/shares` (no secrets; revoked shares stay listed), `POST /api/shares { name, scope, expires_at }` → `201 { share, secret }` (`409` when a live share has the name), `PUT /api/shares/:name` (creates, `201` with the secret, or changes a live share in place and keeps its secret; a revoked name starts over with a new one), `DELETE /api/shares/:name` (revokes; the row stays). The scope is `metric_names` (exact names or prefix globs, `fleet_*`, up to 50), `metric_labels` (`ml=` text, equality only, ANDed onto every metric read), `logs` (a `q` ANDed onto every log read, or null), `split` and `narrow` (up to 8 keys each). `src/share/read.ts` adds it on the server before `search()` runs: a metric outside `metric_names` is `404` as if it did not exist; the caller's `ml=` narrows only on `narrow` keys, never replaces a scope label, and is ANDed onto `logs` as quoted `key:"value"` (exact, not a glob); `split=` must be a `split` key; logs read as `count` or `rate` only, since a numeric attr's percentile or max can be an id. Reads, each with Search's `range=` / `from` / `to` / `step=`: `GET /share/v1/series` (`metric=` → `{ from, to, step_ms, series }`, the metric series without `expr`, which would state the scope; or `agg=count|rate` → `{ from, to, step_ms, agg, total, buckets, series? }`, a `refused` reason when the logs scan budget refuses), `GET /share/v1/top?key=&n=` (Top-N counts of a `split` key among the scope's log rows, `omit=0`), `GET /share/v1/names` (the scope's metric names in the window with kind and unit, whether it reads logs, and up to 50 values of each split and narrow key inside the scope), `GET /share/v1/latest?metric=&by=&lookback=` (`planLatest`, `latestRows`: up to 8 names in the scope, grouped by up to 3 `narrow` keys, `argMax(value, ts)` and `max(ts)` per name and value from `metrics` with `name IN` and `ts >=` on its ORDER BY; `lookback` held to `max_lookback`, not `max_range`; 2,001 rows read and `max_rows_to_group_by` 2,001 with `break`, so more than 2,000 is refused, never cut). Events, traces, profiles, fingerprints, facets, saved searches and everything under `/api` never answer a share. Limits (#226; `src/share/limits.ts`, JSON in `shares.limits`): `min_step` (a bar-width id, default `1m`; `windowWithin` passes `step=min_step` when Auto would be finer and refuses an explicit finer `step=`), `max_range` (default `7d`, up to `365d`), `max_lookback` (default `30d`, up to `730d`: how far before now `from` may start) and `reads_per_minute` (default 120): a token bucket per share in the app process (`src/share/use.ts`), checked in `shareAuth` after the secret; over it is `429` with `Retry-After`. A refused read never reaches ClickHouse. Use (#226): every refused read is queued as a `logs` row (`service:toposcope`, `share`, `status:refused`, `path`, `reason`, `origin`; at most 100 a minute), and once a minute each share read writes one `status:used` row with `reads`, `cached`, `refused`, `limited` and up to 20 distinct origins (the `Origin` header, else the Referer's origin; never an address). A write that fails is dropped. `GET /api/shares` adds `use { last_read_at, reads_24h, refused_24h }` per share from those rows plus the minute not yet written, and still answers when ClickHouse does not. Embed (#227; `src/share/embed.ts`, `embed-page.ts`, `cache.ts`, JSON in `shares.embed`): `frame_ancestors` (exact origins, up to 8, no `*`; empty = JSON only) and `ticket_ttl` (default `1h`, up to `24h`). `POST /share/v1/tickets` (the secret only, not a ticket: 403) answers `{ ticket, expires_at }`: `tst1_<share id>.<until ms>.<HMAC-SHA256 of id.until keyed by the share's secret hash>`, never past the share's expiry. `shareAuth` takes a secret or a live ticket (`ticketShareRow`: signature, not run out, share not revoked or expired). `GET /share/v1/*` reads go through `shareReadCache`: an answer kept for that share and query (sorted) is served again (`cached` in the use rows, off the rate); otherwise the read takes a turn of the rate and a 200 is kept until its next bar starts or 30s (`cacheMs`), with `Cache-Control: private, max-age`; a change or revoke drops the share's answers. `GET /embed` serves `src/ui/dist-embed/index.html` (its own Vite build, `src/ui/vite.embed.config.ts`, base `/embed/`, no Tailwind) with `Content-Security-Policy: frame-ancestors 'self' <the share's origins>` (looked up from the ticket's share id, expired or not; `'self'` alone when it names none, for the Share dialog's preview), `Referrer-Policy: no-referrer`, `Cache-Control: no-store`; `/embed/assets/*` are its hashed files, immutable. Neither, nor `GET /embed.js`, asks for a sign-in; they carry no data. Every other response gets `frame-ancestors 'none'` (`noFraming`). The page (`src/ui/embed/`, states in `src/ui/embed-view.ts`) paints with the app's own panel components (#235: `MetricSpark`, `StatWidget`, `HbarWidget`; their greys are `--plot-*` tokens in `styles.css` with a `.light` set, their line colours from `PlotThemeContext` in `src/ui/plot-theme.ts`; the embed build imports `styles.css` and names the components for Tailwind with `@source`). `chart=` picks `line`, `stat` or `top` (`key`, `n`). It reads `/share/v1/series`, or `/share/v1/top` for a Top-N, with the ticket from its own URL, polls at `max(step, 30s)`, keeps a paint through a failed read (muted, "not answering · last read"), paints expired (401) and refused (400/404) in the frame, and posts `toposcope:ready|stale|expired` to its parent. `embed.js` replaces each `<script … data-ticket>` with that iframe (origin from the tag's own `src`) and, without `ready` in 5s, a `.toposcope-fallback` line styled under `:where()`. In the app (#228): Settings gains a Shares row (live count, Open) that opens `src/ui/components/shares-dialog.tsx` (23g list with `use`, 23h form by hand, 23i the secret once, 23j revoke confirmed in the row, 24h empty state pointing at the panels); `src/ui/use-shares.ts` holds the list for the page, refreshed when the dialog changes it. Share from a panel (#236): every extra panel's copy menu (or ⋯) leads with Share…, and the hunt's Share menu has Share panels… (the canvas toolbar on an Edit panel tab); both open `src/ui/components/share-panels-dialog.tsx` (24b scope, 24c a new share, 24d/24e the code, 24f refusals with offers, 24g several panels). `src/ui/share-from-panel.ts` is the pure part: `panelRead` (what a panel reads, or why not and what can be), `proposeScope`, `mergeScope` into an existing share (its fixed labels and log `q` must agree), `panelTag` / `panelEmbedQuery` and `panelRange` (the Quick chip, `24h` not `1d`). Its preview iframes `/embed` with a five-minute ticket from signed-in `POST /api/shares/:name/ticket`.
+How to use shares is in [Shares](shares.md).
+
+### The share model
+
+A share (#225; `src/share/`) lets another app read one scope of numbers without the password. SQLite `shares` holds:
+
+- its name and its scope (JSON)
+- the sha256 of its secret: `tss1_` + 24 random bytes, base64url, returned once by the call that makes it
+- `expires_at` (required, at most 365 days out) and `revoked_at`
+- when it was made and changed
+- `limits` and `embed` (JSON), and `panels` and `raw_params` (0.8, frame 26k)
+
+| Route (signed in) | Does |
+| --- | --- |
+| `GET /api/shares` | Lists shares, no secrets; revoked shares stay listed |
+| `POST /api/shares { name, scope, expires_at }` | `201 { share, secret }`; `409` when a live share has the name |
+| `PUT /api/shares/:name` | Creates (`201` with the secret), or changes a live share in place and keeps its secret; a revoked name starts over with a new one |
+| `DELETE /api/shares/:name` | Revokes; the row stays |
+| `POST /api/shares/:name/ticket` | A five-minute ticket for the Share dialog's preview |
+
+### Scope
+
+The scope is:
+
+- `metric_names`: exact names or prefix globs (`fleet_*`), up to 50
+- `metric_labels`: `ml=` text, equality only, ANDed onto every metric read
+- `logs`: a `q` ANDed onto every log read, or null
+- `split` and `narrow`: up to 8 keys each
+
+`src/share/read.ts` adds it on the server before `search()` runs. A metric outside `metric_names` is `404`, as if it did not exist. The caller's `ml=` narrows only on `narrow` keys, never replaces a scope label, and is ANDed onto `logs` as quoted `key:"value"` (exact, not a glob). `split=` must be a `split` key. Logs read as `count` or `rate` only, since a numeric attr's percentile or max can be an id.
+
+### Share reads
+
+Each read takes Search's `range=` / `from` / `to` / `step=`. Events, traces, profiles, fingerprints, facets, saved searches and everything under `/api` never answer a share.
+
+| Route | Answers |
+| --- | --- |
+| `GET /share/v1/series?metric=` | `{ from, to, step_ms, series }`: the metric series without `expr`, which would state the scope |
+| `GET /share/v1/series?agg=count\|rate` | `{ from, to, step_ms, agg, total, buckets, series? }`, or a `refused` reason when the logs scan budget refuses |
+| `GET /share/v1/top?key=&n=` | Top-N counts of a `split` key among the scope's log rows (`omit=0`) |
+| `GET /share/v1/names` | The scope's metric names in the window with kind and unit, whether it reads logs, and up to 50 values of each split and narrow key inside the scope |
+| `GET /share/v1/latest?metric=&by=&lookback=` | The latest value per name and label value |
+
+The scan budget that guards `logs` reads applies unchanged to share reads: over it, a log series answers 200 with `refused` and why.
+
+### Latest per label
+
+`GET /share/v1/latest` (`planLatest`, `latestRows`) takes up to 8 names in the scope, grouped by up to 3 `narrow` keys. It reads `argMax(value, ts)` and `max(ts)` per name and value from `metrics`, with `name IN` and `ts >=` on its ORDER BY. The table is ordered by name, then time, so it reads only the asked names' own part, never every metric in the lookback.
+
+`lookback` is held to `max_lookback`, not `max_range`. It reads 2,001 rows with `max_rows_to_group_by` 2,001 and `break`, so more than 2,000 is refused, never cut.
+
+### Limits
+
+Limits (#226; `src/share/limits.ts`, JSON in `shares.limits`):
+
+| Limit | Default | Bound | Does |
+| --- | --- | --- | --- |
+| `min_step` | `1m` | a bar-width id | `windowWithin` passes `step=min_step` when Auto would be finer, and refuses an explicit finer `step=` |
+| `max_range` | `7d` | up to `365d` | the longest window |
+| `max_lookback` | `30d` | up to `730d` | how far before now `from` may start |
+| `reads_per_minute` | 120 | | a token bucket per share in the app process (`src/share/use.ts`), checked in `shareAuth` after the secret; over it is `429` with `Retry-After` |
+
+A read refused by a limit is refused before any query: it never reaches ClickHouse.
+
+### Use rows
+
+Every refused read is queued as a `logs` row (`service:toposcope`, `share`, `status:refused`, `path`, `reason`, `origin`), at most 100 a minute. Once a minute each share read writes one `status:used` row with `reads`, `cached`, `refused`, `limited` and up to 20 distinct origins: the `Origin` header, else the Referer's origin, never an address. A write that fails is dropped.
+
+`GET /api/shares` adds `use { last_read_at, reads_24h, refused_24h }` per share from those rows plus the minute not yet written. It still answers when ClickHouse does not.
+
+### Tickets
+
+Embed settings (#227; `src/share/embed.ts`, `embed-page.ts`, `cache.ts`, JSON in `shares.embed`) are `frame_ancestors` (exact origins, up to 8, no `*`; empty = JSON only) and `ticket_ttl` (default `1h`, up to `24h`).
+
+`POST /share/v1/tickets` takes the secret only, not a ticket (403). It answers `{ ticket, expires_at }`: `tst1_<share id>.<until ms>.<HMAC-SHA256 of id.until keyed by the share's secret hash>`, never past the share's expiry. `shareAuth` takes a secret or a live ticket (`ticketShareRow`: signature, not run out, share not revoked or expired).
+
+### The read cache
+
+`GET /share/v1/*` reads go through `shareReadCache`. An answer kept for that share and query (sorted) is served again: `cached` in the use rows, and off the rate. Otherwise the read takes a turn of the rate, and a 200 is kept until its next bar starts or 30s (`cacheMs`), with `Cache-Control: private, max-age`. A change or revoke drops the share's answers.
+
+### The embed page
+
+`GET /embed` serves `src/ui/dist-embed/index.html`: its own Vite build (`src/ui/vite.embed.config.ts`, base `/embed/`, no Tailwind). Its headers:
+
+- `Content-Security-Policy: frame-ancestors 'self' <the share's origins>`, looked up from the ticket's share id, expired or not; `'self'` alone when it names none, for the Share dialog's preview
+- `Referrer-Policy: no-referrer`
+- `Cache-Control: no-store`
+
+`/embed/assets/*` are its hashed files, immutable. Neither these nor `GET /embed.js` asks for a sign-in; they carry no data. Every other response gets `frame-ancestors 'none'` (`noFraming`).
+
+### What the embed draws
+
+The page (`src/ui/embed/`, states in `src/ui/embed-view.ts`) paints with the app's own panel components (#235: `MetricSpark`, `StatWidget`, `HbarWidget`). Their greys are `--plot-*` tokens in `styles.css` with a `.light` set, and their line colours come from `PlotThemeContext` in `src/ui/plot-theme.ts`. The embed build imports `styles.css` and names the components for Tailwind with `@source`.
+
+- `chart=` picks `line`, `stat` or `top` (`key`, `n`).
+- It reads `/share/v1/series`, or `/share/v1/top` for a Top-N, with the ticket from its own URL, and polls at `max(step, 30s)`.
+- It keeps a paint through a failed read (muted, "not answering · last read"), and paints expired (401) and refused (400/404) in the frame.
+- It posts `toposcope:ready|stale|expired` to its parent.
+
+`embed.js` replaces each `<script … data-ticket>` with that iframe (origin from the tag's own `src`). Without `ready` in 5s, it shows a `.toposcope-fallback` line styled under `:where()`.
+
+### Shares in the app
+
+In the app (#228), Settings gains a Shares row (live count, Open) that opens `src/ui/components/shares-dialog.tsx`: 23g list with `use`, 23h form by hand, 23i the secret once, 23j revoke confirmed in the row, 24h empty state pointing at the panels. `src/ui/use-shares.ts` holds the list for the page, refreshed when the dialog changes it.
+
+Share from a panel (#236): every extra panel's copy menu (or ⋯) leads with Share…, and the hunt's Share menu has Share panels… (the canvas toolbar on an Edit panel tab). Both open `src/ui/components/share-panels-dialog.tsx`: 24b scope, 24c a new share, 24d/24e the code, 24f refusals with offers, 24g several panels. Its preview iframes `/embed` with a five-minute ticket from `POST /api/shares/:name/ticket`.
+
+`src/ui/share-from-panel.ts` is the pure part:
+
+- `panelRead`: what a panel reads, or why not and what can be
+- `proposeScope`, and `mergeScope` into an existing share (its fixed labels and log `q` must agree)
+- `panelTag` / `panelEmbedQuery` and `panelRange` (the Quick chip, `24h` not `1d`)
+
+## Code links and GitHub
+
+### Where a service's repository comes from
+
+Code links (#393, `src/shared/code-links.ts`, `src/control/repositories.ts`) are links; no repository content is fetched. A service's repository is, in order:
+
+1. a row in SQLite `repositories` (`service`, `url`, `path`, `set_by`, `set_at`), set by an Operator with `PUT /api/repositories/:service { url, path? }` and cleared with `DELETE` (action `set repositories`). `path` is the folder its stack paths start in (#413), kept while `url` is.
+2. `vcs.repository.url.full` on its resource: `logs_attr_values_by_minute` over 7 days, plus a budgeted read of the last day of `spans` and the last hour of `logs` for a URL past the rollup's 64 characters.
+3. `attrs.repo` on its newest deploy mark.
+
+`GET /api/repositories` lists every service seen in 7 days, with a deploy mark, or set here, and where its repository is known from.
+
+### Repository URLs and code routes
+
+`parseRepo` reads `https://`, scheme-less and `git@host:` forms into an `https://host/owner/name` base; any other scheme is refused. It names the host's link shape: GitHub, GitLab, Bitbucket, else Gitea / Forgejo.
+
+| Route | Answers |
+| --- | --- |
+| `GET /api/code?mark=` | A deploy, its service's repository and the previous deploy of that service: the marks panel's `code` row, commit and compare |
+| `GET /api/code?service=&version=` | The repository and the deploy mark of that version: the Stack tab, `blob` at its sha, else the default branch |
+
+Stack frames link when their path is under the roots `e1` strips (`src/shared/app-path.ts`, shared with the fingerprint) and not a library's.
+
+### Connect GitHub
+
+Connect GitHub (#416, `src/control/github.ts`, `src/shared/github-app.ts`) is the one exception to keeping no token. An Owner runs GitHub's device flow against the one Toposcope GitHub App: metadata read-only, no webhook, no callback; the client ID is public and ships in the code.
+
+- The token lands in SQLite `github_connection` (one row: `token`, `login`, `connected_by`, `connected_at`, `ended_at`).
+- It only lists the installations' repositories for Set (`GET /api/github/repositories?q=`, cached 30 s).
+- The device flow is driven by reads: while a code waits, `GET /api/github` asks GitHub once its interval has passed, so no timer runs.
+- A `401` from GitHub clears the token and keeps `ended_at` (42h).
+- The action `connect GitHub` (Owner) connects, cancels and disconnects.
+
+## MCP
+
+How agents use it is in [MCP](mcp.md).
+
+- Write tools go through the same preview gate as the HTTP API ([The preview gate](#the-preview-gate)). The design tools — previews, writes and `undo` — came in #360.
+- An agent's token marks Home only where none is marked, and unmarks it only with its own undo (#357).
+- Webhook handles and monitor previews are kept in the server process's memory, not in SQLite. That is why a restart forgets them.
+
+## Boot, upgrades and backups
+
+### Memory sizing
+
+ClickHouse sizes itself at every start ([Memory](operations.md#memory)). Measured with `docker stats` on empty instances, with no ingest and no searches, ClickHouse 26.3 on Docker Desktop (arm64, 8 CPUs, 16 GB), side by side:
+
+| Minutes since ready | 0 | 10 | 20 | 30 |
+| --- | --- | --- | --- | --- |
+| Sized at start, no cap, MiB | 128 | 158 | 169 | 177 |
+| Before (0.11 with its log settings, 2 CPU / 4 GB cap), MiB | 227 | 279 | 305 | 319 |
+
+Sized, ClickHouse ran 121 threads; before, 655, and its memory was still rising at 30 minutes. Under steady ingest (50 senders, 5 lines a request, two minutes, both capped at 2 CPUs and 4 GB) the sized ClickHouse stored the same rows with 618 MiB against 922 MiB and used 13% less CPU.
+
+### Upgrade from the app
+
+`ui-run` never opens a path in the app's volume. Every read and write there runs in a throwaway container that mounts only that volume, with no network, so a link the app put there cannot name a host path. Operators running a root unit rely on this ([Upgrade from the app](upgrades.md#upgrade-from-the-app)).
+
+### Backup and recovery
+
+Packaged data spans two Docker volumes: ClickHouse `ch_data` and application `app_data`. A complete backup must include both. Application rollback and ClickHouse data recovery are separate operations; an image pin cannot repair an incompatible data directory.
+
+See [Upgrades, backups and rollback](upgrades.md#backup-and-restore) for backup, restore, and rollback commands.
 
 ## Tenancy
 
 `tenant_id` is a column and is always `'default'`.
-
-## Backup and recovery
-
-Packaged data spans two Docker volumes: ClickHouse `ch_data` and application `app_data`. A complete backup must include both. Application rollback and ClickHouse data recovery are separate operations; an image pin cannot repair an incompatible data directory.
-
-See the [operations guide](operations.md#backup-and-restore) for backup, restore, and rollback commands.

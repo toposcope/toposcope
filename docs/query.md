@@ -1,45 +1,132 @@
 # Query language
 
-The search bar compiles to ClickHouse filters on the server. The UI never sends SQL.
+This page is the reference for what you type in the search bar: words, `key:value` fields, operators, wildcards, numbers and quoting. It is for anyone writing a query by hand or in a script. What the hunt screen does with a query (the chart, panels, Live, the page URL) is in [Hunting](hunt.md).
+
+A query is text. The server turns it into filters; the UI never sends SQL. The same query works in the bar, in a saved hunt, in a panel and as `q=` on the API.
 
 ## Examples
 
-```
-level:error
-service:api timeout
-level:error service:api timeout
-level:error OR level:fatal service:api
-(level:error OR level:fatal) service:api
-status:5*
-status:>=500
-"connection reset"
-path:"/v1/items"
-host:api-1
-user_id:42
-duration_ms:84
-duration_ms:>100
-duration_ms:>100 duration_ms:<500
-version:v0.9
-customer:acme
-flag:new-checkout
-http.status_code:500
-```
+| Query | What it matches |
+| --- | --- |
+| `level:error` | Rows whose level is `error` |
+| `service:api timeout` | Rows from `api` whose message has the word `timeout` |
+| `level:error service:api timeout` | Errors from `api` with the word `timeout` |
+| `level:error OR level:fatal service:api` | Every `error` row, plus `fatal` rows from `api` (AND binds first) |
+| `(level:error OR level:fatal) service:api` | `error` or `fatal` rows, both from `api` |
+| `status:5*` | Rows whose `status` attribute starts with `5` |
+| `status:>=500` | Rows whose `status` is a number of 500 or more |
+| `"connection reset"` | Messages with the word `connection` followed by `reset` |
+| `path:"/v1/items"` | Rows whose `path` attribute is exactly `/v1/items` |
+| `host:api-1` | Rows from host `api-1` |
+| `user_id:42` | Rows whose `user_id` attribute is the text `42` |
+| `duration_ms:84` | Rows whose `duration_ms` attribute is the text `84` |
+| `duration_ms:>100` | Rows whose `duration_ms` is a number above 100 |
+| `duration_ms:>100 duration_ms:<500` | Rows whose `duration_ms` is between 100 and 500, both excluded |
+| `version:v0.9` | Rows whose `version` attribute is `v0.9` |
+| `customer:acme` | Rows whose `customer` attribute is `acme` |
+| `flag:new-checkout` | Rows whose `flag` attribute is `new-checkout` |
+| `http.status_code:500` | Rows whose `http.status_code` attribute is `500` |
 
-## Rules
+## Words
 
-- `level:value`, `service:value`, and `host:value` are equality on those columns.
-- Any other `key:value` whose key is `[a-zA-Z_][a-zA-Z0-9_.]*` (and not `ts` / `message` / `tenant_id`) is equality on `attr_map[key]`. `path`, `status`, and `user_id` are ordinary map keys. Repeating a key **bare** ANDs the values (`level:error level:fatal` matches nothing). Facet clicks **toggle** membership in that field’s set and rewrite a parenthesised OR group (`(level:error OR level:fatal) service:api`); `only` collapses to one value; a typed group of that shape re-checks the boxes. Detail-panel `+` adds the value to the set (does not replace).
-- Comparisons (`duration_ms:>100`, `status:>=500`) are `>` `>=` `<` `<=` on **attr** keys only. The number is a finite decimal (`100`, `0.5`, `-1`). Equality stays a string (`duration_ms:84`). Quotes escape the operator (`duration_ms:">100"`). `duration_ms:>100 duration_ms:<500` is a range. Core fields cannot compare (`level:>error` is a fault). A comparison is true only when the attr parses as a finite number and the operator holds; `not` / `-` is boolean NOT of that predicate (missing and non-numeric values match the negation). Histogram / count / facets for that `q` scan `logs` — the values rollup is equality/prefix, the numeric MV is p99/avg, not a range index. Overlaying `agg=p99:duration_ms` on a comparison query computes p99 of matching rows (budgeted logs scan).
-- Bare words are case-insensitive **tokens** of `message` (`splitByNonAlpha` after `lowerUTF8`). `timeout` matches that word (`connection timeout`), not `timeouts`. `"connection reset"` is consecutive tokens (`hasToken` per word plus `hasSubstr` on `splitByNonAlpha`; ClickHouse `26.3` has no `hasPhrase`). `path:"/v1/items"` quotes a value that needs it. `"or"` / `"and"` / `"not"` search those words. A punctuation-only needle matches nothing.
-- Space separates tokens and ANDs them. `and` / `or` / `not` are case-insensitive operators. AND (written or juxtaposed) binds tighter than OR. `-` is the same as `not`. Parentheses group. No regex, infix globs, `100..500`, `1e3`, Lucene, or SQL in the URL.
-- Prefix globs only: `status:5*` is `startsWith` on that field. `*foo` and `5*0` are faults. A trailing `*` on a bare word is also a fault.
-- Invalid idents (`foo-bar:x`) stay message text. Empty values (`level:`), unmatched `(`/`)`, unterminated quotes, and dangling `and`/`or`/`not` are compile errors (400 `{ error, faults }`). The bar shows them after Enter; typing clears the chrome. Live polls skip a broken `q` and keep the last-good results.
-- Time range is `range=15m|1h|4h|24h|7d` (or any `\d+(ms|s|m|h|d|w)` up to 730 days, `1ms` ≠ `1m`, `1w` = 7d, `30d` and `2w` parse) or custom From/To. `range` overrides `from`/`to`. Custom spans clamp to 730d. Live keeps sending the same `range` so the window ends now. Custom + Live slides the From/To duration on the client. Live polls add `since=` (newest event) so only new rows and the current histogram bucket come back; the client merges and fills empty buckets so the chart scrolls. A full search still runs every 30s so the sliding window is honest. Mergeable extra timeseries (rollup-backed volume / rate / min / max / sum, unlabeled metric bars) refresh on the 2s `since=` poll like the pinned plot. Whole-window aggregates (Top-N except a complete level projection, window p99/avg, logs-scan extras, labeled metric scans) stay on that 30s pass; while Live is on, widget chrome shows a muted last-updated age only on cards that missed the last 2s poll. Count and rate stats are projections of the merged primary histogram. Only the active Search tab polls (Follow if Live is on; Surroundings and boards do not). Histogram bar width is auto: the finest of `1ms|10ms|100ms|1s|10s|1m|5m|15m|1h|4h|1d|7d` with at most 200 bars (15m → `10s`, 1h → `1m`, 4h → 5m, 24h → 15m, 7d → 1h, 30d → `4h`, 365d → `7d`, 730d → `7d`). `step=` pins a tick; ticks that would exceed 500 bars are disabled; 1 bar is legal at the 1ms floor or as one column of the window’s own grain. Event pages (`ORDER BY ts DESC LIMIT 100`) start in a 1-minute lookback from `to`/`cursor` and widen (4m, 16m, 1h, 4h, 24h, 7d, 30d, 90d, 365d, 730d) until they fill or hit `from`, so a dense window does not sort the whole table. The floor / last lookback uses the read budget and refuses (`scan.events`) rather than 500. Load-more (`cursor=` without `since=`) returns events only — histogram and `total` stay from the first search. `events=0` skips the event page and lookback (logs-off widgets). The first search’s histogram still covers the full window. An empty full-window search also returns `ingested` (any row in `logs`, not this window) so the UI can say “No events match `q` in the last 1h” instead of “No events ingested yet.” A refused logs scan uses the refuse reason instead of that empty copy.
-- The operator UI serializes search to the page URL: `q`, `range` (`15m|1h|4h|24h|7d` or any `\d+(ms|s|m|h|d|w)` ≤ 730d such as `90m`, `30d`, `2w`, or `1w`; `range=custom` with `from`/`to` ISO), `live=1`, `saved=<id>`, `view=alerts` or `view=fields`, histogram `split` / `chart` / `scale=log` / `step=` (bar width; omit for auto), `agg=` / `y=agg` (log-derived overlay or replace-Y), `metric=` / `ml=` (ingested metric overlay, optional label matchers), `logs=0`, compact widget grid `w=` (omit for the default single histogram; `a` is the pinned volume plot and is restored if a copy-link omitted it), and `af=` (pinned attr facet keys, omit when empty). A board copy-link is the same Search URL plus that board’s slot keys as bind params (`saved=s7&install_name=acme-eu&range=4h`); those keys are parsed only against that saved row’s `board.keys`. Copy-link uses `history.replaceState`. Roles and links live in SQLite (`GET/PUT /api/fields`), not in the URL. `GET ?wave=keys|values|suggest` returns that catalog slice; `PUT` returns `{ roles, links }` only. Graph on a linked detail field sets `metric=` + `ml=` from the saved link (mapped label + this value) and does not write that token into `q`.
-- Histogram uses `logs_by_minute` when the bar is ≥1m and the query has no message terms and no attr filters (host filters, split-by-host, and core-field `OR` / `NOT` / `-` are included). Interval `< 1m` scans matching `logs` with the read budget (refuse rather than a partial chart). A `1m+` logs-shaped volume histogram uses that same budget. A single attr equality or prefix glob (`status:5*`, or `status:500 OR status:502`) uses `logs_attr_values_by_minute` when the bar is ≥1m. UUID-like / lookup-role / ignore-role equality scans `logs` (bloom on `trace_id` and `mapValues(attr_map)`) so histogram `total` matches the table. Two or more attr keys, an attr under `NOT`, `level:error OR status:500`, a comparison (`duration_ms:>100`), or a message term still read `logs` (message terms use the text index on `message`, not `logs_by_minute`). Values longer than 64 characters, JSON blobs, and UUID-like ids are not rolled up. **Follow this value** on a lookup or id-shaped Fields row opens a new Follow workspace with that `key:value` over its first to last row within 24h either side of the event (±5m when seen once or when that read is refused), and drops `service`/`host`. Buckets carry a `series` map (and `by_level` when the split is level). Search `total` is the sum of those buckets (no extra `count()` on `logs`). Alerts use the same rollups: count when the saved search has no `agg`, otherwise the window `stat` (invalid key or scan-budget refuse does not fire).
-- Derived series live beside `q` as `agg=rate` or `agg=p99:duration_ms` (never inside the bar, never PromQL). Rate is count / bucket width from the volume histogram. p99/avg/min/max/sum of a numeric attr use `logs_attr_numeric_by_minute` when volume would use `logs_by_minute` and the bar is ≥1m; otherwise they scan matching `logs` rows with a hard read budget (`throw`, never a partial p99). Lookup/ignore keys refuse (`p99/avg need a numeric field`). Overflow / timeout of that scan returns `source: "refused"` (`p99/avg over this query exceeds the scan budget`). Window `stat` is the reducer over the window (p99 is not an average of per-bar p99s). Empty buckets are omitted (`null`), not a fake 0. Live 2s `since=` polls skip this logs-scan reducer; it refreshes on the 30s pass. Ingested metrics are a sibling source: `metric=cpu_seconds` with optional `ml=service:api` (equality matchers, cap 4). A gauge is read as an average and a counter as a sum per bar. A histogram is read one way at a time, with the reading in front of its name: `metric=p99:http.server.request.duration` (`count`, `sum`, `avg`, `p50`, `p90`, `p99`). Unlabeled reads `metrics_by_minute` when the bar is ≥1m; labeled matchers and sub-minute bars scan `metrics`. Log `q` does not filter a metric series. `metric=` and log `agg` are mutually exclusive on one widget. The histogram Series picker lists `GET /api/numeric-keys` (duration_ms first, cap 8, keep the URL key) plus Rate, then `GET /api/metric-names` (window, ignore log `q`, cap 8, keep the URL name). A quiet or logs-scan-shape window still offers duration_ms so the path stays visible. Saved searches store `agg` and optional widget layout (including `metric` / `metricLabels`) so Save round-trips the canvas. An alert watches that saved search’s **log** `agg` (count when off; window `stat` when on); metric-threshold alerts are not supported. Each widget chrome exports the painted series as CSV/JSON/SVG/PNG (download) and, on extra panels, Copy puts the same payload on the clipboard; the table footer still exports the loaded event page.
-- Histogram chart: split by Level / Service / Host / None; stacked, grouped, line, or area; Linear / Log. Overlay or replace-Y for the derived series; a stat strip under the plot shows the window aggregate. Stacked draws one column at the scaled bucket total and slices it by share (log of a sum, never a sum of logs); 1px between columns, no gap inside a stack. Controls sit in one card header; the legend is under the plot. Interval chips (`Auto · 1m` or `1ms`…`7d`) pin bar width; a chosen width stands in (`15m*`) when the window cannot draw it. Wheel or `+`/`−` zooms about the cursor on a 1ms…730d ladder (1ms is the finest bar and the tightest window). Drag pans (span unchanged; axis ticks follow the preview so bars and times stay aligned); Shift+drag selects a span (floored at 1ms). Wheel, `+`/`−`, head-drill, Shift+drag, and mark peeks keep `to` at now the same way pan does (span unchanged); Absolute From/To can still type a future To. A 12px head strip above the plot is the commit: hover previews the drill, click drills to that ladder span around the bar, drag sweeps and pins. A plain click on the bars is a no-op. Search / Follow draw stored change marks as named chips on a 28px rail above the pinned plot (not extra widgets, Surroundings, or boards); a mark's name shows where it has room, else its glyph and time, and close marks fold into a counted chip. The rail takes no room when it has nothing to draw (no mark in the window, none before or after it to step to, no monitor stretch). A chip selects its mark and opens Compare as a fold under it; `mark=<id>` in the URL lands with that fold open. The rail's `marks · N` chip opens the marks panel: the day's marks with Compare, Fingerprints, Focus in logs and Hide in words, and a note form. Wheel over the rail still zooms about the cursor. When the plot surface is focused, `←`/`→` pan one bucket; Shift+arrows pan one window. `+`/`−` zoom only with that focus. Wheel zoom does not need focus. Live pauses on pan/select. Axis ticks are HH:MM (HH:MM:SS under 15m or when the bar is <1m; HH:MM:SS.mmm when the bar is <1s or the window is ≤1s; `MM-DD` when the window is ≥1d, not today, or crosses midnight). Event-table / Surroundings / detail-head stamps follow that same date rule in compact Settings; Full is always `YYYY-MM-DD HH:MM:SS.mmm` (localStorage, not the URL). The strip above the card names `from → to` plus `UTC · span · bar width` (date on the stamp when the window is ≥1d or not today); Custom-window Reset there restores the window the exploration started from. The volume plot is a pinned cell at (0,0) on that grid (resize yes; move / × / Duplicate no). Panels move by their head and resize from any edge (sheet 44, `src/shared/grid-gravity.ts`, `src/ui/grid-gestures.tsx`): a panel lands in the columns it is dropped on, the panels in its way go down while you drag, and every panel floats up so no hole is left; the left and top edges move the border with the panels touching them (or shrink the panel when nothing does), the right and bottom edges push; a panel is up to 16 rows tall. A board's panels use the same grid and gestures. Charts on one hunt or board share a hover line (`src/ui/hover-time.tsx`): the moment under the pointer is drawn on every chart, the volume plot leading it; extra time charts and every board time chart draw the window's change marks (◆ on a dashed tick, named on hover). Any panel kind can carry a note (160 characters), set from Add note on its ⋯ menu. Search can host extra widgets (stat, top-N bars, more histograms) around it (cap 6 including the plot, ids `a`–`f`); Logs off hides the table and sends `events=0`. Top-N bars group by level/service/host or an attr key (`status`, `path`, …) from `GET /api/facets` / `GET /api/attr-facets` with `omit=0` (full `q`; sidebar facets still omit their own field) — counts of each value, not avg/max/min. A Top-N row opens Filter / Exclude (does not add a token on click). A `%` toggle on Top-N shows each row as a share of the window total (display-only; URL `.pct`). An **N** control (5 / 10 / 20, or Custom 1–50, default 10) caps named rows; `other` is the remainder only when N truncates the list; `.n20` is omitted when N is 10.
-- Workspace tabs (uncapped, session-only, not in the URL) are investigations: New, Duplicate, Surroundings, Follow, and Saved / board opens. Overflow scrolls; past 5 tabs a muted count. Switching Search / Follow restores last paint when the hunt is unchanged. Copy-link is the active Search / Follow. **Surroundings** (detail footer; Fields/JSON stay the only detail tabs) opens a reader workspace so the search is not thrown away. Saved stays live on that reader. All is ±N on the same service (and host when set); Matching ANDs the inherited `q` via `q=` on `GET /api/search/context`. Earlier/Later raise N by 50 up to 200. A row click selects; footer Surroundings re-centers this tab. Histogram **Focus in logs** opens Surroundings titled with the mark, via `GET /api/search/around` (50 older above, 50 newer below; hunt tab stays). **Follow this value** opens a new Follow workspace (token-only `q`, first to last seen within a day, else ±5m) and leaves the prior search intact. **View trace** (same footer; hidden unless an alias is a 32-hex OTLP TraceId; `req-…` is Follow only) opens a waterfall tab on that workspace’s Results strip via `GET /api/traces/:id` — it does not write `q`. Cap 5 is that strip only (trace / profile). Each span carries `toposcope` (the instance it entered at) and `pulled_at` (null for its own); on a linked instance the waterfall draws spans from every source in one tree with an Entered at column, a chip per source (caught up or short), and while a source is short inside the trace one amber line naming it plus a hatched row for its missing span. A clicked span is read in the rail (where it entered, exception, span, then resource; JSON and Copy). **View profiles** in its footer opens an icicle tab via `GET /api/profiles?trace_id=&span_id=` (32-hex trace, 16-hex span; exact `Link` only; empty when nothing is linked yet). It names where the profile entered (`toposcope`, `pulled_at`); while the span's source is read to before the span ended and no profile is here, the view says its profile is not here yet. Leave is the tab × or Results / Surroundings.
-- The slice is one row of chips under the plot: level / service / host, the window's loudest fingerprints as `e1:<hex>` chips (`GET /api/facets` answers `e1` too), then attr facets, opt-in (`af=`, **+ facet**, max 8). Clicks toggle a value in that field’s OR group; once `q` names a value of a field, that value is filled and the field’s other values show a dashed `+` (their counts still leave the field’s own filter out, so they say what adding them would bring; the tooltip shows the query a click runs). When nothing matches, the chips give way to the empty state, which lists, for each field `q` names, its other values with counts (`Other levels: warn 945 · info 2.22K`); a click swaps that field’s value (sheet 48). `only` / `clear` and the detail panel’s `+` write the same canonical `q`. `GET /api/facets` is core fields only (own filter omitted unless `omit=0`). `GET /api/attr-facets?attrs=` is pinned keys (same `omit`). `GET /api/attr-keys` lists keys in the current window. Add facet and Top-N attr pickers omit lookup/ignore. Prefix on a pinned group hits `GET /api/attr-values?key=&prefix=`. Level, service, and host (and attr-keys when the minute MV applies) use rollups; pinned attr values use the values rollup when the remaining query has no extra attr/message filters. Pinned attr values refresh on the 30s Live pass and on q / range / `af` change, not 2s.
+A bare word searches the message. It matches a whole word, ignoring case: the message is lowercased and split at every character that is not a letter or a digit, and the word must be one of the pieces.
 
-Ingest flattens attrs with `flattenAttrs` into `attr_map`, so numbers are stored as strings. Rows are read back from it too: the JSON `attrs` column is no longer written (rows stored before 0.12 still hold a copy until they age out). A derived key (alias, combine, bucket, local lookup) must already be a top-level stored attr — enrich is collector-owned; see the [ingest guide](ingest.md#enrich-at-the-collector). Direct ingest without a collector does not grow those keys. Ingest does write `e1` fingerprints; hunt with `e1:…` like any other attr. OTEL `service.version` is aliased onto `version` at ingest. Change marks (`deploy` / `flag` / `incident` / `note`) are a separate table; they are not `q` terms. `GET /api/marks` lists them in a window (`before` / `after` neighbors). Search / Follow draw them on the pinned volume plot; selecting or hiding a mark does not rewrite `q`. Inspector Compare unfolds a 30px fold under that lane (same `q` / windows); histogram split `host` / `service` / `level` stacks one row per series key (cap 8 + `other`); `none` is the single row. Focus in logs opens Surroundings titled with the mark. Consumed probes are the ingested metric `up` (`POST /v1/probes`, `GET /api/probes`); overlay with `metric=up` and optional `ml=service:billing`. Empty buckets stay omitted — they are not a fake 0. `up=0` must be posted or pulled.
+- `timeout` matches `connection timeout` but not `timeouts`.
+- `"connection reset"` matches the two words next to each other, in that order.
+- `"or"`, `"and"` and `"not"` in quotes search for those words instead of acting as operators.
+- A word made only of punctuation matches nothing.
+
+## Fields
+
+`key:value` matches a field exactly. The key is case-insensitive.
+
+| Key | What it matches |
+| --- | --- |
+| `level`, `service`, `host` | The row's own level, service and host |
+| `toposcope` | The instance the row entered at: this one, or the source a [link](links.md) pulled it from |
+| Any other key | An attribute of that name, such as `path`, `status`, `user_id` or `http.status_code` |
+
+An attribute key starts with a letter or `_` and goes on with letters, digits, `_` and `.`. `ts`, `message` and `tenant_id` are not attribute keys. A word with a colon whose key does not fit, such as `foo-bar:x`, is searched as message text.
+
+Attribute values are stored as text, so `duration_ms:84` is a match on the text `84`, and `user_id:42` does not match `042`. Exception fingerprints are the attribute `e1`; hunt with `e1:<hex>` like any other. An OpenTelemetry `service.version` is stored as `version`. What makes an attribute appear is in [Ingest](ingest.md#attributes). A key you derive (an alias, a combined or bucketed value, a local lookup) is only searchable once the collector writes it as an attribute of its own; rows sent straight to Toposcope do not grow it. See [Enrich at the collector](collectors.md#enrich-at-the-collector).
+
+## Combining
+
+| You write | It means |
+| --- | --- |
+| `a b` (a space) | Both |
+| `a and b` | Both, same as a space |
+| `a or b` | Either |
+| `not a` or `-a` | Not `a` |
+| `( … )` | Group |
+
+`and`, `or` and `not` are operators in any case (`OR`, `Or`). AND, written or implied by a space, binds tighter than OR: `level:error OR level:fatal service:api` is `level:error OR (level:fatal service:api)`. Use parentheses to say otherwise.
+
+Repeating a key with a space between ANDs the values, so `level:error level:fatal` matches nothing: a row has one level. Use `(level:error OR level:fatal)` for either.
+
+## Wildcards
+
+Only a trailing `*` on a field value is a wildcard: `status:5*` matches values that start with `5`. A `*` anywhere else is a mistake the bar refuses: `*foo`, `status:5*0`, and a `*` at the end of a bare word.
+
+## Numbers
+
+`>`, `>=`, `<` and `<=` compare an attribute as a number: `duration_ms:>100`, `status:>=500`. Two comparisons on one key make a range: `duration_ms:>100 duration_ms:<500`.
+
+- The number is a plain decimal: `100`, `0.5`, `-1`. `1e3` is not.
+- A comparison is true only when the attribute is a number and the comparison holds. Rows where it is missing or not a number never match.
+- `not` and `-` turn that round: `-duration_ms:>100` matches rows at 100 or below, and rows with no number at all.
+- Only attributes compare. `level:>error` is a mistake, and so is a comparison on `service`, `host` or `toposcope`.
+- Without an operator a value is text: `duration_ms:84` is the text `84`.
+
+## Quoting
+
+Double quotes make a value or a phrase literal.
+
+| Query | Why quote |
+| --- | --- |
+| `path:"/v1/items"` | The value has characters that would otherwise split it |
+| `"connection reset"` | A phrase: the words next to each other |
+| `duration_ms:">100"` | The text `>100`, not a comparison |
+| `"not"` | The word, not the operator |
+
+A quoted value is never a wildcard: `status:"5*"` is the text `5*`.
+
+## Mistakes the bar refuses
+
+A query with a mistake is not run. The bar marks it after you press Enter, with the position and what is wrong; typing again clears the marks. Through the API the answer is `400` with `{ error, faults }`.
+
+| Mistake | Example | What the bar says |
+| --- | --- | --- |
+| A field with no value | `level:` | `level: has no value` |
+| A `(` or `)` without its pair | `(level:error`, `level:error)` | `unmatched (`, `unmatched )` |
+| A `(` with nothing after it | `level:error (` | `expected term after (` |
+| A quote that is not closed | `"connection reset` | `unterminated phrase` |
+| An operator with nothing after it | `level:error or`, `level:error and`, `not` | `expected term after or` (or `and`, `not`) |
+| An operator with nothing before it | `or level:error` | `expected term before or` |
+| A `*` that is not at the end of a value | `*foo`, `status:5*0` | `only a trailing * is supported` |
+| A comparison on `level`, `service`, `host` or `toposcope` | `level:>error` | `level: comparisons are for attrs` |
+| A comparison with nothing after it | `duration_ms:>` | `duration_ms: comparison needs a number` |
+| A comparison on something other than a plain decimal | `duration_ms:>fast`, `size:>1e3` | `not a finite decimal` |
+| A comparison and a wildcard together | `status:>5*` | `cannot mix comparison and glob` |
+| Anything else the bar cannot read | | `unexpected token` |
+
+While Live is on, a query with a mistake is skipped and the hunt keeps showing the last results that worked.
+
+The bar has no regular expressions, no `*` inside a value, no `100..500` ranges, no `1e3` numbers, and no Lucene or SQL syntax. Nothing in the URL is passed through as SQL.
+
+## Time window
+
+A query is always read over a window. `range=` picks a window that ends now:
+
+| Value | Window |
+| --- | --- |
+| `15m`, `1h`, `4h`, `24h`, `7d` | The quick choices |
+| A number and a unit: `ms`, `s`, `m`, `h`, `d`, `w` | Any length, such as `90m`, `30d`, `2w` |
+
+`1ms` is a millisecond and `1m` a minute. `1w` is 7 days. A window is at most 730 days. A custom window sets **From** and **To** (`from=` and `to=` in the URL); it too is at most 730 days, and a longer one keeps **To** and moves **From** up. When `range=` is given it wins over `from` and `to`. More on the window and Live is in [Hunting](hunt.md#the-window-and-live).
+
+## Limits
+
+- A query reads the window you set, up to 730 days.
+- Some queries read every matching row rather than a per-minute summary: a message word, a comparison, two or more attribute keys, an attribute under `not`, a mix such as `level:error OR status:500`, and a bar narrower than a minute. Over a long or busy window such a read can be too large. The chart then refuses and says so, rather than drawing part of the window.
+- An attribute value longer than 64 characters, a JSON value, a UUID-like id, or a key whose role is lookup or ignore still matches, but is read from the rows, not a summary, so the same limit applies.
