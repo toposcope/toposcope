@@ -94,6 +94,9 @@ import { parseRangeMs, retentionRangeMs } from "../query/relative";
 import { longestKeptDays } from "./retention-rules";
 import { surroundingDefaultN, surroundingMaxN, surroundingStepN } from "../query/surrounding";
 import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, toggleFingerprintCutFilter } from "./query-tokens";
+import { otherValuesLines } from "./other-values";
+import { Chip } from "@/components/ui/chip";
+import { levelHex } from "@/level";
 import { histogramTotal, livePageSize, mergeHistogramBuckets, mergeLiveEvents } from "./merge-live";
 import { isoFromLocal, parseSearchUrl, serializeSearchUrl, toLocalInput, type OperatorView, type RangeMode } from "./search-url";
 import { SEARCH_SLOW_AFTER_MS, rangeTriggerLabel } from "./time-range";
@@ -3802,6 +3805,11 @@ export function App() {
   const boardOn = Boolean(activeSaved?.board);
   // Sheet 47f: the box holds a query that has not run; what is on screen answers the last one.
   const typedNotRun = !boardOn && !searching && shownQ !== null && q.trim() !== shownQ;
+  // Sheet 48d: nothing matched, so the facet line would only count what the query left out;
+  // those counts move into the empty state as values to switch to.
+  const noMatches =
+    logsOn && !boardOn && !typedNotRun && !profileView && !traceView && !searching && !error && events.length === 0 && !emptyIngest && !scanRefuse?.events;
+  const otherValues = noMatches ? otherValuesLines(activeFacets, { ...facets, ...displayAttrFacets }) : [];
   const boardChoices: BoardChoice[] = saved
     .filter((item) => item.board)
     .map((item) => ({ id: item.id, name: item.name, count: item.board!.panels.length }));
@@ -4800,9 +4808,10 @@ export function App() {
                 </HeldContext.Provider>
               </SeriesCatalogContext.Provider>
             </div>
-            <FacetChips
+            {noMatches ? null : <FacetChips
               facets={facets}
               activeFacets={activeFacets}
+              previewToggle={(field, value) => toggleFieldToken(q, field, value)}
               loading={facetsLoading || attrFacetsLoading}
               attrPins={attrFacets}
               attrFacetValues={displayAttrFacets}
@@ -4826,7 +4835,7 @@ export function App() {
                   />
                 ) : null
               }
-            />
+            />}
             {logsOn ? (
               <>
             <ContextTabs
@@ -4916,6 +4925,31 @@ export function App() {
                       line={emptyIngest ? "POST to /api/ingest, /v1/logs, or syslog UDP 5514." : undefined}
                       action={
                         emptyIngest ? null : (
+                          <span className="flex flex-col items-center gap-3">
+                          {otherValues.map((line) => (
+                            <span key={line.field} className="flex flex-wrap items-center justify-center gap-1.5" data-other-values={line.field}>
+                              <span className="mr-0.5 text-sm text-muted-foreground">{line.label}</span>
+                              {line.values.map((item) => {
+                                const next = setFieldToken(q, line.field, item.v);
+                                const hex = line.field === "level" ? levelHex[item.v as keyof typeof levelHex] : undefined;
+                                return (
+                                  <Chip
+                                    key={item.v}
+                                    size="md"
+                                    title={next}
+                                    className="bg-transparent font-normal text-foreground"
+                                    style={hex ? { borderColor: `${hex}99` } : undefined}
+                                    onClick={() => applyQuery(next)}
+                                  >
+                                    <span className="font-mono">{item.v}</span>
+                                    <b className="font-mono text-xs font-medium text-muted-foreground">
+                                      <CountText n={item.n} />
+                                    </b>
+                                  </Chip>
+                                );
+                              })}
+                            </span>
+                          ))}
                           <span className="flex gap-2">
                             {range !== "custom" && spanMs < 24 * 3_600_000 ? (
                               <Button type="button" variant="outline" onClick={() => onRangeChange("24h")}>
@@ -4927,6 +4961,7 @@ export function App() {
                                 Clear query
                               </Button>
                             ) : null}
+                          </span>
                           </span>
                         )
                       }

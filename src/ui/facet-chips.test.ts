@@ -42,6 +42,16 @@ describe("the slice as one row of chips (#260, 26d)", () => {
     expect(render()).toMatch(/aria-pressed="true"[^>]*title="level:error"/);
     expect(render()).toMatch(/aria-pressed="false"[^>]*title="service:billing"/);
   });
+  test("48b: the query's value is filled; the field's other values read as add, with their counts", () => {
+    const html = render({
+      facets: { level: [{ v: "warn", n: 945 }, { v: "info", n: 2220 }], service: [{ v: "api", n: 812 }], host: [] },
+      activeFacets: { level: ["warn"] },
+    });
+    expect(html).toMatch(/bg-plate\/15[^"]*" aria-pressed="true"[^>]*><span[^>]*>warn</);
+    expect(html).toMatch(/border-dashed[^"]*" aria-pressed="false"[^>]*data-facet-add=""[^>]*><span[^>]*>\+<\/span><span[^>]*>info</);
+    // A field the query does not name stays as it was.
+    expect(html.match(/data-facet-add/g)).toHaveLength(1);
+  });
   test("pulled rows are a from <instance> group", () => {
     const html = render({ facets: { level: [], service: [], host: [], toposcope: [{ v: "ci-box", n: 12 }] } });
     expect(html).toContain("from ci-box");

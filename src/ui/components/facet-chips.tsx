@@ -16,6 +16,7 @@ import { maxAttrFacets } from "../../shared/attrs";
 import { levelHex } from "@/level";
 import type { LogLevel } from "../types";
 import { Skeleton } from "@/components/ui/states";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
  * The slice as one row of chips under the clock (frame 26d, #260): level · service · host, then
@@ -48,6 +49,8 @@ type Props = {
   locked?: boolean;
   /** Live only: the counts' age, drawn as the first group (36c). */
   age?: ReactNode;
+  /** The query a click on a value would run; shown on the values a named field can add (48c). */
+  previewToggle?: (field: string, value: string) => string;
 };
 
 function activeList(active: string | string[] | undefined): string[] {
@@ -73,23 +76,43 @@ export function FacetChips(props: Props) {
         <span className="pr-0.5 text-xs text-faint">{field === "toposcope" ? "from" : field}</span>
         {shown.map((item) => {
           const on = selected.some((v) => v.toLowerCase() === item.v.toLowerCase());
-          const border = field === "level" ? levelHex[item.v as LogLevel] : undefined;
-          return (
+          // Sheet 48b: once the query names a value of this field, that value is filled and the
+          // field's other values read as "add", so their counts are not mistaken for results.
+          const addable = !on && selected.length > 0;
+          const border = field === "level" && !on && !addable ? levelHex[item.v as LogLevel] : undefined;
+          const chip = (
             <Chip
               key={item.v}
               size="md"
               aria-pressed={on}
               data-facet-value=""
-              title={`${field}:${item.v}`}
-              className="max-w-[260px] font-normal text-zinc-300"
-              style={border && !on ? { borderColor: `${border}99` } : border ? { borderColor: border } : undefined}
+              data-facet-add={addable ? "" : undefined}
+              title={addable ? undefined : `${field}:${item.v}`}
+              className={cn(
+                "max-w-[260px] font-normal",
+                on ? "border-plate bg-plate/15 text-foreground aria-pressed:border-plate" : addable ? "border-dashed border-white/20 bg-transparent text-muted-foreground" : "text-zinc-300",
+              )}
+              style={border ? { borderColor: `${border}99` } : undefined}
               onClick={() => props.onToggle(field, item.v)}
             >
+              {addable ? <span className="-mr-1 font-mono text-faint" aria-hidden="true">+</span> : null}
               <span className="truncate font-mono">{field === "e1" ? `e1:${item.v}` : field === "toposcope" ? `from ${item.v}` : item.v}</span>
-              <b className="font-mono text-xs font-medium text-muted-foreground">
+              <b className={cn("font-mono text-xs font-medium", on ? "text-plate" : addable ? "text-faint" : "text-muted-foreground")}>
                 <CountText n={item.n} floor={props.floorFor?.(field, item.v) ?? false} />
               </b>
             </Chip>
+          );
+          if (!addable) {
+            return chip;
+          }
+          return (
+            <Tooltip key={item.v}>
+              <TooltipTrigger asChild>{chip}</TooltipTrigger>
+              <TooltipContent side="bottom" className="border border-white/15 bg-popover text-popover-foreground">
+                Add to the query
+                {props.previewToggle ? <span className="ml-1.5 font-mono text-muted-foreground">{props.previewToggle(field, item.v)}</span> : null}
+              </TooltipContent>
+            </Tooltip>
           );
         })}
         {rest > 0 ? (
@@ -119,6 +142,7 @@ export function FacetChips(props: Props) {
   const lead = props.age ? [props.age, ...groups] : groups;
 
   return (
+    <TooltipProvider>
     <div
       className={cn(
         "flex shrink-0 items-center gap-2 px-3 pt-2.5",
@@ -169,5 +193,6 @@ export function FacetChips(props: Props) {
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+    </TooltipProvider>
   );
 }
