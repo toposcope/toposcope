@@ -14,7 +14,7 @@ Home's New fingerprints card counts both lists it shows: `New fingerprints · 0 
 
 A mark's name on a board panel, on hover, says its kind once (`12:22 · api deploy cf3c`, not `12:22 · deploy · deploy cf3c`), opens to the left past the panel's middle so the panel's edge no longer cuts it, and hides the pointer's own time label while it shows.
 
-A board row that ends short of the 12 columns shows a dashed cell in the room at its end, with **＋ Panel here**, which opens a new panel in that room, and **Widen the 2** (or **Widen it**), which widens that row's panels to the full width (sheet 51e). While a board is the front tab, the header lights Home, not Hunt.
+A board row that ends short of the 12 columns shows a dashed cell in the room at its end, with **＋ Panel here**, which opens a new panel in that room when it is 3 columns or wider, and **Widen the 2** (or **Widen it**), which widens that row's panels to the full width (sheet 51e). While a board is the front tab, the header lights Home, not Hunt.
 
 ## 0.15.7
 

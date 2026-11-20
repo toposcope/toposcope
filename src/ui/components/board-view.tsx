@@ -30,6 +30,7 @@ import {
   withCells,
   type PanelFields,
   type RowGap,
+  minNumberW,
 } from "../../shared/boards";
 import { panelDisplayName } from "../../shared/panel-name";
 import { Button } from "@/components/ui/button";
@@ -534,17 +535,20 @@ function RowEnd({ gap, atCap, onPanelHere, onWiden }: { gap: RowGap; atCap: bool
       )}
       style={{ gridColumn: `${gap.x + 1} / span ${gap.w}`, gridRow: `${gap.y + 1} / span ${gap.h}` }}
     >
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={atCap}
-        title={atCap ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
-        onClick={onPanelHere}
-      >
-        ＋ Panel here
-      </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={onWiden}>
+      {/* The narrowest panel (Number) takes 3 columns: a narrower room only widens its row. */}
+      {gap.w >= minNumberW ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={atCap}
+          title={atCap ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
+          onClick={onPanelHere}
+        >
+          ＋ Panel here
+        </Button>
+      ) : null}
+      <Button type="button" variant={gap.w >= minNumberW ? "ghost" : "outline"} size="sm" onClick={onWiden}>
         {gap.ids.length === 1 ? "Widen it" : `Widen the ${gap.ids.length}`}
       </Button>
     </div>
