@@ -30,7 +30,9 @@ import { MarksPanel } from "@/components/marks-panel";
 import { WatchThisSheet, type WatchThisInput } from "@/components/watch-this-sheet";
 import { BoardView } from "@/components/board-view";
 import { BoardHead } from "@/components/board-head";
-import { countedPanels } from "../shared/boards";
+import { countedPanels, fitPanelsToWidth } from "../shared/boards";
+import { panelDisplayName } from "../shared/panel-name";
+import { boardOpenRange, boardRange, boardUnsaved, linkedRange } from "./board-window";
 import { BoardNameDialog } from "@/components/board-name-dialog";
 import type { BoardChoice } from "@/components/add-to-board";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
@@ -338,6 +340,8 @@ export function App() {
     () => parseSearchUrl(typeof window === "undefined" ? "" : window.location.search),
     [],
   );
+  /** The window a board link names; without `range=` the board opens at its own (50e). */
+  const bootLinkedRange = useMemo(() => linkedRange(typeof window === "undefined" ? "" : window.location.search), []);
   const plotRef = useRef<HTMLDivElement>(null);
   const [from, setFrom] = useState(boot.from);
   const [to, setTo] = useState(boot.to);
@@ -1753,9 +1757,8 @@ export function App() {
           // A board (#410) reads each panel on its own: the hunt's search does not run.
           setBind(bindForBoard(boot.bind, item.board.keys));
           setQ("");
-          if (boot.range === "custom") {
-            setRange(item.range && parseRangeMs(item.range) !== null ? item.range : "1h");
-          }
+          // The board's own window, unless the link names one (sheet 50: `?saved=` alone read 1h).
+          setRange(boardOpenRange(item.range, bootLinkedRange));
           blockingSearchRef.current = false;
           setSearching(false);
           return;
@@ -2208,8 +2211,8 @@ export function App() {
     void updateActiveSaved(item?.name ?? "Untitled");
   }
 
-  /** A board's changes save as they are made (#410); its window saves on Save. */
-  async function saveBoard(item: SavedSearch, fields: { board?: BoardSlots; range?: string; name?: string }): Promise<SavedSearch | null> {
+  /** A board's changes save as they are made (#410); its window saves on Save. Home's Rename and Archive use it too (50c). */
+  async function saveBoard(item: SavedSearch, fields: { board?: BoardSlots; range?: string; name?: string; archived?: boolean }): Promise<SavedSearch | null> {
     const res = await fetch(`/api/saved-searches/${item.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -2239,11 +2242,6 @@ export function App() {
     const created = (await res.json()) as SavedSearch;
     setSaved((list) => [created, ...list]);
     return created;
-  }
-
-  /** A board's window is relative (Quick or Last N); a custom one saves as `1h`. */
-  function boardRange(mode: RangeMode): string {
-    return mode !== "custom" && parseRangeMs(mode) !== null ? mode : "1h";
   }
 
   /** Watch this (#264): the hunt becomes a saved hunt if it is not one, then a monitor on it. */
@@ -2360,6 +2358,16 @@ export function App() {
       throw new Error("delete monitor failed");
     }
     toast.success("Monitor deleted");
+    await loadAlerts();
+  }
+
+  /** Acknowledge an open monitor (50g): no reminders for the rest of this open stretch. */
+  async function ackMonitor(monitor: MonitorView) {
+    const res = await fetch(`/api/monitors/${encodeURIComponent(monitor.name)}/ack`, { method: "POST" });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(json?.error ?? `Acknowledge failed (${res.status})`);
+    }
     await loadAlerts();
   }
 
@@ -2484,7 +2492,7 @@ export function App() {
         q: "",
         savedId: item.id,
         bind: bindForBoard(nextBind, item.board.keys),
-        range: item.range && parseRangeMs(item.range) !== null ? item.range : "1h",
+        range: boardOpenRange(item.range, null),
         live: false,
       };
     }
@@ -3408,7 +3416,7 @@ export function App() {
 
   /** Edit panel (39f): the panel's own query, board inputs off, Cancel / Update panel. */
   function editBoardPanel(item: SavedSearch, panel: BoardPanel) {
-    addWorkspace(panelHuntSnap(panel, panel.q, { boardId: item.id, panelId: panel.id, name: panel.name, widgetId: "a" }), false);
+    addWorkspace(panelHuntSnap(panel, panel.q, { boardId: item.id, panelId: panel.id, name: panelDisplayName(panel), widgetId: "a" }), false);
   }
 
   function boardTabFor(boardId: string): number | null {
@@ -4063,10 +4071,10 @@ export function App() {
   const onHunt = view === "search" && !isSurr;
   const paletteItems: PaletteItem[] = [
     ...saved
-      .filter((item) => !item.board)
+      .filter((item) => !item.board && !item.archived)
       .map((item): PaletteItem => ({ group: "Saved hunts", label: item.name, detail: item.query || "all logs", run: () => openSavedTab(item) })),
     ...saved
-      .filter((item) => item.board)
+      .filter((item) => item.board && !item.archived)
       .map((item): PaletteItem => ({ group: "Boards", label: item.name, detail: boardPaletteDetail(item.board!), run: () => openSavedTab(item) })),
     ...(
       [
@@ -4286,6 +4294,17 @@ export function App() {
             setFieldsNames(names);
             setView("fields");
           }}
+          onRenameSaved={async (item, name) => {
+            if (await saveBoard(item, { name })) {
+              toast.success(`Renamed to ${name}`);
+            }
+          }}
+          onArchiveSaved={async (item, archived) => {
+            if (await saveBoard(item, { archived })) {
+              toast.success(archived ? `Archived ${item.name}` : `Unarchived ${item.name}`);
+            }
+          }}
+          onDeleteSaved={(item) => onDelete(item.id)}
         />
       ) : view === "access" && sharePage ? (
         <SharePage
@@ -4348,6 +4367,7 @@ export function App() {
           marks={watchMarkList}
           onNew={openNewAlert}
           onOpen={openMonitor}
+          onAck={isViewer ? undefined : (m) => void ackMonitor(m)}
           onOpenMarks={openMarksStretch}
           held={held.sources}
           linked={new Set(held.sources.map((s) => s.name))}
@@ -4401,7 +4421,8 @@ export function App() {
                   name={activeSaved.name}
                   panels={countedPanels(activeSaved.board.panels)}
                   pinned={Boolean(activeSaved.pinned)}
-                  dirty={(activeSaved.range ?? "1h") !== boardRange(range)}
+                  dirty={boardUnsaved(activeSaved.range, range)}
+                  winLabel={`Last ${boardRange(range)}`}
                   readOnly={isViewer}
                   onHome={() => setView("home")}
                   onRename={(name) => {
@@ -4414,6 +4435,17 @@ export function App() {
                   onSave={onSaveClick}
                   onShare={() => void copyLink()}
                   onDuplicate={() => setBoardSaveAs(true)}
+                  onFit={() => {
+                    if (!activeSaved.board) {
+                      return;
+                    }
+                    const next = fitPanelsToWidth(activeSaved.board);
+                    if (next === activeSaved.board) {
+                      toast("Every row already fills the width");
+                      return;
+                    }
+                    onBoardChange(activeSaved, next);
+                  }}
                   onPin={() => void togglePinned(activeSaved)}
                   onDelete={() => void onDelete(activeSaved.id)}
                 />

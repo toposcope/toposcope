@@ -16,6 +16,8 @@ export type SavedSearch = {
   cols?: string[];
   /** Home's Pinned column (#259). */
   pinned?: boolean;
+  /** Off Home, the header's suggestions and the palette (sheet 50); its link still opens. */
+  archived?: boolean;
   /** Who saved it (#307); an agent's wears its badge (#357). */
   saved_by?: { id: string; name: string; agent?: boolean } | null;
   created_at: number;
@@ -183,6 +185,9 @@ export type MonitorStretch = {
   resolved_call: "sent" | "failed" | "silenced" | "none" | null;
   /** A push monitor opened by a result that never came: when it was due (#177). */
   due_at?: number | null;
+  /** Acknowledged while open (sheet 50g): when, and who as an actor ref. */
+  acked_at?: number | null;
+  acked_by?: string | null;
   calls: MonitorCall[];
 };
 
@@ -262,6 +267,8 @@ export type MonitorView = AlertRule & {
   made_by?: { id: string; name: string; revoked: boolean; kind: string; agent?: boolean } | null;
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   open: MonitorStretch | null;
+  /** Who acknowledged its open stretch, and when (sheet 50g). Fixtures may leave it out. */
+  acked?: { at: number; by: { id: string; name: string; revoked: boolean; kind: string; agent?: boolean } | null } | null;
   /** A fewer-than monitor's newest matching line; null when none in a year, absent when unread. */
   last_line_at?: number | null;
   /** Set on an HTTP(S) monitor. Fixtures may leave it out. */

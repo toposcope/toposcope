@@ -17,7 +17,7 @@ import {
   versionUpgradeRoute,
 } from "../control/instance-routes";
 import { withPlace } from "../control/monitor-place";
-import { deleteMonitor, getMonitor, listMonitors, putMonitor, updateMonitorRoute } from "../control/monitors";
+import { ackMonitor, deleteMonitor, getMonitor, listMonitors, putMonitor, updateMonitorRoute } from "../control/monitors";
 import {
   cancelInviteRoute,
   createInviteRoute,
@@ -137,7 +137,7 @@ export const apiRoutes: ApiRoute[] = [
   // Design tools (#360): what a search finds before it is saved; each save answers with its link and its undo.
   { id: "saved_search_preview", method: "POST", path: "/api/saved-searches/preview", area: "Saved searches", action: "own hunts", summary: "What a saved search would find over its window, before it is saved: its rows, its series' value and a few rows.", query: null, body: savedUpdateBody, handler: savedPreviewRoute },
   { id: "saved_search_create", method: "POST", path: "/api/saved-searches", area: "Saved searches", action: "own hunts", summary: "Save a search: a Viewer's is their own, an Operator's is shared; the answer has its link and the call that undoes it.", query: null, body: savedCreateBody, handler: savedCreateWithUndo(createSavedSearch) },
-  { id: "saved_search_update", method: "PUT", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Change a saved search, or pin or unpin it; a field left out keeps its value, and the answer has the call that puts it back.", query: null, body: savedUpdateBody, handler: savedUpdateWithUndo(updateSavedSearch) },
+  { id: "saved_search_update", method: "PUT", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Change a saved search, pin or unpin it, or archive it; a field left out keeps its value, and the answer has the call that puts it back.", query: null, body: savedUpdateBody, handler: savedUpdateWithUndo(updateSavedSearch) },
   { id: "saved_search_delete", method: "DELETE", path: "/api/saved-searches/:id", area: "Saved searches", action: "own hunts", summary: "Delete a saved search.", query: null, body: null, handler: deleteSavedSearch },
   { id: "saved_search_run", method: "GET", path: "/api/saved-searches/:id/run", area: "Saved searches", action: "read", summary: "Run a saved search over its own window: its rows' count and its series' value.", query: null, body: null, handler: runSavedSearch },
   // Panels one at a time (#360): `home` in place of the id is the saved search marked Home.
@@ -171,6 +171,8 @@ export const apiRoutes: ApiRoute[] = [
     body: monitorBody,
     handler: previewedPut(monitorPutWithUndo(withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null))),
   },
+  // Acknowledge (sheet 50g): no reminders for the rest of this open stretch.
+  { id: "monitor_ack", method: "POST", path: "/api/monitors/:name/ack", area: "Monitors", action: "change monitors", summary: "Acknowledge an open monitor: who and when, for this open stretch only. No reminders go out while it is acknowledged; the resolved call still does, and the next open starts unacknowledged. 409 when it is not open.", query: null, body: null, handler: ackMonitor },
   { id: "monitor_delete", method: "DELETE", path: "/api/monitors/:name", area: "Monitors", action: "change monitors", summary: "Delete a monitor by name, and its record.", query: null, body: null, handler: deleteMonitor },
 
   // Fields

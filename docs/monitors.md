@@ -27,6 +27,8 @@ A saved-search monitor reads its saved search every minute.
 
 Each open-to-resolved stretch is kept with the calls sent during it, and Watch draws them on one clock. Silence stops the calls, not the record. An alert made before 0.6 is a monitor that reminds once per window, so it calls as often as it did.
 
+When someone has an open monitor in hand, **Acknowledge** in Watch says so (Operators and Owners; `POST /api/monitors/<name>/ack` does the same). It records who and when, stops the reminders until the monitor resolves, and leaves it out of the open count. The resolved call still goes, and the next time the monitor opens it is not acknowledged.
+
 ## Open on fewer than
 
 A monitor can open on **fewer than** its threshold, for a stream that must keep talking. `host:ci-box` over 15m, fewer than 1, opens when no line has come from the box for 15 minutes, and the next line resolves it.

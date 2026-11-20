@@ -169,8 +169,8 @@ export async function passSearchMonitor(
 
 /**
  * A monitor's calls on one pass (#175): the open call (tried each pass for up to an hour), a
- * reminder when one is due, and a resolved call for each stretch that has resolved since. While
- * silenced nothing is sent, but the calls kept back are recorded, and none is made up when the
+ * reminder when one is due (none while the stretch is acknowledged), and a resolved call for each
+ * stretch that has resolved since. While silenced nothing is sent, but the calls kept back are recorded, and none is made up when the
  * silence ends. With no webhook of its own and none in Settings, it calls nobody: its stretches
  * say so (`none`), and its state is kept all the same.
  */
@@ -237,7 +237,8 @@ export async function passCalls(
       } else if ((await send("open", stretch)).ok) {
         setOpenCall(stretch.id, "sent", now, db);
       }
-    } else if (url) {
+    } else if (url && stretch.acked_at === null) {
+      // Acknowledged (sheet 50g): no reminders for the rest of this stretch; its resolved call still goes.
       const every = remindEveryMs(rule.remind_every, plan.windowMs);
       if (every !== null && now - (stretch.called_at ?? stretch.opened_at) >= every) {
         if (silenced) {

@@ -7,8 +7,8 @@ import { maxBoardName, boardMenuItems, type BoardMenuItem } from "../board-menu"
 
 /**
  * A board's head (sheet 49, 49d): Home › its name, which is renamed in place, how many panels it
- * has, `pinned` when it is on Home; then whether its changes are saved, Share and the board's ⋯
- * menu (49g).
+ * has and the window it follows (50e), `pinned` when it is on Home; then whether its changes are
+ * saved, Share and the board's ⋯ menu (49g, 50e).
  */
 export function BoardHead(props: {
   name: string;
@@ -17,6 +17,8 @@ export function BoardHead(props: {
   pinned: boolean;
   /** The board's window differs from the one it saved. */
   dirty: boolean;
+  /** `Last 24h`: the window the board's panels follow. */
+  winLabel: string;
   /** A Viewer: no rename, no Save, no menu. */
   readOnly: boolean;
   onHome: () => void;
@@ -24,6 +26,7 @@ export function BoardHead(props: {
   onSave: () => void;
   onShare: () => void;
   onDuplicate: () => void;
+  onFit: () => void;
   onPin: () => void;
   onDelete: () => void;
 }) {
@@ -35,6 +38,7 @@ export function BoardHead(props: {
       renameNext.current = true;
       setRenaming(true);
     },
+    fit: props.onFit,
     duplicate: props.onDuplicate,
     pin: props.onPin,
     delete: props.onDelete,
@@ -72,6 +76,7 @@ export function BoardHead(props: {
       <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">
         {props.panels} {props.panels === 1 ? "panel" : "panels"}
       </span>
+      <span className="min-w-0 truncate font-mono text-xs whitespace-nowrap text-muted-foreground">· the board's window, {props.winLabel}</span>
       {props.pinned ? <span className="rounded-sm border border-plate/40 px-1.5 text-xs leading-[18px] text-plate">pinned</span> : null}
       <div className="flex-1" />
       {props.readOnly ? null : props.dirty ? (
@@ -96,7 +101,7 @@ export function BoardHead(props: {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-[220px]"
+            className="w-[250px]"
             // Rename puts the caret in the name: the menu does not hand focus back to ⋯.
             onCloseAutoFocus={(e) => {
               if (renameNext.current) {
@@ -125,8 +130,9 @@ export function BoardHead(props: {
                   </DropdownMenuItem>
                 </Fragment>
               ) : (
-                <DropdownMenuItem key={item.id} onSelect={run[item.id]}>
-                  {item.label}
+                <DropdownMenuItem key={item.id} className={item.sub ? "h-auto flex-col items-start gap-0 py-1.5" : undefined} onSelect={run[item.id]}>
+                  <span>{item.label}</span>
+                  {item.sub ? <span className="text-xs font-normal text-muted-foreground">{item.sub}</span> : null}
                 </DropdownMenuItem>
               ),
             )}

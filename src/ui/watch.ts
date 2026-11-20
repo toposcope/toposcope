@@ -51,21 +51,32 @@ export function sourceOf(m: Pick<MonitorView, "source" | "kind">): MonitorSource
   return m.source ?? (m.kind === "first_seen" ? "fingerprints" : "search");
 }
 
-/** Open ones first, the one opened last on top; then the rest as they were made, newest first. */
+/** Open and acknowledged (sheet 50g): someone has it, so it sends no reminders and leaves the open count. */
+export function isAcked(m: Pick<MonitorView, "state" | "acked">): boolean {
+  return m.state === "open" && m.acked != null;
+}
+
+/**
+ * Open ones first, the one opened last on top, acknowledged ones after the rest of the open (50g);
+ * then the rest as they were made, newest first.
+ */
 export function sortForWatch(monitors: readonly MonitorView[]): MonitorView[] {
   const open = monitors
     .filter((m) => m.state === "open")
-    .sort((a, b) => (b.open?.opened_at ?? 0) - (a.open?.opened_at ?? 0));
+    .sort((a, b) => Number(isAcked(a)) - Number(isAcked(b)) || (b.open?.opened_at ?? 0) - (a.open?.opened_at ?? 0));
   return [...open, ...monitors.filter((m) => m.state !== "open")];
 }
 
-/** The header's tell (18c): how many are open, how many push monitors are late, and how many last said warn. */
+/**
+ * The header's tell (18c): how many are open and not acknowledged (50g), how many push monitors
+ * are late, and how many last said warn.
+ */
 export function watchCounts(
   monitors: readonly MonitorView[],
   nowMs = Date.now(),
 ): { open: number; late: number; warn: number } {
   return {
-    open: monitors.filter((m) => m.state === "open").length,
+    open: monitors.filter((m) => m.state === "open" && !isAcked(m)).length,
     late: monitors.filter((m) => sourceOf(m) === "push" && isLate(pushClock(m), nowMs)).length,
     warn: monitors.filter((m) => m.state !== "open" && m.last_result === "warn").length,
   };
@@ -838,14 +849,14 @@ export function pushHuntRange(m: Pick<MonitorView, "every_ms">): "1h" | "4h" | "
 
 /* Watch as a list (#263, frame 26g): one row per monitor, state first. */
 
-export type WatchDot = "open" | "ok" | "warn" | "paused";
+export type WatchDot = "open" | "acked" | "ok" | "warn" | "paused";
 
 export function watchDot(m: MonitorView): WatchDot {
   if (m.enabled === 0) {
     return "paused";
   }
   if (m.state === "open" && m.open) {
-    return "open";
+    return isAcked(m) ? "acked" : "open";
   }
   if (m.last_result === "warn" || m.last_result === "fail" || (m.last_status != null && m.last_status !== "ok" && m.last_status !== "200")) {
     return "warn";
@@ -866,6 +877,69 @@ export function watchStateLine(m: MonitorView, stretches: readonly MonitorStretc
     return `ok · last open ${clockAt(last.opened_at, nowMs)} for ${formatDuration(last.resolved_at - last.opened_at, "long")}`;
   }
   return "ok";
+}
+
+/**
+ * CHECKS on a row's one line (50g), short: "event:backup.failed · ≥ 1 in 1h",
+ * "GET api.example.com/health · any 2xx", "TLS hub.example.com:443 · trusted", "push · 1d · grace 1h".
+ */
+export function checksLine(m: MonitorView): string {
+  const source = sourceOf(m);
+  const q = m.saved?.query.trim() || "*";
+  if (source === "fingerprints") {
+    return `${q} · new after a deploy or flag`;
+  }
+  if (source === "push") {
+    return laneKind(m);
+  }
+  if (source === "http") {
+    return `${m.http?.method ?? "GET"} ${(m.http?.url ?? "").replace(/^https?:\/\//, "")} · ${httpConditionsLabel(m)}`;
+  }
+  if (isNet(m)) {
+    return `${netTargetLabel(m)} · ${netConditionsLabel(m)}`;
+  }
+  const cmp = opensWhen(m).replace(/\bat least\b/, "≥").replace(/\bfewer than\b/, "<");
+  return `${q} · ${cmp} in ${m.saved?.range ?? "its window"}`;
+}
+
+/** CHECKS in full, for its tooltip: what it reads, how often, and who made it. */
+export function checksTitle(m: MonitorView, nowMs: number): string {
+  const by = m.made_by && !m.made_by.agent ? `made by ${m.made_by.name}` : "";
+  return [openCardLine(m, nowMs), laneKind(m), by].filter(Boolean).join("\n");
+}
+
+/** "acked by Maya K. · 14h 47m": who has an acknowledged monitor, and how long it has been open (50g). */
+export function ackedLine(m: MonitorView, nowMs: number): string | null {
+  if (!isAcked(m) || !m.open) {
+    return null;
+  }
+  const who = m.acked?.by?.name ? ` by ${m.acked.by.name}` : "";
+  return `acked${who} · ${formatDuration(nowMs - m.open.opened_at, "long")}`;
+}
+
+/**
+ * NOW's tooltip (50g): the state line that sat under the name ("open since 12:51 · 35 min",
+ * "ok · last open 03:10 for 8 min"), who acknowledged it and when, why it can't tell, and its
+ * last check.
+ */
+export function nowTitle(
+  m: MonitorView,
+  stretches: readonly MonitorStretch[],
+  nowMs: number,
+  checkedAt: number | null,
+  extra?: string,
+): string {
+  const acked = isAcked(m) && m.acked ? `acknowledged${m.acked.by ? ` by ${m.acked.by.name}` : ""} at ${clockAt(m.acked.at, nowMs)} · no reminders until it resolves` : "";
+  const silenced = typeof m.silenced_until === "number" && m.silenced_until > nowMs ? `silenced until ${clockAt(m.silenced_until, nowMs)}` : "";
+  return [
+    watchStateLine(m, stretches, nowMs),
+    acked,
+    silenced,
+    extra ?? "",
+    `last check ${checkedAt ? clockAt(checkedAt, nowMs) : "—"}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** When it last checked: its newest result, else the monitor's own stamp. */

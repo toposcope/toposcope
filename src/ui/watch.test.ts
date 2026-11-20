@@ -216,18 +216,21 @@ describe("Watch's lanes (#175, frame 18c)", () => {
         marks: [mark("v0.9.2", now - 19 * hour), mark("v0.9.3", now - 20 * minute)],
         onNew: () => {},
         onOpen: () => {},
+        onAck: () => {},
       }),
     );
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    // 26g (#263): one row per monitor, state first, then what it is and its condition, checks, strip, last check, now.
+    // 50g: one line per monitor: dot, name and service, checks once and short, strip, now.
     expect(text).toContain("Watch 3 monitors · 1 open · webhooks to ntfy.sh All 3 Search 2 Fingerprints 1 24h 7d 30d New monitor");
-    expect(text).toContain("Monitor Checks Last 24h Last check Now");
-    // Rows in order: the open one first.
-    expect(text).toContain("ci-box lines loud ci ci-box open since 10:41 · 22m · search · host:ci-box · at least 1 line in 15m search · at least 1 · 15m 11:02 open 22m");
+    expect(text).toContain("Monitor Checks Last 24h Now");
+    // Rows in order: the open one first, with Acknowledge before its now; its state line is now's tooltip.
+    expect(text).toContain("ci-box lines loud ci ci-box host:ci-box · ≥ 1 in 15m Acknowledge open 22m");
+    expect(text).not.toContain("open since");
     expect(text.indexOf("ci-box lines loud")).toBeLessThan(text.indexOf("api errors"));
-    expect(text).toContain("api errors api ok · last open");
-    expect(text).toContain("search · at least 50 · 15m 11:02 12");
-    expect(text).toContain("after a deploy api ok · fingerprints");
+    expect(text).toContain("api errors api service:api level:error · ≥ 50 in 15m 12");
+    expect(text).toContain("after a deploy api service:api level:error · new after a deploy or flag 1 sent");
+    // Only the open one can be acknowledged.
+    expect(html.match(/>Acknowledge</g)?.length).toBe(1);
     expect(text).toContain("marks deploys and flags on the same clock");
     expect(text).toContain("2 marks");
     expect(text).toContain("What opened today 10:41 ● ci-box lines loud · still open sent ✓");

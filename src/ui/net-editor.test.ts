@@ -192,8 +192,9 @@ describe("TCP and certificate monitors on Watch (18c)", () => {
         onOpen: () => {},
       }),
     );
-    expect(html).toContain("tcp · 30s · 2 conditions");
-    expect(html).toContain("certificate · SMTP · 1h");
+    // 50g: checks once, short; "tcp · 30s · …" is in its tooltip.
+    expect(html).toContain("db.internal:5432 · 2 conditions");
+    expect(html).toContain("SMTP smtp.agental.dev:587 · cert &gt; 14d");
     expect(html).toContain("61d left");
   });
 

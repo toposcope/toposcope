@@ -137,8 +137,8 @@ export async function computeHomeSince(input: { markId: string | null; hour: boo
     mark = pickHomeMark(marks, nowMs);
     auto = true;
   }
-  // #306: the hunts this person sees, shared ones and their own.
-  const saved = (input.actor === undefined ? allSaved() : visibleSaved(input.actor)).filter((s) => !s.board);
+  // #306: the hunts this person sees, shared ones and their own; an archived one is not read (sheet 50).
+  const saved = (input.actor === undefined ? allSaved() : visibleSaved(input.actor)).filter((s) => !s.board && !s.archived);
   // The cache turns over every 30 s and whenever a saved hunt is added or edited.
   const key = `${input.actor?.person.id ?? "all"}:${mark?.id ?? "hour"}:${Math.floor(nowMs / cacheMs)}:${saved.map((s) => `${s.id}=${s.query}|${s.agg ?? ""}`).join(",")}`;
   const hit = cache.get(key);

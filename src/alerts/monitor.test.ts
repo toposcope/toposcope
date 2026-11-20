@@ -8,7 +8,7 @@ import { migrateControlDb } from "../control/index";
 import type { SavedSearch } from "../control/saved-searches";
 import type { WebhookOutcome } from "./delivery";
 import { passSearchMonitor, type SearchMonitorDeps } from "./monitor";
-import { closeByEdit, monitorHistory, openStretch, pruneStretches } from "./monitor-store";
+import { ackOpenStretch, closeByEdit, monitorHistory, openStretch, pruneStretches } from "./monitor-store";
 import type { WebhookPayload } from "./payload";
 import type { AlertSeries } from "./series";
 
@@ -255,6 +255,34 @@ describe("a search monitor opens, reminds and resolves (#175)", () => {
     // The silence ended at 30m: the next call is the reminder when it is due, not the open it missed.
     await m.at(36, 57);
     expect(m.sent.map((s) => [s.json?.state, s.at])).toEqual([["reminder", t0 + 36 * minute]]);
+  });
+
+  test("acknowledged (50g): no reminders for that stretch, its resolved call still goes, and the next open is not acknowledged", async () => {
+    const db = freshDb();
+    addRule(db);
+    const m = rig(db);
+    expect(ackOpenStretch("mon-1", t0, "person-1", db)).toBeNull();
+    await m.at(0, 57);
+    const acked = ackOpenStretch("mon-1", t0 + 2 * minute, "person-1", db);
+    expect(acked).toMatchObject({ acked_at: t0 + 2 * minute, acked_by: "person-1", resolved_at: null });
+    // A second acknowledge keeps the first.
+    expect(ackOpenStretch("mon-1", t0 + 3 * minute, "person-2", db)).toMatchObject({ acked_at: t0 + 2 * minute, acked_by: "person-1" });
+    for (const at of [15, 30, 45, 60]) {
+      await m.at(at, 60);
+    }
+    expect(m.sent.map((s) => s.json?.state)).toEqual(["open"]);
+    await m.at(61, 0);
+    expect(m.rule().state).toBe("ok");
+    expect(m.sent.map((s) => s.json?.state)).toEqual(["open", "resolved"]);
+    // It clears with the stretch: the next open is a stretch of its own, not acknowledged, and reminds.
+    await m.at(62, 57);
+    expect(openStretch("mon-1", db)).toMatchObject({ acked_at: null, acked_by: null });
+    await m.at(77, 57);
+    expect(m.sent.map((s) => s.json?.state)).toEqual(["open", "resolved", "open", "reminder"]);
+    const [second, first] = monitorHistory("mon-1", 200, db);
+    expect(first).toMatchObject({ acked_at: t0 + 2 * minute, acked_by: "person-1", resolved_call: "sent" });
+    expect(first!.calls.map((c) => c.what)).toEqual(["open", "resolved"]);
+    expect(second).toMatchObject({ acked_at: null, resolved_at: null });
   });
 
   test("a failed open call is tried each pass for an hour, then shown failed on its stretch", async () => {

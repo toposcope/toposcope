@@ -612,6 +612,8 @@ View trace joins when a log alias (`trace_id`, then `request_id`, then `traceid`
 
 `/api/home`'s `saved_id` is the saved search the bare address opens on (#109), the instance's own (SQLite settings), `null` for none. A board is refused (400): Home is a saved hunt. `GET /` with no query string redirects (302) to that saved search's own URL — its `q`, window, series, panels, columns and `saved=` — so Copy link, the tab's name and "· edited" work as for any saved search. Any other URL opens as it says.
 
+A saved search can be archived (sheet 50): `saved_searches.archived`, `INTEGER NOT NULL DEFAULT 0`, added at boot as `pinned` was. `PUT /api/saved-searches/:id` takes `archived` (true or false; anything else is a 400), and `GET` lists it on every row. An archived hunt or board is left out of Home, the header's suggestions and the command palette for everyone. It still opens by its link, and a monitor on it keeps running. `GET /api/home/since` reads no card for it.
+
 ### Tokens, settings and fields
 
 | Route | Does |
@@ -681,6 +683,10 @@ It is one column (sheet 49b, `src/ui/home-saved.ts`, `src/ui/home-since.ts`):
 - one **Quiet** line that opens the hunts that did not move: pinned hunts (`saved_searches.pinned`) first, its open state kept in the browser
 - then new and stopped fingerprints, and monitors
 
+Since sheet 50b, a Moved card draws two bars labelled `before` and `after` in place of its sparkline when fewer than four buckets read anything. Under Boards come three lines that each open in place: **Quiet** (folded by default, naming on its right the three largest hunts not at zero, then `+N`; its open state kept under `toposcope.homeQuietOpen.50`), **Archived** (only when something is archived; rows without values, each with Unarchive) and **Coverage** (only when there are gaps; it opens to the coverage card).
+
+Each Moved card and Quiet row has a ⋯ menu (50c), not for a Viewer: Open, Rename, Archive and Delete…, which asks again in place. The header's suggestions (`src/ui/header-search.ts`) leave archived hunts and boards out.
+
 ### The hunt
 
 The **hunt** is a session-only workspace strip: Search / Follow / Surroundings / boards, uncapped, overflow scrolls. Under it:
@@ -703,6 +709,8 @@ The hunt table can show up to three extra attr columns between Host and Message 
 Queries run on Enter, facet clicks, Top-N Filter/Exclude, range, Live, and the search-bar × — not as you type. The × clears `q` and runs the search, the same as Enter on an empty bar. While a search is in flight, Stop sits beside the field. While the field holds a query that has not run, the rows and plot dim, the count says "for the last query", and a Run button sits beside the field (47f).
 
 Facet clicks toggle membership in a field's OR group; the detail panel's `+` adds that value. `src/ui/query-tokens.ts` rewrites `q`, so the URL stays the whole state. Logs off (`logs=0`) unmounts the table, detail, Surroundings, table Export, Load more and row keys; widget chrome Export (CSV/JSON/SVG/PNG of the painted series) stays, and window changes then call `events=0`.
+
+An empty query box reads `Search all logs, e.g.` with the dashed examples `level:error` and `service:api` (`queryExamples` in `search-query-field.tsx`, sheet 50i). A click puts one in the box and focuses it without running it.
 
 ### Panels and the grid
 
@@ -739,6 +747,8 @@ Top-N groups by level/service/host or an attr key (`status`) via `GET /api/facet
 Histogram interval is chips (`Auto` or `1ms`…`7d` that draw) in the chart card header; the legend sits under the plot. Stacked columns are the scaled bucket total sliced by share, with no intra-bar gap.
 
 The pinned plot's head (33d, 33m–33o) leads with the matching count and names the window on the right: `from → to UTC · bar width`, `→ now` in Live, `Custom · span` on a moved window. Custom-window Reset there restores the memoized span, bar width and Live together. There is no strip between the bar and the canvas.
+
+Every lone mark on the lane under the plot carries its name and time (sheet 50i). `markLaneName` (`src/ui/change-marks.ts`) shortens it: the title, a deploy's service before it unless the title names it, and `a → b` as `b`. `railNameRooms` (`histogram-marks.tsx`) gives each chip a width; two neighbours that both need more than half the gap get half each, and a name is cut with an ellipsis rather than dropped. Marks closer than 1.6% of the window still fold into a count chip.
 
 ### Zoom, pan and drill
 
@@ -878,6 +888,8 @@ A board never runs the hunt's search. Each panel reads `/api/search` (`events=0`
 
 A panel with a set input and no rows says which input emptied it: its field's values on the panel's own rows from the minute rollups, or that those rows have no such field in the window. A panel with no events and no set input says "No events in the last 24h" and draws no change marks. A metric panel is read from its series and never says it.
 
+A board opens at the window it saved (`src/ui/board-window.ts`, sheet 50e): from Home, the palette, the header's search, or a link with no `range=`. A link that names a window opens at it. The head reads `all changes saved` until the window shown differs from the saved one (`boardUnsaved`), and only then offers Save.
+
 ### The board's head and menu
 
 The board's head (sheet 49, 49d, `src/ui/components/board-head.tsx`) is Home › its name, its panel count, `pinned`, the save state, Share and a ⋯ menu.
@@ -887,6 +899,8 @@ The board's head (sheet 49, 49d, `src/ui/components/board-head.tsx`) is Home ›
 - The ⋯ menu (49g, `src/ui/board-menu.ts`) holds Rename, Duplicate board (a new board from this one, under a new name), Pin to Home or Unpin from Home as `pinned` is, and Delete board…, armed in the menu before it deletes.
 
 Panel, input, name and fixed-window changes save as they are made; Save stores the window. A board cannot be watched, nor can a panel, and a board is never Home.
+
+The head also names the window the board follows (`· the board's window, Last 24h`). The ⋯ menu's **Fit panels to the width** (`fitPanelsToWidth`, 50e) grows the panels that start on one grid row, in order and in proportion to their widths, to share the 12 columns, less any a note or a taller panel holds there. Each keeps `panelMinW`; headings, notes and rows that already fill their columns are left alone. Then `gravity` runs and the board saves.
 
 ### Adding and editing a panel
 
@@ -906,6 +920,8 @@ A panel draws at least `panelMinW(view)` columns (`widenCells` in `src/shared/gr
 The panel menu is Open as hunt (a Search tab on the panel's `q` plus the set inputs, on the board's window), Edit panel, Fixed window…, Duplicate, Copy…, Export…, Remove.
 
 A board saved before 0.14 (a template query and its widgets) is migrated at boot (`src/control/board-panels-migrate.ts`): one panel per widget on that query, its event table as an events panel, its inputs kept, and its window the board's (`1h` when it had none).
+
+A panel whose stored name is generic (its `defaultPanelName`, or `Volume`, `Metric`, `Number`, `count`, `rate`, `Top values`) is shown with a name made from its query (`src/shared/panel-name.ts`, 50e): the query's `service` and `level` values, or a short query itself, then what it reads, as in `incus warn rate`, `incus call time` or `All logs`. The stored name is not rewritten; Edit panel starts with the made name, so Update panel stores it.
 
 ## Monitors
 
@@ -958,6 +974,8 @@ The open call goes out on the pass that opens it. While open, a reminder goes ou
 - While `silenced_until` is in the future nothing is sent, but stretches open and resolve and the calls kept back are recorded as `silenced`. When the silence ends nothing is made up.
 - PUT `silence_for` (`1h`|`4h`|`24h`) or `silenced_until` (ms epoch, or `null` to clear).
 - Rules that existed before 0.6 remind every window, so they call as often as they did; a new one reminds every 4h.
+
+An open stretch can be acknowledged (sheet 50g): `monitor_stretches.acked_at` and `acked_by` (an actor ref, as `created_by` is) are set on the open stretch, and the first acknowledgement stands. `passCalls` sends no reminder while `acked_at` is set; the resolved call goes as before. Because it lives on the stretch, it clears when the stretch resolves or closes by edit, and the next open starts unacknowledged.
 
 ### Call status fields
 
@@ -1129,6 +1147,8 @@ The window is `range=24h|7d|30d` (default 24h) or a hunt's `from`/`to` (at most 
 - `results`: monitors' results in the window, for Watch's ticks (`{ monitor_id, at, result, exit_code, duration_ms, value, unit, message (cut to 300), host, via }`), cut into at most 240 columns a monitor, each the worst result of its column (fail > warn > ok, the later of equals).
 - `sources` (#333): each linked source's monitors, read-only: `[{ source, at, monitors, stretches }]`, each monitor its definition with `service` and `host`, the stretches those open in the window, and their results in `results` by id.
 
+Each monitor carries `acked: { at, by }` for an acknowledged open stretch, else null, and each stretch its `acked_at` and `acked_by`. `POST /api/monitors/:name/ack` (action `change monitors`, no body) acknowledges the open stretch and answers the monitor as this list shows it: 409 when it is not open, 404 when there is no such monitor, 403 for a Viewer.
+
 ### PUT /api/monitors/:name
 
 A script or an agent can declare a monitor with one of these bodies. What is left out takes its default, and a replace keeps the monitor's record, silence and pause.
@@ -1159,6 +1179,8 @@ Watch is a separate view; each monitor reads a saved search. Watch (`?view=watch
 A push monitor's lane (18f) has each result as a tick (amber a warn, red a fail), a run as a bar back to its `/start`, its stretches red, late amber from the due time, an outline while a run is going, and a dashed line at the due time it waits for.
 
 A click on a tick reads that result (its exit code, how long it ran, from where, its message, and the stretch it opened) with Open in Search. On the Push segment its lanes are taller and say when the next result is due ("next 11:06", "down 11:12" while late, "due 02:04 · missed" once open).
+
+Since sheet 50g each monitor is one line, about 38px: dot, name and service, CHECKS once and short (`checksLine` in `src/ui/watch.ts`, the full text in a tooltip), the strip and Now. The state line, who acknowledged it and the last check are Now's tooltip (`nowTitle`). An acknowledged monitor's dot is grey, Now reads `acked by <name> · <how long open>`, it sorts after the unacknowledged open ones, and `watchCounts` leaves it out of `N open`.
 
 ### Check lanes in Watch
 

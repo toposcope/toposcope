@@ -498,6 +498,7 @@ Body:
 | `board` | any \| null |  | A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt. |
 | `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
+| `archived` | boolean |  | Archived: off Home, the header's search and the palette, for everyone; its link still opens and its monitor still runs. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
 
 ### POST /api/saved-searches
@@ -520,11 +521,12 @@ Body:
 | `board` | any \| null |  | A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt. |
 | `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
+| `archived` | boolean |  | Archived: off Home, the header's search and the palette, for everyone; its link still opens and its monitor still runs. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
 
 ### PUT /api/saved-searches/{id}
 
-Change a saved search, or pin or unpin it; a field left out keeps its value, and the answer has the call that puts it back.
+Change a saved search, pin or unpin it, or archive it; a field left out keeps its value, and the answer has the call that puts it back.
 
 Role: **Viewer** · `saved_search_update`
 
@@ -544,6 +546,7 @@ Body:
 | `board` | any \| null |  | A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt. |
 | `cols` | string \| string[] \| null |  | Attribute keys shown as columns, a list or separated by commas. |
 | `pinned` | boolean \| null |  | Pinned for the caller; each person pins their own. |
+| `archived` | boolean |  | Archived: off Home, the header's search and the palette, for everyone; its link still opens and its monitor still runs. |
 | `shared` | any |  | true or false: shared with everyone, or the caller's own; a Viewer's is their own. |
 
 ### DELETE /api/saved-searches/{id}
@@ -979,6 +982,14 @@ Body:
 | `silence_for` | string \| null |  | Silence it for 1h, 4h or 24h from now. |
 | `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
 | `enabled` | boolean \| number \| null |  | false or 0 pauses it, true or 1 resumes it. |
+
+### POST /api/monitors/{name}/ack
+
+Acknowledge an open monitor: who and when, for this open stretch only. No reminders go out while it is acknowledged; the resolved call still does, and the next open starts unacknowledged. 409 when it is not open.
+
+Role: **Operator** · `monitor_ack`
+
+Path: `name`.
 
 ### DELETE /api/monitors/{name}
 

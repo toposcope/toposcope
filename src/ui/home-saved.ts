@@ -1,6 +1,9 @@
 import type { HomeCard } from "../control/home-since";
 import { isTextPanel, type BoardSlots } from "../shared/boards";
+import { coverageGaps, type Coverage } from "../shared/coverage";
 import { widgetGridCols } from "../shared/widgets";
+import { formatCompactCount } from "./count-format";
+import { formatValue } from "./home-since";
 import type { SavedSearch } from "./types";
 
 /**
@@ -84,7 +87,104 @@ export function boardPreview(board: BoardSlots | null | undefined): PreviewBox[]
   });
 }
 
-/** Home's board tiles: boards pinned to Home first, then the API's order (newest first). */
+/** Home's board tiles: boards pinned to Home first, then the API's order (newest first). Archived boards are not tiles. */
 export function homeBoards(saved: readonly SavedSearch[]): SavedSearch[] {
-  return saved.filter((s) => s.board).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+  return saved.filter((s) => s.board && !s.archived).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+}
+
+/** The saved hunts Home reads (sheet 50): not boards, not archived. */
+export function homeHunts(saved: readonly SavedSearch[]): SavedSearch[] {
+  return saved.filter((s) => !s.board && !s.archived);
+}
+
+/** The Archived line's rows (50b): archived hunts, then archived boards, each in the API's order. */
+export function archivedSaved(saved: readonly SavedSearch[]): SavedSearch[] {
+  const archived = saved.filter((s) => s.archived);
+  return [...archived.filter((s) => !s.board), ...archived.filter((s) => s.board)];
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** "20 saved hunts, not read on Home"; boards are named when there are any. */
+export function archivedText(archived: readonly SavedSearch[]): string {
+  const boards = archived.filter((s) => s.board).length;
+  const hunts = archived.length - boards;
+  const parts = [hunts > 0 ? plural(hunts, "saved hunt", "saved hunts") : null, boards > 0 ? plural(boards, "board", "boards") : null].filter(Boolean);
+  return `${parts.join(" and ")}, not read on Home`;
+}
+
+/** "31 saved hunts, same as before". */
+export function quietText(count: number): string {
+  return `${plural(count, "saved hunt", "saved hunts")}, same as before`;
+}
+
+/** A Quiet row's value: `refused`, a compact count, or the series' value; empty when not read. */
+export function quietValue(card: HomeCard | undefined): string {
+  if (!card) {
+    return "";
+  }
+  if (card.refused) {
+    return "refused";
+  }
+  return card.kind === "count" ? formatCompactCount(card.after ?? 0) : formatValue(card.after, card.kind);
+}
+
+/** How many Quiet names the folded line spells out before `+N`. */
+export const quietNamesShown = 3;
+
+/**
+ * The folded Quiet line's right side (50b): the quiet hunts whose value is not zero, the largest
+ * first, three by name and the rest as `+N`; null when every one reads zero.
+ * "2 not zero: Fleet job silent 27 · API event loop stalls 13".
+ */
+export function quietNotZero(quiet: readonly SavedSearch[], cards: readonly HomeCard[], shown = quietNamesShown): string | null {
+  const byId = new Map(cards.map((c) => [c.saved_id, c]));
+  const rows = quiet
+    .map((item) => ({ item, card: byId.get(item.id) }))
+    .filter((r): r is { item: SavedSearch; card: HomeCard } => Boolean(r.card && !r.card.refused && r.card.after !== null && r.card.after !== 0))
+    .sort((a, b) => Math.abs(b.card.after!) - Math.abs(a.card.after!));
+  if (rows.length === 0) {
+    return null;
+  }
+  const named = rows.slice(0, shown).map((r) => `${r.item.name} ${quietValue(r.card)}`);
+  const more = rows.length - named.length;
+  return `${rows.length} not zero: ${named.join(" · ")}${more > 0 ? ` +${more}` : ""}`;
+}
+
+/** Fewer buckets than this with any value, and a Moved card draws before and after instead (50b). */
+export const sparkMinBuckets = 4;
+
+/** Whether a Moved card draws two bars, before and after, in place of its sparkline (50b). */
+export function drawsBeforeAfter(card: Pick<HomeCard, "spark">): boolean {
+  return card.spark.filter((v) => v > 0).length < sparkMinBuckets;
+}
+
+/** The before and after bars' lengths, in percent of the card: the larger side is full. */
+export function beforeAfterWidths(before: number | null, after: number | null): { before: number; after: number } {
+  const b = Math.abs(before ?? 0);
+  const a = Math.abs(after ?? 0);
+  const top = Math.max(b, a);
+  if (top === 0) {
+    return { before: 0, after: 0 };
+  }
+  return { before: (b / top) * 100, after: (a / top) * 100 };
+}
+
+/**
+ * The folded Coverage line (50b): "10 of 10 services have gaps", and names that do not match when
+ * some do; null, and no line, when the coverage card would show nothing.
+ */
+export function coverageLineText(coverage: Coverage | null, selectedMarkId: string | null): string | null {
+  if (!coverage) {
+    return null;
+  }
+  const names = coverage.mismatches.length;
+  if (coverageGaps(coverage, selectedMarkId).length === 0 && names === 0) {
+    return null;
+  }
+  const withGaps = coverage.services.filter((s) => !s.complete).length;
+  const head = `${withGaps} of ${coverage.services.length} services ${withGaps === 1 ? "has" : "have"} gaps`;
+  return names > 0 ? `${head} · ${names} ${names === 1 ? "name does" : "names do"} not match` : head;
 }

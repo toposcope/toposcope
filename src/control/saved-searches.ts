@@ -45,6 +45,8 @@ export type SavedSearch = {
   owner_id: string | null;
   /** On everyone's Home, or only its owner's (#306). */
   shared: boolean;
+  /** Off Home, the header's suggestions and the palette (sheet 50); its link opens and its monitor runs. */
+  archived: boolean;
   /** Who saved it, by name (#307): "saved by Maya K." */
   saved_by?: ActorName | null;
 };
@@ -64,6 +66,7 @@ type SavedRow = {
   created_at: number;
   owner_id: string | null;
   shared: number;
+  archived: number;
 };
 
 type SavedFields = {
@@ -77,16 +80,18 @@ type SavedFields = {
   board: BoardSlots | null;
   cols: string[];
   pinned: boolean;
+  archived: boolean;
 };
 
 const savedSelect =
-  "SELECT id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at, owner_id, shared FROM saved_searches";
+  "SELECT id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at, owner_id, shared, archived FROM saved_searches";
 
 function fromRow(row: SavedRow): SavedSearch {
   return {
     ...row,
     pinned: Boolean(row.pinned),
     shared: row.shared !== 0,
+    archived: row.archived === 1,
     widgets: parseSavedLayout(row.widgets),
     board: parseBoard(row.board, { query: row.query, widgets: parseSavedLayout(row.widgets), agg: row.agg }),
     cols: parsePromotedCols(row.cols),
@@ -172,7 +177,11 @@ export function parseSavedFields(
     return cols;
   }
   const pinned = typeof rec.pinned === "boolean" ? rec.pinned : (fallback?.pinned ?? false);
-  return { name, query, range, from_ts, to_ts, agg: agg ?? null, widgets, board, cols, pinned };
+  if ("archived" in rec && typeof rec.archived !== "boolean") {
+    return { error: "archived is true or false" };
+  }
+  const archived = typeof rec.archived === "boolean" ? rec.archived : (fallback?.archived ?? false);
+  return { name, query, range, from_ts, to_ts, agg: agg ?? null, widgets, board, cols, pinned, archived };
 }
 
 function parseSavedBoard(
@@ -353,7 +362,7 @@ export async function createSavedSearch(c: Context): Promise<Response> {
   };
   getDb()
     .query(
-      "INSERT INTO saved_searches (id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at, owner_id, shared) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO saved_searches (id, name, query, from_ts, to_ts, range, agg, widgets, board, cols, pinned, created_at, owner_id, shared, archived) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .run(
       search.id,
@@ -370,6 +379,7 @@ export async function createSavedSearch(c: Context): Promise<Response> {
       search.created_at,
       search.owner_id,
       search.shared ? 1 : 0,
+      search.archived ? 1 : 0,
     );
   if (actor && search.pinned) {
     setPin(actor.person.id, search.id, true);
@@ -416,7 +426,7 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
   }
   getDb()
     .query(
-      "UPDATE saved_searches SET name = ?, query = ?, from_ts = ?, to_ts = ?, range = ?, agg = ?, widgets = ?, board = ?, cols = ?, shared = ? WHERE id = ?",
+      "UPDATE saved_searches SET name = ?, query = ?, from_ts = ?, to_ts = ?, range = ?, agg = ?, widgets = ?, board = ?, cols = ?, shared = ?, archived = ? WHERE id = ?",
     )
     .run(
       fields.name,
@@ -429,6 +439,7 @@ export async function updateSavedSearch(c: Context): Promise<Response> {
       formatBoard(fields.board),
       formatPromotedCols(fields.cols),
       shared ? 1 : 0,
+      fields.archived ? 1 : 0,
       id,
     );
   getDb()
