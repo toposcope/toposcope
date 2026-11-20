@@ -2,22 +2,23 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import type { ChangeMark } from "../../shared/change-mark";
 import type { HomeCard, HomeSince } from "../../control/home-since";
 import { formatCompactCount } from "../count-format";
-import { pinnedTag, savedColumn } from "../home-saved";
-import { deltaText, firstRunSteps, formatValue, hhmmUtc, markAge, markGlyph, resolvePick, sideText, type HomePick } from "../home-since";
+import { boardCountText, boardPreview, homeBoards, splitHunts } from "../home-saved";
+import { agoText, deltaText, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
 import type { MonitorView, SavedSearch } from "../types";
-import { AgentBadge, OpenAgent } from "./agent-badge";
+import { AgentBadge } from "./agent-badge";
+import { BoardNameDialog } from "./board-name-dialog";
 import { EvidenceGaps, useCoverage } from "./coverage-section";
-import { Empty } from "@/components/ui/states";
-import { railPanel } from "@/components/ui/side-panel";
 import { pageReading } from "@/components/ui/page";
 
 export type HomeWindow = { from: string; to: string };
 
 type Props = {
-  /** The person looking (#307): their own hunts read "yours". */
+  /** The person looking (#307). */
   meId?: string | null;
   /** A Viewer (30e): monitors are read-only, and the card says who to ask. */
   readOnly?: boolean;
@@ -33,6 +34,8 @@ type Props = {
   /** An agent's badge opens its row in Access (#357); absent for a Viewer, who sees no Access. */
   onOpenAgents?: () => void;
   onOpenBoard: (item: SavedSearch) => void;
+  /** `＋ New board` (49b): make an empty board with this name and open it. Absent: no button. */
+  onNewBoard?: (name: string) => Promise<void>;
   /** Settings › Fields, at its Coverage or at the names that do not match (37k). */
   onOpenFields?: (names: boolean) => void;
 };
@@ -61,11 +64,14 @@ function writePick(pick: HomePick | null): void {
   }
 }
 
+const barButton = "h-7.5 px-3 text-sm";
+
 export function HomeView(props: Props) {
   const [data, setData] = useState<HomeSince | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [pick, setPick] = useState<HomePick | null>(() => readPick());
   const [note, setNote] = useState<string | null>(null);
+  const [newBoard, setNewBoard] = useState(false);
   const coverage = useCoverage();
   // 35f: an opened Quiet fold stays open in this browser
   const [quietOpen, setQuietOpen] = useState(() => {
@@ -100,13 +106,11 @@ export function HomeView(props: Props) {
       const json = (await res.json()) as HomeSince;
       // a newer deploy or flag drops a remembered pick
       if (p && p.markId !== "hour") {
-        const autoNow = json.since.kind === "mark" ? json.since.mark.id : null;
         if (json.since.kind === "mark" && !json.since.auto && resolvePick(p, p.autoThen, json.marks) === null) {
           writePick(null);
           setPick(null);
           return;
         }
-        void autoNow;
       }
       setData(json);
       setFailed(null);
@@ -180,66 +184,58 @@ export function HomeView(props: Props) {
 
   const nowMs = Date.parse(data.now);
   const since = data.since;
+  const hour = since.kind === "hour";
   const selectedId = since.kind === "mark" ? since.mark.id : null;
-  const strip = data.marks.slice(0, 5);
-  const more = data.marks.length - strip.length;
+  const strip = markStrip(data.marks, selectedId);
   const window: HomeWindow = { from: data.before.from, to: data.after.to };
-  const cardById = new Map(data.cards.map((c) => [c.saved_id, c]));
   const monitors = [...props.monitors].sort((a, b) => Number(Boolean(b.open)) - Number(Boolean(a.open)));
   const openCount = monitors.filter((m) => m.open).length;
   const fp = data.fingerprints;
   const e1Query = fp ? fp.first_seen.map((r) => `e1:${r.hex}`).join(" OR ") : "";
   const hunts = props.saved.filter((s) => !s.board);
-  const column = savedColumn(hunts, data.cards);
-  const valueOf = (card: HomeCard | undefined) => (card ? (card.kind === "count" ? formatCompactCount(card.after ?? 0) : card.kind) : "");
-  const savedRow = (s: SavedSearch, value: string, delta?: string, up?: boolean) => (
-    <button
-      key={s.id}
-      type="button"
-      className={cn("flex justify-between rounded-md px-2.5 py-1.5 text-left hover:bg-white/[0.04]", s.id === selectedId && "bg-white/[0.06]")}
-      onClick={() => props.onOpenSaved(s, window, selectedId)}
-    >
-      <span className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate">{s.name}</span>
-        {s.saved_by?.agent ? <AgentBadge name={s.saved_by.name} onOpen={props.onOpenAgents} /> : null}
-      </span>
-      <span className="ml-2 flex shrink-0 items-baseline gap-2 font-mono text-sm text-muted-foreground">
-        {delta ? <span className={cn("text-xs", up && "text-danger-fg")}>{delta}</span> : null}
-        {value}
-      </span>
-    </button>
-  );
+  const boards = homeBoards(props.saved);
+  const split = splitHunts(hunts, data.cards);
+  const cardById = new Map(data.cards.map((c) => [c.saved_id, c]));
+  const openHunt = (s: SavedSearch) => props.onOpenSaved(s, window, selectedId);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-2 px-6 pt-3.5">
+      <div className="flex flex-wrap items-center gap-2 px-6 pt-3 pb-2.5">
         <span className="mr-1 text-sm text-muted-foreground">Since</span>
-        {since.kind === "hour" ? (
-          <MarkChip on glyph="" color="" label="the last hour" time={`${hhmmUtc(data.after.from)} → ${hhmmUtc(data.after.to)}`} />
-        ) : null}
-        {since.kind === "hour" && data.marks.length === 0 ? <span className="text-sm text-muted-foreground">no mark in the last 24 h</span> : null}
-        {strip.map((m) => (
-          <MarkChip
-            key={m.id}
-            on={m.id === selectedId}
-            glyph={markGlyph[m.kind].glyph}
-            color={markGlyph[m.kind].color}
-            label={m.title}
-            time={hhmmUtc(m.ts)}
-            onClick={() => choose(m.id)}
-          />
+        {hour ? <MarkChip on label="the last hour" time={`${hhmmUtc(data.after.from)} → ${hhmmUtc(data.after.to)}`} /> : null}
+        {hour && data.marks.length === 0 ? <span className="text-sm text-muted-foreground">no mark in the last 24 h</span> : null}
+        {strip.chips.map((m) => (
+          <MarkChip key={m.id} on={m.id === selectedId} mark={m} label={m.title} time={markWhen(m.ts, nowMs)} onClick={() => choose(m.id)} />
         ))}
-        {more > 0 ? <span className="inline-flex h-[30px] items-center rounded-lg border border-white/10 px-3 text-sm text-muted-foreground">{more} more today</span> : null}
+        {strip.earlier.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" className={barButton}>
+                {strip.earlier.length} earlier
+                <ChevronDown className="text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
+              {strip.earlier.map((m) => (
+                <DropdownMenuItem key={m.id} className="gap-1.5" onSelect={() => choose(m.id)}>
+                  <span style={{ color: markGlyph[m.kind].color }}>{markGlyph[m.kind].glyph}</span>
+                  <span className="max-w-72 truncate">{m.title}</span>
+                  <span className="ml-auto pl-3 font-mono text-xs text-muted-foreground">{markWhen(m.ts, nowMs)}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         <div className="flex-1" />
         {since.kind === "mark" ? (
-          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-3 text-sm text-muted-foreground hover:text-foreground" onClick={() => choose("hour")}>
-            last hour instead
-          </button>
+          <Button type="button" variant="outline" className={barButton} onClick={() => choose("hour")}>
+            Last hour
+          </Button>
         ) : null}
         {props.readOnly ? null : note === null ? (
-          <button type="button" className="h-[30px] rounded-lg border border-white/10 px-3 text-sm text-muted-foreground hover:text-foreground" onClick={() => setNote("")}>
-            + note
-          </button>
+          <Button type="button" variant="outline" className={barButton} onClick={() => setNote("")}>
+            ＋ Note
+          </Button>
         ) : (
           <form
             className="flex items-center gap-1.5"
@@ -259,7 +255,7 @@ export function HomeView(props: Props) {
               }}
               placeholder="what you did, in one line"
               aria-label="Note mark"
-              className="h-[30px] w-[260px] rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40"
+              className="h-7.5 w-64 rounded-lg border border-white/10 bg-surface-1 px-2.5 text-sm outline-none focus-visible:border-foreground/40"
             />
             <Button type="submit" variant="outline">
               ○ Add
@@ -268,187 +264,183 @@ export function HomeView(props: Props) {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <main className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pt-5 pb-6">
-          <div className="flex flex-wrap items-baseline gap-3">
-            <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-white/[0.06] px-6 pt-4 pb-6">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">
+            {since.kind === "mark" ? (
+              <>
+                Since <span className="text-plate">{since.mark.title}</span>
+              </>
+            ) : (
+              "The last hour, against the hour before"
+            )}
+          </h1>
+          <span className="font-mono text-xs text-faint" title={since.kind === "mark" ? `Saved hunts read ${sideText(data.side_ms)}` : undefined}>
+            {since.kind === "mark"
+              ? `${markWhen(since.mark.ts, nowMs, true)} UTC · ${agoText(since.mark.ts, nowMs)}`
+              : `${hhmmUtc(data.before.from)} → ${hhmmUtc(data.before.to)} · ${hhmmUtc(data.after.from)} → ${hhmmUtc(data.after.to)} · UTC`}
+          </span>
+          {since.kind === "mark" && !since.auto ? <span className="text-sm text-faint">· your pick, until a newer deploy or flag</span> : null}
+        </div>
+
+        <section className="mt-4" aria-labelledby="home-moved">
+          <div className="flex items-baseline gap-2">
+            <h2 id="home-moved" className="m-0 text-sm font-medium">
+              Moved
+            </h2>
+            {hunts.length > 0 ? (
+              <span className="text-sm text-muted-foreground">
+                {split.moved.length} of {hunts.length} saved hunt{hunts.length === 1 ? "" : "s"}
+              </span>
+            ) : null}
+          </div>
+          {hunts.length === 0 ? (
+            <p className="m-0 mt-2 text-sm text-muted-foreground">Save a hunt and it shows here when it moves.</p>
+          ) : split.moved.length === 0 ? (
+            <p className="m-0 mt-2 text-sm text-muted-foreground">
               {since.kind === "mark" ? (
                 <>
-                  What changed since <span className="text-plate">{since.mark.title}</span>
+                  Nothing moved since <span className="text-foreground">{since.mark.title}</span>
                 </>
               ) : (
-                "The last hour, against the hour before"
+                "Nothing moved in the last hour"
               )}
-            </h1>
-            <span className="font-mono text-sm text-muted-foreground">
-              {since.kind === "mark"
-                ? `${hhmmUtc(since.mark.ts)} UTC · ${markAge(since.mark.ts, nowMs)} · ${sideText(data.side_ms)}`
-                : `${hhmmUtc(data.before.from)} → ${hhmmUtc(data.before.to)} · ${hhmmUtc(data.after.from)} → ${hhmmUtc(data.after.to)} · UTC`}
-            </span>
-            {since.kind === "mark" && !since.auto ? <span className="text-sm text-muted-foreground">· your pick, until a newer deploy or flag</span> : null}
-          </div>
-
-          {data.cards.length === 0 ? (
-            <Empty title="Save a hunt and it is a card here, with its before → after around the mark." />
+            </p>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {data.cards.map((card) => {
-                const item = props.saved.find((s) => s.id === card.saved_id);
-                return (
-                  <OpenAgent.Provider key={card.saved_id} value={props.onOpenAgents}>
-                    <Card card={card} meId={props.meId ?? null} quiet={since.kind === "hour"} onClick={() => item && props.onOpenSaved(item, window, selectedId)} />
-                  </OpenAgent.Provider>
-                );
-              })}
-            </div>
-          )}
-
-          {props.onOpenFields ? <EvidenceGaps coverage={coverage} selectedMarkId={selectedId} onOpenFields={props.onOpenFields} /> : null}
-
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
-              <div className="flex justify-between">
-                <span className="text-base font-medium">New fingerprints{fp ? ` · ${fp.first_seen.length}${fp.more ? "+" : ""}` : " · none"}</span>
-                {fp && fp.first_seen.length > 0 ? (
-                  <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt(e1Query, data.after)}>
-                    open as a hunt →
-                  </button>
-                ) : null}
-              </div>
-              {fp && (fp.first_seen.length > 0 || fp.stopped.length > 0) ? (
-                <>
-                  {fp.first_seen.slice(0, 4).map((r) => (
-                    <Line key={r.hex} hex={r.hex} text={r.message} sub={r.service} n={r.count} />
-                  ))}
-                  {fp.stopped.slice(0, Math.max(0, 4 - Math.min(4, fp.first_seen.length))).map((r) => (
-                    <Line key={r.hex} hex={r.hex} text={`${r.message} · stopped`} sub={r.service} n={0} muted />
-                  ))}
-                </>
-              ) : (
-                <p className="m-0 text-sm leading-[1.5] text-muted-foreground">
-                  {since.kind === "hour" ? "Nothing new in the last hour." : "No fingerprint first seen after this mark, and none stopped."}
-                </p>
-              )}
-            </section>
-            <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
-              <div className="flex justify-between">
-                <span className="text-base font-medium">Monitors · {openCount > 0 ? `${openCount} open` : monitors.length ? "all ok" : "none"}</span>
-                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={props.onOpenWatch}>
-                  {monitors.length ? `all ${monitors.length} →` : "Watch →"}
-                </button>
-              </div>
-              {monitors.slice(0, 4).map((m) => (
-                <div key={m.id} className="flex items-start gap-3 border-b border-white/[0.06] py-2 text-sm last:border-b-0">
-                  <span className={m.open ? "text-danger-fg" : "text-ok-fg"}>●</span>
-                  <span className="flex-1">
-                    {m.name} <span className="text-muted-foreground">{m.open ? `open since ${hhmmUtc(new Date(m.open.opened_at).toISOString())}` : "ok"}</span>
-                  </span>
-                  <span className={cn("font-mono", m.open ? "text-danger-fg" : "text-muted-foreground")}>
-                    {m.open?.last_value != null ? formatValue(m.open.last_value, m.saved?.agg ?? "count") : m.open ? "open" : "ok"}
-                  </span>
-                </div>
-              ))}
-              {props.readOnly ? <p className="m-0 text-sm text-muted-foreground">read-only for you · ask an Operator to change one</p> : null}
-              {monitors.length === 0 && !props.readOnly ? <p className="m-0 text-sm text-muted-foreground">Watch this on a hunt makes the first one.</p> : null}
-            </section>
-          </div>
-        </main>
-
-        <aside className={cn("hidden min-h-0 flex-col gap-3 overflow-y-auto border-l border-white/[0.06] px-6 pt-5 pb-6 lg:flex", railPanel)}>
-          <span className="text-base font-medium">Saved hunts · {hunts.length}</span>
-          {column.fold ? (
-            <>
-              <span className="px-2.5 text-sm text-muted-foreground">Moved · {column.moved.length || "none"}</span>
-              <div className="flex flex-col gap-0.5 text-sm">
-                {column.moved.map(({ item, card }) => {
-                  const delta = deltaText(card.before, card.after, card.kind);
-                  return savedRow(item, valueOf(card), delta.text, delta.up && since.kind !== "hour");
-                })}
-                {column.quiet.length > 0 ? (
-                  <button
-                    type="button"
-                    aria-expanded={quietOpen}
-                    className="flex justify-between rounded-md px-2.5 py-1.5 text-left hover:bg-white/[0.04]"
-                    onClick={() => toggleQuiet(!quietOpen)}
-                  >
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      {quietOpen ? <ChevronDown className="size-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3 shrink-0 text-muted-foreground" />}
-                      <span className="truncate">
-                        Quiet <span className="text-muted-foreground">· same as before</span>
-                      </span>
-                    </span>
-                    <span className="ml-2 font-mono text-sm text-muted-foreground">{column.quiet.length}</span>
-                  </button>
-                ) : null}
-                {quietOpen ? (
-                  <div className="flex flex-col gap-0.5 pl-5">
-                    {column.quiet.map((s) => (
-                      savedRow(s, valueOf(cardById.get(s.id)))
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col gap-0.5 text-sm">
-              {column.items.map((s) => (
-                savedRow(s, valueOf(cardById.get(s.id)))
+            <div className="mt-2 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              {split.moved.map(({ item, card }) => (
+                <MovedCard key={item.id} card={card} name={item.name} quiet={hour} onClick={() => openHunt(item)} />
               ))}
             </div>
           )}
-          {props.saved.some((s) => s.pinned || s.board) ? (
-            <>
-              <span className="mt-3 text-base font-medium">Pinned</span>
-              <div className="flex flex-col gap-0.5 text-sm">
-                {props.saved
-                  .filter((s) => s.pinned || s.board)
-                  .map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className="flex justify-between rounded-md px-2.5 py-1.5 text-left hover:bg-white/[0.04]"
-                      onClick={() => (s.board ? props.onOpenBoard(s) : props.onOpenSaved(s, window, selectedId))}
-                    >
-                      <span className="truncate">{s.name}</span>
-                      <span className="ml-2 font-mono text-sm text-muted-foreground">{pinnedTag(s)}</span>
-                    </button>
-                  ))}
-              </div>
-            </>
+        </section>
+
+        <section className="mt-6" aria-labelledby="home-boards">
+          <div className="flex items-center gap-2">
+            <h2 id="home-boards" className="m-0 text-sm font-medium">
+              Boards
+            </h2>
+            <span className="text-sm text-muted-foreground">{boards.length}</span>
+            <div className="flex-1" />
+            {props.onNewBoard && !props.readOnly ? (
+              <Button type="button" variant="outline" onClick={() => setNewBoard(true)}>
+                ＋ New board
+              </Button>
+            ) : null}
+          </div>
+          {boards.length > 0 ? (
+            <div className="mt-2 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              {boards.map((b) => (
+                <BoardTile key={b.id} item={b} onClick={() => props.onOpenBoard(b)} />
+              ))}
+            </div>
           ) : null}
-        </aside>
-      </div>
+        </section>
+
+        {split.quiet.length > 0 ? (
+          <section className="mt-6 border-t border-white/[0.06] pt-1.5" aria-label="Quiet">
+            <div className="flex min-h-10 items-center gap-2">
+              <Button type="button" variant="ghost" className="-ml-2 px-2 text-foreground" aria-expanded={quietOpen} onClick={() => toggleQuiet(!quietOpen)}>
+                {quietOpen ? <ChevronDown className="text-muted-foreground" /> : <ChevronRight className="text-muted-foreground" />}
+                Quiet
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {split.quiet.length} saved hunt{split.quiet.length === 1 ? "" : "s"}, same as before
+              </span>
+            </div>
+            {quietOpen ? (
+              <div className="grid grid-cols-1 gap-x-6 gap-y-0.5 pb-2 text-sm md:grid-cols-2 xl:grid-cols-3">
+                {split.quiet.map((s) => (
+                  <QuietRow key={s.id} item={s} card={cardById.get(s.id)} onOpenAgents={props.onOpenAgents} onClick={() => openHunt(s)} />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {props.onOpenFields ? (
+          <div className="mt-6">
+            <EvidenceGaps coverage={coverage} selectedMarkId={selectedId} onOpenFields={props.onOpenFields} />
+          </div>
+        ) : null}
+
+        <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
+            <div className="flex justify-between">
+              <span className="text-base font-medium">New fingerprints{fp ? ` · ${fp.first_seen.length}${fp.more ? "+" : ""}` : " · none"}</span>
+              {fp && fp.first_seen.length > 0 ? (
+                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt(e1Query, data.after)}>
+                  open as a hunt →
+                </button>
+              ) : null}
+            </div>
+            {fp && (fp.first_seen.length > 0 || fp.stopped.length > 0) ? (
+              <>
+                {fp.first_seen.slice(0, 4).map((r) => (
+                  <Line key={r.hex} hex={r.hex} text={r.message} sub={r.service} n={r.count} />
+                ))}
+                {fp.stopped.slice(0, Math.max(0, 4 - Math.min(4, fp.first_seen.length))).map((r) => (
+                  <Line key={r.hex} hex={r.hex} text={`${r.message} · stopped`} sub={r.service} n={0} muted />
+                ))}
+              </>
+            ) : (
+              <p className="m-0 text-sm leading-[1.5] text-muted-foreground">
+                {hour ? "Nothing new in the last hour." : "No fingerprint first seen after this mark, and none stopped."}
+              </p>
+            )}
+          </section>
+          <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
+            <div className="flex justify-between">
+              <span className="text-base font-medium">Monitors · {openCount > 0 ? `${openCount} open` : monitors.length ? "all ok" : "none"}</span>
+              <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={props.onOpenWatch}>
+                {monitors.length ? `all ${monitors.length} →` : "Watch →"}
+              </button>
+            </div>
+            {monitors.slice(0, 4).map((m) => (
+              <div key={m.id} className="flex items-start gap-3 border-b border-white/[0.06] py-2 text-sm last:border-b-0">
+                <span className={m.open ? "text-danger-fg" : "text-ok-fg"}>●</span>
+                <span className="flex-1">
+                  {m.name} <span className="text-muted-foreground">{m.open ? `open since ${hhmmUtc(new Date(m.open.opened_at).toISOString())}` : "ok"}</span>
+                </span>
+                <span className={cn("font-mono", m.open ? "text-danger-fg" : "text-muted-foreground")}>
+                  {m.open?.last_value != null ? formatValue(m.open.last_value, m.saved?.agg ?? "count") : m.open ? "open" : "ok"}
+                </span>
+              </div>
+            ))}
+            {props.readOnly ? <p className="m-0 text-sm text-muted-foreground">read-only for you · ask an Operator to change one</p> : null}
+            {monitors.length === 0 && !props.readOnly ? <p className="m-0 text-sm text-muted-foreground">Watch this on a hunt makes the first one.</p> : null}
+          </section>
+        </div>
+      </main>
+
+      {props.onNewBoard ? (
+        <BoardNameDialog open={newBoard} onOpenChange={setNewBoard} title="New board" action="Create board" defaultName="" onSubmit={props.onNewBoard} />
+      ) : null}
     </div>
   );
 }
 
-function MarkChip({ on, glyph, color, label, time, onClick }: { on: boolean; glyph: string; color: string; label: string; time: string; onClick?: () => void }) {
+function MarkChip({ on, mark, label, time, onClick }: { on: boolean; mark?: ChangeMark; label: string; time: string; onClick?: () => void }) {
+  const glyph = mark ? markGlyph[mark.kind] : null;
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={onClick ? on : undefined}
       className={cn(
-        "inline-flex h-[30px] max-w-[320px] items-center gap-1.5 whitespace-nowrap rounded-lg border border-white/10 bg-surface-2 px-3 text-sm text-zinc-300",
-        on && "border-plate bg-overlay text-foreground",
+        "inline-flex h-7.5 max-w-80 items-center gap-1.5 whitespace-nowrap rounded-md border border-white/10 bg-surface-2 px-2.5 font-mono text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        on && "border-plate bg-plate/10 text-foreground",
       )}
     >
-      {glyph ? <span style={{ color }}>{glyph}</span> : null}
+      {glyph ? <span style={{ color: glyph.color }}>{glyph.glyph}</span> : null}
       <span className="truncate">{label}</span>
-      <b className="font-mono text-xs font-normal text-muted-foreground">{time}</b>
+      <span className="text-muted-foreground">{time}</span>
     </button>
   );
 }
 
-/** "Maya K." → "MK", as the header does (#305). */
-export function initialsOf(name: string): string {
-  const words = name.replace(/[^\p{L}\p{N} ]/gu, " ").trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) {
-    return "?";
-  }
-  return words.length === 1 ? words[0]!.slice(0, 2).toUpperCase() : (words[0]![0]! + words[words.length - 1]![0]!).toUpperCase();
-}
-
-function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; onClick: () => void; meId: string | null }) {
+/** A saved hunt that moved (49b): name, value, delta, was, and a small spark split at the mark. */
+function MovedCard({ card, name, quiet, onClick }: { card: HomeCard; name: string; quiet: boolean; onClick: () => void }) {
   const delta = deltaText(card.before, card.after, card.kind);
   const up = !quiet && delta.up;
   const peak = Math.max(1, ...card.spark);
@@ -456,37 +448,67 @@ function Card({ card, quiet, onClick, meId }: { card: HomeCard; quiet: boolean; 
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-[150px] flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4 text-left hover:border-zinc-500"
+      className="flex h-29 min-w-0 flex-col gap-1.5 rounded-lg border border-white/10 bg-surface-2 px-3.5 py-3 text-left hover:border-white/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
-      <div className="flex items-baseline justify-between">
-        <span className="text-base font-medium">{card.name}</span>
-        <span className="font-mono text-sm text-muted-foreground">{card.kind}</span>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-xl font-semibold tracking-[-0.01em]">{card.refused ? "—" : formatValue(card.after, card.kind)}</span>
-        <span className={cn("font-mono text-sm", up ? "text-danger-fg" : "text-muted-foreground")}>{card.refused ? "refused" : delta.text}</span>
-        <span className="text-sm text-muted-foreground">{card.refused ? card.refused : `was ${formatValue(card.before, card.kind)}`}</span>
-      </div>
-      <div className="relative mt-auto flex h-9 items-end gap-px" aria-hidden="true">
+      <span className="w-full truncate text-sm font-medium">{name}</span>
+      <span className="flex items-baseline gap-1.5">
+        <span className="text-xl font-semibold tracking-[-0.01em]">{formatValue(card.after, card.kind)}</span>
+        <span className={cn("text-xs", up ? "text-danger-fg" : "text-muted-foreground")}>{delta.text}</span>
+        <span className="truncate text-xs text-muted-foreground">was {formatValue(card.before, card.kind)}</span>
+      </span>
+      <span className="relative flex w-full flex-1 items-end gap-px" aria-hidden="true">
         {card.spark.map((v, i) => (
-          <div
+          <span
             key={i}
-            className="min-w-0 flex-1"
-            style={{ height: `${Math.max(2, Math.round((v / peak) * 36))}px`, background: i >= card.split_at && up ? "#c2410c" : "#3f3f46" }}
+            className={cn("min-w-0 flex-1", i >= card.split_at && up ? "bg-danger/70" : "bg-muted-foreground/30")}
+            style={{ height: `${Math.max(4, Math.round((v / peak) * 100))}%` }}
           />
         ))}
-        <div className="absolute -top-1 bottom-0 w-px" style={{ left: `${card.spark.length ? (card.split_at / card.spark.length) * 100 : 50}%`, background: quiet ? "#3f3f46" : "#e7e1d3" }} />
-      </div>
-      {card.saved_by?.agent ? (
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <AgentBadge name={card.saved_by.name} />
-        </span>
-      ) : card.saved_by ? (
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="inline-flex size-[18px] items-center justify-center rounded-full bg-control text-2xs font-semibold text-zinc-300">{initialsOf(card.saved_by.name)}</span>
-          {card.saved_by.id === meId ? (card.shared ? "yours" : "yours · only you see it") : `saved by ${card.saved_by.name}`}
-        </span>
-      ) : null}
+      </span>
+    </button>
+  );
+}
+
+/** A board (49b): its name, `pinned` when on Home, a sketch of its panels on the grid, its counts. */
+function BoardTile({ item, onClick }: { item: SavedSearch; onClick: () => void }) {
+  const boxes = boardPreview(item.board);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-30 min-w-0 flex-col gap-2 rounded-lg border border-white/10 bg-surface-2 px-3.5 py-3 text-left hover:border-white/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      <span className="flex w-full items-center gap-2">
+        <span className="truncate text-sm font-medium">{item.name}</span>
+        <span className="flex-1" />
+        {item.pinned ? <span className="text-xs text-plate">pinned</span> : null}
+      </span>
+      <span className={cn("relative w-full flex-1", boxes.length === 0 && "rounded-sm border border-dashed border-white/10")} aria-hidden="true">
+        {boxes.map((b) => (
+          <span key={b.id} className="absolute p-px" style={{ left: `${b.left}%`, top: `${b.top}%`, width: `${b.width}%`, height: `${b.height}%` }}>
+            <span className="block size-full rounded-sm border border-white/[0.08] bg-surface-1" />
+          </span>
+        ))}
+      </span>
+      <span className="text-xs text-muted-foreground">{boardCountText(item.board)}</span>
+    </button>
+  );
+}
+
+function QuietRow({ item, card, onClick, onOpenAgents }: { item: SavedSearch; card: HomeCard | undefined; onClick: () => void; onOpenAgents?: () => void }) {
+  const value = !card ? "" : card.refused ? "refused" : card.kind === "count" ? formatCompactCount(card.after ?? 0) : formatValue(card.after, card.kind);
+  return (
+    <button
+      type="button"
+      className="flex min-w-0 justify-between rounded-md px-2 py-1.5 text-left hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      onClick={onClick}
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="truncate">{item.name}</span>
+        {item.saved_by?.agent ? <AgentBadge name={item.saved_by.name} onOpen={onOpenAgents} /> : null}
+        {item.pinned ? <span className="text-xs text-plate">pinned</span> : null}
+      </span>
+      <span className="ml-2 shrink-0 font-mono text-sm text-muted-foreground">{value}</span>
     </button>
   );
 }

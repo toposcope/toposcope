@@ -100,8 +100,7 @@
     "text at a foreground alpha": 2
   },
   "src/ui/components/home-view.tsx": {
-    "raw palette class": 9,
-    "<button with h-[…]": 4
+    "raw palette class": 6
   },
   "src/ui/components/http-monitor-dialog.tsx": {
     "[#hex] colour": 2,
