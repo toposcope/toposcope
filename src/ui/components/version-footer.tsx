@@ -313,7 +313,7 @@ function BeforeBox({ reply }: { reply: VersionReply }) {
           <div key={item.version} className="flex items-baseline gap-2 px-0.5 text-sm text-muted-foreground">
             <span className="font-mono text-foreground">{item.version}</span>
             <span>
-              Upgrade notes for this release are in the <External href={operationsGuideUrl}>operations guide</External>
+              Upgrade notes for this release are in the <External href={operationsGuideUrl}>upgrades guide</External>
             </span>
           </div>
         ))}

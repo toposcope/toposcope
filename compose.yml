@@ -60,7 +60,7 @@ services:
       TOPOSCOPE_INGEST_TOKEN: ${TOPOSCOPE_INGEST_TOKEN:-}
       # Optional: the address people open Toposcope at, so alerts can link back.
       TOPOSCOPE_PUBLIC_URL: ${TOPOSCOPE_PUBLIC_URL:-}
-      # Optional: a check-in somewhere else after each monitor pass (docs/operations.md).
+      # Optional: a check-in somewhere else after each monitor pass (docs/monitors.md, Who watches Toposcope).
       TOPOSCOPE_WATCHDOG_URL: ${TOPOSCOPE_WATCHDOG_URL:-}
       # On by default: a daily look at GitHub's releases list; off makes no call.
       TOPOSCOPE_UPDATE_CHECK: ${TOPOSCOPE_UPDATE_CHECK:-}

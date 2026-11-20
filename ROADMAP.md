@@ -54,7 +54,7 @@ The bar stays copy-pasteable `key:value`. Fingerprints are queryable attrs, not 
 
 Toposcope runs on one node and does not survive it. Since 0.9 it has people, links and shares, so a team can come to depend on that one box. Until there is an HA design:
 
-- What ships holds on one node: a backup and restore bring all of it back, `upgrade.sh` backs up first, and the watchdog says when the node stops ([operations](docs/operations.md#who-watches-toposcope)).
+- What ships holds on one node: a backup and restore bring all of it back, `upgrade.sh` backs up first, and the watchdog says when the node stops ([monitors](docs/monitors.md#who-watches-toposcope)).
 - No more team features: no new roles or sign-in kinds, and nothing under `ee/` (SAML, SCIM, roles with a data fence, an audit log of every change). A team that needs these needs an instance that survives a node.
 
 ## Ideas we have not locked

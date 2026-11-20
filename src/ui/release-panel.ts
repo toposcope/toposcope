@@ -5,10 +5,10 @@ import { compareVersions, parseVersion, type Release, type StoreSize, type Versi
  * popover so each piece can be tested.
  */
 
-/** Releases up to this one kept their upgrade notes in docs/operations.md, not back-filled (#199). */
+/** Releases up to this one kept their upgrade notes in docs/upgrades.md (Upgrade notes up to 0.7.1), not back-filled (#199). */
 const lastBeforeConvention = parseVersion("0.6.0")!;
 
-export const operationsGuideUrl = "https://github.com/toposcope/toposcope/blob/main/docs/operations.md#upgrade-and-retention";
+export const operationsGuideUrl = "https://github.com/toposcope/toposcope/blob/main/docs/upgrades.md#upgrade-notes-up-to-071";
 export const releasesPageUrl = "https://github.com/toposcope/toposcope/releases";
 
 export type Chip = {
@@ -65,7 +65,7 @@ export type BeforeItem = { version: string; text: string | null; guide: boolean 
 
 /**
  * Before you upgrade, all together (19e): each release's own paragraph, newest first. A release
- * up to 0.6.0 has none, as its notes stayed in the operations guide, so it links there; a later
+ * up to 0.6.0 has none, as its notes stayed in the upgrades guide, so it links there; a later
  * one without a paragraph has nothing to say and is left out. Empty when nothing is to be read.
  */
 export function beforeItems(releases: Release[]): BeforeItem[] {
