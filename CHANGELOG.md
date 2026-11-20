@@ -10,6 +10,8 @@ Home's New fingerprints card counts both lists it shows: `New fingerprints · 0 
 
 A mark's name on a board panel, on hover, says its kind once (`12:22 · api deploy cf3c`, not `12:22 · deploy · deploy cf3c`), opens to the left past the panel's middle so the panel's edge no longer cuts it, and hides the pointer's own time label while it shows.
 
+A board row that ends short of the 12 columns shows a dashed cell in the room at its end, with **＋ Panel here**, which opens a new panel in that room, and **Widen the 2** (or **Widen it**), which widens that row's panels to the full width (sheet 51e). While a board is the front tab, the header lights Home, not Hunt.
+
 ## 0.15.7
 
 The docs are rewritten to be read, not searched. Every page in `docs/` follows the rules now in CONTRIBUTING.md (Writing docs): one job per page, a heading every few paragraphs, short paragraphs and list items, tables for options and limits, and how Toposcope computes something kept in ARCHITECTURE.md. Query language is the search syntax alone, with a table of examples; the hunt screen has its own page, [Hunting](docs/hunt.md). The operations guide is split into [Running Toposcope](docs/operations.md), [Monitors](docs/monitors.md), [Links](docs/links.md) and [Upgrades, backups and rollback](docs/upgrades.md); collectors moved to [Collectors](docs/collectors.md). Old links keep working: a heading that moved leaves a line under the same name pointing to its new page. `src/shared/docs-lint.test.ts` checks paragraph and section length and that every link between docs lands. The footer's upgrade notes for 0.6.0 and earlier link the new upgrades page.

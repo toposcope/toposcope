@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { accessLit, headerTabs, settingsLit } from "./components/operator-header";
+import { accessLit, headerLit, headerTabs, settingsLit } from "./components/operator-header";
 import { fieldsCardFacts, namesLine } from "./fields-card";
 import type { FieldCatalogRow } from "../shared/fields";
 
@@ -28,6 +28,13 @@ describe("Fields under Settings (28a, 28b, #292)", () => {
     expect(settingsLit("fields")).toBe(true);
     expect(settingsLit("search")).toBe(false);
     expect(settingsLit("access")).toBe(false);
+  });
+
+  test("Home is lit while a board is the front tab, Hunt on a hunt (51e)", () => {
+    expect(headerLit("search", true)).toBe("home");
+    expect(headerLit("search", false)).toBe("search");
+    expect(headerLit("home", false)).toBe("home");
+    expect(headerLit("watch", true)).toBe("watch");
   });
 
   test("the card counts keys, chosen roles, unchosen keys and links", () => {

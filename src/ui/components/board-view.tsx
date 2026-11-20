@@ -14,9 +14,12 @@ import { GridHandles, GridSizeChip, useGridGestures, useGridSlide } from "../gri
 import { PanelNote, PanelNoteField } from "@/components/panel-words";
 import { HoverTimeProvider, TimeLayer } from "../hover-time";
 import {
+  addPanelAt,
   addPanelInSection,
   addTextPanel,
+  boardRowGaps,
   boardSections,
+  fitRow,
   foldedPanelIds,
   isTextPanel,
   maxNoteText,
@@ -24,7 +27,9 @@ import {
   panelMinW,
   panelSection,
   updatePanelInSection,
+  withCells,
   type PanelFields,
+  type RowGap,
 } from "../../shared/boards";
 import { panelDisplayName } from "../../shared/panel-name";
 import { Button } from "@/components/ui/button";
@@ -94,7 +99,10 @@ type Props = {
   onRemove: (panel: BoardPanel) => void;
 };
 
-type SheetState = { mode: "add"; initial: PanelDraft } | { mode: "edit"; id: string; initial: PanelDraft };
+type SheetState =
+  /** `at`: ＋ Panel here (51e), the room at a row's end it fills while its section is kept. */
+  | { mode: "add"; initial: PanelDraft; at?: { x: number; y: number; w: number; h: number; section: string | null } }
+  | { mode: "edit"; id: string; initial: PanelDraft };
 
 /** A board (#410, frames 39b–39g): its inputs, then its panels on the 12-col grid. */
 export function BoardView(props: Props) {
@@ -255,7 +263,15 @@ export function BoardView(props: Props) {
         return { ...p, widget: { ...p.widget, x: cell.x, y: cell.y, w: cell.w, h: cell.h } };
       }),
     };
-    if (state.mode === "add") {
+    if (state.mode === "add" && state.at && state.at.section === draft.section) {
+      const { section: _section, ...cell } = state.at;
+      const next = addPanelAt(withCells(board, grid.cells), fields, cell);
+      if (!next) {
+        toast.error(`A board holds ${BOARD_PANEL_MAX} panels`);
+        return;
+      }
+      props.onBoard(next);
+    } else if (state.mode === "add") {
       const next = addPanelInSection(drawn, fields, draft.section);
       if (!next) {
         toast.error(`A board holds ${BOARD_PANEL_MAX} panels`);
@@ -306,6 +322,20 @@ export function BoardView(props: Props) {
   const cellOf = new Map(grid.cells.map((cell) => [cell.id, cell]));
   useGridSlide(gridRef, grid.cells.map((c) => `${c.id}:${c.x},${c.y},${c.w},${c.h}`).join(" "), grid.moving);
   const rows = Math.max(1, ...grid.cells.map((cell) => cell.y + cell.h)) + (grid.dragging ? 2 : 0);
+  // Room at the end of a short row (51e): fill it with a panel, or widen the row's panels into it.
+  const gaps = props.readOnly || grid.dragging ? [] : boardRowGaps(grid.cells);
+  function panelHere(gap: RowGap) {
+    const section = panelSection(board.panels, gap.ids[0]!);
+    setSheet({
+      mode: "add",
+      // Number fits a room narrower than Volume's least width.
+      initial: newDraft({ show: gap.w < panelMinW("histogram") ? "number" : "volume", section }),
+      at: { x: gap.x, y: gap.y, w: gap.w, h: gap.h, section },
+    });
+  }
+  function widenRow(gap: RowGap) {
+    props.onBoard(withCells(board, gravity(fitRow(grid.cells, gap.y))));
+  }
   return (
     <HoverTimeProvider>
     <div className="flex min-h-0 flex-1 flex-col">
@@ -397,6 +427,9 @@ export function BoardView(props: Props) {
                 style={{ gridColumn: `${grid.ghost.x + 1} / span ${grid.ghost.w}`, gridRow: `${grid.ghost.y + 1} / span ${grid.ghost.h}` }}
               />
             ) : null}
+            {gaps.map((gap) => (
+              <RowEnd key={`gap:${gap.y}`} gap={gap} atCap={atCap} onPanelHere={() => panelHere(gap)} onWiden={() => widenRow(gap)} />
+            ))}
             {plan.filter((item) => !folded.has(item.panel.id)).map((item) => {
               const moving = grid.moving === item.panel.id;
               const sizing = grid.sizing === item.panel.id;
@@ -488,6 +521,33 @@ export function BoardView(props: Props) {
       </div>
     </div>
     </HoverTimeProvider>
+  );
+}
+
+/** The room at the end of a short row (51e): not a panel, never saved or counted. */
+function RowEnd({ gap, atCap, onPanelHere, onWiden }: { gap: RowGap; atCap: boolean; onPanelHere: () => void; onWiden: () => void }) {
+  return (
+    <div
+      className={cn(
+        "z-0 flex min-h-0 min-w-0 items-center justify-center gap-2 rounded-lg border border-dashed border-white/18 p-2",
+        gap.w <= 2 ? "flex-col" : "flex-row flex-wrap",
+      )}
+      style={{ gridColumn: `${gap.x + 1} / span ${gap.w}`, gridRow: `${gap.y + 1} / span ${gap.h}` }}
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={atCap}
+        title={atCap ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
+        onClick={onPanelHere}
+      >
+        ＋ Panel here
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={onWiden}>
+        {gap.ids.length === 1 ? "Widen it" : `Widen the ${gap.ids.length}`}
+      </Button>
+    </div>
   );
 }
 

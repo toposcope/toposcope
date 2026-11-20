@@ -4138,7 +4138,7 @@ export function App() {
             onSignOut={() => void signOut()}
           />
         ) : null}
-        <HeaderTabs view={view} watchOpen={watching.open > 0} onView={setView} />
+        <HeaderTabs view={view} onBoard={boardOn && !isSurr} watchOpen={watching.open > 0} onView={setView} />
         <div className="ml-auto flex items-center gap-2">
           {view === "search" && !isSurr ? (
             <div className="flex items-center gap-1.5">
