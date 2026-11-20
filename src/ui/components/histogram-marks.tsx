@@ -10,6 +10,18 @@ import { formatDuration } from "../../shared/duration";
 /** The named-marks rail above the plot (#260, frame 26d): named chips, not glyphs in a 22px lane. */
 export const MARK_LANE_H = 28;
 
+/**
+ * The lane's height under the plot: 0 when it would draw nothing (no mark in the window, none
+ * before or after it to step to, no monitor stretch), so a quiet window gives the plot the room.
+ */
+export function markLaneH(overlay: Pick<MarksOverlay, "marks" | "before" | "after" | "monitors"> | null | undefined): number {
+  if (!overlay) {
+    return 0;
+  }
+  const band = monitorBandH(overlay.monitors);
+  return overlay.marks.length > 0 || overlay.before || overlay.after || band > 0 ? MARK_LANE_H + band : 0;
+}
+
 const VISUAL: Record<
   ChangeMarkKind,
   { d: string; f: string; s: string; w: string; color: string }

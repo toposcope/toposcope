@@ -26,9 +26,8 @@ import { SeriesPicker, SeriesReading } from "./series-picker";
 import { markPlotSpanMs } from "../change-marks";
 import { clickHistogramWindow, displayedHistogramInterval, dragHistogramWindow, histogramHoverHint, histogramRetentionMs, panHistogramWindow, snapHistogramSpanMs, zoomHistogramAbout } from "../histogram-zoom";
 import { HistogramIntervalChips } from "./histogram-interval";
-import { HistogramMarkLane, HistogramMarkRules, MARK_LANE_H, markHoverLines, MarkGlyph, type MarksOverlay } from "./histogram-marks";
+import { HistogramMarkLane, HistogramMarkRules, markLaneH, markHoverLines, MarkGlyph, type MarksOverlay } from "./histogram-marks";
 import { CompareFold, type CompareFoldHunt } from "./compare-fold";
-import { monitorBandH } from "./monitor-band";
 import { endLabelMax, lastValue, sparkLines, spreadLabels, unitAxes, type SparkLine } from "./metric-spark";
 import { UnitsSay } from "./panel-words";
 import { Refused, Skeleton } from "@/components/ui/states";
@@ -1378,7 +1377,7 @@ export function HistogramChart({
             marginTop: HEAD_H + HEAD_GAP,
             ...(marks
               ? {
-                  height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + monitorBandH(marks.monitors)}px)`,
+                  height: `calc(100% - ${HEAD_H + HEAD_GAP + markLaneH(marks)}px)`,
                 }
               : {}),
           }}
@@ -1724,7 +1723,7 @@ export function HistogramChart({
                 />
               ) : null}
             </div>
-            {marks && Number.isFinite(markFromMs) && spanMs > 0 ? (
+            {marks && markLaneH(marks) > 0 && Number.isFinite(markFromMs) && spanMs > 0 ? (
               <HistogramMarkLane
                 overlay={marks}
                 fromMs={markFromMs}
@@ -1795,7 +1794,7 @@ export function HistogramChart({
               color: AGG_COLOR,
               ...(marks
                 ? {
-                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + monitorBandH(marks.monitors) + 2 * PLOT_INSET}px)`,
+                    height: `calc(100% - ${HEAD_H + HEAD_GAP + markLaneH(marks) + 2 * PLOT_INSET}px)`,
                   }
                 : {}),
             }}
@@ -1835,7 +1834,7 @@ export function HistogramChart({
               marginBottom: PLOT_INSET,
               ...(marks
                 ? {
-                    height: `calc(100% - ${HEAD_H + HEAD_GAP + MARK_LANE_H + monitorBandH(marks.monitors) + 2 * PLOT_INSET}px)`,
+                    height: `calc(100% - ${HEAD_H + HEAD_GAP + markLaneH(marks) + 2 * PLOT_INSET}px)`,
                   }
                 : {}),
             }}

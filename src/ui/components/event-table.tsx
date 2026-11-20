@@ -66,6 +66,8 @@ type Props = {
   marks?: MarksOverlay | null;
   /** Where monitors on this search opened (#175, 18o). */
   opened?: MonitorRowIn[];
+  /** Sheet 47b: 20px rows on a short window, so a laptop shows about twice as many. */
+  dense?: boolean;
   live?: boolean;
   focusMarkId?: string | null;
   onFocusMark?: (id: string | null) => void;
@@ -138,6 +140,7 @@ function Header({
   atCap,
   metrics,
   onColsChange,
+  dense = false,
 }: {
   style: CSSProperties;
   promoted: string[];
@@ -146,11 +149,12 @@ function Header({
   atCap: boolean;
   metrics: Record<string, PromoMetrics>;
   onColsChange?: (cols: string[]) => void;
+  dense?: boolean;
 }) {
   const count = `${promoted.length}/${maxPromotedCols}`;
   return (
     <div
-      className={`${gridClass} h-[26px] w-full min-w-0 shrink-0 items-center rounded-t-lg border border-b-0 bg-card px-2 text-xs font-medium tracking-[0.04em] text-muted-foreground uppercase`}
+      className={`${gridClass} ${dense ? "h-[22px]" : "h-[26px]"} w-full min-w-0 shrink-0 items-center rounded-t-lg border border-b-0 bg-card px-2 text-xs font-medium tracking-[0.04em] text-muted-foreground uppercase`}
       style={style}
     >
       <span className="truncate">Time</span>
@@ -388,6 +392,7 @@ export function EventTable({
   held = [],
   floor = false,
   opened = [],
+  dense = false,
 }: Props) {
   const promoted = parsePromotedCols(cols);
   const pick = promoPicker(events, promoted);
@@ -516,6 +521,7 @@ export function EventTable({
       atCap={pick.atCap}
       metrics={pick.metrics}
       onColsChange={onColsChange}
+      dense={dense}
     />
   );
 
@@ -717,7 +723,7 @@ export function EventTable({
         ref={selected ? selectedRef : undefined}
         type="button"
         tabIndex={selected ? 0 : -1}
-        className={`relative ${gridClass} h-[26px] w-full items-center border-b border-white/[0.06] px-2 text-left font-mono text-sm ${
+        className={`relative ${gridClass} ${dense ? "h-5" : "h-[26px]"} w-full items-center border-b border-white/[0.06] px-2 text-left font-mono text-sm ${
           selected ? "bg-accent" : "hover:bg-accent/50"
         }`}
         style={{

@@ -95,6 +95,7 @@ import { longestKeptDays } from "./retention-rules";
 import { surroundingDefaultN, surroundingMaxN, surroundingStepN } from "../query/surrounding";
 import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, toggleFingerprintCutFilter } from "./query-tokens";
 import { otherValuesLines } from "./other-values";
+import { useShortViewport } from "./short-viewport";
 import { Chip } from "@/components/ui/chip";
 import { levelHex } from "@/level";
 import { histogramTotal, livePageSize, mergeHistogramBuckets, mergeLiveEvents } from "./merge-live";
@@ -418,6 +419,8 @@ export function App() {
   const [attrFacets, setAttrFacets] = useState<string[]>(boot.attrFacets);
   const [cols, setCols] = useState<string[]>(boot.cols);
   const [events, setEvents] = useState<LogEvent[]>([]);
+  // Sheet 47b: on a laptop-height window the event table draws 20px rows.
+  const shortWindow = useShortViewport();
   const [ingested, setIngested] = useState(false);
   const [histogram, setHistogram] = useState<HistogramBucket[]>([]);
   const [searchWindow, setSearchWindow] = useState<SearchWindow | null>(null);
@@ -4968,6 +4971,7 @@ export function App() {
                     />
                   ) : (
                     <EventTable
+                      dense={shortWindow && !boardOn}
                       events={events}
                       selectedIndex={selectedIndex}
                       loading={searching}
