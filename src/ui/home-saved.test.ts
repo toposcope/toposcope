@@ -207,8 +207,8 @@ describe("the Coverage line (50b)", () => {
 describe("Quiet's gone hosts and Moved rows (sheet 51b)", () => {
   test("gone hunts keep Quiet's order", () => {
     expect(goneInQuiet([hunt("a"), hunt("b"), hunt("c")], ["c", "a", "z"]).map((s) => s.id)).toEqual(["a", "c"]);
-    expect(goneText(18)).toBe("18 read hosts that sent nothing in 7 days");
-    expect(goneText(1)).toBe("1 reads a host that sent nothing in 7 days");
+    expect(goneText(18)).toBe("18 saved hunts read hosts that sent nothing in 7 days");
+    expect(goneText(1)).toBe("1 saved hunt reads hosts that sent nothing in 7 days");
     expect(goneSince("2026-11-03T10:00:00.000Z")).toBe("since 11-03");
     expect(goneSince(null)).toBe("nothing kept");
   });

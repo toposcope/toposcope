@@ -199,9 +199,9 @@ export function goneInQuiet(quiet: readonly SavedSearch[], goneIds: readonly str
   return quiet.filter((s) => ids.has(s.id));
 }
 
-/** "18 read hosts that sent nothing in 7 days" (51b). */
+/** "18 saved hunts read hosts that sent nothing in 7 days" (51b). */
 export function goneText(n: number): string {
-  return `${n} ${n === 1 ? "reads a host" : "read hosts"} that sent nothing in 7 days`;
+  return `${n} saved ${n === 1 ? "hunt reads hosts" : "hunts read hosts"} that sent nothing in 7 days`;
 }
 
 /** When a gone host last sent anything (51c): "since 11-03", or "nothing kept" when no line is. */
