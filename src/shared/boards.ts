@@ -2,7 +2,7 @@ import { isAttrIdent } from "./attrs";
 import { isCoreField } from "../query/compile";
 import { seriesLabel } from "../query/agg";
 import { isRelativeRange } from "../query/relative";
-import { cellsOverlap, gridCols } from "./grid-gravity";
+import { cellsOverlap, gravity, gridCols, widenCells } from "./grid-gravity";
 import {
   clampWidget,
   defaultLayout,
@@ -550,4 +550,115 @@ export function updatePanelInSection(board: BoardSlots, id: string, input: Panel
   const moved = { ...next, widget: { ...widget, ...cell } };
   const byId = new Map(panels.map((p) => [p.id, p]));
   return { ...board, panels: board.panels.map((p) => (p.id === id ? moved : byId.get(p.id)!)) };
+}
+
+/**
+ * Fit panels to the width (sheet 50, 50e): each row's panels grow, in their order and in
+ * proportion to their widths, until they share the 12 columns. A row is the panels that start on
+ * one grid row; columns a note or a taller panel from above holds there stay its own. Headings
+ * and notes keep their cells, and so does a row that already fills its columns. Panels are
+ * first taken as the board draws them (at least their least width); the gravity pass runs after,
+ * so a panel that grew onto one below pushes it down.
+ */
+export function fitPanelsToWidth(board: BoardSlots): BoardSlots {
+  type FitCell = { id: string; view: BoardPanelView; x: number; y: number; w: number; h: number };
+  const drawn: FitCell[] = gravity(
+    widenCells(
+      board.panels.map((p) => ({ id: p.id, view: p.view, x: p.widget.x, y: p.widget.y, w: p.widget.w, h: p.widget.h })),
+      (cell) => panelMinW(cell.view),
+    ),
+  );
+  const cells = drawn.map((cell) => ({ ...cell }));
+  const rows = new Map<number, FitCell[]>();
+  for (const cell of cells) {
+    if (!isTextPanel(cell.view)) {
+      rows.set(cell.y, [...(rows.get(cell.y) ?? []), cell]);
+    }
+  }
+  for (const [y, row] of rows) {
+    row.sort((a, b) => a.x - b.x);
+    const held = new Array<boolean>(gridCols).fill(false);
+    for (const other of cells) {
+      if (!row.includes(other) && other.y <= y && y < other.y + other.h) {
+        for (let x = Math.max(0, other.x); x < Math.min(gridCols, other.x + other.w); x++) {
+          held[x] = true;
+        }
+      }
+    }
+    const first = row[0]!;
+    const last = row[row.length - 1]!;
+    if (held.slice(first.x, last.x + last.w).some(Boolean)) {
+      continue;
+    }
+    let start = first.x;
+    while (start > 0 && !held[start - 1]) {
+      start--;
+    }
+    let end = last.x + last.w;
+    while (end < gridCols && !held[end]) {
+      end++;
+    }
+    const widths = shareColumns(
+      row.map((cell) => cell.w),
+      row.map((cell) => panelMinW(cell.view)),
+      end - start,
+    );
+    if (!widths) {
+      continue;
+    }
+    let x = start;
+    row.forEach((cell, i) => {
+      cell.x = x;
+      cell.w = widths[i]!;
+      x += cell.w;
+    });
+  }
+  const settled = new Map(gravity(cells).map((cell) => [cell.id, cell]));
+  const changed = board.panels.some((p) => {
+    const cell = settled.get(p.id)!;
+    return cell.x !== p.widget.x || cell.y !== p.widget.y || cell.w !== p.widget.w || cell.h !== p.widget.h;
+  });
+  if (!changed) {
+    return board;
+  }
+  return {
+    ...board,
+    panels: board.panels.map((p) => {
+      const cell = settled.get(p.id)!;
+      return { ...p, widget: { ...p.widget, x: cell.x, y: cell.y, w: cell.w, h: cell.h } };
+    }),
+  };
+}
+
+/**
+ * `total` columns shared in proportion to `widths`, each at least its least width; columns left
+ * by rounding go to the largest remainders, leftmost first. Null when the widths already fill
+ * `total` or the least widths do not fit in it.
+ */
+export function shareColumns(widths: number[], mins: number[], total: number): number[] | null {
+  const sum = widths.reduce((a, b) => a + b, 0);
+  const least = widths.map((_w, i) => Math.min(total, Math.max(1, mins[i] ?? 1)));
+  if (sum <= 0 || sum === total || least.reduce((a, b) => a + b, 0) > total) {
+    return null;
+  }
+  const exact = widths.map((w) => (w * total) / sum);
+  const out = exact.map((v, i) => Math.max(least[i]!, Math.floor(v)));
+  let left = total - out.reduce((a, b) => a + b, 0);
+  const order = exact.map((v, i) => ({ i, rest: v - Math.floor(v) })).sort((a, b) => b.rest - a.rest || a.i - b.i);
+  for (let k = 0; left > 0; k = (k + 1) % order.length) {
+    out[order[k]!.i]! += 1;
+    left--;
+  }
+  while (left < 0) {
+    // The least widths took more than their share: take back from the widest above its least.
+    let wide = -1;
+    out.forEach((w, i) => {
+      if (w > least[i]! && (wide < 0 || w > out[wide]!)) {
+        wide = i;
+      }
+    });
+    out[wide]! -= 1;
+    left++;
+  }
+  return out;
 }

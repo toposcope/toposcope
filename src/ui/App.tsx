@@ -30,7 +30,9 @@ import { MarksPanel } from "@/components/marks-panel";
 import { WatchThisSheet, type WatchThisInput } from "@/components/watch-this-sheet";
 import { BoardView } from "@/components/board-view";
 import { BoardHead } from "@/components/board-head";
-import { countedPanels } from "../shared/boards";
+import { countedPanels, fitPanelsToWidth } from "../shared/boards";
+import { panelDisplayName } from "../shared/panel-name";
+import { boardOpenRange, boardRange, boardUnsaved, linkedRange } from "./board-window";
 import { BoardNameDialog } from "@/components/board-name-dialog";
 import type { BoardChoice } from "@/components/add-to-board";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
@@ -338,6 +340,8 @@ export function App() {
     () => parseSearchUrl(typeof window === "undefined" ? "" : window.location.search),
     [],
   );
+  /** The window a board link names; without `range=` the board opens at its own (50e). */
+  const bootLinkedRange = useMemo(() => linkedRange(typeof window === "undefined" ? "" : window.location.search), []);
   const plotRef = useRef<HTMLDivElement>(null);
   const [from, setFrom] = useState(boot.from);
   const [to, setTo] = useState(boot.to);
@@ -1753,9 +1757,8 @@ export function App() {
           // A board (#410) reads each panel on its own: the hunt's search does not run.
           setBind(bindForBoard(boot.bind, item.board.keys));
           setQ("");
-          if (boot.range === "custom") {
-            setRange(item.range && parseRangeMs(item.range) !== null ? item.range : "1h");
-          }
+          // The board's own window, unless the link names one (sheet 50: `?saved=` alone read 1h).
+          setRange(boardOpenRange(item.range, bootLinkedRange));
           blockingSearchRef.current = false;
           setSearching(false);
           return;
@@ -2241,11 +2244,6 @@ export function App() {
     return created;
   }
 
-  /** A board's window is relative (Quick or Last N); a custom one saves as `1h`. */
-  function boardRange(mode: RangeMode): string {
-    return mode !== "custom" && parseRangeMs(mode) !== null ? mode : "1h";
-  }
-
   /** Watch this (#264): the hunt becomes a saved hunt if it is not one, then a monitor on it. */
   async function saveWatchThis(input: WatchThisInput) {
     let id = activeSaved && !activeSaved.board ? activeSaved.id : null;
@@ -2484,7 +2482,7 @@ export function App() {
         q: "",
         savedId: item.id,
         bind: bindForBoard(nextBind, item.board.keys),
-        range: item.range && parseRangeMs(item.range) !== null ? item.range : "1h",
+        range: boardOpenRange(item.range, null),
         live: false,
       };
     }
@@ -3408,7 +3406,7 @@ export function App() {
 
   /** Edit panel (39f): the panel's own query, board inputs off, Cancel / Update panel. */
   function editBoardPanel(item: SavedSearch, panel: BoardPanel) {
-    addWorkspace(panelHuntSnap(panel, panel.q, { boardId: item.id, panelId: panel.id, name: panel.name, widgetId: "a" }), false);
+    addWorkspace(panelHuntSnap(panel, panel.q, { boardId: item.id, panelId: panel.id, name: panelDisplayName(panel), widgetId: "a" }), false);
   }
 
   function boardTabFor(boardId: string): number | null {
@@ -4401,7 +4399,8 @@ export function App() {
                   name={activeSaved.name}
                   panels={countedPanels(activeSaved.board.panels)}
                   pinned={Boolean(activeSaved.pinned)}
-                  dirty={(activeSaved.range ?? "1h") !== boardRange(range)}
+                  dirty={boardUnsaved(activeSaved.range, range)}
+                  winLabel={`Last ${boardRange(range)}`}
                   readOnly={isViewer}
                   onHome={() => setView("home")}
                   onRename={(name) => {
@@ -4414,6 +4413,17 @@ export function App() {
                   onSave={onSaveClick}
                   onShare={() => void copyLink()}
                   onDuplicate={() => setBoardSaveAs(true)}
+                  onFit={() => {
+                    if (!activeSaved.board) {
+                      return;
+                    }
+                    const next = fitPanelsToWidth(activeSaved.board);
+                    if (next === activeSaved.board) {
+                      toast("Every row already fills the width");
+                      return;
+                    }
+                    onBoardChange(activeSaved, next);
+                  }}
                   onPin={() => void togglePinned(activeSaved)}
                   onDelete={() => void onDelete(activeSaved.id)}
                 />
