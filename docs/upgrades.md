@@ -233,6 +233,7 @@ SQLite migrations add columns. Extra columns on a downgrade are unused, not a wi
 
 | From | Pin | Notes |
 | --- | --- | --- |
+| 0.15.8 | `0.15.7` | Changes no tables and no stored data. Hunts archived together from Home stay archived on 0.15.7 |
 | 0.15.7 | `0.15.6` | Adds the SQLite columns `saved_searches.archived`, `monitor_stretches.acked_at` and `monitor_stretches.acked_by`, which 0.15.6 leaves unread: archived hunts show again on Home, and acknowledgements are ignored, so reminders resume for monitors still open. Pinning 0.15.7 again picks them up where they were |
 | 0.15.6 | `0.15.5` | Changes no tables. A Number panel saved on 0.15.6 through the panel sheet keeps the width it was saved at (at least 3 columns), which 0.15.5 reads as it is |
 | 0.15.5 | `0.15.4` | Changes no tables. On 0.15.4 `GET /share/v1/latest` answers 404 |
