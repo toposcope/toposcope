@@ -26,6 +26,7 @@ const saved = {
   board: v.nullish(described(v.unknown(), "A board's inputs and panels, as the app saves them (keys, and panels each with its own q, view, cell and fixed window); null makes it a plain hunt.")),
   cols: v.nullish(described(v.union([v.string(), v.array(v.string())]), "Attribute keys shown as columns, a list or separated by commas.")),
   pinned: v.nullish(described(v.boolean(), "Pinned for the caller; each person pins their own.")),
+  archived: v.optional(described(v.boolean(), "Archived: off Home, the header's search and the palette, for everyone; its link still opens and its monitor still runs.")),
   // A shared that is not true or false is the handler's 403, as before.
   shared: v.optional(described(v.unknown(), "true or false: shared with everyone, or the caller's own; a Viewer's is their own.")),
 };

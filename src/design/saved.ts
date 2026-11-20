@@ -28,6 +28,7 @@ export function savedBodyOf(saved: SavedSearch, pinned: boolean | null): Record<
     board: saved.board,
     cols: saved.cols,
     shared: saved.shared,
+    archived: saved.archived,
     ...(pinned === null ? {} : { pinned }),
   };
 }

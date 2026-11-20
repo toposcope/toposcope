@@ -25,6 +25,11 @@ describe("the header field's suggestions (49b)", () => {
     expect(headerSuggestions(list, "starts").hunts.map((x) => x.name)).toEqual(["Starts slow", "slow starts", "restarts"]);
   });
 
+  test("archived hunts and boards are not suggested (sheet 50)", () => {
+    const list = [{ ...hunt("API stalls"), archived: true }, hunt("API errors"), { ...board("API board"), archived: true }];
+    expect(headerSuggestions(list, "api")).toEqual({ hunts: [list[1]!], boards: [] });
+  });
+
   test("a few of each, and the arrows walk hunts then boards", () => {
     const many = Array.from({ length: 9 }, (_, i) => hunt(`api ${i}`));
     const s = headerSuggestions([...many, board("api board")], "api", 3);

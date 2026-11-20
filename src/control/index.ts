@@ -73,6 +73,8 @@ export function migrateControlDb(db: Database): void {
   // saved before 0.9 are shared and pass to the first Owner. Pins are each person's own.
   addColumnIfMissing(db, "saved_searches", "owner_id", "TEXT");
   addColumnIfMissing(db, "saved_searches", "shared", "INTEGER NOT NULL DEFAULT 1");
+  // Sheet 50: an archived hunt or board is off Home and search; its link opens and its monitor runs.
+  addColumnIfMissing(db, "saved_searches", "archived", "INTEGER NOT NULL DEFAULT 0");
   db.run(`
     CREATE TABLE IF NOT EXISTS person_pins (
       person_id TEXT NOT NULL,

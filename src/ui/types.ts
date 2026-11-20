@@ -16,6 +16,8 @@ export type SavedSearch = {
   cols?: string[];
   /** Home's Pinned column (#259). */
   pinned?: boolean;
+  /** Off Home, the header's suggestions and the palette (sheet 50); its link still opens. */
+  archived?: boolean;
   /** Who saved it (#307); an agent's wears its badge (#357). */
   saved_by?: { id: string; name: string; agent?: boolean } | null;
   created_at: number;
