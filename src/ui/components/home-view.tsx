@@ -22,7 +22,7 @@ import {
   quietValue,
   splitHunts,
 } from "../home-saved";
-import { agoText, deltaText, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
+import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
 import type { MonitorView, SavedSearch } from "../types";
 import { AgentBadge } from "./agent-badge";
 import { BoardNameDialog } from "./board-name-dialog";
@@ -443,7 +443,7 @@ export function HomeView(props: Props) {
         <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
           <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
             <div className="flex justify-between">
-              <span className="text-base font-medium">New fingerprints{fp ? ` · ${fp.first_seen.length}${fp.more ? "+" : ""}` : " · none"}</span>
+              <span className="text-base font-medium">{fingerprintsTitle(fp)}</span>
               {fp && fp.first_seen.length > 0 ? (
                 <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt(e1Query, data.after)}>
                   open as a hunt →
@@ -456,7 +456,7 @@ export function HomeView(props: Props) {
                   <Line key={r.hex} hex={r.hex} text={r.message} sub={r.service} n={r.count} />
                 ))}
                 {fp.stopped.slice(0, Math.max(0, 4 - Math.min(4, fp.first_seen.length))).map((r) => (
-                  <Line key={r.hex} hex={r.hex} text={`${r.message} · stopped`} sub={r.service} n={0} muted />
+                  <Line key={r.hex} hex={r.hex} tag="stopped" text={r.message} sub={r.service} n={0} muted />
                 ))}
               </>
             ) : (
@@ -716,10 +716,11 @@ function QuietRow({
   );
 }
 
-function Line({ hex, text, sub, n, muted }: { hex: string; text: string; sub: string; n: number; muted?: boolean }) {
+function Line({ hex, text, sub, n, muted, tag }: { hex: string; text: string; sub: string; n: number; muted?: boolean; tag?: string }) {
   return (
     <div className={cn("flex items-start gap-3 border-b border-white/[0.06] py-2 text-sm last:border-b-0", muted && "text-muted-foreground")}>
       <span className={cn("font-mono", !muted && "text-plate")}>e1:{hex}</span>
+      {tag ? <span className="shrink-0 rounded-sm border border-white/12 px-1.5 text-xs leading-[18px]">{tag}</span> : null}
       <span className="min-w-0 flex-1 truncate">
         {text} <span className="text-muted-foreground">{sub}</span>
       </span>

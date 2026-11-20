@@ -135,3 +135,12 @@ export function agoText(iso: string, nowMs: number): string {
   }
   return `${Math.round(ms / 86_400_000)} d ago`;
 }
+
+/** The fingerprints card's title counts both lists it shows, so a stopped row never sits under "· 0". */
+export function fingerprintsTitle(fp: { first_seen: readonly unknown[]; stopped: readonly unknown[]; more: number } | null): string {
+  if (!fp) {
+    return "New fingerprints · none";
+  }
+  const stopped = fp.stopped.length > 0 ? ` · ${fp.stopped.length} stopped` : "";
+  return `New fingerprints · ${fp.first_seen.length}${fp.more ? "+" : ""}${stopped}`;
+}
