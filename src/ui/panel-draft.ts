@@ -1,5 +1,6 @@
 import type { HistogramSplit } from "../query/histogram";
 import { compileQuery } from "../query/compile";
+import { formatSearchAgg, numericAggOps, parseSearchAgg, type NumericAggOp } from "../query/agg";
 import { clampWidget, defaultHbarN, defaultTimeseries, defaultWidgetH, type WidgetDef } from "../shared/widgets";
 import { panelSection, type BoardPanel, type PanelFields } from "../shared/boards";
 
@@ -28,6 +29,48 @@ export const volumeSplits: Array<{ split: HistogramSplit; label: string }> = [
   { split: "none", label: "None" },
 ];
 
+/** What a Number panel reads (sheet 49f): a count, a rate, or a reducer over a numeric field. */
+export type NumberMeasure = "count" | "rate" | NumericAggOp;
+
+export const numberMeasures: Array<{ measure: NumberMeasure; label: string }> = [
+  { measure: "count", label: "Count" },
+  { measure: "rate", label: "Rate per second" },
+  { measure: "sum", label: "Sum of" },
+  { measure: "avg", label: "Average of" },
+  { measure: "p99", label: "p99 of" },
+  { measure: "max", label: "Max of" },
+  { measure: "min", label: "Min of" },
+];
+
+/** True when the measure reads a field (`sum:duration_ms`), not the rows themselves. */
+export function measureNeedsField(measure: NumberMeasure): boolean {
+  return (numericAggOps as readonly string[]).includes(measure);
+}
+
+/** A Number panel's stored agg as a measure and its field; anything unreadable is a count. */
+export function measureOf(agg: string | null | undefined): { measure: NumberMeasure; measureField: string } {
+  try {
+    const parsed = agg && agg !== "count" ? parseSearchAgg(agg) : null;
+    if (parsed?.op === "rate") {
+      return { measure: "rate", measureField: "" };
+    }
+    if (parsed) {
+      return { measure: parsed.op, measureField: parsed.key };
+    }
+  } catch {
+    // A stored agg the grammar no longer reads stays a count.
+  }
+  return { measure: "count", measureField: "" };
+}
+
+/** The agg a Number draft stores: `count`, `rate`, or `<op>:<field>`. */
+export function measureAgg(draft: Pick<PanelDraft, "measure" | "measureField">): string {
+  if (draft.measure === "count" || draft.measure === "rate") {
+    return draft.measure;
+  }
+  return formatSearchAgg({ op: draft.measure, key: draft.measureField.trim().toLowerCase() });
+}
+
 export type PanelDraft = {
   name: string;
   q: string;
@@ -39,6 +82,9 @@ export type PanelDraft = {
   field: string;
   /** Metric: the series' name. */
   metric: string;
+  /** Number: what it reads, and the numeric field a reducer reads. */
+  measure: NumberMeasure;
+  measureField: string;
   /** The heading it sits under; null above the first heading. */
   section: string | null;
   fixed: string | null;
@@ -67,6 +113,8 @@ export function newDraft(seed?: { name?: string; q?: string; show?: PanelShow; s
     split: "level",
     field: "service",
     metric: "",
+    measure: "count",
+    measureField: "",
     section: seed?.section ?? null,
     fixed: null,
   };
@@ -82,6 +130,7 @@ export function draftOf(panel: BoardPanel, panels: BoardPanel[]): PanelDraft {
     split: w.split,
     field: w.attr ?? (w.split === "none" ? "service" : w.split),
     metric: w.metric ?? "",
+    ...(panel.view === "stat" ? measureOf(w.agg) : { measure: "count" as const, measureField: "" }),
     section: panelSection(panels, panel.id),
     fixed: panel.fixed,
   };
@@ -144,10 +193,11 @@ export function fieldsOf(draft: PanelDraft, base: BoardPanel | null): PanelField
       return { name, q, fixed, view: "top", widget };
     }
     case "number": {
+      const agg = measureAgg(draft);
       const widget = clampWidget(
         same
-          ? { ...from, ...words, ...cell, kind: "stat" }
-          : { ...from, ...words, ...cell, kind: "stat", agg: "count", metric: null, metricLabels: {} },
+          ? { ...from, ...words, ...cell, kind: "stat", agg }
+          : { ...from, ...words, ...cell, kind: "stat", agg, metric: null, metricLabels: {} },
       );
       return { name, q, fixed, view: "stat", widget };
     }
@@ -169,6 +219,17 @@ export function draftProblem(draft: PanelDraft): string | null {
   }
   if (draft.show === "top" && !draft.field.trim()) {
     return "Pick a field";
+  }
+  if (draft.show === "number" && measureNeedsField(draft.measure)) {
+    const key = draft.measureField.trim();
+    if (!key) {
+      return "Pick a field to measure";
+    }
+    try {
+      parseSearchAgg(measureAgg(draft));
+    } catch {
+      return `${key} cannot be measured`;
+    }
   }
   return null;
 }

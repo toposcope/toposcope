@@ -6,7 +6,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { BoardPanel, PanelFields } from "../../shared/boards";
 import type { PanelWindow } from "../board-panel-data";
-import { draftProblem, fieldsOf, panelShows, volumeSplits, windowLine, type PanelDraft } from "../panel-draft";
+import { draftProblem, fieldsOf, measureNeedsField, numberMeasures, panelShows, volumeSplits, windowLine, type NumberMeasure, type PanelDraft } from "../panel-draft";
 
 const quickFixed = ["15m", "1h", "4h", "24h", "7d"] as const;
 const label = "flex min-w-0 flex-col gap-1.5 text-xs text-muted-foreground";
@@ -38,9 +38,11 @@ export function PanelSheet(props: {
   const set = (patch: Partial<PanelDraft>) => setDraft((prev) => ({ ...prev, ...patch }));
   const fields = useMemo(() => fieldsOf(draft, props.base), [draft, props.base]);
   const problem = draftProblem(draft);
-  const queryFault = draft.q.trim() && problem && problem !== "Pick a metric" && problem !== "Pick a field" ? problem : null;
-  const names = useNames(draft.show, props.win);
-  const ids = { split: useId(), section: useId(), metric: useId(), field: useId(), list: useId() };
+  const fieldProblem = problem === "Pick a metric" || problem === "Pick a field" || problem === "Pick a field to measure" || Boolean(problem?.endsWith("cannot be measured"));
+  const queryFault = draft.q.trim() && problem && !fieldProblem ? problem : null;
+  const measuring = draft.show === "number" && measureNeedsField(draft.measure);
+  const names = useNames(measuring ? "top" : draft.show, props.win);
+  const ids = { split: useId(), section: useId(), metric: useId(), field: useId(), list: useId(), measure: useId(), measureField: useId() };
   const submit = () => {
     if (!problem) {
       props.onSubmit(draft, fields);
@@ -142,6 +144,17 @@ export function PanelSheet(props: {
                   ))}
                 </datalist>
               </label>
+            ) : draft.show === "number" ? (
+              <label className={cn(label, "flex-1")} htmlFor={ids.measure}>
+                Measure
+                <select id={ids.measure} className={selectClass} value={draft.measure} onChange={(e) => set({ measure: e.target.value as NumberMeasure })}>
+                  {numberMeasures.map((item) => (
+                    <option key={item.measure} value={item.measure}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : null}
             <label className={cn(label, "flex-1")} htmlFor={ids.section}>
               Section
@@ -160,6 +173,28 @@ export function PanelSheet(props: {
               </select>
             </label>
           </div>
+          {measuring ? (
+            <label className={label} htmlFor={ids.measureField}>
+              Field
+              <Input
+                id={ids.measureField}
+                size="lg"
+                className="font-mono"
+                list={ids.list}
+                value={draft.measureField}
+                placeholder="a numeric field, e.g. duration_ms"
+                spellCheck={false}
+                onChange={(e) => set({ measureField: e.target.value })}
+              />
+              <datalist id={ids.list}>
+                {names
+                  .filter((name) => !["level", "service", "host"].includes(name))
+                  .map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+              </datalist>
+            </label>
+          ) : null}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               Window <span className="text-sm text-foreground">{windowLine(draft.fixed, props.boardWin)}</span>
