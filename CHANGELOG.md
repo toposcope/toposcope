@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Home no longer says `your pick` when nothing was picked. After a mark was opened by its link, Home's own load in the next 30 s read the same cached answer and showed `· your pick, until a newer deploy or flag` over the mark it had chosen itself.
+
 ## 0.15.8
 
 Home names the quiet saved hunts that read only hosts gone silent (sheet 51b): under Quiet, `18 saved hunts read hosts that sent nothing in 7 days`, the hosts, and **Archive 18…**. It asks once, listing each host, how many hunts read it and when it last sent anything (51c), then archives them; their monitors stay and Archived brings any back. A host is gone when it has sent no line for 7 days; a hunt counts when every `host:` its query names is gone. `GET /api/home/since` gains `gone`.

@@ -52,3 +52,12 @@ describe("equal windows around a mark", () => {
     expect(w.sideMs).toBe(60 * 60_000);
   });
 });
+
+describe("Home's answer cache", () => {
+  test("a mark asked for and the same mark picked by Home are cached apart", async () => {
+    const { sinceCacheKey } = await import("./home-since");
+    const saved = [{ id: "a", query: "level:error", agg: null }];
+    expect(sinceCacheKey("p", "mk_1", true, 60_000, saved)).not.toBe(sinceCacheKey("p", "mk_1", false, 60_000, saved));
+    expect(sinceCacheKey("p", "mk_1", true, 60_000, saved)).toBe(sinceCacheKey("p", "mk_1", true, 61_000, saved));
+  });
+});
