@@ -20,8 +20,10 @@ export function formatCustomRangeLabel(
   const span = Math.max(1, toMs - fromMs);
   const a = new Date(fromMs);
   const b = new Date(toMs);
-  const needMs = a.getUTCMilliseconds() > 0 || b.getUTCMilliseconds() > 0;
-  const needS = needMs || a.getUTCSeconds() > 0 || b.getUTCSeconds() > 0;
+  // Sheet 47h: the ends print as finely as the window needs. A wheel zoom leaves milliseconds on
+  // both ends; a 4h window still reads to the minute, a 12ms window to the millisecond.
+  const needMs = span < 10_000 && (a.getUTCMilliseconds() > 0 || b.getUTCMilliseconds() > 0);
+  const needS = needMs || (span < 10 * 60_000 && (a.getUTCSeconds() > 0 || b.getUTCSeconds() > 0));
   const now = new Date(nowMs);
   const yr =
     a.getUTCFullYear() !== now.getUTCFullYear() ||

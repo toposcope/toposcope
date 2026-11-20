@@ -4151,8 +4151,9 @@ export function App() {
             <button
               type="button"
               className={cn(
-                // The Watch tab's dot says it at any width (26a); the counts in words need the room.
-                "hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm xl:inline-flex",
+                // Sheet 47h: what is open stays in the header down to a laptop width; below md the
+                // pages menu takes over and the Watch tab's dot says it (26a).
+                "hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm md:inline-flex",
                 watching.open > 0 ? "border-danger/50" : "border-white/15",
               )}
               title="Open Watch"
