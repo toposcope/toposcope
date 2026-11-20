@@ -126,6 +126,20 @@ async function anyIngested(): Promise<boolean> {
   return rows.length > 0;
 }
 
+/**
+ * The cache key of one Home answer: who asks, the mark, whether Home picked it or it was asked
+ * for (a picked mark says so on Home), the 30 s slot, and the saved hunts read.
+ */
+export function sinceCacheKey(
+  who: string,
+  markId: string | null,
+  auto: boolean,
+  nowMs: number,
+  saved: readonly { id: string; query: string; agg?: string | null }[],
+): string {
+  return `${who}:${markId ?? "hour"}:${auto ? "auto" : "asked"}:${Math.floor(nowMs / cacheMs)}:${saved.map((s) => `${s.id}=${s.query}|${s.agg ?? ""}`).join(",")}`;
+}
+
 export async function computeHomeSince(input: { markId: string | null; hour: boolean; nowMs?: number; actor?: Actor | null }): Promise<HomeSince | { error: string; status: 404 }> {
   const nowMs = input.nowMs ?? Date.now();
   const marks = newestFirst(await changeMarksBetween(new Date(nowMs - dayMs).toISOString(), new Date(nowMs + 60_000).toISOString()));
@@ -143,7 +157,7 @@ export async function computeHomeSince(input: { markId: string | null; hour: boo
   // #306: the hunts this person sees, shared ones and their own; an archived one is not read (sheet 50).
   const saved = (input.actor === undefined ? allSaved() : visibleSaved(input.actor)).filter((s) => !s.board && !s.archived);
   // The cache turns over every 30 s and whenever a saved hunt is added or edited.
-  const key = `${input.actor?.person.id ?? "all"}:${mark?.id ?? "hour"}:${Math.floor(nowMs / cacheMs)}:${saved.map((s) => `${s.id}=${s.query}|${s.agg ?? ""}`).join(",")}`;
+  const key = sinceCacheKey(input.actor?.person.id ?? "all", mark?.id ?? null, auto, nowMs, saved);
   const hit = cache.get(key);
   if (hit) {
     return hit.value;
