@@ -3,18 +3,43 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HbarWidget } from "@/components/hbar-widget";
-import { QueryText } from "@/components/query-text";
 import { CountText } from "@/components/count-text";
 import { cn } from "@/lib/utils";
 import { copyWidgetSeries, downloadWidgetSeries, hbarExport, histogramExport, statExport, widgetExportFormats } from "@/export-series";
 import { downloadExport, exportEvents } from "@/export-events";
 import { parseRangeMs } from "../../query/relative";
 import { widgetGridCols, widgetGapPx, widgetRowPx, hbarRows, maxWidgetH, widgetMinSize, type WidgetDef } from "../../shared/widgets";
-import { gravity, gridEdges } from "../../shared/grid-gravity";
+import { gravity, gridEdges, widenCells } from "../../shared/grid-gravity";
 import { GridHandles, GridSizeChip, useGridGestures, useGridSlide } from "../grid-gestures";
 import { PanelNote, PanelNoteField } from "@/components/panel-words";
 import { HoverTimeProvider, TimeLayer } from "../hover-time";
-import { addTextPanel, foldedPanelIds, isTextPanel, maxNoteText, maxPanelName } from "../../shared/boards";
+import {
+  addPanelInSection,
+  addTextPanel,
+  boardSections,
+  foldedPanelIds,
+  isTextPanel,
+  maxNoteText,
+  maxPanelName,
+  panelMinW,
+  panelSection,
+  updatePanelInSection,
+  type PanelFields,
+} from "../../shared/boards";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PanelSheet } from "@/components/panel-sheet";
+import { draftOf, newDraft, panelShows, type PanelDraft } from "../panel-draft";
+import { panelNoEvents, panelSubtitle, statWords, windowWords } from "../panel-head";
 import type { ChangeMark } from "../../shared/change-mark";
 import {
   BOARD_MAX,
@@ -55,13 +80,20 @@ type Props = {
   winLabel: string;
   live: boolean;
   readOnly: boolean;
+  /** The board's name, as the panel sheet says where a panel goes (49f). */
+  boardName: string;
+  /** Saved hunts that are not boards: Add panel › From a saved hunt (49e). */
+  hunts: Array<{ id: string; name: string; q: string }>;
   onBind: (key: string, value: string | null) => void;
   onBoard: (next: BoardSlots) => void;
   onOpenHunt: (panel: BoardPanel) => void;
+  /** The Edit panel tab (39f), for what the panel sheet does not hold. */
   onEditPanel: (panel: BoardPanel) => void;
   onDuplicate: (panel: BoardPanel) => void;
   onRemove: (panel: BoardPanel) => void;
 };
+
+type SheetState = { mode: "add"; initial: PanelDraft } | { mode: "edit"; id: string; initial: PanelDraft };
 
 /** A board (#410, frames 39b–39g): its inputs, then its panels on the 12-col grid. */
 export function BoardView(props: Props) {
@@ -196,11 +228,44 @@ export function BoardView(props: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   // A folded heading's panels are left out of the drawn layout (sheet 44); they keep their cells.
   const folded = foldedPanelIds(board.panels);
+  // A panel narrower than its view draws in (49d: a Number panel in 1 column) is drawn wider.
   const settled = gravity(
-    board.panels
-      .filter((panel) => !folded.has(panel.id))
-      .map((panel) => ({ id: panel.id, kind: panel.widget.kind, x: panel.widget.x, y: panel.widget.y, w: panel.widget.w, h: panel.widget.h })),
+    widenCells(
+      board.panels
+        .filter((panel) => !folded.has(panel.id))
+        .map((panel) => ({ id: panel.id, kind: panel.widget.kind, view: panel.view, x: panel.widget.x, y: panel.widget.y, w: panel.widget.w, h: panel.widget.h })),
+      (cell) => panelMinW(cell.view),
+    ),
   );
+  const [sheet, setSheet] = useState<SheetState | null>(null);
+  const atCap = board.panels.length >= BOARD_PANEL_MAX;
+  function submitSheet(state: SheetState, draft: PanelDraft, fields: PanelFields) {
+    // A new panel is placed among the panels as they are drawn: narrow ones at their least width.
+    const wide = new Map(
+      widenCells(
+        board.panels.map((p) => ({ id: p.id, view: p.view, x: p.widget.x, y: p.widget.y, w: p.widget.w, h: p.widget.h })),
+        (cell) => panelMinW(cell.view),
+      ).map((cell) => [cell.id, cell]),
+    );
+    const drawn: BoardSlots = {
+      ...board,
+      panels: board.panels.map((p) => {
+        const cell = wide.get(p.id)!;
+        return { ...p, widget: { ...p.widget, x: cell.x, y: cell.y, w: cell.w, h: cell.h } };
+      }),
+    };
+    if (state.mode === "add") {
+      const next = addPanelInSection(drawn, fields, draft.section);
+      if (!next) {
+        toast.error(`A board holds ${BOARD_PANEL_MAX} panels`);
+        return;
+      }
+      props.onBoard(next);
+    } else {
+      props.onBoard(updatePanelInSection(drawn, state.id, fields, draft.section));
+    }
+    setSheet(null);
+  }
   const viewOf = new Map(board.panels.map((panel) => [panel.id, panel.view]));
   /** A heading's panels, as drawn: from the row under it to the next heading. */
   function headingGroup(id: string, cells: Array<{ id: string; y: number }>): string[] {
@@ -222,7 +287,10 @@ export function BoardView(props: Props) {
     cells: settled,
     rowPx: widgetRowPx,
     gapPx: widgetGapPx,
-    limits: { min: (cell: { kind: WidgetDef["kind"] }) => widgetMinSize(cell), maxH: maxWidgetH },
+    limits: {
+      min: (cell: { kind: WidgetDef["kind"]; view: BoardPanel["view"] }) => ({ w: Math.max(widgetMinSize(cell).w, panelMinW(cell.view)), h: widgetMinSize(cell).h }),
+      maxH: maxWidgetH,
+    },
     onCommit: (next) =>
       props.onBoard({
         ...board,
@@ -252,14 +320,20 @@ export function BoardView(props: Props) {
       />
       </div>
       {props.readOnly ? null : (
-        <div className="flex shrink-0 items-center gap-1.5 px-3 py-2">
+        <div className="flex shrink-0 items-center gap-2 px-3 py-2">
+          <AddPanelMenu
+            atCap={atCap}
+            hunts={props.hunts}
+            // A new panel goes under the last heading, at the end of the board, unless another is picked.
+            onPick={(initial) => setSheet({ mode: "add", initial: { ...initial, section: boardSections(board.panels).at(-1)?.id ?? null } })}
+          />
           {(["section", "note"] as const).map((view) => (
-            <button
+            <Button
               key={view}
               type="button"
-              disabled={board.panels.length >= BOARD_PANEL_MAX}
-              title={board.panels.length >= BOARD_PANEL_MAX ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
-              className="h-[26px] rounded-md border border-input px-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-45"
+              variant="outline"
+              disabled={atCap}
+              title={atCap ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
               onClick={() => {
                 const next = addTextPanel(board, view);
                 if (next) {
@@ -271,11 +345,38 @@ export function BoardView(props: Props) {
               }}
             >
               {view === "section" ? "Add section" : "Add note"}
-            </button>
+            </Button>
           ))}
         </div>
       )}
       </div>
+      {sheet ? (
+        <PanelSheet
+          key={sheet.mode === "edit" ? `edit:${sheet.id}` : "add"}
+          mode={sheet.mode}
+          boardName={props.boardName}
+          initial={sheet.initial}
+          base={sheet.mode === "edit" ? (board.panels.find((p) => p.id === sheet.id) ?? null) : null}
+          sections={boardSections(board.panels)}
+          boardWin={props.winLabel}
+          win={win}
+          renderPreview={(fields) => (
+            <PanelPreview fields={fields} q={panelQuery(fields.q, board.keys, bind)} win={fields.fixed ? { range: fields.fixed } : win} />
+          )}
+          onCancel={() => setSheet(null)}
+          onSubmit={(draft, fields) => submitSheet(sheet, draft, fields)}
+          onOpenHunt={(fields) => {
+            const base = sheet.mode === "edit" ? board.panels.find((p) => p.id === sheet.id) : undefined;
+            setSheet(null);
+            if (base) {
+              // Edit panel's own tab, from what the sheet holds now: Update panel there saves it.
+              props.onEditPanel({ ...base, ...fields, id: base.id });
+            } else {
+              props.onOpenHunt({ id: "draft", ...fields });
+            }
+          }}
+        />
+      ) : null}
       <div className="min-h-0 flex-1 overflow-auto px-3 pt-1 pb-3">
         {board.panels.length === 0 ? (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">No panels</div>
@@ -317,7 +418,7 @@ export function BoardView(props: Props) {
                 {item.panel.view === "section" ? (
                   <BoardSection
                     panel={item.panel}
-                    count={item.panel.folded ? board.panels.filter((p) => folded.has(p.id) && headingOf(board.panels, p.id) === item.panel.id).length : headingGroup(item.panel.id, grid.cells).length}
+                    count={item.panel.folded ? board.panels.filter((p) => folded.has(p.id) && panelSection(board.panels, p.id) === item.panel.id).length : headingGroup(item.panel.id, grid.cells).length}
                     readOnly={props.readOnly}
                     lifted={moving}
                     onMovePointerDown={props.readOnly ? undefined : (e) => grid.beginMove(e, item.panel.id)}
@@ -352,7 +453,7 @@ export function BoardView(props: Props) {
                   readOnly={props.readOnly}
                   atCap={board.panels.length >= BOARD_PANEL_MAX}
                   onOpenHunt={() => props.onOpenHunt(item.panel)}
-                  onEdit={() => props.onEditPanel(item.panel)}
+                  onEdit={() => setSheet({ mode: "edit", id: item.panel.id, initial: draftOf(item.panel, board.panels) })}
                   onFixed={(fixed) =>
                     props.onBoard({
                       ...board,
@@ -389,19 +490,107 @@ export function BoardView(props: Props) {
   );
 }
 
-/** The heading a panel sits under: the nearest heading above it. */
-function headingOf(panels: BoardPanel[], id: string): string | null {
-  const me = panels.find((p) => p.id === id);
-  if (!me) {
-    return null;
-  }
-  let best: BoardPanel | null = null;
-  for (const p of panels) {
-    if (p.view === "section" && p.widget.y < me.widget.y && (!best || p.widget.y > best.widget.y)) {
-      best = p;
-    }
-  }
-  return best?.id ?? null;
+/** ＋ Add panel ⌄ (49e): what the panel shows, each in a line, then From a saved hunt ›. */
+function AddPanelMenu({
+  atCap,
+  hunts,
+  onPick,
+}: {
+  atCap: boolean;
+  hunts: Array<{ id: string; name: string; q: string }>;
+  onPick: (initial: PanelDraft) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          disabled={atCap}
+          title={atCap ? `${BOARD_PANEL_MAX} panels is the most a board holds` : undefined}
+          className="bg-plate font-semibold text-primary-foreground hover:bg-plate/90"
+        >
+          ＋ Add panel
+          <ChevronDown aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[300px]">
+        {panelShows.map((item) => (
+          <DropdownMenuItem key={item.show} className="h-auto flex-col items-start gap-0 py-1.5" onSelect={() => onPick(newDraft({ show: item.show }))}>
+            <span className="font-medium">{item.label}</span>
+            <span className="text-xs text-muted-foreground">{item.sub}</span>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger disabled={hunts.length === 0}>From a saved hunt</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="max-h-80 w-64 overflow-y-auto">
+            {hunts.map((hunt) => (
+              <DropdownMenuItem key={hunt.id} className="h-auto flex-col items-start gap-0 py-1.5" onSelect={() => onPick(newDraft({ name: hunt.name, q: hunt.q }))}>
+                <span className="w-full truncate">{hunt.name}</span>
+                <span className="w-full truncate font-mono text-xs text-faint">{hunt.q || "all logs"}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** The panel sheet's preview (49f): the panel as the board will draw it, read a moment after typing stops. */
+function PanelPreview({ fields, q, win }: { fields: PanelFields; q: string; win: PanelWindow }) {
+  const panel: BoardPanel = useMemo(() => ({ id: "preview", ...fields }), [fields]);
+  const [data, setData] = useState<PanelData | null>(null);
+  const key = JSON.stringify([fields.view, fields.widget, q, win]);
+  useEffect(() => {
+    const ac = new AbortController();
+    const t = setTimeout(() => {
+      void fetchPanel(panel, q, win, ac.signal)
+        .then((next) => {
+          if (!ac.signal.aborted) {
+            setData(next);
+          }
+        })
+        .catch(() => undefined);
+    }, 400);
+    return () => {
+      clearTimeout(t);
+      ac.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const head = panelHead(panel, data, false);
+  return (
+    <Panel>
+      <PanelHead>
+        <PanelTitle>{fields.name.trim() || "New panel"}</PanelTitle>
+        <span className="min-w-1 flex-1" />
+        {head ? (
+          <PanelValue>
+            <b className="font-medium text-foreground">{head.n ?? <CountText n={data?.total ?? 0} />}</b>
+            {head.label ? ` ${head.label}` : null}
+          </PanelValue>
+        ) : null}
+      </PanelHead>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {data === null ? (
+          <Skeleton kind={panel.view === "histogram" ? "bars" : "block"} className="m-3 flex-1" />
+        ) : data.error ? (
+          <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-danger-fg">{data.error}</div>
+        ) : panelNoEvents(panel, data) ? (
+          <NoEvents win={win} />
+        ) : (
+          <PanelBody panel={panel} data={data} win={win} live={false} />
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+/** A panel with no events in its window (49d): it says so and draws no marks. */
+function NoEvents({ win }: { win: PanelWindow }) {
+  const words = windowWords(win);
+  return <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-muted-foreground">No events in {words}</div>;
 }
 
 const textMenuRow = panelMenuRow;
@@ -532,7 +721,7 @@ function BoardSection({
         <span className="min-w-0 truncate text-base font-semibold">{panel.name}</span>
       )}
       <span className="shrink-0 font-mono text-xs text-muted-foreground">
-        {count} {count === 1 ? "panel" : "panels"}
+        {count}
         {panel.folded ? " folded" : ""}
       </span>
       <span className="min-w-1 flex-1" />
@@ -729,9 +918,10 @@ function BoardInputsRow({
           <PopoverTrigger asChild>
             <button
               type="button"
+              title="Added to every panel's query"
               className="h-8 rounded-md border border-dashed border-white/20 px-2.5 text-sm text-muted-foreground hover:border-ring hover:text-foreground"
             >
-              + input
+              ＋ input
             </button>
           </PopoverTrigger>
           <PopoverContent className="max-h-72 w-56 overflow-auto bg-overlay p-1">
@@ -755,7 +945,6 @@ function BoardInputsRow({
           </PopoverContent>
         </Popover>
       )}
-      <span className="text-sm text-muted-foreground">Added to every panel&apos;s query.</span>
     </div>
   );
 }
@@ -886,11 +1075,6 @@ function msUnit(agg: string | null): string | null {
   return /_ms\)?$/.test(agg) || /:.*_ms$/.test(agg) ? "ms" : null;
 }
 
-/** The window a panel says it read (`last 24h`). */
-function windowWords(win: PanelWindow): string {
-  return "range" in win ? `the last ${win.range}` : "this window";
-}
-
 function BoardPanelCard(props: CardProps) {
   const { panel, data, loading } = props;
   const widget = panel.widget;
@@ -911,8 +1095,10 @@ function BoardPanelCard(props: CardProps) {
         />
       ) : (
         <PanelHead className={cn(props.onMovePointerDown && "cursor-grab active:cursor-grabbing")} onPointerDown={props.onMovePointerDown}>
-          <PanelTitle>{panel.name}</PanelTitle>
-          <PanelQuery>{panelWhat(panel.view, widget)}</PanelQuery>
+          <PanelTitle className="shrink-0">{panel.name}</PanelTitle>
+          <PanelQuery className="text-faint" title={panelSubtitle(panel, props.inputs) || undefined}>
+            {panelSubtitle(panel, props.inputs)}
+          </PanelQuery>
           {panel.fixed ? (
             <span className="shrink-0 rounded-sm border border-white/40 px-1.5 font-mono text-2xs leading-4">
               {panel.fixed} · fixed
@@ -922,16 +1108,13 @@ function BoardPanelCard(props: CardProps) {
           {props.live && data ? <LiveAge fetchedAt={data.fetchedAt} cadence={panelMergeable(panel) ? "2s" : "30s"} /> : null}
           {head ? (
             <PanelValue>
-              <b className="font-medium text-foreground">{head.n ?? <CountText n={total} />}</b> {head.label}
+              <b className="font-medium text-foreground">{head.n ?? <CountText n={total} />}</b>
+              {head.label ? ` ${head.label}` : null}
             </PanelValue>
           ) : null}
           <PanelMenu {...props} onRemove={() => setArmed(true)} />
         </PanelHead>
       )}
-      <div className="flex shrink-0 items-center gap-3 truncate px-3 pt-2 text-xs">
-        {panel.q ? <QueryText q={panel.q} /> : <span className="font-mono text-muted-foreground">all logs</span>}
-        {props.inputs ? <span className="font-mono">{props.inputs}</span> : null}
-      </div>
       {props.noting !== null ? (
         <div
           className="shrink-0"
@@ -960,6 +1143,8 @@ function BoardPanelCard(props: CardProps) {
           <Refused form="block" reason={data.refused} className="flex-1" />
         ) : empty ? (
           <EmptyTell panel={panel} setKeys={props.setKeys} win={props.win} />
+        ) : panelNoEvents(panel, data) ? (
+          <NoEvents win={props.win} />
         ) : loading && !data ? (
           <Skeleton kind={panel.view === "histogram" ? "bars" : "block"} className="m-3 flex-1" />
         ) : data ? (
@@ -975,7 +1160,6 @@ export function panelHead(panel: BoardPanel, data: PanelData | null, live: boole
   const widget = panel.widget;
   const total = data?.total ?? 0;
   const numeric = panel.view === "histogram" && Boolean(widget.agg || widget.metric);
-  const statNumeric = panel.view === "stat" && Boolean(widget.metric || (widget.agg && widget.agg !== "count"));
   if (data === null) {
     return null;
   }
@@ -987,7 +1171,8 @@ export function panelHead(panel: BoardPanel, data: PanelData | null, live: boole
     const last = lastAggValue(data);
     return { n: last === null ? "—" : formatAggStat(last), label: live ? "now" : "last" };
   }
-  return statNumeric && total > 0 ? null : { n: null, label: "matching" };
+  // A Number panel's value is its body (49d); a count says its number alone.
+  return panel.view === "stat" ? null : { n: null, label: "" };
 }
 
 function lastAggValue(data: PanelData | null): number | null {
@@ -1293,16 +1478,14 @@ function PanelBody({
       const unit = isCount ? null : (msUnit(widget.agg) ?? data.agg?.unit ?? null);
       return (
         <div className="flex flex-1 flex-col justify-center px-3 pb-3">
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-mono text-display leading-none font-medium tracking-[-0.025em] tabular-nums">{value}</span>
-            {unit ? <span className="font-mono text-lg text-muted-foreground">{unit}</span> : null}
+          <div className="flex min-w-0 items-baseline gap-1">
+            <span className="truncate font-mono text-display leading-none font-medium tracking-[-0.025em] tabular-nums">{value}</span>
+            {unit ? <span className="shrink-0 font-mono text-lg text-muted-foreground">{unit}</span> : null}
           </div>
           {refused ? (
             <Refused reason={data.agg?.reason} className="mt-2 font-mono text-sm" />
           ) : (
-            <span className="mt-2 font-mono text-sm text-muted-foreground">
-              {isCount ? `in ${windowWords(win).replace("the ", "")}` : <><CountText n={data.total} /> rows</>}
-            </span>
+            <span className="mt-1.5 truncate text-xs text-faint">{widget.metric ? `in ${windowWords(win)}` : statWords(data.total, win)}</span>
           )}
         </div>
       );
