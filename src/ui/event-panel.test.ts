@@ -47,13 +47,21 @@ describe("the event panel (#261, 26e)", () => {
   });
 });
 
-import { railLabelFits } from "./components/histogram-marks";
+import { railNameRooms } from "./components/histogram-marks";
 
-describe("rail chip names (#260)", () => {
-  test("a name shows only with room to its neighbours and the rail's ends", () => {
-    expect(railLabelFits("deployed: billing v0.9", 0.5, [0.1, 0.9], 1400)).toBe(true);
-    expect(railLabelFits("deployed: billing v0.9", 0.5, [0.52], 1400)).toBe(false);
-    expect(railLabelFits("deployed: billing v0.9", 0.01, [], 1400)).toBe(false);
-    expect(railLabelFits("deployed: billing v0.9", 0.5, [0.1], 300)).toBe(false);
+describe("rail chip names (#260, 50i)", () => {
+  test("a name gets its room from its neighbours and the rail's ends, cut to fit rather than dropped", () => {
+    const name = "billing v0.9";
+    const at = (frac: number, others: number[], laneW: number) =>
+      railNameRooms([{ frac, name }, ...others.map((f) => ({ frac: f, name: null }))], laneW)[0];
+    // Room enough: its whole name.
+    expect(at(0.5, [0.1, 0.9], 1400)).toBe(Math.ceil(name.length * 6.8));
+    // Crowded or at the rail's very end: glyph and time only.
+    expect(at(0.5, [0.52], 1400)).toBe(0);
+    expect(at(0.01, [], 1400)).toBe(0);
+    // A narrow rail cuts the name to what fits, and never past the neighbour.
+    const cut = at(0.5, [0.15], 300)!;
+    expect(cut).toBeGreaterThan(0);
+    expect(cut).toBeLessThan(Math.ceil(name.length * 6.8));
   });
 });

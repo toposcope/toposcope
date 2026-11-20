@@ -41,6 +41,9 @@ export type MonitorStretch = {
   resolved_call: CallState | null;
   /** A push monitor that opened because a result never came: when that result was due (#177). */
   due_at: number | null;
+  /** Acknowledged while open (sheet 50g): when, and who (an actor ref, as `created_by` is); no reminders while set. */
+  acked_at: number | null;
+  acked_by: string | null;
 };
 
 export type StretchWithCalls = MonitorStretch & { calls: MonitorCall[] };
@@ -49,7 +52,7 @@ export type StretchWithCalls = MonitorStretch & { calls: MonitorCall[] };
 export type Reading = { value: number | null; count: number | null; message: string };
 
 const STRETCH_COLS =
-  "id, monitor_id, opened_at, resolved_at, closed_by, open_value, open_count, open_message, last_value, last_count, last_at, called_at, open_call, resolved_call, due_at";
+  "id, monitor_id, opened_at, resolved_at, closed_by, open_value, open_count, open_message, last_value, last_count, last_at, called_at, open_call, resolved_call, due_at, acked_at, acked_by";
 
 type CallRow = Omit<MonitorCall, "ok"> & { ok: number };
 
@@ -156,6 +159,20 @@ export function closeByEdit(monitorId: string, at: number, db: Database = getDb(
     ).run(at, monitorId);
     db.query("UPDATE alert_rules SET state = 'ok' WHERE id = ?").run(monitorId);
   })();
+}
+
+/**
+ * Acknowledge a monitor's open stretch (sheet 50g): who and when, on this stretch only, so it
+ * clears when the stretch resolves and a new open starts unacknowledged. The first one stands.
+ * Null when nothing is open.
+ */
+export function ackOpenStretch(monitorId: string, at: number, by: string | null, db: Database = getDb()): MonitorStretch | null {
+  const open = openStretch(monitorId, db);
+  if (!open) {
+    return null;
+  }
+  db.query("UPDATE monitor_stretches SET acked_at = ?, acked_by = ? WHERE id = ? AND acked_at IS NULL").run(at, by, open.id);
+  return getStretch(open.id, db);
 }
 
 export function setOpenCall(stretchId: string, state: CallState, calledAt: number, db: Database = getDb()): void {

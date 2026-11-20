@@ -1,9 +1,10 @@
 import { pulledMonitors } from "../links/monitors-snapshot";
-import { actorName } from "./actors";
+import { actorName, currentActorRef, type ActorName } from "./actors";
 import type { Context } from "hono";
 import { lastLineAt } from "../alerts/last-line";
 import { lastPushResult, resultsBetween } from "../alerts/monitor-results";
 import {
+  ackOpenStretch,
   monitorHistory,
   openStretch,
   sentCallsBetween,
@@ -55,6 +56,8 @@ export type MonitorView = AlertRule & {
   saved: { id: string; name: string; query: string; range: string | null; agg: string | null } | null;
   /** Its open stretch, with the calls sent for it so far. */
   open: StretchWithCalls | null;
+  /** Who acknowledged its open stretch, and when (sheet 50g); null when not open or not acknowledged. */
+  acked: { at: number; by: ActorName | null } | null;
   /**
    * A fewer-than monitor's newest matching line (#176): null when none in a year, left out when
    * it could not be read.
@@ -82,6 +85,7 @@ async function view(rule: AlertRule): Promise<MonitorView> {
       ? { id: saved.id, name: saved.name, query: saved.query, range: saved.range, agg: saved.agg }
       : null,
     open: open ? { ...open, calls: monitorHistory(rule.id, 1)[0]?.calls ?? [] } : null,
+    acked: open?.acked_at != null ? { at: open.acked_at, by: actorName(open.acked_by) } : null,
     ...(lastLine !== undefined ? { last_line_at: lastLine } : {}),
     // #307: who made it, for Watch's row and a Viewer's "ask an Operator".
     made_by: actorName(rule.created_by),
@@ -363,6 +367,27 @@ export async function putMonitor(c: Context): Promise<Response> {
   applyMonitorFields(existing, fields, now);
   applyMonitorHold(getAlert(existing.id)!, rec, now);
   return c.json(await view(getAlert(existing.id)!));
+}
+
+/**
+ * `POST /api/monitors/:name/ack` — acknowledge the monitor's open stretch (sheet 50g): who and
+ * when, for this stretch only. It sends no reminders while acknowledged; the resolved call still
+ * goes, and the next open starts unacknowledged. Acknowledging again keeps the first. 409 when it
+ * is not open.
+ */
+export async function ackMonitor(c: Context): Promise<Response> {
+  const rule = oneByName(c);
+  if (rule instanceof Response) {
+    return rule;
+  }
+  if (!rule) {
+    return c.json({ error: "Monitor not found" }, 404);
+  }
+  const acked = rule.state === "open" ? ackOpenStretch(rule.id, Date.now(), currentActorRef()) : null;
+  if (!acked) {
+    return c.json({ error: `${rule.name} is not open` }, 409);
+  }
+  return c.json(await view(getAlert(rule.id)!));
 }
 
 /** `DELETE /api/monitors/:name` — the monitor and its record. */

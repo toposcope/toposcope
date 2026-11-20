@@ -72,6 +72,20 @@ beforeAll(async () => {
     await go("monitorsHunt", "/api/monitors?from=2026-10-19T11:03:00.000Z&to=2026-10-20T11:03:00.000Z");
     await go("monitorsBad", "/api/monitors?range=1h");
     await go("one", "/api/monitors/ci-box%20went%20quiet");
+    // Acknowledge (50g): only while open, the first one stands, and a Viewer may not.
+    await go("ackShut", "/api/monitors/ci-box%20went%20quiet/ack", "POST");
+    const store = await import(root + "/alerts/monitor-store.ts");
+    store.beginStretch(out.one.body.id, Date.now(), { value: 5, count: 5, message: "5 lines" });
+    const people = await import(root + "/control/people.ts");
+    const viewer = people.createServiceAccount({ name: "looker", role: "viewer", created_by: "tests" });
+    const viewerAuth = { authorization: "Bearer " + people.createPersonToken(viewer.id, { name: "looker", created_by: "tests" }).token };
+    const asViewer = await app.fetch(new Request("http://app.test/api/monitors/ci-box%20went%20quiet/ack", { method: "POST", headers: viewerAuth }));
+    out.ackViewer = { status: asViewer.status, body: await asViewer.json() };
+    await go("ack", "/api/monitors/ci-box%20went%20quiet/ack", "POST");
+    await go("ackAgain", "/api/monitors/ci-box%20went%20quiet/ack", "POST");
+    await go("ackList", "/api/monitors");
+    await go("ackOne", "/api/monitors/ci-box%20went%20quiet");
+    await go("ackMissing", "/api/monitors/no%20such/ack", "POST");
     await go("dupA", "/api/alert-rules", "POST", { name: "twice", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
     await go("dupB", "/api/alert-rules", "POST", { name: "twice", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
     await go("dupPut", "/api/monitors/twice", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
@@ -234,6 +248,26 @@ describe("PUT /api/monitors/<name> (#175)", () => {
     expect(r.one!.body).toMatchObject({ name: "ci-box went quiet", stretches: [] });
     expect(r.delete!.status).toBe(200);
     expect(r.gone!.status).toBe(404);
+  });
+});
+
+describe("POST /api/monitors/:name/ack (50g)", () => {
+  test("acknowledges the open stretch: who and when, the first one standing", () => {
+    expect(r.ackShut!.status).toBe(409);
+    expect(r.ackShut!.body.error).toBe("ci-box went quiet is not open");
+    expect(r.ackViewer!.status).toBe(403);
+    expect(r.ack!.status).toBe(200);
+    expect(r.ack!.body.state).toBe("open");
+    expect(r.ack!.body.acked).toMatchObject({ by: { name: "tests", kind: "service" } });
+    expect(typeof r.ack!.body.acked.at).toBe("number");
+    expect(r.ackAgain!.body.acked).toEqual(r.ack!.body.acked);
+    const listed = r.ackList!.body.monitors.find((m: { name: string }) => m.name === "ci-box went quiet");
+    expect(listed.acked).toEqual(r.ack!.body.acked);
+    expect(listed.open.acked_at).toBe(r.ack!.body.acked.at);
+    expect(r.ackOne!.body.stretches[0].acked_at).toBe(r.ack!.body.acked.at);
+    expect(r.ackMissing!.status).toBe(404);
+    // Every other monitor is shut, so none is acknowledged.
+    expect(r.ackList!.body.monitors.filter((m: { acked: unknown }) => m.acked !== null)).toHaveLength(1);
   });
 });
 

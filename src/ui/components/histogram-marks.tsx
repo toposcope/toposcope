@@ -3,7 +3,7 @@ import { changeMarkKinds, formatChangeMarkLabel, type ChangeMark, type ChangeMar
 
 import { cn } from "@/lib/utils";
 import { isTypingTarget } from "@/keyboard";
-import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, markFrac, markSource, newestFirst, panWindowToMark, peekCrowded, visibleChangeMarks } from "../change-marks";
+import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, markFrac, markLaneName, markSource, newestFirst, panWindowToMark, peekCrowded, visibleChangeMarks } from "../change-marks";
 import { MonitorBandRow, monitorBandH, type MonitorBand } from "./monitor-band";
 import { formatDuration } from "../../shared/duration";
 
@@ -475,6 +475,14 @@ export function HistogramMarkLane({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  // 50i: each lone chip's name room on the rail, shared with its neighbours.
+  const nameRooms = railNameRooms(
+    clusters.map((c) => ({
+      frac: markFrac((c.fromMs + c.toMs) / 2, fromMs, plotSpanMs),
+      name: c.members.length === 1 ? markLaneName(c.members[0]!) : null,
+    })),
+    laneW,
+  );
 
   useEffect(() => {
     const next = new Set<string>();
@@ -569,7 +577,7 @@ export function HistogramMarkLane({
               : undefined
           }
         >
-          {clusters.map((cluster) => {
+          {clusters.map((cluster, i) => {
             const key = marksClusterKey(cluster);
             const mid = (cluster.fromMs + cluster.toMs) / 2;
             const frac = markFrac(mid, fromMs, plotSpanMs);
@@ -579,14 +587,16 @@ export function HistogramMarkLane({
             const kinds = clusterKinds(cluster);
             const mixed = kinds.length > 1;
             const head = newestFirst(cluster.members)[0]!;
-            const named = formatChangeMarkLabel(head);
-            const label =
-              cluster.members.length === 1 &&
-              (laneW > 0
-                ? railLabelFits(named, frac, clusters.map((c) => markFrac((c.fromMs + c.toMs) / 2, fromMs, plotSpanMs)).filter((f) => f !== frac), laneW)
-                : clusterHasLaneLabel(cluster, clusters, spanMs))
-                ? named
-                : null;
+            // 50i: a lone chip names its mark, short, in the room it has; crowded chips still fold into a count.
+            const room =
+              cluster.members.length !== 1
+                ? 0
+                : laneW > 0
+                  ? (nameRooms[i] ?? 0)
+                  : clusterHasLaneLabel(cluster, clusters, spanMs)
+                    ? 260
+                    : 0;
+            const label = room > 0 ? markLaneName(head) : null;
             const selected =
               selectedCluster === key ||
               (selectedId != null &&
@@ -630,7 +640,12 @@ export function HistogramMarkLane({
                 {cluster.members.length === 1 ? (
                   <>
                     <MarkGlyph kind={head.kind} />
-                    {label ? <span className="max-w-[260px] truncate">{label}</span> : null}
+                    {label ? (
+                      <span className="truncate" style={{ maxWidth: room }}>
+                        {label}
+                      </span>
+                    ) : null}
+                    {label ? <span className="-mx-0.5 text-muted-foreground">·</span> : null}
                     <b className="font-mono text-xs font-medium text-muted-foreground">{head.ts.slice(11, 16)}</b>
                   </>
                 ) : mixed ? (
@@ -841,17 +856,40 @@ export function HistogramMarkLane({
 /** A chip without its name is about this wide: glyph, HH:MM, padding. */
 const railChipBareW = 72;
 
+/** Narrowest a chip's name is shown, in px: a few letters, else the chip is its glyph and time. */
+const railNameMinW = 28;
+/** The " · " between a chip's name and its time. */
+const railNameSepW = 12;
+/** A count chip (a fold of marks) is about this wide. */
+const railFoldW = 44;
+/** Widest a chip's name is drawn. */
+const railNameMaxW = 260;
+
 /**
- * Whether a named chip at `frac` fits between its neighbours on a rail `laneW` px wide (#260):
- * its half-width with the name must clear each neighbour's bare half-width, and the rail's ends.
+ * How wide each chip's name may be on a rail `laneW` px wide (50i; #260 showed a name whole or not
+ * at all): a lone mark's chip (`name` set) asks for its whole name; a fold (`name` null) for its
+ * count. Two neighbours that both ask for more than half the gap between them get half each; one
+ * that asks for less leaves the rest to the other. A chip stays inside the rail. A name is cut to
+ * its room with an ellipsis; 0 when not even a few letters fit, and the chip is its glyph and time.
  */
-export function railLabelFits(label: string, frac: number, others: number[], laneW: number): boolean {
-  const half = (Math.min(260, label.length * 6.8) + railChipBareW) / 2;
-  const x = frac * laneW;
-  if (x - half < 0 || x + half > laneW) {
-    return false;
-  }
-  return others.every((f) => Math.abs(f * laneW - x) >= half + railChipBareW / 2 + 4);
+export function railNameRooms(chips: ReadonlyArray<{ frac: number; name: string | null }>, laneW: number): number[] {
+  const bare = railChipBareW + railNameSepW;
+  const wantHalf = chips.map((c) => (c.name ? (bare + Math.min(railNameMaxW, Math.ceil(c.name.length * 6.8))) / 2 : railFoldW / 2));
+  return chips.map((c, i) => {
+    if (!c.name) {
+      return 0;
+    }
+    const x = c.frac * laneW;
+    let half = Math.min(wantHalf[i]!, x, laneW - x);
+    chips.forEach((o, j) => {
+      if (j !== i) {
+        const gap = Math.abs(o.frac * laneW - x) - 4;
+        half = Math.min(half, gap - Math.min(wantHalf[j]!, gap / 2));
+      }
+    });
+    const room = Math.min(railNameMaxW, Math.floor(2 * half - bare));
+    return room >= railNameMinW ? room : 0;
+  });
 }
 
 function InspectRow({ k, v }: { k: string; v: string }) {

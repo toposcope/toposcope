@@ -983,6 +983,14 @@ Body:
 | `silenced_until` | number \| null |  | Silence it until this epoch ms; null ends a silence. |
 | `enabled` | boolean \| number \| null |  | false or 0 pauses it, true or 1 resumes it. |
 
+### POST /api/monitors/{name}/ack
+
+Acknowledge an open monitor: who and when, for this open stretch only. No reminders go out while it is acknowledged; the resolved call still does, and the next open starts unacknowledged. 409 when it is not open.
+
+Role: **Operator** · `monitor_ack`
+
+Path: `name`.
+
 ### DELETE /api/monitors/{name}
 
 Delete a monitor by name, and its record.
