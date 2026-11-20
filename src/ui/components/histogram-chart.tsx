@@ -1,4 +1,6 @@
-import { ChartArea, ChartColumn, ChartColumnStacked, ChartLine } from "lucide-react";
+import { ChartArea, ChartColumn, ChartColumnStacked, ChartLine, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HeldHatch } from "@/components/held-hatch";
 import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -91,6 +93,8 @@ type Props = {
   lineInfo?: Record<string, { metric: string; labels: string; description: string | null }>;
   className?: string;
   compactToolbar?: boolean;
+  /** Sheet 47b: a short window. The controls open from a Chart button and a facet split's legend is left to the facet line. */
+  dense?: boolean;
   lockChrome?: boolean;
   retentionMs?: number;
   scanReason?: string | null;
@@ -383,6 +387,7 @@ export function HistogramChart({
   lineInfo,
   className,
   compactToolbar = false,
+  dense = false,
   lockChrome = false,
   retentionMs = histogramRetentionMs,
   scanReason = null,
@@ -1172,9 +1177,7 @@ export function HistogramChart({
   const drillWidthPct =
     binCount > 0 ? (drillBins / binCount) * 100 : 0;
 
-  return (
-    <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card", className)}>
-      {head}
+  const controlsRow = (
       <div
         className={cn(
           "flex items-center gap-x-3 gap-y-2 border-b border-white/[0.08] bg-background/45 px-3 py-2",
@@ -1338,6 +1341,33 @@ export function HistogramChart({
           />
         </div>
       </div>
+  );
+
+  return (
+    <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card", className)}>
+      {dense ? (
+        <div className="flex min-w-0 items-start">
+          <div className="min-w-0 flex-1">{head}</div>
+          {/* Sheet 47b: on a short window the chart's controls open from one button in its head. */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="mt-2 mr-3 shrink-0 gap-1" disabled={lockChrome}>
+                Chart
+                <ChevronDown className="size-3.5 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto max-w-[min(960px,92vw)] p-0">
+              {controlsRow}
+            </PopoverContent>
+          </Popover>
+        </div>
+      ) : (
+        <>
+          {head}
+          {controlsRow}
+        </>
+      )}
+
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
           className={cn(
@@ -1864,7 +1894,7 @@ export function HistogramChart({
         <CompareFold {...compareFold} split={split} seriesKeys={keys} plotReady={!loading} onPaintLines={onCompareLines} plotLeft={plotLeft} />
       ) : null}
       {/* Split lines named at their ends need no legend; past three they get one (13g). */}
-      {splitDrawn && (endLabels || !splitOn) ? null : (
+      {(splitDrawn && (endLabels || !splitOn)) || (dense && !metric && (split === "level" || split === "service" || split === "host")) ? null : (
       <div
         className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2 border-t border-white/[0.08] pr-2.5 pb-1.5 pt-1.5"
         style={{ paddingLeft: plotLeft }}

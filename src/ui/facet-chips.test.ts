@@ -28,13 +28,14 @@ const render = (over: Record<string, unknown> = {}) =>
   );
 
 describe("the slice as one row of chips (#260, 26d)", () => {
-  test("level, service, host, then the loudest three e1 and how many more", () => {
+  test("one labelled line: level, service, host, then the loudest e1 and how many more (47b)", () => {
     const html = render();
     expect(html.indexOf("error")).toBeLessThan(html.indexOf("billing"));
+    expect(html).toContain("flex-nowrap");
+    expect(html).toMatch(/text-faint">service</);
     expect(html).toContain("e1:a91f2c");
-    expect(html).toContain("e1:7d20aa");
-    expect(html).not.toContain("e1:3b9e10");
-    expect(html).toContain("+ 1 e1");
+    expect(html).not.toContain("e1:7d20aa");
+    expect(html).toContain("+3");
     expect(html).toContain("facet");
   });
   test("a selected value is pressed", () => {

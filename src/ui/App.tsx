@@ -619,6 +619,7 @@ export function App() {
   const [alertDraft, setAlertDraft] = useState<AlertDraft | null>(null);
   const liveWindowMs = useRef(60 * 60 * 1000);
   const searchRef = useRef<HTMLInputElement>(null);
+  const sharePanelsRef = useRef<(() => void) | null>(null);
   const clockRef = useRef<HTMLButtonElement>(null);
   const skipUrl = useRef(true);
   const histogramRef = useRef(histogram);
@@ -4569,7 +4570,7 @@ export function App() {
                 onCancel={() => leaveEdit(edit.boardId)}
                 onUpdate={() => void updateEditedPanel()}
               />
-            ) : (
+            ) : boardOn ? (
             <HuntCrumb
               name={activeSaved?.name ?? null}
               board={boardOn}
@@ -4589,7 +4590,7 @@ export function App() {
               onWatch={isViewer ? null : () => setWatchThisOpen(true)}
               onShare={() => void copyLink()}
             />
-            )}
+            ) : null}
             <form
               className="relative flex shrink-0 flex-wrap items-center gap-1.5 px-3 py-2"
               onSubmit={onSubmit}
@@ -4622,6 +4623,30 @@ export function App() {
                   {lastMs} ms
                 </span>
               ) : null}
+              {!edit && !boardOn ? (
+                // Sheet 47b: the hunt's verbs end the query row instead of a crumb row of their own.
+                <HuntCrumb
+                  inline
+                  name={activeSaved?.name ?? null}
+                  board={false}
+                  dirty={dirty}
+                  pinned={Boolean(activeSaved?.pinned)}
+                  mark={compare?.mark ?? null}
+                  saveDisabled={qErrOn}
+                  onHome={() => setView("home")}
+                  onCloseMark={() => setCompare(null)}
+                  onSave={onSaveClick}
+                  onSaveAs={() => {
+                    setSaveUpdate(false);
+                    setSaveAsOpen(true);
+                  }}
+                  onPin={activeSaved ? () => void togglePinned(activeSaved) : null}
+                  onDelete={activeSaved ? () => void onDelete(activeSaved.id) : null}
+                  onWatch={isViewer ? null : () => setWatchThisOpen(true)}
+                  onShare={() => void copyLink()}
+                  onSharePanels={() => sharePanelsRef.current?.()}
+                />
+              ) : null}
             </form>
             <>
             <div
@@ -4645,6 +4670,7 @@ export function App() {
                       : { boards: boardChoices, onPick: (widget, boardId) => void addToBoard(widget, boardId) }
                   }
                   head={huntHead}
+                  sharePanelsRef={edit || boardOn ? undefined : sharePanelsRef}
                   query={q}
                   widgets={widgets}
                   logs={logsOn}

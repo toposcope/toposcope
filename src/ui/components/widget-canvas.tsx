@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { ExtraPanel } from "@/components/extra-panel";
 import { AddToBoardButton, type BoardChoice } from "@/components/add-to-board";
@@ -119,6 +119,11 @@ type Props = {
   compareFold?: CompareFoldHunt | null;
   /** Add to board (#410, 39e): on each panel's ⋯ menu and in the pinned plot's head. */
   addToBoard?: { boards: BoardChoice[]; onPick: (widget: WidgetDef, boardId: string | null) => void } | null;
+  /**
+   * Sheet 47b: the hunt's own Share menu opens Share panels…, so the canvas sets this to its opener
+   * and draws no Share panels… button of its own; Add, Logs and marks then sit in the pinned plot's head.
+   */
+  sharePanelsRef?: MutableRefObject<(() => void) | null>;
 };
 
 const capTitle = "Six panels is the cap — remove one to add another";
@@ -159,12 +164,20 @@ export function WidgetCanvas({
   onFocusMark,
   compareFold = null,
   addToBoard = null,
+  sharePanelsRef,
 }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const widgetsRef = useRef(widgets);
   const [compareLines, setCompareLines] = useState(1);
   // Share… (#236): the panels ticked when the dialog opens; null while it is shut.
   const [sharing, setSharing] = useState<string[] | null>(null);
+  const toolsInHead = Boolean(sharePanelsRef);
+  const openSharePanels = () =>
+    setSharing(widgets.filter((w) => w.kind !== "timeseries" || w.metric || w.id !== "a").map((w) => w.id));
+  if (sharePanelsRef) {
+    sharePanelsRef.current = locked ? null : openSharePanels;
+  }
+  const rowPx = useHuntRowPx(toolsInHead);
   const [armed, setArmed] = useState<string | null>(null);
   /** The panel being edited (#169, 17c–17d): its title and note are fields, its lines open under it. */
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -208,7 +221,7 @@ export function WidgetCanvas({
   const grid = useGridGestures({
     gridRef,
     cells: settled,
-    rowPx: widgetRowPx,
+    rowPx,
     gapPx: widgetGapPx,
     limits: { min: widgetMinSize, maxH: maxWidgetH, anchored },
     // Rows under the pinned plot sit lower by the Compare fold's rows.
@@ -318,7 +331,7 @@ export function WidgetCanvas({
       const gr = grid.getBoundingClientRect();
       const sr = sc.getBoundingClientRect();
       const gridTop = gr.top - sr.top + sc.scrollTop;
-      const bottom = gridTop + bottomRow * (widgetRowPx + widgetGapPx) - widgetGapPx;
+      const bottom = gridTop + bottomRow * (rowPx + widgetGapPx) - widgetGapPx;
       if (bottom > sc.scrollTop + sc.clientHeight) {
         sc.scrollTop = bottom - sc.clientHeight + 12;
       }
@@ -601,15 +614,9 @@ export function WidgetCanvas({
     }
   }
 
-  return (
-    <HoverTimeProvider>
-    <div className="flex min-h-0 flex-col">
-      <div
-        className={cn(
-          "mb-2 flex items-center gap-2",
-          locked && "pointer-events-none opacity-50",
-        )}
-      >
+  const tools = (
+    <>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -642,15 +649,17 @@ export function WidgetCanvas({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        {/* 24g: share any of these panels at once. */}
+        {/* 24g: share any of these panels at once (the hunt's Share menu holds it on sheet 47b). */}
+        {toolsInHead ? null : (
         <Button
           type="button"
           variant="outline"
           className="border-plate/50 bg-plate/10 px-2.5 text-xs"
-          onClick={() => setSharing(widgets.filter((w) => w.kind !== "timeseries" || w.metric || w.id !== "a").map((w) => w.id))}
+          onClick={openSharePanels}
         >
           Share panels…
         </Button>
+        )}
         <div className="flex h-[26px] items-center rounded-md border border-input p-0.5">
           <button
             type="button"
@@ -690,14 +699,37 @@ export function WidgetCanvas({
         {marks ? (
           <HistogramMarksChip overlay={marks} placement="bar" />
         ) : null}
+    </>
+  );
+  const pinnedHead = toolsInHead ? (
+    <div className="flex min-w-0 items-start">
+      <div className="min-w-0 flex-1">{head}</div>
+      <div className={cn("flex shrink-0 items-center gap-2 pt-2 pr-3", locked && "pointer-events-none opacity-50")}>{tools}</div>
+    </div>
+  ) : (
+    head
+  );
+
+  return (
+    <HoverTimeProvider>
+    <div className="flex min-h-0 flex-col">
+      {toolsInHead ? null : (
+      <div
+        className={cn(
+          "mb-2 flex items-center gap-2",
+          locked && "pointer-events-none opacity-50",
+        )}
+      >
+      {tools}
       </div>
+      )}
       <div
         ref={gridRef}
         data-canvas="y"
         className={cn("relative grid", locked && "pointer-events-none")}
         style={{
           gridTemplateColumns: `repeat(${widgetGridCols}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${rows}, ${widgetRowPx}px)`,
+          gridTemplateRows: `repeat(${rows}, ${rowPx}px)`,
           gap: widgetGapPx,
         }}
       >
@@ -834,10 +866,11 @@ export function WidgetCanvas({
                   numericKeys={numericKeys}
                   metricNames={metricNames}
                   updated={updated}
-                  head={head}
+                  head={pinnedHead}
                   editor={editorFor(widget)}
                   lineInfo={legendInfo(linesOf(widget))}
                   compactToolbar={widget.w < 8}
+                  dense={rowPx !== widgetRowPx}
                   boardAction={
                     addToBoard && !locked ? (
                       <AddToBoardButton boards={addToBoard.boards} onPick={(boardId) => addToBoard.onPick(widget, boardId)} />
@@ -976,3 +1009,26 @@ function extraSeriesFile(
   }
   return histogramExport(data.histogram, data.agg);
 }
+
+/**
+ * Sheet 47b: on a short window (a laptop's 623px inside the browser) a hunt's panels draw on
+ * 40px rows instead of 64, so the plot keeps its shape and the rows under it get the room.
+ * Boards keep their 64px rows; the stored panel sizes do not change.
+ */
+function useHuntRowPx(on: boolean): number {
+  const short = () => typeof window !== "undefined" && window.innerHeight < shortViewportPx;
+  const [isShort, setShort] = useState(short);
+  useEffect(() => {
+    if (!on) {
+      return;
+    }
+    const onResize = () => setShort(short());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [on]);
+  return on && isShort ? shortRowPx : widgetRowPx;
+}
+
+const shortViewportPx = 820;
+const shortRowPx = 40;
+

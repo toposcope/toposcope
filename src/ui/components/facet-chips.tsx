@@ -25,7 +25,9 @@ import { Skeleton } from "@/components/ui/states";
  */
 const coreFields: FacetField[] = ["level", "service", "host"];
 const chipsPerField = 6;
-const e1Chips = 3;
+/** Sheet 47b: one line of chips; level shows all, other fields their top three, e1 its top one. */
+const lineChips = 3;
+const lineE1Chips = 1;
 
 type AttrKey = { k: string; n: number };
 
@@ -58,6 +60,7 @@ export function FacetChips(props: Props) {
   const pinned = new Set(props.attrPins);
   const addable = props.attrKeys.filter((item) => !pinned.has(item.k) && (!keyFilter.trim() || item.k.includes(keyFilter.trim().toLowerCase())));
 
+  const wrapped = Object.values(more).some(Boolean);
   const group = (field: string, values: FacetValue[], cap: number, remove?: () => void) => {
     const selected = activeList(props.activeFacets[field]);
     const shown = more[field] ? values : values.slice(0, cap);
@@ -66,7 +69,8 @@ export function FacetChips(props: Props) {
       return null;
     }
     return (
-      <div key={field} className="flex items-center gap-1.5" data-facet-field={field}>
+      <div key={field} className="flex shrink-0 items-center gap-1.5" data-facet-field={field}>
+        <span className="pr-0.5 text-xs text-faint">{field === "toposcope" ? "from" : field}</span>
         {shown.map((item) => {
           const on = selected.some((v) => v.toLowerCase() === item.v.toLowerCase());
           const border = field === "level" ? levelHex[item.v as LogLevel] : undefined;
@@ -90,7 +94,7 @@ export function FacetChips(props: Props) {
         })}
         {rest > 0 ? (
           <Chip size="md" className="bg-transparent" onClick={() => setMore((p) => ({ ...p, [field]: true }))}>
-            + {rest} {field === "e1" ? "e1" : field}
+            +{rest}
           </Chip>
         ) : more[field] && values.length > cap ? (
           <Chip size="md" className="border-transparent bg-transparent px-1.5" onClick={() => setMore((p) => ({ ...p, [field]: false }))}>
@@ -107,15 +111,23 @@ export function FacetChips(props: Props) {
   };
 
   const groups = [
-    group("toposcope", props.facets.toposcope ?? [], chipsPerField),
-    ...coreFields.map((f) => group(f, props.facets[f] ?? [], chipsPerField)),
-    group("e1", props.facets.e1 ?? [], e1Chips),
-    ...props.attrPins.map((f) => group(f, props.attrFacetValues[f] ?? [], chipsPerField, () => props.onRemoveAttrFacet(f))),
+    group("toposcope", props.facets.toposcope ?? [], lineChips),
+    ...coreFields.map((f) => group(f, props.facets[f] ?? [], f === "level" ? chipsPerField : lineChips)),
+    group("e1", props.facets.e1 ?? [], lineE1Chips),
+    ...props.attrPins.map((f) => group(f, props.attrFacetValues[f] ?? [], lineChips, () => props.onRemoveAttrFacet(f))),
   ].filter(Boolean);
   const lead = props.age ? [props.age, ...groups] : groups;
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-2 px-3 pt-2.5", props.locked && "pointer-events-none opacity-50")} data-kbd="facet">
+    <div
+      className={cn(
+        "flex shrink-0 items-center gap-2 px-3 pt-2.5",
+        // One line that scrolls sideways until someone asks a field for more; then it wraps.
+        wrapped ? "flex-wrap" : "flex-nowrap overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        props.locked && "pointer-events-none opacity-50",
+      )}
+      data-kbd="facet"
+    >
       {lead.map((g, i) => (
         <span key={i} className="contents">
           {i > 0 ? <span className="mx-1 h-[18px] w-px bg-white/10" aria-hidden="true" /> : null}
