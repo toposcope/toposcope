@@ -172,19 +172,49 @@ export function beforeAfterWidths(before: number | null, after: number | null): 
   return { before: (b / top) * 100, after: (a / top) * 100 };
 }
 
+/** The folded Coverage line (51b): the one gap worth fixing first, its fix, and how many more. */
+export type CoverageLead = { text: string; fix: string; href: string | null; more: number };
+
 /**
- * The folded Coverage line (50b): "10 of 10 services have gaps", and names that do not match when
- * some do; null, and no line, when the coverage card would show nothing.
+ * Coverage leads with one gap (51b): the first Home would list ("api: no version: …"), its fix,
+ * and the services with gaps after it; null, and no line, when the coverage card would show nothing.
  */
-export function coverageLineText(coverage: Coverage | null, selectedMarkId: string | null): string | null {
+export function coverageLead(coverage: Coverage | null, selectedMarkId: string | null): CoverageLead | null {
   if (!coverage) {
     return null;
   }
-  const names = coverage.mismatches.length;
-  if (coverageGaps(coverage, selectedMarkId).length === 0 && names === 0) {
-    return null;
-  }
+  const gaps = coverageGaps(coverage, selectedMarkId);
   const withGaps = coverage.services.filter((s) => !s.complete).length;
-  const head = `${withGaps} of ${coverage.services.length} services ${withGaps === 1 ? "has" : "have"} gaps`;
-  return names > 0 ? `${head} · ${names} ${names === 1 ? "name does" : "names do"} not match` : head;
+  const first = gaps[0];
+  if (!first) {
+    const names = coverage.mismatches.length;
+    return names > 0 ? { text: `${names} ${names === 1 ? "name does" : "names do"} not match`, fix: "Names that do not match ›", href: null, more: 0 } : null;
+  }
+  return { text: `${first.service}: ${first.what}`, fix: first.fix, href: first.href, more: Math.max(0, withGaps - (first.mark ? 0 : 1)) };
+}
+
+/** The Quiet hunts that read only gone hosts (51b), in Quiet's order. */
+export function goneInQuiet(quiet: readonly SavedSearch[], goneIds: readonly string[]): SavedSearch[] {
+  const ids = new Set(goneIds);
+  return quiet.filter((s) => ids.has(s.id));
+}
+
+/** "18 read hosts that sent nothing in 7 days" (51b). */
+export function goneText(n: number): string {
+  return `${n} ${n === 1 ? "reads a host" : "read hosts"} that sent nothing in 7 days`;
+}
+
+/** When a gone host last sent anything (51c): "since 11-03", or "nothing kept" when no line is. */
+export function goneSince(lastSeen: string | null): string {
+  return lastSeen ? `since ${lastSeen.slice(5, 10)}` : "nothing kept";
+}
+
+/**
+ * A busy Moved card's buckets as two rows (51b): before the mark and after it, each scaled to the
+ * larger bucket of both, as percentages, so the card reads like the before and after bars.
+ */
+export function sparkRows(spark: readonly number[], splitAt: number): { before: number[]; after: number[] } {
+  const peak = Math.max(1, ...spark);
+  const pct = (v: number) => Math.max(4, Math.round((v / peak) * 100));
+  return { before: spark.slice(0, splitAt).map(pct), after: spark.slice(splitAt).map(pct) };
 }

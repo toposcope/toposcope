@@ -4138,7 +4138,7 @@ export function App() {
             onSignOut={() => void signOut()}
           />
         ) : null}
-        <HeaderTabs view={view} watchOpen={watching.open > 0} onView={setView} />
+        <HeaderTabs view={view} onBoard={boardOn && !isSurr} watchOpen={watching.open > 0} onView={setView} />
         <div className="ml-auto flex items-center gap-2">
           {view === "search" && !isSurr ? (
             <div className="flex items-center gap-1.5">
@@ -4302,6 +4302,19 @@ export function App() {
           onArchiveSaved={async (item, archived) => {
             if (await saveBoard(item, { archived })) {
               toast.success(archived ? `Archived ${item.name}` : `Unarchived ${item.name}`);
+            }
+          }}
+          onArchiveMany={async (items) => {
+            let done = 0;
+            // One refusal stops the rest, so a failure shows once.
+            for (const item of items) {
+              if (!(await saveBoard(item, { archived: true }))) {
+                break;
+              }
+              done++;
+            }
+            if (done > 0) {
+              toast.success(`Archived ${done} saved ${done === 1 ? "hunt" : "hunts"}`);
             }
           }}
           onDeleteSaved={(item) => onDelete(item.id)}

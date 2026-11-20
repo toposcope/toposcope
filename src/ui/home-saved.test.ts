@@ -8,7 +8,11 @@ import {
   boardCounts,
   boardPreview,
   cardMoved,
-  coverageLineText,
+  coverageLead,
+  goneInQuiet,
+  goneSince,
+  goneText,
+  sparkRows,
   drawsBeforeAfter,
   homeBoards,
   homeHunts,
@@ -191,9 +195,26 @@ describe("the Coverage line (50b)", () => {
   const coverage = (services: CoverageService[]): Coverage => ({ from: "", to: "", threshold: 0.95, services, complete: services.filter((s) => s.complete).length, mismatches: [] });
 
   test("services with gaps of all; no gaps, no line", () => {
-    expect(coverageLineText(coverage(Array.from({ length: 10 }, (_, i) => service(`s${i}`, false))), null)).toBe("10 of 10 services have gaps");
-    expect(coverageLineText(coverage([service("a", false), service("b", true)]), null)).toBe("1 of 2 services has gaps");
-    expect(coverageLineText(coverage([service("a", true)]), null)).toBeNull();
-    expect(coverageLineText(null, null)).toBeNull();
+    const lead = coverageLead(coverage(Array.from({ length: 10 }, (_, i) => service(`s${i}`, false))), null);
+    expect(lead?.text.startsWith("s0: ")).toBe(true);
+    expect(lead?.more).toBe(9);
+    expect(coverageLead(coverage([service("a", false), service("b", true)]), null)?.more).toBe(0);
+    expect(coverageLead(coverage([service("a", true)]), null)).toBeNull();
+    expect(coverageLead(null, null)).toBeNull();
+  });
+});
+
+describe("Quiet's gone hosts and Moved rows (sheet 51b)", () => {
+  test("gone hunts keep Quiet's order", () => {
+    expect(goneInQuiet([hunt("a"), hunt("b"), hunt("c")], ["c", "a", "z"]).map((s) => s.id)).toEqual(["a", "c"]);
+    expect(goneText(18)).toBe("18 read hosts that sent nothing in 7 days");
+    expect(goneText(1)).toBe("1 reads a host that sent nothing in 7 days");
+    expect(goneSince("2026-11-03T10:00:00.000Z")).toBe("since 11-03");
+    expect(goneSince(null)).toBe("nothing kept");
+  });
+
+  test("spark rows split at the mark against one peak", () => {
+    expect(sparkRows([5, 10, 20, 0], 2)).toEqual({ before: [25, 50], after: [100, 4] });
+    expect(sparkRows([], 0)).toEqual({ before: [], after: [] });
   });
 });

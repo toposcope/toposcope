@@ -7,6 +7,7 @@ import { seriesLabel } from "../query/agg";
 import { searchFingerprintCut } from "../query/fingerprint-cut";
 import { changeMarksBetween, getChangeMarkById } from "../query/marks";
 import { allSaved, visibleSaved } from "./saved-searches";
+import { readGoneHunts, type GoneHunts } from "./gone-hosts";
 import { actorOf } from "../actor-context";
 import type { Actor } from "./people";
 
@@ -86,6 +87,8 @@ export type HomeSince = {
   marks: ChangeMark[];
   cards: HomeCard[];
   fingerprints: { first_seen: HomeFingerprint[]; stopped: HomeFingerprint[]; more: number } | null;
+  /** Saved hunts whose every named host has sent nothing for 7 days, and those hosts (sheet 51b). */
+  gone: GoneHunts;
   ingested: boolean;
 };
 
@@ -146,11 +149,12 @@ export async function computeHomeSince(input: { markId: string | null; hour: boo
     return hit.value;
   }
   const win = mark ? windowsAround(mark, marks, nowMs) : hourWindows(nowMs);
-  const [cards, cut, ingested] = await Promise.all([
+  const [cards, cut, gone, ingested] = await Promise.all([
     Promise.all(saved.map((s) => cardFor(s, win.before, win.after))),
     mark
       ? searchFingerprintCut({ mark, from: win.before.from, to: win.after.to, now: nowMs }).catch(() => null)
       : Promise.resolve(null),
+    readGoneHunts(saved, nowMs),
     anyIngested(),
   ]);
   const row = (r: { hex: string; message: string; service: string; after: number; before: number }, side: "after" | "before"): HomeFingerprint => ({
@@ -176,6 +180,7 @@ export async function computeHomeSince(input: { markId: string | null; hour: boo
           more: (firstSeen?.more ?? 0) + (stopped?.more ?? 0),
         }
       : null,
+    gone,
     ingested,
   };
   cache.set(key, { at: nowMs, value });

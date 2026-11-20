@@ -552,71 +552,92 @@ export function updatePanelInSection(board: BoardSlots, id: string, input: Panel
   return { ...board, panels: board.panels.map((p) => (p.id === id ? moved : byId.get(p.id)!)) };
 }
 
+/** A cell on the board as drawn, with the panel's view: what row fitting reads. */
+export type FitCell = { id: string; view: BoardPanelView; x: number; y: number; w: number; h: number };
+
 /**
- * Fit panels to the width (sheet 50, 50e): each row's panels grow, in their order and in
- * proportion to their widths, until they share the 12 columns. A row is the panels that start on
- * one grid row; columns a note or a taller panel from above holds there stay its own. Headings
- * and notes keep their cells, and so does a row that already fills its columns. Panels are
- * first taken as the board draws them (at least their least width); the gravity pass runs after,
- * so a panel that grew onto one below pushes it down.
+ * One row fit to the width (50e, 51e): the panels that start on grid row `y` (not headings or
+ * notes) grow, in their order and in proportion to their widths, until they share the columns
+ * free beside them. Columns a note or a taller panel from another row holds there stay its own.
+ * The cells come back as they were when the row already fills its columns or cannot be fit.
+ */
+export function fitRow<T extends FitCell>(cells: T[], y: number): T[] {
+  const row = cells.filter((cell) => cell.y === y && !isTextPanel(cell.view)).sort((a, b) => a.x - b.x);
+  if (row.length === 0) {
+    return cells;
+  }
+  const held = new Array<boolean>(gridCols).fill(false);
+  for (const other of cells) {
+    if (!row.includes(other) && other.y <= y && y < other.y + other.h) {
+      for (let x = Math.max(0, other.x); x < Math.min(gridCols, other.x + other.w); x++) {
+        held[x] = true;
+      }
+    }
+  }
+  const first = row[0]!;
+  const last = row[row.length - 1]!;
+  if (held.slice(first.x, last.x + last.w).some(Boolean)) {
+    return cells;
+  }
+  let start = first.x;
+  while (start > 0 && !held[start - 1]) {
+    start--;
+  }
+  let end = last.x + last.w;
+  while (end < gridCols && !held[end]) {
+    end++;
+  }
+  const widths = shareColumns(
+    row.map((cell) => cell.w),
+    row.map((cell) => panelMinW(cell.view)),
+    end - start,
+  );
+  if (!widths) {
+    return cells;
+  }
+  const placed = new Map<string, { x: number; w: number }>();
+  let x = start;
+  row.forEach((cell, i) => {
+    placed.set(cell.id, { x, w: widths[i]! });
+    x += widths[i]!;
+  });
+  return cells.map((cell) => {
+    const at = placed.get(cell.id);
+    return at ? { ...cell, x: at.x, w: at.w } : cell;
+  });
+}
+
+/**
+ * Fit panels to the width (sheet 50, 50e): every row fit as `fitRow` fits one. A row is the
+ * panels that start on one grid row. Headings and notes keep their cells, and so does a row that
+ * already fills its columns. Panels are first taken as the board draws them (at least their least
+ * width); the gravity pass runs after, so a panel that grew onto one below pushes it down.
  */
 export function fitPanelsToWidth(board: BoardSlots): BoardSlots {
-  type FitCell = { id: string; view: BoardPanelView; x: number; y: number; w: number; h: number };
-  const drawn: FitCell[] = gravity(
+  let cells: FitCell[] = gravity(
     widenCells(
       board.panels.map((p) => ({ id: p.id, view: p.view, x: p.widget.x, y: p.widget.y, w: p.widget.w, h: p.widget.h })),
       (cell) => panelMinW(cell.view),
     ),
   );
-  const cells = drawn.map((cell) => ({ ...cell }));
-  const rows = new Map<number, FitCell[]>();
+  const ys: number[] = [];
   for (const cell of cells) {
-    if (!isTextPanel(cell.view)) {
-      rows.set(cell.y, [...(rows.get(cell.y) ?? []), cell]);
+    if (!isTextPanel(cell.view) && !ys.includes(cell.y)) {
+      ys.push(cell.y);
     }
   }
-  for (const [y, row] of rows) {
-    row.sort((a, b) => a.x - b.x);
-    const held = new Array<boolean>(gridCols).fill(false);
-    for (const other of cells) {
-      if (!row.includes(other) && other.y <= y && y < other.y + other.h) {
-        for (let x = Math.max(0, other.x); x < Math.min(gridCols, other.x + other.w); x++) {
-          held[x] = true;
-        }
-      }
-    }
-    const first = row[0]!;
-    const last = row[row.length - 1]!;
-    if (held.slice(first.x, last.x + last.w).some(Boolean)) {
-      continue;
-    }
-    let start = first.x;
-    while (start > 0 && !held[start - 1]) {
-      start--;
-    }
-    let end = last.x + last.w;
-    while (end < gridCols && !held[end]) {
-      end++;
-    }
-    const widths = shareColumns(
-      row.map((cell) => cell.w),
-      row.map((cell) => panelMinW(cell.view)),
-      end - start,
-    );
-    if (!widths) {
-      continue;
-    }
-    let x = start;
-    row.forEach((cell, i) => {
-      cell.x = x;
-      cell.w = widths[i]!;
-      x += cell.w;
-    });
+  for (const y of ys) {
+    cells = fitRow(cells, y);
   }
-  const settled = new Map(gravity(cells).map((cell) => [cell.id, cell]));
+  return withCells(board, gravity(cells));
+}
+
+/** The board with its panels moved to `cells` (by id); the same board when nothing moved. */
+export function withCells(board: BoardSlots, cells: Array<{ id: string; x: number; y: number; w: number; h: number }>): BoardSlots {
+  const at = new Map(cells.map((cell) => [cell.id, cell]));
   const changed = board.panels.some((p) => {
-    const cell = settled.get(p.id)!;
-    return cell.x !== p.widget.x || cell.y !== p.widget.y || cell.w !== p.widget.w || cell.h !== p.widget.h;
+    const cell = at.get(p.id);
+    return cell && (cell.x !== p.widget.x || cell.y !== p.widget.y || cell.w !== p.widget.w || cell.h !== p.widget.h);
   });
   if (!changed) {
     return board;
@@ -624,10 +645,52 @@ export function fitPanelsToWidth(board: BoardSlots): BoardSlots {
   return {
     ...board,
     panels: board.panels.map((p) => {
-      const cell = settled.get(p.id)!;
-      return { ...p, widget: { ...p.widget, x: cell.x, y: cell.y, w: cell.w, h: cell.h } };
+      const cell = at.get(p.id);
+      return cell ? { ...p, widget: { ...p.widget, x: cell.x, y: cell.y, w: cell.w, h: cell.h } } : p;
     }),
   };
+}
+
+/** The room at the end of a row of panels (51e): its cell and the row's panels, left to right. */
+export type RowGap = { y: number; x: number; w: number; h: number; ids: string[] };
+
+/**
+ * Rows of panels that end short of the 12 columns (51e). A row is the panels (not headings or
+ * notes) that start on one grid row; its room runs from the end of its last panel to the right
+ * edge, as tall as its tallest panel. A row gets a gap when that room is at least 2 columns wide
+ * and no other cell holds any of it.
+ */
+export function boardRowGaps(cells: FitCell[]): RowGap[] {
+  const rows = new Map<number, FitCell[]>();
+  for (const cell of cells) {
+    if (!isTextPanel(cell.view)) {
+      rows.set(cell.y, [...(rows.get(cell.y) ?? []), cell]);
+    }
+  }
+  const gaps: RowGap[] = [];
+  for (const [y, row] of rows) {
+    row.sort((a, b) => a.x - b.x);
+    const x = Math.max(...row.map((cell) => cell.x + cell.w));
+    const h = Math.max(...row.map((cell) => cell.h));
+    const room = { id: "", x, y, w: gridCols - x, h };
+    if (room.w < 2 || cells.some((cell) => cellsOverlap(room, cell))) {
+      continue;
+    }
+    gaps.push({ y, x, w: room.w, h, ids: row.map((cell) => cell.id) });
+  }
+  return gaps.sort((a, b) => a.y - b.y);
+}
+
+/** A panel made in the panel sheet into a cell picked on the board (51e): ＋ Panel here. Null at the cap. */
+export function addPanelAt(board: BoardSlots, input: PanelFields, cell: Cell): BoardSlots | null {
+  const id = nextPanelId(board.panels);
+  if (!id || board.panels.length >= BOARD_PANEL_MAX) {
+    return null;
+  }
+  const widget = { ...clampWidget({ ...input.widget, id: "b" }), id, ...cell };
+  const name = normalizeName(input.name) ?? defaultPanelName(input.view, widget);
+  const fixed = input.fixed && isRelativeRange(input.fixed) ? input.fixed : null;
+  return { ...board, panels: [...board.panels, { id, name, q: input.q.trim(), view: input.view, widget, fixed }] };
 }
 
 /**

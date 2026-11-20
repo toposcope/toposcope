@@ -685,6 +685,10 @@ It is one column (sheet 49b, `src/ui/home-saved.ts`, `src/ui/home-since.ts`):
 
 Since sheet 50b, a Moved card draws two bars labelled `before` and `after` in place of its sparkline when fewer than four buckets read anything. Under Boards come three lines that each open in place: **Quiet** (folded by default, naming on its right the three largest hunts not at zero, then `+N`; its open state kept under `toposcope.homeQuietOpen.50`), **Archived** (only when something is archived; rows without values, each with Unarchive) and **Coverage** (only when there are gaps; it opens to the coverage card).
 
+Since sheet 51b, a busier Moved card draws its buckets as two labelled rows, `before` and `after` the mark, against one peak, so every card reads the same way. Coverage leads with the gap Home would list first (`api: no version: …`), its fix as a link, and `N more in Fields ›`.
+
+Under Quiet sits one more line when some quiet hunts read only gone hosts (`src/control/gone-hosts.ts`). A host is gone when `logs_by_minute` has nothing from it for 7 days; a hunt counts when every `host:` its query names is gone and no OR reaches past them. `GET /api/home/since` returns them as `gone: { saved_ids, hosts: [{ host, last_seen, hunts }] }`. `Archive N…` asks once, listing each host and when it last sent anything, then archives them one by one and stops at the first refusal.
+
 Each Moved card and Quiet row has a ⋯ menu (50c), not for a Viewer: Open, Rename, Archive and Delete…, which asks again in place. The header's suggestions (`src/ui/header-search.ts`) leave archived hunts and boards out.
 
 ### The hunt
@@ -901,6 +905,8 @@ The board's head (sheet 49, 49d, `src/ui/components/board-head.tsx`) is Home ›
 Panel, input, name and fixed-window changes save as they are made; Save stores the window. A board cannot be watched, nor can a panel, and a board is never Home.
 
 The head also names the window the board follows (`· the board's window, Last 24h`). The ⋯ menu's **Fit panels to the width** (`fitPanelsToWidth`, 50e) grows the panels that start on one grid row, in order and in proportion to their widths, to share the 12 columns, less any a note or a taller panel holds there. Each keeps `panelMinW`; headings, notes and rows that already fill their columns are left alone. Then `gravity` runs and the board saves.
+
+A row of panels that ends short of the 12 columns draws a dashed cell in the room at its end (51e, `boardRowGaps`), when the board is not read-only, the room is at least 2 columns wide and no other cell holds any of it for the row's height. **＋ Panel here** opens the panel sheet and puts the new panel in that room (`addPanelAt`), shown only when the room is at least 3 columns, the narrowest panel; **Widen the 2** fits that row alone (`fitRow`, the step `fitPanelsToWidth` takes for every row). The cell is not a panel: it is never saved or counted.
 
 ### Adding and editing a panel
 

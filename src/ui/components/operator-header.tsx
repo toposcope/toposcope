@@ -19,6 +19,11 @@ export const headerTabs: { view: OperatorView; label: string }[] = [
   { view: "watch", label: "Watch" },
 ];
 
+/** The header tab lit for a page (51e): a board belongs to Home, so Home stays lit while one is the front tab. */
+export function headerLit(view: OperatorView, onBoard: boolean): OperatorView {
+  return view === "search" && onBoard ? "home" : view;
+}
+
 /** Access stays lit on its own page and on `?view=links`, which is Access filtered to links (29a, #295). */
 export function accessLit(view: OperatorView): boolean {
   return view === "access" || view === "links";
@@ -36,14 +41,18 @@ export function headerFieldQuery(raw: string): { q: string } | { q: null } {
 }
 
 export function HeaderTabs({
-  view,
+  view: page,
+  onBoard = false,
   watchOpen,
   onView,
 }: {
   view: OperatorView;
+  /** The front tab is a board: Home is lit, not Hunt (51e). */
+  onBoard?: boolean;
   watchOpen: boolean;
   onView: (view: OperatorView) => void;
 }) {
+  const view = headerLit(page, onBoard);
   const label = (tab: (typeof headerTabs)[number]) => (
     <span className="inline-flex items-center gap-1.5">
       {tab.label}
