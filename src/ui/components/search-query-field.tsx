@@ -36,6 +36,9 @@ export type MenuSuggestion = {
   meta: string;
 };
 
+/** The empty box's examples (50i), each a dashed chip that fills the box. */
+export const queryExamples = ["level:error", "service:api"] as const;
+
 type Props = {
   value: string;
   onChange: (value: string) => void;
@@ -322,8 +325,30 @@ export function SearchQueryField({
           ))}
         </div>
         {value ? null : (
-          <span className="pointer-events-none absolute inset-0 flex items-center font-mono text-sm text-faint">
-            level:error OR level:fatal status:5*
+          // 50i: an empty box reads as an example, never as a filter; a chip fills the box with it.
+          <span className="pointer-events-none absolute inset-0 z-10 flex items-center gap-1.5 overflow-hidden text-sm whitespace-nowrap text-faint">
+            <span>Search all logs, e.g.</span>
+            {queryExamples.map((example) => (
+              <button
+                key={example}
+                type="button"
+                title={`Search ${example}`}
+                className="pointer-events-auto rounded-sm border border-dashed border-white/18 px-1 font-mono text-xs leading-4 text-faint hover:border-white/30 hover:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (locked) {
+                    return;
+                  }
+                  caretTo.current = example.length;
+                  onChange(example);
+                  setCaret(example.length);
+                  onShowFaults(false);
+                  inputRef.current?.focus();
+                }}
+              >
+                {example}
+              </button>
+            ))}
           </span>
         )}
         <input

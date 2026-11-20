@@ -2363,6 +2363,16 @@ export function App() {
     await loadAlerts();
   }
 
+  /** Acknowledge an open monitor (50g): no reminders for the rest of this open stretch. */
+  async function ackMonitor(monitor: MonitorView) {
+    const res = await fetch(`/api/monitors/${encodeURIComponent(monitor.name)}/ack`, { method: "POST" });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as { error?: string } | null;
+      toast.error(json?.error ?? `Acknowledge failed (${res.status})`);
+    }
+    await loadAlerts();
+  }
+
   /** A push monitor from its editor (18s): declared by name, so a first result that made it is kept. */
   async function createPush(input: PushInput) {
     const res = await fetch(`/api/monitors/${encodeURIComponent(input.name)}`, {
@@ -4348,6 +4358,7 @@ export function App() {
           marks={watchMarkList}
           onNew={openNewAlert}
           onOpen={openMonitor}
+          onAck={isViewer ? undefined : (m) => void ackMonitor(m)}
           onOpenMarks={openMarksStretch}
           held={held.sources}
           linked={new Set(held.sources.map((s) => s.name))}

@@ -175,6 +175,9 @@ export function migrateControlDb(db: Database): void {
   );
   // When the result a push monitor missed was due (#177): Watch draws it late from there.
   addColumnIfMissing(db, "monitor_stretches", "due_at", "INTEGER");
+  // Acknowledged (sheet 50g): who and when, on the open stretch only; no reminders while set.
+  addColumnIfMissing(db, "monitor_stretches", "acked_at", "INTEGER");
+  addColumnIfMissing(db, "monitor_stretches", "acked_by", "TEXT");
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

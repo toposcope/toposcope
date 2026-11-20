@@ -156,6 +156,19 @@ export function incidentEndLabel(mark: ChangeMark): string {
   return `${mark.title} ends · ${formatDuration(span, "long", { round: true })}`;
 }
 
+/**
+ * A mark's name on a lane chip (50i), short: its title, a deploy's service before it unless the
+ * title already names it, and "a → b" as just b ("Toposcope 0.15.5 → 0.15.6" is "Toposcope 0.15.6").
+ */
+export function markLaneName(mark: Pick<ChangeMark, "kind" | "service" | "title">): string {
+  const title = mark.title.trim().replace(/\S+\s*→\s*(\S+)/, "$1");
+  const service = mark.service.trim();
+  if (mark.kind === "deploy" && service && !title.toLowerCase().includes(service.toLowerCase())) {
+    return `${service} ${title}`.trim();
+  }
+  return title || formatChangeMarkLabel(mark);
+}
+
 export function foldMarkLabel(members: ChangeMark[]): string {
   const ordered = newestFirst(members);
   const newest = ordered[0]?.ts.slice(11, 16) ?? "";

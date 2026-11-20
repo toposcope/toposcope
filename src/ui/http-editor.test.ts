@@ -243,7 +243,8 @@ describe("an HTTP(S) monitor on Watch (18c)", () => {
     expect(html).toContain('title="08:03 warn · 412ms is over 300ms"');
     // An ok run is the texture, not a tick of its own.
     expect(html).not.toContain("200 in 182ms");
-    expect(html).toContain("http · 30s · 3 conditions");
+    // 50g: checks once, short; "http · 30s · …" is in its tooltip.
+    expect(html).toContain("GET api.agental.dev/health · 3 conditions");
   });
 
   test("the rail beside its hunt says what it checks and how it last ran", () => {

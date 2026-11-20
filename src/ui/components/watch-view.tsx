@@ -8,8 +8,9 @@ import { AgentBadge, OpenAgent } from "./agent-badge";
 import { agentWatchWords } from "../agents";
 import type { HeldSource } from "../../shared/held";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsFromSource, MonitorsResponse, PushResultRow, SourceMonitor } from "@/types";
-import { clockAt, httpLane, laneKind, laneReadout, markHover, markPeek, markRowTime, markSpanLabel, watchMarkText, type WatchMarkGroup, pushBands, pushDueLine, pushReadout, pushTicks, pushValue, resultCard, type LaneReadout, nowLabel, openCardLine, openedToday, deliveries, lastCheckAt, watchDot, watchStateLine, type WatchDot, sentDots, sortForWatch, sourceOf, stretchSpans, watchFilters, watchMarks, watchRanges, watchTicks, type WatchFilter, type WatchRange, placeShows, sourceDefinition, sourceKindWords, sourceRow, sourceStanding, sourceStretch, watchPlaces, watchSummary, type SourceStanding, type WatchPlace } from "@/watch";
+import { ackedLine, checksLine, checksTitle, clockAt, httpLane, isAcked, nowTitle, laneKind, laneReadout, markHover, markPeek, markRowTime, markSpanLabel, watchMarkText, type WatchMarkGroup, pushBands, pushDueLine, pushReadout, pushTicks, pushValue, resultCard, type LaneReadout, nowLabel, openedToday, deliveries, lastCheckAt, watchDot, type WatchDot, sentDots, sortForWatch, sourceOf, stretchSpans, watchFilters, watchMarks, watchRanges, watchTicks, type WatchFilter, type WatchRange, placeShows, sourceDefinition, sourceKindWords, sourceRow, sourceStanding, sourceStretch, watchPlaces, watchSummary, type SourceStanding, type WatchPlace } from "@/watch";
 import { Empty } from "@/components/ui/states";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDuration } from "../../shared/duration";
 
 type Props = {
@@ -24,6 +25,8 @@ type Props = {
   onNew: () => void;
   /** Open a monitor as a hunt: its search, with the monitor beside it (18i); at a stretch or a result when one is given. */
   onOpen: (monitor: MonitorView, stretch?: Pick<MonitorStretch, "opened_at" | "resolved_at">) => void;
+  /** Acknowledge an open monitor (50g); absent for a Viewer. */
+  onAck?: (monitor: MonitorView) => void;
   /** Open a chip's stretch in Search, every service (#212, 20c). */
   onOpenMarks?: (fromMs: number, toMs: number) => void;
   /** Where each linked source stands (#139), so a short one's lanes are hatched (#333). */
@@ -35,9 +38,62 @@ type Props = {
   onOpenAgent?: () => void;
 };
 
-/** 26g: one row per monitor: state, what it is and its condition, what it checks, its strip, last check, now (#263). */
-const wrow = "grid grid-cols-[14px_minmax(0,1.6fr)_150px_minmax(160px,1fr)_84px_96px] items-center gap-4 border-b border-white/[0.06] px-4 py-2.5";
-const dotTone: Record<WatchDot, string> = { open: "text-danger-fg", ok: "text-ok-fg", warn: "text-warn-fg", paused: "text-faint" };
+/**
+ * 50g: one line per monitor (#263, 26g): its dot, its name and service, what it checks once and
+ * short, its strip, and now. Its state line and last check are in now's tooltip.
+ */
+const wrow = "grid grid-cols-[14px_minmax(0,1.1fr)_minmax(0,1fr)_minmax(140px,1.2fr)_230px] items-center gap-3 border-b border-white/[0.06] px-4 py-2";
+const dotTone: Record<WatchDot, string> = { open: "text-danger-fg", acked: "text-muted-foreground", ok: "text-ok-fg", warn: "text-warn-fg", paused: "text-faint" };
+
+/** A cell whose full text is a tooltip, reachable by keyboard (50g). */
+function Tip({ text, className, children }: { text: string; className?: string; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className={cn("min-w-0 truncate rounded-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none", className)}>
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="end" className="max-w-sm font-mono whitespace-pre-line">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+const nowTone: Record<LaneReadout["tone"], string> = { red: "text-danger-fg", amber: "text-warn-fg", sec: "text-muted-foreground", out: "text-muted-foreground" };
+
+/** NOW (50g): an open monitor's Acknowledge, then its readout, with its state line and last check as a tooltip. */
+function NowCell({
+  monitor,
+  text,
+  tone,
+  title,
+  nowMs,
+  onAck,
+}: {
+  monitor: MonitorView;
+  nowMs: number;
+  text: string;
+  tone: LaneReadout["tone"];
+  title: string;
+  onAck?: (monitor: MonitorView) => void;
+}) {
+  const acked = ackedLine(monitor, nowMs);
+  const canAck = onAck && monitor.state === "open" && monitor.open && !isAcked(monitor) && monitor.enabled !== 0;
+  return (
+    <span className="flex min-w-0 items-center justify-end gap-2">
+      {canAck ? (
+        <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => onAck(monitor)}>
+          Acknowledge
+        </Button>
+      ) : null}
+      <Tip text={title} className={cn("text-right font-mono text-sm", acked ? "text-muted-foreground" : nowTone[tone])}>
+        {acked ?? text}
+      </Tip>
+    </span>
+  );
+}
 
 /** 33g: the service a monitor is about and the host it checks, under its name (#335). */
 export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | "host"> & { made_by?: MonitorView["made_by"] } }) {
@@ -64,29 +120,29 @@ export function PlaceTags({ monitor }: { monitor: Pick<MonitorView, "service" | 
   );
 }
 
-function RowHead({ monitor, stretches, nowMs, onOpen }: { monitor: MonitorView; stretches: MonitorStretch[]; nowMs: number; onOpen: Props["onOpen"] }) {
+function RowHead({ monitor, nowMs, onOpen }: { monitor: MonitorView; nowMs: number; onOpen: Props["onOpen"] }) {
   const dot = watchDot(monitor);
   return (
     <>
       <span className={cn("text-sm", dotTone[dot])} aria-label={dot}>
         ●
       </span>
-      <button
-        type="button"
-        className="flex min-w-0 flex-col items-start text-left"
-        title={`Open ${monitor.name} as a hunt · opens a new tab`}
-        onClick={() => onOpen(monitor, monitor.open ?? undefined)}
-      >
-        <span className={cn("max-w-full truncate text-sm font-medium hover:underline", dot === "paused" && "text-muted-foreground")}>{monitor.name}</span>
-        <PlaceTags monitor={monitor} />
-        <span className="max-w-full truncate text-sm text-muted-foreground">
-          {watchStateLine(monitor, stretches, nowMs)} · <span className="font-mono">{openCardLine(monitor, nowMs)}</span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <button
+          type="button"
+          className="min-w-0 truncate text-left text-sm font-medium hover:underline"
+          title={`Open ${monitor.name} as a hunt · opens a new tab`}
+          onClick={() => onOpen(monitor, monitor.open ?? undefined)}
+        >
+          <span className={cn(dot === "paused" && "text-muted-foreground")}>{monitor.name}</span>
+        </button>
+        <span className="flex min-w-0 shrink">
+          <PlaceTags monitor={monitor} />
         </span>
-      </button>
-      <span className="truncate text-sm text-muted-foreground">
-        {laneKind(monitor)}
-        {monitor.made_by && !monitor.made_by.agent ? <span title={`made by ${monitor.made_by.name}`}> · {monitor.made_by.name}</span> : null}
       </span>
+      <Tip text={checksTitle(monitor, nowMs)} className="font-mono text-xs text-muted-foreground">
+        {checksLine(monitor)}
+      </Tip>
     </>
   );
 }
@@ -167,6 +223,7 @@ function Lane({
   nowMs,
   ticks,
   onOpen,
+  onAck,
 }: {
   monitor: MonitorView;
   stretches: MonitorStretch[];
@@ -177,6 +234,7 @@ function Lane({
   nowMs: number;
   ticks: Array<{ left: number }>;
   onOpen: Props["onOpen"];
+  onAck?: Props["onAck"];
 }) {
   const fingerprints = sourceOf(monitor) === "fingerprints";
   const dots = fingerprints ? sentDots(sent.filter((c) => c.ok), fromMs, toMs) : [];
@@ -189,8 +247,8 @@ function Lane({
       : null;
   const checked = lastCheckAt(monitor, results);
   return (
-    <div className={wrow} data-monitor={monitor.id}>
-      <RowHead monitor={monitor} stretches={stretches} nowMs={nowMs} onOpen={onOpen} />
+    <div className={cn(wrow, isAcked(monitor) && "bg-surface-1/40")} data-monitor={monitor.id}>
+      <RowHead monitor={monitor} nowMs={nowMs} onOpen={onOpen} />
       <span
         className="relative h-[18px] overflow-hidden rounded-sm bg-surface-1"
         style={
@@ -238,13 +296,14 @@ function Lane({
           />
         ))}
       </span>
-      <span className="font-mono text-sm text-muted-foreground">{checked ? clockAt(checked, nowMs) : "—"}</span>
-      <span
-        className={cn("truncate text-right font-mono text-sm", readout.tone === "red" ? "text-danger-fg" : readout.tone === "amber" ? "text-warn-fg" : "text-muted-foreground")}
-        title={readout.title ?? readout.badge}
-      >
-        {readout.text || readout.badge}
-      </span>
+      <NowCell
+        monitor={monitor}
+        nowMs={nowMs}
+        text={readout.text || readout.badge}
+        tone={readout.tone}
+        title={nowTitle(monitor, stretches, nowMs, checked, readout.title ?? (readout.text ? readout.badge : undefined))}
+        onAck={onAck}
+      />
     </div>
   );
 }
@@ -333,6 +392,7 @@ function PushLane({
   card,
   onCard,
   onOpen,
+  onAck,
 }: {
   monitor: MonitorView;
   stretches: MonitorStretch[];
@@ -346,6 +406,7 @@ function PushLane({
   card: number | null;
   onCard: (resultId: number | null) => void;
   onOpen: Props["onOpen"];
+  onAck?: Props["onAck"];
 }) {
   const paused = monitor.enabled === 0;
   const readout = pushReadout(monitor, nowMs, null);
@@ -384,7 +445,7 @@ function PushLane({
   }
 
   return (
-    <div className={tall ? prow : wrow} data-monitor={monitor.id}>
+    <div className={cn(tall ? prow : wrow, !tall && isAcked(monitor) && "bg-surface-1/40")} data-monitor={monitor.id}>
       {tall ? (
         <button
           type="button"
@@ -399,7 +460,7 @@ function PushLane({
           <span className="max-w-full truncate font-mono text-xs text-muted-foreground">{laneKind(monitor)}</span>
         </button>
       ) : (
-        <RowHead monitor={monitor} stretches={stretches} nowMs={nowMs} onOpen={onOpen} />
+        <RowHead monitor={monitor} nowMs={nowMs} onOpen={onOpen} />
       )}
       <span className="relative">
         <span
@@ -450,17 +511,14 @@ function PushLane({
           ) : null}
         </span>
       ) : (
-        <>
-          <span className="font-mono text-sm text-muted-foreground">
-            {lastCheckAt(monitor, results) ? clockAt(lastCheckAt(monitor, results)!, nowMs) : "—"}
-          </span>
-          <span
-            className={cn("truncate text-right font-mono text-sm", readout.tone === "red" ? "text-danger-fg" : readout.tone === "amber" ? "text-warn-fg" : "text-muted-foreground")}
-            title={readout.badge}
-          >
-            {value || readout.badge}
-          </span>
-        </>
+        <NowCell
+          monitor={monitor}
+          nowMs={nowMs}
+          text={value || readout.badge}
+          tone={readout.tone}
+          title={nowTitle(monitor, stretches, nowMs, lastCheckAt(monitor, results), [value ? readout.badge : "", readout.next ?? ""].filter(Boolean).join(" · "))}
+          onAck={onAck}
+        />
       )}
     </div>
   );
@@ -687,18 +745,21 @@ function SourceLane({
         <span className={cn("text-sm", dotTone[row.dot])} aria-label={standing.short ? "short" : row.dot}>
           ●
         </span>
-        <button
-          type="button"
-          className="flex min-w-0 flex-col items-start text-left"
-          title={`${monitor.name} · read-only, judged at ${source}`}
-          aria-expanded={open}
-          onClick={onToggle}
-        >
-          <span className="max-w-full truncate text-sm font-medium hover:underline">{monitor.name}</span>
-          <PlaceTags monitor={monitor} />
-          <span className="max-w-full truncate text-sm text-muted-foreground">{row.line}</span>
-        </button>
-        <span className="truncate text-sm text-muted-foreground">{sourceKindWords(monitor)}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <button
+            type="button"
+            className="min-w-0 truncate text-left text-sm font-medium hover:underline"
+            title={`${monitor.name} · read-only, judged at ${source}`}
+            aria-expanded={open}
+            onClick={onToggle}
+          >
+            {monitor.name}
+          </button>
+          <span className="flex min-w-0 shrink">
+            <PlaceTags monitor={monitor} />
+          </span>
+        </span>
+        <span className="truncate font-mono text-xs text-muted-foreground">{sourceKindWords(monitor)}</span>
         <span
           className="relative h-[18px] overflow-hidden rounded-sm bg-surface-1"
           style={
@@ -744,14 +805,13 @@ function SourceLane({
             />
           ))}
         </span>
-        <span className="font-mono text-sm text-muted-foreground">{row.lastCheck !== null ? clockAt(row.lastCheck, nowMs) : "—"}</span>
-        <span
-          className={cn(
-            "truncate text-right font-mono text-sm",
-            row.now.tone === "red" ? "text-danger-fg" : row.now.tone === "amber" ? "text-warn-fg" : "text-muted-foreground",
-          )}
-        >
-          {row.now.text}
+        <span className="flex min-w-0 justify-end">
+          <Tip
+            text={`${row.line}\nlast check ${row.lastCheck !== null ? clockAt(row.lastCheck, nowMs) : "—"}`}
+            className={cn("text-right font-mono text-sm", nowTone[row.now.tone])}
+          >
+            {row.now.text}
+          </Tip>
         </span>
       </div>
       {open ? <SourceDetail monitor={monitor} source={source} stretches={stretches} results={results} nowMs={nowMs} /> : null}
@@ -831,7 +891,7 @@ function GroupHead({ children }: { children: React.ReactNode }) {
 }
 
 /** Frame 18c: Watch, every monitor on one clock, open ones first. */
-export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen, onOpenMarks, held = [], linked, onOpenLink, onOpenAgent }: Props) {
+export function WatchView({ data, canCreate, range, onRange, filter, onFilter, marks, onNew, onOpen, onAck, onOpenMarks, held = [], linked, onOpenLink, onOpenAgent }: Props) {
   const monitors = data?.monitors ?? [];
   // #333, 33g: each linked source's monitors, read-only under its name.
   const sources = data?.sources ?? [];
@@ -845,7 +905,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
   const toMs = data ? Date.parse(data.to) : nowMs;
   const filters = watchFilters([...monitors, ...away]);
   const shown = sortForWatch(monitors).filter((m) => filter === "all" || sourceOf(m) === filter);
-  const open = sortForWatch(monitors).filter((m) => m.state === "open" && m.open);
+  const open = sortForWatch(monitors).filter((m) => m.state === "open" && m.open && !isAcked(m));
   const awayOpen = sources.reduce(
     (n, g) => n + g.monitors.filter((m) => m.state === "open" && g.stretches.some((st) => st.monitor_id === m.id && st.resolved_at === null)).length,
     0,
@@ -914,6 +974,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
   const byAgents = agentWatchWords(monitors);
   return (
     <OpenAgent.Provider value={onOpenAgent}>
+    <TooltipProvider>
     <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
@@ -1015,7 +1076,6 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 <span>Monitor</span>
                 <span>Checks</span>
                 <span>Last {range}</span>
-                <span>Last check</span>
                 <span className="text-right">Now</span>
               </div>
             )}
@@ -1034,6 +1094,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                   card={card?.monitor === m.id ? card.result : null}
                   onCard={(result) => setCard(result === null ? null : { monitor: m.id, result })}
                   onOpen={onOpen}
+                  onAck={onAck}
                 />
               ) : (
                 <Lane
@@ -1047,17 +1108,15 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                   nowMs={nowMs}
                   ticks={ticks}
                   onOpen={onOpen}
+                  onAck={onAck}
                 />
               ),
             )}
             {tall ? null : (
             <div className={wrow}>
               <span />
-              <span className="flex flex-col">
-                <span className="text-sm">marks</span>
-                <span className="text-sm text-muted-foreground">deploys and flags on the same clock</span>
-              </span>
-              <span />
+              <span className="text-sm">marks</span>
+              <span className="truncate text-sm text-muted-foreground">deploys and flags on the same clock</span>
               <MarksLane
                 groups={onClock.groups}
                 nowMs={nowMs}
@@ -1067,7 +1126,6 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
                 onOpenGroup={setMarkOpen}
                 onOpenMarks={onOpenMarks}
               />
-              <span />
               <span className="text-right font-mono text-sm text-muted-foreground">
                 {onClock.count} mark{onClock.count === 1 ? "" : "s"}
               </span>
@@ -1173,6 +1231,7 @@ export function WatchView({ data, canCreate, range, onRange, filter, onFilter, m
         ) : null}
       </div>
     </div>
+    </TooltipProvider>
     </OpenAgent.Provider>
   );
 }

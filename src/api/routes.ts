@@ -17,7 +17,7 @@ import {
   versionUpgradeRoute,
 } from "../control/instance-routes";
 import { withPlace } from "../control/monitor-place";
-import { deleteMonitor, getMonitor, listMonitors, putMonitor, updateMonitorRoute } from "../control/monitors";
+import { ackMonitor, deleteMonitor, getMonitor, listMonitors, putMonitor, updateMonitorRoute } from "../control/monitors";
 import {
   cancelInviteRoute,
   createInviteRoute,
@@ -171,6 +171,8 @@ export const apiRoutes: ApiRoute[] = [
     body: monitorBody,
     handler: previewedPut(monitorPutWithUndo(withPlace(putMonitor, (c) => monitorsNamed([(c.req.param("name") ?? "").trim()])[0] ?? null))),
   },
+  // Acknowledge (sheet 50g): no reminders for the rest of this open stretch.
+  { id: "monitor_ack", method: "POST", path: "/api/monitors/:name/ack", area: "Monitors", action: "change monitors", summary: "Acknowledge an open monitor: who and when, for this open stretch only. No reminders go out while it is acknowledged; the resolved call still does, and the next open starts unacknowledged. 409 when it is not open.", query: null, body: null, handler: ackMonitor },
   { id: "monitor_delete", method: "DELETE", path: "/api/monitors/:name", area: "Monitors", action: "change monitors", summary: "Delete a monitor by name, and its record.", query: null, body: null, handler: deleteMonitor },
 
   // Fields
