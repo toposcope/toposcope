@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Undo2 } from "lucide-react";
+import { CornerDownLeft, Undo2 } from "lucide-react";
 import { accessLit, HeaderField, HeaderTabs, settingsLit } from "@/components/operator-header";
 import { AccessView, type AccessFilter } from "@/components/access-view";
 import { SharePage } from "@/components/share-page";
@@ -94,6 +94,9 @@ import { parseRangeMs, retentionRangeMs } from "../query/relative";
 import { longestKeptDays } from "./retention-rules";
 import { surroundingDefaultN, surroundingMaxN, surroundingStepN } from "../query/surrounding";
 import { excludeFieldToken, setFieldToken, toggleFieldToken, addFieldToken, activeFacetValues, toggleFingerprintCutFilter } from "./query-tokens";
+import { otherValuesLines } from "./other-values";
+import { Chip } from "@/components/ui/chip";
+import { levelHex } from "@/level";
 import { histogramTotal, livePageSize, mergeHistogramBuckets, mergeLiveEvents } from "./merge-live";
 import { isoFromLocal, parseSearchUrl, serializeSearchUrl, toLocalInput, type OperatorView, type RangeMode } from "./search-url";
 import { SEARCH_SLOW_AFTER_MS, rangeTriggerLabel } from "./time-range";
@@ -604,6 +607,8 @@ export function App() {
   const [searching, setSearching] = useState(true);
   const [searchElapsedMs, setSearchElapsedMs] = useState(0);
   const [lastMs, setLastMs] = useState<number | null>(null);
+  /** Sheet 47f: the query the rows on screen answer; null when unknown (a restored tab). */
+  const [shownQ, setShownQ] = useState<string | null>(null);
   const [showFaults, setShowFaults] = useState(false);
   const [chipInField, setChipInField] = useState(true);
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
@@ -619,6 +624,7 @@ export function App() {
   const [alertDraft, setAlertDraft] = useState<AlertDraft | null>(null);
   const liveWindowMs = useRef(60 * 60 * 1000);
   const searchRef = useRef<HTMLInputElement>(null);
+  const sharePanelsRef = useRef<(() => void) | null>(null);
   const clockRef = useRef<HTMLButtonElement>(null);
   const skipUrl = useRef(true);
   const histogramRef = useRef(histogram);
@@ -1620,6 +1626,7 @@ export function App() {
         }
         if (mode === "replace") {
           setLastMs(Date.now() - started);
+          setShownQ(qVal);
           if (qVal) {
             setQueryHistory((prev) =>
               [qVal, ...prev.filter((item) => item !== qVal)].slice(0, 10),
@@ -2813,6 +2820,7 @@ export function App() {
     setNextCursor(null);
     setSeriesByKey({});
     setLastMs(null);
+    setShownQ(null);
   }
 
   function abortActiveSearch() {
@@ -2949,6 +2957,7 @@ export function App() {
     setNextCursor(paint.nextCursor);
     setIngested(paint.ingested);
     setLastMs(paint.lastMs);
+    setShownQ(null);
     setError(paint.error);
     setFacets(paint.facets);
     setFacetsLoading(false);
@@ -3794,6 +3803,13 @@ export function App() {
       : undefined;
   const activeSaved = saved.find((item) => item.id === savedId);
   const boardOn = Boolean(activeSaved?.board);
+  // Sheet 47f: the box holds a query that has not run; what is on screen answers the last one.
+  const typedNotRun = !boardOn && !searching && shownQ !== null && q.trim() !== shownQ;
+  // Sheet 48d: nothing matched, so the facet line would only count what the query left out;
+  // those counts move into the empty state as values to switch to.
+  const noMatches =
+    logsOn && !boardOn && !typedNotRun && !profileView && !traceView && !searching && !error && events.length === 0 && !emptyIngest && !scanRefuse?.events;
+  const otherValues = noMatches ? otherValuesLines(activeFacets, { ...facets, ...displayAttrFacets }) : [];
   const boardChoices: BoardChoice[] = saved
     .filter((item) => item.board)
     .map((item) => ({ id: item.id, name: item.name, count: item.board!.panels.length }));
@@ -3966,6 +3982,9 @@ export function App() {
       ) : (
         <span className="text-sm text-muted-foreground">matching</span>
       )}
+      {typedNotRun ? (
+        <span className="rounded-sm border border-plate/50 px-1.5 text-xs text-plate">for the last query</span>
+      ) : null}
       {heldV?.pill ? <HeldPill text={heldV.pill} /> : null}
       {heldV?.chip ? <ScopeChipView chip={heldV.chip} /> : null}
       {qErrOn && !chipInField ? <QueryErrorChip faults={qFaults} /> : null}
@@ -4151,8 +4170,9 @@ export function App() {
             <button
               type="button"
               className={cn(
-                // The Watch tab's dot says it at any width (26a); the counts in words need the room.
-                "hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm xl:inline-flex",
+                // Sheet 47h: what is open stays in the header down to a laptop width; below md the
+                // pages menu takes over and the Watch tab's dot says it (26a).
+                "hidden h-[26px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm md:inline-flex",
                 watching.open > 0 ? "border-danger/50" : "border-white/15",
               )}
               title="Open Watch"
@@ -4568,7 +4588,7 @@ export function App() {
                 onCancel={() => leaveEdit(edit.boardId)}
                 onUpdate={() => void updateEditedPanel()}
               />
-            ) : (
+            ) : boardOn ? (
             <HuntCrumb
               name={activeSaved?.name ?? null}
               board={boardOn}
@@ -4588,7 +4608,7 @@ export function App() {
               onWatch={isViewer ? null : () => setWatchThisOpen(true)}
               onShare={() => void copyLink()}
             />
-            )}
+            ) : null}
             <form
               className="relative flex shrink-0 flex-wrap items-center gap-1.5 px-3 py-2"
               onSubmit={onSubmit}
@@ -4616,10 +4636,40 @@ export function App() {
                 locked={boardOn}
               />
               {searching ? <Busy elapsedMs={searchElapsedMs} slow={searchSlow} onStop={cancelSearch} /> : null}
-              {!searching && lastMs !== null && !qErrOn ? (
+              {typedNotRun ? (
+                <Button type="submit" size="sm" className="shrink-0 gap-1" title="Run this query (Enter)">
+                  <CornerDownLeft className="size-3.5" />
+                  Run
+                </Button>
+              ) : null}
+              {!searching && !typedNotRun && lastMs !== null && !qErrOn ? (
                 <span className="flex h-8 shrink-0 items-center font-mono text-xs whitespace-nowrap text-muted-foreground">
                   {lastMs} ms
                 </span>
+              ) : null}
+              {!edit && !boardOn ? (
+                // Sheet 47b: the hunt's verbs end the query row instead of a crumb row of their own.
+                <HuntCrumb
+                  inline
+                  name={activeSaved?.name ?? null}
+                  board={false}
+                  dirty={dirty}
+                  pinned={Boolean(activeSaved?.pinned)}
+                  mark={compare?.mark ?? null}
+                  saveDisabled={qErrOn}
+                  onHome={() => setView("home")}
+                  onCloseMark={() => setCompare(null)}
+                  onSave={onSaveClick}
+                  onSaveAs={() => {
+                    setSaveUpdate(false);
+                    setSaveAsOpen(true);
+                  }}
+                  onPin={activeSaved ? () => void togglePinned(activeSaved) : null}
+                  onDelete={activeSaved ? () => void onDelete(activeSaved.id) : null}
+                  onWatch={isViewer ? null : () => setWatchThisOpen(true)}
+                  onShare={() => void copyLink()}
+                  onSharePanels={() => sharePanelsRef.current?.()}
+                />
               ) : null}
             </form>
             <>
@@ -4632,7 +4682,7 @@ export function App() {
                   : logsOn
                     ? "max-h-[55%] min-h-0 overflow-auto"
                     : "min-h-0 flex-1 overflow-auto",
-                inFlightDim ? busyDim : "",
+                inFlightDim ? busyDim : typedNotRun ? "opacity-45" : "",
               )}
             >
               <SeriesCatalogContext.Provider value={seriesCatalog}>
@@ -4644,6 +4694,7 @@ export function App() {
                       : { boards: boardChoices, onPick: (widget, boardId) => void addToBoard(widget, boardId) }
                   }
                   head={huntHead}
+                  sharePanelsRef={edit || boardOn ? undefined : sharePanelsRef}
                   query={q}
                   widgets={widgets}
                   logs={logsOn}
@@ -4757,9 +4808,10 @@ export function App() {
                 </HeldContext.Provider>
               </SeriesCatalogContext.Provider>
             </div>
-            <FacetChips
+            {noMatches ? null : <FacetChips
               facets={facets}
               activeFacets={activeFacets}
+              previewToggle={(field, value) => toggleFieldToken(q, field, value)}
               loading={facetsLoading || attrFacetsLoading}
               attrPins={attrFacets}
               attrFacetValues={displayAttrFacets}
@@ -4783,7 +4835,7 @@ export function App() {
                   />
                 ) : null
               }
-            />
+            />}
             {logsOn ? (
               <>
             <ContextTabs
@@ -4851,7 +4903,7 @@ export function App() {
               ) : (
                 <div
                   className={`flex min-h-0 min-w-0 flex-1 flex-col px-3 pb-2.5 transition-opacity ${
-                    inFlightDim ? busyDim : ""
+                    inFlightDim ? busyDim : typedNotRun ? "opacity-45" : ""
                   }`}
                 >
                   {!searching && !error && events.length === 0 && scanRefuse?.events ? (
@@ -4859,14 +4911,59 @@ export function App() {
                   ) : !searching && !error && events.length === 0 ? (
                     <Empty
                       className="min-h-0 flex-1 py-14"
-                      title={emptyIngest ? "No events ingested yet." : "No events in this range."}
-                      line={emptyIngest ? "POST to /api/ingest, /v1/logs, or syslog UDP 5514." : "Widen the range or clear filters."}
+                      title={
+                        emptyIngest ? (
+                          "No events ingested yet."
+                        ) : (
+                          // Sheet 47g: say what was asked and where, not what the reader did wrong.
+                          <>
+                            No events {q.trim() ? <>match <span className="font-mono">{q.trim()}</span> </> : null}
+                            {range === "custom" ? "in this window." : `in the last ${range}.`}
+                          </>
+                        )
+                      }
+                      line={emptyIngest ? "POST to /api/ingest, /v1/logs, or syslog UDP 5514." : undefined}
                       action={
-                        !emptyIngest && q.trim() !== "" ? (
-                          <Button type="button" variant="outline" onClick={() => applyQuery("")}>
-                            Clear query
-                          </Button>
-                        ) : null
+                        emptyIngest ? null : (
+                          <span className="flex flex-col items-center gap-3">
+                          {otherValues.map((line) => (
+                            <span key={line.field} className="flex flex-wrap items-center justify-center gap-1.5" data-other-values={line.field}>
+                              <span className="mr-0.5 text-sm text-muted-foreground">{line.label}</span>
+                              {line.values.map((item) => {
+                                const next = setFieldToken(q, line.field, item.v);
+                                const hex = line.field === "level" ? levelHex[item.v as keyof typeof levelHex] : undefined;
+                                return (
+                                  <Chip
+                                    key={item.v}
+                                    size="md"
+                                    title={next}
+                                    className="bg-transparent font-normal text-foreground"
+                                    style={hex ? { borderColor: `${hex}99` } : undefined}
+                                    onClick={() => applyQuery(next)}
+                                  >
+                                    <span className="font-mono">{item.v}</span>
+                                    <b className="font-mono text-xs font-medium text-muted-foreground">
+                                      <CountText n={item.n} />
+                                    </b>
+                                  </Chip>
+                                );
+                              })}
+                            </span>
+                          ))}
+                          <span className="flex gap-2">
+                            {range !== "custom" && spanMs < 24 * 3_600_000 ? (
+                              <Button type="button" variant="outline" onClick={() => onRangeChange("24h")}>
+                                Last 24h
+                              </Button>
+                            ) : null}
+                            {q.trim() !== "" ? (
+                              <Button type="button" variant="outline" onClick={() => applyQuery("")}>
+                                Clear query
+                              </Button>
+                            ) : null}
+                          </span>
+                          </span>
+                        )
                       }
                     />
                   ) : (

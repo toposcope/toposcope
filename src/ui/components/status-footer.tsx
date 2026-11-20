@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { zoomKey } from "@/zoom-key";
 
 function Hint({ k, label }: { k: string; label: string }) {
   return (
@@ -19,7 +20,7 @@ export function StatusFooter({ children }: Props) {
       <div className="flex min-w-0 items-center gap-2 overflow-hidden">
         <Hint k="/" label="search" />
         <Hint k="↑↓←→" label="focus" />
-        <Hint k="wheel / + −" label="zoom" />
+        <Hint k={`${zoomKey()} wheel / + −`} label="zoom" />
         <Hint k="esc" label="close" />
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2">{children}</div>

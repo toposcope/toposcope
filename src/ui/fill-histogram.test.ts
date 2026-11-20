@@ -9,6 +9,7 @@ import {
   formatAggStat,
   formatSeriesTotal,
   histogramYTicks,
+  histogramYLabels,
   scaleCount,
   stackedSegmentPlotFrac,
 } from "./fill-histogram";
@@ -213,7 +214,7 @@ describe("formatSeriesTotal", () => {
 
 describe("histogramYTicks", () => {
   test("spaces four linear ticks from peak to zero", () => {
-    expect(histogramYTicks(100, false)).toEqual([100, 66, 33, 0]);
+    expect(histogramYTicks(100, false)).toEqual([100, 67, 33, 0]);
   });
 
   test("spaces four log ticks from peak to zero", () => {
@@ -293,5 +294,20 @@ describe("stackedSegmentPlotFrac", () => {
     expect(a + b).toBeLessThan(
       scaleCount(80, peak, true) + scaleCount(20, peak, true),
     );
+  });
+});
+
+describe("histogramYLabels", () => {
+  test("prints a peak of 1 once and the zero once", () => {
+    expect(histogramYLabels(1, false)).toEqual([1, null, null, 0]);
+  });
+  test("prints only 0 on an empty plot", () => {
+    expect(histogramYLabels(0, false)).toEqual([null, null, null, 0]);
+  });
+  test("labels a middle line only when a whole count sits on it", () => {
+    expect(histogramYLabels(3, false)).toEqual([3, 2, 1, 0]);
+    expect(histogramYLabels(7, false)).toEqual([7, null, null, 0]);
+    expect(histogramYLabels(300, false)).toEqual([300, 200, 100, 0]);
+    expect(histogramYLabels(140, false)).toEqual([140, 93, 47, 0]);
   });
 });

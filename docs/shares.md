@@ -147,7 +147,7 @@ Only a share's secret opens `/share/v1`; a person's session or token and the ing
 
 A page that wants Toposcope to draw embeds a panel. The secret stays on the host's backend: it trades the secret for a **ticket** a page can hold, then puts the ticket in the page.
 
-The short way starts from the panel: **Share…** at the top of a panel's copy menu (its ⋯ when narrow), or **Share panels…** on the canvas for several. It proposes the scope from what the panels read (their metrics or every metric like them, their labels fixed, their split, the hunt's `q` for a log count or a Top-N), makes a share or adds them to one whose fixed labels agree, and gives the three things to paste: the secret, the ticket call, and a tag per panel, beside a live preview read through the share. A panel that merges several metrics, or reads a value from log lines, says why it cannot be shared as it is and offers what can. The steps below are what it does.
+The short way starts from the panel: **Share…** at the top of a panel's copy menu (its ⋯ when narrow), or **Share ▾ › Share panels…** at the end of a hunt's query row for several. It proposes the scope from what the panels read (their metrics or every metric like them, their labels fixed, their split, the hunt's `q` for a log count or a Top-N), makes a share or adds them to one whose fixed labels agree, and gives the three things to paste: the secret, the ticket call, and a tag per panel, beside a live preview read through the share. A panel that merges several metrics, or reads a value from log lines, says why it cannot be shared as it is and offers what can. The steps below are what it does.
 
 1. On the share, list the origins that may frame it, and how long a ticket lasts:
 

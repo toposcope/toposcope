@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 import { SplitButton } from "@/components/ui/split-button";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
@@ -29,10 +30,20 @@ export function HuntCrumb(props: {
   /** Null for a Viewer, who makes no monitors (30e). */
   onWatch: (() => void) | null;
   onShare: () => void;
+  /**
+   * Sheet 47b: the verbs sit at the end of the query row. The tab already names the hunt and the
+   * header has Home, so the crumb's own Home › name is left out.
+   */
+  inline?: boolean;
+  /** Sheet 47i: Share opens a menu with Copy link and Share panels…; null keeps one Share button. */
+  onSharePanels?: (() => void) | null;
 }) {
   const state = props.name ? (props.dirty ? "saved · edited" : "saved") : "not saved";
+  const toSave = !props.name || props.dirty;
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 px-3 pt-2.5 text-sm">
+    <div className={cn("flex shrink-0 flex-wrap items-center gap-2 text-sm", props.inline ? "ml-2" : "px-3 pt-2.5")}>
+      {props.inline ? null : (
+        <>
       <button type="button" className="text-muted-foreground hover:text-foreground" onClick={props.onHome}>
         Home
       </button>
@@ -40,6 +51,8 @@ export function HuntCrumb(props: {
         ›
       </span>
       <span className="max-w-[420px] truncate font-medium text-foreground">{props.name ?? "hunt"}</span>
+        </>
+      )}
       {props.badge ? (
         <span className="rounded-md border border-white/15 px-1.5 font-mono text-xs leading-[19px] text-muted-foreground">
           {props.badge}
@@ -61,9 +74,10 @@ export function HuntCrumb(props: {
           </button>
         </span>
       ) : null}
-      <div className="flex-1" />
-      <span className="font-mono text-xs text-muted-foreground">{state}</span>
+      {props.inline ? null : <div className="flex-1" />}
+      <span className="font-mono text-xs whitespace-nowrap text-muted-foreground">{state}</span>
       <SplitButton
+        variant={props.inline && toSave ? "default" : "outline"}
         className={cn(props.saveDisabled && !props.board && "pointer-events-none opacity-45")}
         disabled={props.saveDisabled && !props.board}
         onClick={props.onSave}
@@ -92,9 +106,30 @@ export function HuntCrumb(props: {
           Watch this
         </Button>
       ) : null}
-      <Button type="button" variant="outline" onClick={props.onShare}>
-        Share
-      </Button>
+      {props.onSharePanels ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" className="gap-1">
+              Share
+              <ChevronDown className="size-3.5 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuItem className="h-auto flex-col items-start gap-0 py-1.5" onSelect={props.onShare}>
+              <span>Copy link</span>
+              <span className="text-xs text-muted-foreground">This hunt, for people who sign in here</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="h-auto flex-col items-start gap-0 py-1.5" onSelect={props.onSharePanels}>
+              <span>Share panels…</span>
+              <span className="text-xs text-muted-foreground">Counts on another site, never rows</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <Button type="button" variant="outline" onClick={props.onShare}>
+          Share
+        </Button>
+      )}
     </div>
   );
 }

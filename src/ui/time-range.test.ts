@@ -36,6 +36,14 @@ describe("rangeTriggerLabel", () => {
     );
   });
 
+  test("custom drops seconds and milliseconds a long window does not need", () => {
+    const from = toLocalInput(new Date(Date.UTC(2026, 7, 14, 20, 4, 48, 548)));
+    const to = toLocalInput(new Date(Date.UTC(2026, 7, 15, 0, 4, 48, 548)));
+    expect(rangeTriggerLabel("custom", from, to, NOW)).toBe(
+      "08-14 20:04 → 08-15 00:04 · 4h",
+    );
+  });
+
   test("custom repeats the date when the window crosses a UTC day", () => {
     const from = toLocalInput(new Date(Date.UTC(2026, 7, 14, 22, 0, 0, 0)));
     const to = toLocalInput(new Date(Date.UTC(2026, 7, 15, 2, 0, 0, 0)));

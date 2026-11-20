@@ -130,7 +130,7 @@ export function histogramYTicks(
     return [peak, at(2 / 3), at(1 / 3), 0];
   }
   if (!logScale) {
-    return [peak, Math.round(peak * 0.66), Math.round(peak * 0.33), 0];
+    return [peak, Math.round((peak * 2) / 3), Math.round(peak / 3), 0];
   }
   const logp = Math.log10(peak);
   return [
@@ -139,6 +139,28 @@ export function histogramYTicks(
     Math.round(10 ** (logp * 0.33)),
     0,
   ];
+}
+
+/**
+ * The count axis's labels, one per gridline (top, ⅔, ⅓, bottom). A middle gridline is labelled only
+ * when a whole count sits on it, so a peak of 1 reads "1 … 0", not "1, 1, 0, 0", and a peak of 7
+ * does not print 5 on the line that means 4.67. An empty plot prints only its 0.
+ */
+export function histogramYLabels(peak: number, logScale: boolean): (number | null)[] {
+  if (peak <= 0) {
+    return [null, null, null, 0];
+  }
+  const ticks = histogramYTicks(peak, logScale);
+  return ticks.map((tick, i) => {
+    if (i === 0 || i === ticks.length - 1) {
+      return tick;
+    }
+    const exact = logScale ? 10 ** (Math.log10(peak) * (i === 1 ? 0.66 : 0.33)) : (peak * (3 - i)) / 3;
+    if (tick === ticks[i - 1] || tick === 0 || Math.abs(exact - tick) / peak > 0.02) {
+      return null;
+    }
+    return tick;
+  });
 }
 
 export function scaleCount(value: number, peak: number, logScale: boolean): number {

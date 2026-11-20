@@ -1,10 +1,13 @@
-import { ChartArea, ChartColumn, ChartColumnStacked, ChartLine } from "lucide-react";
+import { ChartArea, ChartColumn, ChartColumnStacked, ChartLine, ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HeldHatch } from "@/components/held-hatch";
 import { useHeldView } from "../held-context";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { zoomKey } from "@/zoom-key";
 import { bucketSpan, useHoverTime } from "../hover-time";
 import { printUnit, unitsDifferWords, withUnit } from "../metric-unit";
-import { bucketIndexAt, formatAggStat, formatSeriesTotal, histogramAxisLabels, histogramAxisTick, histogramWindowNeedsDate, histogramYTicks, resolveHistogramStepMs, scaleCount, stackedSegmentPlotFrac } from "@/fill-histogram";
+import { bucketIndexAt, formatAggStat, formatSeriesTotal, histogramAxisLabels, histogramAxisTick, histogramWindowNeedsDate, histogramYLabels, histogramYTicks, resolveHistogramStepMs, scaleCount, stackedSegmentPlotFrac } from "@/fill-histogram";
 import { seriesColor, seriesKeys, seriesTotal, seriesValue } from "@/histogram-series";
 import { cn } from "@/lib/utils";
 import { isTypingTarget } from "@/keyboard";
@@ -90,6 +93,8 @@ type Props = {
   lineInfo?: Record<string, { metric: string; labels: string; description: string | null }>;
   className?: string;
   compactToolbar?: boolean;
+  /** Sheet 47b: a short window. The controls open from a Chart button and a facet split's legend is left to the facet line. */
+  dense?: boolean;
   lockChrome?: boolean;
   retentionMs?: number;
   scanReason?: string | null;
@@ -382,6 +387,7 @@ export function HistogramChart({
   lineInfo,
   className,
   compactToolbar = false,
+  dense = false,
   lockChrome = false,
   retentionMs = histogramRetentionMs,
   scanReason = null,
@@ -419,6 +425,24 @@ export function HistogramChart({
     null,
   );
   const [panning, setPanning] = useState(false);
+  const [wheelHint, setWheelHint] = useState<{ x: number; y: number } | null>(null);
+  const wheelHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function showWheelHint(clientX: number, clientY: number) {
+    const box = plotRef.current?.getBoundingClientRect();
+    if (!box) {
+      return;
+    }
+    setWheelHint({ x: clientX - box.left, y: clientY - box.top });
+    if (wheelHintTimer.current) {
+      clearTimeout(wheelHintTimer.current);
+    }
+    wheelHintTimer.current = setTimeout(() => setWheelHint(null), 1400);
+  }
+  useEffect(() => () => {
+    if (wheelHintTimer.current) {
+      clearTimeout(wheelHintTimer.current);
+    }
+  }, []);
   const [panD, setPanD] = useState(0);
   const [panLock, setPanLock] = useState<{
     d: number;
@@ -517,6 +541,7 @@ export function HistogramChart({
   const peak = replaceY && overlayOn ? overlayPeak : volumePeak;
   const yTicks = histogramYTicks(peak, logScale, replaceY && overlayOn ? "series" : "count");
   const overlayTicks = histogramYTicks(overlayPeak, logScale, "series");
+  const countLabels = histogramYLabels(peak, logScale);
   const stepMs = resolveHistogramStepMs(
     buckets,
     histogramIntervalMsById[displayedHistogramInterval(spanMs, interval, chart)],
@@ -946,6 +971,12 @@ export function HistogramChart({
       if (!plotEl || !surfaceRef.current) {
         return;
       }
+      // Sheet 47e: a plain wheel scrolls the page; ⌘ or Ctrl (and a trackpad pinch, which sets
+      // ctrlKey) zooms. The hint says so once per pause.
+      if (!ev.ctrlKey && !ev.metaKey) {
+        showWheelHint(ev.clientX, ev.clientY);
+        return;
+      }
       ev.preventDefault();
       let d = ev.deltaY;
       if (ev.deltaMode === 1) {
@@ -1146,9 +1177,7 @@ export function HistogramChart({
   const drillWidthPct =
     binCount > 0 ? (drillBins / binCount) * 100 : 0;
 
-  return (
-    <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card", className)}>
-      {head}
+  const controlsRow = (
       <div
         className={cn(
           "flex items-center gap-x-3 gap-y-2 border-b border-white/[0.08] bg-background/45 px-3 py-2",
@@ -1312,10 +1341,37 @@ export function HistogramChart({
           />
         </div>
       </div>
+  );
+
+  return (
+    <div className={cn("flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card", className)}>
+      {dense ? (
+        <div className="flex min-w-0 items-start">
+          <div className="min-w-0 flex-1">{head}</div>
+          {/* Sheet 47b: on a short window the chart's controls open from one button in its head. */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" size="sm" className="mt-2 mr-3 shrink-0 gap-1" disabled={lockChrome}>
+                Chart
+                <ChevronDown className="size-3.5 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto max-w-[min(960px,92vw)] p-0">
+              {controlsRow}
+            </PopoverContent>
+          </Popover>
+        </div>
+      ) : (
+        <>
+          {head}
+          {controlsRow}
+        </>
+      )}
+
       <div className="flex min-h-0 flex-1 gap-1.5 px-2.5 pt-2">
         <div
           className={cn(
-            "flex shrink-0 flex-col justify-between py-0.5 text-right font-mono text-2xs text-faint",
+            "flex shrink-0 flex-col justify-between py-1 text-right font-mono text-2xs text-faint",
             axisUnit ? "w-12 whitespace-nowrap" : "w-8",
           )}
           style={{
@@ -1328,7 +1384,8 @@ export function HistogramChart({
           }}
         >
           {yTicks.map((tick, i) => (
-            <span key={`${tick}-${i}`}>
+            // Sheet 47h: each label is centred on its gridline (a zero-height row), not hung below it.
+            <span key={`${tick}-${i}`} className="flex h-0 items-center justify-end">
               {replaceY && overlayOn && axes
                 ? i === 0
                   ? unitPeaks(axes)
@@ -1339,7 +1396,9 @@ export function HistogramChart({
                 ? i === 0
                   ? withUnit(formatAggStat(tick), aggResult?.unit)
                   : formatAggStat(tick)
-                : formatCompactCount(tick)}
+                : countLabels[i] === null
+                  ? ""
+                  : formatCompactCount(countLabels[i] ?? tick)}
             </span>
           ))}
         </div>
@@ -1445,6 +1504,15 @@ export function HistogramChart({
                   className="pointer-events-none absolute top-1 bottom-1 z-[6] w-px bg-foreground/50"
                   style={{ left: `calc(4px + ${otherHover * 100}% - ${otherHover * 8}px)` }}
                 />
+              ) : null}
+              {wheelHint ? (
+                <span
+                  className="pointer-events-none absolute z-[7] rounded-md border bg-overlay px-2 py-1 text-xs whitespace-nowrap text-foreground shadow-md"
+                  style={{ left: wheelHint.x + 12, top: Math.max(4, wheelHint.y - 28) }}
+                  role="status"
+                >
+                  Hold <kbd>{zoomKey()}</kbd> to zoom · drag to pick a window
+                </span>
               ) : null}
               <div
                 className="pointer-events-none absolute inset-0"
@@ -1826,7 +1894,7 @@ export function HistogramChart({
         <CompareFold {...compareFold} split={split} seriesKeys={keys} plotReady={!loading} onPaintLines={onCompareLines} plotLeft={plotLeft} />
       ) : null}
       {/* Split lines named at their ends need no legend; past three they get one (13g). */}
-      {splitDrawn && (endLabels || !splitOn) ? null : (
+      {(splitDrawn && (endLabels || !splitOn)) || (dense && !metric && (split === "level" || split === "service" || split === "host")) ? null : (
       <div
         className="mt-2 flex shrink-0 flex-wrap items-center justify-start gap-x-3 gap-y-2 border-t border-white/[0.08] pr-2.5 pb-1.5 pt-1.5"
         style={{ paddingLeft: plotLeft }}
