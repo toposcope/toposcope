@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { ChangeMark } from "../shared/change-mark";
-import { deltaText, firstRunSteps, formatValue, markAge, resolvePick, sideText } from "./home-since";
+import { agoText, deltaText, firstRunSteps, formatValue, markStrip, markWhen, marksNewestFirst, resolvePick, sideText } from "./home-since";
 
 const now = Date.parse("2026-10-26T13:26:00Z");
 const m = (id: string): ChangeMark => ({ id, ts: "2026-10-26T12:48:00Z", end_ts: null, kind: "deploy", service: "", title: id, attrs: {} });
+const at = (id: string, minutesAgo: number): ChangeMark => ({ ...m(id), ts: new Date(now - minutesAgo * 60_000).toISOString() });
 
 describe("Home's words (#259)", () => {
   test("delta text and colour", () => {
@@ -20,9 +21,10 @@ describe("Home's words (#259)", () => {
     expect(formatValue(null, "count")).toBe("—");
   });
   test("age and side", () => {
-    expect(markAge("2026-10-26T12:48:00Z", now)).toBe("38 min ago");
-    expect(markAge("2026-10-25T16:02:00Z", now)).toBe("21 h ago");
-    expect(markAge("2026-10-25T10:02:00Z", now)).toBe("yesterday 10:02");
+    expect(agoText("2026-10-26T13:26:20Z", now)).toBe("just now");
+    expect(agoText("2026-10-26T12:48:00Z", now)).toBe("38 min ago");
+    expect(agoText("2026-10-25T16:02:00Z", now)).toBe("21 h ago");
+    expect(agoText("2026-10-23T13:26:00Z", now)).toBe("3 d ago");
     expect(sideText(30 * 60_000)).toBe("30 min before → 30 min after");
     expect(sideText(60 * 60_000)).toBe("1 h before → 1 h after");
   });
@@ -35,5 +37,39 @@ describe("Home's words (#259)", () => {
   test("first-run steps become done in order", () => {
     expect(firstRunSteps({ named: true, ingested: false, savedCount: 0, markCount: 0 })).toEqual([true, false, false]);
     expect(firstRunSteps({ named: true, ingested: true, savedCount: 1, markCount: 1 })).toEqual([true, true, true]);
+  });
+});
+
+describe("Home's Since bar (49b)", () => {
+  test("a mark's time: HH:MM today, yesterday HH:MM, else a short date, all UTC", () => {
+    expect(markWhen("2026-10-26T00:05:00Z", now)).toBe("00:05");
+    expect(markWhen("2026-10-25T16:22:00Z", now)).toBe("yesterday 16:22");
+    expect(markWhen("2026-10-18T09:00:00Z", now)).toBe("Oct 18");
+    expect(markWhen("2026-10-18T09:00:00Z", now, true)).toBe("Oct 18 09:00");
+  });
+
+  test("marks come newest first whatever order the API sent", () => {
+    expect(marksNewestFirst([at("old", 300), at("new", 5), at("mid", 60)]).map((x) => x.id)).toEqual(["new", "mid", "old"]);
+  });
+
+  test("four chips, newest first; the rest are earlier, and their count is right", () => {
+    const marks = Array.from({ length: 17 }, (_, i) => at(`m${i}`, 10 + i * 30)).reverse();
+    const strip = markStrip(marks, "m0");
+    expect(strip.chips.map((x) => x.id)).toEqual(["m0", "m1", "m2", "m3"]);
+    expect(strip.earlier.length).toBe(13);
+    expect(strip.earlier[0]!.id).toBe("m4");
+  });
+
+  test("a mark picked from the earlier menu takes the last chip", () => {
+    const marks = Array.from({ length: 8 }, (_, i) => at(`m${i}`, 10 + i * 30));
+    const strip = markStrip(marks, "m6");
+    expect(strip.chips.map((x) => x.id)).toEqual(["m0", "m1", "m2", "m6"]);
+    expect(strip.earlier.map((x) => x.id)).toEqual(["m3", "m4", "m5", "m7"]);
+  });
+
+  test("four or fewer marks: no earlier menu", () => {
+    const strip = markStrip([at("a", 1), at("b", 2)], null);
+    expect(strip.chips.map((x) => x.id)).toEqual(["a", "b"]);
+    expect(strip.earlier).toEqual([]);
   });
 });

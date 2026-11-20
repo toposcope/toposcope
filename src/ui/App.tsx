@@ -4166,6 +4166,8 @@ export function App() {
                 }
                 setView("search");
               }}
+              saved={saved}
+              onOpenSaved={openSavedTab}
             />
           ) : null}
           {watching.open > 0 || watching.late > 0 || watching.warn > 0 ? (
@@ -4272,6 +4274,12 @@ export function App() {
           onOpenAccess={() => setView("access")}
           onOpenAgents={isViewer ? undefined : openAgents}
           onOpenBoard={(item) => openSavedTab(item)}
+          onNewBoard={async (name) => {
+            const created = await createBoard(name, { keys: [], panels: [] }, "1h");
+            if (created) {
+              openSavedTab(created);
+            }
+          }}
           onOpenFields={(names) => {
             setFieldsNames(names);
             setView("fields");

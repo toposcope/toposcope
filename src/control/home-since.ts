@@ -24,9 +24,14 @@ export const minSideMs = 5 * 60_000;
 
 export type Window = { from: string; to: string };
 
-/** The mark Home selects on its own, or null for the quiet reading. `marks` is newest first. */
+/** Newest first: the marks read sorts oldest first, and Home lists and picks the newest. */
+export function newestFirst(marks: readonly ChangeMark[]): ChangeMark[] {
+  return [...marks].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+}
+
+/** The mark Home selects on its own, or null for the quiet reading. Any order of `marks`. */
 export function pickHomeMark(marks: ChangeMark[], nowMs: number): ChangeMark | null {
-  const recent = marks.filter((m) => nowMs - Date.parse(m.ts) <= dayMs && Date.parse(m.ts) <= nowMs);
+  const recent = newestFirst(marks).filter((m) => nowMs - Date.parse(m.ts) <= dayMs && Date.parse(m.ts) <= nowMs);
   return recent.find((m) => m.kind === "deploy" || m.kind === "flag") ?? recent[0] ?? null;
 }
 
@@ -120,7 +125,7 @@ async function anyIngested(): Promise<boolean> {
 
 export async function computeHomeSince(input: { markId: string | null; hour: boolean; nowMs?: number; actor?: Actor | null }): Promise<HomeSince | { error: string; status: 404 }> {
   const nowMs = input.nowMs ?? Date.now();
-  const marks = await changeMarksBetween(new Date(nowMs - dayMs).toISOString(), new Date(nowMs + 60_000).toISOString());
+  const marks = newestFirst(await changeMarksBetween(new Date(nowMs - dayMs).toISOString(), new Date(nowMs + 60_000).toISOString()));
   let mark: ChangeMark | null = null;
   let auto = false;
   if (input.markId) {
