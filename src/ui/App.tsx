@@ -29,6 +29,8 @@ import { EditPanelCrumb, HuntCrumb } from "@/components/hunt-crumb";
 import { MarksPanel } from "@/components/marks-panel";
 import { WatchThisSheet, type WatchThisInput } from "@/components/watch-this-sheet";
 import { BoardView } from "@/components/board-view";
+import { BoardHead } from "@/components/board-head";
+import { countedPanels } from "../shared/boards";
 import { BoardNameDialog } from "@/components/board-name-dialog";
 import type { BoardChoice } from "@/components/add-to-board";
 import { SaveSearchDialog } from "@/components/save-search-dialog";
@@ -4395,24 +4397,29 @@ export function App() {
             ) : null}
             {boardOn && activeSaved?.board ? (
               <>
-                <HuntCrumb
+                <BoardHead
                   name={activeSaved.name}
-                  board
-                  badge={`board · ${activeSaved.board.panels.length} panel${activeSaved.board.panels.length === 1 ? "" : "s"}`}
-                  dirty={(activeSaved.range ?? "1h") !== boardRange(range)}
+                  panels={countedPanels(activeSaved.board.panels)}
                   pinned={Boolean(activeSaved.pinned)}
-                  mark={null}
-                  saveDisabled={isViewer}
+                  dirty={(activeSaved.range ?? "1h") !== boardRange(range)}
+                  readOnly={isViewer}
                   onHome={() => setView("home")}
-                  onCloseMark={() => undefined}
+                  onRename={(name) => {
+                    void saveBoard(activeSaved, { name }).then((updated) => {
+                      if (updated) {
+                        toast.success(`Renamed to ${updated.name}`);
+                      }
+                    });
+                  }}
                   onSave={onSaveClick}
-                  onSaveAs={() => setBoardSaveAs(true)}
-                  onPin={() => void togglePinned(activeSaved)}
-                  onDelete={isViewer ? null : () => void onDelete(activeSaved.id)}
-                  onWatch={null}
                   onShare={() => void copyLink()}
+                  onDuplicate={() => setBoardSaveAs(true)}
+                  onPin={() => void togglePinned(activeSaved)}
+                  onDelete={() => void onDelete(activeSaved.id)}
                 />
                 <BoardView
+                  boardName={activeSaved.name}
+                  hunts={saved.filter((row) => !row.board).map((row) => ({ id: row.id, name: row.name, q: row.query }))}
                   board={activeSaved.board}
                   bind={bind}
                   win={range === "custom" ? { from: isoFromLocal(from) ?? "", to: isoFromLocal(to) ?? "" } : { range }}
@@ -5251,15 +5258,15 @@ export function App() {
             setBoardSaveAs(false);
           }
         }}
-        title={boardSaveAs ? "Save board as" : "New board"}
-        action={boardSaveAs ? "Save" : "Create board"}
+        title={boardSaveAs ? "Duplicate board" : "New board"}
+        action={boardSaveAs ? "Duplicate" : "Create board"}
         defaultName={boardSaveAs && activeSaved ? `${activeSaved.name} copy` : ""}
         onSubmit={async (name) => {
           if (boardSaveAs && activeSaved?.board) {
             const created = await createBoard(name, activeSaved.board, boardRange(range));
             if (created) {
               setSavedId(created.id);
-              toast.success("Saved board");
+              toast.success(`Duplicated as ${created.name}`);
             }
             return;
           }

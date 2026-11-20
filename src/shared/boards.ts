@@ -2,12 +2,16 @@ import { isAttrIdent } from "./attrs";
 import { isCoreField } from "../query/compile";
 import { seriesLabel } from "../query/agg";
 import { isRelativeRange } from "../query/relative";
+import { cellsOverlap, gridCols } from "./grid-gravity";
 import {
   clampWidget,
   defaultLayout,
   defaultTimeseries,
   firstGap,
   isPinnedHistogram,
+  minStatW,
+  minTimeseriesW,
+  minWidgetW,
   parseSavedWidget,
   widgetGridCols,
   type WidgetDef,
@@ -418,4 +422,132 @@ export function removeBoardPanel(board: BoardSlots, id: string): BoardSlots {
 
 export function boardWatchRefuse(): string {
   return "A board cannot be watched. Watch a saved hunt.";
+}
+
+/** How many panels a board says it has (49d): headings and notes read nothing and are not counted. */
+export function countedPanels(panels: Array<{ view: BoardPanelView }>): number {
+  return panels.filter((panel) => !isTextPanel(panel.view)).length;
+}
+
+/** A Number panel draws in at least 3 of the 12 columns (49d), so its value and unit fit. */
+export const minNumberW = 3;
+
+/** The fewest columns a panel of this view draws in on a board. */
+export function panelMinW(view: BoardPanelView): number {
+  switch (view) {
+    case "stat":
+      return minNumberW;
+    case "note":
+      return minStatW;
+    case "top":
+      return minWidgetW;
+    case "section":
+      return widgetGridCols;
+    default:
+      return minTimeseriesW;
+  }
+}
+
+/** The heading a panel sits under: the nearest heading above it; null above the first. */
+export function panelSection(panels: BoardPanel[], id: string): string | null {
+  const me = panels.find((p) => p.id === id);
+  if (!me) {
+    return null;
+  }
+  let best: BoardPanel | null = null;
+  for (const p of panels) {
+    if (p.view === "section" && p.widget.y < me.widget.y && (!best || p.widget.y > best.widget.y)) {
+      best = p;
+    }
+  }
+  return best?.id ?? null;
+}
+
+/** The headings, top to bottom, for the panel sheet's Section field (49f). */
+export function boardSections(panels: BoardPanel[]): Array<{ id: string; name: string }> {
+  return panels
+    .filter((p) => p.view === "section")
+    .sort((a, b) => a.widget.y - b.widget.y)
+    .map((p) => ({ id: p.id, name: p.name }));
+}
+
+type Cell = { x: number; y: number; w: number; h: number };
+
+function cellOf(widget: WidgetDef): Cell {
+  return { x: widget.x, y: widget.y, w: widget.w, h: widget.h };
+}
+
+/**
+ * Where a new panel of w × h goes at the end of a section (49f): beside the last row of the
+ * section's panels when it fits there, or on a new row under them, the panels below moved down
+ * to make room. `section` null is the part above the first heading. Returns the cell and the
+ * other panels, moved where they had to be.
+ */
+export function placeAtSectionEnd(panels: BoardPanel[], section: string | null, size: { w: number; h: number }): { cell: Cell; panels: BoardPanel[] } {
+  const w = Math.max(1, Math.min(gridCols, size.w));
+  const h = Math.max(1, size.h);
+  const headings = panels.filter((p) => p.view === "section").sort((a, b) => a.widget.y - b.widget.y);
+  const heading = section ? headings.find((p) => p.id === section) : undefined;
+  const start = heading ? heading.widget.y + 1 : 0;
+  const end = heading
+    ? (headings.find((p) => p.widget.y > heading.widget.y)?.widget.y ?? Infinity)
+    : (headings[0]?.widget.y ?? Infinity);
+  const members = panels.filter((p) => p.view !== "section" && p.widget.y >= start && p.widget.y < end);
+  const blocked = (cell: Cell) => panels.some((p) => cellsOverlap({ id: "", ...cell }, { id: p.id, ...cellOf(p.widget) }));
+  if (members.length > 0) {
+    const lastY = Math.max(...members.map((p) => p.widget.y));
+    const x = Math.max(...members.filter((p) => p.widget.y === lastY).map((p) => p.widget.x + p.widget.w));
+    const beside = { x, y: lastY, w, h };
+    if (x + w <= gridCols && !blocked(beside)) {
+      return { cell: beside, panels };
+    }
+  }
+  const y = members.length > 0 ? Math.max(...members.map((p) => p.widget.y + p.widget.h)) : start;
+  const cell = { x: 0, y, w, h };
+  if (!blocked(cell)) {
+    return { cell, panels };
+  }
+  return {
+    cell,
+    panels: panels.map((p) => (p.widget.y >= y ? { ...p, widget: { ...p.widget, y: p.widget.y + h } } : p)),
+  };
+}
+
+/** What the panel sheet hands over (49f): the panel's fields, its view and widget made from Show. */
+export type PanelFields = { name: string; q: string; view: BoardPanelView; widget: WidgetDef; fixed: string | null };
+
+/** A panel made in the panel sheet (49f), at the end of its section; null at the cap. */
+export function addPanelInSection(board: BoardSlots, input: PanelFields, section: string | null): BoardSlots | null {
+  const id = nextPanelId(board.panels);
+  if (!id || board.panels.length >= BOARD_PANEL_MAX) {
+    return null;
+  }
+  const widget = { ...clampWidget({ ...input.widget, id: "b" }), id };
+  const { cell, panels } = placeAtSectionEnd(board.panels, section, widget);
+  const placed = { ...widget, ...cell };
+  const name = normalizeName(input.name) ?? defaultPanelName(input.view, placed);
+  const fixed = input.fixed && isRelativeRange(input.fixed) ? input.fixed : null;
+  return { ...board, panels: [...panels, { id, name, q: input.q.trim(), view: input.view, widget: placed, fixed }] };
+}
+
+/**
+ * A panel changed in the panel sheet (49f): its fields replaced. It keeps its cell unless it was
+ * put under another section, where it goes to that section's end at its own size.
+ */
+export function updatePanelInSection(board: BoardSlots, id: string, input: PanelFields, section: string | null): BoardSlots {
+  const panel = board.panels.find((p) => p.id === id);
+  if (!panel) {
+    return board;
+  }
+  const widget = { ...clampWidget({ ...input.widget, id: "b" }), id };
+  const name = normalizeName(input.name) ?? defaultPanelName(input.view, widget);
+  const fixed = input.fixed && isRelativeRange(input.fixed) ? input.fixed : null;
+  const next: BoardPanel = { ...panel, name, q: input.q.trim(), view: input.view, widget, fixed };
+  if (panelSection(board.panels, id) === section) {
+    return { ...board, panels: board.panels.map((p) => (p.id === id ? next : p)) };
+  }
+  const { cell, panels } = placeAtSectionEnd(board.panels.filter((p) => p.id !== id), section, widget);
+  const moved = { ...next, widget: { ...widget, ...cell } };
+  const byId = new Map(panels.map((p) => [p.id, p]));
+  return { ...board, panels: board.panels.map((p) => (p.id === id ? moved : byId.get(p.id)!)) };
 }

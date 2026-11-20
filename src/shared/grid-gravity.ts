@@ -128,3 +128,35 @@ export function gravityResize<T extends GridCell>(cells: T[], id: string, edge: 
 export function gridEdges(anchoredPanel: boolean): GridEdge[] {
   return anchoredPanel ? ["e", "s", "se"] : ["n", "w", "e", "s", "se"];
 }
+
+/**
+ * Cells narrower than their least width are widened (sheet 49, 49d): a Number panel one column
+ * wide clipped its own value. A widened cell keeps its row and slides right past the cells
+ * already placed in it when there is room; what still overlaps goes down under `gravity`. With
+ * nothing to widen the cells come back as they were.
+ */
+export function widenCells<T extends GridCell>(cells: T[], minW: (cell: T) => number): T[] {
+  if (cells.every((cell) => cell.w >= Math.min(gridCols, minW(cell)))) {
+    return cells;
+  }
+  const out = cells.map((cell) => ({ ...cell }));
+  const placed: T[] = [];
+  for (const cell of out.slice().sort(byPosition)) {
+    const want = Math.min(gridCols, Math.max(cell.w, minW(cell)));
+    if (want > cell.w) {
+      cell.w = want;
+      cell.x = Math.min(cell.x, gridCols - want);
+    }
+    if (placed.some((other) => cellsOverlap(cell, other))) {
+      let x = cell.x;
+      while (x + cell.w <= gridCols && placed.some((other) => cellsOverlap({ ...cell, x }, other))) {
+        x++;
+      }
+      if (x + cell.w <= gridCols) {
+        cell.x = x;
+      }
+    }
+    placed.push(cell);
+  }
+  return out;
+}
