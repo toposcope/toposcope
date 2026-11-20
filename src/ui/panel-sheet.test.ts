@@ -3,7 +3,7 @@ import { parseBoard } from "../shared/boards";
 import { boardMenuItems } from "./board-menu";
 import type { PanelData } from "./board-panel-data";
 import { panelHead } from "./components/board-view";
-import { draftOf, draftProblem, fieldsOf, newDraft, showOf, windowLine } from "./panel-draft";
+import { draftOf, draftProblem, fieldsOf, measureOf, newDraft, showOf, windowLine } from "./panel-draft";
 import { panelNoEvents, panelSubtitle, statWords } from "./panel-head";
 
 const data = (total: number): PanelData => ({ histogram: [], agg: null, total, from: null, to: null, fetchedAt: 0 });
@@ -55,6 +55,29 @@ describe("the panel sheet (49e, 49f)", () => {
     expect([kept.view, kept.widget.agg, kept.widget.x, kept.widget.w, kept.fixed]).toEqual(["stat", "p99:duration_ms", 3, 3, "4h"]);
     const changed = fieldsOf({ ...draft, show: "volume" }, panel);
     expect([changed.view, changed.widget.kind, changed.widget.agg, changed.widget.x, changed.widget.w]).toEqual(["histogram", "timeseries", null, 3, 4]); // a Volume is at least 4 wide
+  });
+
+  test("a Number panel's measure shows in the sheet and survives Update panel", () => {
+    const board = parseBoard({
+      panels: [{ id: "v", name: "rate", q: "service:incus", view: "stat", widget: { x: 0, y: 0, w: 4, h: 2, agg: "sum:agental.call.duration" } }],
+    })!;
+    const panel = board.panels[0]!;
+    const draft = draftOf(panel, board.panels);
+    expect([draft.measure, draft.measureField]).toEqual(["sum", "agental.call.duration"]);
+    expect(fieldsOf(draft, panel).widget.agg).toBe("sum:agental.call.duration");
+    expect(fieldsOf({ ...draft, measure: "p99" }, panel).widget.agg).toBe("p99:agental.call.duration");
+    expect(fieldsOf({ ...draft, measure: "rate" }, panel).widget.agg).toBe("rate");
+    expect(fieldsOf({ ...draft, measure: "count" }, panel).widget.agg).toBe("count");
+  });
+
+  test("a reducer needs a field it can read", () => {
+    const draft = { ...newDraft({ show: "number" }), measure: "avg" as const };
+    expect(draftProblem(draft)).toBe("Pick a field to measure");
+    expect(draftProblem({ ...draft, measureField: "level" })).toBe("level cannot be measured");
+    expect(draftProblem({ ...draft, measureField: "duration_ms" })).toBeNull();
+    expect(measureOf("rate")).toEqual({ measure: "rate", measureField: "" });
+    expect(measureOf("nonsense")).toEqual({ measure: "count", measureField: "" });
+    expect(measureOf(null)).toEqual({ measure: "count", measureField: "" });
   });
 
   test("a query fault holds the panel back", () => {
