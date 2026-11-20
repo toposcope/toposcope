@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+The docs are rewritten to be read, not searched. Every page in `docs/` follows the rules now in CONTRIBUTING.md (Writing docs): one job per page, a heading every few paragraphs, short paragraphs and list items, tables for options and limits, and how Toposcope computes something kept in ARCHITECTURE.md. Query language is the search syntax alone, with a table of examples; the hunt screen has its own page, [Hunting](docs/hunt.md). The operations guide is split into [Running Toposcope](docs/operations.md), [Monitors](docs/monitors.md), [Links](docs/links.md) and [Upgrades, backups and rollback](docs/upgrades.md); collectors moved to [Collectors](docs/collectors.md). Old links keep working: a heading that moved leaves a line under the same name pointing to its new page. `src/shared/docs-lint.test.ts` checks paragraph and section length and that every link between docs lands. The footer's upgrade notes for 0.6.0 and earlier link the new upgrades page.
+
 A Number panel's measure shows in the panel sheet. Edit panel on a Number panel reads **Measure** (Count, Rate per second, or Sum, Average, p99, Max or Min of a numeric **Field**) where it showed nothing, so a panel that sums `agental.call.duration` no longer looks like a plain count, and the measure can be changed there.
 
 ## 0.15.6

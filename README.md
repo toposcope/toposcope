@@ -2,7 +2,7 @@
 
 Toposcope is self-hosted observability for the question after a deploy: what changed? It puts logs, metrics, traces and profiles on one clock, compares equal windows before and after each deploy, and lists the errors that are new.
 
-It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability. A team that signs in to it depends on that one box: back it up, and point its [watchdog](docs/operations.md#who-watches-toposcope) somewhere else.
+It runs on a single node as one Toposcope application plus ClickHouse. Toposcope does not provide high availability. A team that signs in to it depends on that one box: back it up, and point its [watchdog](docs/monitors.md#who-watches-toposcope) somewhere else.
 
 Current release: `0.15.6` · [MIT Expat license](LICENSE)
 
@@ -116,7 +116,7 @@ An error row with `exception.type` and frames or a stack gets an `e1` fingerprin
 | OTLP profiles | `POST /v1/profiles` | JSON or protobuf |
 | Syslog | UDP `5514` | RFC 3164 |
 
-HTTP ingest takes `Authorization: Bearer` with the ingest token; Basic Auth is not accepted. See the [ingest guide](docs/ingest.md) for collector configuration, curl examples, signal-specific behavior, enrichment, and token management.
+HTTP ingest takes `Authorization: Bearer` with the ingest token; Basic Auth is not accepted. See the [ingest guide](docs/ingest.md) and [collectors](docs/collectors.md) for collector configuration, curl examples, signal-specific behavior, enrichment, and token management.
 
 ## Search
 
@@ -131,7 +131,7 @@ status:>=500 duration_ms:>100
 
 Queries run when you press Enter, select a facet, change the time window, or enable Live; they do not run on every keystroke. Copying the browser URL preserves the active search and visualization state.
 
-See the [query language reference](docs/query.md) for operators, precedence, quoting, comparisons, URL state, histogram behavior, and query limits.
+See the [query language reference](docs/query.md) for operators, precedence, quoting, comparisons and query limits, and [Hunting](docs/hunt.md) for the chart, panels, Live and the page URL.
 
 ## Operate Toposcope
 
@@ -139,7 +139,7 @@ The packaged stack binds the application to `127.0.0.1:8080`, OTLP over gRPC to 
 
 Terminate TLS with a reverse proxy already running on the host; the packaged Compose file intentionally does not include one. Back up both the ClickHouse and application volumes. Pin a previous image version to roll back application code, but restore data if a ClickHouse data directory cannot start.
 
-See the [operations guide](docs/operations.md) for TLS, ports, health checks, retention, upgrades, backup and restore, and rollback boundaries.
+See the [operations guide](docs/operations.md) for TLS, ports, memory, health checks and retention, and [Upgrades, backups and rollback](docs/upgrades.md) for upgrades, backup and restore, and rollback. [Monitors](docs/monitors.md) and [Links](docs/links.md) have pages of their own.
 
 ## Develop and contribute
 
@@ -151,9 +151,14 @@ Local development runs ClickHouse in Docker and the Bun API plus Vite UI on the 
 - [API](docs/api.md): every `/api` route a token may call, its role and what it takes; `GET /api/openapi.json` is the same as OpenAPI 3.1
 - [MCP](docs/mcp.md): an agent calls the API as tools at `/mcp`, with the same token
 - [Ingest guide](docs/ingest.md)
+- [Collectors](docs/collectors.md): Vector, Fluent Bit, Alloy and enrichment
 - [What an investigation reads](docs/evidence.md): the keys Home and the hunt need on each row, and what goes missing without them
 - [Operations guide](docs/operations.md)
+- [Monitors](docs/monitors.md)
+- [Links](docs/links.md): one instance pulling rows from another
+- [Upgrades, backups and rollback](docs/upgrades.md)
 - [Query language](docs/query.md)
+- [Hunting](docs/hunt.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)

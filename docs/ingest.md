@@ -1,8 +1,27 @@
 # Ingest
 
+This page is for anyone sending data to Toposcope: which route takes which signal, what each one accepts, its limits, and what its replies mean. To put a collector in between, see [Collectors](collectors.md). For why each key matters to an investigation, see [What an investigation reads](evidence.md).
+
 Toposcope accepts logs, metrics, change marks, check results, probes, traces, and profiles over HTTP, and Prometheus remote write. An app speaks OpenTelemetry to it: OTLP over HTTP to `POST /v1/logs`, the same way on a laptop and in production. A collector in between is optional; when there is one, the canonical collector is Vector.
 
-Use the same ingest token for `POST /v1/logs`, `POST /v1/metrics`, `POST /v1/marks`, `POST /v1/checks`, `POST /v1/probes`, `POST /v1/traces`, and `POST /v1/profiles`. Toposcope does not ship a default ingest token. A push monitor's keyed URL, `/ping/<key>`, is the one route that takes none: its key is the credential.
+## Routes and the ingest token
+
+Every HTTP route below takes the same ingest token, sent as `Authorization: Bearer <token>`. Toposcope does not ship a default ingest token: [create one](#create-an-ingest-token). A push monitor's keyed URL, `/ping/<key>`, is the one route that takes none: its key is the credential.
+
+| Route | Takes | See |
+| --- | --- | --- |
+| `POST /v1/logs` | OTLP logs, JSON or protobuf | [Logs](#logs) |
+| `POST /api/ingest` | log events as JSON or NDJSON | [Manual JSON / NDJSON](#manual-json--ndjson) |
+| `POST /v1/metrics` | OTLP metrics, or plain JSON points | [Metrics](#metrics) |
+| `POST /v1/prometheus/write` | Prometheus remote write 1.0 | [Prometheus remote write](#prometheus-remote-write) |
+| `POST /v1/marks` | deploys, flag flips, incidents, notes | [Change marks](#change-marks) |
+| `POST /v1/checks` | check results for push monitors | [Check results](#check-results-push-monitors) |
+| `GET` or `POST /ping/<key>` | one check result, with no token | [The keyed URL](#the-keyed-url) |
+| `POST /v1/probes` | an `up` result, or a status URL to pull | [Probes / liveness](#probes--liveness) |
+| `POST /v1/traces` | OTLP spans | [Traces](#traces) |
+| `POST /v1/profiles` | OTLP profiles | [Profiles](#profiles) |
+| port `4319` | OTLP over gRPC: logs, traces, metrics, profiles | [OTLP over gRPC](#otlp-over-grpc) |
+| UDP `127.0.0.1:5514` | RFC 3164 syslog | [Syslog](#syslog) |
 
 ## What an app sends
 
@@ -79,6 +98,8 @@ A collector between the app and Toposcope is optional. Add one when logs must ou
 
 Create a named token in **Access › Make a token › Sending logs in**, or from the HTTP API with an Owner's personal or service account token (see [People and roles](people.md#tokens)). The token value is shown once.
 
+This request creates an ingest token named `vector`:
+
 ```bash
 curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X POST http://127.0.0.1:8080/api/api-tokens \
   -H 'content-type: application/json' \
@@ -87,15 +108,37 @@ curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X POST http://127.0.0.1:8080/a
 
 ## Limits and responses
 
-HTTP ingest bodies are limited to 1 MB decoded. The OTLP routes — `POST /v1/logs`, `POST /v1/traces`, and `POST /v1/profiles` — take up to 1,024 log records, spans, or profiles in a request: twice the 512 an OpenTelemetry exporter batches by default. Every other endpoint takes at most 500 log events, metric points, change marks, or probes. A request over the cap is one **400** and stores nothing. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
+### Size and count limits
 
-Successful requests return the number of ingested records. An OTLP request is answered in its own encoding: JSON keeps `{ "ingested": n }`, and protobuf gets an `Export…ServiceResponse`, empty when nothing was lost. When records were not stored, or were stored without something they were sent with, the reply carries OTLP’s partial success — in JSON `{ "ingested": 2, "partialSuccess": { "rejectedLogRecords": "1", "errorMessage": "no body: 1 rejected" } }` — still with a **200**, and the rest of the request is stored. The count is zero when everything was stored and something was cut, such as attributes past the cap. Invalid batches return a `4xx` response, in JSON. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream.
+| Limit | Applies to |
+| --- | --- |
+| 1 MB decoded body | every HTTP ingest route |
+| 1,024 log records, spans, or profiles a request | the OTLP routes: `POST /v1/logs`, `POST /v1/traces`, and `POST /v1/profiles`. That is twice the 512 an OpenTelemetry exporter batches by default. |
+| No count, only the 1 MB body | OTLP on `POST /v1/metrics`, because an exporter sends every series in one request |
+| 500 log events, metric points, change marks, check results, or probes a request | `/api/ingest`, plain JSON on `/v1/metrics`, `/v1/marks`, `/v1/checks`, `/v1/probes`; OTLP and remote write have only the body cap |
+
+A request over the cap is one **400** and stores nothing. OTLP logs, traces, and profiles accept `Content-Encoding: gzip` and inflate under that same cap.
+
+### What a successful request returns
+
+Successful requests return the number of ingested records. An OTLP request is answered in its own encoding:
+
+| Request | Reply |
+| --- | --- |
+| JSON | `{ "ingested": n }` |
+| protobuf | an `Export…ServiceResponse`, empty when nothing was lost |
+
+When records were not stored, or were stored without something they were sent with, the reply carries OTLP’s partial success, still with a **200**, and the rest of the request is stored. In JSON it reads `{ "ingested": 2, "partialSuccess": { "rejectedLogRecords": "1", "errorMessage": "no body: 1 rejected" } }`. The count is zero when everything was stored and something was cut, such as attributes past the cap.
+
+### Errors and backpressure
+
+Invalid batches return a `4xx` response, in JSON. When ClickHouse is overloaded or the application has no insert capacity, HTTP ingest returns `429` with `Retry-After: 1`; collectors should retry and buffer upstream. The full list of statuses is in [What a reply means](#what-a-reply-means).
 
 ## Logs
 
 ### Manual JSON / NDJSON
 
-Use this path when you want to post events directly.
+Use this path when you want to post events directly. This request posts one error event as NDJSON:
 
 ```bash
 curl -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" -X POST http://127.0.0.1:8080/api/ingest \
@@ -105,7 +148,7 @@ curl -H "Authorization: Bearer $TOPOSCOPE_INGEST_TOKEN" -X POST http://127.0.0.1
 
 ### OTLP JSON
 
-Use OTLP JSON when your collector is configured for HTTP JSON export.
+Use OTLP JSON when your collector is configured for HTTP JSON export. This request posts one error record as OTLP JSON:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/logs \
@@ -114,13 +157,19 @@ curl -X POST http://127.0.0.1:8080/v1/logs \
   -d '{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"api"}}]},"scopeLogs":[{"logRecords":[{"severityText":"ERROR","body":{"stringValue":"timeout"}}]}]}]}'
 ```
 
-For collectors, set `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` and `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080`.
+For collectors, set `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` and `OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8080`. JSON works for OTLP logs, traces, and profiles.
 
-The level comes from `severityNumber` when it is 1–24. A record with only `severityText` is read by its word: `CRITICAL`, `ALERT`, and `EMERG` are `fatal`, `SEVERE` is `error`, and a word that is not recognized is `info`.
+The level comes from `severityNumber` when it is 1–24. A record with only `severityText` is read by its word:
+
+| `severityText` | Level |
+| --- | --- |
+| `CRITICAL`, `ALERT`, `EMERG` | `fatal` |
+| `SEVERE` | `error` |
+| a word that is not recognized | `info` |
 
 ### OTLP protobuf
 
-This is the default path for Vector, Fluent Bit, and Alloy.
+`http/protobuf` is the default OTLP HTTP encoding, and the default path for Vector, Fluent Bit, and Alloy. Collectors send the protobuf body directly on `POST /v1/logs` with these headers:
 
 ```text
 POST /v1/logs
@@ -128,40 +177,128 @@ Authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}
 Content-Type: application/x-protobuf
 ```
 
-Collectors send the protobuf body directly on that path.
-
 ### OTLP attributes
 
-A stored row keeps 50 attributes. On OTLP the record’s own attributes are counted first, with the frames read from its stack, then a map body’s top-level fields, then its trace and span ids, then the logger’s name, then the resource’s. The logger’s name is the OTLP scope’s name, stored as `otel.scope.name`. A resource full of process, runtime, and host details cannot push out what the app put on the record or the trace id that View trace needs. `e1` and `version` are stamped ahead of all of them. What does not fit is dropped. A span (`POST /v1/traces`) is kept the same way: its recorded exception and `e1` first, then its own attributes and its status message, then the resource’s; a key on both keeps the span’s value. Spans stored before 0.5.4 have the resource’s first.
+A stored row keeps 50 attributes. On OTLP they are counted in this order, and what does not fit is dropped:
 
-### Exception fingerprints
+1. `e1` and `version`, stamped ahead of all the others.
+2. The record’s own attributes, with the frames read from its stack.
+3. A map body’s top-level fields.
+4. Its trace and span ids.
+5. The logger’s name: the OTLP scope’s name, stored as `otel.scope.name`.
+6. The resource’s attributes.
 
-Send `exception.type` and either `exception.frames` or `exception.stacktrace` as attrs. Valid supplied frames take priority. Without valid frames, ingest reads known Node/V8, Python, JVM, .NET, PHP, and Go stack formats into at most 50 frames, the ones nearest the raise: the end of a Python traceback, the start of the others. The raw stacktrace stays stored. [OpenTelemetry defines stacktrace as a runtime-specific string](https://opentelemetry.io/docs/specs/semconv/registry/attributes/exception/), so unsupported formats use the fallback below.
+So a resource full of process, runtime, and host details cannot push out what the app put on the record, or the trace id that View trace needs.
 
-With frames, `e1` hashes the lower-case type plus frame file/function pairs. When any supplied frame is `in_app`, only those frames are used. Hash input normalizes path separators, file URLs, drive prefixes, and trailing line/column numbers; removes `/releases/<stamp>/` for an 8–14 digit or `YYYY-MM-DD` stamp; and strips common roots (`/app`, `/src`, `/usr/src/app`, `/var/www*`, `/home/<user>`). Full relative paths are preserved; unrecognized absolute roots use the last three path segments. A PHP closure named with where it was declared (`{closure:/app/index.php:15}`) is hashed without the line, its path normalized the same way. Paths and functions are lowercased for hashing. Stored supplied frame paths keep the sender's values.
+A span (`POST /v1/traces`) is kept the same way: its recorded exception and `e1` first, then its own attributes and its status message, then the resource’s. A key on both keeps the span’s value.
 
-Without usable frames, an exception type or an `error`/`fatal` event hashes type plus the stabilized log body. `exception.message` does not replace that body. Ingest does not parse stacks out of `message` or use log templates. Existing rows keep their stored `e1`; corrected inputs in 0.4.9, and in 0.4.11 for deep Python tracebacks, Node `at async` frames, and PHP closure frames, can give an affected error a new id once at upgrade. From 0.5.5 the key says which rules made the id: `e1` is the rules above, and when the hash inputs change again new rows carry `e2`. The bar takes either, and a pulled row keeps the key its source gave it. A sender's own `e1`, `e2`, … are dropped: only the store's rules make an id.
+## Exception fingerprints
 
-The six formats are tested against stacks captured from real runtimes with a framework above the error: Node 24.21.0 with Express 5.2.1, Python 3.13.16 with Flask 3.1.3, OpenJDK 21.0.12 with Spring Boot 3.5.0, .NET 10.0.12 with ASP.NET Core 10.0.12, PHP 8.5.11 with Slim 4.15.3, and Go 1.26.8 with Gin 1.12.0. OTLP logs are tested against the requests real exporters sent for one logged exception: OpenTelemetry JS 0.223.0 with pino 10.4.0, as protobuf and JSON, and OpenTelemetry Python 1.45.1 with `logging`, as protobuf (that exporter has no JSON mode). The captures and the programs behind them are in [`fixtures/ingest`](../fixtures/ingest/).
+An error row's fingerprint, `e1`, is what Fingerprints, Home and Compare group an error by. Send `exception.type` and either `exception.frames` or `exception.stacktrace` as attrs. Valid supplied frames take priority.
+
+### Stacks ingest reads
+
+Without valid frames, ingest reads known stack formats into at most 50 frames, the ones nearest the raise. The raw stacktrace stays stored.
+
+| Format | Frames kept |
+| --- | --- |
+| Python | the end of the traceback |
+| Node/V8, JVM, .NET, PHP, Go | the start of the stack |
+
+[OpenTelemetry defines stacktrace as a runtime-specific string](https://opentelemetry.io/docs/specs/semconv/registry/attributes/exception/), so unsupported formats use the [fallback without frames](#an-id-without-frames).
+
+### How frames become an id
+
+With frames, `e1` hashes the lower-case type plus frame file/function pairs. When any supplied frame is `in_app`, only those frames are used. The hash input is normalized so the same code gives the same id across machines and releases:
+
+- Path separators, file URLs, drive prefixes, and trailing line/column numbers are normalized.
+- `/releases/<stamp>/` is removed, for an 8–14 digit or `YYYY-MM-DD` stamp.
+- Common roots are stripped: `/app`, `/src`, `/usr/src/app`, `/var/www*`, `/home/<user>`.
+- Full relative paths are preserved; unrecognized absolute roots use the last three path segments.
+- A PHP closure named with where it was declared (`{closure:/app/index.php:15}`) is hashed without the line, its path normalized the same way.
+- Paths and functions are lowercased for hashing.
+
+Stored supplied frame paths keep the sender's values; only the hash input is normalized. The id is 16 hex characters.
+
+### An id without frames
+
+Without usable frames, an exception type or an `error`/`fatal` event hashes type plus the stabilized log body. `exception.message` does not replace that body. Ingest does not parse stacks out of `message` or use log templates.
+
+### When the rules change
+
+Existing rows keep their stored `e1`. An upgrade that corrects the hash inputs can give an affected error a new id once; the [CHANGELOG](../CHANGELOG.md) names the releases that did.
+
+The key says which rules made the id: `e1` is the rules above, and when the hash inputs change again new rows carry `e2`. The bar takes either, and a pulled row keeps the key its source gave it. A sender's own `e1`, `e2`, … are dropped: only the store's rules make an id.
+
+### Tested runtimes and exporters
+
+The six formats are tested against stacks captured from real runtimes with a framework above the error:
+
+| Runtime | Framework |
+| --- | --- |
+| Node 24.21.0 | Express 5.2.1 |
+| Python 3.13.16 | Flask 3.1.3 |
+| OpenJDK 21.0.12 | Spring Boot 3.5.0 |
+| .NET 10.0.12 | ASP.NET Core 10.0.12 |
+| PHP 8.5.11 | Slim 4.15.3 |
+| Go 1.26.8 | Gin 1.12.0 |
+
+OTLP logs are tested against the requests real exporters sent for one logged exception:
+
+| Exporter | Logger | Encodings |
+| --- | --- | --- |
+| OpenTelemetry JS 0.223.0 | pino 10.4.0 | protobuf and JSON |
+| OpenTelemetry Python 1.45.1 | `logging` | protobuf (that exporter has no JSON mode) |
+
+The captures and the programs behind them are in [`fixtures/ingest`](../fixtures/ingest/).
 
 ## Metrics
 
 Metrics use the same bearer token as logs. Toposcope does not scrape: something sends to it, an app over OTLP, or Prometheus and its kin over [remote write](#prometheus-remote-write). `GET /api/metrics` is Toposcope's own numbers, for a Prometheus to scrape.
 
-`POST /v1/metrics` takes two shapes. An OpenTelemetry exporter sends OTLP — JSON, protobuf, or either gzipped — and what fits a point is stored:
+`POST /v1/metrics` takes two shapes: OTLP from an OpenTelemetry exporter (JSON, protobuf, or either gzipped), and a [plain JSON point](#a-plain-json-point).
 
-- A **gauge** as it is. An up-down counter’s running total is a level, so it is a gauge too. Each bar is the average of its points.
-- A **counter**, as the amount per interval. Each bar is the sum of what arrived in it; a wider bar sums more.
-- A **histogram**, with its buckets. It is one name, read one way at a time: `count`, `sum`, `avg`, `p50`, `p90` or `p99`. A percentile is read off the buckets of every matching series added together, so it is as exact as the buckets are wide; past the highest bound it is that bound. An exponential histogram is brought to the same shape, kept no finer than eight buckets to a doubling. Its count and sum are still stored as the counters `<name>.count` and `<name>.sum`, and a link that names one of those draws that reading.
-- A **summary**, as two counters: `<name>.count` and `<name>.sum`. Its quantiles were worked out by the sender and cannot be added up, so they are not kept.
+### OTLP metric kinds
 
-A name remembers the kind it came as, and that decides how the plot and every widget read it. It also remembers the unit it was last sent with, as sent (`s`, `By`, `GiBy`, `{request}`); nothing is converted, and a point sent without one leaves it as it was. A histogram’s or a summary’s unit is the unit of its values and its sum, not of its count. It remembers the description it was last sent with too, the sentence the metric's author wrote about it, cut to 300 characters; a point sent without one leaves it as it was. Dotted names are kept as they are. A point’s attributes become labels, then the resource’s; `service.name` and `host.name` arrive as `service` and `host`. An OTLP request is limited by the 1 MB body and not by a count of points, because an exporter sends every series in one request.
+From OTLP, what fits a point is stored by its kind:
 
-A counter, a histogram or a summary may arrive as deltas or as a running total since the process started, which is what an exporter sends by default. A running total is converted on the way in: Toposcope keeps the last total of each series in memory and stores the difference. A series that restarts is counted from its new start, and an export that never arrived is made up by the next one. The one cost is a restart of Toposcope itself: the first total it then sees from a series that was already running is only a baseline, so that series loses what it counted since its last stored export. The reply says how many points were taken that way.
+| Kind | Stored as | A bar on the plot |
+| --- | --- | --- |
+| **gauge** | as it is. An up-down counter’s running total is a level, so it is a gauge too. | the average of its points |
+| **counter** | the amount per interval | the sum of what arrived in it; a wider bar sums more |
+| **histogram** | its buckets, under one name, plus the counters `<name>.count` and `<name>.sum` | one reading at a time: `count`, `sum`, `avg`, `p50`, `p90` or `p99` |
+| **summary** | two counters: `<name>.count` and `<name>.sum` | as a counter |
 
-Anything else is counted as rejected in the reply’s partial success, with a **200**, and the rest of the request is stored: a sum or histogram that does not say whether it is a delta or a running total, and a name outside letters, digits, `_` and `.`. Histogram buckets that do not fit their bounds are a warning; the count and sum still land.
+A summary's quantiles were worked out by the sender and cannot be added up, so they are not kept.
 
-The other shape is a plain JSON point or an array of up to 500. It has no kind and reads as a gauge. It may carry a `unit`, a string of up to 64 characters, and a `description` of up to 300:
+A histogram percentile is read off the buckets of every matching series added together, so it is as exact as the buckets are wide; past the highest bound it is that bound. An exponential histogram is brought to the same shape, kept no finer than eight buckets to a doubling. A link that names `<name>.count` or `<name>.sum` draws that reading.
+
+### Name, unit, description and labels
+
+- **Kind.** A name remembers the kind it came as, and that decides how the plot and every widget read it. Dotted names are kept as they are.
+- **Unit.** A name remembers the unit it was last sent with, as sent (`s`, `By`, `GiBy`, `{request}`); nothing is converted, and a point sent without one leaves it as it was.
+- **Unit of a histogram or summary.** It is the unit of its values and its sum, not of its count.
+- **Description.** A name remembers the description it was last sent with, the sentence the metric's author wrote about it, cut to 300 characters. A point sent without one leaves it as it was.
+- **Labels.** A point’s attributes become labels, then the resource’s; `service.name` and `host.name` arrive as `service` and `host`.
+
+### Running totals and deltas
+
+A counter, a histogram or a summary may arrive as deltas or as a running total since the process started, which is what an exporter sends by default. A running total is converted on the way in: Toposcope keeps the last total of each series in memory and stores the difference. A series that restarts is counted from its new start, and an export that never arrived is made up by the next one. The reply says how many points were taken that way.
+
+The one cost is a restart of Toposcope itself: the first total it then sees from a series that was already running is only a baseline, so that series loses what it counted since its last stored export.
+
+### What a metrics request rejects
+
+These are counted as rejected in the reply’s partial success, with a **200**, and the rest of the request is stored:
+
+- a sum or histogram that does not say whether it is a delta or a running total;
+- a name outside letters, digits, `_` and `.`.
+
+Histogram buckets that do not fit their bounds are a warning; the count and sum still land.
+
+### A plain JSON point
+
+The other shape is a plain JSON point or an array of up to 500. It has no kind and reads as a gauge. It may carry a `unit`, a string of up to 64 characters, and a `description` of up to 300. This request sends one point of `cpu_seconds` for the `api` service:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/metrics \
@@ -172,7 +309,10 @@ curl -X POST http://127.0.0.1:8080/v1/metrics \
 
 ### Prometheus remote write
 
-A Prometheus that already scrapes your exporters sends what it scrapes to `POST /v1/prometheus/write`, with the ingest token. Its scrape config and exporters stay as they are:
+A Prometheus that already scrapes your exporters sends what it scrapes to `POST /v1/prometheus/write`, with the ingest token. Its scrape config and exporters stay as they are.
+
+1. Put the ingest token, alone, in a file Prometheus can read.
+2. Add this `remote_write` block to the Prometheus config:
 
 ```yaml
 remote_write:
@@ -183,6 +323,8 @@ remote_write:
 
 Prometheus in agent mode, Grafana Alloy (`prometheus.remote_write`) and Vector (`prometheus_remote_write`) send the same request. It is remote write 1.0, protobuf compressed with snappy, at most 1 MB decompressed; Prometheus's default batch of 2,000 samples fits. A 2.0 request gets **415**, and Prometheus falls back to 1.0.
 
+### How remote write series are stored
+
 Each series is stored the way the same metric would be from OTLP:
 
 - A name ending `_total`, or one Prometheus's metadata calls a counter, is a **counter**: its running total becomes the amount per interval.
@@ -190,9 +332,15 @@ Each series is stored the way the same metric would be from OTLP:
 - A **summary** keeps `<name>.count` and `<name>.sum`; its `quantile` series are not stored.
 - Everything else is a **gauge**. Metadata that calls a name a gauge wins over its suffix.
 
-Names keep Prometheus's spelling, in lower case: `node_cpu_seconds_total`, `node_memory_memavailable_bytes`. A name with a `:`, as a recording rule's has, cannot be stored. Labels become labels. `job` is also the series' `service` and `instance`, without its port, its `host`, unless the series has labels of those names.
+Names keep Prometheus's spelling, in lower case: `node_cpu_seconds_total`, `node_memory_memavailable_bytes`. A name with a `:`, as a recording rule's has, cannot be stored. Labels become labels. `job` is also the series' `service`, and `instance`, without its port, its `host`, unless the series has labels of those names.
 
-Prometheus does not say when a series started, so the first total Toposcope sees of each counter is only its baseline, after every restart of Toposcope too: that series is counted from its second scrape. A histogram's bucket series come in pieces, spread over parallel requests, so its buckets wait in memory for the same histogram's next scrape, or 30 seconds, and are written whole; on a stop they are written at once. Stale markers are not stored, and native histograms are not read yet.
+### When remote write series appear
+
+Prometheus does not say when a series started, so the first total Toposcope sees of each counter is only its baseline, after every restart of Toposcope too: that series is counted from its second scrape.
+
+A histogram's bucket series come in pieces, spread over parallel requests, so its buckets are held until the same histogram's next scrape, or 30 seconds, and are written whole; on a stop they are written at once. Stale markers are not stored, and native histograms are not read yet.
+
+### Remote write replies
 
 | Status | Meaning | Prometheus |
 | --- | --- | --- |
@@ -206,17 +354,13 @@ Prometheus does not say when a series started, so the first total Toposcope sees
 
 ## Change marks
 
-A deploy, flag flip, incident, or human note lives in `change_marks` on the same clock as the logs — not as a log row. `version` on an event is an ordinary attr (`version:v0.9`); OTLP resource `service.version` is aliased onto that key at ingest when `version` is unset. Search / Follow draw marks on the pinned volume histogram (lane under the bars). Extra widgets, Surroundings, and boards do not. Optional `end_ts` (must be after the start) is an incident duration, not a rewrite of `q`.
+A change mark is a deploy, flag flip, incident, or human note, kept on the same clock as the logs but not as a log row. `kind` is `deploy`, `flag`, `incident`, or `note`. Search and Follow draw marks on the pinned volume histogram, in the lane under the bars; extra widgets, Surroundings, and boards do not.
 
-There is no PATCH, PUT, or DELETE. A valid POST is always **200**. Never 4xx because the `id` already exists.
+`version` on an event is an ordinary attr (`version:v0.9`); OTLP resource `service.version` is aliased onto that key at ingest when `version` is unset.
 
-**Open** — omit `end_ts`. Missing `ts` is stamped server-side (`now`). Supply `id` (letters, digits, `.` `_` `:` `-`) so a later close or CI retry can find it; omit `id` and ingest mints `mk_…`.
+### Send a mark
 
-**Close** — POST the same `id` with `end_ts` while the mark is still open. The stored start stays; incoming `ts` is ignored (omit `ts` when resolving). Hunt already draws a band when `end_ts` is set.
-
-**Already there** — same `id` without `end_ts` while still open is skipped (`ingested: 0`). That is a CI re-run of `deploy-<service>-<tag>`: the glyph stays at first ship. It does not move the start and it does not close. Same `id` after it is already closed is also skipped (not a reopen). A new incident needs a new `id`.
-
-One JSON object returns `{ ingested, id }`. A JSON array returns `{ ingested, ids }` in request order (`id` is minted or the caller’s). Same `id` twice in one array applies in order (open then close is two inserts).
+This request marks the deploy of billing `v0.9`, with its commit and repository:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/marks \
@@ -224,6 +368,30 @@ curl -X POST http://127.0.0.1:8080/v1/marks \
   -H 'content-type: application/json' \
   -d '{"kind":"deploy","title":"v0.9","service":"billing","id":"deploy-billing-v0.9","attrs":{"version":"v0.9","sha":"abc123","repo":"https://github.com/acme/billing","source":"ci · deploy-bot"}}'
 ```
+
+Supply `id` (letters, digits, `.` `_` `:` `-`) so a later close or CI retry can find it; omit `id` and ingest mints `mk_…`. A missing `ts` is stamped server-side (`now`).
+
+| Request | Reply |
+| --- | --- |
+| one JSON object | `{ ingested, id }` |
+| a JSON array | `{ ingested, ids }` in request order; each `id` is minted or the caller’s |
+
+The same `id` twice in one array applies in order: open then close is two inserts.
+
+### Open, close, and send again
+
+There is no PATCH, PUT, or DELETE. A valid POST is always **200**, never 4xx because the `id` already exists.
+
+| You send | What happens |
+| --- | --- |
+| **Open**: no `end_ts` | The mark starts at `ts`, or now. |
+| **Close**: the same `id` with `end_ts`, while the mark is still open | The stored start stays; incoming `ts` is ignored (omit `ts` when resolving). Hunt draws a band once `end_ts` is set. |
+| **Already there**: the same `id` again | A CI re-run of `deploy-<service>-<tag>`: the same `id` without `end_ts` while still open is skipped (`ingested: 0`). The glyph stays at first ship; it does not move the start and it does not close. |
+| The same `id` after it is closed | Also skipped: not a reopen. A new incident needs a new `id`. |
+
+Optional `end_ts` must be after the start. It is an incident duration, not a rewrite of `q`. A band that has not started yet sends both `ts` and `end_ts`. A window that starts now and ends later omits `ts` and sends `end_ts`.
+
+These two requests open incident INC-238 and then close it an hour later:
 
 ```bash
 # open
@@ -239,11 +407,13 @@ curl -X POST http://127.0.0.1:8080/v1/marks \
   -d '{"kind":"incident","title":"INC-238","id":"pd-238","end_ts":"2026-08-25T13:02:00.000Z"}'
 ```
 
-`kind` is `deploy`, `flag`, `incident`, or `note`. A band that has not started yet sends both `ts` and `end_ts`. A window that starts now and ends later omits `ts` and sends `end_ts`.
-
 ### GitHub Actions
 
-On a published release (set `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN` as repository secrets; optional `TOPOSCOPE_SERVICE` is the service name on the mark):
+To mark each published release:
+
+1. Set `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN` as repository secrets.
+2. Optionally set `TOPOSCOPE_SERVICE`, the service name on the mark.
+3. Add this step to the job that runs on a published release:
 
 ```yaml
 - name: Mark deploy in Toposcope
@@ -262,7 +432,11 @@ The `id` is stable for that service and tag, so a re-run is still one glyph. Omi
 
 ### GitLab CI
 
-On a tag pipeline (CI variables `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN`; optional `TOPOSCOPE_SERVICE`):
+To mark each tag pipeline:
+
+1. Set `TOPOSCOPE_URL` and `TOPOSCOPE_INGEST_TOKEN` as CI variables.
+2. Optionally set `TOPOSCOPE_SERVICE`.
+3. Add this job:
 
 ```yaml
 mark_deploy:
@@ -281,7 +455,9 @@ mark_deploy:
 
 A script, a cron job, a Nagios plugin or a box with no logs tells Toposcope how it went. Toposcope never runs the check; it keeps the result, and a push monitor opens on a fail or when a result does not come.
 
-`POST /v1/checks` takes one result or up to 500, with the ingest token (1 MB, JSON or NDJSON):
+### Send a result
+
+`POST /v1/checks` takes one result or up to 500, with the ingest token (1 MB, JSON or NDJSON). This request reports `/var` at 87% used as a warn, with the next result due in 5 minutes:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/checks \
@@ -290,16 +466,42 @@ curl -X POST http://127.0.0.1:8080/v1/checks \
   -d '{"monitor":"disk-var","status":"warn","message":"/var 87% used","value":87.2,"unit":"%","every":"5m","grace":"2m","host":"log-vm","service":"box-agent"}'
 ```
 
-- `monitor` names its monitor (at most 100 characters, no `"`). A name not seen before creates a push monitor, up to 500; past that the request is refused and says why. A name a saved-search monitor has is refused.
-- `status` is `ok`, `warn` or `fail`, or `0`–`3`, Nagios's ok, warning, critical and unknown, so a plugin's exit code is a status. A fail opens the monitor; the next ok resolves it; a warn shows on Watch and calls nobody; unknown changes nothing.
-- `every` (`30s` to `365d`) and `grace` (`0` to `365d`) say when the next result is due. Past `every` with nothing in, the monitor is late; past `every` + `grace` it opens. Without a grace of its own it waits one more `every`, at most an hour. A result that leaves them out keeps the monitor's; without `every` a monitor goes by its results alone and is never late.
-- `message`, `value` with `unit`, `host`, `service` (else `monitor`), `ts` (else now), `exit_code` (0–255; a numeric status is its own) and `duration_ms` are optional.
+| Field | Meaning |
+| --- | --- |
+| `monitor` | Required. Names its monitor: at most 100 characters, no `"`. A name not seen before creates a push monitor, up to 500; past that the request is refused and says why. A name a saved-search monitor has is refused. |
+| `status` | Required. `ok`, `warn` or `fail`, or `0`–`3`: Nagios's ok, warning, critical and unknown, so a plugin's exit code is a status. |
+| `every` | `30s` to `365d`. When the next result is due. |
+| `grace` | `0` to `365d`. How long past `every` the monitor waits before it opens. |
+| `message` | Optional. |
+| `value`, `unit` | Optional. A `value` is also the metric `monitor_value`. |
+| `host` | Optional. |
+| `service` | Optional; else `monitor`. |
+| `ts` | Optional; else now. |
+| `exit_code` | Optional, 0–255. A numeric status is its own. |
+| `duration_ms` | Optional. |
 
 The reply is `{ ingested, created }`, the names it made monitors for. A bad result refuses the whole request, `result <n>: …`, and stores nothing.
 
-Every result is a log row: `monitor:<name> status:<status> source:push`, with its message, host and service, its `exit_code`, and `duration_ms` when it has one, so `monitor:disk-var` finds them in Search. A fail is an `error` row, a warn a `warn`. A `value` is also the metric `monitor_value`, labelled `monitor`, for the Series overlay. Toposcope never compares the value with anything: the check decides ok, warn or fail.
+### What a status and a missing result do
 
-**The keyed URL** — for a cron line with no token, each push monitor has `/ping/<key>`, shown on its page and in its editor. It takes a GET or a POST with no header, as Healthchecks' ping URL does, so a job wrapped by `runitor` or `hc-ping` points at Toposcope by changing the host:
+| Status | The monitor |
+| --- | --- |
+| `fail` (`2`) | opens |
+| `ok` (`0`) | resolves an open monitor |
+| `warn` (`1`) | shows on Watch and calls nobody |
+| unknown (`3`) | changes nothing |
+
+Past `every` with nothing in, the monitor is late; past `every` + `grace` it opens. Without a grace of its own it waits one more `every`, at most an hour. A result that leaves `every` and `grace` out keeps the monitor's; without `every` a monitor goes by its results alone and is never late.
+
+### Where a result shows
+
+Every result is a log row: `monitor:<name> status:<status> source:push`, with its message, host and service, its `exit_code`, and `duration_ms` when it has one, so `monitor:disk-var` finds them in Search. A fail is an `error` row, a warn a `warn`.
+
+A `value` is also the metric `monitor_value`, labelled `monitor`, for the Series overlay. Toposcope never compares the value with anything: the check decides ok, warn or fail.
+
+### The keyed URL
+
+For a cron line with no token, each push monitor has `/ping/<key>`, shown on its page and in its editor. It takes a GET or a POST with no header, as Healthchecks' ping URL does, so a job wrapped by `runitor` or `hc-ping` points at Toposcope by changing the host:
 
 | Path | Means |
 | --- | --- |
@@ -310,11 +512,17 @@ Every result is a log row: `monitor:<name> status:<status> source:push`, with it
 
 A POST body, up to 10 KB, is the message; the rest is not read. A start is a row too (`monitor:<name> signal:start source:push`). An unknown key gets `404` and writes nothing, in the time a known one takes. A key stores at most one start and one result a second; more get `429`.
 
+This crontab line runs a backup at 02:00 and sends its exit code as the result:
+
 ```bash
 0 2 * * * /usr/local/bin/backup.sh; curl -fsS -m 10 https://toposcope.example.com/ping/<key>/$?
 ```
 
-**A command's result** — the [toposcope skill](../skills/toposcope/SKILL.md)'s `toposcope.sh check <monitor> -- <command>` runs any command and sends its exit code, how long it ran and the tail of its output; for a Nagios plugin, the first line is the message and its first perfdata value is the value. It sends to `TOPOSCOPE_URL` with `TOPOSCOPE_INGEST_TOKEN`.
+### A command's result
+
+The [toposcope skill](../skills/toposcope/SKILL.md)'s `toposcope.sh check <monitor> -- <command>` runs any command and sends its exit code, how long it ran and the tail of its output. For a Nagios plugin, the first line is the message and its first perfdata value is the value. It sends to `TOPOSCOPE_URL` with `TOPOSCOPE_INGEST_TOKEN`.
+
+This runs the Nagios disk plugin on `/var` and sends its result to the `disk-var` monitor:
 
 ```bash
 toposcope.sh check disk-var -- /usr/lib/nagios/plugins/check_disk -w 20% -c 10% -p /var
@@ -322,13 +530,17 @@ toposcope.sh check disk-var -- /usr/lib/nagios/plugins/check_disk -w 20% -c 10% 
 
 ## Probes / liveness
 
-A consumed check is an explicit `up=0` or `up=1` on the hunt clock — the same ingested `up` metric the Series picker already overlays. It is not `/api/health`, and not a second Nagios. A missing pull is stored as `up=0`, not a silent green. Empty overlay buckets stay omitted (`null`); they are not a fake 0. An attached probe is also a push monitor's result: `up` 1 is ok, 0 a fail, and `check` names the monitor (its `service` without one), so it is a log row too and opens and resolves that monitor. A pulled one is only `up`.
+A consumed check is an explicit `up=0` or `up=1` on the hunt clock: the same ingested `up` metric the Series picker already overlays. It is not `/api/health`, and not a second Nagios. A missing pull is stored as `up=0`, not a silent green. Empty overlay buckets stay omitted (`null`); they are not a fake 0.
 
-`POST /v1/probes` attaches a result or pulls one status URL. Same bearer/basic, 1 MB body, and 500-item batch as other ingest. Hunt paints with `metric=up` (optional `ml=service:billing`). `GET /api/probes` lists samples in a window.
+`POST /v1/probes` attaches a result or pulls one status URL, with the same bearer token, 1 MB body, and 500-item batch as other ingest. Hunt paints with `metric=up` (optional `ml=service:billing`).
 
-**Attach** — `{ service, up: 0|1, ts?, host?, check? }`. `up` must be the number `0` or `1`. One object returns `{ ingested, up }`. An array is attach-only (`{ ingested }`).
+### Attach a result
 
-**Pull** — one object `{ service, url }` (`http`/`https`). Toposcope GETs that URL (5s timeout) and stores `up=1` on 2xx, otherwise `up=0` (timeout, connect error, or non-2xx). Arrays cannot pull. Optional `check` is a label ident (`github`, `k8s`).
+Send `{ service, up: 0|1, ts?, host?, check? }`. `up` must be the number `0` or `1`. One object returns `{ ingested, up }`. An array is attach-only (`{ ingested }`).
+
+An attached probe is also a push monitor's result: `up` 1 is ok, 0 a fail, and `check` names the monitor (its `service` without one). So it is a log row too, and opens and resolves that monitor.
+
+This request records that billing's `github` check is down:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/probes \
@@ -337,12 +549,22 @@ curl -X POST http://127.0.0.1:8080/v1/probes \
   -d '{"service":"billing","up":0,"check":"github"}'
 ```
 
+### Pull a status URL
+
+Send one object `{ service, url }` (`http`/`https`). Toposcope GETs that URL (5s timeout) and stores `up=1` on 2xx, otherwise `up=0` (timeout, connect error, or non-2xx). Arrays cannot pull. Optional `check` is a label ident (`github`, `k8s`). A pulled result is only `up`: it is not a push monitor's result.
+
+This request has Toposcope pull billing's health endpoint and store the result under `k8s`:
+
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/probes \
   -H "authorization: Bearer ${TOPOSCOPE_INGEST_TOKEN}" \
   -H 'content-type: application/json' \
   -d '{"service":"billing","url":"http://127.0.0.1:8081/health","check":"k8s"}'
 ```
+
+### List probe samples
+
+`GET /api/probes` lists samples in a window. This request lists billing's samples from the last hour:
 
 ```bash
 curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" \
@@ -351,7 +573,7 @@ curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" \
 
 ### GitHub Actions
 
-After deploy, attach the check or let Toposcope pull the status URL (set `TOPOSCOPE_PROBE_URL` when pulling):
+After deploy, attach the check or let Toposcope pull the status URL. Set `TOPOSCOPE_PROBE_URL` when pulling. This step has Toposcope pull the URL:
 
 ```yaml
 - name: Record billing liveness in Toposcope
@@ -371,9 +593,9 @@ To attach without a pull, POST `{"service":"billing","up":0}` when the job faile
 
 ## Traces
 
-Toposcope stores the spans it receives. Sampling stays at the collector.
+Toposcope stores the spans it receives. Sampling stays at the collector. `POST /v1/traces` takes OTLP JSON, and `Content-Type: application/x-protobuf` on the same path.
 
-A span keeps the exception recorded on it: the `exception` event a tracing library writes with `recordException`, or by itself when an exception leaves the span. Its `exception.type`, `exception.message` and `exception.stacktrace` are stored on the span with the `e1` they give, worked out by the code that fingerprints a log row, so the span and the row that logged the same exception carry the same id. When a span recorded several, the last is kept. Other span events are not stored. The tracing library’s own frames at the outer ends of a span’s stack are left out of the id: the Python library records an exception as it passes through its own context managers, and the logged traceback never has those frames. The spans themselves are tested against what OpenTelemetry JS 0.223.0 and OpenTelemetry Python 1.45.1 send.
+This request posts one 412 ms `GET /` span from nginx as OTLP JSON:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/traces \
@@ -382,11 +604,19 @@ curl -X POST http://127.0.0.1:8080/v1/traces \
   -d '{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"nginx"}}]},"scopeSpans":[{"spans":[{"traceId":"aabbccddeeff00112233445566778899","spanId":"1122334455667788","name":"GET /","startTimeUnixNano":"1692000000000000000","endTimeUnixNano":"1692000000412000000","status":{"code":1}}]}]}]}'
 ```
 
-`Content-Type: application/x-protobuf` uses the same `POST /v1/traces` path.
+### Exceptions on a span
+
+A span keeps the exception recorded on it: the `exception` event a tracing library writes with `recordException`, or by itself when an exception leaves the span. Its `exception.type`, `exception.message` and `exception.stacktrace` are stored on the span with the `e1` they give, by the same rules as a log row, so the span and the row that logged the same exception carry the same id. When a span recorded several, the last is kept. Other span events are not stored.
+
+The tracing library’s own frames at the outer ends of a span’s stack are left out of the id: the Python library records an exception as it passes through its own context managers, and the logged traceback never has those frames.
+
+The spans themselves are tested against what OpenTelemetry JS 0.223.0 and OpenTelemetry Python 1.45.1 send.
 
 ## Profiles
 
-Profiles use the same bearer token. Toposcope stores what arrives and joins only samples that carry both a `trace_id` and a `span_id` link.
+Profiles use the same bearer token. Toposcope stores what arrives and joins only samples that carry both a `trace_id` and a `span_id` link. Profiles are still Alpha in the collector chain. Toposcope does not use `/debug/pprof` scraping.
+
+This request posts a protobuf profile from a file:
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/profiles \
@@ -395,18 +625,18 @@ curl -X POST http://127.0.0.1:8080/v1/profiles \
   --data-binary @profile.pb
 ```
 
-Toposcope does not use `/debug/pprof` scraping.
-
 ## OTLP over gRPC
 
-Several OpenTelemetry exporters send gRPC unless told otherwise. Toposcope takes it on a second port, `4319`, for logs, traces, metrics and profiles. The token is the same, sent as the `authorization` metadata an exporter builds from `OTEL_EXPORTER_OTLP_HEADERS`:
+Several OpenTelemetry exporters send gRPC unless told otherwise. Toposcope takes it on a second port, `4319`, for logs, traces, metrics and profiles. The token is the same, sent as the `authorization` metadata an exporter builds from `OTEL_EXPORTER_OTLP_HEADERS`. These two settings point an exporter at it:
 
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4319
 OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20${TOPOSCOPE_INGEST_TOKEN}
 ```
 
-A call is handed to the HTTP route for its signal, so the limits and the replies are the ones on this page: 1 MB a message, gzip under that, 1,024 log records or spans, and a reply whose partial success says what was not stored. What HTTP answers with a status, gRPC answers with a code:
+### gRPC limits and codes
+
+A call behaves as the HTTP route for its signal, so the limits and the replies are the ones on this page: 1 MB a message, gzip under that, 1,024 log records or spans, and a reply whose partial success says what was not stored. What HTTP answers with a status, gRPC answers with a code:
 
 | HTTP | gRPC | An exporter |
 | --- | --- | --- |
@@ -416,222 +646,31 @@ A call is handed to the HTTP route for its signal, so the limits and the replies
 | 413 | `RESOURCE_EXHAUSTED` | drops the request |
 | 429, 503 | `UNAVAILABLE` | tries again |
 
-The port is `4319` and not OTLP’s usual `4317`, which is left to a collector on the same host: the packaged [Vector](#vector) config listens there. `OTLP_GRPC_PORT` moves it, and `0` turns it off. The packaged install binds it to `127.0.0.1`, like the app’s port. It is plain HTTP/2 with no TLS; in front of a reverse proxy it needs a rule of its own, shown in the [operations guide](operations.md#tls).
+### The gRPC port
+
+The port is `4319` and not OTLP’s usual `4317`, which is left to a collector on the same host: the packaged [Vector](collectors.md#vector) config listens there. `OTLP_GRPC_PORT` moves it, and `0` turns it off. The packaged install binds it to `127.0.0.1`, like the app’s port. It is plain HTTP/2 with no TLS; in front of a reverse proxy it needs a rule of its own, shown in the [operations guide](operations.md#tls).
 
 Tested with OpenTelemetry Python 1.45.1 on its gRPC default, OpenTelemetry JS 0.223.0 with `OTEL_EXPORTER_OTLP_PROTOCOL=grpc`, and the OpenTelemetry Collector 0.162.0.
 
 ## Vector
 
-A collector between the app and Toposcope is optional, and without one nothing else changes: the app exports straight to Toposcope. Add one when what the app sends must outlive a Toposcope outage longer than its exporter keeps retrying, or when rows need enrichment on the way. The shipped `vector.yaml` is that collector, for Vector 0.51 or newer.
-
-Vector listens for OTLP from apps, over HTTP on port 4318 and gRPC on 4317, keeps what it receives on disk until Toposcope has taken it, and forwards each request as the app sent it, to `/v1/logs`, `/v1/traces` and `/v1/metrics`. It also sends the machine's own health and any `/metrics` page you list; see [Host metrics](#host-metrics) and [Scrape a /metrics page](#scrape-a-metrics-page). The app changes one setting, the address, and needs no token, because Vector adds it:
-
-```bash
-OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
-```
-
-Run Vector where the app can reach it:
-
-```bash
-set -a && source .env && set +a
-VECTOR_DATA_DIR=vector-data vector -c vector.yaml
-```
-
-`TOPOSCOPE_INGEST_TOKEN` is the ingest token. `TOPOSCOPE_URL` is where Toposcope is, when that is not `http://127.0.0.1:8080`. `VECTOR_DATA_DIR` is where the disk buffers are kept, `/var/lib/vector` when unset.
-
-- Over HTTP the app sends protobuf (`http/protobuf`, an exporter’s default). Vector does not take OTLP as JSON.
-- Each signal has its own disk buffer of 256 MB. When one is full Vector holds the app back; it does not drop.
-- A request Toposcope cannot take yet, because it is down or busy, is tried again until it lands. One it refuses outright, such as a wrong token, is not tried again, and Vector’s log says so.
-- Each request reaches Toposcope as the app sent it, so the limits are the ones a direct export meets: 1 MB, and 1,024 log records or spans.
-- Metrics pass through too. A restart of Toposcope still costs a series that was already running the one interval described under [Metrics](#metrics).
-- Vector listens on `127.0.0.1`. Whatever reaches those two ports is forwarded with the ingest token, so open them only to hosts you trust.
-
-The file also holds the smoke source the quick start uses: three events under `service:smoke` on every start.
-
-### Host metrics
-
-The same file sends the health of the machine Vector runs on, every 15 seconds, through [Prometheus remote write](#prometheus-remote-write) on a disk buffer of its own: CPU, memory and swap, load, disks, filesystems and network. Every series carries `host`, the machine's hostname, so one panel splits by machine. The names start with `host_`:
-
-| Name | Kind | Labels |
-| --- | --- | --- |
-| `host_cpu_seconds_total` | counter | `cpu`, `mode` |
-| `host_memory_used_bytes`, `host_memory_available_bytes`, `host_memory_total_bytes`, `host_memory_swap_used_bytes` | gauge | |
-| `host_load1`, `host_load5`, `host_load15` | gauge | |
-| `host_filesystem_used_bytes`, `host_filesystem_used_ratio`, `host_filesystem_total_bytes` | gauge | `device`, `filesystem`, `mountpoint` |
-| `host_disk_read_bytes_total`, `host_disk_written_bytes_total` | counter | `device` |
-| `host_network_receive_bytes_total`, `host_network_transmit_bytes_total` | counter | `device` |
-
-To leave it out, delete the `machine` source and take it out of the `toposcope_prometheus` inputs.
-
-Vector in a container reads the container, not the machine, unless it is given the machine's `/proc`, `/sys` and hostname:
-
-```bash
-docker run -d --name vector --restart unless-stopped --network host \
-  --hostname "$(hostname)" \
-  -v /proc:/host/proc:ro -v /sys:/host/sys:ro -e PROCFS_ROOT=/host/proc -e SYSFS_ROOT=/host/sys \
-  -v "$PWD/vector.yaml":/etc/vector/vector.yaml:ro -v vector-data:/var/lib/vector \
-  -e TOPOSCOPE_INGEST_TOKEN -e VECTOR_DATA_DIR=/var/lib/vector \
-  timberio/vector:0.51.1-alpine
-```
-
-### Scrape a /metrics page
-
-Postgres, Redis and nginx exporters, node_exporter and most Go services only offer a `/metrics` page. The file has a `prometheus_scrape` source for them, commented out. Uncomment it, list the pages, and add `exporters` to the `toposcope_prometheus` inputs:
-
-```yaml
-  exporters:
-    type: prometheus_scrape
-    endpoints:
-      - http://127.0.0.1:9187/metrics     # postgres_exporter
-      - http://127.0.0.1:9121/metrics     # redis_exporter
-    scrape_interval_secs: 15
-    instance_tag: instance
-```
-
-A page's address becomes the series' `instance`, and its host part `host`. Names keep the page's spelling, in lower case, and are read as [remote write](#prometheus-remote-write) reads them: `_total` a counter, `_bucket` a histogram, the rest a gauge. A team that already runs Prometheus does not need this: point Prometheus at Toposcope with `remote_write` instead.
+Moved to [Collectors › Vector](collectors.md#vector).
 
 ## Fluent Bit
 
-```ini
-[OUTPUT]
-    Name                 opentelemetry
-    Match                *
-    Host                 127.0.0.1
-    Port                 8080
-    Logs_uri             /v1/logs
-    Traces_uri           /v1/traces
-    Header               Authorization Bearer ${TOPOSCOPE_INGEST_TOKEN}
-```
+Moved to [Collectors › Fluent Bit](collectors.md#fluent-bit).
 
 ## Alloy
 
-Alloy’s `otelcol.exporter.otlphttp` posts traces to `{endpoint}/v1/traces` and profiles to `{endpoint}/v1/profiles` on the same client. OTLP HTTP uses protobuf by default; JSON still works.
-
-```hcl
-otelcol.auth.headers "toposcope" {
-  header {
-    key   = "Authorization"
-    value = "Bearer ${TOPOSCOPE_INGEST_TOKEN}"
-  }
-}
-
-otelcol.exporter.otlphttp "toposcope" {
-  client {
-    endpoint = "http://127.0.0.1:8080"
-    auth     = otelcol.auth.headers.toposcope.handler
-  }
-}
-```
+Moved to [Collectors › Alloy](collectors.md#alloy).
 
 ## Enrich at the collector
 
-`q`, Top-N, and rollups only see stored keys. If a field must be searchable or appear in Top-N, the collector must write it as a top-level string attr before ingest.
-
-Supported collector-side operations:
-
-| Operation | What it does |
-| --- | --- |
-| alias / copy | rename or duplicate a key |
-| combine | turn N keys into one stored key |
-| bucket | reduce cardinality so Top-N is not unique-per-event |
-| local lookup | map a local file such as MMDB or CSV to one top-level key |
-
-Match on `service` and/or required-key existence so every event does not run every rule. Nested objects become one JSON blob and are not dotted `q` paths. Extra keys count toward the 50-key cap. A detail-panel lookup does not satisfy `q` or Top-N.
-
-Direct ingest without a collector does not grow collector-style derived keys (alias/combine/bucket/lookup). Exception attrs come from the app, OTEL, or collector enrich. Ingest uses supplied frames or known `exception.stacktrace` formats and writes `e1` (16-hex SHA-256); see [exception fingerprints](#exception-fingerprints). OTEL `service.version` is aliased onto attr `version` when `version` is unset (the dotted key is dropped; sender `version` wins). `customer` and `flag` are not inferred — copy them at the collector (`customer_id` → `customer`, `feature_flag` → `flag`) so hunt can pin them as promoted columns. Existing rows are not rewritten.
-
-Vector remap for those two identities (run before the sink):
-
-```yaml
-if exists(.customer_id) && !exists(.customer) {
-  .customer = .customer_id
-}
-if exists(.feature_flag) && !exists(.flag) {
-  .flag = .feature_flag
-}
-```
-
-### Worked example
-
-Before enrichment:
-
-```json
-{"service":"api","level":"info","message":"ok","attrs":{"lat":51.5074,"lng":-0.1278,"client_ip":"8.8.8.8","user_id":"42"}}
-```
-
-After the collector:
-
-```json
-{"service":"api","level":"info","message":"ok","attrs":{"lat":"51.51","lng":"-0.13","latlng":"51.51,-0.13","client_ip":"8.8.8.8","user_id":"42","usr":"42","country":"US"}}
-```
-
-Then `usr:42`, `country:US`, and Top-N on `latlng` work.
-
-### Vector enrichment
-
-This example uses `remap` plus a local GeoLite / GeoIP MMDB. Run it before the `toposcope` sink; the sink input becomes `[enrich]`.
-
-```yaml
-enrichment_tables:
-  geoip_table:
-    type: geoip
-    path: /etc/vector/GeoLite2-City.mmdb
-
-transforms:
-  enrich:
-    type: remap
-    inputs: [your_source]
-    source: |-
-      if exists(.user_id) && !exists(.usr) {
-        .usr = .user_id
-      }
-      if .service == "api" && exists(.lat) && exists(.lng) {
-        lat, err_lat = to_float(.lat)
-        lng, err_lng = to_float(.lng)
-        if err_lat == null && err_lng == null {
-          .latlng = to_string(round(lat, 2)) + "," + to_string(round(lng, 2))
-        }
-      }
-      if exists(.duration_ms) {
-        ms, err = to_float(.duration_ms)
-        if err == null {
-          .duration_ms = round(ms)
-        }
-      }
-      if exists(.client_ip) {
-        geo, err = get_enrichment_table_record("geoip_table", { "ip": .client_ip })
-        if err == null && exists(geo.country_code) {
-          .country = geo.country_code
-        }
-      }
-```
-
-### Alloy enrichment
-
-Alloy uses the same four operations. Round `lat` and `lng` before the concat because OTTL has no `round`; otherwise Top-N on `latlng` stays unique per event.
-
-```hcl
-otelcol.processor.transform "enrich" {
-  error_mode = "ignore"
-
-  log_statements {
-    context = "log"
-    conditions = [
-      `resource.attributes["service.name"] == "api"`,
-    ]
-    statements = [
-      `set(attributes["usr"], attributes["user_id"]) where attributes["user_id"] != nil and attributes["usr"] == nil`,
-      `set(attributes["latlng"], Concat([attributes["lat"], attributes["lng"]], ",")) where attributes["lat"] != nil and attributes["lng"] != nil`,
-      `set(attributes["duration_ms"], Int(Double(attributes["duration_ms"]))) where attributes["duration_ms"] != nil`,
-      `set(attributes["country"], attributes["geo.country.iso_code"]) where attributes["geo.country.iso_code"] != nil`,
-    ]
-  }
-}
-```
+Moved to [Collectors › Enrich at the collector](collectors.md#enrich-at-the-collector).
 
 ## Syslog
 
-RFC 3164 syslog is accepted on UDP `127.0.0.1:5514`.
+RFC 3164 syslog is accepted on UDP `127.0.0.1:5514`. This sends one line from `nginx` on `api-1`:
 
 ```bash
 echo '<27>Aug 14 01:02:03 api-1 nginx: timeout' | nc -u -w1 127.0.0.1 5514
@@ -639,17 +678,23 @@ echo '<27>Aug 14 01:02:03 api-1 nginx: timeout' | nc -u -w1 127.0.0.1 5514
 
 UDP has no delivery acknowledgement or HTTP-style backpressure. Use a collector and HTTP ingest when delivery and buffering matter.
 
-At most 10,000 syslog rows wait for ClickHouse. A packet that arrives when they are all waiting is dropped, as is a batch of up to 500 whose insert fails, and a packet that is not RFC 3164. `GET /api/metrics` counts each in `toposcope_syslog_dropped_total{reason="queue_full"|"insert_failed"|"unparsed"}`, and while drops happen the app writes at most one line a minute to stderr with the counts since the last one. `toposcope_syslog_packets_total` counts the packets taken.
+### Dropped syslog rows
 
-## Notes
+At most 10,000 syslog rows wait to be stored. These are dropped, and `GET /api/metrics` counts each:
 
-- `http/protobuf` is the default OTLP HTTP encoding.
-- JSON works for OTLP logs, traces, and profiles.
-- Profiles are still Alpha in the collector chain; store what arrives and join only samples with a `trace_id` + `span_id` link.
+| Dropped | Counted in |
+| --- | --- |
+| a packet that arrives when all 10,000 are waiting | `toposcope_syslog_dropped_total{reason="queue_full"}` |
+| a batch of up to 500 whose insert fails | `toposcope_syslog_dropped_total{reason="insert_failed"}` |
+| a packet that is not RFC 3164 | `toposcope_syslog_dropped_total{reason="unparsed"}` |
+
+While drops happen, the app writes at most one line a minute to stderr with the counts since the last one. `toposcope_syslog_packets_total` counts the packets taken.
 
 ## Related documentation
 
+- [Collectors](collectors.md)
 - [What an investigation reads](evidence.md)
 - [Query language](query.md)
+- [Hunting](hunt.md)
 - [Operations](operations.md)
 - [Architecture](ARCHITECTURE.md)

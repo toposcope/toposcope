@@ -84,7 +84,7 @@ export async function requireClickHouseVersion(): Promise<void> {
     ? "docker compose -f compose.dev.yml"
     : "docker compose -f compose.yml";
   throw new Error(
-    `ClickHouse ${version || "(unknown)"} is too old for the message text index (need ${minClickHouseVersion}+). Back up both stores before upgrading. Update the supported ClickHouse image: ${compose} pull clickhouse && ${compose} up -d clickhouse. If an older data directory cannot start, restore from backup. See docs/operations.md for backup and restore.`,
+    `ClickHouse ${version || "(unknown)"} is too old for the message text index (need ${minClickHouseVersion}+). Back up both stores before upgrading. Update the supported ClickHouse image: ${compose} pull clickhouse && ${compose} up -d clickhouse. If an older data directory cannot start, restore from backup. See docs/upgrades.md for backup and restore.`,
   );
 }
 

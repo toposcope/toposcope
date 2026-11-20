@@ -64,7 +64,7 @@ describe("the popover's pieces", () => {
     expect(noteParagraphs("[x](javascript:alert(1))")).toEqual([[{ kind: "text", text: "[x](javascript:alert(1))" }]]);
   });
 
-  test("Before you upgrade, all together: 0.6.0 and earlier link to the operations guide; nothing to read, no box (19d, 19e)", () => {
+  test("Before you upgrade, all together: 0.6.0 and earlier link to the upgrades guide; nothing to read, no box (19d, 19e)", () => {
     expect(beforeItems([r("0.6.1", before061), r("0.6.0"), r("0.5.7")])).toEqual([
       { version: "0.6.1", text: before061, guide: false },
       { version: "0.6.0", text: null, guide: true },
@@ -120,7 +120,7 @@ describe("the popover", () => {
     const t = text(draw(reply({ running: "0.5.6", latest: "0.6.1", step: "minor", releases: [r("0.6.1", before061), r("0.6.0"), r("0.5.7")] })));
     expect(t).toContain("3 releases since yours");
     expect(t).toContain("you run 0.5.6 · latest 0.6.1 · minor");
-    expect(t.match(/Upgrade notes for this release are in the operations guide/g)).toHaveLength(2);
+    expect(t.match(/Upgrade notes for this release are in the upgrades guide/g)).toHaveLength(2);
     expect(t).toContain("Upgrade to 0.6.1");
     expect(t).toContain("./upgrade.sh 0.6.1");
     expect(t.match(/Show all/g)).toHaveLength(3);
