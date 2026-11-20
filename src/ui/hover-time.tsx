@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../shared/change-mark";
 import { MarkGlyph, markKindColor } from "@/components/histogram-marks";
+import { markLaneName } from "./change-marks";
 
 /**
  * One hover line across a canvas (sheet 44): hover a time on any chart and every chart on the hunt
@@ -34,6 +35,11 @@ export function bucketSpan(times: readonly string[]): { from: number; to: number
 }
 
 /** `14:32`, or `14:32:05` in a window under 15 minutes (UTC, as the window strip). */
+/** A mark's hover name opens away from the panel's nearer edge: past the middle, it opens to the left. */
+export function markLabelSide(ts: number, from: number, span: number): "left" | "right" {
+  return span > 0 && (ts - from) / span > 0.5 ? "left" : "right";
+}
+
 export function hoverClock(ts: number, spanMs: number): string {
   return new Date(ts).toISOString().slice(11, spanMs < 15 * 60_000 ? 19 : 16);
 }
@@ -66,6 +72,7 @@ export function TimeLayer({
   const span = to - from;
   const at = (ts: number) => `calc(${inset}px + ${((ts - from) / span) * 100}% - ${((ts - from) / span) * inset * 2}px)`;
   const hover = shared?.value;
+  const [onMark, setOnMark] = useState<string | null>(null);
   const showLine = hover && span > 0 && hover.ts >= from && hover.ts <= to && !(ownHover && hover.source === id);
   const inWindow = span > 0 ? marks.filter((mark) => {
     const ts = Date.parse(mark.ts);
@@ -93,30 +100,40 @@ export function TimeLayer({
       }}
     >
       {children}
-      {inWindow.map((mark) => (
+      {inWindow.map((mark) => {
+        const ts = Date.parse(mark.ts);
+        return (
         <div
           key={mark.id}
           className="group/mark absolute top-0 bottom-0 z-[5] w-[11px] -translate-x-1/2"
-          style={{ left: at(Date.parse(mark.ts)) }}
+          style={{ left: at(ts) }}
+          onPointerEnter={() => setOnMark(mark.id)}
+          onPointerLeave={() => setOnMark((cur) => (cur === mark.id ? null : cur))}
         >
           <span className="absolute top-[7px] bottom-0 left-1/2 border-l border-dashed opacity-70" style={{ borderColor: markKindColor(mark.kind) }} />
           <span className="absolute top-0 left-0">
             <MarkGlyph kind={mark.kind} size={11} />
           </span>
-          <span className="pointer-events-none absolute top-0 left-[14px] z-10 hidden rounded-sm border border-white/14 bg-popover px-1.5 font-mono text-2xs leading-[18px] whitespace-nowrap group-hover/mark:block">
-            {hoverClock(Date.parse(mark.ts), span)} · {mark.kind} · {mark.title}
+          <span
+            className={cn(
+              "pointer-events-none absolute top-0 z-10 hidden rounded-sm border border-white/14 bg-popover px-1.5 font-mono text-2xs leading-[18px] whitespace-nowrap group-hover/mark:block",
+              markLabelSide(ts, from, span) === "left" ? "right-[14px]" : "left-[14px]",
+            )}
+          >
+            {hoverClock(ts, span)} · {markLaneName(mark)}
           </span>
         </div>
-      ))}
+        );
+      })}
       {showLine ? (
         <>
           <span className="pointer-events-none absolute top-0 bottom-0 z-[6] w-px bg-foreground/50" style={{ left: at(hover.ts) }} />
-          <span
+          {onMark ? null : <span
             className="pointer-events-none absolute top-0 z-[6] ml-1 rounded-sm border border-white/14 bg-popover px-1 font-mono text-2xs leading-[16px] tabular-nums"
             style={{ left: at(hover.ts) }}
           >
             {hoverClock(hover.ts, span)}
-          </span>
+          </span>}
         </>
       ) : null}
     </div>

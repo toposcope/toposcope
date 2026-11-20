@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChangeMark } from "../shared/change-mark";
-import { agoText, deltaText, firstRunSteps, formatValue, markStrip, markWhen, marksNewestFirst, resolvePick, sideText } from "./home-since";
+import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, markStrip, markWhen, marksNewestFirst, resolvePick, sideText } from "./home-since";
 
 const now = Date.parse("2026-10-26T13:26:00Z");
 const m = (id: string): ChangeMark => ({ id, ts: "2026-10-26T12:48:00Z", end_ts: null, kind: "deploy", service: "", title: id, attrs: {} });
@@ -71,5 +71,13 @@ describe("Home's Since bar (49b)", () => {
     const strip = markStrip([at("a", 1), at("b", 2)], null);
     expect(strip.chips.map((x) => x.id)).toEqual(["a", "b"]);
     expect(strip.earlier).toEqual([]);
+  });
+});
+
+describe("New fingerprints title", () => {
+  test("counts stopped rows too", () => {
+    expect(fingerprintsTitle(null)).toBe("New fingerprints · none");
+    expect(fingerprintsTitle({ first_seen: [], stopped: [{}], more: 0 })).toBe("New fingerprints · 0 · 1 stopped");
+    expect(fingerprintsTitle({ first_seen: [{}, {}], stopped: [], more: 3 })).toBe("New fingerprints · 2+");
   });
 });

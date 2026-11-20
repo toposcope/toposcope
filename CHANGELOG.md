@@ -6,6 +6,10 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Home's New fingerprints card counts both lists it shows: `New fingerprints · 0 · 1 stopped` where it read `· 0` over a row with a count of 0. A fingerprint that stopped carries a `stopped` tag before its message; the word used to sit at the end of the message, where a long one cut it off.
+
+A mark's name on a board panel, on hover, says its kind once (`12:22 · api deploy cf3c`, not `12:22 · deploy · deploy cf3c`), opens to the left past the panel's middle so the panel's edge no longer cuts it, and hides the pointer's own time label while it shows.
+
 ## 0.15.7
 
 The docs are rewritten to be read, not searched. Every page in `docs/` follows the rules now in CONTRIBUTING.md (Writing docs): one job per page, a heading every few paragraphs, short paragraphs and list items, tables for options and limits, and how Toposcope computes something kept in ARCHITECTURE.md. Query language is the search syntax alone, with a table of examples; the hunt screen has its own page, [Hunting](docs/hunt.md). The operations guide is split into [Running Toposcope](docs/operations.md), [Monitors](docs/monitors.md), [Links](docs/links.md) and [Upgrades, backups and rollback](docs/upgrades.md); collectors moved to [Collectors](docs/collectors.md). Old links keep working: a heading that moved leaves a line under the same name pointing to its new page. `src/shared/docs-lint.test.ts` checks paragraph and section length and that every link between docs lands. The footer's upgrade notes for 0.6.0 and earlier link the new upgrades page.
