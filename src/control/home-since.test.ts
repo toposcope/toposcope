@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChangeMark } from "../shared/change-mark";
-import { hourWindows, maxSideMs, minSideMs, pickHomeMark, windowsAround } from "./home-since";
+import { hourWindows, maxSideMs, minSideMs, newestFirst, pickHomeMark, windowsAround } from "./home-since";
 
 const now = Date.parse("2026-10-26T13:26:00Z");
 const mark = (id: string, kind: ChangeMark["kind"], minutesAgo: number): ChangeMark => ({
@@ -17,6 +17,11 @@ describe("Home picks the mark (#259, locked 2026-10-26)", () => {
   test("the newest deploy or flag in 24 h, never an incident", () => {
     const marks = [mark("inc", "incident", 24), mark("v0.9", "deploy", 38), mark("flag", "flag", 120), mark("api", "deploy", 257)];
     expect(pickHomeMark(marks, now)?.id).toBe("v0.9");
+  });
+  test("the newest even when the marks read comes oldest first (sheet 49)", () => {
+    const marks = [mark("upgrade", "deploy", 24 * 60 - 10), mark("bb0ff80", "deploy", 600), mark("ad11d46", "deploy", 120), mark("note", "note", 30)];
+    expect(pickHomeMark(marks, now)?.id).toBe("ad11d46");
+    expect(newestFirst(marks).map((m) => m.id)).toEqual(["note", "ad11d46", "bb0ff80", "upgrade"]);
   });
   test("a note or an incident only when it is all there is", () => {
     expect(pickHomeMark([mark("inc", "incident", 24), mark("note", "note", 60)], now)?.id).toBe("inc");

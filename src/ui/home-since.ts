@@ -14,22 +14,6 @@ export function hhmmUtc(iso: string): string {
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-/** "38 min ago", "2 h ago", "yesterday 16:02". */
-export function markAge(iso: string, nowMs: number): string {
-  const ms = nowMs - Date.parse(iso);
-  const min = Math.round(ms / 60_000);
-  if (min < 1) {
-    return "just now";
-  }
-  if (min < 90) {
-    return `${min} min ago`;
-  }
-  if (ms < 24 * 60 * 60_000) {
-    return `${Math.round(ms / 3_600_000)} h ago`;
-  }
-  return `yesterday ${hhmmUtc(iso)}`;
-}
-
 /** "30 min before → 30 min after", "1 h before → 1 h after". */
 export function sideText(sideMs: number): string {
   const min = Math.round(sideMs / 60_000);
@@ -88,4 +72,66 @@ export function resolvePick(stored: HomePick | null, autoNow: string | null, mar
 /** The three first-run steps (26c): done when the instance is named, something arrived, a hunt and a mark exist. */
 export function firstRunSteps(input: { named: boolean; ingested: boolean; savedCount: number; markCount: number }): boolean[] {
   return [input.named, input.ingested, input.savedCount > 0 && input.markCount > 0];
+}
+
+/** Marks newest first; the API's list is not trusted to be in order. */
+export function marksNewestFirst(marks: readonly ChangeMark[]): ChangeMark[] {
+  return [...marks].sort((a, b) => Date.parse(b.ts) - Date.parse(a.ts));
+}
+
+/** At most this many mark chips on Home's Since bar (49b); the rest fold into `N earlier`. */
+export const stripMax = 4;
+
+/**
+ * The Since bar (49b): the newest marks as chips, newest first, and the rest in the `N earlier`
+ * menu. A selected mark from the menu takes the last chip's place, so the selection shows.
+ */
+export function markStrip(marks: readonly ChangeMark[], selectedId: string | null, max = stripMax): { chips: ChangeMark[]; earlier: ChangeMark[] } {
+  const all = marksNewestFirst(marks);
+  let chips = all.slice(0, max);
+  const picked = selectedId ? all.find((m) => m.id === selectedId) : undefined;
+  if (picked && !chips.includes(picked) && max > 0) {
+    chips = [...chips.slice(0, max - 1), picked];
+  }
+  return { chips, earlier: all.filter((m) => !chips.includes(m)) };
+}
+
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function utcDay(ms: number): number {
+  return Math.floor(ms / 86_400_000);
+}
+
+/**
+ * When a mark was, in UTC: `16:22` today, `yesterday 16:22`, else `Nov 18` (with `withTime`,
+ * `Nov 18 16:22`).
+ */
+export function markWhen(iso: string, nowMs: number, withTime = false): string {
+  const ms = Date.parse(iso);
+  const days = utcDay(nowMs) - utcDay(ms);
+  if (days <= 0) {
+    return hhmmUtc(iso);
+  }
+  if (days === 1) {
+    return `yesterday ${hhmmUtc(iso)}`;
+  }
+  const d = new Date(ms);
+  const date = `${monthNames[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  return withTime ? `${date} ${hhmmUtc(iso)}` : date;
+}
+
+/** "just now", "38 min ago", "19 h ago", "3 d ago". */
+export function agoText(iso: string, nowMs: number): string {
+  const ms = nowMs - Date.parse(iso);
+  const min = Math.round(ms / 60_000);
+  if (min < 1) {
+    return "just now";
+  }
+  if (min < 90) {
+    return `${min} min ago`;
+  }
+  if (ms < 48 * 3_600_000) {
+    return `${Math.round(ms / 3_600_000)} h ago`;
+  }
+  return `${Math.round(ms / 86_400_000)} d ago`;
 }

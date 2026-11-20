@@ -54,14 +54,15 @@ describe("retention by service on ClickHouse (#477)", () => {
   test("the same settings again issue no ALTER", async () => {
     const rules = [{ service: "rr-same", days: 400 }];
     await applyRetentionDays(30, 30, rules);
-    const before = await clickhouseQuery<{ n: string }>(
-      "SELECT count() AS n FROM system.mutations WHERE database = currentDatabase() AND table = 'logs'",
-    );
+    // Count only TTL mutations made by the second call: ClickHouse prunes finished mutations,
+    // so comparing totals before and after went down as well as up (CI saw 4 then 3).
+    const t = (await clickhouseQuery<{ t: string }>("SELECT toString(now()) AS t"))[0]!.t;
+    await Bun.sleep(1100);
     await applyRetentionDays(30, 30, rules);
-    const after = await clickhouseQuery<{ n: string }>(
-      "SELECT count() AS n FROM system.mutations WHERE database = currentDatabase() AND table = 'logs'",
+    const made = await clickhouseQuery<{ n: string }>(
+      `SELECT count() AS n FROM system.mutations WHERE database = currentDatabase() AND table = 'logs' AND command LIKE '%TTL%' AND create_time > toDateTime('${t}')`,
     );
-    expect(Number(after[0]!.n)).toBe(Number(before[0]!.n));
+    expect(Number(made[0]!.n)).toBe(0);
   });
 
   test("removing every rule puts back today's TTL", async () => {
