@@ -906,6 +906,8 @@ Panel, input, name and fixed-window changes save as they are made; Save stores t
 
 The head also names the window the board follows (`· the board's window, Last 24h`). The ⋯ menu's **Fit panels to the width** (`fitPanelsToWidth`, 50e) grows the panels that start on one grid row, in order and in proportion to their widths, to share the 12 columns, less any a note or a taller panel holds there. Each keeps `panelMinW`; headings, notes and rows that already fill their columns are left alone. Then `gravity` runs and the board saves.
 
+A row of panels that ends short of the 12 columns draws a dashed cell in the room at its end (51e, `boardRowGaps`), when the board is not read-only, the room is at least 2 columns wide and no other cell holds any of it for the row's height. **＋ Panel here** opens the panel sheet and puts the new panel in that room (`addPanelAt`); **Widen the 2** fits that row alone (`fitRow`, the step `fitPanelsToWidth` takes for every row). The cell is not a panel: it is never saved or counted.
+
 ### Adding and editing a panel
 
 **＋ Add panel** (49e) offers Volume (`histogram`), Top values (`top`), Number (`stat`) and Metric (`histogram` with `widget.metric`), or From a saved hunt (its `q` and name). Each opens the panel sheet (49f, `src/ui/components/panel-sheet.tsx`, `src/ui/panel-draft.ts`), a 440px sheet from the right that also serves Edit panel. It holds name, query, Show, Split by (Volume's split; Top values' field), Metric (its name), Section, Window (the board's, or fixed) and a preview read as the board would read it.
