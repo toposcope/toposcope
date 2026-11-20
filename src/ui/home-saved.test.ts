@@ -1,6 +1,23 @@
 import { describe, expect, test } from "bun:test";
 import type { HomeCard } from "../control/home-since";
-import { boardCountText, boardCounts, boardPreview, cardMoved, homeBoards, splitHunts } from "./home-saved";
+import {
+  archivedSaved,
+  archivedText,
+  beforeAfterWidths,
+  boardCountText,
+  boardCounts,
+  boardPreview,
+  cardMoved,
+  coverageLineText,
+  drawsBeforeAfter,
+  homeBoards,
+  homeHunts,
+  quietNotZero,
+  quietText,
+  quietValue,
+  splitHunts,
+} from "./home-saved";
+import type { Coverage, CoverageService } from "../shared/coverage";
 import type { BoardPanel } from "../shared/boards";
 import type { SavedSearch } from "./types";
 
@@ -96,5 +113,87 @@ describe("Home's board tiles (49b)", () => {
   test("boards pinned to Home come first; hunts are not boards", () => {
     const b = (id: string, pinned = false) => ({ ...hunt(id, pinned), board: slots([]) }) as SavedSearch;
     expect(homeBoards([b("a"), hunt("h"), b("c", true), b("d")]).map((s) => s.id)).toEqual(["c", "a", "d"]);
+  });
+});
+
+describe("archived hunts and boards (sheet 50)", () => {
+  const empty = { keys: [], panels: [] };
+  const archived = (id: string, board = false) => ({ ...hunt(id), archived: true, ...(board ? { board: empty } : {}) }) as SavedSearch;
+  const b = (id: string) => ({ ...hunt(id), board: empty }) as SavedSearch;
+
+  test("Home reads neither archived hunts nor archived boards", () => {
+    const saved = [hunt("h1"), archived("h2"), b("b1"), archived("b2", true), hunt("h3")];
+    expect(homeHunts(saved).map((s) => s.id)).toEqual(["h1", "h3"]);
+    expect(homeBoards(saved).map((s) => s.id)).toEqual(["b1"]);
+    expect(archivedSaved(saved).map((s) => s.id)).toEqual(["h2", "b2"]);
+  });
+
+  test("the Archived line counts hunts, and boards when there are any", () => {
+    expect(archivedText(Array.from({ length: 20 }, (_, i) => archived(`h${i}`)))).toBe("20 saved hunts, not read on Home");
+    expect(archivedText([archived("h")])).toBe("1 saved hunt, not read on Home");
+    expect(archivedText([archived("h"), archived("b", true)])).toBe("1 saved hunt and 1 board, not read on Home");
+    expect(archivedText([archived("b", true), archived("c", true)])).toBe("2 boards, not read on Home");
+  });
+});
+
+describe("Quiet folded to a line (50b)", () => {
+  test("the count, and the hunts not at zero, largest first", () => {
+    expect(quietText(31)).toBe("31 saved hunts, same as before");
+    expect(quietText(1)).toBe("1 saved hunt, same as before");
+    const named = (id: string) => ({ id, name: id }) as SavedSearch;
+    const quiet = [named("CI out of burst budget"), named("API event loop stalls"), named("Fleet job silent"), named("Refused"), named("Unread")];
+    const cards = [card("CI out of burst budget", 0, 0), card("API event loop stalls", 13, 13), card("Fleet job silent", 27, 27), card("Refused", null, null, "scan budget")];
+    expect(quietNotZero(quiet, cards)).toBe("2 not zero: Fleet job silent 27 · API event loop stalls 13");
+  });
+
+  test("three by name, then +N; none off zero, no text", () => {
+    const quiet = ["a", "b", "c", "d", "e"].map((id) => ({ id, name: id }) as SavedSearch);
+    const cards = [card("a", 1, 1), card("b", 5, 5), card("c", 3, 3), card("d", 4, 4), card("e", 2, 2)];
+    expect(quietNotZero(quiet, cards)).toBe("5 not zero: b 5 · d 4 · c 3 +2");
+    expect(quietNotZero(quiet, [card("a", 0, 0)])).toBeNull();
+    expect(quietNotZero([], [])).toBeNull();
+  });
+
+  test("a row's value: refused, a compact count, or nothing when not read", () => {
+    expect(quietValue(undefined)).toBe("");
+    expect(quietValue(card("a", 0, 0, "scan budget"))).toBe("refused");
+    expect(quietValue(card("a", 12_400, 12_400))).toBe("12.4K");
+  });
+});
+
+describe("a Moved card's before and after (50b)", () => {
+  test("fewer than four buckets with any value draw two bars", () => {
+    expect(drawsBeforeAfter({ spark: [] })).toBe(true);
+    expect(drawsBeforeAfter({ spark: [0, 0, 2, 0, 0, 1] })).toBe(true);
+    expect(drawsBeforeAfter({ spark: [1, 0, 2, 3, 0] })).toBe(true);
+    expect(drawsBeforeAfter({ spark: [1, 1, 2, 3] })).toBe(false);
+  });
+
+  test("the bars' lengths are was and now against the larger", () => {
+    expect(beforeAfterWidths(0, 2)).toEqual({ before: 0, after: 100 });
+    expect(beforeAfterWidths(2, 1)).toEqual({ before: 100, after: 50 });
+    expect(beforeAfterWidths(null, null)).toEqual({ before: 0, after: 0 });
+  });
+});
+
+describe("the Coverage line (50b)", () => {
+  const service = (name: string, complete: boolean): CoverageService => ({
+    service: name,
+    rows: 100,
+    errors: 0,
+    version: complete ? 1 : 0,
+    host: 1,
+    trace_id: null,
+    stack: null,
+    marks: { count: complete ? 1 : 0, last: null },
+    complete,
+  });
+  const coverage = (services: CoverageService[]): Coverage => ({ from: "", to: "", threshold: 0.95, services, complete: services.filter((s) => s.complete).length, mismatches: [] });
+
+  test("services with gaps of all; no gaps, no line", () => {
+    expect(coverageLineText(coverage(Array.from({ length: 10 }, (_, i) => service(`s${i}`, false))), null)).toBe("10 of 10 services have gaps");
+    expect(coverageLineText(coverage([service("a", false), service("b", true)]), null)).toBe("1 of 2 services has gaps");
+    expect(coverageLineText(coverage([service("a", true)]), null)).toBeNull();
+    expect(coverageLineText(null, null)).toBeNull();
   });
 });

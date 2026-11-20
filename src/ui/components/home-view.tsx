@@ -1,13 +1,27 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Ellipsis } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { ChangeMark } from "../../shared/change-mark";
 import type { HomeCard, HomeSince } from "../../control/home-since";
 import { formatCompactCount } from "../count-format";
-import { boardCountText, boardPreview, homeBoards, splitHunts } from "../home-saved";
+import {
+  archivedSaved,
+  archivedText,
+  beforeAfterWidths,
+  boardCountText,
+  boardPreview,
+  coverageLineText,
+  drawsBeforeAfter,
+  homeBoards,
+  homeHunts,
+  quietNotZero,
+  quietText,
+  quietValue,
+  splitHunts,
+} from "../home-saved";
 import { agoText, deltaText, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
 import type { MonitorView, SavedSearch } from "../types";
 import { AgentBadge } from "./agent-badge";
@@ -38,10 +52,15 @@ type Props = {
   onNewBoard?: (name: string) => Promise<void>;
   /** Settings › Fields, at its Coverage or at the names that do not match (37k). */
   onOpenFields?: (names: boolean) => void;
+  /** A saved hunt's ⋯ menu (50c): Rename, Archive or Unarchive, Delete. Absent, or a Viewer: no menu. */
+  onRenameSaved?: (item: SavedSearch, name: string) => Promise<void>;
+  onArchiveSaved?: (item: SavedSearch, archived: boolean) => Promise<void>;
+  onDeleteSaved?: (item: SavedSearch) => Promise<void>;
 };
 
 const pickKey = "toposcope.homePick";
-const quietKey = "toposcope.homeQuietOpen";
+// 50b: Quiet starts folded; a new key, so a fold left open before sheet 50 starts folded once.
+const quietKey = "toposcope.homeQuietOpen.50";
 
 function readPick(): HomePick | null {
   try {
@@ -72,6 +91,9 @@ export function HomeView(props: Props) {
   const [pick, setPick] = useState<HomePick | null>(() => readPick());
   const [note, setNote] = useState<string | null>(null);
   const [newBoard, setNewBoard] = useState(false);
+  const [renaming, setRenaming] = useState<SavedSearch | null>(null);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [coverageOpen, setCoverageOpen] = useState(false);
   const coverage = useCoverage();
   // 35f: an opened Quiet fold stays open in this browser
   const [quietOpen, setQuietOpen] = useState(() => {
@@ -192,11 +214,28 @@ export function HomeView(props: Props) {
   const openCount = monitors.filter((m) => m.open).length;
   const fp = data.fingerprints;
   const e1Query = fp ? fp.first_seen.map((r) => `e1:${r.hex}`).join(" OR ") : "";
-  const hunts = props.saved.filter((s) => !s.board);
+  const hunts = homeHunts(props.saved);
   const boards = homeBoards(props.saved);
+  const archived = archivedSaved(props.saved);
   const split = splitHunts(hunts, data.cards);
   const cardById = new Map(data.cards.map((c) => [c.saved_id, c]));
   const openHunt = (s: SavedSearch) => props.onOpenSaved(s, window, selectedId);
+  const openAny = (s: SavedSearch) => (s.board ? props.onOpenBoard(s) : openHunt(s));
+  const notZero = quietNotZero(split.quiet, data.cards);
+  const coverageLine = props.onOpenFields ? coverageLineText(coverage, selectedId) : null;
+  const { onRenameSaved, onArchiveSaved, onDeleteSaved } = props;
+  // 50c: the ⋯ menu is for whoever may change a hunt; a Viewer has none.
+  const canChange = !props.readOnly && onRenameSaved && onArchiveSaved && onDeleteSaved;
+  const menuFor = (item: SavedSearch) =>
+    canChange ? (
+      <SavedMenu
+        item={item}
+        onOpen={() => openAny(item)}
+        onRename={() => setRenaming(item)}
+        onArchive={() => void onArchiveSaved(item, true)}
+        onDelete={() => void onDeleteSaved(item)}
+      />
+    ) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -309,7 +348,7 @@ export function HomeView(props: Props) {
           ) : (
             <div className="mt-2 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
               {split.moved.map(({ item, card }) => (
-                <MovedCard key={item.id} card={card} name={item.name} quiet={hour} onClick={() => openHunt(item)} />
+                <MovedCard key={item.id} card={card} name={item.name} quiet={hour} onClick={() => openHunt(item)} menu={menuFor(item)} />
               ))}
             </div>
           )}
@@ -337,30 +376,67 @@ export function HomeView(props: Props) {
           ) : null}
         </section>
 
-        {split.quiet.length > 0 ? (
-          <section className="mt-6 border-t border-white/[0.06] pt-1.5" aria-label="Quiet">
-            <div className="flex min-h-10 items-center gap-2">
-              <Button type="button" variant="ghost" className="-ml-2 px-2 text-foreground" aria-expanded={quietOpen} onClick={() => toggleQuiet(!quietOpen)}>
-                {quietOpen ? <ChevronDown className="text-muted-foreground" /> : <ChevronRight className="text-muted-foreground" />}
-                Quiet
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {split.quiet.length} saved hunt{split.quiet.length === 1 ? "" : "s"}, same as before
-              </span>
-            </div>
-            {quietOpen ? (
-              <div className="grid grid-cols-1 gap-x-6 gap-y-0.5 pb-2 text-sm md:grid-cols-2 xl:grid-cols-3">
-                {split.quiet.map((s) => (
-                  <QuietRow key={s.id} item={s} card={cardById.get(s.id)} onOpenAgents={props.onOpenAgents} onClick={() => openHunt(s)} />
-                ))}
-              </div>
+        {split.quiet.length > 0 || archived.length > 0 || coverageLine ? (
+          // 50b: Quiet, Archived and Coverage, each folded to one line that opens in place.
+          <div className="mt-6 border-t border-white/[0.06]">
+            {split.quiet.length > 0 ? (
+              <section aria-label="Quiet" className="border-b border-white/[0.06]">
+                <FoldLine open={quietOpen} label="Quiet" sub={quietText(split.quiet.length)} right={notZero} onToggle={() => toggleQuiet(!quietOpen)} />
+                {quietOpen ? (
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-0.5 pb-2 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    {split.quiet.map((s) => (
+                      <QuietRow key={s.id} item={s} value={quietValue(cardById.get(s.id))} onOpenAgents={props.onOpenAgents} onClick={() => openHunt(s)} menu={menuFor(s)} />
+                    ))}
+                  </div>
+                ) : null}
+              </section>
             ) : null}
-          </section>
-        ) : null}
-
-        {props.onOpenFields ? (
-          <div className="mt-6">
-            <EvidenceGaps coverage={coverage} selectedMarkId={selectedId} onOpenFields={props.onOpenFields} />
+            {archived.length > 0 ? (
+              <section aria-label="Archived" className="border-b border-white/[0.06]">
+                <FoldLine open={archivedOpen} label="Archived" sub={archivedText(archived)} onToggle={() => setArchivedOpen(!archivedOpen)} />
+                {archivedOpen ? (
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-0.5 pb-2 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    {archived.map((s) => (
+                      <QuietRow
+                        key={s.id}
+                        item={s}
+                        value=""
+                        onOpenAgents={props.onOpenAgents}
+                        onClick={() => openAny(s)}
+                        menuShown
+                        menu={
+                          canChange ? (
+                            <Button type="button" variant="ghost" className="h-6 px-2 text-xs text-muted-foreground" onClick={() => void onArchiveSaved(s, false)}>
+                              Unarchive
+                            </Button>
+                          ) : null
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+            {coverageLine && props.onOpenFields ? (
+              <section aria-label="Coverage" className="border-b border-white/[0.06]">
+                <FoldLine
+                  open={coverageOpen}
+                  label="Coverage"
+                  sub={coverageLine}
+                  onToggle={() => setCoverageOpen(!coverageOpen)}
+                  after={
+                    <button type="button" className="shrink-0 rounded-md text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" onClick={() => props.onOpenFields?.(false)}>
+                      Fields ›
+                    </button>
+                  }
+                />
+                {coverageOpen ? (
+                  <div className="pb-3">
+                    <EvidenceGaps coverage={coverage} selectedMarkId={selectedId} onOpenFields={props.onOpenFields} />
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
           </div>
         ) : null}
 
@@ -416,6 +492,24 @@ export function HomeView(props: Props) {
       {props.onNewBoard ? (
         <BoardNameDialog open={newBoard} onOpenChange={setNewBoard} title="New board" action="Create board" defaultName="" onSubmit={props.onNewBoard} />
       ) : null}
+      {onRenameSaved ? (
+        <BoardNameDialog
+          open={renaming !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRenaming(null);
+            }
+          }}
+          title={renaming?.board ? "Rename board" : "Rename saved hunt"}
+          action="Rename"
+          defaultName={renaming?.name ?? ""}
+          onSubmit={async (name) => {
+            if (renaming && name !== renaming.name) {
+              await onRenameSaved(renaming, name);
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -439,33 +533,123 @@ function MarkChip({ on, mark, label, time, onClick }: { on: boolean; mark?: Chan
   );
 }
 
-/** A saved hunt that moved (49b): name, value, delta, was, and a small spark split at the mark. */
-function MovedCard({ card, name, quiet, onClick }: { card: HomeCard; name: string; quiet: boolean; onClick: () => void }) {
+/**
+ * A saved hunt that moved (49b): name, value, delta, was, and a small spark split at the mark.
+ * With fewer than four buckets that read anything, two bars instead: before and after (50b).
+ */
+function MovedCard({ card, name, quiet, onClick, menu }: { card: HomeCard; name: string; quiet: boolean; onClick: () => void; menu?: React.ReactNode }) {
   const delta = deltaText(card.before, card.after, card.kind);
   const up = !quiet && delta.up;
   const peak = Math.max(1, ...card.spark);
+  const bars = drawsBeforeAfter(card) ? beforeAfterWidths(card.before, card.after) : null;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-29 min-w-0 flex-col gap-1.5 rounded-lg border border-white/10 bg-surface-2 px-3.5 py-3 text-left hover:border-white/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-    >
-      <span className="w-full truncate text-sm font-medium">{name}</span>
-      <span className="flex items-baseline gap-1.5">
-        <span className="text-xl font-semibold tracking-[-0.01em]">{formatValue(card.after, card.kind)}</span>
-        <span className={cn("text-xs", up ? "text-danger-fg" : "text-muted-foreground")}>{delta.text}</span>
-        <span className="truncate text-xs text-muted-foreground">was {formatValue(card.before, card.kind)}</span>
+    <div className="group relative flex min-w-0">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex h-29 min-w-0 flex-1 flex-col gap-1.5 rounded-lg border border-white/10 bg-surface-2 px-3.5 py-3 text-left hover:border-white/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        <span className={cn("w-full truncate text-sm font-medium", menu ? "pr-6" : "")}>{name}</span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-xl font-semibold tracking-[-0.01em]">{formatValue(card.after, card.kind)}</span>
+          <span className={cn("text-xs", up ? "text-danger-fg" : "text-muted-foreground")}>{delta.text}</span>
+          <span className="truncate text-xs text-muted-foreground">was {formatValue(card.before, card.kind)}</span>
+        </span>
+        {bars ? (
+          <span className="flex min-h-0 w-full flex-1 flex-col justify-center gap-1.5 font-mono text-2xs leading-none text-muted-foreground" aria-hidden="true">
+            <BeforeAfterBar label="before" width={bars.before} className="bg-muted-foreground/30" />
+            <BeforeAfterBar label="after" width={bars.after} className={up ? "bg-danger/70" : "bg-muted-foreground/30"} />
+          </span>
+        ) : (
+          <span className="relative flex w-full flex-1 items-end gap-px" aria-hidden="true">
+            {card.spark.map((v, i) => (
+              <span
+                key={i}
+                className={cn("min-w-0 flex-1", i >= card.split_at && up ? "bg-danger/70" : "bg-muted-foreground/30")}
+                style={{ height: `${Math.max(4, Math.round((v / peak) * 100))}%` }}
+              />
+            ))}
+          </span>
+        )}
+      </button>
+      {menu ? <span className="absolute top-2 right-2">{menu}</span> : null}
+    </div>
+  );
+}
+
+/** One of a Moved card's before and after bars (50b): its label, and its length against the larger side. */
+function BeforeAfterBar({ label, width, className }: { label: string; width: number; className: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="w-10 shrink-0">{label}</span>
+      <span className="flex min-w-0 flex-1">
+        <span className={cn("block h-2 min-w-0.5 rounded-sm", className)} style={{ width: `${width}%` }} />
       </span>
-      <span className="relative flex w-full flex-1 items-end gap-px" aria-hidden="true">
-        {card.spark.map((v, i) => (
-          <span
-            key={i}
-            className={cn("min-w-0 flex-1", i >= card.split_at && up ? "bg-danger/70" : "bg-muted-foreground/30")}
-            style={{ height: `${Math.max(4, Math.round((v / peak) * 100))}%` }}
-          />
-        ))}
-      </span>
-    </button>
+    </span>
+  );
+}
+
+/** Quiet, Archived or Coverage folded to a line (50b): its name, a faint count, and maybe more on the right. */
+function FoldLine({ open, label, sub, right, after, onToggle }: { open: boolean; label: string; sub: string; right?: string | null; after?: React.ReactNode; onToggle: () => void }) {
+  return (
+    <div className="flex min-h-10 items-center gap-3">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-md text-left text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        {open ? <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+        <span className="shrink-0 text-foreground">{label}</span>
+        <span className="shrink-0 text-muted-foreground">{sub}</span>
+        <span className="flex-1" />
+        {right ? <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{right}</span> : null}
+      </button>
+      {after}
+    </div>
+  );
+}
+
+/** A saved hunt's ⋯ menu (50c): Open, Rename, Archive, then Delete…, which asks again in place. */
+function SavedMenu({ item, onOpen, onRename, onArchive, onDelete }: { item: SavedSearch; onOpen: () => void; onRename: () => void; onArchive: () => void; onDelete: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <DropdownMenu onOpenChange={(open) => !open && setArmed(false)}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Menu for ${item.name}`}
+          className="size-6 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:bg-control data-[state=open]:opacity-100"
+        >
+          <Ellipsis aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>
+        <DropdownMenuItem className="h-auto flex-col items-start gap-0 py-1.5" onSelect={onArchive}>
+          <span>Archive</span>
+          <span className="text-xs text-muted-foreground">Off Home and search; its monitor stays</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-danger-fg focus:text-danger-fg"
+          onSelect={(e) => {
+            if (!armed) {
+              // The first pick arms it in place, as a board's Delete does; the second deletes.
+              e.preventDefault();
+              setArmed(true);
+              return;
+            }
+            onDelete();
+          }}
+        >
+          <span className="truncate">{armed ? `Sure? Delete ${item.name}` : "Delete…"}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -495,21 +679,40 @@ function BoardTile({ item, onClick }: { item: SavedSearch; onClick: () => void }
   );
 }
 
-function QuietRow({ item, card, onClick, onOpenAgents }: { item: SavedSearch; card: HomeCard | undefined; onClick: () => void; onOpenAgents?: () => void }) {
-  const value = !card ? "" : card.refused ? "refused" : card.kind === "count" ? formatCompactCount(card.after ?? 0) : formatValue(card.after, card.kind);
+/** A compact row of Quiet or Archived: the name opens it, its value when read, and its ⋯ menu or Unarchive on the right. */
+function QuietRow({
+  item,
+  value,
+  onClick,
+  onOpenAgents,
+  menu,
+  menuShown,
+}: {
+  item: SavedSearch;
+  value: string;
+  onClick: () => void;
+  onOpenAgents?: () => void;
+  menu?: React.ReactNode;
+  /** Unarchive shows at all times; a ⋯ menu shows on hover or focus. */
+  menuShown?: boolean;
+}) {
   return (
-    <button
-      type="button"
-      className="flex min-w-0 justify-between rounded-md px-2 py-1.5 text-left hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-      onClick={onClick}
-    >
-      <span className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate">{item.name}</span>
-        {item.saved_by?.agent ? <AgentBadge name={item.saved_by.name} onOpen={onOpenAgents} /> : null}
-        {item.pinned ? <span className="text-xs text-plate">pinned</span> : null}
-      </span>
-      <span className="ml-2 shrink-0 font-mono text-sm text-muted-foreground">{value}</span>
-    </button>
+    <div className="group flex min-w-0 items-center gap-1 rounded-md hover:bg-white/[0.04] has-data-[state=open]:bg-white/[0.04]">
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 justify-between rounded-md px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        onClick={onClick}
+      >
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate">{item.name}</span>
+          {item.saved_by?.agent ? <AgentBadge name={item.saved_by.name} onOpen={onOpenAgents} /> : null}
+          {item.pinned ? <span className="text-xs text-plate">pinned</span> : null}
+          {item.board ? <span className="text-xs text-muted-foreground">board</span> : null}
+        </span>
+        {value ? <span className="ml-2 shrink-0 font-mono text-sm text-muted-foreground">{value}</span> : null}
+      </button>
+      {menu ? <span className={cn("flex shrink-0 justify-end pr-1", menuShown ? "" : "w-7")}>{menu}</span> : null}
+    </div>
   );
 }
 

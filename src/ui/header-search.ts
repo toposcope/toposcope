@@ -3,7 +3,7 @@ import type { SavedSearch } from "./types";
 /**
  * The header field's suggestions (sheet 49b): saved hunts and boards whose names hold every word
  * typed, names that start with it first. A few of each; Enter with none highlighted still opens a
- * hunt with what was typed.
+ * hunt with what was typed. Archived ones are left out (sheet 50).
  */
 export const suggestionsPer = 4;
 
@@ -30,6 +30,8 @@ export function headerSuggestions(saved: readonly SavedSearch[], typed: string, 
   }
   const words = whole.split(" ");
   const ranked = saved
+    // an archived hunt or board is off search (sheet 50)
+    .filter((item) => !item.archived)
     .map((item, i) => ({ item, i, s: score(item.name, words, whole) }))
     .filter((r): r is { item: SavedSearch; i: number; s: number } => r.s !== null)
     .sort((a, b) => a.s - b.s || a.i - b.i)

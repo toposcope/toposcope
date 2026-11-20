@@ -2211,8 +2211,8 @@ export function App() {
     void updateActiveSaved(item?.name ?? "Untitled");
   }
 
-  /** A board's changes save as they are made (#410); its window saves on Save. */
-  async function saveBoard(item: SavedSearch, fields: { board?: BoardSlots; range?: string; name?: string }): Promise<SavedSearch | null> {
+  /** A board's changes save as they are made (#410); its window saves on Save. Home's Rename and Archive use it too (50c). */
+  async function saveBoard(item: SavedSearch, fields: { board?: BoardSlots; range?: string; name?: string; archived?: boolean }): Promise<SavedSearch | null> {
     const res = await fetch(`/api/saved-searches/${item.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -4061,10 +4061,10 @@ export function App() {
   const onHunt = view === "search" && !isSurr;
   const paletteItems: PaletteItem[] = [
     ...saved
-      .filter((item) => !item.board)
+      .filter((item) => !item.board && !item.archived)
       .map((item): PaletteItem => ({ group: "Saved hunts", label: item.name, detail: item.query || "all logs", run: () => openSavedTab(item) })),
     ...saved
-      .filter((item) => item.board)
+      .filter((item) => item.board && !item.archived)
       .map((item): PaletteItem => ({ group: "Boards", label: item.name, detail: boardPaletteDetail(item.board!), run: () => openSavedTab(item) })),
     ...(
       [
@@ -4284,6 +4284,17 @@ export function App() {
             setFieldsNames(names);
             setView("fields");
           }}
+          onRenameSaved={async (item, name) => {
+            if (await saveBoard(item, { name })) {
+              toast.success(`Renamed to ${name}`);
+            }
+          }}
+          onArchiveSaved={async (item, archived) => {
+            if (await saveBoard(item, { archived })) {
+              toast.success(archived ? `Archived ${item.name}` : `Unarchived ${item.name}`);
+            }
+          }}
+          onDeleteSaved={(item) => onDelete(item.id)}
         />
       ) : view === "access" && sharePage ? (
         <SharePage
