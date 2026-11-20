@@ -115,11 +115,11 @@ export function HuntCrumb(props: {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuItem className="flex-col items-start gap-0" onSelect={props.onShare}>
+            <DropdownMenuItem className="h-auto flex-col items-start gap-0 py-1.5" onSelect={props.onShare}>
               <span>Copy link</span>
               <span className="text-xs text-muted-foreground">This hunt, for people who sign in here</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="flex-col items-start gap-0" onSelect={props.onSharePanels}>
+            <DropdownMenuItem className="h-auto flex-col items-start gap-0 py-1.5" onSelect={props.onSharePanels}>
               <span>Share panels…</span>
               <span className="text-xs text-muted-foreground">Counts on another site, never rows</span>
             </DropdownMenuItem>
