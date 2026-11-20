@@ -36,7 +36,7 @@ describe("a series drawn over the plot", () => {
   // axis on the right ran down beside it, so its 0 sat 22px under the bars.
   test("the overlaid series' axis ends at the plot's floor, above the mark lane", () => {
     const axis = between(chart, "{overlayOn && !replaceY ? (", "{overlayTicks.map(");
-    expect(axis).toMatch(/MARK_LANE_H/);
+    expect(axis).toMatch(/markLaneH\(marks\)/);
   });
 });
 

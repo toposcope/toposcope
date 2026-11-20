@@ -1,3 +1,4 @@
+import { useShortViewport } from "../short-viewport";
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { ExtraPanel } from "@/components/extra-panel";
@@ -1012,23 +1013,12 @@ function extraSeriesFile(
 
 /**
  * Sheet 47b: on a short window (a laptop's 623px inside the browser) a hunt's panels draw on
- * 40px rows instead of 64, so the plot keeps its shape and the rows under it get the room.
+ * 32px rows instead of 64, so the plot keeps its shape and the rows under it get the room.
  * Boards keep their 64px rows; the stored panel sizes do not change.
  */
 function useHuntRowPx(on: boolean): number {
-  const short = () => typeof window !== "undefined" && window.innerHeight < shortViewportPx;
-  const [isShort, setShort] = useState(short);
-  useEffect(() => {
-    if (!on) {
-      return;
-    }
-    const onResize = () => setShort(short());
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [on]);
-  return on && isShort ? shortRowPx : widgetRowPx;
+  return useShortViewport(on) ? shortRowPx : widgetRowPx;
 }
 
-const shortViewportPx = 820;
-const shortRowPx = 40;
+const shortRowPx = 32;
 
