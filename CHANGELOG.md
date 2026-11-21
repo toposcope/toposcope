@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+## 0.15.12
+
 Watch's Now and a monitor's side panel print a measure's unit as Home does: a p99 of `duration_ms` reads `1440 ms` where it read `1.44K`.
 
 ## 0.15.11

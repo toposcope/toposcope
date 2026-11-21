@@ -233,6 +233,7 @@ SQLite migrations add columns. Extra columns on a downgrade are unused, not a wi
 
 | From | Pin | Notes |
 | --- | --- | --- |
+| 0.15.12 | `0.15.11` | Changes no tables and no stored data |
 | 0.15.11 | `0.15.10` | Changes no tables and no stored data |
 | 0.15.10 | `0.15.9` | Changes no tables and no stored data. A hunt already pinned that has a monitor stays in Moved after the upgrade, until **Remove from Moved**. Back on 0.15.9 any such pin is an ordinary pin |
 | 0.15.9 | `0.15.8` | Changes no tables and no stored data |
