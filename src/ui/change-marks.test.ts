@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChangeMark } from "../shared/change-mark";
-import { clusterChangeMarks, clusterHasLaneLabel, eventInIncidentWash, eventTableMarkLayout, foldMarkLabel, incidentEndLabel, markFrac, markPlotSpanMs, marksInBucket, panWindowToMark, peekCrowded, visibleChangeMarks } from "./change-marks";
+import { chipsClearOfPeeks, clusterChangeMarks, clusterHasLaneLabel, eventInIncidentWash, eventTableMarkLayout, foldMarkLabel, incidentEndLabel, markFrac, markPlotSpanMs, marksInBucket, panWindowToMark, peekCrowded, visibleChangeMarks } from "./change-marks";
 import { fillHistogram } from "./fill-histogram";
 import { formatDuration } from "../shared/duration";
 
@@ -277,5 +277,26 @@ describe("eventTableMarkLayout", () => {
     expect(eventInIncidentWash(page[1]!.ts, [incident])).toBe(true);
     expect(eventInIncidentWash(page[2]!.ts, [incident])).toBe(true);
     expect(eventInIncidentWash(page[3]!.ts, [incident])).toBe(false);
+  });
+});
+
+describe("a chip beside a peek", () => {
+  test("stays on its time unless it would touch the peek", () => {
+    const chips = [{ at: 500, w: 60 }];
+    expect(chipsClearOfPeeks(chips, 1000, { left: true, right: true })).toEqual([0]);
+    expect(chipsClearOfPeeks([{ at: 30, w: 60 }], 1000, { left: false, right: false })).toEqual([0]);
+    expect(chipsClearOfPeeks([{ at: 30, w: 60 }], 1000, { left: true, right: false })).toEqual([36]);
+    expect(chipsClearOfPeeks([{ at: 970, w: 60 }], 1000, { left: false, right: true })).toEqual([-36]);
+  });
+
+  test("a chip it pushes pushes the next, and no further", () => {
+    const chips = [{ at: 800, w: 40 }, { at: 925, w: 40 }, { at: 970, w: 40 }];
+    expect(chipsClearOfPeeks(chips, 1000, { left: false, right: true })).toEqual([0, -23, -26]);
+  });
+
+  test("a named peek folds when a chip is within its width on a narrow rail", () => {
+    const cluster = [{ fromMs: 150, toMs: 150, members: [] }] as never;
+    expect(peekCrowded("left", cluster, 0, 1000)).toBe(false);
+    expect(peekCrowded("left", cluster, 0, 1000, 600)).toBe(true);
   });
 });
