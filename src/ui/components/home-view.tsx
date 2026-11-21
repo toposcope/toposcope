@@ -28,7 +28,7 @@ import {
   sparkRows,
   splitHunts,
 } from "../home-saved";
-import { firstSeenText, homeMonitors, huntHasMonitor, readingHunts, type HomeMonitorRow } from "../home-monitors";
+import { firstSeenText, homeMonitors, huntHasMonitor, readingHunts, shownInMoved, type HomeMonitorRow } from "../home-monitors";
 import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
 import { checksLine } from "../watch";
 import { formatDuration } from "../../shared/duration";
@@ -244,16 +244,23 @@ export function HomeView(props: Props) {
   const { onRenameSaved, onArchiveSaved, onDeleteSaved } = props;
   // 50c: the ⋯ menu is for whoever may change a hunt; a Viewer has none.
   const canChange = !props.readOnly && onRenameSaved && onArchiveSaved && onDeleteSaved;
-  const menuFor = (item: SavedSearch) =>
-    canChange ? (
-      <SavedMenu
-        item={item}
-        onOpen={() => openAny(item)}
-        onRename={() => setRenaming(item)}
-        onArchive={() => void onArchiveSaved(item, true)}
-        onDelete={() => void onDeleteSaved(item)}
-      />
-    ) : null;
+  const menuFor = (item: SavedSearch) => {
+    // 52c: a hunt shown in Moved can leave from its own card, as its monitor's row may be folded.
+    const onRemove = props.onShowInMoved && shownInMoved(item, props.monitors) ? () => void props.onShowInMoved!(item, false) : undefined;
+    if (canChange) {
+      return (
+        <SavedMenu
+          item={item}
+          onOpen={() => openAny(item)}
+          onRename={() => setRenaming(item)}
+          onRemoveFromMoved={onRemove}
+          onArchive={() => void onArchiveSaved(item, true)}
+          onDelete={() => void onDeleteSaved(item)}
+        />
+      );
+    }
+    return onRemove ? <ShownMenu item={item} onOpen={() => openAny(item)} onRemove={onRemove} /> : null;
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -746,7 +753,7 @@ function FoldLine({ open, label, sub, right, after, onToggle }: { open: boolean;
 }
 
 /** A saved hunt's ⋯ menu (50c): Open, Rename, Archive, then Delete…, which asks again in place. */
-function SavedMenu({ item, onOpen, onRename, onArchive, onDelete }: { item: SavedSearch; onOpen: () => void; onRename: () => void; onArchive: () => void; onDelete: () => void }) {
+function SavedMenu({ item, onOpen, onRename, onRemoveFromMoved, onArchive, onDelete }: { item: SavedSearch; onOpen: () => void; onRename: () => void; onRemoveFromMoved?: () => void; onArchive: () => void; onDelete: () => void }) {
   const [armed, setArmed] = useState(false);
   return (
     <DropdownMenu onOpenChange={(open) => !open && setArmed(false)}>
@@ -764,6 +771,7 @@ function SavedMenu({ item, onOpen, onRename, onArchive, onDelete }: { item: Save
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem>
         <DropdownMenuItem onSelect={onRename}>Rename</DropdownMenuItem>
+        {onRemoveFromMoved ? <DropdownMenuItem onSelect={onRemoveFromMoved}>Remove from Moved</DropdownMenuItem> : null}
         <DropdownMenuItem className="h-auto flex-col items-start gap-0 py-1.5" onSelect={onArchive}>
           <span>Archive</span>
           <span className="text-xs text-muted-foreground">Off Home and search; its monitor stays</span>
@@ -783,6 +791,29 @@ function SavedMenu({ item, onOpen, onRename, onArchive, onDelete }: { item: Save
         >
           <span className="truncate">{armed ? `Sure? Delete ${item.name}` : "Delete…"}</span>
         </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** The menu of a hunt a Viewer chose to show in Moved: the one change that is theirs to make. */
+function ShownMenu({ item, onOpen, onRemove }: { item: SavedSearch; onOpen: () => void; onRemove: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Menu for ${item.name}`}
+          className="size-6 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:bg-control data-[state=open]:opacity-100"
+        >
+          <Ellipsis aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onRemove}>Remove from Moved</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

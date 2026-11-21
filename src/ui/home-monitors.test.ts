@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { HomeCard } from "../control/home-since";
-import { firstSeenText, gapText, homeMonitors, monitorTiming, readingHunts } from "./home-monitors";
+import { firstSeenText, gapText, homeMonitors, monitorTiming, readingHunts, shownInMoved } from "./home-monitors";
 import type { MonitorStretch, MonitorView, SavedSearch } from "./types";
 
 const markMs = Date.parse("2026-11-21T15:59:00.000Z");
@@ -62,6 +62,15 @@ describe("Moved and Quiet read", () => {
   test("hunts without a monitor, and those shown in Moved", () => {
     const hunts = [{ id: "h-a" }, { id: "h-b", pinned: true }, { id: "h-c" }] as SavedSearch[];
     expect(readingHunts(hunts, [monitor("a"), monitor("b")]).map((h) => h.id)).toEqual(["h-b", "h-c"]);
+  });
+});
+
+describe("a hunt shown in Moved", () => {
+  test("is a pinned hunt with a monitor", () => {
+    const list = [monitor("a")];
+    expect(shownInMoved({ id: "h-a", pinned: true }, list)).toBe(true);
+    expect(shownInMoved({ id: "h-a", pinned: false }, list)).toBe(false);
+    expect(shownInMoved({ id: "h-b", pinned: true }, list)).toBe(false);
   });
 });
 
