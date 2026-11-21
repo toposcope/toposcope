@@ -4,11 +4,9 @@ import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 import { maskKey } from "../../shared/push";
-import { formatCompactCount } from "@/count-format";
-import { formatAggStat } from "@/fill-histogram";
 import type { MonitorPage, MonitorView } from "@/types";
 import { Badge } from "@/components/watch-view";
-import { callHost, cantTellNow, clockAt, lastLineWords, laneReadout, netConditionsLabel, netTargetLabel, opensWhen, readsQuiet, remindLabel, sourceOf } from "@/watch";
+import { searchReading, callHost, cantTellNow, clockAt, lastLineWords, laneReadout, netConditionsLabel, netTargetLabel, opensWhen, readsQuiet, remindLabel, sourceOf } from "@/watch";
 import { railPanel } from "@/components/ui/side-panel";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "../../shared/duration";
@@ -41,7 +39,7 @@ function lastReading(m: MonitorView): string {
   if (typeof m.last_value !== "number") {
     return "—";
   }
-  return m.saved?.agg ? formatAggStat(m.last_value) : formatCompactCount(m.last_value);
+  return searchReading(m, m.last_value);
 }
 
 /**

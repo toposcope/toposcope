@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Watch's Now and a monitor's side panel print a measure's unit as Home does: a p99 of `duration_ms` reads `1440 ms` where it read `1.44K`.
+
 ## 0.15.11
 
 Home prints a measure's unit when its field name carries one: a p99 of `duration_ms` reads `1470 ms +1010 was 460` on a Moved card and a Monitors row, and `1470 ms` in Quiet. The Archive item says `its monitor stays` only on a hunt that has a monitor.

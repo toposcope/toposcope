@@ -7,6 +7,7 @@ import { isLate, isRunning, pushDueAt, pushOpensAt, type PushClock } from "../sh
 import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, newestFirst, type MarkCluster } from "./change-marks";
 import { formatCompactCount } from "./count-format";
 import { formatAggStat } from "./fill-histogram";
+import { valueUnit, valueWithUnit } from "./home-since";
 import { sourceGaps, type HeldSource } from "../shared/held";
 import type { MonitorCall, MonitorStretch, MonitorView, MonitorsFromSource, PushResultRow, SourceMonitor, SourceStretch } from "./types";
 import { formatDuration } from "../shared/duration";
@@ -298,9 +299,22 @@ export function laneReadout(m: MonitorView, nowMs: number, sentInWindow: number)
   } else if (m.last_status === "refused" || m.last_status === "error") {
     reading = m.last_status;
   } else if (typeof m.last_value === "number") {
-    reading = m.saved?.agg ? formatAggStat(m.last_value) : formatCompactCount(m.last_value);
+    reading = searchReading(m, m.last_value);
   }
   return { badge: "ok", tone: "sec", text: [reading, silenced].filter(Boolean).join(" · ") };
+}
+
+/**
+ * What a search monitor last read: a measure whose field carries a unit reads as Home prints it,
+ * `1470 ms`; any other measure and a count stay compact. A share is a percent of rows, not the field.
+ */
+export function searchReading(m: Pick<MonitorView, "saved" | "measure">, value: number): string {
+  const agg = m.saved?.agg;
+  if (!agg) {
+    return formatCompactCount(value);
+  }
+  const kind = seriesLabel(agg).toLowerCase();
+  return m.measure !== "share" && valueUnit(kind) ? valueWithUnit(value, kind) : formatAggStat(value);
 }
 
 /** Where a time falls on the clock, 0 to 1. */
