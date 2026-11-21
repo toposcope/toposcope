@@ -2,7 +2,7 @@ import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import type { LogEvent } from "../shared/log-event";
 import { runReleaseCheck, type Release } from "./release-check";
-import { announceNewRelease, lastAnnounced, updateRow } from "./update-event";
+import { announceNewRelease, forRunningVersion, lastAnnounced, updateRow } from "./update-event";
 
 // #197: one event:update_available row per new version, to page on with an ordinary monitor.
 function memDb(): Database {
@@ -77,5 +77,18 @@ describe("the update_available row", () => {
       onChecked: (releases, running) => announceNewRelease(releases, running, { db, write: async (rows) => void written.push(...rows) }),
     });
     expect(written).toEqual([]);
+  });
+});
+
+describe("a monitor on the update rows", () => {
+  test("reads only rows written by the running version", () => {
+    expect(forRunningVersion("service:toposcope event:update_available", "0.15.8")).toBe("(service:toposcope event:update_available) running:0.15.8");
+    expect(forRunningVersion("event:update_available (step:minor OR step:major)", "1.0.0")).toBe("(event:update_available (step:minor OR step:major)) running:1.0.0");
+  });
+
+  test("leaves a query that can match other lines as it is", () => {
+    for (const q of ["level:error", "event:update_available OR level:error", "NOT event:update_available", "event:update*", ""]) {
+      expect(forRunningVersion(q, "0.15.8")).toBe(q);
+    }
   });
 });

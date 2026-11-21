@@ -90,17 +90,58 @@ export function clusterHasLaneLabel(
   );
 }
 
+const peekNamedPx = 190;
+/** Where a peek folded to its arrow and glyph ends, from its edge of the lane. */
+const peekFoldedPx = 36;
+const chipGapPx = 2;
+
+/**
+ * How far each chip on a rail moves to clear a peek at its edge, in px, given each chip's centre
+ * `at` and width `w`, in rail order. A chip it pushes pushes the next one; the rest stay on their time.
+ */
+export function chipsClearOfPeeks(chips: readonly { at: number; w: number }[], railW: number, peeks: { left: boolean; right: boolean }): number[] {
+  const shifts = chips.map(() => 0);
+  if (railW <= 0) {
+    return shifts;
+  }
+  if (peeks.left) {
+    let edge = peekFoldedPx;
+    for (let i = 0; i < chips.length; i++) {
+      const start = chips[i]!.at - chips[i]!.w / 2;
+      if (start >= edge) {
+        break;
+      }
+      shifts[i] = edge - start;
+      edge += chips[i]!.w + chipGapPx;
+    }
+  }
+  if (peeks.right) {
+    let edge = railW - peekFoldedPx;
+    for (let i = chips.length - 1; i >= 0; i--) {
+      const end = chips[i]!.at + chips[i]!.w / 2;
+      if (end <= edge) {
+        break;
+      }
+      shifts[i] = edge - end;
+      edge -= chips[i]!.w + chipGapPx;
+    }
+  }
+  return shifts;
+}
+
 export function peekCrowded(
   side: "left" | "right",
   clusters: MarkCluster[],
   fromMs: number,
   spanMs: number,
+  laneW = 0,
 ): boolean {
   if (spanMs <= 0) {
     return false;
   }
   const edge = side === "left" ? fromMs : fromMs + spanMs;
-  const threshold = spanMs * changeMarkPeekCrowdFrac;
+  // A named peek is about 150px wide, with half a chip beside it: on a narrow rail 8% is less.
+  const threshold = Math.max(spanMs * changeMarkPeekCrowdFrac, laneW > 0 ? (spanMs * peekNamedPx) / laneW : 0);
   return clusters.some((cluster) => {
     const t = side === "left" ? cluster.fromMs : cluster.toMs;
     return Math.abs(t - edge) < threshold;

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { changeMarkKinds, formatChangeMarkLabel, type ChangeMark, type ChangeMarkKind } from "../../shared/change-mark";
 
 import { cn } from "@/lib/utils";
 import { isTypingTarget } from "@/keyboard";
-import { clusterChangeMarks, clusterHasLaneLabel, clusterKinds, markFrac, markLaneName, markSource, newestFirst, panWindowToMark, peekCrowded, visibleChangeMarks } from "../change-marks";
+import { chipsClearOfPeeks, clusterChangeMarks, clusterHasLaneLabel, clusterKinds, markFrac, markLaneName, markSource, newestFirst, panWindowToMark, peekCrowded, visibleChangeMarks } from "../change-marks";
 import { MonitorBandRow, monitorBandH, type MonitorBand } from "./monitor-band";
 import { formatDuration } from "../../shared/duration";
 
@@ -533,8 +533,29 @@ export function HistogramMarkLane({
 
   const leftPeek = overlay.before;
   const rightPeek = live ? null : overlay.after;
-  const leftCrowd = peekCrowded("left", clusters, fromMs, spanMs);
-  const rightCrowd = peekCrowded("right", clusters, fromMs, spanMs);
+  // The chips sit in a lane inset 4px each side of the rail.
+  const railW = Math.max(0, laneW - 8);
+  const leftCrowd = peekCrowded("left", clusters, fromMs, spanMs, railW);
+  const rightCrowd = peekCrowded("right", clusters, fromMs, spanMs, railW);
+
+  // Chip widths are only known once drawn: move the ones at an edge clear of its peek.
+  useLayoutEffect(() => {
+    const els = [...(rootRef.current?.querySelectorAll<HTMLElement>("[data-rail-chip]") ?? [])].sort(
+      (a, b) => Number(a.dataset.railChip) - Number(b.dataset.railChip),
+    );
+    const shifts = chipsClearOfPeeks(
+      els.map((el) => ({ at: Number(el.dataset.railChip) * railW, w: el.offsetWidth })),
+      railW,
+      { left: Boolean(leftPeek), right: Boolean(rightPeek) },
+    );
+    els.forEach((el, i) => {
+      if (shifts[i]) {
+        el.style.setProperty("--tw-translate-x", `calc(-50% + ${shifts[i]!.toFixed(1)}px)`);
+      } else {
+        el.style.removeProperty("--tw-translate-x");
+      }
+    });
+  });
 
   function peek(mark: ChangeMark) {
     const next = panWindowToMark(fromMs, toMs, Date.parse(mark.ts));
@@ -617,6 +638,7 @@ export function HistogramMarkLane({
                     ? "shadow-[0_0_0_1px_rgba(34,197,94,0.55)]"
                     : "",
                 )}
+                data-rail-chip={frac}
                 style={{ left: `${(frac * 100).toFixed(3)}%` }}
                 onPointerEnter={() => onHoverKey(key)}
                 onPointerLeave={() => onHoverKey(null)}

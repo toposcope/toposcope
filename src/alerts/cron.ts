@@ -19,6 +19,7 @@ import { closeByEdit, recordCall } from "./monitor-store";
 import { pingWatchdog } from "./watchdog";
 import { evaluateAlertSeries, evaluateShareSeries } from "./series";
 import { evaluateFirstSeenRule, firstSeenDeps, firstSeenWatchMs } from "./first-seen";
+import { forRunningVersion } from "../control/update-event";
 
 // The call itself lives with the rest of delivery, where the HTTP(S) loop imports it too (#178).
 export { postWebhook };
@@ -85,7 +86,10 @@ export async function evaluateAlerts(now = Date.now()): Promise<void> {
     // Read whether or not anybody is called: its state is kept either way.
     await passSearchMonitor(rule, saved, now, {
       ...calls,
-      read: (saved, measure) => (measure === "share" ? evaluateShareSeries(saved) : evaluateAlertSeries(saved)),
+      read: (saved, measure) => {
+        const current = { ...saved, query: forRunningVersion(saved.query) };
+        return measure === "share" ? evaluateShareSeries(current) : evaluateAlertSeries(current);
+      },
       recordEval: (id, stamp, database) =>
         recordEvalAttempt(id, { ...stamp, error: stamp.error ? clipError(stamp.error) : null }, database),
       cantTell: (s, windowMs, at) => cantTellNow(s.query, windowMs, at),

@@ -172,9 +172,9 @@ The first time the check sees a version newer than the running one, Toposcope wr
 
 1. Save a search for `service:toposcope event:update_available` over 1 day.
 2. Give it a monitor that opens at **at least 1**, with reminders off.
-3. Add `step:minor OR step:major` to the search to page only on the bigger steps.
+3. Add `(step:minor OR step:major)` to the search to page only on the bigger steps.
 
-A monitor with the default body sends a resolved call a day later, when the row leaves its window. Give it a body of its own with an empty resolved body to send none.
+The monitor reads only rows written by the version running now, so upgrading closes it. A monitor with the default body sends a resolved call then, or a day later when the row leaves its window. Give it a body of its own with an empty resolved body to send none.
 
 ### GitHub repositories
 

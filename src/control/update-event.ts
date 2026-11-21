@@ -1,6 +1,8 @@
 import type { Database } from "bun:sqlite";
 import type { LogEvent } from "../shared/log-event";
 import { getDb } from "./index";
+import { compileQuery, type QueryNode } from "../query/compile";
+import { version as runningVersion } from "../shared/version";
 import { releaseStep, type Release } from "./release-check";
 
 /**
@@ -66,4 +68,32 @@ export async function announceNewRelease(releases: Release[], running: string, d
     String(row.attrs!.latest),
   );
   return true;
+}
+
+/** True when every line this node can match has `event:update_available`. */
+function onlyUpdateRows(node: QueryNode | null): boolean {
+  if (!node) {
+    return false;
+  }
+  if (node.op === "and") {
+    return onlyUpdateRows(node.a) || onlyUpdateRows(node.b);
+  }
+  if (node.op === "or") {
+    return onlyUpdateRows(node.a) && onlyUpdateRows(node.b);
+  }
+  return node.op === "kv" && node.key === "event" && node.value === "update_available" && !node.glob;
+}
+
+/**
+ * What a monitor reads for a query on the update rows: only those written by the version running
+ * now. A row from before an upgrade says a version is out that this instance may already run, so
+ * it neither opens a monitor nor holds one open. Any other query is read as it is.
+ */
+export function forRunningVersion(query: string, running: string = runningVersion): string {
+  try {
+    const compiled = compileQuery(query);
+    return compiled.faults.length === 0 && onlyUpdateRows(compiled.ast) ? `(${query}) running:${running}` : query;
+  } catch {
+    return query;
+  }
 }
