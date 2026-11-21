@@ -2212,7 +2212,7 @@ export function App() {
   }
 
   /** A board's changes save as they are made (#410); its window saves on Save. Home's Rename and Archive use it too (50c). */
-  async function saveBoard(item: SavedSearch, fields: { board?: BoardSlots; range?: string; name?: string; archived?: boolean }): Promise<SavedSearch | null> {
+  async function saveBoard(item: SavedSearch, fields: { board?: BoardSlots; range?: string; name?: string; archived?: boolean; pinned?: boolean }): Promise<SavedSearch | null> {
     const res = await fetch(`/api/saved-searches/${item.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -4268,7 +4268,13 @@ export function App() {
           readOnly={isViewer}
           saved={saved}
           monitors={alerts}
+          stretches={monitors?.stretches ?? []}
           instanceName={instance?.name ?? null}
+          onShowInMoved={async (item, shown) => {
+            if (await saveBoard(item, { pinned: shown })) {
+              toast.success(shown ? `${item.name} shows in Moved` : `${item.name} is under Monitors only`);
+            }
+          }}
           onOpenSaved={(item, win) => {
             setView("search");
             addWorkspace(

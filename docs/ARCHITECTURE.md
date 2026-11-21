@@ -691,6 +691,12 @@ Under Quiet sits one more line when some quiet hunts read only gone hosts (`src/
 
 Each Moved card and Quiet row has a ⋯ menu (50c), not for a Viewer: Open, Rename, Archive and Delete…, which asks again in place. The header's suggestions (`src/ui/header-search.ts`) leave archived hunts and boards out.
 
+### Monitors on Home
+
+Since sheet 52, Moved and Quiet read only saved hunts without a monitor, plus those a person chose to show in Moved (their own pin). A hunt with a monitor is listed under **Monitors** (`src/ui/home-monitors.ts`): open ones first, then those that moved, six at most.
+
+Each row says when it opened against the selected mark, from `monitor_stretches`. A monitor that opens on silence opens a window late, so it reports its last matching line instead. A stretch closed by an edit is not counted. A new fingerprint reports its first line after the mark. These are time relations, not causes; Moved cards carry none, because a total has no single moment.
+
 ### The hunt
 
 The **hunt** is a session-only workspace strip: Search / Follow / Surroundings / boards, uncapped, overflow scrolls. Under it:

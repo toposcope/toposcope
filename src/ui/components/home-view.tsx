@@ -28,8 +28,11 @@ import {
   sparkRows,
   splitHunts,
 } from "../home-saved";
+import { firstSeenText, homeMonitors, huntHasMonitor, readingHunts, type HomeMonitorRow } from "../home-monitors";
 import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
-import type { MonitorView, SavedSearch } from "../types";
+import { checksLine } from "../watch";
+import { formatDuration } from "../../shared/duration";
+import type { MonitorStretch, MonitorView, SavedSearch } from "../types";
 import { AgentBadge } from "./agent-badge";
 import { BoardNameDialog } from "./board-name-dialog";
 import { EvidenceGaps, useCoverage } from "./coverage-section";
@@ -44,6 +47,10 @@ type Props = {
   readOnly?: boolean;
   saved: SavedSearch[];
   monitors: MonitorView[];
+  /** The stretches Watch read, for when each monitor opened against the mark (sheet 52). */
+  stretches?: MonitorStretch[];
+  /** Show in Moved (52c): this person's choice for a hunt with a monitor. Absent: no item. */
+  onShowInMoved?: (item: SavedSearch, shown: boolean) => Promise<void>;
   instanceName: string | null;
   /** Open a saved hunt on this window (the Compare fold follows with #260). */
   onOpenSaved: (item: SavedSearch, window: HomeWindow, markId: string | null) => void;
@@ -218,14 +225,16 @@ export function HomeView(props: Props) {
   const selectedId = since.kind === "mark" ? since.mark.id : null;
   const strip = markStrip(data.marks, selectedId);
   const window: HomeWindow = { from: data.before.from, to: data.after.to };
-  const monitors = [...props.monitors].sort((a, b) => Number(Boolean(b.open)) - Number(Boolean(a.open)));
-  const openCount = monitors.filter((m) => m.open).length;
   const fp = data.fingerprints;
   const e1Query = fp ? fp.first_seen.map((r) => `e1:${r.hex}`).join(" OR ") : "";
   const hunts = homeHunts(props.saved);
   const boards = homeBoards(props.saved);
   const archived = archivedSaved(props.saved);
-  const split = splitHunts(hunts, data.cards);
+  // 52b: a hunt with a monitor is listed under Monitors, unless its reader shows it in Moved.
+  const reading = readingHunts(hunts, props.monitors);
+  const split = splitHunts(reading, data.cards);
+  const timedMark = since.kind === "mark" ? since.mark : null;
+  const watched = homeMonitors(props.monitors, data.cards, props.stretches ?? [], timedMark);
   const cardById = new Map(data.cards.map((c) => [c.saved_id, c]));
   const openHunt = (s: SavedSearch) => props.onOpenSaved(s, window, selectedId);
   const openAny = (s: SavedSearch) => (s.board ? props.onOpenBoard(s) : openHunt(s));
@@ -336,14 +345,23 @@ export function HomeView(props: Props) {
             <h2 id="home-moved" className="m-0 text-sm font-medium">
               Moved
             </h2>
-            {hunts.length > 0 ? (
+            {reading.length > 0 ? (
               <span className="text-sm text-muted-foreground">
-                {split.moved.length} of {hunts.length} saved hunt{hunts.length === 1 ? "" : "s"}
+                {split.moved.length} of {reading.length} saved hunt{reading.length === 1 ? "" : "s"}
               </span>
+            ) : hunts.length > 0 ? (
+              <span className="text-sm text-muted-foreground">none to compare</span>
             ) : null}
           </div>
           {hunts.length === 0 ? (
             <p className="m-0 mt-2 text-sm text-muted-foreground">Save a hunt and it shows here when it moves.</p>
+          ) : reading.length === 0 ? (
+            <div className="mt-2 flex h-14 items-center gap-3 rounded-lg border border-dashed border-white/15 px-3.5">
+              <span className="flex-1 text-sm text-muted-foreground">No saved hunts without a monitor.</span>
+              <Button type="button" variant="outline" onClick={() => props.onOpenHunt("", window)}>
+                Open Hunt
+              </Button>
+            </div>
           ) : split.moved.length === 0 ? (
             <p className="m-0 mt-2 text-sm text-muted-foreground">
               {since.kind === "mark" ? (
@@ -357,10 +375,50 @@ export function HomeView(props: Props) {
           ) : (
             <div className="mt-2 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
               {split.moved.map(({ item, card }) => (
-                <MovedCard key={item.id} card={card} name={item.name} quiet={hour} onClick={() => openHunt(item)} menu={menuFor(item)} />
+                <MovedCard key={item.id} card={card} name={item.name} quiet={hour} tagged={huntHasMonitor(item, props.monitors)} onClick={() => openHunt(item)} menu={menuFor(item)} />
               ))}
             </div>
           )}
+        </section>
+
+        <section className="mt-6" aria-labelledby="home-monitors">
+          <div className="flex items-center gap-2">
+            <h2 id="home-monitors" className="m-0 text-sm font-medium">
+              Monitors
+            </h2>
+            {watched.open > 0 ? <span className="text-sm text-danger-fg">{watched.open} open</span> : null}
+            {watched.total > 0 ? (
+              <span className="text-sm text-muted-foreground">
+                {watched.active > 0 ? `· ${watched.active} moved of ${watched.total}` : `${watched.total}, same as before`}
+              </span>
+            ) : null}
+            <div className="flex-1" />
+            <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={props.onOpenWatch}>
+              Watch ›
+            </button>
+          </div>
+          {watched.total === 0 ? (
+            props.readOnly ? null : <p className="m-0 mt-2 text-sm text-muted-foreground">Watch this on a hunt makes the first one.</p>
+          ) : watched.rows.length > 0 || watched.more ? (
+            <div className="mt-1.5 overflow-hidden rounded-lg border border-white/10 bg-surface-2">
+              {watched.rows.map((row) => {
+                const hunt = row.monitor.saved ? (props.saved.find((s) => s.id === row.monitor.saved!.id) ?? null) : null;
+                return (
+                  <MonitorRow
+                    key={row.monitor.id}
+                    row={row}
+                    nowMs={nowMs}
+                    hunt={hunt}
+                    onOpenHunt={hunt ? () => openHunt(hunt) : undefined}
+                    onOpenWatch={props.onOpenWatch}
+                    onShowInMoved={hunt && props.onShowInMoved ? () => void props.onShowInMoved!(hunt, !hunt.pinned) : undefined}
+                  />
+                );
+              })}
+              {watched.more ? <div className="flex h-7 items-center pr-3 pl-8 text-sm text-muted-foreground">{watched.more}</div> : null}
+            </div>
+          ) : null}
+          {props.readOnly && watched.total > 0 ? <p className="m-0 mt-1.5 text-sm text-muted-foreground">read-only for you · ask an Operator to change one</p> : null}
         </section>
 
         <section className="mt-6" aria-labelledby="home-boards">
@@ -464,53 +522,32 @@ export function HomeView(props: Props) {
           </div>
         ) : null}
 
-        <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
-            <div className="flex justify-between">
-              <span className="text-base font-medium">{fingerprintsTitle(fp)}</span>
-              {fp && fp.first_seen.length > 0 ? (
-                <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt(e1Query, data.after)}>
-                  open as a hunt →
-                </button>
-              ) : null}
-            </div>
-            {fp && (fp.first_seen.length > 0 || fp.stopped.length > 0) ? (
-              <>
-                {fp.first_seen.slice(0, 4).map((r) => (
-                  <Line key={r.hex} hex={r.hex} text={r.message} sub={r.service} n={r.count} />
-                ))}
-                {fp.stopped.slice(0, Math.max(0, 4 - Math.min(4, fp.first_seen.length))).map((r) => (
-                  <Line key={r.hex} hex={r.hex} tag="stopped" text={r.message} sub={r.service} n={0} muted />
-                ))}
-              </>
-            ) : (
-              <p className="m-0 text-sm leading-[1.5] text-muted-foreground">
-                {hour ? "Nothing new in the last hour." : "No fingerprint first seen after this mark, and none stopped."}
-              </p>
-            )}
-          </section>
-          <section className="flex flex-col gap-2 rounded-xl border border-white/10 bg-surface-2 px-4 py-4">
-            <div className="flex justify-between">
-              <span className="text-base font-medium">Monitors · {openCount > 0 ? `${openCount} open` : monitors.length ? "all ok" : "none"}</span>
-              <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={props.onOpenWatch}>
-                {monitors.length ? `all ${monitors.length} →` : "Watch →"}
+        <section className="mt-6" aria-labelledby="home-fingerprints">
+          <div className="flex items-center justify-between">
+            <h2 id="home-fingerprints" className="m-0 text-sm font-medium">
+              {fingerprintsTitle(fp)}
+            </h2>
+            {fp && fp.first_seen.length > 0 ? (
+              <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => props.onOpenHunt(e1Query, data.after)}>
+                Open as a hunt ›
               </button>
+            ) : null}
+          </div>
+          {fp && (fp.first_seen.length > 0 || fp.stopped.length > 0) ? (
+            <div className="mt-1.5 overflow-hidden rounded-lg border border-white/10 bg-surface-2 px-3">
+              {fp.first_seen.slice(0, 4).map((r) => (
+                <Line key={r.hex} hex={r.hex} text={r.message} sub={r.service} n={r.count} when={firstSeenText(r.first_at, timedMark)} />
+              ))}
+              {fp.stopped.slice(0, Math.max(0, 4 - Math.min(4, fp.first_seen.length))).map((r) => (
+                <Line key={r.hex} hex={r.hex} tag="stopped" text={r.message} sub={r.service} n={0} muted />
+              ))}
             </div>
-            {monitors.slice(0, 4).map((m) => (
-              <div key={m.id} className="flex items-start gap-3 border-b border-white/[0.06] py-2 text-sm last:border-b-0">
-                <span className={m.open ? "text-danger-fg" : "text-ok-fg"}>●</span>
-                <span className="flex-1">
-                  {m.name} <span className="text-muted-foreground">{m.open ? `open since ${hhmmUtc(new Date(m.open.opened_at).toISOString())}` : "ok"}</span>
-                </span>
-                <span className={cn("font-mono", m.open ? "text-danger-fg" : "text-muted-foreground")}>
-                  {m.open?.last_value != null ? formatValue(m.open.last_value, m.saved?.agg ?? "count") : m.open ? "open" : "ok"}
-                </span>
-              </div>
-            ))}
-            {props.readOnly ? <p className="m-0 text-sm text-muted-foreground">read-only for you · ask an Operator to change one</p> : null}
-            {monitors.length === 0 && !props.readOnly ? <p className="m-0 text-sm text-muted-foreground">Watch this on a hunt makes the first one.</p> : null}
-          </section>
-        </div>
+          ) : (
+            <p className="m-0 mt-1.5 text-sm leading-[1.5] text-muted-foreground">
+              {hour ? "Nothing new in the last hour." : "No fingerprint first seen after this mark, and none stopped."}
+            </p>
+          )}
+        </section>
       </main>
 
       {props.onNewBoard ? (
@@ -561,7 +598,7 @@ function MarkChip({ on, mark, label, time, onClick }: { on: boolean; mark?: Chan
  * A saved hunt that moved (49b): name, value, delta, was, and a small spark split at the mark.
  * With fewer than four buckets that read anything, two bars instead: before and after (50b).
  */
-function MovedCard({ card, name, quiet, onClick, menu }: { card: HomeCard; name: string; quiet: boolean; onClick: () => void; menu?: React.ReactNode }) {
+function MovedCard({ card, name, quiet, tagged, onClick, menu }: { card: HomeCard; name: string; quiet: boolean; tagged?: boolean; onClick: () => void; menu?: React.ReactNode }) {
   const delta = deltaText(card.before, card.after, card.kind);
   const up = !quiet && delta.up;
   const bars = drawsBeforeAfter(card) ? beforeAfterWidths(card.before, card.after) : null;
@@ -573,7 +610,10 @@ function MovedCard({ card, name, quiet, onClick, menu }: { card: HomeCard; name:
         onClick={onClick}
         className="flex h-29 min-w-0 flex-1 flex-col gap-1.5 rounded-lg border border-white/10 bg-surface-2 px-3.5 py-3 text-left hover:border-white/25 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <span className={cn("w-full truncate text-sm font-medium", menu ? "pr-6" : "")}>{name}</span>
+        <span className={cn("flex w-full items-center gap-1.5", menu ? "pr-6" : "")}>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
+          {tagged ? <span className="shrink-0 rounded-sm border border-white/15 px-1.5 font-mono text-2xs leading-4 text-muted-foreground">monitor</span> : null}
+        </span>
         <span className="flex items-baseline gap-1.5">
           <span className="text-xl font-semibold tracking-[-0.01em]">{formatValue(card.after, card.kind)}</span>
           <span className={cn("text-xs", up ? "text-danger-fg" : "text-muted-foreground")}>{delta.text}</span>
@@ -811,7 +851,70 @@ function QuietRow({
   );
 }
 
-function Line({ hex, text, sub, n, muted, tag }: { hex: string; text: string; sub: string; n: number; muted?: boolean; tag?: string }) {
+/** A monitor on Home (52b): what it checks, when it opened against the mark, what moved, and now. */
+function MonitorRow({
+  row,
+  nowMs,
+  hunt,
+  onOpenHunt,
+  onOpenWatch,
+  onShowInMoved,
+}: {
+  row: HomeMonitorRow;
+  nowMs: number;
+  hunt: SavedSearch | null;
+  onOpenHunt?: () => void;
+  onOpenWatch: () => void;
+  onShowInMoved?: () => void;
+}) {
+  const { monitor: m, card, timing } = row;
+  const delta = card ? deltaText(card.before, card.after, card.kind) : null;
+  const moved = card && card.before !== null && card.after !== null && card.before !== card.after;
+  return (
+    <div className="flex h-7.5 items-center gap-2.5 border-b border-white/[0.06] pr-1.5 pl-3 whitespace-nowrap last:border-b-0">
+      <span aria-hidden className={cn("size-2 shrink-0 rounded-full", m.open ? "bg-danger" : "bg-ok-fg")} />
+      <button type="button" onClick={onOpenHunt ?? onOpenWatch} className="w-44 shrink-0 truncate text-left text-sm font-medium hover:underline">
+        {m.name}
+      </button>
+      <span className="hidden min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground lg:block" title={checksLine(m)}>
+        {checksLine(m)}
+      </span>
+      <span className={cn("min-w-0 flex-1 truncate font-mono text-xs lg:w-75 lg:flex-none", timing?.away ? "text-muted-foreground" : "text-plate")} title={timing?.text}>
+        {timing?.text}
+      </span>
+      <span className="hidden w-32 shrink-0 truncate text-right font-mono text-xs sm:block">
+        {moved && card && delta ? (
+          <>
+            {formatValue(card.after, card.kind)} <span className={delta.up ? "text-danger-fg" : "text-muted-foreground"}>{delta.text}</span>{" "}
+            <span className="text-muted-foreground">was {formatValue(card.before, card.kind)}</span>
+          </>
+        ) : null}
+      </span>
+      <span className={cn("w-16 shrink-0 text-right font-mono text-xs", m.open ? "text-danger-fg" : "text-muted-foreground")}>
+        {m.open ? `open ${formatDuration(Math.max(0, nowMs - m.open.opened_at), "short")}` : "ok"}
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="ghost" size="icon" aria-label={`Menu for ${m.name}`} className="size-6 text-muted-foreground data-[state=open]:bg-control">
+            <Ellipsis aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {onOpenHunt ? <DropdownMenuItem onSelect={onOpenHunt}>Open hunt</DropdownMenuItem> : null}
+          <DropdownMenuItem onSelect={onOpenWatch}>Open in Watch</DropdownMenuItem>
+          {onShowInMoved && hunt ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onShowInMoved}>{hunt.pinned ? "Remove from Moved" : "Show in Moved"}</DropdownMenuItem>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function Line({ hex, text, sub, n, muted, tag, when }: { hex: string; text: string; sub: string; n: number; muted?: boolean; tag?: string; when?: string | null }) {
   return (
     <div className={cn("flex items-start gap-3 border-b border-white/[0.06] py-2 text-sm last:border-b-0", muted && "text-muted-foreground")}>
       <span className={cn("font-mono", !muted && "text-plate")}>e1:{hex}</span>
@@ -819,7 +922,8 @@ function Line({ hex, text, sub, n, muted, tag }: { hex: string; text: string; su
       <span className="min-w-0 flex-1 truncate">
         {text} <span className="text-muted-foreground">{sub}</span>
       </span>
-      <span className="font-mono">{formatCompactCount(n)}</span>
+      {when ? <span className="hidden shrink-0 font-mono text-xs leading-5 text-plate sm:block">{when}</span> : null}
+      <span className="w-11 shrink-0 text-right font-mono">{formatCompactCount(n)}</span>
     </div>
   );
 }
