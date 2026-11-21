@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+## 0.15.9
+
 A share's use in the list no longer dips once a minute. While a minute's counts were being written they were in neither place the list reads, so `reads` and `refused` could show too few for a moment.
 
 A panel named from its query keeps a field's whole name: `sum:http.server.duration` reads `http server time`, where the first part was always dropped. The first part is left out only when it is the service the query reads. Form placeholders, docs and examples no longer name one deployment.

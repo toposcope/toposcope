@@ -8,7 +8,7 @@ For the initial deployment and first searchable event, follow the [README quick 
 
 ## The image
 
-The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.15.8` and should not be replaced with `:latest`.
+The packaged image is pinned to `ghcr.io/toposcope/toposcope:0.15.9` and should not be replaced with `:latest`.
 
 Images from 0.4.11 are published for `linux/amd64` and `linux/arm64`. 0.4.10 and earlier are amd64 only: on an arm64 host Docker will not pull one unless the `app` service names `platform: linux/amd64`, and it then runs emulated.
 
