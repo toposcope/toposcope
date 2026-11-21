@@ -357,6 +357,7 @@ function toRow(
     after: side.after,
     extra,
     follows: firstSeen ? fingerprintCutFollows(inside, sample?.first_after ?? null) : "",
+    ...(firstSeen && sample?.first_after ? { first_after: sample.first_after } : {}),
     ...marks,
   };
 }

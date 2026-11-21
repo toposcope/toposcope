@@ -76,7 +76,14 @@ export type HomeCard = {
   shared: boolean;
 };
 
-export type HomeFingerprint = { hex: string; message: string; service: string; count: number };
+export type HomeFingerprint = {
+  hex: string;
+  message: string;
+  service: string;
+  count: number;
+  /** A first seen one's first line after the mark (sheet 52f). */
+  first_at?: string;
+};
 
 export type HomeSince = {
   now: string;
@@ -171,11 +178,12 @@ export async function computeHomeSince(input: { markId: string | null; hour: boo
     readGoneHunts(saved, nowMs),
     anyIngested(),
   ]);
-  const row = (r: { hex: string; message: string; service: string; after: number; before: number }, side: "after" | "before"): HomeFingerprint => ({
+  const row = (r: { hex: string; message: string; service: string; after: number; before: number; first_after?: string }, side: "after" | "before"): HomeFingerprint => ({
     hex: r.hex,
     message: r.message,
     service: r.service,
     count: side === "after" ? r.after : r.before,
+    ...(side === "after" && r.first_after ? { first_at: r.first_after } : {}),
   });
   const firstSeen = cut?.sets.find((s) => s.id === "first_seen");
   const stopped = cut?.sets.find((s) => s.id === "stopped");

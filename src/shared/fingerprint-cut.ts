@@ -257,6 +257,8 @@ export type FingerprintCutRow = {
   extra: string;
   /** A first seen row after a later mark inside the after side: "after v0.9.3". */
   follows: string;
+  /** A first seen row's first line after the mark. */
+  first_after?: string;
 } & GapMarks;
 
 /** #141: how a line reads across a gap. */
