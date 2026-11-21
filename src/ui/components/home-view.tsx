@@ -29,7 +29,7 @@ import {
   splitHunts,
 } from "../home-saved";
 import { firstSeenText, homeMonitors, huntHasMonitor, readingHunts, shownInMoved, type HomeMonitorRow } from "../home-monitors";
-import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, type HomePick } from "../home-since";
+import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, hhmmUtc, markGlyph, markStrip, markWhen, resolvePick, sideText, valueWithUnit, type HomePick } from "../home-since";
 import { checksLine } from "../watch";
 import { formatDuration } from "../../shared/duration";
 import type { MonitorStretch, MonitorView, SavedSearch } from "../types";
@@ -253,6 +253,7 @@ export function HomeView(props: Props) {
           item={item}
           onOpen={() => openAny(item)}
           onRename={() => setRenaming(item)}
+          hasMonitor={huntHasMonitor(item, props.monitors)}
           onRemoveFromMoved={onRemove}
           onArchive={() => void onArchiveSaved(item, true)}
           onDelete={() => void onDeleteSaved(item)}
@@ -622,7 +623,7 @@ function MovedCard({ card, name, quiet, tagged, onClick, menu }: { card: HomeCar
           {tagged ? <span className="shrink-0 rounded-sm border border-white/15 px-1.5 font-mono text-2xs leading-4 text-muted-foreground">monitor</span> : null}
         </span>
         <span className="flex items-baseline gap-1.5">
-          <span className="text-xl font-semibold tracking-[-0.01em]">{formatValue(card.after, card.kind)}</span>
+          <span className="text-xl font-semibold tracking-[-0.01em]">{valueWithUnit(card.after, card.kind)}</span>
           <span className={cn("text-xs", up ? "text-danger-fg" : "text-muted-foreground")}>{delta.text}</span>
           <span className="truncate text-xs text-muted-foreground">was {formatValue(card.before, card.kind)}</span>
         </span>
@@ -753,7 +754,7 @@ function FoldLine({ open, label, sub, right, after, onToggle }: { open: boolean;
 }
 
 /** A saved hunt's ⋯ menu (50c): Open, Rename, Archive, then Delete…, which asks again in place. */
-function SavedMenu({ item, onOpen, onRename, onRemoveFromMoved, onArchive, onDelete }: { item: SavedSearch; onOpen: () => void; onRename: () => void; onRemoveFromMoved?: () => void; onArchive: () => void; onDelete: () => void }) {
+function SavedMenu({ item, hasMonitor, onOpen, onRename, onRemoveFromMoved, onArchive, onDelete }: { item: SavedSearch; hasMonitor: boolean; onOpen: () => void; onRename: () => void; onRemoveFromMoved?: () => void; onArchive: () => void; onDelete: () => void }) {
   const [armed, setArmed] = useState(false);
   return (
     <DropdownMenu onOpenChange={(open) => !open && setArmed(false)}>
@@ -774,7 +775,7 @@ function SavedMenu({ item, onOpen, onRename, onRemoveFromMoved, onArchive, onDel
         {onRemoveFromMoved ? <DropdownMenuItem onSelect={onRemoveFromMoved}>Remove from Moved</DropdownMenuItem> : null}
         <DropdownMenuItem className="h-auto flex-col items-start gap-0 py-1.5" onSelect={onArchive}>
           <span>Archive</span>
-          <span className="text-xs text-muted-foreground">Off Home and search; its monitor stays</span>
+          <span className="text-xs text-muted-foreground">{hasMonitor ? "Off Home and search; its monitor stays" : "Off Home and search"}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -913,10 +914,10 @@ function MonitorRow({
       <span className={cn("min-w-0 flex-1 truncate font-mono text-xs lg:w-75 lg:flex-none", timing?.away ? "text-muted-foreground" : "text-plate")} title={timing?.text}>
         {timing?.text}
       </span>
-      <span className="hidden w-32 shrink-0 truncate text-right font-mono text-xs sm:block">
+      <span className="hidden w-40 shrink-0 truncate text-right font-mono text-xs sm:block">
         {moved && card && delta ? (
           <>
-            {formatValue(card.after, card.kind)} <span className={delta.up ? "text-danger-fg" : "text-muted-foreground"}>{delta.text}</span>{" "}
+            {valueWithUnit(card.after, card.kind)} <span className={delta.up ? "text-danger-fg" : "text-muted-foreground"}>{delta.text}</span>{" "}
             <span className="text-muted-foreground">was {formatValue(card.before, card.kind)}</span>
           </>
         ) : null}

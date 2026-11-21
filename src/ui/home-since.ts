@@ -35,6 +35,26 @@ export function formatValue(v: number | null, kind: string): string {
   return Number.isInteger(v) ? String(v) : abs >= 100 ? v.toFixed(0) : v.toFixed(1);
 }
 
+/** The unit a measure's field name carries: `p99(duration_ms)` → `ms`, `sum(bytes)` → `B`; none for a count or a rate. */
+export function valueUnit(kind: string): string {
+  if (kind === "count" || kind === "rate") {
+    return "";
+  }
+  const field = kind.trim().replace(/\)$/, "").split(/[\s(]+/).at(-1) ?? "";
+  const match = /(?:^|[._])(ms|millis|us|ns|s|sec|secs|seconds|bytes)$/.exec(field);
+  if (!match) {
+    return "";
+  }
+  const unit = match[1]!;
+  return unit === "millis" ? "ms" : unit === "bytes" ? "B" : ["sec", "secs", "seconds"].includes(unit) ? "s" : unit;
+}
+
+/** A value with its unit, for the number a reader compares: `1470 ms`. */
+export function valueWithUnit(v: number | null, kind: string): string {
+  const unit = v === null ? "" : valueUnit(kind);
+  return unit ? `${formatValue(v, kind)} ${unit}` : formatValue(v, kind);
+}
+
 /** The delta beside the after value: signed, "new" from 0, "±0" for no change, in red when up or grey. */
 export function deltaText(before: number | null, after: number | null, kind: string): { text: string; up: boolean } {
   if (before === null || after === null) {

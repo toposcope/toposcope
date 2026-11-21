@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChangeMark } from "../shared/change-mark";
-import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, markStrip, markWhen, marksNewestFirst, resolvePick, sideText } from "./home-since";
+import { agoText, deltaText, fingerprintsTitle, firstRunSteps, formatValue, valueUnit, valueWithUnit, markStrip, markWhen, marksNewestFirst, resolvePick, sideText } from "./home-since";
 
 const now = Date.parse("2026-10-26T13:26:00Z");
 const m = (id: string): ChangeMark => ({ id, ts: "2026-10-26T12:48:00Z", end_ts: null, kind: "deploy", service: "", title: id, attrs: {} });
@@ -79,5 +79,29 @@ describe("New fingerprints title", () => {
     expect(fingerprintsTitle(null)).toBe("New fingerprints · none");
     expect(fingerprintsTitle({ first_seen: [], stopped: [{}], more: 0 })).toBe("New fingerprints · 0 · 1 stopped");
     expect(fingerprintsTitle({ first_seen: [{}, {}], stopped: [], more: 3 })).toBe("New fingerprints · 2+");
+  });
+});
+
+describe("a value's unit", () => {
+  test("comes from the field the measure reads", () => {
+    expect(valueUnit("p99 duration_ms")).toBe("ms");
+    expect(valueUnit("p99(duration_ms)")).toBe("ms");
+    expect(valueUnit("sum(response_bytes)")).toBe("B");
+    expect(valueUnit("avg latency_us")).toBe("us");
+    expect(valueUnit("max took_seconds")).toBe("s");
+    expect(valueUnit("sum bytes")).toBe("B");
+    expect(valueUnit("sum response_bytes")).toBe("B");
+  });
+
+  test("a count, a rate, or a name that says none has none", () => {
+    for (const kind of ["count", "rate", "p99(status)", "p99 status", "avg items", "max class", "sum address"]) {
+      expect(valueUnit(kind)).toBe("");
+    }
+  });
+
+  test("is printed once, and never on a missing value", () => {
+    expect(valueWithUnit(1470, "p99 duration_ms")).toBe("1470 ms");
+    expect(valueWithUnit(12, "count")).toBe("12");
+    expect(valueWithUnit(null, "p99 duration_ms")).toBe("—");
   });
 });
