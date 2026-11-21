@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { ChangeMark } from "../shared/change-mark";
-import { chipsClearOfPeeks, clusterChangeMarks, clusterHasLaneLabel, eventInIncidentWash, eventTableMarkLayout, foldMarkLabel, incidentEndLabel, markFrac, markPlotSpanMs, marksInBucket, panWindowToMark, peekCrowded, visibleChangeMarks } from "./change-marks";
+import { chipsClearOfPeeks, clusterChangeMarks, clusterHasLaneLabel, eventInIncidentWash, foldClustersForRail, eventTableMarkLayout, foldMarkLabel, incidentEndLabel, markFrac, markPlotSpanMs, marksInBucket, panWindowToMark, peekCrowded, visibleChangeMarks } from "./change-marks";
 import { fillHistogram } from "./fill-histogram";
 import { formatDuration } from "../shared/duration";
 
@@ -298,5 +298,28 @@ describe("a chip beside a peek", () => {
     const cluster = [{ fromMs: 150, toMs: 150, members: [] }] as never;
     expect(peekCrowded("left", cluster, 0, 1000)).toBe(false);
     expect(peekCrowded("left", cluster, 0, 1000, 600)).toBe(true);
+  });
+});
+
+describe("chips on a rail", () => {
+  const at = (ms: number) => ({ members: [mark(String(ms), new Date(ms).toISOString())], fromMs: ms, toMs: ms });
+  const fold = (times: number[], railW = 1000) =>
+    foldClustersForRail(times.map(at), (ms) => ms / 1000, railW, { lone: 72, fold: 44 }).map((c) => c.members.length);
+
+  test("chips with room stay apart", () => {
+    expect(fold([100, 200, 300])).toEqual([1, 1, 1]);
+  });
+
+  test("two that would touch fold into one count", () => {
+    expect(fold([100, 150, 500])).toEqual([2, 1]);
+  });
+
+  test("a chip that touches a fold joins it", () => {
+    expect(fold([100, 150, 180])).toEqual([3]);
+    expect(fold([100, 150, 225])).toEqual([2, 1]);
+  });
+
+  test("an unmeasured rail folds nothing", () => {
+    expect(fold([100, 101], 0)).toEqual([1, 1]);
   });
 });

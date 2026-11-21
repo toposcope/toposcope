@@ -3,7 +3,7 @@ import { changeMarkKinds, formatChangeMarkLabel, type ChangeMark, type ChangeMar
 
 import { cn } from "@/lib/utils";
 import { isTypingTarget } from "@/keyboard";
-import { chipsClearOfPeeks, clusterChangeMarks, clusterHasLaneLabel, clusterKinds, markFrac, markLaneName, markSource, newestFirst, panWindowToMark, peekCrowded, visibleChangeMarks } from "../change-marks";
+import { chipsClearOfPeeks, clusterChangeMarks, foldClustersForRail, clusterHasLaneLabel, clusterKinds, markFrac, markLaneName, markSource, newestFirst, panWindowToMark, peekCrowded, visibleChangeMarks } from "../change-marks";
 import { MonitorBandRow, monitorBandH, type MonitorBand } from "./monitor-band";
 import { formatDuration } from "../../shared/duration";
 
@@ -92,6 +92,15 @@ export function marksClusterKey(cluster: {
   toMs: number;
 }): string {
   return `${cluster.fromMs}:${cluster.toMs}`;
+}
+
+/** True when a chip's key spans this cluster: a folded chip lights every rule under it. */
+function keyCovers(key: string | null | undefined, cluster: { fromMs: number; toMs: number }): boolean {
+  if (!key) {
+    return false;
+  }
+  const [from, to] = key.split(":").map(Number);
+  return from! <= cluster.fromMs && cluster.toMs <= to!;
 }
 
 function Rule({
@@ -395,7 +404,7 @@ export function HistogramMarkRules({
         const state: "rest" | "hover" | "sel" =
           selectedId && cluster.members.some((m) => m.id === selectedId)
             ? "sel"
-            : selectedKey === key || hoverKey === key
+            : keyCovers(selectedKey, cluster) || keyCovers(hoverKey, cluster)
               ? "hover"
               : "rest";
         const left = markFrac(cluster.fromMs, fromMs, plotSpanMs);
@@ -463,7 +472,7 @@ export function HistogramMarkLane({
     overlay.offKinds,
     overlay.mutedIds,
   );
-  const clusters = clusterChangeMarks(visible, spanMs);
+  const nearby = clusterChangeMarks(visible, spanMs);
   // A chip's name needs room in pixels, not a share of the clock (#260): measure the rail.
   const [laneW, setLaneW] = useState(0);
   useEffect(() => {
@@ -475,6 +484,11 @@ export function HistogramMarkLane({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  // Chips that would touch fold into one count; the plot keeps a rule for each mark.
+  const clusters = foldClustersForRail(nearby, (ms) => markFrac(ms, fromMs, plotSpanMs), Math.max(0, laneW - 8), {
+    lone: railChipBareW,
+    fold: railFoldW,
+  });
   // 50i: each lone chip's name room on the rail, shared with its neighbours.
   const nameRooms = railNameRooms(
     clusters.map((c) => ({
