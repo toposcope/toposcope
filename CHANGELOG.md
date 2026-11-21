@@ -6,7 +6,7 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
-Home keeps Moved and Quiet for the hunts you saved to read (sheet 52). A saved hunt with a monitor is listed under a new **Monitors** section instead: open ones first, then those that moved, then `17 more, same as before`. A monitor's ⋯ menu has **Show in Moved**, each person's own choice, which puts its hunt back with a `monitor` tag; it still opens from search, the palette and Watch. Each row says when it opened against the mark picked in Since: `3 min after deploy`, `before this deploy`, `opened 8 min after · closed 5 min later`, or for a monitor that opens on silence, `last line 4 min after deploy`. A new fingerprint says `first seen 2 min after deploy`, and `GET /api/home/since` gains its `first_at`.
+Home keeps Moved and Quiet for the hunts you saved to read (sheet 52). A saved hunt with a monitor is listed under a new **Monitors** section instead: open ones first, then those that moved, then `17 more, same as before`. A monitor's ⋯ menu has **Show in Moved**, each person's own choice, which puts its hunt back with a `monitor` tag and a **Remove from Moved** in its own menu; it still opens from search, the palette and Watch. Each row says when it opened against the mark picked in Since: `3 min after deploy`, `before this deploy`, `opened 8 min after · closed 5 min later`, or for a monitor that opens on silence, `last line 4 min after deploy`. A new fingerprint says `first seen 2 min after deploy`, and `GET /api/home/since` gains its `first_at`.
 
 ## 0.15.9
 

@@ -53,6 +53,11 @@ export function huntHasMonitor(hunt: Pick<SavedSearch, "id">, monitors: readonly
   return monitors.some((m) => m.saved?.id === hunt.id);
 }
 
+/** True when this hunt is in Moved or Quiet only because its reader chose Show in Moved. */
+export function shownInMoved(hunt: Pick<SavedSearch, "id" | "pinned">, monitors: readonly MonitorView[]): boolean {
+  return Boolean(hunt.pinned) && huntHasMonitor(hunt, monitors);
+}
+
 /**
  * When a monitor opened, against the mark; null with no mark or nothing to say. A monitor that
  * opens on silence opens a whole window late, so it says when its last line came instead.
