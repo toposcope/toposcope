@@ -1480,7 +1480,7 @@ export function parseSavedWidget(raw: unknown): WidgetDef | null {
     metricSplit: typeof rec.metricSplit === "string" ? rec.metricSplit : null,
     metricChart: (metricCharts as readonly string[]).includes(rec.metricChart as string) ? (rec.metricChart as MetricChart) : undefined,
     topView: rec.topView === "donut" ? "donut" : undefined,
-    // #169: a script sets these through the saved search's JSON, as agental sets its panels.
+    // #169: a script sets these through the saved search's JSON.
     lines: Array.isArray(rec.lines) ? (rec.lines as MetricLine[]) : undefined,
     names: rec.names && typeof rec.names === "object" ? (rec.names as Record<string, string>) : undefined,
     title: typeof rec.title === "string" ? rec.title : undefined,

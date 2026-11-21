@@ -25,13 +25,13 @@ const buckets: HistogramBucket[] = times.map((tt) => ({ t: tt, n: 0, series: {},
 
 function vcpu(keys: string[]): SearchAggResult {
   return {
-    expr: "agental.box.vcpu",
+    expr: "payroll.vms.vcpu",
     source: "metric",
     buckets: [],
     stat: null,
     kind: "gauge",
     unit: "vcpu",
-    metric: "agental.box.vcpu",
+    metric: "payroll.vms.vcpu",
     split: "basis",
     splits: keys.map((key, i) => ({
       key,
@@ -59,7 +59,7 @@ function pinned(aggResult: SearchAggResult | null, metricSplit: string | null, r
       onInterval: () => {},
       agg: null,
       onAgg: () => {},
-      metric: "agental.box.vcpu",
+      metric: "payroll.vms.vcpu",
       onSeries: () => {},
       metricSplit,
       onMetricSplit: () => {},
@@ -80,7 +80,7 @@ describe("the pinned plot split by one label (13a)", () => {
     expect(html).toContain("sellable 16");
     expect(html).toContain("sold 12");
     expect(html).toContain("used 8");
-    expect(html).toContain("avg · agental.box.vcpu{basis} · vcpu");
+    expect(html).toContain("avg · payroll.vms.vcpu{basis} · vcpu");
     // Named at their ends: no legend swatches as well.
     expect(html).not.toContain("border-style:dashed");
     expect((html.match(/<polyline/g) ?? []).length).toBe(3);
@@ -218,7 +218,7 @@ describe("the pinned plot draws a metric sent in two units as a panel does (#331
 
 describe("the pinned split is kept like metric= (13a)", () => {
   test("msplit rides the URL with a metric drawn by Replace", () => {
-    const state = parseSearchUrl("?range=24h&metric=agental.box.vcpu&msplit=basis&y=agg&logs=0");
+    const state = parseSearchUrl("?range=24h&metric=payroll.vms.vcpu&msplit=basis&y=agg&logs=0");
     expect(primaryTimeseries(state.widgets)?.metricSplit).toBe("basis");
     expect(serializeSearchUrl(state)).toContain("msplit=basis");
     expect(state.bind).toEqual({});
@@ -236,7 +236,7 @@ describe("the pinned split is kept like metric= (13a)", () => {
 
   test("with extra panels, the pinned token carries it", () => {
     const widgets = [
-      { ...defaultTimeseries({}), metric: "agental.box.vcpu", replaceY: true, metricSplit: "service.version" },
+      { ...defaultTimeseries({}), metric: "payroll.vms.vcpu", replaceY: true, metricSplit: "service.version" },
       { ...defaultTimeseries({}), id: "b", y: 3 },
     ];
     const back = parseWidgetsParam(formatWidgetsParam(widgets))[0];
@@ -248,8 +248,8 @@ describe("the pinned split is kept like metric= (13a)", () => {
     const layout = {
       logs: false,
       widgets: [
-        { ...defaultTimeseries({}), metric: "agental.box.vcpu", replaceY: true, metricSplit: "basis" },
-        { ...defaultTimeseries({}), id: "b", y: 3, metric: "agental.box.disk", metricSplit: "basis" },
+        { ...defaultTimeseries({}), metric: "payroll.vms.vcpu", replaceY: true, metricSplit: "basis" },
+        { ...defaultTimeseries({}), id: "b", y: 3, metric: "payroll.vms.disk", metricSplit: "basis" },
       ],
     };
     const back = parseSavedLayout(formatSavedLayout(layout));
@@ -282,7 +282,7 @@ describe("export of a split metric", () => {
   test("a column per line, named by its value", () => {
     const file = histogramExport(buckets, vcpu(["sellable", "used"]));
     const [head, first] = file.csv.split("\n");
-    expect(head).toBe("t,n,agental.box.vcpu{basis=sellable},agental.box.vcpu{basis=used}");
+    expect(head).toBe("t,n,payroll.vms.vcpu{basis=sellable},payroll.vms.vcpu{basis=used}");
     expect(first).toBe(`${t(0)},0,16,12`);
   });
 });

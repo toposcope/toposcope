@@ -16,7 +16,7 @@ function memDb(): Database {
 }
 
 function scope(): ShareScope {
-  const parsed = parseShareScope({ metric_names: ["fleet_*"], metric_labels: "service:agental" });
+  const parsed = parseShareScope({ metric_names: ["shop_*"], metric_labels: "service:payroll" });
   if ("error" in parsed) {
     throw new Error(parsed.error);
   }
@@ -35,7 +35,7 @@ describe("share store", () => {
     revokeShare("console", now + 1, db);
     expect(shareBySecret(secret!, now + 2, db)).toBeNull();
     expect(listShares(db)[0]?.revoked_at).toBe(now + 1);
-    expect(share.scope.metric_labels).toEqual({ service: "agental" });
+    expect(share.scope.metric_labels).toEqual({ service: "payroll" });
   });
 
   test("a change keeps the secret; a revoked name starts over with a new one", () => {
@@ -53,7 +53,7 @@ describe("share store", () => {
   });
 
   test("names and expiry", () => {
-    expect(parseShareName(" Agental-Console ")).toBe("agental-console");
+    expect(parseShareName(" Payroll-Console ")).toBe("payroll-console");
     expect(parseShareName("a b")).toBeNull();
     expect(parseShareExpiry("2027-10-23", now)).toBe(Date.parse("2027-10-23T00:00:00Z"));
     expect(parseShareExpiry(now - 1, now)).toEqual({ error: "expires_at must be in the future" });

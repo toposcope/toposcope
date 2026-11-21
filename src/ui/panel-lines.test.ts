@@ -18,11 +18,11 @@ const disk = (extra: Partial<WidgetDef> = {}) =>
   defaultTimeseries({
     id: "b",
     replaceY: true,
-    metric: "agental.box.disk.sellable",
+    metric: "payroll.vms.disk.sellable",
     metricLabels: { box: "all" },
     lines: [
-      { metric: "agental.box.disk.sold", labels: { box: "all" } },
-      { metric: "agental.box.disk.used", labels: { box: "all" } },
+      { metric: "payroll.vms.disk.sold", labels: { box: "all" } },
+      { metric: "payroll.vms.disk.used", labels: { box: "all" } },
     ],
     names: { "0": "Capacity", "1": "Promised", "2": "In use" },
     ...extra,
@@ -37,9 +37,9 @@ describe("merged lines", () => {
     const lines = panelLines(
       disk(),
       store({
-        "agental.box.disk.sellable": result("sellable", "GiBy", 310, { description: "A box's disk pool up to its limit." }),
-        "agental.box.disk.sold": result("sold", "GiBy", 12.9),
-        "agental.box.disk.used": result("used", "GiBy", 10.1),
+        "payroll.vms.disk.sellable": result("sellable", "GiBy", 310, { description: "A box's disk pool up to its limit." }),
+        "payroll.vms.disk.sold": result("sold", "GiBy", 12.9),
+        "payroll.vms.disk.used": result("used", "GiBy", 10.1),
       }),
     );
     expect(lines.agg?.splits?.map((s) => [s.key, s.stat])).toEqual([
@@ -50,9 +50,9 @@ describe("merged lines", () => {
     expect(lines.agg?.unit).toBe("GiBy");
     expect(lines.leftOff).toEqual([]);
     expect(lines.legend.map((l) => l.metric)).toEqual([
-      "agental.box.disk.sellable",
-      "agental.box.disk.sold",
-      "agental.box.disk.used",
+      "payroll.vms.disk.sellable",
+      "payroll.vms.disk.sold",
+      "payroll.vms.disk.used",
     ]);
   });
 
@@ -60,34 +60,34 @@ describe("merged lines", () => {
     const lines = panelLines(
       disk({ names: {} }),
       store({
-        "agental.box.disk.sellable": result("sellable", "GiBy", 310),
-        "agental.box.disk.sold": result("sold", "GiBy", 12.9),
-        "agental.box.disk.used": result("used", "GiBy", 10.1),
+        "payroll.vms.disk.sellable": result("sellable", "GiBy", 310),
+        "payroll.vms.disk.sold": result("sold", "GiBy", 12.9),
+        "payroll.vms.disk.used": result("used", "GiBy", 10.1),
       }),
     );
-    expect(lines.agg?.splits?.[1]?.key).toBe("agental.box.disk.sold {box:all}");
+    expect(lines.agg?.splits?.[1]?.key).toBe("payroll.vms.disk.sold {box:all}");
   });
 
   test("a merged metric now sent in another unit is left off, and said (17e)", () => {
     const lines = panelLines(
       disk(),
       store({
-        "agental.box.disk.sellable": result("sellable", "GiBy", 310),
-        "agental.box.disk.sold": result("sold", "GiBy", 12.9),
-        "agental.box.disk.used": result("used", "MiBy", 10_342),
+        "payroll.vms.disk.sellable": result("sellable", "GiBy", 310),
+        "payroll.vms.disk.sold": result("sold", "GiBy", 12.9),
+        "payroll.vms.disk.used": result("used", "MiBy", 10_342),
       }),
     );
     expect(lines.agg?.splits?.map((s) => s.key)).toEqual(["Capacity", "Promised"]);
-    expect(lines.leftOff).toEqual([{ name: "In use", metric: "agental.box.disk.used", unit: "MiB" }]);
+    expect(lines.leftOff).toEqual([{ name: "In use", metric: "payroll.vms.disk.used", unit: "MiB" }]);
   });
 
   test("two lines given one name both draw", () => {
     const lines = panelLines(
       disk({ names: { "0": "Disk", "1": "Disk", "2": "Disk" } }),
       store({
-        "agental.box.disk.sellable": result("a", "GiBy", 1),
-        "agental.box.disk.sold": result("b", "GiBy", 2),
-        "agental.box.disk.used": result("c", "GiBy", 3),
+        "payroll.vms.disk.sellable": result("a", "GiBy", 1),
+        "payroll.vms.disk.sold": result("b", "GiBy", 2),
+        "payroll.vms.disk.used": result("c", "GiBy", 3),
       }),
     );
     expect(lines.agg?.splits?.map((s) => s.key)).toEqual(["Disk", "Disk (2)", "Disk (3)"]);
@@ -99,14 +99,14 @@ describe("a split whose values are named (17i)", () => {
     const panel = defaultTimeseries({
       id: "b",
       replaceY: true,
-      metric: "agental.box.stranded.disk",
+      metric: "payroll.vms.stranded.disk",
       metricSplit: "basis",
       names: { sold: "By promises", used: "By use" },
     });
     const lines = panelLines(
       panel,
       store({
-        "agental.box.stranded.disk": result("stranded", "GiBy", 0, {
+        "payroll.vms.stranded.disk": result("stranded", "GiBy", 0, {
           split: "basis",
           splits: [
             { key: "sold", buckets: [], stat: 17.2 },
@@ -122,7 +122,7 @@ describe("a split whose values are named (17i)", () => {
 
 describe("the note line", () => {
   test("the operator's note wins; a one-line panel with none shows the sender's description, marked (17f)", () => {
-    const one = defaultTimeseries({ id: "b", metric: "agental.box.stranded.disk" });
+    const one = defaultTimeseries({ id: "b", metric: "payroll.vms.stranded.disk" });
     const said = { agg: null, leftOff: [], description: "Free disk nobody can be sold.", legend: [] };
     expect(panelNote(one, said)).toEqual({ text: "Free disk nobody can be sold.", sender: true });
     expect(panelNote({ ...one, note: "Should sit near 0." }, said)).toEqual({ text: "Should sit near 0.", sender: false });

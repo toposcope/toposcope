@@ -128,11 +128,11 @@ beforeAll(async () => {
     await go("tcpBadTarget", "/api/monitors/bad", "PUT", { ...tcpBody, target: "tcp://db.internal:5432" });
     await go("tcpNoPort", "/api/monitors/bad", "PUT", { ...tcpBody, target: "db.internal" });
     await go("tcpStarttls", "/api/monitors/bad", "PUT", { ...tcpBody, starttls: "smtp" });
-    const certBody = { source: "cert", target: "smtp.agental.dev:587", starttls: "smtp", every: "1h", conditions: ["cert > 14d", "cert name == smtp.agental.dev"] };
+    const certBody = { source: "cert", target: "smtp.example.dev:587", starttls: "smtp", every: "1h", conditions: ["cert > 14d", "cert name == smtp.example.dev"] };
     const certMade = (await go("certDeclare", "/api/monitors/mail-cert", "PUT", certBody)).body;
     await go("certBadStarttls", "/api/monitors/bad", "PUT", { ...certBody, starttls: "ftp" });
     await go("certBadLine", "/api/monitors/bad", "PUT", { ...certBody, conditions: ["status == 200"] });
-    await go("certUpdate", "/api/alert-rules/" + certMade.id, "PUT", { starttls: null, target: "imap.agental.dev:993" });
+    await go("certUpdate", "/api/alert-rules/" + certMade.id, "PUT", { starttls: null, target: "imap.example.dev:993" });
     await go("certOne", "/api/monitors/mail-cert");
     await go("netClash", "/api/monitors/db-port", "PUT", { source: "cert", target: "db.internal:5432" });
     await go("netClashSearch", "/api/monitors/mail-cert", "PUT", { source: "search", saved_search_id: saved.id, threshold: 1, webhook_url: hook });
@@ -140,7 +140,7 @@ beforeAll(async () => {
     await go("tcpSend", "/api/monitors/send", "POST", { source: "tcp", target: tcpTarget, conditions: "connected\\ntime < 5000ms" });
     await go("tcpSendBad", "/api/monitors/send", "POST", { source: "tcp", target: "nope" });
     const netBefore = hooked.length;
-    await go("certTestCall", "/api/alert-rules/test-call", "POST", { source: "cert", name: "mail-cert", target: "smtp.agental.dev:587", starttls: "smtp", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{alert.name}} {{state}}: {{message}} ({{target}})", run: { duration_ms: 40, why: "certificate expires in 6 days" } });
+    await go("certTestCall", "/api/alert-rules/test-call", "POST", { source: "cert", name: "mail-cert", target: "smtp.example.dev:587", starttls: "smtp", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{alert.name}} {{state}}: {{message}} ({{target}})", run: { duration_ms: 40, why: "certificate expires in 6 days" } });
     await go("certTestCallBad", "/api/alert-rules/test-call", "POST", { source: "cert", name: "x", webhook_url: "http://hook.test/ntfy", body_kind: "text", body_template: "{{url}}" });
     out.netHooked = hooked.slice(netBefore);
     await go("tcpCreate", "/api/alert-rules", "POST", { ...tcpBody, name: "tcp from the dialog" });
@@ -378,17 +378,17 @@ describe("TCP and certificate monitors (#180)", () => {
     expect(r.certDeclare!.status).toBe(201);
     expect(r.certDeclare!.body).toMatchObject({ name: "mail-cert", source: "cert" });
     expect(r.certDeclare!.body.net).toMatchObject({
-      target: "smtp.agental.dev:587",
+      target: "smtp.example.dev:587",
       starttls: "smtp",
       every: "1h",
-      conditions: "cert > 14d\ncert name == smtp.agental.dev",
+      conditions: "cert > 14d\ncert name == smtp.example.dev",
     });
     expect(r.certUpdate!.status).toBe(200);
-    expect(r.certOne!.body.net).toMatchObject({ target: "imap.agental.dev:993", starttls: null, conditions: "cert > 14d\ncert name == smtp.agental.dev" });
+    expect(r.certOne!.body.net).toMatchObject({ target: "imap.example.dev:993", starttls: null, conditions: "cert > 14d\ncert name == smtp.example.dev" });
     expect(r.tcpCreate!.status).toBe(201);
     expect(r.tcpCreate!.body).toMatchObject({ name: "tcp from the dialog", source: "tcp" });
     const listed = r.netList!.body.monitors as Array<{ name: string; net: unknown }>;
-    expect(listed.find((m) => m.name === "mail-cert")?.net).toMatchObject({ target: "imap.agental.dev:993" });
+    expect(listed.find((m) => m.name === "mail-cert")?.net).toMatchObject({ target: "imap.example.dev:993" });
   });
 
   test("each reads its own lines, and says what is wrong", () => {
@@ -420,7 +420,7 @@ describe("TCP and certificate monitors (#180)", () => {
   test("a test call is filled in from the last Send, with its own fill-ins", () => {
     expect(r.certTestCall!.status).toBe(200);
     const sent = (r.netHooked as unknown as Array<{ body: string }>).map((h) => h.body);
-    expect(sent).toEqual(["mail-cert open: certificate expires in 6 days (smtp.agental.dev:587)"]);
+    expect(sent).toEqual(["mail-cert open: certificate expires in 6 days (smtp.example.dev:587)"]);
     expect(r.certTestCallBad!.body.error).toBe("{{url}} is not a fill-in for this alert");
   });
 

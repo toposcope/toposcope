@@ -12,14 +12,14 @@ const now = Date.parse("2026-10-23T12:00:00Z");
 const day = 86_400_000;
 
 function scope(): ShareScope {
-  const parsed = parseShareScope({ metric_names: ["fleet_*"] });
+  const parsed = parseShareScope({ metric_names: ["shop_*"] });
   if ("error" in parsed) throw new Error(parsed.error);
   return parsed;
 }
 
 describe("frame origins", () => {
   test("an origin and nothing more; never *", () => {
-    expect(parseOrigin("https://admin.agental.dev")).toBe("https://admin.agental.dev");
+    expect(parseOrigin("https://admin.example.dev")).toBe("https://admin.example.dev");
     expect(parseOrigin("http://localhost:3000/")).toBe("http://localhost:3000");
     for (const bad of ["*", "https://*.example.com", "https://a.example.com/console", "ftp://a.example.com", "admin.example.com", "https://u:p@a.example.com"]) {
       expect(parseOrigin(bad)).toBeNull();

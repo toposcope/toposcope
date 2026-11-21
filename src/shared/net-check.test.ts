@@ -15,8 +15,8 @@ function lines(text: string, kind: "tcp" | "cert"): ConditionLine[] {
 
 function cert(over: Partial<NetCertSeen> = {}): NetCertSeen {
   return {
-    subject: "smtp.agental.dev",
-    names: ["smtp.agental.dev", "*.mail.agental.dev"],
+    subject: "smtp.example.dev",
+    names: ["smtp.example.dev", "*.mail.example.dev"],
     issuer: "Let's Encrypt",
     valid_to: new Date(now + 20 * day).toISOString(),
     untrusted: null,
@@ -29,7 +29,7 @@ describe("parseNetTarget", () => {
     expect(parseNetTarget("db.internal:5432")).toEqual({ host: "db.internal", port: 5432 });
     expect(parseNetTarget(" 10.0.0.5:6379 ")).toEqual({ host: "10.0.0.5", port: 6379 });
     expect(parseNetTarget("[::1]:993")).toEqual({ host: "::1", port: 993 });
-    expect(parseNetTarget("SMTP.Agental.dev:587")).toEqual({ host: "smtp.agental.dev", port: 587 });
+    expect(parseNetTarget("SMTP.Example.dev:587")).toEqual({ host: "smtp.example.dev", port: 587 });
     expect(formatNetTarget({ host: "::1", port: 993 })).toBe("[::1]:993");
     expect(formatNetTarget({ host: "db.internal", port: 5432 })).toBe("db.internal:5432");
   });
@@ -88,11 +88,11 @@ describe("conditions by monitor", () => {
 
 describe("certCovers", () => {
   test("a name, up to case, and a wildcard for the leftmost label only", () => {
-    const names = ["smtp.agental.dev", "*.mail.agental.dev", "10.0.0.5"];
-    expect(certCovers(names, "SMTP.agental.dev")).toBe(true);
-    expect(certCovers(names, "eu.mail.agental.dev")).toBe(true);
-    expect(certCovers(names, "a.eu.mail.agental.dev")).toBe(false);
-    expect(certCovers(names, "mail.agental.dev")).toBe(false);
+    const names = ["smtp.example.dev", "*.mail.example.dev", "10.0.0.5"];
+    expect(certCovers(names, "SMTP.example.dev")).toBe(true);
+    expect(certCovers(names, "eu.mail.example.dev")).toBe(true);
+    expect(certCovers(names, "a.eu.mail.example.dev")).toBe(false);
+    expect(certCovers(names, "mail.example.dev")).toBe(false);
     expect(certCovers(names, "10.0.0.5")).toBe(true);
     expect(certCovers(["*.0.0.5"], "10.0.0.5")).toBe(false);
   });
@@ -126,7 +126,7 @@ describe("judgeNetRun", () => {
   });
 
   test("a certificate with 20 days left fails cert > 30d and passes cert > 14d", () => {
-    const run = { host: "smtp.agental.dev", seen: { durationMs: 40, cert: cert() } };
+    const run = { host: "smtp.example.dev", seen: { durationMs: 40, cert: cert() } };
     expect(judgeNetRun("cert", lines("cert > 30d", "cert"), run, now)).toMatchObject({
       result: "fail",
       line: "cert > 30d",
@@ -138,7 +138,7 @@ describe("judgeNetRun", () => {
   });
 
   test("a certificate a client would not trust fails, whatever its days", () => {
-    const run = { host: "smtp.agental.dev", seen: { durationMs: 40, cert: cert({ untrusted: "certificate is self-signed" }) } };
+    const run = { host: "smtp.example.dev", seen: { durationMs: 40, cert: cert({ untrusted: "certificate is self-signed" }) } };
     expect(judgeNetRun("cert", lines("cert > 14d", "cert"), run, now)).toMatchObject({
       result: "fail",
       line: null,
@@ -151,16 +151,16 @@ describe("judgeNetRun", () => {
     const other = { host: "10.0.0.7", seen: { durationMs: 40, cert: cert() } };
     expect(judgeNetRun("cert", [], other, now)).toMatchObject({
       result: "fail",
-      why: "certificate is for smtp.agental.dev +1, not 10.0.0.7",
+      why: "certificate is for smtp.example.dev +1, not 10.0.0.7",
     });
-    expect(judgeNetRun("cert", lines("cert name == smtp.agental.dev", "cert"), other, now)).toMatchObject({
+    expect(judgeNetRun("cert", lines("cert name == smtp.example.dev", "cert"), other, now)).toMatchObject({
       result: "ok",
-      lines: [{ pass: true, got: "smtp.agental.dev" }],
+      lines: [{ pass: true, got: "smtp.example.dev" }],
     });
-    expect(judgeNetRun("cert", lines("cert name == imap.agental.dev", "cert"), other, now)).toMatchObject({
+    expect(judgeNetRun("cert", lines("cert name == imap.example.dev", "cert"), other, now)).toMatchObject({
       result: "fail",
-      line: "cert name == imap.agental.dev",
-      why: "certificate is for smtp.agental.dev +1, not imap.agental.dev",
+      line: "cert name == imap.example.dev",
+      why: "certificate is for smtp.example.dev +1, not imap.example.dev",
     });
   });
 });

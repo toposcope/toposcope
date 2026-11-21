@@ -31,7 +31,7 @@ export function hostFromUrl(raw: string): string {
   }
 }
 
-/** "api /health" from https://api.agental.dev/health: the first label of its host, and its path. */
+/** "api /health" from https://api.example.dev/health: the first label of its host, and its path. */
 export function nameFromUrl(raw: string): string {
   try {
     const url = new URL(raw.trim());
@@ -302,7 +302,7 @@ export function readHeadersText(
   return { ok: true, headers: out };
 }
 
-/** "ntfy.sh/agental-ops": where its calls go, short. */
+/** "ntfy.sh/payroll-ops": where its calls go, short. */
 export function webhookShort(url: string): string {
   try {
     const u = new URL(url.trim());

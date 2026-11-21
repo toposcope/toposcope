@@ -36,7 +36,7 @@ function lines(text: string): ConditionLine[] {
   return out;
 }
 
-const run = (s: HttpSeen = seen()) => ({ seen: s, url: "https://api.agental.dev/health" });
+const run = (s: HttpSeen = seen()) => ({ seen: s, url: "https://api.example.dev/health" });
 
 describe("condition lines", () => {
   test("each kind reads, and writes back the same way", () => {

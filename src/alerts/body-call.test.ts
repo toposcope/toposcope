@@ -75,7 +75,7 @@ describe("a body of its own reaches the service (#108)", () => {
         link: "https://toposcope.example.com/?cut=mk",
       }),
     );
-    const result = await sendTestCall(at("/agental-ops"), payload);
+    const result = await sendTestCall(at("/payroll-ops"), payload);
     expect(result.ok).toBe(true);
     const sent = seen.at(-1)!;
     expect(sent.type).toBe("text/plain; charset=utf-8");

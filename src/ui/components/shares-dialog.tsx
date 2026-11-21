@@ -254,13 +254,13 @@ export function SharesDialog({ open, onOpenChange, onOpenUse }: Props) {
             <DialogDescription>Everything read with this share is inside this scope. Series and counts only.</DialogDescription>
           </DialogHeader>
           <form className="flex flex-col gap-3" onSubmit={(e) => void onSave(e)}>
-            <DialogField label="Name">{field("name", { id: "share-name", placeholder: "agental-console", disabled: mode === "edit" })}</DialogField>
+            <DialogField label="Name">{field("name", { id: "share-name", placeholder: "ops-console", disabled: mode === "edit" })}</DialogField>
             <div className={sectionLabel}>Scope</div>
             <DialogField label="Metric names">
-              {field("names", { id: "share-names", placeholder: "fleet_*", aside: nameCount === null ? null : `${nameCount} names in 24h` })}
+              {field("names", { id: "share-names", placeholder: "shop_*", aside: nameCount === null ? null : `${nameCount} names in 24h` })}
             </DialogField>
             <DialogField label="Metric labels" help="Added to every metric read.">
-              {field("labels", { id: "share-labels", placeholder: "service:agental" })}
+              {field("labels", { id: "share-labels", placeholder: "service:api" })}
             </DialogField>
             <DialogField label="Logs" help="Counts, rates and percentiles of matching rows. Never the rows.">
               {field("logs", { id: "share-logs", placeholder: "none · this share reads no logs" })}

@@ -94,7 +94,7 @@ export function panelRead(widget: WidgetDef): { reads: PanelRead[] } | PanelRefu
   };
 }
 
-/** A prefix glob for the metrics like this one (`fleet_cpu_seconds` → `fleet_*`), or null when the name has no stem. */
+/** A prefix glob for the metrics like this one (`shop_cpu_seconds` → `shop_*`), or null when the name has no stem. */
 export function likePattern(name: string): string | null {
   const at = [name.indexOf("_"), name.indexOf(".")].filter((i) => i > 0);
   if (at.length === 0) {
@@ -235,7 +235,7 @@ export function panelEmbedQuery(read: PanelRead, range: string, theme: "dark" | 
   return q;
 }
 
-/** A name for a new share, from the service it reads (24c): `agental-console`. */
+/** A name for a new share, from the service it reads (24c): `payroll-console`. */
 export function proposedShareName(scope: ProposedScope, taken: readonly string[]): string {
   const service = /(?:^|,)service:([^,]+)/.exec(scope.metric_labels)?.[1] ?? /service:"?([A-Za-z0-9_.-]+)/.exec(scope.logs ?? "")?.[1];
   const base = `${(service ?? "panels").toLowerCase().replace(/[^a-z0-9_.-]+/g, "-")}-console`.slice(0, 56);

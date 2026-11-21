@@ -165,7 +165,7 @@ function certKind(m: MonitorView): string {
   return (m.net?.starttls ?? "tls").toUpperCase();
 }
 
-/** "SMTP smtp.agental.dev:587", "db.internal:5432": where it connects, and how for a certificate. */
+/** "SMTP smtp.example.dev:587", "db.internal:5432": where it connects, and how for a certificate. */
 export function netTargetLabel(m: MonitorView): string {
   return sourceOf(m) === "cert" ? `${certKind(m)} ${m.net?.target ?? ""}` : (m.net?.target ?? "");
 }

@@ -120,7 +120,7 @@ beforeAll(async () => {
     await go("rotate", "/api/monitors/nightly-backup", "PUT", { source: "push", key: crypto.randomUUID() });
     await go("oldKey", "/ping/" + key, "GET", undefined, {});
 
-    await go("setDefault", "/api/settings", "PUT", { default_webhook_url: "https://ntfy.sh/agental-ops" });
+    await go("setDefault", "/api/settings", "PUT", { default_webhook_url: "https://ntfy.sh/payroll-ops" });
     await go("getDefault", "/api/settings");
     await go("badDefault", "/api/settings", "PUT", { default_webhook_url: "ftp://x" });
     await go("clearDefault", "/api/settings", "PUT", { default_webhook_url: "" });
@@ -329,8 +329,8 @@ describe("/v1/probes in attach mode is read as a result (#177)", () => {
 
 describe("the default webhook in Settings (#177)", () => {
   test("is set, read back, refused when not http(s), and cleared", () => {
-    expect(r.setDefault!.body.default_webhook_url).toBe("https://ntfy.sh/agental-ops");
-    expect(r.getDefault!.body.default_webhook_url).toBe("https://ntfy.sh/agental-ops");
+    expect(r.setDefault!.body.default_webhook_url).toBe("https://ntfy.sh/payroll-ops");
+    expect(r.getDefault!.body.default_webhook_url).toBe("https://ntfy.sh/payroll-ops");
     expect(r.badDefault!.status).toBe(400);
     expect(r.clearDefault!.body.default_webhook_url).toBeNull();
   });

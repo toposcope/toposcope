@@ -103,9 +103,9 @@ describe("the stored lines (18r)", () => {
   });
 
   test("names and addresses, short", () => {
-    expect(nameFromUrl("https://api.agental.dev/health")).toBe("api /health");
+    expect(nameFromUrl("https://api.example.dev/health")).toBe("api /health");
     expect(nameFromUrl("http://127.0.0.1:8080/")).toBe("127.0.0.1:8080");
-    expect(webhookShort("https://ntfy.sh/agental-ops")).toBe("ntfy.sh/agental-ops");
+    expect(webhookShort("https://ntfy.sh/payroll-ops")).toBe("ntfy.sh/payroll-ops");
   });
 });
 
@@ -129,14 +129,14 @@ const httpMonitor = (over: Partial<MonitorView> = {}): MonitorView => ({
   id: "m-health",
   name: "api /health",
   service: "api",
-  host: "api.agental.dev",
+  host: "api.example.dev",
   kind: "threshold",
   last_mark: null,
   body_kind: "default",
   body_template: null,
   saved_search_id: null,
   threshold: 1,
-  webhook_url: "https://ntfy.sh/agental-ops",
+  webhook_url: "https://ntfy.sh/payroll-ops",
   last_fired_at: null,
   last_attempt_at: null,
   last_status: null,
@@ -151,7 +151,7 @@ const httpMonitor = (over: Partial<MonitorView> = {}): MonitorView => ({
   saved: null,
   open: null,
   http: {
-    url: "https://api.agental.dev/health",
+    url: "https://api.example.dev/health",
     method: "GET",
     body: null,
     headers: ["Authorization"],
@@ -176,7 +176,7 @@ describe("an HTTP(S) monitor on Watch (18c)", () => {
 
   test("a certificate-only monitor reads days left", () => {
     const m = httpMonitor({
-      name: "agental.dev certificate",
+      name: "example.dev certificate",
       http: {
         ...httpMonitor().http!,
         every: "1h",
@@ -195,7 +195,7 @@ describe("an HTTP(S) monitor on Watch (18c)", () => {
       http: { ...httpMonitor().http!, last_run: { ...httpMonitor().http!.last_run!, result: "fail", status: null, why: "connect ECONNREFUSED" } },
     });
     expect(laneReadout(fail, now, 0)).toEqual({ badge: "fail", tone: "amber", text: "no response" });
-    expect(openCardLine(fail)).toBe("http · GET https://api.agental.dev/health · connect ECONNREFUSED");
+    expect(openCardLine(fail)).toBe("http · GET https://api.example.dev/health · connect ECONNREFUSED");
   });
 
   test("its runs: a texture when dense with warns and fails drawn on it, else a tick each", () => {
@@ -244,7 +244,7 @@ describe("an HTTP(S) monitor on Watch (18c)", () => {
     // An ok run is the texture, not a tick of its own.
     expect(html).not.toContain("200 in 182ms");
     // 50g: checks once, short; "http · 30s · …" is in its tooltip.
-    expect(html).toContain("GET api.agental.dev/health · 3 conditions");
+    expect(html).toContain("GET api.example.dev/health · 3 conditions");
   });
 
   test("the rail beside its hunt says what it checks and how it last ran", () => {
@@ -258,7 +258,7 @@ describe("an HTTP(S) monitor on Watch (18c)", () => {
         onSilence: () => undefined,
       }),
     );
-    expect(html).toContain("GET https://api.agental.dev/health");
+    expect(html).toContain("GET https://api.example.dev/health");
     expect(html).toContain("every 30s · opens after 2 failed runs");
     expect(html).toContain("11:02 · ok · 200 in 182ms");
     // Its headers are never printed, not even their names' values.

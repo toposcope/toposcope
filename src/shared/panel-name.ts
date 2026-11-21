@@ -6,7 +6,7 @@ import { defaultPanelName, maxPanelName, panelWhat, type BoardPanel } from "./bo
  * Panels named from their query (sheet 50, 50e). Panels made before it carry the generic name
  * they got when they had none (`Volume`, `rate`, `Top values`), so three Number panels on one
  * board all read `rate`. A panel whose name is one of those is shown with a name made from its
- * query: `incus rate`, `agental volume`, `All logs`. The stored name is left as it is.
+ * query: `api rate`, `checkout volume`, `All logs`. The stored name is left as it is.
  */
 
 /** A query longer than this names nothing; its panel keeps the name it has. */
@@ -41,7 +41,7 @@ export function isGenericPanelName(panel: NamedPanel): boolean {
 }
 
 /**
- * Who the query reads: its service and level values, `incus warn`. A query without them is its
+ * Who the query reads: its service and level values, `api warn`. A query without them is its
  * own words when short (`status:500`); `""` for every row; null for a query that names nothing
  * short or does not compile.
  */
@@ -62,11 +62,13 @@ export function querySubject(q: string): string | null {
   return text.length <= maxQuerySubject ? text : null;
 }
 
-/** A field's name in words (`agental.call.duration` → `call time`, `duration_ms` → `duration`). */
-export function fieldWords(key: string): { words: string; time: boolean } {
+/**
+ * A field's name in words (`http.server.duration` → `http server time`, `duration_ms` →
+ * `duration`). A first part that is the query's service is dropped, as the panel's name says it.
+ */
+export function fieldWords(key: string, service: string | null = null): { words: string; time: boolean } {
   let parts = key.split(".").filter(Boolean);
-  if (parts.length > 2) {
-    // The first part names who sent it (`agental`), which the query already says.
+  if (parts.length > 1 && service && parts[0]!.toLowerCase() === service.toLowerCase()) {
     parts = parts.slice(1);
   }
   let words = parts.join(" ").replace(/_/g, " ");
@@ -79,10 +81,10 @@ export function fieldWords(key: string): { words: string; time: boolean } {
 }
 
 /**
- * What a measure reads, short: `count`, `rate`, `call time` for `sum:agental.call.duration`,
- * `p99 call time`, `sum bytes`.
+ * What a measure reads, short: `count`, `rate`, `call time` for `sum:call.duration`,
+ * `p99 call time`, `sum bytes`. `service` is the one service the query reads, if any.
  */
-export function measureWords(agg: string | null | undefined): string {
+export function measureWords(agg: string | null | undefined, service: string | null = null): string {
   if (!agg || agg === "count") {
     return "count";
   }
@@ -94,12 +96,19 @@ export function measureWords(agg: string | null | undefined): string {
     if (parsed.op === "rate") {
       return "rate";
     }
-    const { words, time } = fieldWords(parsed.key);
+    const { words, time } = fieldWords(parsed.key, service);
     // A sum of durations is the time spent: `call time`.
     return parsed.op === "sum" && time && words.includes(" ") ? words : `${parsed.op} ${words}`;
   } catch {
     return agg;
   }
+}
+
+/** The service a query reads when it names exactly one. */
+function oneService(q: string): string | null {
+  const compiled = compileQuery(q);
+  const services = compiled.faults.length > 0 ? [] : (activeEquals(compiled).service ?? []);
+  return services.length === 1 ? services[0]! : null;
 }
 
 /** The name made from a panel's query and view; null when the query names nothing to call it. */
@@ -109,6 +118,7 @@ export function derivedPanelName(panel: Pick<BoardPanel, "q" | "view" | "widget"
     return null;
   }
   const w = panel.widget;
+  const service = oneService(panel.q);
   const join = (what: string) => (subject ? `${subject} ${what}` : `All logs ${what}`);
   switch (panel.view) {
     case "histogram":
@@ -116,11 +126,11 @@ export function derivedPanelName(panel: Pick<BoardPanel, "q" | "view" | "widget"
         return subject ? `${subject} ${w.metric}` : w.metric;
       }
       if (w.agg && w.agg !== "count") {
-        return join(measureWords(w.agg));
+        return join(measureWords(w.agg, service));
       }
       return subject ? `${subject} volume` : "All logs";
     case "stat":
-      return w.metric ? (subject ? `${subject} ${w.metric}` : w.metric) : join(measureWords(w.agg));
+      return w.metric ? (subject ? `${subject} ${w.metric}` : w.metric) : join(measureWords(w.agg, service));
     case "top": {
       const field = w.attr ?? (w.split === "none" ? "service" : w.split);
       return subject ? `${subject} top ${field}` : `Top ${field}`;

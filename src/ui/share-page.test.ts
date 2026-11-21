@@ -4,7 +4,7 @@ import { namedPanelTag, panelNameFor } from "./share-from-panel";
 
 describe("a share's page (#266, 26k)", () => {
   test("a named panel in words", () => {
-    expect(panelWords({ name: "latency-p99", params: { metric: "p99:fleet_latency", split: "host", range: "24h" } })).toBe("p99 fleet_latency · by host · 24h · line");
+    expect(panelWords({ name: "latency-p99", params: { metric: "p99:shop_latency", split: "host", range: "24h" } })).toBe("p99 shop_latency · by host · 24h · line");
     expect(panelWords({ name: "errors", params: { agg: "count", split: "level", range: "7d" } })).toBe("count of logs · by level · 7d · line");
     expect(panelWords({ name: "pools", params: { chart: "donut", key: "pool", n: "5", range: "24h" } })).toBe("top 5 pool by rows · 24h · donut");
   });
@@ -15,13 +15,13 @@ describe("a share's page (#266, 26k)", () => {
   });
   test("the fence in the page's words", () => {
     const lines = fenceLines({
-      scope: { metric_names: ["fleet_latency"], metric_labels: "service:agental", logs: "service:agental", split: ["host", "level"] },
+      scope: { metric_names: ["shop_latency"], metric_labels: "service:payroll", logs: "service:payroll", split: ["host", "level"] },
       limits: { min_step: "1m", max_range: "7d", max_lookback: "30d", reads_per_minute: 120 },
-      embed: { frame_ancestors: ["https://console.agental.io"] },
+      embed: { frame_ancestors: ["https://console.example.org"] },
     });
     expect(lines).toContainEqual(["may split by", "host · level"]);
     expect(lines).toContainEqual(["limits", "1m bars · 7d window · 30d back · 120 reads/min"]);
-    expect(lines).toContainEqual(["framed by", "https://console.agental.io"]);
+    expect(lines).toContainEqual(["framed by", "https://console.example.org"]);
   });
 });
 

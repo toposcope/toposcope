@@ -3,21 +3,21 @@ import { fitPanelsToWidth, parseBoard, shareColumns, type BoardSlots } from "./b
 
 const cells = (board: BoardSlots) => Object.fromEntries(board.panels.map((p) => [p.id, [p.widget.x, p.widget.y, p.widget.w, p.widget.h]]));
 
-// The Eleos board on logs.agental.io (sheet 50, 50d → 50e).
+// The Ops board on logs.example.org (sheet 50, 50d → 50e).
 const eleos = parseBoard({
   panels: [
     { id: "u", name: "Graphs", view: "section", widget: { x: 0, y: 0, w: 12, h: 1 } },
-    { id: "v", name: "Volume", q: "service:agental", view: "histogram", widget: { x: 0, y: 1, w: 5, h: 4 } },
+    { id: "v", name: "Volume", q: "service:payroll", view: "histogram", widget: { x: 0, y: 1, w: 5, h: 4 } },
     { id: "w", name: "Volume", q: "", view: "histogram", widget: { x: 5, y: 1, w: 5, h: 4 } },
     { id: "x", name: "Metrics", view: "section", widget: { x: 0, y: 5, w: 12, h: 1 } },
-    { id: "y", name: "rate", q: "service:incus", view: "stat", widget: { x: 0, y: 6, w: 3, h: 2, agg: "sum:agental.call.duration" } },
-    { id: "z", name: "rate", q: "service:incus", view: "stat", widget: { x: 3, y: 6, w: 3, h: 2, agg: "rate" } },
-    { id: "a", name: "rate", q: "service:incus level:warn", view: "stat", widget: { x: 6, y: 6, w: 3, h: 2, agg: "rate" } },
+    { id: "y", name: "rate", q: "service:queue", view: "stat", widget: { x: 0, y: 6, w: 3, h: 2, agg: "sum:payroll.call.duration" } },
+    { id: "z", name: "rate", q: "service:queue", view: "stat", widget: { x: 3, y: 6, w: 3, h: 2, agg: "rate" } },
+    { id: "a", name: "rate", q: "service:queue level:warn", view: "stat", widget: { x: 6, y: 6, w: 3, h: 2, agg: "rate" } },
   ],
 })!;
 
 describe("Fit panels to the width (50e)", () => {
-  test("Eleos: two 5-column panels become 6 + 6, three 3-column panels 4 + 4 + 4", () => {
+  test("Ops: two 5-column panels become 6 + 6, three 3-column panels 4 + 4 + 4", () => {
     const fit = fitPanelsToWidth(eleos);
     expect(cells(fit)).toEqual({
       u: [0, 0, 12, 1],

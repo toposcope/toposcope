@@ -12,7 +12,7 @@ process.env.CLICKHOUSE_USER ??= "default";
 process.env.CLICKHOUSE_PASSWORD ??= "toposcope";
 process.env.CLICKHOUSE_URL ??= "http://127.0.0.1:8123";
 
-// #167: agental said what each metric is, and nothing kept it.
+// #167: a sender said what each metric is, and nothing kept it.
 const run = Date.now();
 const stranded = `description_test.stranded.${run}`;
 const duration = `description_test.duration.${run}`;

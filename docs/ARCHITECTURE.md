@@ -927,7 +927,7 @@ The panel menu is Open as hunt (a Search tab on the panel's `q` plus the set inp
 
 A board saved before 0.14 (a template query and its widgets) is migrated at boot (`src/control/board-panels-migrate.ts`): one panel per widget on that query, its event table as an events panel, its inputs kept, and its window the board's (`1h` when it had none).
 
-A panel whose stored name is generic (its `defaultPanelName`, or `Volume`, `Metric`, `Number`, `count`, `rate`, `Top values`) is shown with a name made from its query (`src/shared/panel-name.ts`, 50e): the query's `service` and `level` values, or a short query itself, then what it reads, as in `incus warn rate`, `incus call time` or `All logs`. The stored name is not rewritten; Edit panel starts with the made name, so Update panel stores it.
+A panel whose stored name is generic (its `defaultPanelName`, or `Volume`, `Metric`, `Number`, `count`, `rate`, `Top values`) is shown with a name made from its query (`src/shared/panel-name.ts`, 50e): the query's `service` and `level` values, or a short query itself, then what it reads, as in `api warn rate`, `api call time` or `All logs`. The stored name is not rewritten; Edit panel starts with the made name, so Update panel stores it.
 
 ## Monitors
 
@@ -1389,7 +1389,7 @@ A share (#225; `src/share/`) lets another app read one scope of numbers without 
 
 The scope is:
 
-- `metric_names`: exact names or prefix globs (`fleet_*`), up to 50
+- `metric_names`: exact names or prefix globs (`shop_*`), up to 50
 - `metric_labels`: `ml=` text, equality only, ANDed onto every metric read
 - `logs`: a `q` ANDed onto every log read, or null
 - `split` and `narrow`: up to 8 keys each

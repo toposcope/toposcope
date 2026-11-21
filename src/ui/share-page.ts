@@ -5,7 +5,7 @@ import { panelParams, panelRead, type PanelRead } from "./share-from-panel";
 
 export type NamedPanel = { name: string; params: Record<string, string>; from?: string };
 
-/** "p99 fleet_latency · by host · 24h · line": what a named panel draws, in words. */
+/** "p99 shop_latency · by host · 24h · line": what a named panel draws, in words. */
 export function panelWords(p: NamedPanel): string {
   const q = p.params;
   const chart = q.chart ?? "line";

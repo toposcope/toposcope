@@ -17,7 +17,7 @@ export type EmbedParams = {
   /** Its query: the panel's own params, as Search writes them. */
   query: URLSearchParams;
   title: string;
-  /** `fleet_cpu_seconds · p99 · s`: what the panel reads, under its title. */
+  /** `shop_cpu_seconds · p99 · s`: what the panel reads, under its title. */
   what: string;
   theme: EmbedTheme;
   /** When the ticket stops, read from the ticket itself. */

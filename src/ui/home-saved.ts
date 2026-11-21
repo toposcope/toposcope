@@ -137,7 +137,7 @@ export const quietNamesShown = 3;
 /**
  * The folded Quiet line's right side (50b): the quiet hunts whose value is not zero, the largest
  * first, three by name and the rest as `+N`; null when every one reads zero.
- * "2 not zero: Fleet job silent 27 · API event loop stalls 13".
+ * "2 not zero: Nightly job silent 27 · API event loop stalls 13".
  */
 export function quietNotZero(quiet: readonly SavedSearch[], cards: readonly HomeCard[], shown = quietNamesShown): string | null {
   const byId = new Map(cards.map((c) => [c.saved_id, c]));

@@ -46,7 +46,7 @@ beforeAll(async () => {
       out[key] = { status: res.status, body: text.startsWith("{") ? JSON.parse(text) : text };
       return out[key];
     };
-    const hook = "https://ntfy.example.com/agental-ops";
+    const hook = "https://ntfy.example.com/payroll-ops";
     const lines = (await go("saved", "/api/saved-searches", "POST", { name: "ci-box lines", query: "host:ci-box", range: "15m" })).body;
     const slow = (await go("savedP99", "/api/saved-searches", "POST", { name: "api p99", query: "service:api", range: "15m", agg: "p99:duration_ms" })).body;
     const rate = (await go("savedRate", "/api/saved-searches", "POST", { name: "api rate", query: "service:api", range: "15m", agg: "rate" })).body;

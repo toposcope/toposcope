@@ -6,7 +6,7 @@ const openFromLink = (search: string, saved: string | null) => boardOpenRange(sa
 
 describe("a board opens at its own window (50e)", () => {
   test("a link with no range opens at the board's window, and reads saved", () => {
-    // logs.agental.io, 0.15.6: `?saved=<id>` read the Hunt tab's 1h and showed unsaved at once.
+    // logs.example.org, 0.15.6: `?saved=<id>` read the Hunt tab's 1h and showed unsaved at once.
     const range = openFromLink("?saved=abc", "24h");
     expect(range).toBe("24h");
     expect(boardUnsaved("24h", range)).toBe(false);

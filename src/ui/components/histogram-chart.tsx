@@ -1101,7 +1101,7 @@ export function HistogramChart({
     aggResult?.source === "metric" &&
     aggResult.buckets.length === 0 &&
     !splitOn;
-  // `avg · agental.box.vcpu{basis} · vcpu`: the split label inside the braces, after any matchers.
+  // `avg · payroll.vms.vcpu{basis} · vcpu`: the split label inside the braces, after any matchers.
   const splitExpr = (() => {
     const by = aggResult?.split ?? metricSplit;
     if (!splitDrawn || !view || !by) {

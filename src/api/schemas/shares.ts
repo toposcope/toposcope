@@ -14,7 +14,7 @@ const panel = v.object({
 
 const scope = v.pipe(
   v.object({
-    metric_names: keys("Metric names the share may read, exact or a prefix glob (fleet_*), as a list or separated by commas; at most 50."),
+    metric_names: keys("Metric names the share may read, exact or a prefix glob (shop_*), as a list or separated by commas; at most 50."),
     metric_labels: v.nullish(v.pipe(v.string(), v.description("Label matchers ANDed onto every metric read, key:value as ml= takes them."))),
     logs: v.nullish(v.pipe(v.string(), v.description("A q ANDed onto every log read; null or empty: the share reads no logs."))),
     split: keys("Keys a read may split or Top-N by, at most 8."),

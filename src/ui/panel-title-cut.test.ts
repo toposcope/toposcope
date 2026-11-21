@@ -7,18 +7,18 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { midCut } from "./series-list";
 import { defaultTimeseries } from "../shared/widgets";
 
-// agental's board "Disk · all boxes" (2026-10-18): four metric panels about 880px wide, each
-// titled by a cut of a fixed 18 characters. `agental.box.stranded.disk` read `agental.box…disk`,
+// A board (2026-10-18): four metric panels about 880px wide, each
+// titled by a cut of a fixed 18 characters. `payroll.vms.stranded.disk` read `payroll.vms…disk`,
 // which is the disk metric itself; the one word that told the panel apart was the word cut.
 // A title is cut to the room its panel gives it, and a cut never reads as another name.
 
 const board = [
-  "agental.box.disk",
-  "agental.box.stranded.disk",
-  "agental.box.disk.sold",
-  "agental.box.fits.small",
+  "payroll.vms.disk",
+  "payroll.vms.stranded.disk",
+  "payroll.vms.disk.sold",
+  "payroll.vms.fits.small",
 ];
-const stranded = "agental.box.stranded.disk";
+const stranded = "payroll.vms.stranded.disk";
 const others = (name: string) => board.filter((other) => other !== name);
 
 /** A cut `head…tail` reads as any other name that starts with its head and ends with its tail. */
@@ -71,7 +71,7 @@ function canvas(metric: string): string {
 describe("a metric panel's title is cut to its panel, not to 18 characters", () => {
   test("the title of a wide panel shows the whole name", () => {
     const text = shown(canvas(stranded));
-    expect(text).not.toContain("agental.box…disk");
+    expect(text).not.toContain("payroll.vms…disk");
     expect(text).toContain(`avg · ${stranded}`);
   });
 
@@ -84,7 +84,7 @@ describe("a metric panel's title is cut to its panel, not to 18 characters", () 
   test("a narrow panel cuts to its width, not to 18", async () => {
     const { cutToRoom } = await import("./series-list");
     const px = 6.9;
-    // Room for 14 characters: the 18-character cut (`agental.box…disk`, 16) would not fit.
+    // Room for 14 characters: the 18-character cut (`payroll.vms…disk`, 16) would not fit.
     const narrow = cutToRoom(stranded, 14 * px, px);
     expect(narrow.length).toBeLessThanOrEqual(14);
     expect(narrow).not.toBe(midCut(stranded, 18));
@@ -110,7 +110,7 @@ describe("a metric panel's title is cut to its panel, not to 18 characters", () 
 });
 
 describe("two names differing only in a middle segment never read alike", () => {
-  test("`agental.box.stranded.disk` never reads as `agental.box.disk`", () => {
+  test("`payroll.vms.stranded.disk` never reads as `payroll.vms.disk`", () => {
     for (let max = 7; max < stranded.length; max += 1) {
       const cut = midCut(stranded, max, others(stranded));
       expect(cut.length).toBeLessThanOrEqual(max);

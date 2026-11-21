@@ -3,7 +3,7 @@ import type { PanelData, PanelWindow } from "./board-panel-data";
 
 /**
  * The faint words after a board panel's name (49d): its query, the set inputs and its split,
- * `service:incus · by level`. A count says nothing more; with no query, the split alone.
+ * `service:api · by level`. A count says nothing more; with no query, the split alone.
  */
 export function panelSubtitle(panel: Pick<BoardPanel, "q" | "view" | "widget">, inputs: string): string {
   const what = panelWhat(panel.view, panel.widget);

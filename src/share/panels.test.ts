@@ -5,7 +5,7 @@ import { pingClickHouse } from "../shared/clickhouse";
 import { migrateStore } from "../shared/migrate";
 
 const panels = parseSharePanels([
-  { name: "latency-p99", params: { chart: "line", metric: "p99:fleet_latency", ml: "service:agental,host:ovh-01", split: "host", range: "24h" }, from: "the Ops board" },
+  { name: "latency-p99", params: { chart: "line", metric: "p99:shop_latency", ml: "service:payroll,host:node-c1", split: "host", range: "24h" }, from: "the Ops board" },
   { name: "errors-by-level", params: { chart: "line", agg: "count", split: "level", range: "7d" } },
   { name: "top-pools", params: { chart: "donut", key: "pool", n: "5" } },
 ]) as SharePanel[];
@@ -20,19 +20,19 @@ describe("named panels on a share (#266, 26k)", () => {
     expect(parseSharePanels([{ name: "a", params: {} }, { name: "a", params: {} }])).toEqual({ error: "two panels are named a" });
   });
   test("the fence is derived from the panels; logs keep the q given", () => {
-    expect(deriveShareScope(panels, "service:agental")).toEqual({
-      metric_names: ["fleet_latency"],
-      metric_labels: { service: "agental", host: "ovh-01" },
-      logs: "service:agental",
+    expect(deriveShareScope(panels, "service:payroll")).toEqual({
+      metric_names: ["shop_latency"],
+      metric_labels: { service: "payroll", host: "node-c1" },
+      logs: "service:payroll",
       split: ["host", "level", "pool"],
       narrow: [],
     });
     expect(deriveShareScope(panels, null)).toEqual({ error: "a log panel reads the share's logs: give scope.logs (a q) or logs" });
   });
   test("a given scope must cover the panels", () => {
-    const narrow = parseShareScope({ metric_names: ["fleet_cpu_*"], logs: null, split: ["host"] }) as ShareScope;
+    const narrow = parseShareScope({ metric_names: ["shop_cpu_*"], logs: null, split: ["host"] }) as ShareScope;
     expect(scopeGaps(narrow, panels)).toEqual([
-      "panel latency-p99 reads fleet_latency, outside metric_names",
+      "panel latency-p99 reads shop_latency, outside metric_names",
       "panel errors-by-level reads logs, and the scope reads none",
       "panel errors-by-level splits by level, outside split",
       "panel top-pools reads logs, and the scope reads none",
@@ -41,7 +41,7 @@ describe("named panels on a share (#266, 26k)", () => {
   });
   test("a read with panel= uses the panel's params; the page moves only the window", () => {
     expect(panelReadParams(panels[0]!, (k) => ({ range: "1h", metric: "other" })[k])).toEqual({
-      chart: "line", metric: "p99:fleet_latency", ml: "service:agental,host:ovh-01", split: "host", range: "1h",
+      chart: "line", metric: "p99:shop_latency", ml: "service:payroll,host:node-c1", split: "host", range: "1h",
     });
     expect(rawParamsUsed({ panel: "x", range: "1h" })).toEqual([]);
     expect(rawParamsUsed({ panel: "x", metric: "y", split: "host" })).toEqual(["metric", "split"]);

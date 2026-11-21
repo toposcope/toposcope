@@ -11,10 +11,10 @@ const body: SeriesBody = {
 
 describe("embed params", () => {
   test("the panel's own params become the series query; the ticket stays out of it", () => {
-    const p = parseEmbedParams("?ticket=tst1_x.1792800000000.sig&metric=fleet_cpu_seconds&reading=p99&range=24h&title=CPU&theme=light");
-    expect(p.query.toString()).toBe("metric=p99%3Afleet_cpu_seconds&range=24h");
+    const p = parseEmbedParams("?ticket=tst1_x.1792800000000.sig&metric=shop_cpu_seconds&reading=p99&range=24h&title=CPU&theme=light");
+    expect(p.query.toString()).toBe("metric=p99%3Ashop_cpu_seconds&range=24h");
     expect(p.title).toBe("CPU");
-    expect(p.what).toBe("fleet_cpu_seconds · p99");
+    expect(p.what).toBe("shop_cpu_seconds · p99");
     expect(p.theme).toBe("light");
     expect(p.ticketUntil).toBe(1792800000000);
     expect(parseEmbedParams("?agg=rate&split=host&range=1h").what).toBe("logs · rate · split host");

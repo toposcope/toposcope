@@ -250,10 +250,10 @@ describe("a result that never comes (#177)", () => {
 
 describe("who a push monitor calls (#177)", () => {
   test("with no webhook of its own it calls the default from Settings", async () => {
-    const r = rig({ fallback: "https://ntfy.sh/agental-ops" });
+    const r = rig({ fallback: "https://ntfy.sh/payroll-ops" });
     await r.push("fail", t0 + minute);
     await r.pass(t0 + minute);
-    expect(r.sent.map((c) => c.url)).toEqual(["https://ntfy.sh/agental-ops"]);
+    expect(r.sent.map((c) => c.url)).toEqual(["https://ntfy.sh/payroll-ops"]);
   });
 
   test("with neither, it keeps its state and calls nobody, and its stretch says so", async () => {
@@ -270,7 +270,7 @@ describe("who a push monitor calls (#177)", () => {
   });
 
   test("its own webhook wins over the default", async () => {
-    const r = rig({ webhook: "https://hooks.example.com/own", fallback: "https://ntfy.sh/agental-ops" });
+    const r = rig({ webhook: "https://hooks.example.com/own", fallback: "https://ntfy.sh/payroll-ops" });
     await r.push("fail", t0 + minute);
     await r.pass(t0 + minute);
     expect(r.sent.map((c) => c.url)).toEqual(["https://hooks.example.com/own"]);

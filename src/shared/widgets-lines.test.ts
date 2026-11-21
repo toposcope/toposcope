@@ -10,17 +10,17 @@ import {
   type WidgetDef,
 } from "./widgets";
 
-// #169: agental's "Disk · all boxes" drew sellable, sold and used on three panels with three scales.
+// #169: a board drew sellable, sold and used on three panels with three scales.
 const disk = (extra: Partial<WidgetDef> = {}): WidgetDef =>
   defaultTimeseries({
     id: "b",
     w: 6,
     replaceY: true,
-    metric: "agental.box.disk.sellable",
+    metric: "payroll.vms.disk.sellable",
     metricLabels: { box: "all" },
     lines: [
-      { metric: "agental.box.disk.sold", labels: { box: "all" } },
-      { metric: "agental.box.disk.used", labels: { box: "all" } },
+      { metric: "payroll.vms.disk.sold", labels: { box: "all" } },
+      { metric: "payroll.vms.disk.used", labels: { box: "all" } },
     ],
     names: { "0": "Capacity", "1": "Promised", "2": "In use" },
     title: "Disk, all boxes",
@@ -40,7 +40,7 @@ describe("a panel's merged lines, names, title and note", () => {
   test("four lines at most, each once, never the panel's own metric again", () => {
     const panel = disk({
       lines: [
-        { metric: "agental.box.disk.sellable", labels: { box: "all" } },
+        { metric: "payroll.vms.disk.sellable", labels: { box: "all" } },
         { metric: "a.one", labels: {} },
         { metric: "a.two", labels: {} },
         { metric: "a.two", labels: {} },
@@ -71,7 +71,7 @@ describe("a panel's merged lines, names, title and note", () => {
   });
 
   test("a panel with nothing named or noted carries none of the new keys", () => {
-    const plain = defaultTimeseries({ id: "b", metric: "agental.box.disk.sold" });
+    const plain = defaultTimeseries({ id: "b", metric: "payroll.vms.disk.sold" });
     expect(Object.keys(plain)).not.toContain("lines");
     expect(Object.keys(plain)).not.toContain("names");
     expect(Object.keys(plain)).not.toContain("title");
@@ -94,7 +94,7 @@ describe("the URL keeps them", () => {
     expect(again.names).toEqual(panel.names);
     expect(again.title).toBe(panel.title);
     expect(again.note).toBe("Room to sell: Capacity − Promised. ~ is fine.");
-    expect(again.metric).toBe("agental.box.disk.sellable");
+    expect(again.metric).toBe("payroll.vms.disk.sellable");
     expect(again.metricLabels).toEqual({ box: "all" });
     expect(again.replaceY).toBe(true);
   });
@@ -120,9 +120,9 @@ describe("a saved search's JSON sets them", () => {
           w: 12,
           h: 4,
           replaceY: true,
-          metric: "agental.box.disk.sellable",
+          metric: "payroll.vms.disk.sellable",
           metricLabels: { box: "all" },
-          lines: [{ metric: "agental.box.disk.sold", labels: { box: "all" } }],
+          lines: [{ metric: "payroll.vms.disk.sold", labels: { box: "all" } }],
           names: { "0": "Capacity", "1": "Promised" },
           title: "Disk, all boxes",
           note: "What is promised against what can be sold.",
@@ -130,7 +130,7 @@ describe("a saved search's JSON sets them", () => {
       ],
     });
     const panel = layout!.widgets[0]!;
-    expect(panel.lines).toEqual([{ metric: "agental.box.disk.sold", labels: { box: "all" } }]);
+    expect(panel.lines).toEqual([{ metric: "payroll.vms.disk.sold", labels: { box: "all" } }]);
     expect(panel.names).toEqual({ "0": "Capacity", "1": "Promised" });
     expect(panel.title).toBe("Disk, all boxes");
   });
@@ -140,15 +140,15 @@ describe("each line is read on its own", () => {
   test("one query a line, the panel's own first", () => {
     const queries = widgetLineQueries(disk());
     expect(queries.map((q) => q.metric)).toEqual([
-      "agental.box.disk.sellable",
-      "agental.box.disk.sold",
-      "agental.box.disk.used",
+      "payroll.vms.disk.sellable",
+      "payroll.vms.disk.sold",
+      "payroll.vms.disk.used",
     ]);
     expect(queries.every((q) => q.metricLabels.box === "all")).toBe(true);
   });
 
   test("the canvas fetches every merged line", () => {
     const queries = widgetSeriesQueries([defaultTimeseries(), disk()]);
-    expect(queries.map((q) => q.metric)).toContain("agental.box.disk.used");
+    expect(queries.map((q) => q.metric)).toContain("payroll.vms.disk.used");
   });
 });

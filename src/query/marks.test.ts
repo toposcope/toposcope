@@ -40,7 +40,7 @@ describe("GET /api/marks past 500 marks in a window ClickHouse", () => {
   // Both stretches sit 15 to 27 days back, inside the 30-day TTL and clear of the 2 to 14 days
   // the fingerprint cut's tests need quiet, and each is minutes wide.
   test("a window with more than 500 marks lists them all, the newest included", async () => {
-    // agental's 43 deploys a day put about 1,300 on Watch's 30d lane; 500 kept only the oldest.
+    // 43 deploys a day put about 1,300 on Watch's 30d lane; 500 kept only the oldest.
     const service = `busy${Date.now()}`;
     const start = Math.floor(Date.now() / second) * second - 21 * day - Math.floor(Math.random() * 6 * 24) * hour;
     const stamps = Array.from({ length: 30 * 43 }, (_, i) => start + i * 5 * second);

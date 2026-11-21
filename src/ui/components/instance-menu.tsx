@@ -14,7 +14,7 @@ export type InstanceInfo = {
   session: { kind: "token" } | { kind: "cookie"; expires_at: number };
 };
 
-/** The browser tab says which instance this is: `agental-prod · toposcope` (frame 12e). */
+/** The browser tab says which instance this is: `payroll-prod · toposcope` (frame 12e). */
 export function instanceTitle(info: InstanceInfo | null): string {
   if (!info) {
     return "toposcope";

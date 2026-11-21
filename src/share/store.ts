@@ -37,7 +37,7 @@ export function newShareSecret(): string {
   return `${shareSecretPrefix}${randomBytes(24).toString("base64url")}`;
 }
 
-/** A name to put in a URL and a log row: `agental-console`. */
+/** A name to put in a URL and a log row: `payroll-console`. */
 export function parseShareName(raw: unknown): string | null {
   if (typeof raw !== "string") {
     return null;

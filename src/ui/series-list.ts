@@ -65,7 +65,7 @@ export const untypedMetrics = 8;
 
 /**
  * A cut `head…tail` reads as another name when that name starts with its head
- * and ends with its tail: `agental.box…disk` reads as `agental.box.disk`. A
+ * and ends with its tail: `payroll.vms…disk` reads as `payroll.vms.disk`. A
  * whole name reads only as itself.
  */
 function cutReadsAs(cut: string, other: string): boolean {
