@@ -119,6 +119,8 @@ export type ShareUse = { last_read_at: string | null; reads_24h: number; refused
 
 /** Each share's last 24 hours, from its use rows (#226) and the minute not yet written. */
 async function shareUse(): Promise<Map<string, ShareUse>> {
+  // Taken first: a write that ends during the read below is then counted, not lost.
+  const pending = pendingUse();
   const rows = await clickhouseQuery<{ share: string; reads: string | number; refused: string | number; last: string | null }>(
     `
     SELECT
@@ -142,7 +144,7 @@ async function shareUse(): Promise<Map<string, ShareUse>> {
       refused_24h: Number(row.refused),
     });
   }
-  for (const [name, t] of pendingUse()) {
+  for (const [name, t] of pending) {
     const prev = out.get(name) ?? { last_read_at: null, reads_24h: 0, refused_24h: 0 };
     out.set(name, {
       last_read_at: t.last_read_at ?? prev.last_read_at,

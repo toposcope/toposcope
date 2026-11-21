@@ -12,6 +12,9 @@ type Tally = { reads: number; cached: number; refused: number; limited: number; 
 const buckets = new Map<string, Bucket>();
 const tallies = new Map<string, Tally>();
 let refusals: LogEvent[] = [];
+type PendingUse = Map<string, { reads: number; refused: number; last_read_at: string | null }>;
+/** Counts handed to a write that has not ended. */
+const writing = new Set<PendingUse>();
 /** A flood of refusals in one minute is counted, and at most this many are written as rows. */
 const maxRefusalRows = 100;
 const maxOrigins = 20;
@@ -111,24 +114,49 @@ export function drainUse(now = Date.now()): LogEvent[] {
   return rows;
 }
 
+/** One write of what was used. Until it ends, the list still counts it: the rows are not readable yet. */
+export async function flushUse(write: (rows: LogEvent[]) => Promise<unknown>, now = Date.now()): Promise<void> {
+  const held = pendingUse();
+  const rows = drainUse(now);
+  if (rows.length === 0) {
+    return;
+  }
+  writing.add(held);
+  try {
+    await write(rows);
+  } catch (err) {
+    console.error("share use rows not written", err);
+  } finally {
+    writing.delete(held);
+  }
+}
+
 /** Once a minute, write what was used. A failed write keeps nothing: it is a series, not a ledger. */
 export function startShareUse(write: (rows: LogEvent[]) => Promise<unknown>): () => void {
-  const timer = setInterval(() => {
-    const rows = drainUse();
-    if (rows.length > 0) {
-      write(rows).catch((err) => console.error("share use rows not written", err));
-    }
-  }, 60_000);
+  const timer = setInterval(() => void flushUse(write), 60_000);
   // Never what keeps a process alive: a test that loads the app, or a stop, exits as before.
   timer.unref?.();
   return () => clearInterval(timer);
 }
 
-/** The minute not yet written, per share: what the list adds to the rows. */
-export function pendingUse(): Map<string, { reads: number; refused: number; last_read_at: string | null }> {
-  const out = new Map<string, { reads: number; refused: number; last_read_at: string | null }>();
+/** The use not yet readable, per share: this minute's and any being written. The list adds it to the rows. */
+export function pendingUse(): PendingUse {
+  const out: PendingUse = new Map();
+  const add = (name: string, reads: number, refused: number, last: string | null) => {
+    const prev = out.get(name);
+    out.set(name, {
+      reads: (prev?.reads ?? 0) + reads,
+      refused: (prev?.refused ?? 0) + refused,
+      last_read_at: [prev?.last_read_at ?? null, last].filter((x): x is string => x !== null).sort().at(-1) ?? null,
+    });
+  };
+  for (const batch of writing) {
+    for (const [name, t] of batch) {
+      add(name, t.reads, t.refused, t.last_read_at);
+    }
+  }
   for (const [name, t] of tallies) {
-    out.set(name, { reads: t.reads + t.cached, refused: t.refused, last_read_at: t.last ? new Date(t.last).toISOString() : null });
+    add(name, t.reads + t.cached, t.refused, t.last ? new Date(t.last).toISOString() : null);
   }
   return out;
 }
@@ -137,5 +165,6 @@ export function pendingUse(): Map<string, { reads: number; refused: number; last
 export function resetShareUse(): void {
   buckets.clear();
   tallies.clear();
+  writing.clear();
   refusals = [];
 }
