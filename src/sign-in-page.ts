@@ -21,7 +21,7 @@ const icon =
 export type SignInPage = {
   /** The instance's name, or null while it has none. */
   name: string | null;
-  /** The address the browser opened, as its Host: `logs.agental.dev`, `127.0.0.1:18080`. */
+  /** The address the browser opened, as its Host: `logs.example.dev`, `127.0.0.1:18080`. */
   address: string;
   /** Where to go after signing in: a path on this instance. */
   next: string;

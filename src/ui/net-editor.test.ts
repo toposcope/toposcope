@@ -33,7 +33,7 @@ describe("the TCP · certificate editor (#180, as 18r)", () => {
   test("a name to start from: the host's first label and its port, or its certificate (18x)", () => {
     expect(nameFromTarget("db.internal:5432", "tcp")).toBe("db:5432");
     expect(nameFromTarget("10.0.0.5:6379", "tcp")).toBe("10.0.0.5:6379");
-    expect(nameFromTarget("smtp.agental.dev:587", "cert")).toBe("smtp certificate");
+    expect(nameFromTarget("smtp.example.dev:587", "cert")).toBe("smtp certificate");
     expect(nameFromTarget("10.0.0.5:993", "cert")).toBe("10.0.0.5 certificate");
     expect(nameFromTarget("no port", "tcp")).toBe("");
   });
@@ -44,8 +44,8 @@ describe("the TCP · certificate editor (#180, as 18r)", () => {
       [null, "not a TCP condition: connected, time < 200ms"],
       ["time < 200ms", null],
     ]);
-    expect(goodLines("cert > 14d\ncert name == smtp.agental.dev", "cert")).toHaveLength(2);
-    expect(addLine("cert > 14d", "cert name == smtp.agental.dev", "cert")).toBe("cert > 14d\ncert name == smtp.agental.dev");
+    expect(goodLines("cert > 14d\ncert name == smtp.example.dev", "cert")).toHaveLength(2);
+    expect(addLine("cert > 14d", "cert name == smtp.example.dev", "cert")).toBe("cert > 14d\ncert name == smtp.example.dev");
     // A line the monitor does not read is not added.
     expect(addLine("", "cert > 14d", "tcp")).toBe("");
     expect(addLine("cert > 14d", "connected", "cert")).toBe("cert > 14d\nconnected");
@@ -70,9 +70,9 @@ describe("the TCP · certificate editor (#180, as 18r)", () => {
   });
 
   test("a certificate offers its own name", () => {
-    expect(offeredCertName({ subject: "smtp.agental.dev", names: ["smtp.agental.dev"] }, "10.0.0.5:587")).toBe("cert name == smtp.agental.dev");
-    expect(offeredCertName({ subject: "", names: ["*.agental.dev"] }, "smtp.agental.dev:587")).toBe("cert name == *.agental.dev");
-    expect(offeredCertName({ subject: "Some Org CA", names: [] }, "smtp.agental.dev:587")).toBe("cert name == smtp.agental.dev");
+    expect(offeredCertName({ subject: "smtp.example.dev", names: ["smtp.example.dev"] }, "10.0.0.5:587")).toBe("cert name == smtp.example.dev");
+    expect(offeredCertName({ subject: "", names: ["*.example.dev"] }, "smtp.example.dev:587")).toBe("cert name == *.example.dev");
+    expect(offeredCertName({ subject: "Some Org CA", names: [] }, "smtp.example.dev:587")).toBe("cert name == smtp.example.dev");
   });
 });
 
@@ -100,7 +100,7 @@ const netMonitor = (over: Partial<MonitorView> = {}): MonitorView => ({
   body_template: null,
   saved_search_id: null,
   threshold: 1,
-  webhook_url: "https://ntfy.sh/agental-ops",
+  webhook_url: "https://ntfy.sh/payroll-ops",
   last_fired_at: null,
   last_attempt_at: null,
   last_status: null,
@@ -133,7 +133,7 @@ const certMonitor = netMonitor({
   name: "mail certificate",
   source: "cert",
   net: {
-    target: "smtp.agental.dev:587",
+    target: "smtp.example.dev:587",
     starttls: "smtp",
     every: "1h",
     every_ms: 60 * 60_000,
@@ -149,7 +149,7 @@ const certMonitor = netMonitor({
       line: null,
       why: null,
       cert_valid_to: new Date(now + 61 * day).toISOString(),
-      cert_subject: "smtp.agental.dev",
+      cert_subject: "smtp.example.dev",
     },
   },
 });
@@ -175,7 +175,7 @@ describe("TCP and certificate monitors on Watch (18c)", () => {
     });
     expect(laneReadout(refused, now, 0)).toEqual({ badge: "fail", tone: "amber", text: "no connection" });
     expect(openCardLine(refused)).toBe("tcp · db.internal:5432 · connect ECONNREFUSED");
-    expect(openCardLine(certMonitor)).toBe("certificate · SMTP smtp.agental.dev:587");
+    expect(openCardLine(certMonitor)).toBe("certificate · SMTP smtp.example.dev:587");
   });
 
   test("Watch draws their lanes", () => {
@@ -194,7 +194,7 @@ describe("TCP and certificate monitors on Watch (18c)", () => {
     );
     // 50g: checks once, short; "tcp · 30s · …" is in its tooltip.
     expect(html).toContain("db.internal:5432 · 2 conditions");
-    expect(html).toContain("SMTP smtp.agental.dev:587 · cert &gt; 14d");
+    expect(html).toContain("SMTP smtp.example.dev:587 · cert &gt; 14d");
     expect(html).toContain("61d left");
   });
 
@@ -209,7 +209,7 @@ describe("TCP and certificate monitors on Watch (18c)", () => {
         onSilence: () => undefined,
       }),
     );
-    expect(html).toContain("SMTP smtp.agental.dev:587");
+    expect(html).toContain("SMTP smtp.example.dev:587");
     expect(html).toContain("every 1h · opens after 2 failed runs");
     expect(html).toContain("11:02 · ok · 68ms");
     expect(html).not.toContain(">search<");

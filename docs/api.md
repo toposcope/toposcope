@@ -1188,7 +1188,7 @@ Body:
 | `panels[].from` | string \| null |  | Where the panel was made, kept as a note. |
 | `logs` | string \| null |  | With panels and no scope: the q ANDed onto every log read. |
 | `scope` | object |  | What the share can ever read; left out, it is derived from the panels. It must cover them. |
-| `scope.metric_names` | string \| string[] \| null |  | Metric names the share may read, exact or a prefix glob (fleet_*), as a list or separated by commas; at most 50. |
+| `scope.metric_names` | string \| string[] \| null |  | Metric names the share may read, exact or a prefix glob (shop_*), as a list or separated by commas; at most 50. |
 | `scope.metric_labels` | string \| null |  | Label matchers ANDed onto every metric read, key:value as ml= takes them. |
 | `scope.logs` | string \| null |  | A q ANDed onto every log read; null or empty: the share reads no logs. |
 | `scope.split` | string \| string[] \| null |  | Keys a read may split or Top-N by, at most 8. |
@@ -1222,7 +1222,7 @@ Body:
 | `panels[].from` | string \| null |  | Where the panel was made, kept as a note. |
 | `logs` | string \| null |  | With panels and no scope: the q ANDed onto every log read. |
 | `scope` | object |  | What the share can ever read; left out, it is derived from the panels. It must cover them. |
-| `scope.metric_names` | string \| string[] \| null |  | Metric names the share may read, exact or a prefix glob (fleet_*), as a list or separated by commas; at most 50. |
+| `scope.metric_names` | string \| string[] \| null |  | Metric names the share may read, exact or a prefix glob (shop_*), as a list or separated by commas; at most 50. |
 | `scope.metric_labels` | string \| null |  | Label matchers ANDed onto every metric read, key:value as ml= takes them. |
 | `scope.logs` | string \| null |  | A q ANDed onto every log read; null or empty: the share reads no logs. |
 | `scope.split` | string \| string[] \| null |  | Keys a read may split or Top-N by, at most 8. |

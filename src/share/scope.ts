@@ -6,9 +6,9 @@ import { formatMetricLabels, isMetricIdent, maxMetricLabels, parseMetricLabels }
  * caller never states it and cannot widen it.
  */
 export type ShareScope = {
-  /** Metric names the share may read: exact, or a prefix glob (`fleet_*`). Empty: no metrics. */
+  /** Metric names the share may read: exact, or a prefix glob (`shop_*`). Empty: no metrics. */
   metric_names: string[];
-  /** Label matchers ANDed onto every metric read (`service:agental`). */
+  /** Label matchers ANDed onto every metric read (`service:payroll`). */
   metric_labels: Record<string, string>;
   /** A `q` ANDed onto every log read, or null: the share reads no logs. */
   logs: string | null;

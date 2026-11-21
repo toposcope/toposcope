@@ -13,7 +13,7 @@ import {
   savedKind,
 } from "./saved-list";
 
-// #168: agental's 22 saved searches all read "agental stranded: bo…" at 240 px.
+// #168: 22 saved searches all read "payroll stranded: bo…" at 240 px.
 let next = 0;
 const saved = (name: string, extra: Partial<SavedSearch> = {}): SavedSearch => ({
   id: `s${++next}`,
@@ -27,23 +27,23 @@ const saved = (name: string, extra: Partial<SavedSearch> = {}): SavedSearch => (
 });
 const alert = (savedId: string): AlertRule =>
   ({ id: `a-${savedId}`, name: "watch", saved_search_id: savedId, threshold: 5 }) as AlertRule;
-const panels = { logs: false, widgets: [{ id: "a", kind: "timeseries", metric: "agental.box.disk", replaceY: true }] } as unknown as SavedSearch["widgets"];
+const panels = { logs: false, widgets: [{ id: "a", kind: "timeseries", metric: "payroll.vms.disk", replaceY: true }] } as unknown as SavedSearch["widgets"];
 
 describe("names that share the words before a colon", () => {
   test("a name splits at its first colon when both sides have words", () => {
-    expect(namePrefix("agental stranded: box ended · vCPU")).toEqual({ prefix: "agental stranded", rest: "box ended · vCPU" });
+    expect(namePrefix("payroll stranded: box ended · vCPU")).toEqual({ prefix: "payroll stranded", rest: "box ended · vCPU" });
     expect(namePrefix("Checkout errors")).toBeNull();
     expect(namePrefix(": nothing before")).toBeNull();
     expect(namePrefix("nothing after:")).toBeNull();
-    expect(namePrefix("archive · azure-01 · Disk · removed 2026-10-23")).toEqual({ prefix: "archive", rest: "azure-01 · Disk · removed 2026-10-23" });
+    expect(namePrefix("archive · node-d1 · Disk · removed 2026-10-23")).toEqual({ prefix: "archive", rest: "node-d1 · Disk · removed 2026-10-23" });
     expect(namePrefix("Shapes · CPU")).toEqual({ prefix: "Shapes", rest: "CPU" });
     expect(namePrefix("a·b")).toBeNull();
   });
 
-  test("names joined by ` · ` group too: agental's own list (0.7.0)", () => {
+  test("names joined by ` · ` group too (0.7.0)", () => {
     const names = [
-      "Toposcope update", "archive · azure-01 · Disk · removed 2026-10-23", "archive · azure-01 · Memory · removed 2026-10-23",
-      "archive · azure-01 · vCPU · removed 2026-10-23", "Disk · ovh-01", "Memory · ovh-01", "archive · env · Disk · removed 2026-10-22",
+      "Toposcope update", "archive · node-d1 · Disk · removed 2026-10-23", "archive · node-d1 · Memory · removed 2026-10-23",
+      "archive · node-d1 · vCPU · removed 2026-10-23", "Disk · node-c1", "Memory · node-c1", "archive · env · Disk · removed 2026-10-22",
       "archive · env · Memory · removed 2026-10-22", "archive · env · vCPU · removed 2026-10-22", "Disk · all boxes",
       "Shapes · disk", "Shapes · memory", "Shapes · CPU",
     ];
@@ -57,9 +57,9 @@ describe("names that share the words before a colon", () => {
   test("three or more fold into a group named by those words, and their rows drop them", () => {
     const items = [
       saved("Checkout errors"),
-      saved("agental stranded: box ended · vCPU"),
-      saved("agental stranded: box ended · memory"),
-      saved("agental stranded: box ended · disk"),
+      saved("payroll stranded: box ended · vCPU"),
+      saved("payroll stranded: box ended · memory"),
+      saved("payroll stranded: box ended · disk"),
       saved("billing: invoices"),
       saved("billing: refunds"),
     ];
@@ -68,7 +68,7 @@ describe("names that share the words before a colon", () => {
       "Checkout errors",
       "billing: invoices",
       "billing: refunds",
-      "[agental stranded] box ended · vCPU | box ended · memory | box ended · disk",
+      "[payroll stranded] box ended · vCPU | box ended · memory | box ended · disk",
     ]);
   });
 
@@ -113,14 +113,14 @@ describe("what each item is", () => {
 
 describe("the filter", () => {
   const items = [
-    saved("agental stranded: box ended · vCPU"),
-    saved("agental stranded: all boxes · vCPU"),
-    saved("agental alert: API errors", { query: "box en" }),
+    saved("payroll stranded: box ended · vCPU"),
+    saved("payroll stranded: all boxes · vCPU"),
+    saved("payroll alert: API errors", { query: "box en" }),
   ];
   const none = () => null;
 
   test("it reads whole names, the shared words included, and ignores case", () => {
-    expect(filterSaved(items, "box en", null, none).map((item) => item.name)).toEqual(["agental stranded: box ended · vCPU"]);
+    expect(filterSaved(items, "box en", null, none).map((item) => item.name)).toEqual(["payroll stranded: box ended · vCPU"]);
     expect(filterSaved(items, "STRANDED", null, none)).toHaveLength(2);
   });
 
@@ -130,7 +130,7 @@ describe("the filter", () => {
 
   test("a kind button and the filter combine", () => {
     const kindOf = (item: SavedSearch) => (item.name.includes("alert") ? "watched" : null);
-    expect(filterSaved(items, "agental", "watched", kindOf).map((item) => item.name)).toEqual(["agental alert: API errors"]);
+    expect(filterSaved(items, "payroll", "watched", kindOf).map((item) => item.name)).toEqual(["payroll alert: API errors"]);
   });
 
   test("the match is found where it is, to mark it", () => {
@@ -149,10 +149,10 @@ describe("the filter", () => {
 
 describe("groups open and closed", () => {
   test("they start open, and closed past 20 saved searches; what was chosen wins", () => {
-    expect(groupOpen("agental alert", 20, {})).toBe(true);
-    expect(groupOpen("agental alert", 22, {})).toBe(false);
-    expect(groupOpen("agental alert", 22, { "agental alert": true })).toBe(true);
-    expect(groupOpen("agental alert", 5, { "agental alert": false })).toBe(false);
+    expect(groupOpen("payroll alert", 20, {})).toBe(true);
+    expect(groupOpen("payroll alert", 22, {})).toBe(false);
+    expect(groupOpen("payroll alert", 22, { "payroll alert": true })).toBe(true);
+    expect(groupOpen("payroll alert", 5, { "payroll alert": false })).toBe(false);
   });
 });
 

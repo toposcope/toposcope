@@ -58,16 +58,16 @@ beforeAll(async () => {
       out[key] = { status: res.status, body: text.startsWith("{") ? JSON.parse(text) : text };
       return out[key];
     };
-    const hunt = (await go("made", "/api/saved-searches", "POST", { name: "Fleet job silent", query: "service:fleet", range: "15m" })).body;
+    const hunt = (await go("made", "/api/saved-searches", "POST", { name: "Nightly job silent", query: "service:fleet", range: "15m" })).body;
     await go("other", "/api/saved-searches", "POST", { name: "API errors", query: "service:api level:error", range: "15m" });
-    await go("monitor", "/api/alert-rules", "POST", { name: "Fleet job silent", service: "fleet", saved_search_id: hunt.id, threshold: 1, webhook_url: "https://hooks.example.com/page" });
+    await go("monitor", "/api/alert-rules", "POST", { name: "Nightly job silent", service: "fleet", saved_search_id: hunt.id, threshold: 1, webhook_url: "https://hooks.example.com/page" });
     await go("homeBefore", "/api/home/since?since=hour");
     await go("archive", "/api/saved-searches/" + hunt.id, "PUT", { archived: true });
     await go("list", "/api/saved-searches");
     await go("homeAfter", "/api/home/since?since=hour");
     await go("rules", "/api/alert-rules");
     await go("run", "/api/saved-searches/" + hunt.id + "/run");
-    await go("rename", "/api/saved-searches/" + hunt.id, "PUT", { name: "Fleet job silent (old)" });
+    await go("rename", "/api/saved-searches/" + hunt.id, "PUT", { name: "Nightly job silent (old)" });
     await go("bad", "/api/saved-searches/" + hunt.id, "PUT", { archived: "yes" });
     await go("unarchive", "/api/saved-searches/" + hunt.id, "PUT", { archived: false });
     console.log(JSON.stringify(out));
@@ -90,19 +90,19 @@ describe("PUT /api/saved-searches/:id with archived", () => {
     expect(r.archive!.status).toBe(200);
     expect(r.archive!.body.archived).toBe(true);
     const byName = Object.fromEntries((r.list!.body.searches as Array<{ name: string; archived: boolean }>).map((s) => [s.name, s.archived]));
-    expect(byName).toEqual({ "Fleet job silent": true, "API errors": false });
+    expect(byName).toEqual({ "Nightly job silent": true, "API errors": false });
   });
 
   test("Home does not read an archived hunt", () => {
     const names = (k: string) => (r[k]!.body.cards as Array<{ name: string }>).map((c) => c.name).sort();
-    expect(names("homeBefore")).toEqual(["API errors", "Fleet job silent"]);
+    expect(names("homeBefore")).toEqual(["API errors", "Nightly job silent"]);
     expect(names("homeAfter")).toEqual(["API errors"]);
   });
 
   test("its monitor stays, and the hunt still opens and runs by its id", () => {
     expect(r.monitor!.status).toBe(201);
     const rules = (r.rules!.body.rules ?? r.rules!.body) as Array<{ name: string; enabled: number | boolean }>;
-    expect(Boolean(rules.find((x) => x.name === "Fleet job silent")?.enabled)).toBe(true);
+    expect(Boolean(rules.find((x) => x.name === "Nightly job silent")?.enabled)).toBe(true);
     expect(r.run!.status).toBe(200);
   });
 

@@ -593,7 +593,7 @@ export function MakeTokenSheet(props: { me: { id: string; name: string; role: Ro
               <label className={lab} htmlFor="tok-new">
                 Its name
               </label>
-              <input id="tok-new" className={input} value={newAccount} onChange={(e) => setNewAccount(e.target.value)} placeholder="agental-boards" disabled={token !== null} />
+              <input id="tok-new" className={input} value={newAccount} onChange={(e) => setNewAccount(e.target.value)} placeholder="ci-boards" disabled={token !== null} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className={lab} htmlFor="tok-role">

@@ -145,9 +145,9 @@ describe("Quiet folded to a line (50b)", () => {
     expect(quietText(31)).toBe("31 saved hunts, same as before");
     expect(quietText(1)).toBe("1 saved hunt, same as before");
     const named = (id: string) => ({ id, name: id }) as SavedSearch;
-    const quiet = [named("CI out of burst budget"), named("API event loop stalls"), named("Fleet job silent"), named("Refused"), named("Unread")];
-    const cards = [card("CI out of burst budget", 0, 0), card("API event loop stalls", 13, 13), card("Fleet job silent", 27, 27), card("Refused", null, null, "scan budget")];
-    expect(quietNotZero(quiet, cards)).toBe("2 not zero: Fleet job silent 27 · API event loop stalls 13");
+    const quiet = [named("CI out of burst budget"), named("API event loop stalls"), named("Nightly job silent"), named("Refused"), named("Unread")];
+    const cards = [card("CI out of burst budget", 0, 0), card("API event loop stalls", 13, 13), card("Nightly job silent", 27, 27), card("Refused", null, null, "scan budget")];
+    expect(quietNotZero(quiet, cards)).toBe("2 not zero: Nightly job silent 27 · API event loop stalls 13");
   });
 
   test("three by name, then +N; none off zero, no text", () => {

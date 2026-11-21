@@ -4413,9 +4413,9 @@ async function main(): Promise<void> {
     const svc = `share-${marker}`;
     const ts = new Date().toISOString();
     const points = [
-      { name: `fleet_${marker}`, value: 2, ts, labels: { service: svc, host: "box-1" } },
-      { name: `fleet_${marker}`, value: 4, ts, labels: { service: svc, host: "box-2" } },
-      { name: `fleet_${marker}`, value: 99, ts, labels: { service: "other", host: "box-9" } },
+      { name: `shop_${marker}`, value: 2, ts, labels: { service: svc, host: "box-1" } },
+      { name: `shop_${marker}`, value: 4, ts, labels: { service: svc, host: "box-2" } },
+      { name: `shop_${marker}`, value: 99, ts, labels: { service: "other", host: "box-9" } },
       { name: `billing_${marker}`, value: 1, ts, labels: { service: svc } },
     ];
     const metricsSent = await fetch(`${APP_URL}/v1/metrics`, {
@@ -4445,7 +4445,7 @@ async function main(): Promise<void> {
         name,
         expires_at: Date.now() + 86_400_000,
         scope: {
-          metric_names: [`fleet_*`],
+          metric_names: [`shop_*`],
           metric_labels: `service:${svc}`,
           logs: `service:${svc}`,
           split: ["host"],
@@ -4465,7 +4465,7 @@ async function main(): Promise<void> {
       fetch(`${APP_URL}${path}`, { headers });
     const window = new URLSearchParams({ from: new Date(Date.now() - 10 * 60_000).toISOString(), to: new Date(Date.now() + 60_000).toISOString() });
 
-    const series = (await (await read(`/share/v1/series?${window}&metric=fleet_${marker}&split=host`)).json()) as {
+    const series = (await (await read(`/share/v1/series?${window}&metric=shop_${marker}&split=host`)).json()) as {
       series?: { splits?: Array<{ key: string }>; expr?: string; buckets: unknown[] };
     };
     const hosts = (series.series?.splits ?? []).map((s) => s.key).sort();
@@ -4482,7 +4482,7 @@ async function main(): Promise<void> {
     }
     const refusals: Array<[string, number]> = [
       [`/share/v1/series?${window}&metric=billing_${marker}`, 404],
-      [`/share/v1/series?${window}&metric=fleet_${marker}&split=account_id`, 400],
+      [`/share/v1/series?${window}&metric=shop_${marker}&split=account_id`, 400],
       [`/share/v1/series?${window}&agg=count&ml=account_id:acct-7`, 400],
       [`/share/v1/series?${window}&agg=max:duration_ms`, 400],
       [`/share/v1/top?${window}&key=account_id`, 400],
@@ -4506,18 +4506,18 @@ async function main(): Promise<void> {
       }
     }
     const names = (await (await read(`/share/v1/names?${window}`)).json()) as { metrics?: Array<{ name: string }>; values?: Record<string, string[]> };
-    if (JSON.stringify(names.metrics?.map((m) => m.name)) !== JSON.stringify([`fleet_${marker}`]) || names.values?.host?.includes("box-9")) {
+    if (JSON.stringify(names.metrics?.map((m) => m.name)) !== JSON.stringify([`shop_${marker}`]) || names.values?.host?.includes("box-9")) {
       throw new Error(`names should list only the scope's metrics and values, got ${JSON.stringify(names)}`);
     }
     // Limits (#226): the finest bar, the longest window, the oldest reach, reads per minute.
-    const snapped = (await (await read(`/share/v1/series?range=15m&metric=fleet_${marker}`)).json()) as { step_ms?: number };
+    const snapped = (await (await read(`/share/v1/series?range=15m&metric=shop_${marker}`)).json()) as { step_ms?: number };
     if (snapped.step_ms !== 60_000) {
       throw new Error(`Auto under a 1m floor should snap to 1m bars, got ${JSON.stringify(snapped)}`);
     }
     for (const [path, why] of [
-      [`/share/v1/series?range=1h&step=10s&metric=fleet_${marker}`, "finest bar is 1m"],
-      [`/share/v1/series?range=30d&metric=fleet_${marker}`, "longest window is 7d"],
-      [`/share/v1/series?from=${new Date(Date.now() - 40 * 86_400_000).toISOString()}&to=${new Date(Date.now() - 35 * 86_400_000).toISOString()}&metric=fleet_${marker}`, "reaches back 30d"],
+      [`/share/v1/series?range=1h&step=10s&metric=shop_${marker}`, "finest bar is 1m"],
+      [`/share/v1/series?range=30d&metric=shop_${marker}`, "longest window is 7d"],
+      [`/share/v1/series?from=${new Date(Date.now() - 40 * 86_400_000).toISOString()}&to=${new Date(Date.now() - 35 * 86_400_000).toISOString()}&metric=shop_${marker}`, "reaches back 30d"],
     ] as const) {
       const res = await read(path);
       const body = (await res.json()) as { error?: string };
@@ -4537,7 +4537,7 @@ async function main(): Promise<void> {
       await fetch(`${APP_URL}/api/shares/${slow}`, {
         method: "PUT",
         headers: auth,
-        body: JSON.stringify({ expires_at: Date.now() + 86_400_000, scope: { metric_names: ["fleet_*"] }, limits: { reads_per_minute: 2 } }),
+        body: JSON.stringify({ expires_at: Date.now() + 86_400_000, scope: { metric_names: ["shop_*"] }, limits: { reads_per_minute: 2 } }),
       })
     ).json()) as { secret?: string };
     // Each read asks something new: an answer served again from the cache (#227) is off the rate.
@@ -4555,7 +4555,7 @@ async function main(): Promise<void> {
       headers: auth,
       body: JSON.stringify({
         expires_at: Date.now() + 86_400_000,
-        scope: { metric_names: ["fleet_*"], metric_labels: `service:${svc}`, logs: `service:${svc}`, split: ["host"], narrow: ["host"] },
+        scope: { metric_names: ["shop_*"], metric_labels: `service:${svc}`, logs: `service:${svc}`, split: ["host"], narrow: ["host"] },
         embed: { frame_ancestors: ["https://admin.example.com"] },
       }),
     });
@@ -4582,7 +4582,7 @@ async function main(): Promise<void> {
     if (again.status !== 403) {
       throw new Error(`a ticket must not mint a ticket, got ${again.status}`);
     }
-    const panelPath = `/share/v1/series?range=1h&metric=fleet_${marker}&e2e=${marker}`;
+    const panelPath = `/share/v1/series?range=1h&metric=shop_${marker}&e2e=${marker}`;
     const first = await read(panelPath, byTicket);
     const second = await read(panelPath, byTicket);
     if (first.status !== 200 || second.status !== 200 || !second.headers.get("cache-control")?.startsWith("private, max-age=")) {
@@ -4591,7 +4591,7 @@ async function main(): Promise<void> {
     if ((await read(`/api/saved-searches`, byTicket)).status !== 401) {
       throw new Error("a ticket must open nothing under /api");
     }
-    const page = await fetch(`${APP_URL}/embed?ticket=${encodeURIComponent(ticket)}&metric=fleet_${marker}&range=1h`);
+    const page = await fetch(`${APP_URL}/embed?ticket=${encodeURIComponent(ticket)}&metric=shop_${marker}&range=1h`);
     if (page.status !== 200 || page.headers.get("content-security-policy") !== "frame-ancestors 'self' https://admin.example.com" || page.headers.get("www-authenticate")) {
       throw new Error(`/embed should be framed by the share's origins only, without a sign-in: ${page.status} ${page.headers.get("content-security-policy")}`);
     }

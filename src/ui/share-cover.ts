@@ -4,7 +4,7 @@ export type ShareView = {
   name: string;
   scope: {
     metric_names: string[];
-    /** `service:agental`, as `ml=` writes it. */
+    /** `service:payroll`, as `ml=` writes it. */
     metric_labels: string;
     logs: string | null;
     split: string[];
@@ -26,7 +26,7 @@ export function shareIsLive(share: ShareView, now = Date.now()): boolean {
   return share.revoked_at === null && share.expires_at > now;
 }
 
-/** The scope in one line, as 23g reads it: `service:agental · fleet_* · logs service:agental`. */
+/** The scope in one line, as 23g reads it: `service:payroll · shop_* · logs service:payroll`. */
 export function scopeLine(share: ShareView): string {
   const parts = [share.scope.metric_labels, share.scope.metric_names.join(" "), share.scope.logs ? `logs ${share.scope.logs}` : "no logs"];
   return parts.filter(Boolean).join(" · ");

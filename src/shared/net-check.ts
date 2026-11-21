@@ -112,7 +112,7 @@ export function certCovers(names: readonly string[], name: string): boolean {
   });
 }
 
-/** "*.agental.dev", "a.example.com +2": a certificate's names, short. */
+/** "*.example.dev", "a.example.com +2": a certificate's names, short. */
 export function certNamesShort(names: readonly string[]): string {
   if (names.length === 0) {
     return "no name";

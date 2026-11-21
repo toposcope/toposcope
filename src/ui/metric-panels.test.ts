@@ -18,9 +18,9 @@ const times = [t(0), t(15), t(30)];
 
 describe("a metric panel split by one label (#104)", () => {
   test("the split rides the panel's token and its query", () => {
-    const panel = { ...defaultTimeseries({}), id: "b", y: 3, metric: "agental.box.disk", metricLabels: { box: "host-03" }, metricSplit: "basis" };
+    const panel = { ...defaultTimeseries({}), id: "b", y: 3, metric: "payroll.vms.disk", metricLabels: { box: "host-03" }, metricSplit: "basis" };
     const [, back] = parseWidgetsParam(formatWidgetsParam([defaultTimeseries({}), panel]));
-    expect(back?.metric).toBe("agental.box.disk");
+    expect(back?.metric).toBe("payroll.vms.disk");
     expect(back?.metricLabels).toEqual({ box: "host-03" });
     expect(back?.metricSplit).toBe("basis");
     expect(seriesQueryKey(widgetSeriesQuery(back!))).toContain("|s:basis");
@@ -55,7 +55,7 @@ describe("a metric panel split by one label (#104)", () => {
 
   test("three lines are named at their ends, with the unit on the axis and in the hover", () => {
     const result: SearchAggResult = {
-      expr: "avg(agental.box.memory)", source: "metric", buckets: [], stat: null, kind: "gauge", unit: "GiBy", split: "basis",
+      expr: "avg(payroll.vms.memory)", source: "metric", buckets: [], stat: null, kind: "gauge", unit: "GiBy", split: "basis",
       splits: [
         { key: "sellable", buckets: times.map((tt) => ({ t: tt, v: 83.2 })), stat: 83.2 },
         { key: "sold", buckets: times.map((tt) => ({ t: tt, v: 63 })), stat: 63 },
@@ -63,7 +63,7 @@ describe("a metric panel split by one label (#104)", () => {
       ],
     };
     const html = renderToStaticMarkup(
-      createElement(MetricSpark, { times, result, readingWord: "avg", kindWord: "gauge", name: "agental.box.memory", window: "24h", live: false }),
+      createElement(MetricSpark, { times, result, readingWord: "avg", kindWord: "gauge", name: "payroll.vms.memory", window: "24h", live: false }),
     ).replace(/<!-- -->/g, "");
     // The axis reads the peak with room above the highest line, as 13a's 96 GiBy over 83.2; GiBy prints GiB (#169).
     expect(html).toContain("95.7 GiB");
@@ -77,8 +77,8 @@ describe("a metric panel split by one label (#104)", () => {
     const html = renderToStaticMarkup(createElement(MetricSpark, { times, result: one, readingWord: "avg", kindWord: "gauge", name: "m", window: "1h", live: false })).replace(/<!-- -->/g, "");
     expect(html).toContain("avg · gauge · now 42 GiB");
     const none: SearchAggResult = { expr: "x", source: "metric", buckets: [], stat: null, kind: "gauge", split: "basis", splits: [] };
-    const empty = renderToStaticMarkup(createElement(MetricSpark, { times, result: none, readingWord: "avg", kindWord: "gauge", name: "agental.box.disk", window: "24h", live: false })).replace(/<!-- -->/g, "");
-    expect(empty).toContain("No points for agental.box.disk in this window (last 24h). The line is missing, not zero.");
+    const empty = renderToStaticMarkup(createElement(MetricSpark, { times, result: none, readingWord: "avg", kindWord: "gauge", name: "payroll.vms.disk", window: "24h", live: false })).replace(/<!-- -->/g, "");
+    expect(empty).toContain("No points for payroll.vms.disk in this window (last 24h). The line is missing, not zero.");
     expect(empty).toContain("avg · gauge · no points");
   });
 });
@@ -101,7 +101,7 @@ describe("units as sent (#104), the byte units as people write them (#169)", () 
 
 describe("no sidebar count for a search kept for its panels (#104)", () => {
   test("table off and a metric drawn by Replace on the pinned plot", () => {
-    const pinned = { ...defaultTimeseries({}), metric: "agental.box.vcpu", replaceY: true };
+    const pinned = { ...defaultTimeseries({}), metric: "payroll.vms.vcpu", replaceY: true };
     expect(showsNoLogRows({ logs: false, widgets: [pinned] })).toBe(true);
     expect(showsNoLogRows({ logs: true, widgets: [pinned] })).toBe(false);
     expect(showsNoLogRows({ logs: false, widgets: [{ ...pinned, replaceY: false }] })).toBe(false);

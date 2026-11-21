@@ -94,12 +94,12 @@ describe("Access names the kinds a link carries (#329, 33c)", () => {
         links: [item({ q: "level:error OR level:fatal", kinds: "logs,marks,traces,metrics,profiles,monitors" }), item({ id: "l_2", role: "pull", peer_name: "edge-1" })],
         keys: [key({ q: "service:api*" }), key({ kid: "k9", label: "k-9", kind: "invite" })],
       },
-      [row({ kind: "share", name: "agental-admin" })],
+      [row({ kind: "share", name: "payroll-admin" })],
     );
     expect(words).toBe(
       "ian-laptop copies logs and marks matching level:error OR level:fatal from us; no spans, points, profiles or monitors, because its scope names level. " +
         "Once key k-2d18 is pasted, whoever pasted it will copy logs and marks matching service:api* from us; no spans, points, profiles or monitors, unticked. " +
-        "agental-admin reads counts, never a row.",
+        "payroll-admin reads counts, never a row.",
     );
     expect(whatLeaves({ links: [], keys: [] }, [])).toBe("Nothing: no link copies from this instance and no share reads from it.");
   });

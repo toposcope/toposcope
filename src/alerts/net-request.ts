@@ -26,7 +26,7 @@ export type NetExchange =
       ok: true;
       /** The address that took the connection. */
       address: string;
-      /** A mail server's greeting before STARTTLS: `220 smtp.agental.dev ESMTP`. */
+      /** A mail server's greeting before STARTTLS: `220 smtp.example.dev ESMTP`. */
       greeting: string | null;
       /** The TLS version the handshake settled on, `TLS 1.3`; null on a TCP monitor. */
       protocol: string | null;

@@ -46,7 +46,7 @@ beforeAll(async () => {
     await go("apiBare", "/api/saved-searches");
     await go("basic", "/api/saved-searches", { headers: { authorization: "Basic " + btoa("anyone:pw-one") } });
     // The host command (toposcope.sh owner-link) makes the link; nothing else does.
-    const link = people.createOwnerLink("Ian@Agental.io");
+    const link = people.createOwnerLink("Ian@Example.org");
     out.linkMakes = link.makes;
     await go("setupPage", "/setup/" + link.token, { headers: page });
     await go("setupShort", "/api/setup", setup(link.token, "Ian", "short"));
@@ -59,12 +59,12 @@ beforeAll(async () => {
     await go("pendingApi", "/api/me", { headers: { cookie: first } });
     await go("setupStep", "/two-step", { headers: { ...page, cookie: first } });
     out.codes = await helpers.passTwoStepSetup(app.fetch, first);
-    await go("rename", "/api/settings", { method: "PUT", headers: { cookie: first, "content-type": "application/json" }, body: JSON.stringify({ instance_name: "  agental-prod " }) });
+    await go("rename", "/api/settings", { method: "PUT", headers: { cookie: first, "content-type": "application/json" }, body: JSON.stringify({ instance_name: "  payroll-prod " }) });
     await go("me", "/api/me", { headers: { cookie: first } });
     await go("pageNamed", "/", { headers: { ...page, host: "logs.example.test" } });
-    await go("wrong", "/api/sign-in", form("ian@agental.io", "nope nope nope", "/?q=x"));
-    await go("noSuchEmail", "/api/sign-in", form("who@agental.io", "correct horse battery"));
-    const ok = await go("right", "/api/sign-in", form("IAN@agental.io", "correct horse battery", "/?q=level:error"));
+    await go("wrong", "/api/sign-in", form("ian@example.org", "nope nope nope", "/?q=x"));
+    await go("noSuchEmail", "/api/sign-in", form("who@example.org", "correct horse battery"));
+    const ok = await go("right", "/api/sign-in", form("IAN@example.org", "correct horse battery", "/?q=level:error"));
     const cookie = ok.cookie.split(";")[0];
     const ianId = JSON.parse(out.me.body).id;
     await go("beforeCode", "/api/saved-searches", { headers: { cookie } });
@@ -74,11 +74,11 @@ beforeAll(async () => {
     // Setup took this 30 s step, and a step is never accepted twice: the next one, as the app shows it soon after.
     const code = await helpers.currentCode(ianId, 1);
     await go("rightCode", "/api/two-step/verify", urlenc2({ code }));
-    const off = await go("offsite", "/api/sign-in", form("ian@agental.io", "correct horse battery", "//evil.example/"));
+    const off = await go("offsite", "/api/sign-in", form("ian@example.org", "correct horse battery", "//evil.example/"));
     const offCookie = off.cookie.split(";")[0];
     await go("replay", "/api/two-step/verify", { method: "POST", headers: { "content-type": "application/json", cookie: offCookie }, body: JSON.stringify({ code }) });
     await go("backupUsed", "/api/two-step/verify", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", cookie: offCookie }, body: new URLSearchParams({ backup: out.codes[0].toLowerCase() }).toString() });
-    await go("backupAgain", "/api/sign-in", form("ian@agental.io", "correct horse battery"));
+    await go("backupAgain", "/api/sign-in", form("ian@example.org", "correct horse battery"));
     const again = out.backupAgain.cookie.split(";")[0];
     await go("backupReused", "/api/two-step/verify", { method: "POST", headers: { "content-type": "application/json", cookie: again }, body: JSON.stringify({ backup: out.codes[0] }) });
     await go("withCookie", "/api/saved-searches", { headers: { cookie } });
@@ -86,12 +86,12 @@ beforeAll(async () => {
     await go("appPage", "/", { headers: { ...page, cookie } });
     await go("badCookie", "/api/saved-searches", { headers: { cookie: cookie.slice(0, -3) + "AAA" } });
     // owner-link again for the same Owner is the way back in: a new password, and their sessions end.
-    const back = people.createOwnerLink("ian@agental.io");
+    const back = people.createOwnerLink("ian@example.org");
     out.backMakes = back.makes;
     await go("resetPage", "/setup/" + back.token, { headers: page });
     const reset = await go("reset", "/api/setup", setup(back.token, "", "a brand new password"));
     await go("afterReset", "/api/saved-searches", { headers: { cookie } });
-    await go("oldPassword", "/api/sign-in", form("ian@agental.io", "correct horse battery"));
+    await go("oldPassword", "/api/sign-in", form("ian@example.org", "correct horse battery"));
     const now = reset.cookie.split(";")[0];
     // The owner link gives a new second step too.
     await helpers.passTwoStepSetup(app.fetch, now);
@@ -101,8 +101,8 @@ beforeAll(async () => {
     await go("token", "/api/saved-searches", { headers: { authorization: bearer } });
     await go("tokenInstance", "/api/instance", { headers: { authorization: bearer } });
     await go("ingestOnApi", "/api/saved-searches", { headers: { authorization: "Bearer ingest-only" } });
-    for (let i = 0; i < 6; i++) await go("miss" + i, "/api/sign-in", form("dev@agental.io", "wrong wrong wrong"));
-    await go("slowed", "/api/sign-in", form("dev@agental.io", "wrong wrong wrong"));
+    for (let i = 0; i < 6; i++) await go("miss" + i, "/api/sign-in", form("dev@example.org", "wrong wrong wrong"));
+    await go("slowed", "/api/sign-in", form("dev@example.org", "wrong wrong wrong"));
     await go("signOut", "/api/sign-out", { method: "POST", headers: { cookie: now } });
     await go("afterSignOut", "/api/saved-searches", { headers: { cookie: now } });
     await go("signedOutPage", "/?signed_out=1", { headers: { ...page, host: "logs.example.test" } });
@@ -153,7 +153,7 @@ describe("people sign in, and there is no shared password (#305)", () => {
     expect((r as unknown as Record<string, unknown>).linkMakes).toBe(true);
     expect(r.setupPage!.status).toBe(200);
     expect(r.setupPage!.body).toContain("Make the first Owner of");
-    expect(r.setupPage!.body).toContain("ian@agental.io");
+    expect(r.setupPage!.body).toContain("ian@example.org");
     expect(r.setupPage!.body).toMatch(/in (59|60) minutes/);
     expect(r.setupShort!.status).toBe(400);
     expect(r.setupShort!.body).toContain("12 characters or more");
@@ -170,13 +170,13 @@ describe("people sign in, and there is no shared password (#305)", () => {
     expect(r.setupAgain!.body).toContain("This link no longer works");
     expect(r.setupReuse!.status).toBe(410);
     const me = JSON.parse(r.me!.body);
-    expect(me).toMatchObject({ name: "Ian", email: "ian@agental.io", role: "owner", via: "session", initials: "IA" });
+    expect(me).toMatchObject({ name: "Ian", email: "ian@example.org", role: "owner", via: "session", initials: "IA" });
   });
 
   test("the page asks for an email and a password once there is an Owner, and names the instance", () => {
     expect(r.rename!.status).toBe(200);
-    expect(r.pageNamed!.body).toContain("<title>Sign in · agental-prod</title>");
-    expect(r.pageNamed!.body).toMatch(/<h1>agental-prod<\/h1><div class="addr">logs\.example\.test · \d+\.\d+\.\d+<\/div>/);
+    expect(r.pageNamed!.body).toContain("<title>Sign in · payroll-prod</title>");
+    expect(r.pageNamed!.body).toMatch(/<h1>payroll-prod<\/h1><div class="addr">logs\.example\.test · \d+\.\d+\.\d+<\/div>/);
     expect(r.pageNamed!.body).toContain('name="email"');
     expect(r.pageNamed!.body).toContain('name="password"');
     expect(r.pageNamed!.body).not.toContain(".env");
@@ -184,8 +184,8 @@ describe("people sign in, and there is no shared password (#305)", () => {
 
   test("a wrong password, or an email nobody has, is the same answer", () => {
     expect(r.wrong!.status).toBe(401);
-    expect(r.wrong!.body).toContain("That email and password do not sign in to agental-prod.");
-    expect(r.wrong!.body).toContain('value="ian@agental.io"');
+    expect(r.wrong!.body).toContain("That email and password do not sign in to payroll-prod.");
+    expect(r.wrong!.body).toContain('value="ian@example.org"');
     expect(r.wrong!.cookie).toBeNull();
     expect(r.noSuchEmail!.status).toBe(401);
     expect(r.noSuchEmail!.body).toContain("That email and password do not sign in");
@@ -204,7 +204,7 @@ describe("people sign in, and there is no shared password (#305)", () => {
     expect(r.appPage!.status).toBe(200);
     expect(r.appPage!.body).toContain("the app");
     const info = JSON.parse(r.instance!.body);
-    expect(info.name).toBe("agental-prod");
+    expect(info.name).toBe("payroll-prod");
     expect(info.session.kind).toBe("cookie");
     expect(info.session.expires_at).toBeGreaterThan(Date.now() + 29 * 24 * 3600_000);
     expect(r.badCookie!.status).toBe(401);
@@ -242,7 +242,7 @@ describe("people sign in, and there is no shared password (#305)", () => {
     expect(r.signOut!.status).toBe(200);
     expect(r.signOut!.cookie).toContain("Max-Age=0");
     expect(r.afterSignOut!.status).toBe(401);
-    expect(r.signedOutPage!.body).toContain("Signed out of agental-prod on this browser.");
+    expect(r.signedOutPage!.body).toContain("Signed out of payroll-prod on this browser.");
     expect(r.signedOutPage!.body).toContain('name="next" value="/"');
   });
 
@@ -264,7 +264,7 @@ describe("the sign-in page and the name", () => {
     expect(html).toContain("a&amp;b");
   });
   test("a name is trimmed, at most 64 characters, and empty unsets it", () => {
-    expect(parseInstanceName("  agental   prod ")).toBe("agental prod");
+    expect(parseInstanceName("  payroll   prod ")).toBe("payroll prod");
     expect(parseInstanceName("")).toBeNull();
     expect(parseInstanceName("x".repeat(65))).toEqual({ error: "The instance name is at most 64 characters" });
     expect(parseInstanceName("a\u0007b")).toEqual({ error: "The instance name cannot hold control characters" });

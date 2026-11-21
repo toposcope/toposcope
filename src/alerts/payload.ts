@@ -308,7 +308,7 @@ export type NetCallFacts = {
   call: StretchCall;
 };
 
-/** "tcp db.internal:5432", "cert smtp.agental.dev:587 starttls smtp": what it checks, in a line. */
+/** "tcp db.internal:5432", "cert smtp.example.dev:587 starttls smtp": what it checks, in a line. */
 function netWhat(f: Pick<NetCallFacts, "alert" | "target" | "starttls">): string {
   return `${f.alert.source} ${f.target}${f.starttls ? ` starttls ${f.starttls}` : ""}`;
 }

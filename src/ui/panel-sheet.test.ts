@@ -29,17 +29,17 @@ describe("the panel sheet (49e, 49f)", () => {
   });
 
   test("Metric is a series on a Volume-sized panel, and needs a name", () => {
-    const draft = { ...newDraft({ show: "metric" }), metric: "agental.call.duration" };
+    const draft = { ...newDraft({ show: "metric" }), metric: "payroll.call.duration" };
     const metric = fieldsOf(draft, null);
-    expect([metric.view, metric.widget.metric, metric.widget.w]).toEqual(["histogram", "agental.call.duration", 6]);
+    expect([metric.view, metric.widget.metric, metric.widget.w]).toEqual(["histogram", "payroll.call.duration", 6]);
     expect(showOf(metric)).toBe("metric");
     expect(draftProblem({ ...draft, metric: " " })).toBe("Pick a metric");
     expect(draftProblem(draft)).toBeNull();
   });
 
   test("From a saved hunt starts with its query and name", () => {
-    const draft = newDraft({ name: "incus warnings", q: "service:incus level:warn" });
-    expect([draft.name, draft.q, draft.show]).toEqual(["incus warnings", "service:incus level:warn", "volume"]);
+    const draft = newDraft({ name: "queue warnings", q: "service:queue level:warn" });
+    expect([draft.name, draft.q, draft.show]).toEqual(["queue warnings", "service:queue level:warn", "volume"]);
   });
 
   test("Edit panel keeps the cell and the rest of the widget while Show is unchanged", () => {
@@ -60,13 +60,13 @@ describe("the panel sheet (49e, 49f)", () => {
 
   test("a Number panel's measure shows in the sheet and survives Update panel", () => {
     const board = parseBoard({
-      panels: [{ id: "v", name: "rate", q: "service:incus", view: "stat", widget: { x: 0, y: 0, w: 4, h: 2, agg: "sum:agental.call.duration" } }],
+      panels: [{ id: "v", name: "rate", q: "service:queue", view: "stat", widget: { x: 0, y: 0, w: 4, h: 2, agg: "sum:payroll.call.duration" } }],
     })!;
     const panel = board.panels[0]!;
     const draft = draftOf(panel, board.panels);
-    expect([draft.measure, draft.measureField]).toEqual(["sum", "agental.call.duration"]);
-    expect(fieldsOf(draft, panel).widget.agg).toBe("sum:agental.call.duration");
-    expect(fieldsOf({ ...draft, measure: "p99" }, panel).widget.agg).toBe("p99:agental.call.duration");
+    expect([draft.measure, draft.measureField]).toEqual(["sum", "payroll.call.duration"]);
+    expect(fieldsOf(draft, panel).widget.agg).toBe("sum:payroll.call.duration");
+    expect(fieldsOf({ ...draft, measure: "p99" }, panel).widget.agg).toBe("p99:payroll.call.duration");
     expect(fieldsOf({ ...draft, measure: "rate" }, panel).widget.agg).toBe("rate");
     expect(fieldsOf({ ...draft, measure: "count" }, panel).widget.agg).toBe("count");
   });
@@ -95,23 +95,23 @@ describe("the panel sheet (49e, 49f)", () => {
 describe("panel heads and bodies (49d)", () => {
   const board = parseBoard({
     panels: [
-      { id: "u", name: "incus", q: "service:incus", view: "histogram", widget: { split: "level" } },
+      { id: "u", name: "queue", q: "service:queue", view: "histogram", widget: { split: "level" } },
       { id: "v", name: "All logs", view: "histogram", widget: { split: "level" } },
-      { id: "w", name: "incus rate", q: "service:incus", view: "stat", widget: { agg: "rate" } },
-      { id: "x", name: "count", q: "service:incus", view: "stat", widget: {} },
+      { id: "w", name: "queue rate", q: "service:queue", view: "stat", widget: { agg: "rate" } },
+      { id: "x", name: "count", q: "service:queue", view: "stat", widget: {} },
     ],
   })!;
-  const [incus, all, rate, count] = board.panels;
+  const [queue, all, rate, count] = board.panels;
 
   test("the faint words are the query and the split, a count says nothing more", () => {
-    expect(panelSubtitle(incus!, "")).toBe("service:incus · by level");
+    expect(panelSubtitle(queue!, "")).toBe("service:queue · by level");
     expect(panelSubtitle(all!, "")).toBe("by level");
-    expect(panelSubtitle(incus!, "host:box")).toBe("service:incus host:box · by level");
-    expect(panelSubtitle(count!, "")).toBe("service:incus");
+    expect(panelSubtitle(queue!, "host:box")).toBe("service:queue host:box · by level");
+    expect(panelSubtitle(count!, "")).toBe("service:queue");
   });
 
   test("the head's count has no `matching`, and a Number panel's head has none", () => {
-    expect(panelHead(incus!, data(64300), false)).toEqual({ n: null, label: "" });
+    expect(panelHead(queue!, data(64300), false)).toEqual({ n: null, label: "" });
     expect(panelHead(rate!, data(0), false)).toBeNull();
     expect(panelHead(count!, data(12), false)).toBeNull();
   });
@@ -122,11 +122,11 @@ describe("panel heads and bodies (49d)", () => {
   });
 
   test("a panel with no events says so; a metric or a failed read does not", () => {
-    expect(panelNoEvents(incus!, data(0))).toBe(true);
-    expect(panelNoEvents(incus!, data(3))).toBe(false);
-    expect(panelNoEvents(incus!, null)).toBe(false);
-    expect(panelNoEvents(incus!, { ...data(0), error: "Search failed" })).toBe(false);
-    expect(panelNoEvents({ ...incus!, widget: { ...incus!.widget, metric: "cpu" } }, data(0))).toBe(false);
+    expect(panelNoEvents(queue!, data(0))).toBe(true);
+    expect(panelNoEvents(queue!, data(3))).toBe(false);
+    expect(panelNoEvents(queue!, null)).toBe(false);
+    expect(panelNoEvents(queue!, { ...data(0), error: "Search failed" })).toBe(false);
+    expect(panelNoEvents({ ...queue!, widget: { ...queue!.widget, metric: "cpu" } }, data(0))).toBe(false);
     expect(panelNoEvents(count!, data(0))).toBe(false);
   });
 });

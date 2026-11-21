@@ -37,17 +37,17 @@ A share's row opens its page: its named panels, the fence, the raw-params switch
 
 ### Over the API
 
-Over the API, a share is made as an Owner, with a personal or service account token (see [People and roles](people.md#tokens)). This call makes or changes the share `agental-console`, which reads `fleet_*` metrics and `service:agental` logs:
+Over the API, a share is made as an Owner, with a personal or service account token (see [People and roles](people.md#tokens)). This call makes or changes the share `ops-console`, which reads `shop_*` metrics and `service:shop` logs:
 
 ```bash
-curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT https://logs.example.com/api/shares/agental-console \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT https://logs.example.com/api/shares/ops-console \
   -H 'content-type: application/json' \
   -d '{
     "expires_at": "2027-10-23",
     "scope": {
-      "metric_names": ["fleet_*"],
-      "metric_labels": "service:agental",
-      "logs": "service:agental",
+      "metric_names": ["shop_*"],
+      "metric_labels": "service:shop",
+      "logs": "service:shop",
       "split": ["host", "pool"],
       "narrow": ["host", "pool"]
     }
@@ -78,7 +78,7 @@ Inside `scope`:
 
 | Field | Meaning |
 | --- | --- |
-| `metric_names` | Exact names or prefix globs (`fleet_*`), up to 50. A metric outside them reads as one that does not exist. |
+| `metric_names` | Exact names or prefix globs (`shop_*`), up to 50. A metric outside them reads as one that does not exist. |
 | `metric_labels` | Equality matchers, as `ml=` writes them, added to every metric read. |
 | `logs` | A `q` added to every log read, or `null`: the share reads no logs. |
 | `split`, `narrow` | The lists in [What a share can read](#what-a-share-can-read), up to 8 each. |
@@ -98,13 +98,13 @@ This tag draws the share's panel `latency-p99`:
 This call puts two named panels on the share, and lets pages pass their own params too:
 
 ```bash
-curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT https://logs.example.com/api/shares/agental-console \
+curl -H "Authorization: Bearer $TOPOSCOPE_TOKEN" -X PUT https://logs.example.com/api/shares/ops-console \
   -H 'content-type: application/json' \
   -d '{
     "expires_at": "2027-10-23",
-    "logs": "service:agental",
+    "logs": "service:shop",
     "panels": [
-      { "name": "latency-p99", "params": { "metric": "p99:fleet_latency", "ml": "service:agental", "split": "host", "range": "24h" } },
+      { "name": "latency-p99", "params": { "metric": "p99:shop_latency", "ml": "service:shop", "split": "host", "range": "24h" } },
       { "name": "errors-by-level", "params": { "agg": "count", "split": "level", "range": "7d" } }
     ],
     "raw_params": true
@@ -136,17 +136,17 @@ Once a minute, each share that was read writes one row: `service:toposcope acces
 
 Every refused read also writes its own row (`status:refused`, `reason`, `path`). No viewer addresses.
 
-Search, chart or watch them like any rows: a monitor on `service:toposcope share:agental-console status:refused` pages when a page asks for more than its share allows. `GET /api/shares` gives each share's last read and its reads and refusals over 24 hours.
+Search, chart or watch them like any rows: a monitor on `service:toposcope share:ops-console status:refused` pages when a page asks for more than its share allows. `GET /api/shares` gives each share's last read and its reads and refusals over 24 hours.
 
 ## Read with one
 
 Keep the secret on your backend. Only a share's secret opens `/share/v1`; a person's session or token and the ingest token do not, and a share's secret opens nothing else. A refusal is `401` with no Basic prompt.
 
-Every read takes Search's window: `range=24h`, or `from` and `to`, and an optional `step=`. This call reads the p99 of `fleet_latency` over a day, split by host:
+Every read takes Search's window: `range=24h`, or `from` and `to`, and an optional `step=`. This call reads the p99 of `shop_latency` over a day, split by host:
 
 ```bash
 curl -H "Authorization: Bearer $TOPOSCOPE_SHARE" \
-  'https://logs.example.com/share/v1/series?metric=p99:fleet_latency&range=24h&split=host'
+  'https://logs.example.com/share/v1/series?metric=p99:shop_latency&range=24h&split=host'
 ```
 
 | Route | Reads |
@@ -165,20 +165,20 @@ This call reads the newest sign-ups and received dollars for every `day` over th
 
 ```bash
 curl -H "Authorization: Bearer $TOPOSCOPE_SHARE" \
-  'https://logs.example.com/share/v1/latest?metric=agental.business.sign_ups,agental.business.received_usd&by=day&lookback=400d'
+  'https://logs.example.com/share/v1/latest?metric=shop.sign_ups,shop.received_usd&by=day&lookback=400d'
 ```
 
 It answers one row per metric and day:
 
 ```json
 {
-  "metrics": ["agental.business.sign_ups", "agental.business.received_usd"],
+  "metrics": ["shop.sign_ups", "shop.received_usd"],
   "by": ["day"],
   "lookback": "400d",
   "from": "2025-10-15T12:00:00.000Z",
   "rows": [
-    { "metric": "agental.business.received_usd", "day": "2026-11-03", "value": 120.5, "at": "2026-11-19T11:58:00.000Z" },
-    { "metric": "agental.business.sign_ups", "day": "2026-11-03", "value": 4, "at": "2026-11-19T11:58:00.000Z" }
+    { "metric": "shop.received_usd", "day": "2026-11-03", "value": 120.5, "at": "2026-11-19T11:58:00.000Z" },
+    { "metric": "shop.sign_ups", "day": "2026-11-03", "value": 4, "at": "2026-11-19T11:58:00.000Z" }
   ]
 }
 ```
@@ -239,11 +239,11 @@ The steps below are what it does.
 
    ```html
    <script src="https://logs.example.com/embed.js"
-     data-ticket="tst1_…" data-metric="fleet_cpu_seconds" data-reading="p99"
+     data-ticket="tst1_…" data-metric="shop_cpu_seconds" data-reading="p99"
      data-range="24h" data-title="CPU · all boxes" data-height="240px"></script>
    ```
 
-   or the iframe it places: `<iframe src="https://logs.example.com/embed?ticket=…&metric=fleet_cpu_seconds&reading=p99&range=24h">`.
+   or the iframe it places: `<iframe src="https://logs.example.com/embed?ticket=…&metric=shop_cpu_seconds&reading=p99&range=24h">`.
 
 ### Panel params
 
@@ -284,13 +284,11 @@ Framing rules stop framing, not reading: whoever holds a ticket can fetch its nu
 
 Answers are kept for a moment: until the panel's next bar starts, or 30 seconds, whichever is sooner. So twenty open consoles showing one panel cost one read. Answers served that way count as `cached` and do not count against the rate.
 
-## The agental shape
+## A worked example
 
-One worked example, from agental, a real deployment that reads its fleet numbers through a share.
+An admin console reads its numbers through a share and stops drawing its own charts:
 
-agental's admin console stops drawing its own fleet charts:
-
-- one share, `service:agental` and `fleet_*`;
+- one share, `service:shop` and `shop_*`;
 - split and narrow by `host` and `pool`;
 - framed by the console's origin.
 

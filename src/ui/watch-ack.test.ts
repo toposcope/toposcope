@@ -43,7 +43,7 @@ const monitor = (over: Partial<MonitorView> = {}): MonitorView => ({
   body_template: null,
   saved_search_id: "s1",
   threshold: 50,
-  webhook_url: "https://ntfy.sh/agental-ops",
+  webhook_url: "https://ntfy.sh/payroll-ops",
   last_fired_at: null,
   last_attempt_at: null,
   last_status: null,

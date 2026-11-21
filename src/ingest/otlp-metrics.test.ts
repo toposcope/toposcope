@@ -300,14 +300,14 @@ describe("a metric's unit", () => {
   test("a gauge and a counter keep the unit they were sent with", () => {
     expect(
       units([
-        { name: "agental.box.memory", unit: "GiBy", gauge: { dataPoints: [num(26.8)] } },
+        { name: "payroll.vms.memory", unit: "GiBy", gauge: { dataPoints: [num(26.8)] } },
         {
           name: "http.server.requests",
           unit: "{request}",
           sum: { aggregationTemporality: DELTA, isMonotonic: true, dataPoints: [num(3)] },
         },
       ]),
-    ).toEqual({ "agental.box.memory": "GiBy", "http.server.requests": "{request}" });
+    ).toEqual({ "payroll.vms.memory": "GiBy", "http.server.requests": "{request}" });
   });
 
   test("a histogram's unit is the unit of its values and its sum, not of its count", () => {
@@ -347,14 +347,14 @@ describe("a metric's unit", () => {
   });
 
   test("protobuf carries the unit too", () => {
-    const body = request([{ name: "agental.box.disk", unit: "GiBy", gauge: { dataPoints: [num(416)] } }]);
+    const body = request([{ name: "payroll.vms.disk", unit: "GiBy", gauge: { dataPoints: [num(416)] } }]);
     const decoded = decodeOtlpMetricsProtobuf(encodeOtlpMetricsProtobuf(body));
     const out = mapOtlpMetrics(decoded, new Losses(), upAnHour());
-    expect(Object.fromEntries(out.units)).toEqual({ "agental.box.disk": "GiBy" });
+    expect(Object.fromEntries(out.units)).toEqual({ "payroll.vms.disk": "GiBy" });
   });
 });
 
-// #167: agental said what each metric is, and the description was dropped at ingest.
+// #167: a sender said what each metric is, and the description was dropped at ingest.
 describe("a metric's description", () => {
   const descriptions = (metrics: object[]) =>
     Object.fromEntries(mapOtlpMetrics(request(metrics), new Losses(), upAnHour()).descriptions);
@@ -363,9 +363,9 @@ describe("a metric's description", () => {
   test("a gauge keeps the description it was sent with, beside its unit", () => {
     expect(
       descriptions([
-        { name: "agental.box.stranded.disk", unit: "GiBy", description: stranded, gauge: { dataPoints: [num(17.2)] } },
+        { name: "payroll.vms.stranded.disk", unit: "GiBy", description: stranded, gauge: { dataPoints: [num(17.2)] } },
       ]),
-    ).toEqual({ "agental.box.stranded.disk": stranded });
+    ).toEqual({ "payroll.vms.stranded.disk": stranded });
   });
 
   test("a histogram's description goes on its name and its sum, as its unit does, and not on its count", () => {
@@ -407,10 +407,10 @@ describe("a metric's description", () => {
   });
 
   test("protobuf carries the description too", () => {
-    const body = request([{ name: "agental.box.disk", unit: "GiBy", description: "Disk.", gauge: { dataPoints: [num(416)] } }]);
+    const body = request([{ name: "payroll.vms.disk", unit: "GiBy", description: "Disk.", gauge: { dataPoints: [num(416)] } }]);
     const decoded = decodeOtlpMetricsProtobuf(encodeOtlpMetricsProtobuf(body));
     const out = mapOtlpMetrics(decoded, new Losses(), upAnHour());
-    expect(Object.fromEntries(out.descriptions)).toEqual({ "agental.box.disk": "Disk." });
+    expect(Object.fromEntries(out.descriptions)).toEqual({ "payroll.vms.disk": "Disk." });
   });
 });
 
@@ -686,11 +686,11 @@ describe("POST /v1/metrics", () => {
 
   test("a JSON point's unit is stored with its name", async () => {
     const res = await postJson([
-      { name: "agental.box.memory", value: 26.8, unit: "GiBy" },
-      { name: "agental.box.disk", value: 416 },
+      { name: "payroll.vms.memory", value: 26.8, unit: "GiBy" },
+      { name: "payroll.vms.disk", value: 416 },
     ]);
     expect(res.status).toBe(200);
-    expect(stored.metrics!.map((row) => [row.name, row.unit])).toEqual([["agental.box.memory", "GiBy"], ["agental.box.disk", ""]]);
+    expect(stored.metrics!.map((row) => [row.name, row.unit])).toEqual([["payroll.vms.memory", "GiBy"], ["payroll.vms.disk", ""]]);
     expect(stored.metrics).toHaveLength(2);
   });
 
@@ -710,23 +710,23 @@ describe("POST /v1/metrics", () => {
   });
 
   test("a JSON point's description is stored with its name", async () => {
-    const res = await postJson([{ name: "agental.box.memory", value: 26.8, description: "Memory sold on a box." }]);
+    const res = await postJson([{ name: "payroll.vms.memory", value: 26.8, description: "Memory sold on a box." }]);
     expect(res.status).toBe(200);
-    expect(stored.metrics!.map((row) => [row.name, row.description])).toEqual([["agental.box.memory", "Memory sold on a box."]]);
+    expect(stored.metrics!.map((row) => [row.name, row.description])).toEqual([["payroll.vms.memory", "Memory sold on a box."]]);
   });
 
   test("a JSON point whose description is too long or not a string is refused, and nothing is stored", async () => {
-    const long = await postJson({ name: "agental.box.memory", value: 1, description: "x".repeat(301) });
+    const long = await postJson({ name: "payroll.vms.memory", value: 1, description: "x".repeat(301) });
     expect(long.status).toBe(400);
     expect(await long.json()).toEqual({ error: "Metric description is longer than 300 characters" });
-    const wrong = await postJson({ name: "agental.box.memory", value: 1, description: 7 });
+    const wrong = await postJson({ name: "payroll.vms.memory", value: 1, description: 7 });
     expect(wrong.status).toBe(400);
     expect(await wrong.json()).toEqual({ error: "Metric description must be a string" });
     expect(stored).toEqual({});
   });
 
   test("a JSON point whose unit is too long is refused, and nothing is stored", async () => {
-    const res = await postJson({ name: "agental.box.memory", value: 1, unit: "x".repeat(65) });
+    const res = await postJson({ name: "payroll.vms.memory", value: 1, unit: "x".repeat(65) });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "Metric unit is longer than 64 characters" });
     expect(stored).toEqual({});

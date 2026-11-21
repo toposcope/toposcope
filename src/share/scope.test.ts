@@ -8,15 +8,15 @@ import {
   type ShareScope,
 } from "./scope";
 
-const agental = {
-  metric_names: ["fleet_*", "sandbox_starts"],
-  metric_labels: "service:agental",
-  logs: "service:agental",
+const payroll = {
+  metric_names: ["shop_*", "sandbox_starts"],
+  metric_labels: "service:payroll",
+  logs: "service:payroll",
   split: ["host", "pool"],
   narrow: "host pool",
 };
 
-function scope(raw: Record<string, unknown> = agental): ShareScope {
+function scope(raw: Record<string, unknown> = payroll): ShareScope {
   const parsed = parseShareScope(raw);
   if ("error" in parsed) {
     throw new Error(parsed.error);
@@ -27,9 +27,9 @@ function scope(raw: Record<string, unknown> = agental): ShareScope {
 describe("share scope", () => {
   test("parses names, labels, logs, split and narrow", () => {
     expect(scope()).toEqual({
-      metric_names: ["fleet_*", "sandbox_starts"],
-      metric_labels: { service: "agental" },
-      logs: "service:agental",
+      metric_names: ["shop_*", "sandbox_starts"],
+      metric_labels: { service: "payroll" },
+      logs: "service:payroll",
       split: ["host", "pool"],
       narrow: ["host", "pool"],
     });
@@ -55,7 +55,7 @@ describe("share scope", () => {
 
   test("a name is inside by exact match or prefix glob", () => {
     const s = scope();
-    expect(metricAllowed(s, "fleet_cpu_seconds")).toBe(true);
+    expect(metricAllowed(s, "shop_cpu_seconds")).toBe(true);
     expect(metricAllowed(s, "sandbox_starts")).toBe(true);
     expect(metricAllowed(s, "sandbox_starts_total")).toBe(false);
     expect(metricAllowed(s, "billing_cpu")).toBe(false);
@@ -74,13 +74,13 @@ describe("a caller's narrowing", () => {
 
   test("never replaces a scope label", () => {
     const s = scope();
-    expect(metricLabelsFor(s, { host: "box-1" })).toEqual({ host: "box-1", service: "agental" });
+    expect(metricLabelsFor(s, { host: "box-1" })).toEqual({ host: "box-1", service: "payroll" });
   });
 
   test("ANDs onto the scope's q as one exact value, never a glob", () => {
     const s = scope();
-    expect(logQueryFor(s, {})).toBe("service:agental");
-    expect(logQueryFor(s, { host: "box*" })).toBe('(service:agental) host:"box*"');
+    expect(logQueryFor(s, {})).toBe("service:payroll");
+    expect(logQueryFor(s, { host: "box*" })).toBe('(service:payroll) host:"box*"');
     expect(logQueryFor(scope({ metric_names: ["cpu"] }), {})).toBeNull();
   });
 });

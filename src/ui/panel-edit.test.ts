@@ -6,11 +6,11 @@ import { canJoin, withLine, withLineName, withoutLine } from "./panel-edit";
 const disk = defaultTimeseries({
   id: "b",
   replaceY: true,
-  metric: "agental.box.disk.sellable",
+  metric: "payroll.vms.disk.sellable",
   metricLabels: { box: "all" },
   lines: [
-    { metric: "agental.box.disk.sold", labels: { box: "all" } },
-    { metric: "agental.box.disk.used", labels: { box: "all" } },
+    { metric: "payroll.vms.disk.sold", labels: { box: "all" } },
+    { metric: "payroll.vms.disk.used", labels: { box: "all" } },
   ],
   names: { "0": "Capacity", "1": "Promised", "2": "In use" },
 });
@@ -25,7 +25,7 @@ describe("the panel editor", () => {
 
   test("removing a line moves the names after it up with their lines", () => {
     expect(withoutLine(disk, 1)).toEqual({
-      lines: [{ metric: "agental.box.disk.used", labels: { box: "all" } }],
+      lines: [{ metric: "payroll.vms.disk.used", labels: { box: "all" } }],
       names: { "0": "Capacity", "1": "In use" },
     });
   });
@@ -36,13 +36,13 @@ describe("the panel editor", () => {
   });
 
   test("adding a line to a split panel makes it merge, and drops the split's value names (17i)", () => {
-    const split = defaultTimeseries({ id: "c", metric: "agental.box.stranded.disk", metricSplit: "basis", names: { sold: "By promises" } });
-    expect(withLine(split, "agental.box.disk.sold")).toEqual({
-      lines: [{ metric: "agental.box.disk.sold", labels: {} }],
+    const split = defaultTimeseries({ id: "c", metric: "payroll.vms.stranded.disk", metricSplit: "basis", names: { sold: "By promises" } });
+    expect(withLine(split, "payroll.vms.disk.sold")).toEqual({
+      lines: [{ metric: "payroll.vms.disk.sold", labels: {} }],
       metricSplit: null,
       names: {},
     });
-    expect(withLine(disk, "agental.box.disk.free").names).toEqual(disk.names!);
+    expect(withLine(disk, "payroll.vms.disk.free").names).toEqual(disk.names!);
   });
 
   test("a title it was given wins over the one it makes (17d)", () => {

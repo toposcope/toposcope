@@ -48,27 +48,27 @@ beforeAll(async () => {
     const api = (key, path, cookie, init = {}) => go(key, path, { ...init, headers: { cookie, "content-type": "application/json", ...(init.headers ?? {}) } });
 
     // Ian, the first Owner, and Maya, an Operator, each with two-step.
-    const link = people.createOwnerLink("ian@agental.io");
+    const link = people.createOwnerLink("ian@example.org");
     const made = await go("setup", "/api/setup", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ token: link.token, name: "Ian", password: "correct horse battery" }).toString() });
     const ianCodes = await helpers.passTwoStepSetup(app.fetch, pair(made.cookie));
     const ianId = JSON.parse((await go("me0", "/api/me", { headers: { cookie: pair(made.cookie) } })).body).id;
-    const invite = people.createInvite({ who: "maya@agental.io", role: "operator", created_by: ianId });
-    const joined = await go("join", "/api/join", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: invite.token, name: "Maya", email: "maya@agental.io", password: "correct horse battery" }) });
+    const invite = people.createInvite({ who: "maya@example.org", role: "operator", created_by: ianId });
+    const joined = await go("join", "/api/join", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: invite.token, name: "Maya", email: "maya@example.org", password: "correct horse battery" }) });
     const mayaCodes = await helpers.passTwoStepSetup(app.fetch, pair(joined.cookie));
     const mayaId = JSON.parse(joined.body).id;
 
     // 34b: the slider on the code page; 34c: ticking 7 days remembers this browser.
-    const s1 = pair((await signIn("ianIn", "ian@agental.io")).cookie);
+    const s1 = pair((await signIn("ianIn", "ian@example.org")).cookie);
     await go("verifyPage", "/two-step", { headers: { cookie: s1, accept: "text/html" } });
     const set = await verify("remember7", s1, { code: await helpers.currentCode(ianId, 1), remember: "7" }, true);
     const rIan = pair(set.cookie);
     // 34e: the password on that browser goes straight in.
-    const s2 = pair((await signIn("skip", "ian@agental.io", rIan)).cookie);
+    const s2 = pair((await signIn("skip", "ian@example.org", rIan)).cookie);
     await go("meSkip", "/api/me", { headers: { cookie: s2 } });
     await go("mine", "/api/me/remembered-browsers", { headers: { cookie: s2 + "; " + rIan } });
-    await signIn("otherBrowser", "ian@agental.io");
-    await signIn("otherPerson", "maya@agental.io", rIan);
-    const m1 = pair((await signIn("mayaIn", "maya@agental.io")).cookie);
+    await signIn("otherBrowser", "ian@example.org");
+    await signIn("otherPerson", "maya@example.org", rIan);
+    const m1 = pair((await signIn("mayaIn", "maya@example.org")).cookie);
     const mSet = await verify("maya14", m1, { code: await helpers.currentCode(mayaId, 1), remember: "14" });
     const rMaya = pair(mSet.cookie);
     await api("peopleList", "/api/people", s2);
@@ -77,7 +77,7 @@ beforeAll(async () => {
     await api("cap7", "/api/sign-in-settings", s2, { method: "PUT", body: JSON.stringify({ remember_days_max: 7 }) });
     await api("capBad", "/api/sign-in-settings", s2, { method: "PUT", body: JSON.stringify({ remember_days_max: 3 }) });
     out.mayaAfterCap = remembered.rememberedBrowsersOf(mayaId, undefined)[0];
-    const s3 = pair((await signIn("ianAgain", "ian@agental.io")).cookie);
+    const s3 = pair((await signIn("ianAgain", "ian@example.org")).cookie);
     await go("cappedPage", "/two-step", { headers: { cookie: s3, accept: "text/html" } });
     await verify("asked30", s3, { backup: ianCodes[0], remember: "30" });
 
@@ -85,15 +85,15 @@ beforeAll(async () => {
     const mine = JSON.parse(out.mine.body).browsers;
     await api("forgetOne", "/api/me/remembered-browsers/" + mine[0].id, s2, { method: "DELETE" });
     await api("forgetNotMine", "/api/me/remembered-browsers/" + remembered.rememberedBrowsersOf(mayaId, undefined)[0].id, s2, { method: "DELETE" });
-    await signIn("afterForget", "ian@agental.io", rIan);
+    await signIn("afterForget", "ian@example.org", rIan);
 
     // 34g: an Owner forgets Maya's browsers.
     await api("ownerForget", "/api/people/" + mayaId + "/remembered-browsers", s2, { method: "DELETE" });
-    await signIn("mayaAfterOwner", "maya@agental.io", rMaya);
+    await signIn("mayaAfterOwner", "maya@example.org", rMaya);
     out.n.mayaAfterOwner = remembered.rememberedSummary(mayaId).count;
 
     // A two-step reset, revoking and a new password each forget them all.
-    const m2 = pair((await signIn("mayaIn2", "maya@agental.io")).cookie);
+    const m2 = pair((await signIn("mayaIn2", "maya@example.org")).cookie);
     await verify("maya7", m2, { backup: mayaCodes[0], remember: "7" });
     out.n.mayaBeforeReset = remembered.rememberedSummary(mayaId).count;
     await api("reset", "/api/people/" + mayaId + "/two-step", s2, { method: "DELETE" });
@@ -106,7 +106,7 @@ beforeAll(async () => {
     out.n.ianBeforeNever = remembered.rememberedSummary(ianId).count;
     await api("never", "/api/sign-in-settings", s2, { method: "PUT", body: JSON.stringify({ remember_days_max: 0 }) });
     out.n.ianAfterNever = remembered.rememberedSummary(ianId).count;
-    const s4 = pair((await signIn("ianNever", "ian@agental.io")).cookie);
+    const s4 = pair((await signIn("ianNever", "ian@example.org")).cookie);
     await go("neverPage", "/two-step", { headers: { cookie: s4, accept: "text/html" } });
     remembered.writeRememberDaysMax(30);
     remembered.rememberBrowser(ianId, 30, {});
@@ -169,7 +169,7 @@ describe("remember this browser after the two-step code (34a–34i)", () => {
     const list = JSON.parse(r.mine!.body).browsers;
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({ label: "Chrome on macOS", days: 7, this_browser: true });
-    const maya = JSON.parse(r.peopleList!.body).people.find((p: { email: string }) => p.email === "maya@agental.io");
+    const maya = JSON.parse(r.peopleList!.body).people.find((p: { email: string }) => p.email === "maya@example.org");
     expect(maya.two_step.remembered.count).toBe(1);
   });
 

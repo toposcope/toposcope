@@ -39,7 +39,7 @@ function addRule(db: Database, over: Record<string, unknown> = {}): string {
     id: "quiet-1",
     name: "ci-box went quiet",
     query: ciBox.query,
-    webhook_url: "https://ntfy.example.com/agental-ops",
+    webhook_url: "https://ntfy.example.com/payroll-ops",
     saved_search_id: ciBox.id,
     threshold: 1,
     enabled: 1,

@@ -8,7 +8,7 @@ const base = {
   threshold: 1,
   thresholdOk: true,
   opensWhen: "fewer_than" as const,
-  webhook: "https://ntfy.sh/agental-ops",
+  webhook: "https://ntfy.sh/payroll-ops",
   bodyKind: "json" as const,
   bodyTemplate: '{ "title": "{{alert.name}} {{state}}" }',
   resolvedBody: '{ "title": "{{alert.name}} resolved" }',

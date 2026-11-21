@@ -78,10 +78,10 @@ beforeAll(async () => {
     const ianId = (await go("ianMe", "/api/me", as(ian))).body.id;
     await go("demoteLastOwner", "/api/people/" + ianId, { method: "PUT", headers: { cookie: ian }, body: JSON.stringify({ role: "viewer" }) });
     // A service account and its token (32f).
-    const svc = await go("service", "/api/people/service-accounts", { method: "POST", headers: { cookie: ian }, body: JSON.stringify({ name: "agental-boards", role: "operator" }) });
+    const svc = await go("service", "/api/people/service-accounts", { method: "POST", headers: { cookie: ian }, body: JSON.stringify({ name: "payroll-boards", role: "operator" }) });
     const st = await go("serviceToken", "/api/people/" + svc.body.id + "/tokens", { method: "POST", headers: { cookie: ian }, body: JSON.stringify({ name: "board sync" }) });
     await go("serviceWrites", "/api/fields", { method: "PUT", headers: { authorization: "Bearer " + st.body.token }, body: JSON.stringify({ roles: {}, links: {} }) });
-    await go("serviceSignsIn", "/api/sign-in", { method: "POST", body: JSON.stringify({ email: "agental-boards", password: "anything at all" }) });
+    await go("serviceSignsIn", "/api/sign-in", { method: "POST", body: JSON.stringify({ email: "payroll-boards", password: "anything at all" }) });
     // Revoke: sessions and tokens end on the next request.
     await go("revoke", "/api/people/" + samId, { method: "DELETE", headers: { cookie: ian } });
     await go("samAfterRevoke", "/api/me", as(sam2));
@@ -184,6 +184,6 @@ describe("people in Access (#308)", () => {
     const after = r.listedAfter!.body;
     expect(after.invites).toEqual([]);
     expect(after.people.map((p: { name: string }) => p.name)).toEqual(["Ian"]);
-    expect(after.service_accounts.map((p: { name: string }) => p.name)).toEqual(["agental-boards"]);
+    expect(after.service_accounts.map((p: { name: string }) => p.name)).toEqual(["payroll-boards"]);
   });
 });

@@ -17,17 +17,17 @@ function share(name: string, scope: Partial<ShareView["scope"]>, extra: Partial<
   };
 }
 
-const consoleShare = share("agental-console", {
-  metric_names: ["fleet_*"],
-  metric_labels: "service:agental",
-  logs: "service:agental",
+const consoleShare = share("payroll-console", {
+  metric_names: ["shop_*"],
+  metric_labels: "service:payroll",
+  logs: "service:payroll",
   split: ["host", "pool"],
   narrow: ["host", "pool"],
 });
 
 describe("a share in the list", () => {
   test("scope and limits in one line each; under two weeks is said", () => {
-    expect(scopeLine(consoleShare)).toBe("service:agental · fleet_* · logs service:agental");
+    expect(scopeLine(consoleShare)).toBe("service:payroll · shop_* · logs service:payroll");
     expect(scopeLine(share("b", { metric_names: ["http_requests"], metric_labels: "service:billing" }))).toBe("service:billing · http_requests · no logs");
     expect(limitsLine(consoleShare)).toBe("≥1m · ≤30d · back 400d · 300/min · expires 2027-10-23");
     expect(expiresSoon({ ...consoleShare, expires_at: now + 6 * day }, now)).toBe("expires in 6d");

@@ -3,7 +3,7 @@ import { boardRowGaps, fitRow, type FitCell } from "./boards";
 
 const cell = (id: string, view: FitCell["view"], x: number, y: number, w: number, h: number): FitCell => ({ id, view, x, y, w, h });
 
-// The Eleos board on logs.agental.io (sheet 51, 51d → 51e).
+// The Ops board on logs.example.org (sheet 51, 51d → 51e).
 const eleos: FitCell[] = [
   cell("u", "section", 0, 0, 12, 1),
   cell("v", "histogram", 0, 1, 5, 4),

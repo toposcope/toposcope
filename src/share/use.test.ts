@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { drainUse, noteLimited, noteRead, noteRefused, pendingUse, resetShareUse, takeRead } from "./use";
+import { drainUse, flushUse, noteLimited, noteRead, noteRefused, pendingUse, resetShareUse, takeRead } from "./use";
 
 const now = Date.parse("2026-10-23T12:00:00Z");
 
@@ -37,5 +37,22 @@ describe("use rows", () => {
       attrs: { share: "console", status: "used", reads: 1, cached: 1, refused: 1, limited: 1, origins: "https://admin.example.com" },
     });
     expect(drainUse(now)).toEqual([]);
+  });
+});
+
+describe("use being written", () => {
+  test("still counts until the write ends, and not after", async () => {
+    resetShareUse();
+    noteRead("s", undefined);
+    noteRefused("s", undefined, "/share/v1/series", "not in scope");
+    let finish = () => {};
+    const flushing = flushUse(() => new Promise<void>((resolve) => (finish = resolve)));
+    expect(pendingUse().get("s")).toMatchObject({ reads: 1, refused: 1 });
+    noteRead("s", undefined);
+    expect(pendingUse().get("s")).toMatchObject({ reads: 2, refused: 1 });
+    finish();
+    await flushing;
+    expect(pendingUse().get("s")).toMatchObject({ reads: 1, refused: 0 });
+    resetShareUse();
   });
 });
