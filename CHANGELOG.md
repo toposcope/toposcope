@@ -6,6 +6,8 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Mark chips no longer draw over each other. Two chips that would touch at the rail's width fold into one count, which opens the list of its marks; the plot keeps a rule for each mark and lights them all while the count is hovered.
+
 A monitor on `event:update_available` reads only rows written by the version running now, so an upgrade closes it. It used to stay open, or open just after the upgrade, on the row announcing the version just installed. The docs' `step` example gains the parentheses it needs.
 
 A mark chip at the edge of the rail moves just far enough to clear the dashed chip for marks outside the window; it used to draw under it.

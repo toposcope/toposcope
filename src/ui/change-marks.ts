@@ -5,6 +5,8 @@ export const changeMarkClusterFrac = 0.016;
 export const changeMarkPeekCrowdFrac = 0.08;
 export const changeMarkLabelGapFrac = 0.12;
 
+const railChipGapPx = 2;
+
 export type MarkCluster = {
   members: ChangeMark[];
   fromMs: number;
@@ -42,6 +44,33 @@ export function clusterChangeMarks(
     clusters.push({ members: [mark], fromMs: t, toMs: t });
   }
   return clusters;
+}
+
+/**
+ * Clusters as a rail `railW` px wide can draw them: a chip that would touch the one before it folds
+ * into it as one count, and the next is measured against that fold. `frac` places a time on the rail.
+ */
+export function foldClustersForRail(
+  clusters: readonly MarkCluster[],
+  frac: (ms: number) => number,
+  railW: number,
+  widths: { lone: number; fold: number },
+): MarkCluster[] {
+  if (railW <= 0) {
+    return [...clusters];
+  }
+  const width = (c: MarkCluster) => (c.members.length === 1 ? widths.lone : widths.fold);
+  const centre = (c: MarkCluster) => frac((c.fromMs + c.toMs) / 2) * railW;
+  const out: MarkCluster[] = [];
+  for (const cluster of clusters) {
+    const prev = out.at(-1);
+    if (prev && centre(cluster) - centre(prev) < (width(prev) + width(cluster)) / 2 + railChipGapPx) {
+      out[out.length - 1] = { members: [...prev.members, ...cluster.members], fromMs: prev.fromMs, toMs: cluster.toMs };
+    } else {
+      out.push(cluster);
+    }
+  }
+  return out;
 }
 
 export function clusterKinds(cluster: MarkCluster): ChangeMarkKind[] {
