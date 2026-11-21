@@ -6,7 +6,11 @@ A version section may carry one paragraph that starts **Before you upgrade:**: b
 
 ## Unreleased
 
+Home prints a measure's unit when its field name carries one: a p99 of `duration_ms` reads `1470 ms +1010 was 460` on a Moved card and a Monitors row, and `1470 ms` in Quiet. The Archive item says `its monitor stays` only on a hunt that has a monitor.
+
 ## 0.15.10
+
+**Before you upgrade:** a saved hunt you had pinned that also has a monitor stays in Moved, with a `monitor` tag, because a pin now means Show in Moved. To list it only under Monitors, choose **Remove from Moved** in its ⋯ menu. Each person's pins are their own. No tables change.
 
 Home keeps Moved and Quiet for the hunts you saved to read (sheet 52). A saved hunt with a monitor is listed under a new **Monitors** section instead: open ones first, then those that moved, then `17 more, same as before`. A monitor's ⋯ menu has **Show in Moved**, each person's own choice, which puts its hunt back with a `monitor` tag and a **Remove from Moved** in its own menu; it still opens from search, the palette and Watch. Each row says when it opened against the mark picked in Since: `3 min after deploy`, `before this deploy`, `opened 8 min after · closed 5 min later`, or for a monitor that opens on silence, `last line 4 min after deploy`. A new fingerprint says `first seen 2 min after deploy`, and `GET /api/home/since` gains its `first_at`.
 

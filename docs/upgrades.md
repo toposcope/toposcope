@@ -233,7 +233,7 @@ SQLite migrations add columns. Extra columns on a downgrade are unused, not a wi
 
 | From | Pin | Notes |
 | --- | --- | --- |
-| 0.15.10 | `0.15.9` | Changes no tables and no stored data. A hunt someone chose to show in Moved stays pinned; on 0.15.9 it is an ordinary pinned hunt |
+| 0.15.10 | `0.15.9` | Changes no tables and no stored data. A hunt already pinned that has a monitor stays in Moved after the upgrade, until **Remove from Moved**. Back on 0.15.9 any such pin is an ordinary pin |
 | 0.15.9 | `0.15.8` | Changes no tables and no stored data |
 | 0.15.8 | `0.15.7` | Changes no tables and no stored data. Hunts archived together from Home stay archived on 0.15.7 |
 | 0.15.7 | `0.15.6` | Adds the SQLite columns `saved_searches.archived`, `monitor_stretches.acked_at` and `monitor_stretches.acked_by`, which 0.15.6 leaves unread: archived hunts show again on Home, and acknowledgements are ignored, so reminders resume for monitors still open. Pinning 0.15.7 again picks them up where they were |

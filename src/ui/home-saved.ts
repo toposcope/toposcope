@@ -3,7 +3,7 @@ import { isTextPanel, type BoardSlots } from "../shared/boards";
 import { coverageGaps, type Coverage } from "../shared/coverage";
 import { widgetGridCols } from "../shared/widgets";
 import { formatCompactCount } from "./count-format";
-import { formatValue } from "./home-since";
+import { valueWithUnit } from "./home-since";
 import type { SavedSearch } from "./types";
 
 /**
@@ -128,7 +128,7 @@ export function quietValue(card: HomeCard | undefined): string {
   if (card.refused) {
     return "refused";
   }
-  return card.kind === "count" ? formatCompactCount(card.after ?? 0) : formatValue(card.after, card.kind);
+  return card.kind === "count" ? formatCompactCount(card.after ?? 0) : valueWithUnit(card.after, card.kind);
 }
 
 /** How many Quiet names the folded line spells out before `+N`. */
